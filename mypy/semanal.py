@@ -118,7 +118,12 @@ class SemanticAnalyzer(NodeVisitor):
     # TypeInfo of directly enclosing class (or None)
     type = Undefined(TypeInfo)
     # Stack of outer classes (the second tuple item contains tvars).
-    type_stack = Undefined(List[Tuple[TypeInfo, List[SymbolTableNode]]])
+    type_stack = Undefined(List[TypeInfo])
+    # Type variables that are bound by the directly enclosing class
+    bound_tvars = Undefined(List[SymbolTableNode])
+    # Stack of type varialbes that were bound by outer classess
+    tvar_stack = Undefined(List[List[SymbolTableNode]])
+
     # Stack of functions being analyzed
     function_stack = Undefined(List[FuncItem])
 
@@ -138,6 +143,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.imports = set()
         self.type = None
         self.type_stack = []
+        self.bound_tvars = None
+        self.tvar_stack = []
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
@@ -396,11 +403,12 @@ class SemanticAnalyzer(NodeVisitor):
         # Restore analyzer state.
         self.block_depth.pop()
         self.locals.pop()
-        self.type, tvarnodes = self.type_stack.pop()
-        disable_typevars(tvarnodes)
-        if self.type_stack:
-            # Enable type variables of the enclosing class again.
-            enable_typevars(self.type_stack[-1][1])
+        self.type = self.type_stack.pop()
+
+        disable_typevars(self.bound_tvars)
+        self.bound_tvars = self.tvar_stack.pop()
+        if self.bound_tvars:
+            enable_typevars(self.bound_tvars)
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
         decorator.accept(self)
@@ -547,12 +555,14 @@ class SemanticAnalyzer(NodeVisitor):
             if self.is_func_scope():
                 kind = LDEF
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
-        if self.type_stack:
-            # Disable type variables of the enclosing class.
-            disable_typevars(self.type_stack[-1][1])
-        tvarnodes = self.bind_class_type_variables_in_symbol_table(defn.info)
-        # Remember previous active class and type vars of *this* class.
-        self.type_stack.append((self.type, tvarnodes))
+        # Unbind type variables of previously active class and bind
+        # the type variables for the active class
+        if self.bound_tvars:
+            disable_typevars(self.bound_tvars)
+        self.tvar_stack.append(self.bound_tvars)
+        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(defn.info)
+        # Remember previous active class
+        self.type_stack.append(self.type)
         self.locals.append(None)  # Add class scope
         self.block_depth.append(-1)  # The class body increments this to 0
         self.type = defn.info
