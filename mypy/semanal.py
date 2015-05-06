@@ -386,11 +386,16 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_class_def_analysis(defn)
+
+        self.bind_class_type_vars(defn)
+
         self.analyze_base_classes(defn)
         self.analyze_metaclass(defn)
 
         for decorator in defn.decorators:
             self.analyze_class_decorator(defn, decorator)
+
+        self.enter_class(defn)
 
         self.setup_is_builtinclass(defn)
 
@@ -400,11 +405,35 @@ class SemanticAnalyzer(NodeVisitor):
         self.calculate_abstract_status(defn.info)
         self.setup_type_promotion(defn)
 
-        # Restore analyzer state.
+        self.leave_class()
+        self.unbind_class_type_vars()
+
+    def enter_class(self, defn: ClassDef) -> None:
+        # Remember previous active class
+        self.type_stack.append(self.type)
+        self.locals.append(None)  # Add class scope
+        self.block_depth.append(-1)  # The class body increments this to 0
+        self.type = defn.info
+
+    def leave_class(self) -> None:
+        """ Restore analyzer state. """
         self.block_depth.pop()
         self.locals.pop()
         self.type = self.type_stack.pop()
 
+    def bind_class_type_vars(self, defn: ClassDef) -> None:
+        """ Unbind type variables of previously active class and bind
+        the type variables for the active class.
+        """
+        if self.bound_tvars:
+            disable_typevars(self.bound_tvars)
+        self.tvar_stack.append(self.bound_tvars)
+        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(defn.info)
+
+    def unbind_class_type_vars(self) -> None:
+        """ Unbind the active class' type vars and rebind the
+        type vars of the previously active class.
+        """
         disable_typevars(self.bound_tvars)
         self.bound_tvars = self.tvar_stack.pop()
         if self.bound_tvars:
@@ -555,17 +584,6 @@ class SemanticAnalyzer(NodeVisitor):
             if self.is_func_scope():
                 kind = LDEF
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
-        # Unbind type variables of previously active class and bind
-        # the type variables for the active class
-        if self.bound_tvars:
-            disable_typevars(self.bound_tvars)
-        self.tvar_stack.append(self.bound_tvars)
-        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(defn.info)
-        # Remember previous active class
-        self.type_stack.append(self.type)
-        self.locals.append(None)  # Add class scope
-        self.block_depth.append(-1)  # The class body increments this to 0
-        self.type = defn.info
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
