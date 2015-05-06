@@ -7,7 +7,7 @@ from mypy.types import (
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
 from mypy.nodes import (
-    GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, Var, Node,
+    GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, BOUND_TVAR, TypeVarExpr, Var, Node,
     IndexExpr, NameExpr, TupleExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
@@ -73,7 +73,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         sym = self.lookup(t.name, t)
         if sym is not None:
             fullname = sym.node.fullname()
-            if sym.kind == TVAR:
+            if sym.kind == BOUND_TVAR:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)

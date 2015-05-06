@@ -53,7 +53,7 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
+    SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
@@ -260,7 +260,7 @@ class SemanticAnalyzer(NodeVisitor):
         return result
 
     def is_defined_type_var(self, tvar: str, context: Node) -> bool:
-        return self.lookup_qualified(tvar, context).kind == TVAR
+        return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         t = []  # type: List[CallableType]
@@ -365,7 +365,7 @@ class SemanticAnalyzer(NodeVisitor):
     def bind_type_var(self, fullname: str, id: int,
                      context: Context) -> SymbolTableNode:
         node = self.lookup_qualified(fullname, context)
-        node.kind = TVAR
+        node.kind = BOUND_TVAR
         node.tvar_id = id
         return node
 
@@ -1410,7 +1410,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
-            if n.kind == TVAR:
+            if n.kind == BOUND_TVAR:
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
@@ -2076,14 +2076,14 @@ def find_duplicate(list: List[T]) -> T:
 
 def disable_typevars(nodes: List[SymbolTableNode]) -> None:
     for node in nodes:
-        assert node.kind in (TVAR, UNBOUND_TVAR)
+        assert node.kind in (BOUND_TVAR, UNBOUND_TVAR)
         node.kind = UNBOUND_TVAR
 
 
 def enable_typevars(nodes: List[SymbolTableNode]) -> None:
     for node in nodes:
-        assert node.kind in (TVAR, UNBOUND_TVAR)
-        node.kind = TVAR
+        assert node.kind in (BOUND_TVAR, UNBOUND_TVAR)
+        node.kind = BOUND_TVAR
 
 
 def remove_imported_names_from_symtable(names: SymbolTable,

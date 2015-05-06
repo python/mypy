@@ -39,7 +39,7 @@ MODULE_REF = 3  # type: int
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
 UNBOUND_TVAR = 4  # type: int
-TVAR = 5  # type: int
+BOUND_TVAR = 5  # type: int
 TYPE_ALIAS = 6  # type: int
 
 
@@ -53,7 +53,7 @@ node_kinds = {
     MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
     UNBOUND_TVAR: 'UnboundTvar',
-    TVAR: 'Tvar',
+    BOUND_TVAR: 'Tvar',
 }
 
 
