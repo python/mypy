@@ -6,12 +6,13 @@ import os.path
 import sys
 
 from distutils.core import setup
+from mypy.version import __version__
 
 if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
     exit(1)
 
-version = '0.2.0'
+version = __version__
 description = 'Optional static typing for Python'
 long_description = '''
 Mypy -- Optional Static Typing for Python
