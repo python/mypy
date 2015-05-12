@@ -6,7 +6,7 @@
 # and http://hg.python.org/cpython/file/618ea5612e83/Lib/re.py
 
 from typing import (
-    Undefined, List, Iterator, overload, Callable, Tuple, Sequence, Dict,
+    Undefined, List, Iterator, Callable, Tuple, Sequence, Dict, Union,
     Generic, AnyStr, Match, Pattern
 )
 
@@ -46,20 +46,12 @@ def findall(pattern: AnyStr, string: AnyStr,
 def finditer(pattern: AnyStr, string: AnyStr,
              flags: int = 0) -> Iterator[Match[AnyStr]]: pass
 
-@overload
-def sub(pattern: AnyStr, repl: AnyStr, string: AnyStr, count: int = 0,
-        flags: int = 0) -> AnyStr: pass
-@overload
-def sub(pattern: AnyStr, repl: Callable[[Match[AnyStr]], AnyStr],
+def sub(pattern: AnyStr, repl: Union[AnyStr, Callable[[Match[AnyStr]], AnyStr]],
         string: AnyStr, count: int = 0, flags: int = 0) -> AnyStr: pass
 
-@overload
-def subn(pattern: AnyStr, repl: AnyStr, string: AnyStr, count: int = 0,
-         flags: int = 0) -> Tuple[AnyStr, int]: pass
-@overload
-def subn(pattern: AnyStr, repl: Callable[[Match[AnyStr]], AnyStr],
-         string: AnyStr, count: int = 0,
-         flags: int = 0) -> Tuple[AnyStr, int]: pass
+def subn(pattern: AnyStr, repl: Union[AnyStr, Callable[[Match[AnyStr]], AnyStr]],
+         string: AnyStr, count: int = 0, flags: int = 0) -> Tuple[AnyStr, int]:
+    pass
 
 def escape(string: AnyStr) -> AnyStr: pass
 

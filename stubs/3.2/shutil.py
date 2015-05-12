@@ -6,9 +6,7 @@
 # sometimes they only work partially (broken exception messages), and the test
 # cases don't use them.
 
-from typing import (
-    overload, List, Iterable, Callable, Any, Tuple, Sequence, IO, AnyStr
-)
+from typing import List, Iterable, Callable, Any, Tuple, Sequence, IO, AnyStr
 
 def copyfileobj(fsrc: IO[AnyStr], fdst: IO[AnyStr],
                 length: int = None) -> None: pass

@@ -3,7 +3,7 @@
 
 # based on http://docs.python.org/3.2/library/os.path.html
 
-from typing import Any, List, Tuple, IO, overload
+from typing import Any, List, Tuple, IO
 
 # ----- os.path variables -----
 supports_unicode_filenames = False

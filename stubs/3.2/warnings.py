@@ -2,22 +2,13 @@
 
 # Based on http://docs.python.org/3.2/library/warnings.html
 
-from typing import overload, Any, List, TextIO
+from typing import Any, List, TextIO, Union
 
-@overload
-def warn(message: str, category: type = None,
-         stacklevel: int = 1) -> None: pass
-@overload
-def warn(message: Warning, category: type = None,
+def warn(message: Union[str, Warning], category: type = None,
          stacklevel: int = 1) -> None: pass
 
-@overload
-def warn_explicit(message: str, category: type, filename: str, lineno: int,
-                  module: str = None, registry: Any = None,
-                  module_globals: Any = None) -> None: pass
-@overload
-def warn_explicit(message: Warning, category: type, filename: str, lineno: int,
-                  module: str = None, registry: Any = None,
+def warn_explicit(message: Union[str, Warning], category: type, filename: str,
+                  lineno: int, module: str = None, registry: Any = None,
                   module_globals: Any = None) -> None: pass
 
 # logging modifies showwarning => make it a variable.
