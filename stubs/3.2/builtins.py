@@ -39,6 +39,7 @@ class object:
 
 class type:
     __name__ = ''
+    __qualname__ = ''
     __module__ = ''
     __dict__ = Undefined # type: Dict[str, Any]
 
@@ -428,6 +429,7 @@ class tuple(Sequence[Any]):
 class function:
     # TODO not defined in builtins!
     __name__ = ''
+    __qualname__ = ''
     __module__ = ''
     __code__ = Undefined(Any)
 
