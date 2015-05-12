@@ -1223,14 +1223,15 @@ class SemanticAnalyzer(NodeVisitor):
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]
+        no_type_check = False
         for i, d in enumerate(dec.decorators):
             if refers_to_fullname(d, 'abc.abstractmethod'):
                 removed.append(i)
                 dec.func.is_abstract = True
                 self.check_decorated_function_is_method('abstractmethod', dec)
             elif refers_to_fullname(d, 'asyncio.tasks.coroutine'):
-                    removed.append(i)
-                    dec.func.is_coroutine = True
+                removed.append(i)
+                dec.func.is_coroutine = True
             elif refers_to_fullname(d, 'builtins.staticmethod'):
                 removed.append(i)
                 dec.func.is_static = True
@@ -1248,6 +1249,9 @@ class SemanticAnalyzer(NodeVisitor):
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.args) > 1:
                     self.fail('Too many arguments', dec.func)
+            elif refers_to_fullname(d, 'typing.no_type_check'):
+                dec.var.type = AnyType()
+                no_type_check = True
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
@@ -1261,7 +1265,8 @@ class SemanticAnalyzer(NodeVisitor):
                                 dec)
         if dec.decorators and dec.var.is_property:
             self.fail('Decorated property not supported', dec)
-        dec.func.accept(self)
+        if not no_type_check:
+            dec.func.accept(self)
         if not dec.decorators and not dec.var.is_property:
             # No non-special decorators left. We can trivially infer the type
             # of the function here.
