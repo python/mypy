@@ -578,6 +578,16 @@ def foo(x: 's', y: {'x': 4}) -> 42:
 def bar() -> None:
     1 + 'x'
 
+[case testCallingNoTypeCheckFunction]
+import typing
+
+@typing.no_type_check
+def foo(x: {1:2}) -> [1]:
+    1 + 'x'
+
+foo()
+foo(1, 'b')
+
 
 -- Conditional function definition
 -- -------------------------------

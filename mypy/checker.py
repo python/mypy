@@ -1663,6 +1663,8 @@ class TypeChecker(NodeVisitor[Type]):
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == 'typing.no_type_check':
+                    e.var.type = AnyType()
+                    e.var.is_ready = True
                     return NoneTyp()
 
         e.func.accept(self)
