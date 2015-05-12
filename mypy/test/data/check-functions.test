@@ -560,6 +560,25 @@ def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
 def f(x, y): pass
 
 
+[case testNoTypeCheckDecoratorOnMethod1]
+from typing import no_type_check
+
+@no_type_check
+def foo(x: 'bar', y: {'x': 4}) -> 42:
+    1 + 'x'
+
+[case testNoTypeCheckDecoratorOnMethod2]
+import typing
+
+@typing.no_type_check
+def foo(x: 's', y: {'x': 4}) -> 42:
+    1 + 'x'
+
+@typing.no_type_check
+def bar() -> None:
+    1 + 'x'
+
+
 -- Conditional function definition
 -- -------------------------------
 

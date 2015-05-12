@@ -310,12 +310,16 @@ class Parser:
 
     def parse_decorated_function_or_class(self) -> Node:
         decorators = []  # type: List[Node]
+        no_type_checks = False
         while self.current_str() == '@':
             self.expect('@')
-            decorators.append(self.parse_expression())
+            d_exp = self.parse_expression()
+            if self.is_no_type_check_decorator(d_exp):
+                no_type_checks = True
+            decorators.append(d_exp)
             self.expect_break()
         if self.current_str() != 'class':
-            func = self.parse_function()
+            func = self.parse_function(no_type_checks)
             func.is_decorated = True
             var = Var(func.name())
             # Types of decorated functions must always be inferred.
@@ -328,13 +332,22 @@ class Parser:
             cls.decorators = decorators
             return cls
 
-    def parse_function(self) -> FuncDef:
+    def is_no_type_check_decorator(self, expr: Node) -> bool:
+        if isinstance(expr, NameExpr):
+            return expr.name == 'no_type_check'
+        elif isinstance(expr, MemberExpr):
+            if isinstance(expr.expr, NameExpr):
+                return expr.expr.name == 'typing' and expr.name == 'no_type_check'
+        else:
+            return False
+
+    def parse_function(self, no_type_checks: bool=False) -> FuncDef:
         def_tok = self.expect('def')
         is_method = self.is_class_body
         self.is_class_body = False
         try:
             (name, args, init, kinds,
-             typ, is_error) = self.parse_function_header()
+             typ, is_error) = self.parse_function_header(no_type_checks)
 
             body, comment_type = self.parse_block(allow_type=True)
             if comment_type:
@@ -394,8 +407,8 @@ class Parser:
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
 
-    def parse_function_header(self) -> Tuple[str, List[Var], List[Node],
-                                             List[int], CallableType, bool]:
+    def parse_function_header(self, no_type_checks: bool=False) -> Tuple[str, List[Var], List[Node],
+                                                                         List[int], CallableType, bool]:
         """Parse function header (a name followed by arguments)
 
         Returns a 7-tuple with the following items:
@@ -415,7 +428,7 @@ class Parser:
 
             self.errors.push_function(name)
 
-            (args, init, kinds, typ) = self.parse_args()
+            (args, init, kinds, typ) = self.parse_args(no_type_checks)
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1  # Kludge: go back to the Break token
@@ -426,7 +439,7 @@ class Parser:
 
         return (name, args, init, kinds, typ, False)
 
-    def parse_args(self) -> Tuple[List[Var], List[Node], List[int], CallableType]:
+    def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Var], List[Node], List[int], CallableType]:
         """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
 
@@ -434,13 +447,17 @@ class Parser:
         (args, init, kinds,
          has_inits, arg_names,
          commas, asterisk,
-         assigns, arg_types) = self.parse_arg_list()
+         assigns, arg_types) = self.parse_arg_list(no_type_checks=no_type_checks)
 
         self.expect(')')
 
         if self.current_str() == '->':
             self.skip()
-            ret_type = self.parse_type()
+            if no_type_checks:
+                self.parse_expression()
+                ret_type = None  # type: Type
+            else:
+                ret_type = self.parse_type()
         else:
             ret_type = None
 
@@ -466,7 +483,7 @@ class Parser:
             return None
 
     def parse_arg_list(
-        self, allow_signature: bool = True) -> Tuple[List[Var], List[Node],
+        self, allow_signature: bool = True, no_type_checks: bool=False) -> Tuple[List[Var], List[Node],
                                                      List[int], bool,
                                                      List[Token], List[Token],
                                                      List[Token], List[Token],
@@ -517,13 +534,23 @@ class Parser:
                         kinds.append(nodes.ARG_STAR2)
                     else:
                         kinds.append(nodes.ARG_STAR)
-                    arg_types.append(self.parse_arg_type(allow_signature))
+
+                    if no_type_checks:
+                        self.parse_parameter_annotation()
+                        arg_types.append(None)
+                    else:
+                        arg_types.append(self.parse_arg_type(allow_signature))
                     require_named = True
                 else:
                     name = self.expect_type(Name)
                     arg_names.append(name)
                     args.append(Var(name.string))
-                    arg_types.append(self.parse_arg_type(allow_signature))
+
+                    if no_type_checks:
+                        self.parse_parameter_annotation()
+                        arg_types.append(None)
+                    else:
+                        arg_types.append(self.parse_arg_type(allow_signature))
 
                     if self.current_str() == '=':
                         assigns.append(self.expect('='))
@@ -548,6 +575,11 @@ class Parser:
 
         return (args, init, kinds, has_inits, arg_names, commas, asterisk,
                 assigns, arg_types)
+
+    def parse_parameter_annotation(self) -> Node:
+        if self.current_str() == ':':
+            self.skip()
+            return self.parse_expression(precedence[','])
 
     def parse_arg_type(self, allow_signature: bool) -> Type:
         if self.current_str() == ':' and allow_signature:

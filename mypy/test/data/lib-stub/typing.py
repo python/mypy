@@ -16,6 +16,7 @@ Callable = object()
 builtinclass = object()
 _promote = object()
 NamedTuple = object()
+no_type_check = object()
 
 # Type aliases.
 List = object()
