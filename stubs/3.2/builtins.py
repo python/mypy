@@ -640,10 +640,7 @@ def isinstance(o: object, t: Union[type, tuple]) -> bool: pass
 def issubclass(cls: type, classinfo: type) -> bool: pass
 # TODO support this
 #def issubclass(type cld, classinfo: Sequence[type]) -> bool: pass
-@overload
-def len(o: Sized) -> int: pass
-@overload
-def len(o: tuple) -> int: pass
+def len(o: Union[Sized, tuple]) -> int: pass
 def license() -> None: pass
 def locals() -> Dict[str, Any]: pass
 @overload
