@@ -588,6 +588,23 @@ def foo(x: {1:2}) -> [1]:
 foo()
 foo(1, 'b')
 
+[case testCallingNoTypeCheckFunction2]
+import typing
+
+def f() -> None:
+    foo()
+
+@typing.no_type_check
+def foo(x: {1:2}) -> [1]:
+    1 + 'x'
+
+[case testNoTypeCheckDecoratorSemanticError]
+import typing
+
+@typing.no_type_check
+def foo(x: {1:2}) -> [1]:
+    x = y
+
 
 -- Conditional function definition
 -- -------------------------------
