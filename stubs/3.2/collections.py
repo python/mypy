@@ -10,7 +10,7 @@
 from typing import (
     TypeVar, Iterable, Generic, Iterator, Dict, overload,
     Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized,
-    Optional
+    Optional, Union
 )
 import typing
 
@@ -75,8 +75,14 @@ class Counter(Dict[_T, int], Generic[_T]):
     @overload
     def subtract(self, iterable: Iterable[_T]) -> None: pass
 
-    # TODO update
-
+    # The Iterable[Tuple[...]] argument type is not actually desirable
+    # (the tuples will be added as keys, breaking type safety) but
+    # it's included so that the signature is compatible with
+    # Dict.update. Not sure if we should use '# type: ignore' instead
+    # and omit the type from the union.
+    def update(self, m: Union[Mapping[_T, int],
+                              Iterable[Tuple[_T, int]],
+                              Iterable[_T]]) -> None: pass
 
 class OrderedDict(Dict[_KT, _VT], Generic[_KT, _VT]):
     def popitem(self, last: bool = True) -> Tuple[_KT, _VT]: pass
