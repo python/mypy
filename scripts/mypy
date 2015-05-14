@@ -14,6 +14,8 @@ from typing import List, Tuple
 from mypy import build
 from mypy.errors import CompileError
 
+from mypy.version import __version__
+
 
 class Options:
     def __init__(self) -> None:
@@ -87,6 +89,7 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
     """
     options = Options()
     help = False
+    ver = False
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
             options.build_flags.append(build.VERBOSE)
@@ -117,11 +120,17 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
         elif args[0] == '--use-python-path':
             options.python_path = True
             args = args[1:]
+        elif args[0] == '--version':
+            ver = True
+            args = args[1:]
         else:
             usage('Unknown option: {}'.format(args[0]))
 
     if help:
         usage()
+
+    if ver:
+        version()
 
     if not args:
         usage('Missing target file or module')
@@ -153,12 +162,16 @@ Optional arguments:
   -m mod             type check module
   --verbose          more verbose messages
   --use-python-path  search for modules in sys.path of running Python
+  --version          show the current version information
 
 Environment variables:
   MYPYPATH     additional module search path
 """)
     sys.exit(2)
 
+def version() -> None:
+    sys.stdout.write("mypy {}\n".format(__version__))
+    exit(0)
 
 def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
