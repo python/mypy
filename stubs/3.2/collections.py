@@ -10,7 +10,7 @@
 from typing import (
     TypeVar, Iterable, Generic, Iterator, Dict, overload,
     Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized,
-    Optional
+    Optional, Union
 )
 import typing
 
@@ -75,8 +75,9 @@ class Counter(Dict[_T, int], Generic[_T]):
     @overload
     def subtract(self, iterable: Iterable[_T]) -> None: pass
 
-    # TODO update
-
+    def update(self, m: Union[Mapping[_T, int],
+                              Iterable[Tuple[_T, int]],
+                              Iterable[_T]]) -> None: pass
 
 class OrderedDict(Dict[_KT, _VT], Generic[_KT, _VT]):
     def popitem(self, last: bool = True) -> Tuple[_KT, _VT]: pass
