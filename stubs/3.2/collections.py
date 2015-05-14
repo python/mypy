@@ -75,6 +75,11 @@ class Counter(Dict[_T, int], Generic[_T]):
     @overload
     def subtract(self, iterable: Iterable[_T]) -> None: pass
 
+    # The Iterable[Tuple[...]] argument type is not actually desirable
+    # (the tuples will be added as keys, breaking type safety) but
+    # it's included so that the signature is compatible with
+    # Dict.update. Not sure if we should use '# type: ignore' instead
+    # and omit the type from the union.
     def update(self, m: Union[Mapping[_T, int],
                               Iterable[Tuple[_T, int]],
                               Iterable[_T]]) -> None: pass
