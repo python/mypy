@@ -715,3 +715,9 @@ def voidify(n: int) -> None: pass
 def identity(f: Callable[[A], None]) -> Callable[[A], None]:
     return f
 identity(voidify)(3)
+
+[case testTypeVariableUnionAndCallableInTypeInference]
+from typing import Union, Callable, TypeVar
+T = TypeVar('T')
+def f(x: T, y: Union[T, Callable[[T], None]]) -> None: pass
+f('', '')

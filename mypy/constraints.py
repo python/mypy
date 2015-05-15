@@ -127,6 +127,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     """Visitor class for inferring type constraints."""
 
     # The type that is compared against a template
+    # TODO: The value may be None. Is that actually correct?
     actual = Undefined(Type)
 
     def __init__(self, actual: Type, direction: int) -> None:
@@ -154,7 +155,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # Non-trivial leaf type
 
     def visit_type_var(self, template: TypeVarType) -> List[Constraint]:
-        return [Constraint(template.id, self.direction, self.actual)]
+        if self.actual:
+            return [Constraint(template.id, self.direction, self.actual)]
+        else:
+            return []
 
     # Non-leaf types
 

@@ -54,7 +54,6 @@ def join_types(s: Type, t: Type) -> Type:
 
     If the join does not exist, return an ErrorType instance.
     """
-
     if isinstance(s, AnyType):
         return s
 
