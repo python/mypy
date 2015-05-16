@@ -17,29 +17,6 @@ explicitly with the type ``Any``:
    s = 'x'               # Type check error
    d = 'x'               # OK
 
-Alternatively, you can use the ``Undefined`` construct to define
-dynamically typed variables, as ``Any`` can be used anywhere any other
-type is valid:
-
-.. code-block:: python
-
-   from typing import Undefined, Any
-
-   d = Undefined(Any)
-   d = 1   # OK
-   d = 'x' # OK
-
-Additionally, if you don't import the ``typing`` module in a file, all
-code outside functions will be dynamically typed by default, and the
-file is not type checked at all. This mode makes it easy to include
-existing Python code that is not trivially compatible with static
-typing.
-
-.. note::
-
-   The current mypy version type checks all modules, even those that
-   don't import ``typing``. This will change in a future version.
-
 Operations on Any values
 ------------------------
 
