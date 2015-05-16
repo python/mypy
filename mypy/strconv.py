@@ -66,10 +66,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_mypy_file(self, o):
         # Skip implicit definitions.
-        defs = o.defs
-        while (defs and isinstance(defs[0], mypy.nodes.VarDef)):
-            defs = defs[1:]
-        a = [defs]
+        a = [o.defs]
         if o.is_bom:
             a.insert(0, 'BOM')
         # Omit path to special file with name "main". This is used to simplify
@@ -142,15 +139,6 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, 'Promote({})'.format(o.info._promote))
         if o.info and o.info.tuple_type:
             a.insert(1, ('TupleType', [o.info.tuple_type]))
-        return self.dump(a, o)
-
-    def visit_var_def(self, o):
-        a = []
-        for n in o.items:
-            a.append('Var({})'.format(n.name()))
-            a.append('Type({})'.format(n.type))
-        if o.init:
-            a.append(o.init)
         return self.dump(a, o)
 
     def visit_var(self, o):

@@ -46,7 +46,7 @@ from typing import (
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
-    ClassDef, VarDef, Var, GDEF, MODULE_REF, FuncItem, Import,
+    ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
@@ -770,26 +770,6 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_block_maybe(self, b: Block) -> None:
         if b:
             self.visit_block(b)
-
-    def visit_var_def(self, defn: VarDef) -> None:
-        for i in range(len(defn.items)):
-            defn.items[i].type = self.anal_type(defn.items[i].type)
-
-        for v in defn.items:
-            if self.is_func_scope():
-                defn.kind = LDEF
-                self.add_local(v, defn)
-            elif self.type:
-                v.info = self.type
-                v.is_initialized_in_class = defn.init is not None
-                self.type.names[v.name()] = SymbolTableNode(MDEF, v,
-                                                            typ=v.type)
-            elif v.name not in self.globals:
-                defn.kind = GDEF
-                self.add_var(v, defn)
-
-        if defn.init:
-            defn.init.accept(self)
 
     def anal_type(self, t: Type) -> Type:
         if t:
@@ -1884,9 +1864,10 @@ class FirstPass(NodeVisitor):
         defs = file.defs
 
         # Add implicit definitions of module '__name__' etc.
-        for n in implicit_module_attrs:
-            name_def = VarDef([Var(n, AnyType())], True)
-            defs.insert(0, name_def)
+        for name in implicit_module_attrs:
+            v = Var(name, AnyType())
+            v._fullname = self.sem.qualified_name(name)
+            self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 
         for d in defs:
             d.accept(self)
@@ -1894,9 +1875,9 @@ class FirstPass(NodeVisitor):
         # Add implicit definition of 'None' to builtins, as we cannot define a
         # variable with a None type explicitly.
         if mod_id == 'builtins':
-            none_def = VarDef([Var('None', NoneTyp())], True)
-            defs.append(none_def)
-            none_def.accept(self)
+            v = Var('None', NoneTyp())
+            v._fullname = self.sem.qualified_name('None')
+            self.sem.globals['None'] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
@@ -1938,13 +1919,6 @@ class FirstPass(NodeVisitor):
         d.info = info
         self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
                                                    self.sem.cur_mod_id)
-
-    def visit_var_def(self, d: VarDef) -> None:
-        for v in d.items:
-            self.sem.check_no_global(v.name(), d)
-            v._fullname = self.sem.qualified_name(v.name())
-            self.sem.globals[v.name()] = SymbolTableNode(GDEF, v,
-                                                         self.sem.cur_mod_id)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.sem.analyse_lvalue(s.index, add_global=True)

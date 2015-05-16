@@ -44,9 +44,6 @@ class NodeVisitor(Generic[T]):
     def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> T:
         pass
 
-    def visit_var_def(self, o: 'mypy.nodes.VarDef') -> T:
-        pass
-
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> T:
         pass
 

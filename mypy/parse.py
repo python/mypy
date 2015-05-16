@@ -17,7 +17,7 @@ from mypy.lex import (
 import mypy.types
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
-    ClassDef, Decorator, Block, Var, VarDef, OperatorAssignmentStmt,
+    ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr,
