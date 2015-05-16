@@ -6,3 +6,4 @@ class object:
 
 class type: pass
 class function: pass
+class str: pass

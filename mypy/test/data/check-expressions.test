@@ -68,6 +68,7 @@ class object:
 class type: pass
 class function: pass
 class float: pass
+class str: pass
 [out]
 main, line 4: Incompatible types in assignment (expression has type "float", variable has type "A")
 
@@ -85,6 +86,7 @@ class object:
 class type: pass
 class function: pass
 class complex: pass
+class str: pass
 [out]
 main, line 4: Incompatible types in assignment (expression has type "complex", variable has type "A")
 
@@ -103,6 +105,7 @@ class type: pass
 class tuple: pass
 class function: pass
 class bytes: pass
+class str: pass
 
 [case testUnicodeLiteralInPython3]
 from typing import Undefined
@@ -1297,4 +1300,5 @@ class ellipsis:
     __class__ = object()
 class type: pass
 class function: pass
+class str: pass
 [out]

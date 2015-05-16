@@ -157,6 +157,12 @@ class SemanticAnalyzer(NodeVisitor):
             self.globals['__builtins__'] = SymbolTableNode(
                 MODULE_REF, self.modules['builtins'], self.cur_mod_id)
 
+        for name in implicit_module_attrs:
+            v = self.globals[name].node
+            if isinstance(v, Var):
+                v.type = self.anal_type(v.type)
+                v.is_ready = True
+
         defs = file_node.defs
         for d in defs:
             d.accept(self)
@@ -1864,8 +1870,8 @@ class FirstPass(NodeVisitor):
         defs = file.defs
 
         # Add implicit definitions of module '__name__' etc.
-        for name in implicit_module_attrs:
-            v = Var(name, AnyType())
+        for name,t  in implicit_module_attrs.items():
+            v = Var(name, UnboundType(t))
             v._fullname = self.sem.qualified_name(name)
             self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 
