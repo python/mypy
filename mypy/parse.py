@@ -79,7 +79,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     parser = Parser(fnam, errors, pyversion, custom_typing_module)
     tree = parser.parse(source)
     tree.path = fnam
-    tree.is_stub = fnam and fnam.endswith('.pyi')
+    tree.is_stub = bool(fnam) and fnam.endswith('.pyi')
     return tree
 
 
