@@ -124,9 +124,13 @@ class MypyFile(SymbolNode):
     names = Undefined('SymbolTable')
     imports = Undefined(List['ImportBase'])    # All import nodes within the file
     ignored_lines = Undefined(Set[int])        # Lines to ignore when checking
+    is_stub = False   # Is this file represented by a stub file (.pyi)?
 
-    def __init__(self, defs: List[Node], imports: List['ImportBase'],
-                 is_bom: bool = False, ignored_lines: Set[int] = None) -> None:
+    def __init__(self,
+                 defs: List[Node],
+                 imports: List['ImportBase'],
+                 is_bom: bool = False,
+                 ignored_lines: Set[int] = None) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
