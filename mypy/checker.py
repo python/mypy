@@ -289,6 +289,8 @@ class TypeChecker(NodeVisitor[Type]):
 
     # Target Python major version
     pyversion = 3
+    # Are we type checking a stub?
+    is_stub = False
     # Error message reporting
     errors = Undefined(Errors)
     # SymbolNode table for the whole program
@@ -341,6 +343,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
+        self.is_stub = file_node.is_stub
         self.errors.set_file(path)
         self.errors.set_ignored_lines(file_node.ignored_lines)
         self.globals = file_node.names
@@ -1246,6 +1249,9 @@ class TypeChecker(NodeVisitor[Type]):
             # Infer the type of 'Undefined' from the lvalue type.
             self.store_type(rvalue, lvalue_type)
             return None
+        elif self.is_stub and isinstance(rvalue, EllipsisNode):
+            # '...' is always a valid initializer in a stub.
+            return AnyType()
         else:
             rvalue_type = self.accept(rvalue, lvalue_type)
             self.check_subtype(rvalue_type, lvalue_type, context, msg,

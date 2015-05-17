@@ -376,3 +376,19 @@ class A: pass
 class B: pass
 x = A()
 y = B()
+
+[case testEllipsisInitializerInStubFileWithType]
+import m
+m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file m.pyi]
+x = ... # type: int
+
+[case testEllipsisInitializerInStubFileWithoutType]
+import m
+m.x = ''
+[file m.pyi]
+# Ellipsis is only special with a # type: comment (not sure though if this is great)
+x = ...
+
+[case testEllipsisInitializerInModule]
+x = ... # type: int # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
