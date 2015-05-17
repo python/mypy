@@ -58,6 +58,7 @@ SEMANTICALLY_ANALYSED_STATE = 4
 # We've type checked the source file (and all its dependencies).
 TYPE_CHECKED_STATE = 5
 
+PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 final_state = TYPE_CHECKED_STATE
 
@@ -876,14 +877,13 @@ def read_module_source_from_file(id: str,
 
 def find_module(id: str, lib_path: List[str]) -> str:
     """Return the path of the module source file, or None if not found."""
-    extensions = ['.pyi', '.py']
     for pathitem in lib_path:
-        for extension in extensions:
+        for extension in PYTHON_EXTENSIONS:
             comp = id.split('.')
             path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
             text = ''
             if not os.path.isfile(path):
-                path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
+                path = os.path.join(pathitem, os.sep.join(comp), '__init__{}'.format(extension))
             if os.path.isfile(path) and verify_module(id, path):
                 return path
     return None
@@ -891,11 +891,12 @@ def find_module(id: str, lib_path: List[str]) -> str:
 
 def verify_module(id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
-    if path.endswith('__init__.py'):
+    if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)
     for i in range(id.count('.')):
         path = dirname(path)
-        if not os.path.isfile(os.path.join(path, '__init__.py')):
+        if not any(os.path.isfile(os.path.join(path, '__init__{}'.format(extension)))
+                   for extension in PYTHON_EXTENSIONS):
             return False
     return True
 

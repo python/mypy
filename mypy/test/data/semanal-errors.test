@@ -1386,3 +1386,21 @@ class A:
     class B:
         y = X  # E: Name 'X' is not defined
 [out]
+
+[case testStubPackage]
+from m import x
+from m import y # E: Module has no attribute 'y'
+[file m/__init__.pyi]
+x = 1
+[out]
+
+[case testStubPackageSubModule]
+from m import x
+from m import y # E: Module has no attribute 'y'
+from m.m2 import y
+from m.m2 import z # E: Module has no attribute 'z'
+[file m/__init__.pyi]
+x = 1
+[file m/m2.pyi]
+y = 1
+[out]
