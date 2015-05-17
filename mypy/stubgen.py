@@ -163,8 +163,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 elif isinstance(init, NameExpr) and init.name in ('None', 'True', 'False'):
                     arg += init.name
                 else:
-                    self.add_import("Undefined")
-                    arg += 'Undefined'
+                    arg += '...'
             elif kind == ARG_STAR:
                 arg = '*%s' % name
             elif kind == ARG_STAR2:
@@ -338,9 +337,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self.is_private_name(lvalue) or self.is_not_in_all(lvalue):
             return None
         self._vars[-1].append(lvalue)
-        self.add_import('Undefined')
         self.add_import('Any')
-        return '%s%s = Undefined(Any)\n' % (self._indent, lvalue)
+        return '%s%s = ... # type: Any\n' % (self._indent, lvalue)
 
     def add(self, string):
         self._output.append(string)

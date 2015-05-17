@@ -51,9 +51,7 @@ def f(x=0.0): pass
 [case testDefaultArgOther]
 def f(x=ord): pass
 [out]
-from typing import Undefined
-
-def f(x=Undefined): pass
+def f(x=...): pass
 
 [case testVarArgs]
 def f(x, *y): pass
@@ -79,18 +77,18 @@ def g(): pass
 [case testVariable]
 x = 1
 [out]
-from typing import Undefined, Any
+from typing import Any
 
-x = Undefined(Any)
+x = ... # type: Any
 
 [case testClassVariable]
 class C:
     x = 1
 [out]
-from typing import Undefined, Any
+from typing import Any
 
 class C:
-    x = Undefined(Any)
+    x = ... # type: Any
 
 [case testSelfAssignment]
 class C:
@@ -98,10 +96,10 @@ class C:
         self.x = 1
         x.y = 2
 [out]
-from typing import Undefined, Any
+from typing import Any
 
 class C:
-    x = Undefined(Any)
+    x = ... # type: Any
     def __init__(self): pass
 
 [case testSelfAndClassBodyAssignment]
@@ -112,12 +110,12 @@ class C:
         self.x = 1
         self.x = 1
 [out]
-from typing import Undefined, Any
+from typing import Any
 
-x = Undefined(Any)
+x = ... # type: Any
 
 class C:
-    x = Undefined(Any)
+    x = ... # type: Any
     def __init__(self): pass
 
 [case testEmptyClass]
@@ -166,18 +164,18 @@ def foo(x): pass
 [case testMultipleAssignment]
 x, y = 1, 2
 [out]
-from typing import Undefined, Any
+from typing import Any
 
-x = Undefined(Any)
-y = Undefined(Any)
+x = ... # type: Any
+y = ... # type: Any
 
 [case testMultipleAssignment2]
 [x, y] = 1, 2
 [out]
-from typing import Undefined, Any
+from typing import Any
 
-x = Undefined(Any)
-y = Undefined(Any)
+x = ... # type: Any
+y = ... # type: Any
 
 [case testKeywordOnlyArg]
 def f(x, *, y=1): pass
@@ -305,10 +303,10 @@ class A:
     x = 1
     def f(self): pass
 [out]
-from typing import Undefined, Any
+from typing import Any
 
 class A:
-    x = Undefined(Any)
+    x = ... # type: Any
     def f(self): pass
 
 [case testMultiplePrivateDefs]
@@ -326,13 +324,13 @@ from re import match, search, sub
 __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
-from typing import Undefined, Any
+from typing import Any
 import re
 
 match = re.match
 sub = re.sub
 
-x = Undefined(Any)
+x = ... # type: Any
 
 [case testRelativeImportAll]
 from .x import *
@@ -346,11 +344,11 @@ x = 1
 class C:
     def g(self): pass
 [out]
-from typing import Undefined, Any
+from typing import Any
 
 def f(): pass
 
-x = Undefined(Any)
+x = ... # type: Any
 
 class C:
     def g(self): pass
@@ -482,11 +480,11 @@ class A:
         def f(self): pass
     def g(self): pass
 [out]
-from typing import Undefined, Any
+from typing import Any
 
 class A:
     class B:
-        x = Undefined(Any)
+        x = ... # type: Any
         def f(self): pass
     def g(self): pass
 

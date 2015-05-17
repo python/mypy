@@ -38,7 +38,7 @@ def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, cl
             type_str = type(obj).__name__
             if type_str not in ('int', 'str', 'bytes', 'float', 'bool'):
                 type_str = 'Any'
-            variables.append('%s = Undefined(%s)' % (name, type_str))
+            variables.append('%s = ... # type: %s' % (name, type_str))
     output = []
     for line in variables:
         output.append(line)
@@ -60,7 +60,7 @@ def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, cl
 
 def add_typing_import(output):
     names = []
-    for name in 'Any', 'Undefined':
+    for name in ['Any']:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
@@ -133,7 +133,7 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            variables.append('%s = Undefined(Any)' % attr)
+            variables.append('%s = ... # type: Any' % attr)
     all_bases = obj.mro()[1:]
     if all_bases[-1] is object:
         # TODO: Is this always object?

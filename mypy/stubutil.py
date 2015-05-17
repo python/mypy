@@ -37,7 +37,7 @@ def build_signature(fixed, optional):
         if arg.startswith('*'):
             args.append(arg)
         else:
-            args.append('%s=Undefined' % arg)
+            args.append('%s=...' % arg)
     sig = '(%s)' % ', '.join(args)
     # Ad-hoc fixes.
     sig = sig.replace('(self)', '')
