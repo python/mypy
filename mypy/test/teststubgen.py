@@ -61,8 +61,8 @@ class StubgenUtilSuite(Suite):
         assert_equal(build_signature([], []), '()')
         assert_equal(build_signature(['arg'], []), '(arg)')
         assert_equal(build_signature(['arg', 'arg2'], []), '(arg, arg2)')
-        assert_equal(build_signature(['arg'], ['arg2']), '(arg, arg2=Undefined)')
-        assert_equal(build_signature(['arg'], ['arg2', '**x']), '(arg, arg2=Undefined, **x)')
+        assert_equal(build_signature(['arg'], ['arg2']), '(arg, arg2=...)')
+        assert_equal(build_signature(['arg'], ['arg2', '**x']), '(arg, arg2=..., **x)')
 
     def test_parse_all_signatures(self):
         assert_equal(parse_all_signatures(['random text',
@@ -91,7 +91,7 @@ class StubgenUtilSuite(Suite):
         assert_equal(infer_sig_from_docstring('\nfunc x', 'func'), None)
 
 
-class StubgenSuite(Suite):
+class StubgenPythonSuite(Suite):
     test_data_files = ['stubgen.test']
 
     def cases(self):
@@ -173,6 +173,16 @@ class StubgencSuite(Suite):
     def test_infer_unary_op_sig(self):
         for op in ('neg', 'pos'):
             assert_equal(infer_method_sig('__%s__' % op), '()')
+
+
+class StubgenSuite(Suite):
+    """Collect all the test classes defined in this file."""
+
+    def __init__(self):
+        self.test_python = StubgenPythonSuite()
+        self.test_c = StubgencSuite()
+        self.test_util = StubgenUtilSuite()
+        super().__init__()
 
 
 if __name__ == '__main__':
