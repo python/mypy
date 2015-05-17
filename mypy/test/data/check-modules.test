@@ -385,7 +385,7 @@ x = ... # type: int
 
 [case testEllipsisInitializerInStubFileWithoutType]
 import m
-m.x = ''
+m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "ellipsis")
 [file m.pyi]
 # Ellipsis is only special with a # type: comment (not sure though if this is great)
 x = ...
