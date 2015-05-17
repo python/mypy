@@ -79,7 +79,7 @@ def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, 
         target = '/'.join(module.split('.')[:-1])
         modfnam = os.path.basename(mod.__file__)
         if modfnam == '__init__.py':
-            target = os.path.join(target, module.split('.')[-1], '__init__.py')
+            target = os.path.join(target, module.split('.')[-1], '__init__.pyi')
         else:
             target = os.path.join(target, modfnam.replace('.py', '.pyi'))
         target = os.path.join(output_dir, target)
