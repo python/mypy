@@ -883,7 +883,7 @@ def find_module(id: str, lib_path: List[str]) -> str:
             path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
             text = ''
             if not os.path.isfile(path):
-                path = os.path.join(pathitem, os.sep.join(comp), '__init__.py')
+                path = os.path.join(pathitem, os.sep.join(comp), '__init__{}'.format(extension))
             if os.path.isfile(path) and verify_module(id, path):
                 return path
     return None
