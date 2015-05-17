@@ -12,7 +12,7 @@ class TypeTranslationError(Exception):
 
 
 def expr_to_unanalyzed_type(expr: Node) -> Type:
-    """Translate an expression to the corresonding type.
+    """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.
     Raise TypeTranslationError if the expression cannot represent a type.
@@ -32,7 +32,7 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
             if base.args:
                 raise TypeTranslationError()
             if isinstance(expr.index, TupleExpr):
-                args = cast(TupleExpr, expr.index).items
+                args = expr.index.items
             else:
                 args = [expr.index]
             base.args = [expr_to_unanalyzed_type(arg) for arg in args]
@@ -54,15 +54,15 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str:
-    """Return the qualified name represention of a member expression.
+    """Return the qualified name representation of a member expression.
 
     Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
     argument cannot be represented in this form.
     """
     if isinstance(expr.expr, NameExpr):
-        initial = cast(NameExpr, expr.expr).name
+        initial = expr.expr.name
     elif isinstance(expr.expr, MemberExpr):
-        initial = get_member_expr_fullname(cast(MemberExpr, expr.expr))
+        initial = get_member_expr_fullname(expr.expr)
     else:
         return None
     return '{}.{}'.format(initial, expr.name)

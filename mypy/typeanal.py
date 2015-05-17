@@ -7,7 +7,7 @@ from mypy.types import (
     Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
 )
 from mypy.nodes import (
-    GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, TVAR, TypeVarExpr, Var, Node,
+    GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, BOUND_TVAR, TypeVarExpr, Var, Node,
     IndexExpr, NameExpr, TupleExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
@@ -56,7 +56,10 @@ def analyse_type_alias(node: Node,
 
 
 class TypeAnalyser(TypeVisitor[Type]):
-    """Semantic analyzer for types (semantic analysis pass 2)."""
+    """Semantic analyzer for types (semantic analysis pass 2).
+
+    Converts unbound types into bound types.
+    """
 
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
@@ -70,7 +73,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         sym = self.lookup(t.name, t)
         if sym is not None:
             fullname = sym.node.fullname()
-            if sym.kind == TVAR:
+            if sym.kind == BOUND_TVAR:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)

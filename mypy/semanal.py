@@ -53,7 +53,7 @@ from mypy.nodes import (
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
+    SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
@@ -118,7 +118,12 @@ class SemanticAnalyzer(NodeVisitor):
     # TypeInfo of directly enclosing class (or None)
     type = Undefined(TypeInfo)
     # Stack of outer classes (the second tuple item contains tvars).
-    type_stack = Undefined(List[Tuple[TypeInfo, List[SymbolTableNode]]])
+    type_stack = Undefined(List[TypeInfo])
+    # Type variables that are bound by the directly enclosing class
+    bound_tvars = Undefined(List[SymbolTableNode])
+    # Stack of type varialbes that were bound by outer classess
+    tvar_stack = Undefined(List[List[SymbolTableNode]])
+
     # Stack of functions being analyzed
     function_stack = Undefined(List[FuncItem])
 
@@ -138,6 +143,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.imports = set()
         self.type = None
         self.type_stack = []
+        self.bound_tvars = None
+        self.tvar_stack = []
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
@@ -266,7 +273,7 @@ class SemanticAnalyzer(NodeVisitor):
         return result
 
     def is_defined_type_var(self, tvar: str, context: Node) -> bool:
-        return self.lookup_qualified(tvar, context).kind == TVAR
+        return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         t = []  # type: List[CallableType]
@@ -357,7 +364,7 @@ class SemanticAnalyzer(NodeVisitor):
                 name = item.name
                 if name in names:
                     self.name_already_defined(name, defn)
-                node = self.add_type_var(name, -i - 1, defn)
+                node = self.bind_type_var(name, -i - 1, defn)
                 nodes.append(node)
                 names.add(name)
         return nodes
@@ -368,10 +375,10 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return set(self.type.type_vars)
 
-    def add_type_var(self, fullname: str, id: int,
+    def bind_type_var(self, fullname: str, id: int,
                      context: Context) -> SymbolTableNode:
         node = self.lookup_qualified(fullname, context)
-        node.kind = TVAR
+        node.kind = BOUND_TVAR
         node.tvar_id = id
         return node
 
@@ -385,11 +392,16 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_class_def_analysis(defn)
+
+        self.bind_class_type_vars(defn)
+
         self.analyze_base_classes(defn)
         self.analyze_metaclass(defn)
 
         for decorator in defn.decorators:
             self.analyze_class_decorator(defn, decorator)
+
+        self.enter_class(defn)
 
         self.setup_is_builtinclass(defn)
 
@@ -399,14 +411,39 @@ class SemanticAnalyzer(NodeVisitor):
         self.calculate_abstract_status(defn.info)
         self.setup_type_promotion(defn)
 
-        # Restore analyzer state.
+        self.leave_class()
+        self.unbind_class_type_vars()
+
+    def enter_class(self, defn: ClassDef) -> None:
+        # Remember previous active class
+        self.type_stack.append(self.type)
+        self.locals.append(None)  # Add class scope
+        self.block_depth.append(-1)  # The class body increments this to 0
+        self.type = defn.info
+
+    def leave_class(self) -> None:
+        """ Restore analyzer state. """
         self.block_depth.pop()
         self.locals.pop()
-        self.type, tvarnodes = self.type_stack.pop()
-        disable_typevars(tvarnodes)
-        if self.type_stack:
-            # Enable type variables of the enclosing class again.
-            enable_typevars(self.type_stack[-1][1])
+        self.type = self.type_stack.pop()
+
+    def bind_class_type_vars(self, defn: ClassDef) -> None:
+        """ Unbind type variables of previously active class and bind
+        the type variables for the active class.
+        """
+        if self.bound_tvars:
+            disable_typevars(self.bound_tvars)
+        self.tvar_stack.append(self.bound_tvars)
+        self.bound_tvars = self.bind_class_type_variables_in_symbol_table(defn.info)
+
+    def unbind_class_type_vars(self) -> None:
+        """ Unbind the active class' type vars and rebind the
+        type vars of the previously active class.
+        """
+        disable_typevars(self.bound_tvars)
+        self.bound_tvars = self.tvar_stack.pop()
+        if self.bound_tvars:
+            enable_typevars(self.bound_tvars)
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
         decorator.accept(self)
@@ -553,15 +590,6 @@ class SemanticAnalyzer(NodeVisitor):
             if self.is_func_scope():
                 kind = LDEF
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
-        if self.type_stack:
-            # Disable type variables of the enclosing class.
-            disable_typevars(self.type_stack[-1][1])
-        tvarnodes = self.add_class_type_variables_to_symbol_table(defn.info)
-        # Remember previous active class and type vars of *this* class.
-        self.type_stack.append((self.type, tvarnodes))
-        self.locals.append(None)  # Add class scope
-        self.block_depth.append(-1)  # The class body increments this to 0
-        self.type = defn.info
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
@@ -668,13 +696,13 @@ class SemanticAnalyzer(NodeVisitor):
     def is_instance_type(self, t: Type) -> bool:
         return isinstance(t, Instance)
 
-    def add_class_type_variables_to_symbol_table(
+    def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
         vars = info.type_vars
         nodes = []  # type: List[SymbolTableNode]
         if vars:
             for i in range(len(vars)):
-                node = self.add_type_var(vars[i], i + 1, info)
+                node = self.bind_type_var(vars[i], i + 1, info)
                 nodes.append(node)
         return nodes
 
@@ -1401,7 +1429,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
-            if n.kind == TVAR:
+            if n.kind == BOUND_TVAR:
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
@@ -2061,14 +2089,14 @@ def find_duplicate(list: List[T]) -> T:
 
 def disable_typevars(nodes: List[SymbolTableNode]) -> None:
     for node in nodes:
-        assert node.kind in (TVAR, UNBOUND_TVAR)
+        assert node.kind in (BOUND_TVAR, UNBOUND_TVAR)
         node.kind = UNBOUND_TVAR
 
 
 def enable_typevars(nodes: List[SymbolTableNode]) -> None:
     for node in nodes:
-        assert node.kind in (TVAR, UNBOUND_TVAR)
-        node.kind = TVAR
+        assert node.kind in (BOUND_TVAR, UNBOUND_TVAR)
+        node.kind = BOUND_TVAR
 
 
 def remove_imported_names_from_symtable(names: SymbolTable,

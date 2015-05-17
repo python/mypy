@@ -1379,3 +1379,10 @@ def f() -> None:
 [out]
 main: In function "f":
 main, line 3: Invalid assignment target
+
+[case testInvalidReferenceToAttributeOfOuterClass]
+class A:
+    class X: pass
+    class B:
+        y = X  # E: Name 'X' is not defined
+[out]
