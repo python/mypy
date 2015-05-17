@@ -68,7 +68,7 @@ def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, 
     for attr in components[1:]:
         mod = getattr(mod, attr)
     if is_c_module(mod):
-        target = '/'.join(components[:-1] + [components[-1] + '.py'])
+        target = '/'.join(components[:-1] + [components[-1] + '.pyi'])
         target = os.path.join(output_dir, target)
         generate_stub_for_c_module(module_name=module,
                                    target=target,
@@ -79,9 +79,9 @@ def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, 
         target = '/'.join(module.split('.')[:-1])
         modfnam = os.path.basename(mod.__file__)
         if modfnam == '__init__.py':
-            target = os.path.join(target, module.split('.')[-1], '__init__.py')
+            target = os.path.join(target, module.split('.')[-1], '__init__.pyi')
         else:
-            target = os.path.join(target, modfnam)
+            target = os.path.join(target, modfnam.replace('.py', '.pyi'))
         target = os.path.join(output_dir, target)
         generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None),
                       target=target, add_header=add_header, module=module)
