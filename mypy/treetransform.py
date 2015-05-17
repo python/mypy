@@ -7,7 +7,7 @@ from typing import List, Dict, cast
 
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
-    OverloadedFuncDef, ClassDef, Decorator, Block, Var, VarDef,
+    OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, YieldStmt, DelStmt, BreakStmt, ContinueStmt,
     PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
@@ -141,13 +141,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.decorators = [decorator.accept(self)
                           for decorator in node.decorators]
         new.is_builtinclass = node.is_builtinclass
-        return new
-
-    def visit_var_def(self, node: VarDef) -> Node:
-        new = VarDef([self.visit_var(var) for var in node.items],
-                     node.is_top_level,
-                     self.optional_node(node.init))
-        new.kind = node.kind
         return new
 
     def visit_global_decl(self, node: GlobalDecl) -> Node:

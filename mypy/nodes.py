@@ -57,7 +57,9 @@ node_kinds = {
 }
 
 
-implicit_module_attrs = ['__name__', '__doc__', '__file__']
+implicit_module_attrs = {'__name__': '__builtins__.str',
+                         '__doc__': '__builtins__.str',
+                         '__file__': '__builtins__.str'}
 
 
 type_aliases = {
@@ -437,34 +439,6 @@ class ClassDef(Node):
 
     def is_generic(self) -> bool:
         return self.info.is_generic()
-
-
-class VarDef(Node):
-    """Variable definition with explicit types"""
-
-    items = Undefined(List[Var])
-    kind = None  # type: int          # LDEF/GDEF/MDEF/...
-    init = Undefined(Node)            # Expression or None
-    is_top_level = False  # Is the definition at the top level (not within
-                          # a function or a type)?
-
-    def __init__(self, items: List[Var], is_top_level: bool,
-                 init: Node = None) -> None:
-        self.items = items
-        self.is_top_level = is_top_level
-        self.init = init
-
-    def info(self) -> 'TypeInfo':
-        return self.items[0].info
-
-    def set_line(self, target: Union[Token, int]) -> Node:
-        super().set_line(target)
-        for n in self.items:
-            n.line = self.line
-        return self
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_var_def(self)
 
 
 class GlobalDecl(Node):

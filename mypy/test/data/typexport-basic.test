@@ -121,6 +121,7 @@ class float:
     def __mul__(self, x: int) -> float: pass
     def __sub__(self, x: int) -> float: pass
 class type: pass
+class str: pass
 [out]
 OpExpr(3) : builtins.int
 OpExpr(4) : builtins.float
@@ -148,6 +149,7 @@ class int:
 class bool: pass
 class type: pass
 class function: pass
+class str: pass
 [out]
 ComparisonExpr(3) : builtins.bool
 ComparisonExpr(4) : builtins.bool

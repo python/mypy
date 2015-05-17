@@ -6,7 +6,7 @@ from typing import Undefined, Any, Dict, Set, List, cast, Tuple, Callable, TypeV
 
 from mypy.errors import Errors
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, VarDef, LDEF, Var,
+    SymbolTable, Node, MypyFile, LDEF, Var,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -378,38 +378,6 @@ class TypeChecker(NodeVisitor[Type]):
     #
     # Definitions
     #
-
-    def visit_var_def(self, defn: VarDef) -> Type:
-        """Type check a variable definition.
-
-        It can be of any kind: local, member or global.
-        """
-        # Type check initializer.
-        if defn.init:
-            # There is an initializer.
-            if defn.items[0].type:
-                # Explicit types.
-                if len(defn.items) == 1:
-                    self.check_simple_assignment(defn.items[0].type,
-                                                 defn.init, defn.init)
-                else:
-                    # Multiple assignment.
-                    lv = []  # type: List[Node]
-                    for v in defn.items:
-                        lv.append(self.temp_node(v.type, v))
-                    self.check_multi_assignment(lv, defn.init, defn.init)
-            else:
-                init_type = self.accept(defn.init)
-                if defn.kind == LDEF and not defn.is_top_level:
-                    # Infer local variable type if there is an initializer
-                    # except if the definition is at the top level (outside a
-                    # function).
-                    self.infer_local_variable_type(defn.items, init_type, defn)
-        else:
-            # No initializer
-            if (defn.kind == LDEF and not defn.items[0].type and
-                    not defn.is_top_level and not self.is_dynamic_function()):
-                self.fail(messages.NEED_ANNOTATION_FOR_VAR, defn)
 
     def infer_local_variable_type(self, x, y, z):
         # TODO

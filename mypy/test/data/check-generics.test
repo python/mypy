@@ -504,6 +504,7 @@ class int: pass
 class type: pass
 class tuple: pass
 class function: pass
+class str: pass
 
 [case testMultipleAsssignmentWithIterable]
 from typing import Iterable, Undefined, TypeVar
