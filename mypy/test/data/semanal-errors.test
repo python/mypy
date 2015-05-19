@@ -1079,17 +1079,17 @@ class A(metaclass=f): pass # E: Invalid metaclass 'f'
 [case testInvalidTypevarArguments]
 from typing import TypeVar
 a = TypeVar()       # E: Too few arguments for TypeVar()
-b = TypeVar(x='b')  # E: Unexpected arguments to TypeVar()
-c = TypeVar(1)      # E: TypeVar() expects a string literal argument
+b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
+c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
 d = TypeVar('D')    # E: Unexpected TypeVar() argument value
-e = TypeVar('e', int, str, x=1) # E: Unexpected arguments to TypeVar()
+e = TypeVar('e', int, str, x=1) # E: Unexpected argument to TypeVar(): x
 f = TypeVar('f', (int, str)) # E: Type expected
-g = TypeVar('g', x=(int, str)) # E: Unexpected arguments to TypeVar()
+g = TypeVar('g', x=(int, str)) # E: Unexpected argument to TypeVar(): x
 [out]
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
-b = TypeVar('b', *[int]) # E: Unexpected arguments to TypeVar()
+b = TypeVar('b', *[int]) # E: Unexpected argument to TypeVar()
 c = TypeVar('c', int, 2) # E: Type expected
 [out]
 

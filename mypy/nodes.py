@@ -1299,6 +1299,10 @@ class TypeApplication(Node):
         return visitor.visit_type_application(self)
 
 
+INVARIANT = 0
+COVARIANT = 1
+CONTRAVARIANT = 2
+
 class TypeVarExpr(SymbolNode):
     """Type variable expression TypeVar(...)."""
 
@@ -1307,12 +1311,15 @@ class TypeVarExpr(SymbolNode):
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
     values = Undefined(List['mypy.types.Type'])
+    variance = INVARIANT
 
     def __init__(self, name: str, fullname: str,
-                 values: List['mypy.types.Type']) -> None:
+                 values: List['mypy.types.Type'],
+                 variance: int=INVARIANT) -> None:
         self._name = name
         self._fullname = fullname
         self.values = values
+        self.variance = variance
 
     def name(self) -> str:
         return self._name

@@ -58,7 +58,8 @@ from mypy.nodes import (
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
-    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
+    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
+    COVARIANT, CONTRAVARIANT, INVARIANT
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1040,17 +1041,10 @@ class SemanticAnalyzer(NodeVisitor):
         if len(call.args) < 1:
             self.fail("Too few arguments for TypeVar()", s)
             return
-        if call.arg_kinds != [ARG_POS] * len(call.arg_kinds):
-            if call.arg_kinds == [ARG_POS, ARG_NAMED] and call.arg_names[1] == 'values':
-                # Probably using obsolete syntax with values=(...). Explain the current syntax.
-                self.fail("TypeVar 'values' argument not supported", s)
-                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
-                          s)
-            else:
-                self.fail("Unexpected arguments to TypeVar()", s)
-            return
-        if not isinstance(call.args[0], StrExpr):
-            self.fail("TypeVar() expects a string literal argument", s)
+
+        # Type var name
+        if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
+            self.fail("TypeVar() expects a string literal as first argument", s)
             return
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
@@ -1063,16 +1057,71 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return
-        if len(call.args) > 1:
+
+        # Contraining types
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        if n_values > 0:
             # Analyze enumeration of type variable values.
-            values = self.analyze_types(call.args[1:])
+            values = self.analyze_types(call.args[1:1+n_values])
         else:
             # Type variables can refer to an arbitrary type.
             values = []
+
+        # Parameters
+        covariant = False
+        contravariant = False
+        for param_value, param_name, param_kind in zip(call.args[1+n_values:],
+                                                       call.arg_names[1+n_values:],
+                                                       call.arg_kinds[1+n_values:]):
+            if not param_kind == ARG_NAMED:
+                self.fail("Unexpected argument to TypeVar()", s)
+                return
+            if param_name == 'covariant':
+                if isinstance(param_value, NameExpr):
+                    if param_value.name == 'True':
+                        covariant = True
+                    else:
+                        self.fail("TypeVar 'covariant' may only be 'True'", s)
+                        return
+                else:
+                    self.fail("TypeVar 'covariant' may only be 'True'", s)
+                    return
+            elif param_name == 'contravariant':
+                if isinstance(param_value, NameExpr):
+                    if param_value.name == 'True':
+                        contravariant = True
+                    else:
+                        self.fail("TypeVar 'contravariant' may only be 'True'", s)
+                        return
+                else:
+                    self.fail("TypeVar 'contravariant' may only be 'True'", s)
+                    return
+            elif param_name == 'bound':
+                self.fail("TypeVar 'bound' argument not supported yet.", s)
+                return
+            elif param_name == 'values':
+                # Probably using obsolete syntax with values=(...). Explain the current syntax.
+                self.fail("TypeVar 'values' argument not supported", s)
+                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
+                          s)
+                return
+            else:
+                self.fail("Unexpected argument to TypeVar(): {}".format(param_name), s)
+                return
+        if covariant and contravariant:
+            self.fail("TypeVar cannot be both covariant and contravariant.", s)
+            return
+        elif covariant:
+            variance = COVARIANT
+        elif contravariant:
+            variance = CONTRAVARIANT
+        else:
+            variance = INVARIANT
+
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
-        TypeVar = TypeVarExpr(name, node.fullname, values)
+        TypeVar = TypeVarExpr(name, node.fullname, values, variance)
         TypeVar.line = call.line
         call.analyzed = TypeVar
         node.node = TypeVar
