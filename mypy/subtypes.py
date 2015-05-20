@@ -13,14 +13,6 @@ from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
 
 
-def is_immutable(t: Instance) -> bool:
-    # TODO: The name is confusing, since the values need not be immutable.
-    return t.type.fullname() in ('typing.Iterable',
-                                 'typing.Sequence',
-                                 'typing.Reversible',
-                                 )
-
-
 def is_subtype(left: Type, right: Type) -> bool:
     """Is 'left' subtype of 'right'?
 
@@ -79,18 +71,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
 
-            def check_argument(ta: Type, ra: Type, variance: int) -> bool:
+            def check_argument(lefta: Type, righta: Type, variance: int) -> bool:
                 if variance == COVARIANT:
-                    return is_subtype(ta, ra)
+                    return is_subtype(lefta, righta)
                 elif variance == CONTRAVARIANT:
-                    return is_subtype(ra, ta)
+                    return is_subtype(righta, lefta)
                 else:
-                    return is_equivalent(ta, ra)
+                    return is_equivalent(lefta, righta)
 
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
 
-            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
+            return all(check_argument(lefta, righta, tvar.variance) for lefta, righta, tvar in
                        zip(t.args, right.args, right.type.defn.type_vars))
         else:
             return False
@@ -271,13 +263,20 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
         if isinstance(s, Instance):
             if not t.type.has_base(s.type.fullname()):
                 return False
+
+            def check_argument(left: Type, right: Type, variance: int) -> bool:
+                if variance == COVARIANT:
+                    return is_proper_subtype(left, right)
+                elif variance == CONTRAVARIANT:
+                    return is_proper_subtype(right, left)
+                else:
+                    return sametypes.is_same_type(left, right)
+
+            # Map left type to corresponding right instances.
             t = map_instance_to_supertype(t, s.type)
-            if not is_immutable(s):
-                return all(sametypes.is_same_type(ta, ra) for (ta, ra) in
-                           zip(t.args, s.args))
-            else:
-                return all(is_proper_subtype(ta, ra) for (ta, ra) in
-                           zip(t.args, s.args))
+
+            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
+                       zip(t.args, s.args, s.type.defn.type_vars))
         return False
     else:
         return sametypes.is_same_type(t, s)
