@@ -208,6 +208,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         for vd in var_defs:
             a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),
+                                vd.variance,
                                 vd.line))
         return a
 

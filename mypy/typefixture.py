@@ -9,8 +9,8 @@ from mypy.types import (
     TypeVarType, AnyType, Void, ErrorType, NoneTyp, Instance, CallableType, TypeVarDef
 )
 from mypy.nodes import (
-    TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable
-)
+    TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
+    COVARIANT)
 
 
 class TypeFixture:
@@ -25,13 +25,13 @@ class TypeFixture:
         self.o = Instance(self.oi, [])                        # object
 
         # Type variables
-        self.t = TypeVarType('T', 1, [], self.o)     # T`1 (type variable)
-        self.tf = TypeVarType('T', -1, [], self.o)   # T`-1 (type variable)
-        self.tf2 = TypeVarType('T', -2, [], self.o)  # T`-2 (type variable)
-        self.s = TypeVarType('S', 2, [], self.o)     # S`2 (type variable)
-        self.s1 = TypeVarType('S', 1, [], self.o)    # S`1 (type variable)
-        self.sf = TypeVarType('S', -2, [], self.o)   # S`-2 (type variable)
-        self.sf1 = TypeVarType('S', -1, [], self.o)  # S`-1 (type variable)
+        self.t = TypeVarType('T', 1, [], self.o, COVARIANT)     # T`1 (type variable)
+        self.tf = TypeVarType('T', -1, [], self.o, COVARIANT)   # T`-1 (type variable)
+        self.tf2 = TypeVarType('T', -2, [], self.o, COVARIANT)  # T`-2 (type variable)
+        self.s = TypeVarType('S', 2, [], self.o, COVARIANT)     # S`2 (type variable)
+        self.s1 = TypeVarType('S', 1, [], self.o, COVARIANT)    # S`1 (type variable)
+        self.sf = TypeVarType('S', -2, [], self.o, COVARIANT)   # S`-2 (type variable)
+        self.sf1 = TypeVarType('S', -1, [], self.o, COVARIANT)  # S`-1 (type variable)
 
         # Simple types
         self.anyt = AnyType()

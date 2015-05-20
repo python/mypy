@@ -90,8 +90,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
 
-            return all(check_argument(ta, ra, variance) for ta, ra, variance in
-                       zip(t.args, right.args, right.type.variances))
+            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
+                       zip(t.args, right.args, right.type.defn.type_vars))
         else:
             return False
 

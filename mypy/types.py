@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Undefined, Any, TypeVar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
+from mypy.nodes import INVARIANT
 
 
 T = TypeVar('T')
@@ -34,13 +35,16 @@ class TypeVarDef(mypy.nodes.Context):
     id = 0
     values = Undefined(List[Type])
     upper_bound = Undefined(Type)
+    variance = INVARIANT  # type: int
     line = 0
 
-    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type, line: int = -1) -> None:
+    def __init__(self, name: str, id: int, values: List[Type],
+                 upper_bound: Type, variance: int=INVARIANT, line: int=-1) -> None:
         self.name = name
         self.id = id
         self.values = values
         self.upper_bound = upper_bound
+        self.variance = variance
         self.line = line
 
     def get_line(self) -> int:
@@ -184,13 +188,15 @@ class TypeVarType(Type):
     id = 0     # 1, 2, ... for type-related, -1, ... for function-related
     values = Undefined(List[Type])  # Value restriction, empty list if no restriction
     upper_bound = Undefined(Type)   # Upper bound for values (currently always 'object')
+    variance = INVARIANT  # type: int
 
     def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
-                 line: int = -1) -> None:
+                 variance: int=INVARIANT, line: int=-1) -> None:
         self.name = name
         self.id = id
         self.values = values
         self.upper_bound = upper_bound
+        self.variance = variance
         super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:

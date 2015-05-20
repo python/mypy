@@ -235,8 +235,8 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
                     builtin_type: Callable[[str], Instance]) -> Type:
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'))
-                for i, n in enumerate(info.type_vars)]
+        vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
+                for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         arg_types = t.arg_types
         arg_kinds = t.arg_kinds
         arg_names = t.arg_names
@@ -290,7 +290,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance)
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
-        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound))
+        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound, tvar.variance))
 
     initvars = init_type.variables
     variables.extend(initvars)
@@ -319,7 +319,7 @@ class TvarTranslator(TypeTranslator):
         if t.id < 0:
             return t
         else:
-            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound)
+            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound, t.variance)
 
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
@@ -329,7 +329,7 @@ class TvarTranslator(TypeTranslator):
         for v in variables:
             if v.id > 0:
                 items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        v.values, v.upper_bound))
+                                        v.values, v.upper_bound, v.variance))
             else:
                 items.append(v)
         return items

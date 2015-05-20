@@ -231,34 +231,34 @@ class SemanticAnalyzer(NodeVisitor):
             functype = cast(CallableType, defn.type)
             typevars = self.infer_type_variables(functype)
             # Do not define a new type variable if already defined in scope.
-            typevars = [(tvar, values) for tvar, values in typevars
-                        if not self.is_defined_type_var(tvar, defn)]
+            typevars = [(name, tvar) for name, tvar in typevars
+                        if not self.is_defined_type_var(name, defn)]
             if typevars:
-                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1], self.object_type())
+                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1].values, self.object_type(), tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
                 functype.variables = defs
 
     def infer_type_variables(self,
-                             type: CallableType) -> List[Tuple[str, List[Type]]]:
+                             type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
         """Return list of unique type variables referred to in a callable."""
         names = []  # type: List[str]
-        values = []  # type: List[List[Type]]
+        tvars = []  # type: List[TypeVarExpr]
         for arg in type.arg_types + [type.ret_type]:
-            for tvar, vals in self.find_type_variables_in_type(arg):
-                if tvar not in names:
-                    names.append(tvar)
-                    values.append(vals)
-        return list(zip(names, values))
+            for name, tvar_expr in self.find_type_variables_in_type(arg):
+                if name not in names:
+                    names.append(name)
+                    tvars.append(tvar_expr)
+        return list(zip(names, tvars))
 
     def find_type_variables_in_type(
-            self, type: Type) -> List[Tuple[str, List[Type]]]:
+            self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
         """Return a list of all unique type variable references in type."""
         result = []  # type: List[Tuple[str, List[Type]]]
         if isinstance(type, UnboundType):
             name = type.name
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
-                result.append((name, cast(TypeVarExpr, node.node).values))
+                result.append((name, cast(TypeVarExpr, node.node)))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
@@ -541,10 +541,9 @@ class SemanticAnalyzer(NodeVisitor):
                 if type_vars:
                     self.fail('Duplicate Generic in bases', defn)
                 removed.append(i)
-                for j, tvar in enumerate(tvars):
-                    name, values = tvar
-                    type_vars.append(TypeVarDef(name, j + 1, values,
-                                                self.object_type()))
+                for j, (name, tvar_expr) in enumerate(tvars):
+                    type_vars.append(TypeVarDef(name, j + 1, tvar_expr.values,
+                                                self.object_type(), tvar_expr.variance))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -552,8 +551,7 @@ class SemanticAnalyzer(NodeVisitor):
         for i in reversed(removed):
             del defn.base_type_exprs[i]
 
-    def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str,
-                                                                 List[Type]]]:
+    def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str, TypeVarExpr]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
@@ -561,7 +559,7 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is None:
             return None
         if sym.node.fullname() == 'typing.Generic':
-            tvars = []  # type: List[Tuple[str, List[Type]]]
+            tvars = []  # type: List[Tuple[str, TypeVarExpr]]
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
@@ -572,13 +570,13 @@ class SemanticAnalyzer(NodeVisitor):
             return tvars
         return None
 
-    def analyze_unbound_tvar(self, t: Type) -> Tuple[str, List[Type]]:
+    def analyze_unbound_tvar(self, t: Type) -> Tuple[str, TypeVarExpr]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
-            return unbound.name, cast(TypeVarExpr, sym.node).values[:]
+            return unbound.name, cast(TypeVarExpr, sym.node)
         return None
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
@@ -700,12 +698,10 @@ class SemanticAnalyzer(NodeVisitor):
     def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
         vars = info.type_vars
-        info.variances = []
         nodes = []  # type: List[SymbolTableNode]
         for index, var in enumerate(vars, 1):
             node = self.bind_type_var(var, index, info)
             nodes.append(node)
-            info.variances.append(node.node.variance)
         return nodes
 
     def visit_import(self, i: Import) -> None:
@@ -2085,7 +2081,8 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     for i in range(len(typ.type_vars)):
         tv.append(TypeVarType(typ.type_vars[i], i + 1,
                           typ.defn.type_vars[i].values,
-                          typ.defn.type_vars[i].upper_bound))
+                          typ.defn.type_vars[i].upper_bound,
+                          typ.defn.type_vars[i].variance))
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
