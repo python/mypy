@@ -365,7 +365,8 @@ class TypeVar(TypingMeta, metaclass=TypingMeta, _root=True):
 
     """
 
-    def __new__(cls, name, *constraints):
+    def __new__(cls, name, *constraints, bound=None,
+                covariant=False, contravariant=False):
         self = super().__new__(cls, name, (Final,), {}, _root=True)
         msg = "TypeVar(name, constraint, ...): constraints must be types."
         self.__constraints__ = tuple(_type_check(t, msg) for t in constraints)
@@ -475,9 +476,9 @@ class VarBinding:
 
 # Some unconstrained type variables.  These are used by the container types.
 # TODO: Don't export these.
-T = TypeVar('T')  # Any type.
-KT = TypeVar('KT')  # Key type.
-VT = TypeVar('VT')  # Value type.
+T = TypeVar('T', covariant=True)  # Any type.
+KT = TypeVar('KT', covariant=True)  # Key type.
+VT = TypeVar('VT', covariant=True)  # Value type.
 
 # A useful type variable with constraints.  This represents string types.
 # TODO: What about bytearray, memoryview?

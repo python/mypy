@@ -35,9 +35,9 @@ AnyStr = TypeVar('AnyStr', str, unicode)
 
 # Abstract base classes.
 
-_T = TypeVar('_T')
-_KT = TypeVar('_KT')
-_VT = TypeVar('_VT')
+_T = TypeVar('_T', covariant=True)
+_KT = TypeVar('_KT', covariant=True)
+_VT = TypeVar('_VT', covariant=True)
 
 # TODO Container etc.
 
