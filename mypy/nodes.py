@@ -1417,6 +1417,8 @@ class TypeInfo(SymbolNode):
 
     # Generic type variable names
     type_vars = Undefined(List[str])
+    # Variance of type variables (INVARIANT, COVARIANT, CONTRAVARIANT)
+    variances = None  # type: List[int]
 
     # Direct base classes.
     bases = Undefined(List['mypy.types.Instance'])
@@ -1438,6 +1440,7 @@ class TypeInfo(SymbolNode):
         self.subtypes = set()
         self.mro = []
         self.type_vars = []
+        self.variances = []
         self.bases = []
         self._fullname = defn.fullname
         self.is_abstract = False

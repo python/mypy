@@ -8,7 +8,7 @@ from mypy.types import (
 import mypy.applytype
 import mypy.constraints
 from mypy import messages, sametypes
-from mypy.nodes import TypeInfo
+from mypy.nodes import TypeInfo, CONTRAVARIANT, COVARIANT
 from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
 
@@ -79,15 +79,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.type.has_base(rname) and rname != 'builtins.object':
                 return False
 
+            def check_argument(ta: Type, ra: Type, variance: int) -> bool:
+                if variance == COVARIANT:
+                    return is_subtype(ta, ra)
+                elif variance == CONTRAVARIANT:
+                    return is_subtype(ra, ta)
+                else:
+                    return is_equivalent(ta, ra)
+
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
-            if not is_immutable(right):
-                result = all(is_equivalent(ta, ra) for (ta, ra) in
-                             zip(t.args, right.args))
-            else:
-                result = all(is_subtype(ta, ra) for (ta, ra) in
-                             zip(t.args, right.args))
-            return result
+
+            return all(check_argument(ta, ra, variance) for ta, ra, variance in
+                       zip(t.args, right.args, right.type.variances))
         else:
             return False
 

@@ -700,11 +700,12 @@ class SemanticAnalyzer(NodeVisitor):
     def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
         vars = info.type_vars
+        info.variances = []
         nodes = []  # type: List[SymbolTableNode]
-        if vars:
-            for i in range(len(vars)):
-                node = self.bind_type_var(vars[i], i + 1, info)
-                nodes.append(node)
+        for index, var in enumerate(vars, 1):
+            node = self.bind_type_var(var, index, info)
+            nodes.append(node)
+            info.variances.append(node.node.variance)
         return nodes
 
     def visit_import(self, i: Import) -> None:
