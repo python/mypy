@@ -1,7 +1,7 @@
 # Stubs for builtins
 
 from typing import (
-    Undefined, TypeVar, Iterator, Iterable, overload,
+    TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
     Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, Union, ItemsView, KeysView, ValuesView, ByteString
@@ -28,7 +28,7 @@ _byte_types = Union[bytes, bytearray]
 
 class object:
     __doc__ = ''
-    __class__ = Undefined # type: type
+    __class__ = ...  # type: type
 
     def __init__(self) -> None: pass
     def __eq__(self, o: object) -> bool: pass
@@ -41,7 +41,7 @@ class type:
     __name__ = ''
     __qualname__ = ''
     __module__ = ''
-    __dict__ = Undefined # type: Dict[str, Any]
+    __dict__ = ...  # type: Dict[str, Any]
 
     def __init__(self, o: object) -> None: pass
     @staticmethod
@@ -431,7 +431,7 @@ class function:
     __name__ = ''
     __qualname__ = ''
     __module__ = ''
-    __code__ = Undefined(Any)
+    __code__ = ... # type: Any
 
 class list(MutableSequence[_T], Generic[_T]):
     @overload
@@ -443,7 +443,7 @@ class list(MutableSequence[_T], Generic[_T]):
     def append(self, object: _T) -> None: pass
     def extend(self, iterable: Iterable[_T]) -> None: pass
     def pop(self, index: int = -1) -> _T: pass
-    def index(self, object: _T, start: int = 0, stop: int = Undefined(int)) -> int: pass
+    def index(self, object: _T, start: int = 0, stop: int = ...) -> int: pass
     def count(self, object: _T) -> int: pass
     def insert(self, index: int, object: _T) -> None: pass
     def remove(self, object: _T) -> None: pass
@@ -594,13 +594,13 @@ class module:
     # TODO not defined in builtins!
     __name__ = ''
     __file__ = ''
-    __dict__ = Undefined # type: Dict[str, Any]
+    __dict__ = ...  # type: Dict[str, Any]
 
-True = Undefined # type: bool
-False = Undefined # type: bool
+True = ...  # type: bool
+False = ...  # type: bool
 __debug__ = False
 
-NotImplemented = Undefined # type: Any
+NotImplemented = ...  # type: Any
 
 def abs(n: SupportsAbs[_T]) -> _T: pass
 def all(i: Iterable) -> bool: pass
@@ -718,7 +718,7 @@ Ellipsis = ellipsis()
 # Exceptions
 
 class BaseException:
-    args = Undefined # type: Any
+    args = ...  # type: Any
     def __init__(self, *args: Any) -> None: pass
     def with_traceback(self, tb: Any) -> BaseException: pass
 
@@ -776,11 +776,11 @@ class TypeError(Exception): pass
 class UnboundLocalError(NameError): pass
 class UnicodeError(ValueError): pass
 class UnicodeDecodeError(UnicodeError):
-    encoding = Undefined(str)
-    object = Undefined(bytes)
-    start = Undefined(int)
-    end = Undefined(int)
-    reason = Undefined(str)
+    encoding = ... # type: str
+    object = ... # type: bytes
+    start = ... # type: int
+    end = ... # type: int
+    reason = ... # type: str
     def __init__(self, __encoding: str, __object: bytes, __start: int, __end: int,
                  __reason: str) -> None: pass
 class UnicodeEncodeError(UnicodeError): pass

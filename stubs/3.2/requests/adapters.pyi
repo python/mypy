@@ -1,6 +1,6 @@
 # Stubs for requests.adapters (Python 3)
 
-from typing import Undefined, Any
+from typing import Any
 from . import models
 from .packages.urllib3 import poolmanager
 from .packages.urllib3 import response
@@ -37,9 +37,9 @@ SSLError = exceptions.SSLError
 ProxyError = exceptions.ProxyError
 RetryError = exceptions.RetryError
 
-DEFAULT_POOLBLOCK = Undefined(Any)
-DEFAULT_POOLSIZE = Undefined(Any)
-DEFAULT_RETRIES = Undefined(Any)
+DEFAULT_POOLBLOCK = ...  # type: Any
+DEFAULT_POOLSIZE = ...  # type: Any
+DEFAULT_RETRIES = ...  # type: Any
 
 class BaseAdapter:
     def __init__(self): pass
@@ -48,14 +48,14 @@ class BaseAdapter:
     def close(self): pass
 
 class HTTPAdapter(BaseAdapter):
-    __attrs__ = Undefined(Any)
-    max_retries = Undefined(Any)
-    config = Undefined(Any)
-    proxy_manager = Undefined(Any)
-    def __init__(self, pool_connections=Undefined, pool_maxsize=Undefined, max_retries=Undefined,
-                 pool_block=Undefined): pass
-    poolmanager = Undefined(Any)
-    def init_poolmanager(self, connections, maxsize, block=Undefined, **pool_kwargs): pass
+    __attrs__ = ...  # type: Any
+    max_retries = ...  # type: Any
+    config = ...  # type: Any
+    proxy_manager = ...  # type: Any
+    def __init__(self, pool_connections=..., pool_maxsize=..., max_retries=...,
+                 pool_block=...): pass
+    poolmanager = ...  # type: Any
+    def init_poolmanager(self, connections, maxsize, block=..., **pool_kwargs): pass
     def proxy_manager_for(self, proxy, **proxy_kwargs): pass
     def cert_verify(self, conn, url, verify, cert): pass
     def build_response(self, req, resp): pass

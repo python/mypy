@@ -1,6 +1,6 @@
 # Stubs for requests.packages.urllib3.connection (Python 3.4)
 
-from typing import Undefined, Any
+from typing import Any
 from . import packages
 from http.client import HTTPConnection as _HTTPConnection
 # from httplib import HTTPConnection as _HTTPConnection # python 2
@@ -27,38 +27,38 @@ ssl_wrap_socket = ssl_.ssl_wrap_socket
 assert_fingerprint = ssl_.assert_fingerprint
 connection = util.connection
 
-port_by_scheme = Undefined(Any)
-RECENT_DATE = Undefined(Any)
+port_by_scheme = ...  # type: Any
+RECENT_DATE = ...  # type: Any
 
 class HTTPConnection(_HTTPConnection):
-    default_port = Undefined(Any)
-    default_socket_options = Undefined(Any)
-    is_verified = Undefined(Any)
-    source_address = Undefined(Any)
-    socket_options = Undefined(Any)
+    default_port = ...  # type: Any
+    default_socket_options = ...  # type: Any
+    is_verified = ...  # type: Any
+    source_address = ...  # type: Any
+    socket_options = ...  # type: Any
     def __init__(self, *args, **kw): pass
     def connect(self): pass
 
 class HTTPSConnection(HTTPConnection):
-    default_port = Undefined(Any)
-    key_file = Undefined(Any)
-    cert_file = Undefined(Any)
-    def __init__(self, host, port=None, key_file=None, cert_file=None, strict=None, timeout=Undefined, **kw): pass
-    sock = Undefined(Any)
+    default_port = ...  # type: Any
+    key_file = ...  # type: Any
+    cert_file = ...  # type: Any
+    def __init__(self, host, port=None, key_file=None, cert_file=None, strict=None, timeout=..., **kw): pass
+    sock = ...  # type: Any
     def connect(self): pass
 
 class VerifiedHTTPSConnection(HTTPSConnection):
-    cert_reqs = Undefined(Any)
-    ca_certs = Undefined(Any)
-    ssl_version = Undefined(Any)
-    assert_fingerprint = Undefined(Any)
-    key_file = Undefined(Any)
-    cert_file = Undefined(Any)
-    assert_hostname = Undefined(Any)
+    cert_reqs = ...  # type: Any
+    ca_certs = ...  # type: Any
+    ssl_version = ...  # type: Any
+    assert_fingerprint = ...  # type: Any
+    key_file = ...  # type: Any
+    cert_file = ...  # type: Any
+    assert_hostname = ...  # type: Any
     def set_cert(self, key_file=None, cert_file=None, cert_reqs=None, ca_certs=None, assert_hostname=None, assert_fingerprint=None): pass
-    sock = Undefined(Any)
-    auto_open = Undefined(Any)
-    is_verified = Undefined(Any)
+    sock = ...  # type: Any
+    auto_open = ...  # type: Any
+    is_verified = ...  # type: Any
     def connect(self): pass
 
-UnverifiedHTTPSConnection = Undefined(Any)
+UnverifiedHTTPSConnection = ...  # type: Any

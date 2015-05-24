@@ -8,10 +8,10 @@ def format(percent, value, grouping=False, monetary=False, *additional): pass
 def format_string(f, val, grouping=False): pass
 def currency(val, symbol=True, grouping=False, international=False): pass
 def str(val): pass
-def atof(string, func=Undefined): pass
+def atof(string, func=...): pass
 def atoi(str): pass
 def normalize(localename): pass
-def getdefaultlocale(envvars=Undefined): pass
-def getlocale(category=Undefined): pass
-def resetlocale(category=Undefined): pass
+def getdefaultlocale(envvars=...): pass
+def getlocale(category=...): pass
+def resetlocale(category=...): pass
 def getpreferredencoding(do_setlocale=True): pass

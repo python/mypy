@@ -1,3 +1,3 @@
-from typing import Undefined, Any
+from typing import Any
 
-html_parts = Undefined(Any)
+html_parts = ...  # type: Any

@@ -9,7 +9,7 @@
 
 from typing import (
     TypeVar, Iterable, Generic, Iterator, Dict, overload,
-    Mapping, List, Tuple, Undefined, Callable, Set, Sequence, Sized,
+    Mapping, List, Tuple, Callable, Set, Sequence, Sized,
     Optional, Union
 )
 import typing
@@ -90,7 +90,7 @@ class OrderedDict(Dict[_KT, _VT], Generic[_KT, _VT]):
 
 
 class defaultdict(Dict[_KT, _VT], Generic[_KT, _VT]):
-    default_factory = Undefined(Callable[[], _VT])
+    default_factory = ...  # type: Callable[[], _VT]
 
     @overload
     def __init__(self) -> None: pass
