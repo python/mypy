@@ -6,7 +6,7 @@ import re
 from os import remove, rmdir
 import shutil
 
-from typing import Callable, List, Tuple, Undefined
+from typing import Callable, List, Tuple
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
@@ -82,18 +82,18 @@ def parse_test_cases(
 
 
 class DataDrivenTestCase(TestCase):
-    input = Undefined(List[str])
-    output = Undefined(List[str])
+    input = None  # type: List[str]
+    output = None  # type: List[str]
 
     file = ''
     line = 0
 
-    perform = Undefined(Callable[['DataDrivenTestCase'], None])
+    perform = None  # type: Callable[['DataDrivenTestCase'], None]
 
     # (file path, file content) tuples
-    files = Undefined(List[Tuple[str, str]])
+    files = None  # type: List[Tuple[str, str]]
 
-    clean_up = Undefined(List[Tuple[bool, str]])
+    clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self, name, input, output, file, line, lastline,
                  perform, files):
@@ -180,7 +180,7 @@ class TestItem:
     arg = ''
 
     # Text data, array of 8-bit strings
-    data = Undefined(List[str])
+    data = None  # type: List[str]
 
     file = ''
     line = 0  # Line number in file
