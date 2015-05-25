@@ -670,39 +670,6 @@ main: In member "f" of class "A":
 main, line 6: Need type annotation for variable
 
 
--- Using None  # type: type to declare attributes
--- -------------------------------------------
-
-
-[case testDeclareClassVariableUsingUndefinedWithArgument]
-
-class A:
-    x = None  # type: int
-a = None  # type: A
-a.x = 1
-a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-[case testDeclareInstanceVariableUsingUndefinedWithArgument]
-
-class A:
-    def __init__(self):
-        self.x = None  # type: int
-a = None  # type: A
-a.x = 1
-a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-[case testAccessInstanceVariableDeclaredUsingUndefinedWithArgumentBeforeDecl]
-
-class A:
-    def f(self) -> None:
-        self.x = 1
-        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    def __init__(self):
-        self.x = None  # type: int
-[out]
-main: In member "f" of class "A":
-
-
 -- Static methods
 -- --------------
 

@@ -19,23 +19,6 @@ MypyFile:1(
     NameExpr(y* [__main__.y])
     NameExpr(x [__main__.x])))
 
-[case testInitializeToUndefined]
-class A: pass
-x = None # type: A
-y = x
-[out]
-MypyFile:1(
-  ClassDef:1(
-    A
-    PassStmt:1())
-  AssignmentStmt:2(
-    NameExpr(x [__main__.x])
-    NameExpr(None [builtins.None])
-    __main__.A)
-  AssignmentStmt:3(
-    NameExpr(y* [__main__.y])
-    NameExpr(x [__main__.x])))
-
 [case testLocalVarWithType]
 class A: pass
 def f():

@@ -264,41 +264,6 @@ while A:
     a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 
--- Using Undefined with a type argument
--- ------------------------------------
-
-
-[case testDeclareGlobalUsingUndefindWithArgument]
-
-a = None  # type: int
-a = 1
-a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-[case testDeclareGlobalUsingUndefindWithAnyArgument]
-from typing import Any
-a = None  # type: Any
-a = 1
-a = ''
-a = None
-
-[case testDeclareLocalUsingUndefinedWithArgument]
-
-def f() -> None:
-    a = None  # type: int
-    a = 1
-    a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[out]
-main: In function "f":
-
-[case testDeclareMultipleVarsUsingUndefinedWithArgument]
-
-x = y = None  # type: int
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-x = 1
-y = 1
-
-
 -- # type: signatures
 -- ------------------
 
