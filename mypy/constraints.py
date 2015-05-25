@@ -1,6 +1,6 @@
 """Type inference constraints."""
 
-from typing import List, cast, Undefined
+from typing import List, cast
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
@@ -24,19 +24,18 @@ class Constraint:
 
     type_var = 0   # Type variable id
     op = 0         # SUBTYPE_OF or SUPERTYPE_OF
+    target = None  # type: Type
 
-    target = Undefined(Type)
+    def __init__(self, type_var: int, op: int, target: Type) -> None:
+        self.type_var = type_var
+        self.op = op
+        self.target = target
 
     def __repr__(self) -> str:
         op_str = '<:'
         if self.op == SUPERTYPE_OF:
             op_str = ':>'
         return '{} {} {}'.format(self.type_var, op_str, self.target)
-
-    def __init__(self, type_var: int, op: int, target: Type) -> None:
-        self.type_var = type_var
-        self.op = op
-        self.target = target
 
 
 def infer_constraints_for_callable(
@@ -128,7 +127,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     # The type that is compared against a template
     # TODO: The value may be None. Is that actually correct?
-    actual = Undefined(Type)
+    actual = None  # type: Type
 
     def __init__(self, actual: Type, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.

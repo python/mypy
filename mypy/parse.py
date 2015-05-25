@@ -6,7 +6,7 @@ representing a source file. Performs only minimal semantic checks.
 
 import re
 
-from typing import Undefined, List, Tuple, Any, Set, cast, Union
+from typing import List, Tuple, Any, Set, cast, Union
 
 from mypy import lex
 from mypy.lex import (
@@ -84,19 +84,28 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
 
 class Parser:
-    tok = Undefined(List[Token])
+    """Mypy parser that parses a string into an AST.
+
+    Parses type annotations in addition to basic Python syntax. It supports both Python 2 and 3
+    (though Python 2 support is incomplete).
+
+    The AST classes are defined in mypy.nodes and mypy.types.
+    """
+
+    tok = None  # type: List[Token]
     ind = 0
-    errors = Undefined(Errors)
+    errors = None  # type: Errors
+    # If True, raise an exception on any parse error. Otherwise, errors are reported via 'errors'.
     raise_on_error = False
 
     # Are we currently parsing the body of a class definition?
     is_class_body = False
     # All import nodes encountered so far in this parse unit.
-    imports = Undefined(List[ImportBase])
+    imports = None  # type: List[ImportBase]
     # Names imported from __future__.
-    future_options = Undefined(List[str])
+    future_options = None  # type: List[str]
     # Lines to ignore (using # type: ignore).
-    ignored_lines = Undefined(Set[int])
+    ignored_lines = None  # type: Set[int]
 
     def __init__(self, fnam: str, errors: Errors, pyversion: int,
                  custom_typing_module: str = None) -> None:
@@ -673,7 +682,7 @@ class Parser:
         return False
 
     def parse_statement(self) -> Tuple[Node, bool]:
-        stmt = Undefined  # type: Node
+        stmt = None  # type: Node
         t = self.current()
         ts = self.current_str()
         is_simple = True  # Is this a non-block statement?
@@ -1045,7 +1054,7 @@ class Parser:
 
     def parse_expression(self, prec: int = 0, star_expr_allowed: bool = False) -> Node:
         """Parse a subexpression within a specific precedence context."""
-        expr = Undefined  # type: Node
+        expr = None  # type: Node
         current = self.current()  # Remember token for setting the line number.
 
         # Parse a "value" expression or unary operator expression and store
@@ -1333,7 +1342,7 @@ class Parser:
             t = cast(StrLit, self.skip())
             tok.append(t)
             value += t.parsed()
-        node = Undefined(Node)
+        node = None  # type: Node
         if self.pyversion == 2 and 'unicode_literals' in self.future_options:
             node = UnicodeExpr(value)
         else:
@@ -1433,7 +1442,7 @@ class Parser:
     def parse_member_expr(self, expr: Any) -> Node:
         self.expect('.')
         name = self.expect_type(Name)
-        node = Undefined(Node)
+        node = None  # type: Node
         if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
                 and expr.callee.name == 'super'):
             # super() expression

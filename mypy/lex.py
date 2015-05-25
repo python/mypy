@@ -9,7 +9,7 @@ This module can be run as a script (lex.py FILE).
 import re
 
 from mypy.util import short_type
-from typing import List, Undefined, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
+from typing import List, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
 
 class Token:
@@ -278,23 +278,23 @@ class Lexer:
     enc = ''                # Encoding
 
     # Generated tokens
-    tok = Undefined(List[Token])
+    tok = None  # type: List[Token]
 
     # Table from byte character value to lexer method. E.g. entry at ord('0')
     # contains the method lex_number().
-    map = Undefined(List[Callable[[], None]])
+    map = None  # type: List[Callable[[], None]]
 
     # Indent levels of currently open blocks, in spaces.
-    indents = Undefined(List[int])
+    indents = None  # type: List[int]
 
     # Open ('s, ['s and {'s without matching closing bracket; used for ignoring
     # newlines within parentheses/brackets.
-    open_brackets = Undefined(List[str])
+    open_brackets = None  # type: List[str]
 
     pyversion = 3
 
-    # Lines to ignore (using # type: ignore).
-    ignored_lines = Undefined(Set[int])
+    # Ignore errors on these lines (defined using '# type: ignore').
+    ignored_lines = None  # type: Set[int]
 
     def __init__(self, pyversion: int = 3) -> None:
         self.map = [self.unknown_character] * 256
@@ -620,7 +620,7 @@ class Lexer:
             ss += s
             self.line += 1
             self.i += len(s)
-        lit = Undefined  # type: Token
+        lit = None  # type: Token
         if 'b' in prefix:
             lit = BytesLit(ss + m.group(0))
         elif 'u' in prefix:

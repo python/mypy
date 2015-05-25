@@ -1,6 +1,6 @@
 """Semantic analysis of types"""
 
-from typing import Undefined, Callable, cast, List, Tuple, Dict, Any, Union
+from typing import Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,

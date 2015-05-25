@@ -41,7 +41,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    Undefined, List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
+    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
 )
 
 from mypy.nodes import (
@@ -102,35 +102,35 @@ class SemanticAnalyzer(NodeVisitor):
     """
 
     # Library search paths
-    lib_path = Undefined(List[str])
+    lib_path = None  # type: List[str]
     # Module name space
-    modules = Undefined(Dict[str, MypyFile])
+    modules = None  # type: Dict[str, MypyFile]
     # Global name space for current module
-    globals = Undefined(SymbolTable)
+    globals = None  # type: SymbolTable
     # Names declared using "global" (separate set for each scope)
-    global_decls = Undefined(List[Set[str]])
+    global_decls = None  # type: List[Set[str]]
     # Names declated using "nonlocal" (separate set for each scope)
-    nonlocal_decls = Undefined(List[Set[str]])
+    nonlocal_decls = None  # type: List[Set[str]]
     # Local names of function scopes; None for non-function scopes.
-    locals = Undefined(List[SymbolTable])
+    locals = None  # type: List[SymbolTable]
     # Nested block depths of scopes
-    block_depth = Undefined(List[int])
+    block_depth = None  # type: List[int]
     # TypeInfo of directly enclosing class (or None)
-    type = Undefined(TypeInfo)
+    type = None  # type: TypeInfo
     # Stack of outer classes (the second tuple item contains tvars).
-    type_stack = Undefined(List[TypeInfo])
+    type_stack = None  # type: List[TypeInfo]
     # Type variables that are bound by the directly enclosing class
-    bound_tvars = Undefined(List[SymbolTableNode])
+    bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type varialbes that were bound by outer classess
-    tvar_stack = Undefined(List[List[SymbolTableNode]])
+    tvar_stack = None  # type: List[List[SymbolTableNode]]
 
     # Stack of functions being analyzed
-    function_stack = Undefined(List[FuncItem])
+    function_stack = None  # type: List[FuncItem]
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
-    imports = Undefined(Set[str])  # Imported modules (during phase 2 analysis)
-    errors = Undefined(Errors)     # Keep track of generated errors
+    imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
+    errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self, lib_path: List[str], errors: Errors,
                  pyversion: int = 3) -> None:

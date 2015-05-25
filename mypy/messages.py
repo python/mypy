@@ -5,7 +5,7 @@ improve code clarity and to simplify localization (in the future)."""
 
 import re
 
-from typing import Undefined, cast, List, Any, Sequence, Iterable
+from typing import cast, List, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
@@ -81,7 +81,7 @@ class MessageBuilder:
 
     # Report errors using this instance. It knows about the current file and
     # import context.
-    errors = Undefined(Errors)
+    errors = None  # type: Errors
 
     # Number of times errors have been disabled.
     disable_count = 0

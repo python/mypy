@@ -2,7 +2,7 @@
 
 import re
 
-from typing import Undefined, cast, List, Tuple, Dict, Callable
+from typing import cast, List, Tuple, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
@@ -37,11 +37,11 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk = Undefined('mypy.checker.TypeChecker')
+    chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
-    msg = Undefined(MessageBuilder)
+    msg = None  # type: MessageBuilder
     # Some services are provided by a ExpressionChecker instance.
-    exprchk = Undefined('mypy.checkexpr.ExpressionChecker')
+    exprchk = None  # type: mypy.checkexpr.ExpressionChecker
 
     def __init__(self,
                  exprchk: 'mypy.checkexpr.ExpressionChecker',

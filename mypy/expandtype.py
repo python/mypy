@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, List, cast, Undefined
+from typing import Dict, Tuple, List, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
@@ -35,7 +35,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = Undefined(Dict[int, Type])  # TypeVar id -> value
+    variables = None  # type: Dict[int, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Dict[int, Type]) -> None:
         self.variables = variables
@@ -140,7 +140,7 @@ def expand_caller_var_args(arg_types: List[Type],
     if isinstance(arg_types[-1], TupleType):
         return arg_types[:-1] + (cast(TupleType, arg_types[-1])).items, None
     else:
-        item_type = Undefined  # type: Type
+        item_type = None  # type: Type
         if isinstance(arg_types[-1], AnyType):
             item_type = AnyType()
         elif isinstance(arg_types[-1], Instance) and (

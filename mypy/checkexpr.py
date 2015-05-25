@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import Undefined, cast, List, Tuple, Dict, Callable, Union
+from typing import cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
@@ -44,11 +44,11 @@ class ExpressionChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk = Undefined('mypy.checker.TypeChecker')
+    chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
-    msg = Undefined(MessageBuilder)
+    msg = None  # type: MessageBuilder
 
-    strfrm_checker = Undefined('mypy.checkstrformat.StringFormatterChecker')
+    strfrm_checker = None  # type: mypy.checkstrformat.StringFormatterChecker
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
@@ -67,7 +67,7 @@ class ExpressionChecker:
         return self.chk.narrow_type_from_binder(e, result)
 
     def analyse_ref_expr(self, e: RefExpr) -> Type:
-        result = Undefined(Type)
+        result = None  # type: Type
         node = e.node
         if isinstance(node, Var):
             # Variable reference.
@@ -1030,7 +1030,7 @@ class ExpressionChecker:
         items = []  # type: List[Type]
         for i in range(len(e.items)):
             item = e.items[i]
-            tt = Undefined  # type: Type
+            tt = None  # type: Type
             if not ctx:
                 tt = self.accept(item)
             else:
@@ -1043,7 +1043,6 @@ class ExpressionChecker:
         # Translate into type checking a generic function call.
         tv1 = TypeVarType('KT', -1, [], self.chk.object_type())
         tv2 = TypeVarType('VT', -2, [], self.chk.object_type())
-        constructor = Undefined(CallableType)
         # The callable type represents a function like this:
         #
         #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...

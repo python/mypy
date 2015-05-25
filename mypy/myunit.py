@@ -3,7 +3,7 @@ import re
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, Undefined, Union
+from typing import List, Tuple, Any, Callable, Union
 
 
 # TODO remove global state
@@ -199,7 +199,7 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
             if is_skip: num_skip += 1
             num_total += 1
     else:
-        suite = Undefined  # type: Suite
+        suite = None  # type: Suite
         suite_prefix = ''
         if isinstance(test, list) or isinstance(test, tuple):
             suite = test[1]
