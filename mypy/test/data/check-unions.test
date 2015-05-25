@@ -37,16 +37,16 @@ main: In function "f":
 
 
 [case testUnionAttributeAccess]
-from typing import Union, Undefined
+from typing import Union
 
 class A: y = 1
 class B: y = 2
 class C: pass
 
-w = Undefined # type: Union[A, B]
-x = Undefined # type: Union[A, C]
-y = Undefined # type: int
-z = Undefined # type: str
+w = None # type: Union[A, B]
+x = None # type: Union[A, C]
+y = None # type: int
+z = None # type: str
 
 y = w.y
 z = w.y       # E: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -57,7 +57,7 @@ z = x.y       # E: Some element of union has no attribute "y"
 [builtins fixtures/isinstance.py]
 
 [case testUnionMethodCalls]
-from typing import Union, Undefined
+from typing import Union
 
 class A:
     def foo(self) -> int: pass
@@ -66,9 +66,9 @@ class B:
 class C:
     def foo(self) -> str: pass
 
-x = Undefined # type: Union[A, B]
-y = Undefined # type: Union[A, C]
-i = Undefined # type: int
+x = None # type: Union[A, B]
+y = None # type: Union[A, C]
+i = None # type: int
 
 x.foo()
 y.foo()
@@ -78,8 +78,8 @@ i = y.foo()   # E: Incompatible types in assignment (expression has type "Union[
 [builtins fixtures/isinstance.py]
 
 [case testUnionIndexing]
-from typing import Union, List, Undefined
-x = Undefined # type: Union[List[int], str]
+from typing import Union, List
+x = None # type: Union[List[int], str]
 x[2]
 x[2] + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.py]

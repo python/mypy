@@ -110,9 +110,9 @@ x = 'a'
 (x, ) = ('a',)
 
 [case testUnionMultiAssignment]
-from typing import Union, Undefined
+from typing import Union
 
-x = Undefined # type: Union[int, str]
+x = None # type: Union[int, str]
 x = 1
 x = 'a'
 x + 1    # E: Unsupported operand types for + ("str" and "int")
@@ -257,7 +257,7 @@ def f(x: Union[List[int], List[str], int]) -> None:
 main: In function "f":
 
 [case testUnionStrictDefnBasic]
-from typing import Union, Undefined
+from typing import Union
 
 def foo() -> Union[int, str]: pass
 
@@ -274,7 +274,7 @@ if isinstance(x, str):
 [builtins fixtures/isinstancelist.py]
 
 [case testSubtypeRedefinitionBasic]
-from typing import Union, Undefined
+from typing import Union
 
 class A: pass
 class B(A): y = 1
@@ -287,9 +287,9 @@ x.y        # OK: x is known to be a B
 [builtins fixtures/isinstancelist.py]
 
 [case testIsInstanceBasic]
-from typing import Union, Undefined
+from typing import Union
 
-x = Undefined # type: Union[int, str]
+x = None # type: Union[int, str]
 
 if isinstance(x, str):
     x = x + 1   # E: Unsupported operand types for + ("str" and "int")
@@ -300,9 +300,9 @@ else:
 [builtins fixtures/isinstancelist.py]
 
 [case testIsInstanceIndexing]
-from typing import Union, Undefined
+from typing import Union
 
-x = Undefined # type: Union[int, str]
+x = None # type: Union[int, str]
 j = [x]
 
 if isinstance(j[0], str):
@@ -314,7 +314,7 @@ else:
 [builtins fixtures/isinstancelist.py]
 
 [case testIsInstanceSubClassMember]
-from typing import Union, Undefined
+from typing import Union
 
 class Animal:
     pass
@@ -325,7 +325,7 @@ class Dog(Animal):
     def bark(self): pass
 
 class House:
-    pet = Undefined(Animal)
+    pet = None  # type: Animal
 
 h = House()
 h.pet = Dog()
@@ -344,7 +344,7 @@ while 1:
 [builtins fixtures/isinstancelist.py]
 
 [case testMemberAssignmentChanges-skip]
-from typing import Union, Undefined
+from typing import Union
 
 class Dog:
     paws = 1  # type: Union[int, str]
@@ -360,7 +360,7 @@ pet.paws + 1
 [builtins fixtures/isinstancelist.py]
 
 [case testIsInstanceSubClassMemberHard-skip]
-from typing import Union, Undefined
+from typing import Union
 
 class Animal:
     pass
@@ -371,7 +371,7 @@ class Dog(Animal):
     def bark(self): pass
 
 class House:
-    pet = Undefined(Animal)
+    pet = None  # type: Animal
 
 h = House()
 h.pet = Dog()
@@ -406,10 +406,10 @@ def foo() -> None:
 foo()
 [builtins fixtures/isinstancelist.py]
 [case testIsInstanceBadBreak]
-from typing import Union, Undefined
+from typing import Union
 
 def foo() -> None:
-    x = Undefined # type: Union[int, str]
+    x = None # type: Union[int, str]
     if isinstance(x, int):
         for z in [1,2]:
             break
@@ -422,9 +422,9 @@ foo()
 [out]
 main: In function "foo":
 [case testIsInstanceThreeUnion]
-from typing import Union, List, Undefined
+from typing import Union, List
 
-x = Undefined # type: Union[int, str, List[int]]
+x = None # type: Union[int, str, List[int]]
 
 while 1:
     if isinstance(x, int):
@@ -438,9 +438,9 @@ x + [1]               # E: Unsupported operand types for + (likely involving Uni
 
 [builtins fixtures/isinstancelist.py]
 [case testIsInstanceThreeUnion2]
-from typing import Union, List, Undefined
+from typing import Union, List
 
-x = Undefined # type: Union[int, str, List[int]]
+x = None # type: Union[int, str, List[int]]
 
 while 1:
     if isinstance(x, int):

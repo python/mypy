@@ -1,8 +1,8 @@
 [case testNamedTupleUsedAsTuple]
 from collections import namedtuple
-from typing import Undefined
+
 X = namedtuple('X', ['x', 'y'])
-x = Undefined(X)
+x = None  # type: X
 a, b = x
 b = x[0]
 a = x[1]
@@ -11,16 +11,16 @@ x[2] # E: Tuple index out of range
 
 [case testAccessingNamedTupleAttributes]
 from collections import namedtuple
-from typing import Undefined
+
 X = namedtuple('X', ['x', 'y'])
-x = Undefined(X)
+x = None  # type: X
 x.x
 x.y
 x.z # E: "X" has no attribute "z"
 
 [case testCreateNamedTupleWithPositionalArguments]
 from collections import namedtuple
-from typing import Undefined
+
 X = namedtuple('X', ['x', 'y'])
 x = X(1, 'x')
 x.x
@@ -30,7 +30,7 @@ x = X(1, 2, 3)  # E: Too many arguments for "X"
 
 [case testCreateNamedTupleWithKeywordArguments]
 from collections import namedtuple
-from typing import Undefined
+
 X = namedtuple('X', ['x', 'y'])
 x = X(x=1, y='x')
 x = X(1, y='x')
@@ -39,7 +39,7 @@ x = X(y=1) # E: Missing positional argument "x" in call to "X"
 
 [case testCreateNamedTupleAndUseAsTuple]
 from collections import namedtuple
-from typing import Undefined
+
 X = namedtuple('X', ['x', 'y'])
 x = X(1, 'x')
 a, b = x
@@ -137,12 +137,12 @@ class B(A):
 main: In member "f" of class "B":
 
 [case testNamedTupleSubtyping]
-from typing import NamedTuple, Undefined, Tuple
+from typing import NamedTuple, Tuple
 A = NamedTuple('A', [('a', int), ('b', str)])
 class B(A): pass
 a = A(1, '')
 b = B(1, '')
-t = Undefined(Tuple[int, str])
+t = None  # type: Tuple[int, str]
 b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
 b = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
@@ -152,7 +152,7 @@ t = b
 a = b
 
 [case testNamedTupleSimpleTypeInference]
-from typing import NamedTuple, Undefined, Tuple
+from typing import NamedTuple, Tuple
 A = NamedTuple('A', [('a', int)])
 l = [A(1), A(2)]
 a = A(1)

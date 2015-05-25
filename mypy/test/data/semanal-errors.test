@@ -73,18 +73,18 @@ main, line 5: "B" expects 1 type argument, but 2 given
 main, line 6: "A" expects no type arguments, but 1 given
 
 [case testInvalidNumberOfGenericArgsInUndefinedArg]
-from typing import Undefined
+
 class A: pass
-x = Undefined(A[int]) # E: "A" expects no type arguments, but 1 given
+x = None  # type: A[int] # E: "A" expects no type arguments, but 1 given
 [out]
 
 [case testInvalidNumberOfGenericArgsInNestedBlock]
-from typing import Undefined
+
 class A: pass
 class B:
     def f(self) -> None:
         while 1:
-            x = Undefined(A[int]) \
+            x = None  # type: A[int] \
                 # E: "A" expects no type arguments, but 1 given
 [out]
 main: In function "f":
@@ -135,18 +135,16 @@ def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
 main: In function "f":
 
 [case testInvalidNumberOfGenericArgsInTupleType]
-from typing import Tuple, Undefined
+from typing import Tuple
 class A: pass
-x = Undefined(Tuple[A[int]]) # E: "A" expects no type arguments, but 1 given
+x = None # type: Tuple[A[int]] # E: "A" expects no type arguments, but 1 given
 [out]
 
 [case testInvalidNumberOfGenericArgsInFunctionType]
-from typing import Callable, Undefined
+from typing import Callable
 class A: pass
-x = Undefined(Callable[[A[int]], int]) \
-              # E: "A" expects no type arguments, but 1 given
-x = Undefined(Callable[[], A[int]]) \
-              # E: "A" expects no type arguments, but 1 given
+x = None # type: Callable[[A[int]], int]  # E: "A" expects no type arguments, but 1 given
+y = None # type: Callable[[], A[int]]  # E: "A" expects no type arguments, but 1 given
 [out]
 
 [case testVarOrFuncAsType]
@@ -954,12 +952,6 @@ class A:
 main: In function "f":
 main, line 4: Type cannot be declared in assignment to non-self attribute
 
-[case testInvalidUndefined]
-from typing import Undefined
-y = 1
-x = Undefined(Undefined) # E: Invalid type "typing.Undefined"
-[out]
-
 [case testInvalidTypeInTypeApplication]
 from typing import TypeVar, Generic
 t = TypeVar('t')
@@ -975,62 +967,46 @@ A[1] # E: Type expected within [...]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypes]
-from typing import Undefined
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested]
-from typing import Undefined
 x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested2]
-from typing import Undefined
 x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested3]
-from typing import Undefined
 x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested4]
-from typing import Undefined
 x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested5]
-from typing import Undefined
 x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
 [out]
 
 [case testVariableDeclWithInvalidType]
-from typing import Undefined
 x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 [out]
 
 [case testInvalidLvalueWithExplicitType]
-from typing import Undefined
 a = 1
-a[1] = Undefined # type: int # E: Unexpected type declaration
-a.x = Undefined # type: int \
+a[1] = None # type: int # E: Unexpected type declaration
+a.x = None # type: int \
     # E: Type cannot be declared in assignment to non-self attribute
-a() = Undefined # type: int  # E: Invalid assignment target
-[out]
-
-[case testInvalidLvalueWithExplicitType2]
-from typing import Undefined
-a = 1
-a[1] = Undefined(int) # TODO: Disallow this?
-a() = Undefined(int)  # E: Invalid assignment target
+a() = None # type: int  # E: Invalid assignment target
 [out]
 
 [case testInvalidLvalueWithExplicitType3]
-from typing import Undefined
 a = 1
-a.y, a.x = Undefined, Undefined # type: int, int \
+a.y, a.x = None, None # type: int, int \
     # E: Type cannot be declared in assignment to non-self attribute
-a[1], a[2] = Undefined, Undefined # type: int, int \
+a[1], a[2] = None, None # type: int, int \
     # E: Unexpected type declaration
 [out]
 
@@ -1152,14 +1128,14 @@ from typing import Generic as t # E: Name 't' already defined
 [out]
 
 [case testInvalidStrLiteralType]
-from typing import Undefined
-x = Undefined('foo') # E: Name 'foo' is not defined
+def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
+main: In function "f":
 
 [case testInvalidStrLiteralType2]
-from typing import Undefined
-x = Undefined('int[') # E: Argument to Undefined is not a type
+def f(x: 'int['): pass # E: Parse error before end of line
 [out]
+main: In function "f":
 
 [case testInconsistentOverload]
 from typing import overload
@@ -1331,11 +1307,10 @@ main: In function "g":
 main, line 4: Name '_m.Function' is not defined
 
 [case testUnqualifiedNameRefersToObsoleteTypingFunction]
-from typing import Undefined
-x = Undefined(Function[[], None])
+x = None # type: Function[[], None]
 [out]
-main, line 2: Name 'Function' is not defined
-main, line 2: (Did you mean 'typing.Callable'?)
+main, line 1: Name 'Function' is not defined
+main, line 1: (Did you mean 'typing.Callable'?)
 
 [case testInvalidWithTarget]
 def f(): pass

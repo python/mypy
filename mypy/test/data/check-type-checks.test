@@ -2,10 +2,10 @@
 
 
 [case testSimpleIsinstance]
-from typing import Undefined
-x = Undefined(object)
-n = Undefined(int)
-s = Undefined(str)
+
+x = None  # type: object
+n = None  # type: int
+s = None  # type: str
 n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 if isinstance(x, int):
     n = x
@@ -26,11 +26,11 @@ def f(x: object, n: int, s: str) -> None:
 main: In function "f":
 
 [case testSimpleIsinstance3]
-from typing import Undefined
+
 class A:
-    x = Undefined(object)
-    n = Undefined(int)
-    s = Undefined(str)
+    x = None  # type: object
+    n = None  # type: int
+    s = None  # type: str
     n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
     if isinstance(x, int):
         n = x

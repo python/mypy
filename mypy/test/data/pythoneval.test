@@ -99,9 +99,9 @@ print(abs(A()))
 5.5
 
 [case testAbs2]
-from typing import Undefined
-n = Undefined(int)
-f = Undefined(float)
+
+n = None  # type: int
+f = None  # type: float
 n = abs(1)
 abs(1) + 'x'  # Error
 f = abs(1.1)
@@ -404,11 +404,11 @@ f.foobar()
 _program.py, line 4: IO[Any] has no attribute "foobar"
 
 [case testGenericPatterns]
-from typing import Pattern, Undefined
+from typing import Pattern
 import re
-p = Undefined(Pattern[str])
+p = None  # type: Pattern[str]
 p = re.compile('foo*')
-b = Undefined(Pattern[bytes])
+b = None  # type: Pattern[bytes]
 b = re.compile(b'foo*')
 print(p.match('fooo').group(0))
 [out]
@@ -443,8 +443,8 @@ print(SystemExit(5).code)
 5
 
 [case testIntFloatDucktyping]
-from typing import Undefined
-x = Undefined(float)
+
+x = None  # type: float
 x = 2.2
 x = 2
 def f(x: float) -> None: pass
@@ -467,9 +467,9 @@ math.sin(2)
 math.sin(2.2)
 
 [case testAbsReturnType]
-from typing import Undefined
-f = Undefined(float)
-n = Undefined(int)
+
+f = None  # type: float
+n = None  # type: int
 n = abs(2)
 f = abs(2.2)
 abs(2.2) + 'x'
@@ -477,9 +477,9 @@ abs(2.2) + 'x'
 _program.py, line 6: Unsupported operand types for + ("float" and "str")
 
 [case testROperatorMethods]
-from typing import Undefined
-b = Undefined(bytes)
-s = Undefined(str)
+
+b = None  # type: bytes
+s = None  # type: str
 s = b'foo' * 5 # Error
 b = 5 * b'foo'
 b = b'foo' * 5
@@ -523,7 +523,7 @@ True
 False
 
 [case testOverlappingOperatorMethods]
-from typing import Undefined
+
 class X: pass
 class A:
     def __add__(self, x) -> int:
@@ -533,7 +533,7 @@ class A:
 class B:
     def __radd__(self, x: A) -> str: return 'x'
 class C(X, B): pass
-b = Undefined(B)
+b = None  # type: B
 b = C()
 print(A() + b)
 [out]
@@ -909,7 +909,7 @@ u = 1
 _program.py, line 4: Incompatible types in assignment (expression has type "int", variable has type "Tuple[int, str]")
 
 [case testCallableTypeAlias]
-from typing import Callable, Undefined
+from typing import Callable
 A = Callable[[int], None]
 def f(x: A) -> None:
     x(1)

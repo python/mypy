@@ -93,10 +93,10 @@ def f(x: AB) -> AB:
 main: In function "f":
 
 [case testTypeDeclaredBasedOnTypeVarWithValues]
-from typing import TypeVar, Undefined
+from typing import TypeVar
 T = TypeVar('T', int, str)
 def f(x: T) -> T:
-    a = Undefined(T)
+    a = None  # type: T
     b = None # type: T
     a = x
     b = x
@@ -178,7 +178,7 @@ def f(x: T) -> T:
 main: In function "f":
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues]
-from typing import TypeVar, Undefined
+from typing import TypeVar
 class A: pass
 class B: pass
 T = TypeVar('T', A, B)
@@ -202,7 +202,7 @@ def g(x: S) -> None:
 main: In function "f":
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues2]
-from typing import TypeVar, Undefined
+from typing import TypeVar
 class S(str): pass
 T = TypeVar('T', S, int)
 def f(x: T) -> None:
@@ -230,13 +230,13 @@ def g(a: T) -> None:
 [out]
 
 [case testGenericTypeWithTypevarValues]
-from typing import TypeVar, Generic, Undefined, Any
+from typing import TypeVar, Generic, Any
 X = TypeVar('X', int, str)
 class A(Generic[X]): pass
-a = Undefined(A[int])
-b = Undefined(A[str])
-d = Undefined(A[object]) # E: Invalid type argument value for "A"
-c = Undefined(A[Any])
+a = None  # type: A[int]
+b = None  # type: A[str]
+d = None  # type: A[object] # E: Invalid type argument value for "A"
+c = None  # type: A[Any]
 
 [case testConstructGenericTypeWithTypevarValuesAndTypeInference]
 from typing import TypeVar, Generic, Any
@@ -249,7 +249,7 @@ A(Any(object()))
 A(object()) # E: Type argument 1 of "A" has incompatible value "object"
 
 [case testGenericTypeWithTypevarValuesAndTypevarArgument]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 class C: pass
 X = TypeVar('X', int, str)
 Y = TypeVar('Y', int, C)
@@ -257,11 +257,11 @@ Z = TypeVar('Z')
 class D(Generic[X]):
     def __init__(self, x: X) -> None: pass
 def f(x: X) -> None:
-    a = Undefined(D[X])
+    a = None  # type: D[X]
 def g(x: Y) -> None:
-    a = Undefined(D[Y])
+    a = None  # type: D[Y]
 def h(x: Z) -> None:
-    a = Undefined(D[Z])
+    a = None  # type: D[Z]
 [out]
 main: In function "g":
 main, line 11: Invalid type argument value for "D"
@@ -269,12 +269,12 @@ main: In function "h":
 main, line 13: Type variable "Z" not valid as type argument value for "D"
 
 [case testGenericTypeWithTypevarValuesAndSubtypePromotion]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class S(str): pass
 class C(Generic[X]):
     def __init__(self, x: X) -> None: pass
-x = Undefined(C[str])
+x = None  # type: C[str]
 y = C(S())
 x = y
 y = x
@@ -301,10 +301,10 @@ class C(Generic[X]):
 main: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues1]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class C(Generic[X]):
-    x = Undefined(X)
+    x = None  # type: X
     def f(self, x: X) -> None:
         self.x = x
         self.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -312,10 +312,10 @@ class C(Generic[X]):
 main: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues2]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class C(Generic[X]):
-    x = Undefined(X)
+    x = None  # type: X
 cn = C() # type: C[int]
 cn.x = 1
 cn.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -324,7 +324,7 @@ cs.x = ''
 cs.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testInferredAttributeInGenericClassBodyWithTypevarValues]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class C(Generic[X]):
     x = 1
@@ -348,16 +348,16 @@ main, line 10: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 main, line 10: Argument 1 to "f" of "B" has incompatible type "int"; expected "str"
 
 [case testMultipleClassTypevarsWithValues2]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 class A: pass
 class B: pass
 X = TypeVar('X', A, B)
 Y = TypeVar('Y', int, str)
 class C(Generic[X, Y]): pass
-a = Undefined(C[A, int])
-b = Undefined(C[B, str])
-c = Undefined(C[int, int]) # E: Invalid type argument value for "C"
-c = Undefined(C[A, A])     # E: Invalid type argument value for "C"
+a = None  # type: C[A, int]
+b = None  # type: C[B, str]
+c = None  # type: C[int, int] # E: Invalid type argument value for "C"
+d = None  # type: C[A, A]     # E: Invalid type argument value for "C"
 
 [case testCallGenericFunctionUsingMultipleTypevarsWithValues]
 from typing import TypeVar
@@ -372,7 +372,7 @@ f(A(), A()) # E: Type argument 2 of "f" has incompatible value "A"
 f(1, 1) # E: Type argument 1 of "f" has incompatible value "int"
 
 [case testGenericFunctionWithNormalAndRestrictedTypevar]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 X = TypeVar('X')
 Y = TypeVar('Y', int, str)
 class C(Generic[Y]):

@@ -178,8 +178,8 @@ x = object()
 
 [case testChainedAssignmentAndImports]
 import m
-from typing import Undefined
-i, s = Undefined, Undefined # type: (int, str)
+
+i, s = None, None # type: (int, str)
 i = m.x
 i = m.y
 s = m.x # E: Incompatible types in assignment (expression has type "int", variable has type "str")

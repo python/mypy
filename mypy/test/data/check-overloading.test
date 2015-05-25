@@ -47,8 +47,8 @@ class B: pass
 class C: pass
 
 [case testOverloadedFunctionReturnValue]
-from typing import Undefined, overload
-a, b = Undefined, Undefined # type: (A, B)
+from typing import overload
+a, b = None, None # type: (A, B)
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = f(a)
@@ -77,8 +77,8 @@ class B: pass
 class C: pass
 
 [case testOverloadedMethodReturnValue]
-from typing import Undefined, overload
-a, b = Undefined, Undefined # type: (A, B)
+from typing import overload
+a, b = None, None # type: (A, B)
 b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = a.f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = a.f(a)
@@ -98,8 +98,8 @@ def g() -> None: pass
 def f(x: Any) -> None: pass # E: Name 'f' already defined (overload variants must be next to each other)
 
 [case testOverloadsWithDifferentArgumentCounts]
-from typing import Undefined, overload
-a, b = Undefined, Undefined # type: (A, B)
+from typing import overload
+a, b = None, None # type: (A, B)
 a = f(a)
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 f(b)     # E: No overload variant of "f" matches argument types
@@ -116,9 +116,9 @@ class A: pass
 class B: pass
 
 [case testGenericOverloadVariant]
-from typing import Undefined, overload, TypeVar, Generic
+from typing import overload, TypeVar, Generic
 t = TypeVar('t')
-ab, ac, b, c = Undefined, Undefined, Undefined, Undefined # type: (A[B], A[C], B, C)
+ab, ac, b, c = None, None, None, None # type: (A[B], A[C], B, C)
 b = f(ab)
 c = f(ac)
 b = f(ac) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
@@ -133,8 +133,8 @@ class B: pass
 class C: pass
 
 [case testOverloadedInit]
-from typing import Undefined, overload
-a, b = Undefined, Undefined # type: (A, B)
+from typing import overload
+a, b = None, None # type: (A, B)
 a = A(a)
 a = A(b)
 a = A(object()) # E: No overload variant of "A" matches argument types
@@ -147,9 +147,9 @@ class A:
 class B: pass
 
 [case testIntersectionTypeCompatibility]
-from typing import Undefined, overload, Callable
-o = Undefined # type: object
-a = Undefined # type: A
+from typing import overload, Callable
+o = None # type: object
+a = None # type: A
 
 a = f # E: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
 o = f
@@ -161,8 +161,8 @@ def f(a: Callable[[], None]) -> None: pass
 class A: pass
 
 [case testCompatibilityOfIntersectionTypeObjectWithStdType]
-from typing import Undefined, overload
-t, a = Undefined, Undefined # type: (type, A)
+from typing import overload
+t, a = None, None # type: (type, A)
 
 a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
 t = A
@@ -175,8 +175,8 @@ class A:
 class B: pass
 
 [case testOverloadedGetitem]
-from typing import Undefined, overload
-a, b = Undefined(int), Undefined(str)
+from typing import overload
+a, b = None, None # type: int, str
 a = A()[a]
 b = A()[a] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 b = A()[b]
@@ -189,9 +189,9 @@ class A:
     def __getitem__(self, b: str) -> str: pass
 
 [case testOverloadedGetitemWithGenerics]
-from typing import Undefined, TypeVar, Generic, overload
+from typing import TypeVar, Generic, overload
 t = TypeVar('t')
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C[A])
+a, b, c = None, None, None # type: (A, B, C[A])
 a = c[a]
 b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = c[b]
@@ -276,12 +276,12 @@ class B: pass
 [builtins fixtures/function.py]
 
 [case testOverloadedInitAndTypeObjectInOverload]
-from typing import overload, Undefined
+from typing import overload
 @overload
 def f(t: type) -> 'A': pass
 @overload
 def f(t: 'A') -> 'B': pass
-a, b = Undefined, Undefined # type: (A, B)
+a, b = None, None # type: (A, B)
 a = f(A)
 b = f(a)
 b = f(A) # E: Incompatible types in assignment (expression has type "A", variable has type "B")

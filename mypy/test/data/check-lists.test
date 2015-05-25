@@ -3,9 +3,9 @@
 
 
 [case testNestedListAssignment]
-from typing import Undefined, List
-a1, b1, c1 = Undefined, Undefined, Undefined # type: (A, B, C)
-a2, b2, c2 = Undefined, Undefined, Undefined # type: (A, B, C)
+from typing import List
+a1, b1, c1 = None, None, None # type: (A, B, C)
+a2, b2, c2 = None, None, None # type: (A, B, C)
 
 a1, [b1, c1] = a2, [b2, c2]
 a1, [a1, [b1, c1]] = a2, [a2, [b2, c2]]
@@ -18,8 +18,8 @@ class C: pass
 [out]
 
 [case testNestedListAssignmenToTuple]
-from typing import Undefined, List
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+from typing import List
+a, b, c = None, None, None # type: (A, B, C)
 
 a, b = [a, b]
 a, b = [a]  # E: Need more than 1 value to unpack (2 expected)
@@ -32,8 +32,8 @@ class C: pass
 [out]
 
 [case testListAssignmentFromTuple]
-from typing import Undefined, List
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+from typing import List
+a, b, c = None, None, None # type: (A, B, C)
 t = a, b
 
 [a, b], c = t, c
@@ -48,8 +48,8 @@ class C: pass
 [out]
 
 [case testListAssignmentUnequalAmountToUnpack]
-from typing import Undefined, List
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+from typing import List
+a, b, c = None, None, None # type: (A, B, C)
 
 def f() -> None: # needed because test parser tries to parse [a, b] as section header
     [a, b] = [a, b]

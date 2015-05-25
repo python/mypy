@@ -20,58 +20,53 @@ MypyFile:1(
     NameExpr(x [__main__.x])))
 
 [case testInitializeToUndefined]
-from typing import Undefined
-
 class A: pass
-x = Undefined # type: A
+x = None # type: A
 y = x
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
-  ClassDef:3(
+  ClassDef:1(
     A
-    PassStmt:3())
-  AssignmentStmt:4(
+    PassStmt:1())
+  AssignmentStmt:2(
     NameExpr(x [__main__.x])
-    NameExpr(Undefined [typing.Undefined])
+    NameExpr(None [builtins.None])
     __main__.A)
-  AssignmentStmt:5(
+  AssignmentStmt:3(
     NameExpr(y* [__main__.y])
     NameExpr(x [__main__.x])))
 
 [case testLocalVarWithType]
-from typing import Undefined
 class A: pass
 def f():
-  x = Undefined # type: A
+  x = None # type: A
   y = x
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
-  ClassDef:2(
+  ClassDef:1(
     A
-    PassStmt:2())
-  FuncDef:3(
+    PassStmt:1())
+  FuncDef:2(
     f
-    Block:3(
-      AssignmentStmt:4(
+    Block:2(
+      AssignmentStmt:3(
         NameExpr(x [l])
-        NameExpr(Undefined [typing.Undefined])
+        NameExpr(None [builtins.None])
         __main__.A)
-      AssignmentStmt:5(
+      AssignmentStmt:4(
         NameExpr(y* [l])
         NameExpr(x [l])))))
 
 [case testAnyType]
-from typing import Undefined, Any
-x = Undefined # type: Any
+from typing import Any
+x = None # type: Any
 y = x
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined, Any : Any])
+  ImportFrom:1(typing, [Any : Any])
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
-    NameExpr(Undefined [typing.Undefined])
+    NameExpr(None [builtins.None])
     Any)
   AssignmentStmt:3(
     NameExpr(y* [__main__.y])
@@ -164,14 +159,13 @@ MypyFile:1(
     PassStmt:2()))
 
 [case testMultipleVarDef]
-from typing import Undefined
+
 class A: pass
 class B: pass
-a, b = Undefined, Undefined # type: (A, B)
+a, b = None, None # type: (A, B)
 x = a, b
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
   ClassDef:2(
     A
     PassStmt:2())
@@ -183,8 +177,8 @@ MypyFile:1(
       NameExpr(a [__main__.a])
       NameExpr(b [__main__.b]))
     TupleExpr:4(
-      NameExpr(Undefined [typing.Undefined])
-      NameExpr(Undefined [typing.Undefined]))
+      NameExpr(None [builtins.None])
+      NameExpr(None [builtins.None]))
     Tuple[__main__.A, __main__.B])
   AssignmentStmt:5(
     NameExpr(x* [__main__.x])
@@ -255,23 +249,22 @@ MypyFile:1(
     __main__.A[__main__.B, Any]))
 
 [case testAssignmentAfterDef]
-from typing import Undefined
+
 
 class A: pass
-a = Undefined # type: A
+a = None # type: A
 a = 1
 def f():
-  b = Undefined # type: A
+  b = None # type: A
   b = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
   ClassDef:3(
     A
     PassStmt:3())
   AssignmentStmt:4(
     NameExpr(a [__main__.a])
-    NameExpr(Undefined [typing.Undefined])
+    NameExpr(None [builtins.None])
     __main__.A)
   AssignmentStmt:5(
     NameExpr(a [__main__.a])
@@ -281,68 +274,11 @@ MypyFile:1(
     Block:6(
       AssignmentStmt:7(
         NameExpr(b [l])
-        NameExpr(Undefined [typing.Undefined])
+        NameExpr(None [builtins.None])
         __main__.A)
       AssignmentStmt:8(
         NameExpr(b [l])
         IntExpr(1)))))
-
-[case testUndefinedWithArgument]
-from typing import Undefined
-x = Undefined(int)
-x = 1
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
-  AssignmentStmt:2(
-    NameExpr(x [__main__.x])
-    UndefinedExpr:2(builtins.int)
-    builtins.int)
-  AssignmentStmt:3(
-    NameExpr(x [__main__.x])
-    IntExpr(1)))
-
-[case testUndefinedWithComplexType]
-from typing import Undefined, Tuple
-x = Undefined(Tuple[int, str])
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined, Tuple : Tuple])
-  AssignmentStmt:2(
-    NameExpr(x [__main__.x])
-    UndefinedExpr:2(Tuple[builtins.int, builtins.str])
-    Tuple[builtins.int, builtins.str]))
-
-[case testUndefinedInMultipleAssignment]
-from typing import Undefined, Any
-x, y, z = Undefined(int), 1, Undefined(Any)
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined, Any : Any])
-  AssignmentStmt:2(
-    TupleExpr:2(
-      NameExpr(x* [__main__.x])
-      NameExpr(y* [__main__.y])
-      NameExpr(z* [__main__.z]))
-    TupleExpr:2(
-      UndefinedExpr:2(builtins.int)
-      IntExpr(1)
-      UndefinedExpr:2(Any))))
-
-[case testUndefinedWithStrLiteral]
-from typing import Undefined
-x = Undefined('A')
-class A: pass
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Undefined : Undefined])
-  AssignmentStmt:2(
-    NameExpr(x [__main__.x])
-    UndefinedExpr:2(__main__.A)
-    __main__.A)
-  ClassDef:3(
-    A
-    PassStmt:3()))
 
 [case testCast]
 from typing import TypeVar, Generic, Any, cast
@@ -481,13 +417,13 @@ MypyFile:1(
       builtins.int)))
 
 [case testFunctionTypeVariable]
-from typing import TypeVar, Undefined
+from typing import TypeVar
 t = TypeVar('t')
 def f(x: t) -> None:
-  y = Undefined # type: t
+  y = None # type: t
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar : TypeVar, Undefined : Undefined])
+  ImportFrom:1(typing, [TypeVar : TypeVar])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -499,7 +435,7 @@ MypyFile:1(
     Block:3(
       AssignmentStmt:4(
         NameExpr(y [l])
-        NameExpr(Undefined [typing.Undefined])
+        NameExpr(None [builtins.None])
         t`-1))))
 
 [case testTwoFunctionTypeVariables]
@@ -900,14 +836,14 @@ MypyFile:1(
         NameExpr(g [l])))))
 
 [case testImplicitGenericTypeArgs]
-from typing import TypeVar, Generic, Undefined
+from typing import TypeVar, Generic
 t = TypeVar('t')
 s = TypeVar('s')
 class A(Generic[t, s]): pass
-x = Undefined # type: A
+x = None # type: A
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic, Undefined : Undefined])
+  ImportFrom:1(typing, [TypeVar : TypeVar, Generic : Generic])
   AssignmentStmt:2(
     NameExpr(t* [__main__.t])
     TypeVarExpr:2())
@@ -922,7 +858,7 @@ MypyFile:1(
     PassStmt:4())
   AssignmentStmt:5(
     NameExpr(x [__main__.x])
-    NameExpr(Undefined [typing.Undefined])
+    NameExpr(None [builtins.None])
     __main__.A[Any, Any]))
 
 [case testImplicitTypeArgsAndGenericBaseClass]

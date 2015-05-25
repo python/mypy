@@ -5,11 +5,11 @@
 
 
 [case testBasicContextInference]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
-b = Undefined # type: B
+ab = None # type: A[B]
+ao = None # type: A[object]
+b = None # type: B
 
 ao = f()
 ab = f()
@@ -21,11 +21,11 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testBasicContextInferenceForConstructor]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
-b = Undefined # type: B
+ab = None # type: A[B]
+ao = None # type: A[object]
+b = None # type: B
 
 ao = A()
 ab = A()
@@ -35,13 +35,13 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testIncompatibleContextInference]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-b = Undefined # type: B
-c = Undefined # type: C
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
-ac = Undefined # type: A[C]
+b = None # type: B
+c = None # type: C
+ab = None # type: A[B]
+ao = None # type: A[object]
+ac = None # type: A[C]
 
 ac = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
 ab = f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "B"
@@ -65,13 +65,13 @@ class C: pass
 
 
 [case testInferGenericLocalVariableTypeWithEmptyContext]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
 def g() -> None:
-    ao = Undefined # type: A[object]
-    ab = Undefined # type: A[B]
-    o = Undefined # type: object
-    b = Undefined # type: B
+    ao = None # type: A[object]
+    ab = None # type: A[B]
+    o = None # type: object
+    b = None # type: B
 
     x = f(o)
     ab = x # E: Incompatible types in assignment (expression has type A[object], variable has type A[B])
@@ -99,12 +99,12 @@ class A(Generic[T]): pass
 main: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithTupleRvalue]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
 def g() -> None:
-    ao = Undefined # type: A[object]
-    ab = Undefined # type: A[B]
-    b = Undefined # type: B
+    ao = None # type: A[object]
+    ab = None # type: A[B]
+    b = None # type: B
     x, y = f(b), f(b)
     ao = x # E: Incompatible types in assignment (expression has type A[B], variable has type A[object])
     ao = y # E: Incompatible types in assignment (expression has type A[B], variable has type A[object])
@@ -118,12 +118,12 @@ class B: pass
 main: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
-from typing import Undefined, TypeVar, List, Generic
+from typing import TypeVar, List, Generic
 T = TypeVar('T')
 def h() -> None:
-    ao = Undefined # type: A[object]
-    ab = Undefined # type: A[B]
-    b = Undefined # type: B
+    ao = None # type: A[object]
+    ab = None # type: A[B]
+    b = None # type: B
     x, y = g(f(b))
     ao = x # E: Incompatible types in assignment (expression has type A[B], variable has type A[object])
     ao = y # E: Incompatible types in assignment (expression has type A[B], variable has type A[object])
@@ -145,12 +145,12 @@ main: In function "h":
 
 
 [case testInferenceWithTypeVariableTwiceInReturnType]
-from typing import Undefined, TypeVar, Tuple, Generic
+from typing import TypeVar, Tuple, Generic
 T = TypeVar('T')
-b = Undefined # type: B
-o = Undefined # type: object
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
+b = None # type: B
+o = None # type: object
+ab = None # type: A[B]
+ao = None # type: A[object]
 
 ab, ao = f(b) # Fail
 ao, ab = f(b) # Fail
@@ -169,13 +169,13 @@ main, line 8: Incompatible types in assignment (expression has type A[B], variab
 main, line 9: Incompatible types in assignment (expression has type A[B], variable has type A[object])
 
 [case testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables]
-from typing import Undefined, TypeVar, Tuple, Generic
+from typing import TypeVar, Tuple, Generic
 S = TypeVar('S')
 T = TypeVar('T')
-b = Undefined # type: B
-o = Undefined # type: object
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
+b = None # type: B
+o = None # type: object
+ab = None # type: A[B]
+ao = None # type: A[object]
 
 ao, ao, ab = f(b, b)     # Fail
 ao, ab, ao = g(b, b)     # Fail
@@ -205,14 +205,14 @@ main, line 12: Incompatible types in assignment (expression has type A[B], varia
 
 
 [case testMultipleTvatInstancesInArgs]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-ac = Undefined # type: A[C]
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
-b = Undefined # type: B
-c = Undefined # type: C
-o = Undefined # type: object
+ac = None # type: A[C]
+ab = None # type: A[B]
+ao = None # type: A[object]
+b = None # type: B
+c = None # type: C
+o = None # type: object
 
 ab = f(b, o) # E: Argument 2 to "f" has incompatible type "object"; expected "B"
 ab = f(o, b) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
@@ -235,13 +235,13 @@ class C(B): pass
 
 
 [case testNestedGenericFunctionCall1]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-aab = Undefined # type: A[A[B]]
-aao = Undefined # type: A[A[object]]
-ao = Undefined # type: A[object]
-b = Undefined # type: B
-o = Undefined # type: object
+aab = None # type: A[A[B]]
+aao = None # type: A[A[object]]
+ao = None # type: A[object]
+b = None # type: B
+o = None # type: object
 
 aab = f(f(o)) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
 
@@ -255,12 +255,12 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testNestedGenericFunctionCall2]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
-b = Undefined # type: B
-o = Undefined # type: object
+ab = None # type: A[B]
+ao = None # type: A[object]
+b = None # type: B
+o = None # type: object
 
 ab = f(g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
 
@@ -275,12 +275,12 @@ class A(Generic[T]): pass
 class B: pass
 
 [case testNestedGenericFunctionCall3]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-ab = Undefined # type: A[B]
-ao = Undefined # type: A[object]
-b = Undefined # type: B
-o = Undefined # type: object
+ab = None # type: A[B]
+ao = None # type: A[object]
+b = None # type: B
+o = None # type: object
 
 ab = f(g(o), g(b)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
 ab = f(g(b), g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
@@ -303,14 +303,14 @@ class B: pass
 
 
 [case testMethodCallWithContextInference]
-from typing import Undefined, TypeVar, Generic
+from typing import TypeVar, Generic
 T = TypeVar('T')
-o = Undefined # type: object
-b = Undefined # type: B
-c = Undefined # type: C
-ao = Undefined # type: A[object]
-ab = Undefined # type: A[B]
-ac = Undefined # type: A[C]
+o = None # type: object
+b = None # type: B
+c = None # type: C
+ao = None # type: A[object]
+ab = None # type: A[B]
+ac = None # type: A[C]
 
 ab.g(f(o))        # E: Argument 1 to "f" has incompatible type "object"; expected "B"
 ac = f(b).g(f(c)) # E: Incompatible types in assignment (expression has type A[B], variable has type A[C])
@@ -333,10 +333,10 @@ class C(B): pass
 
 
 [case testEmptyListExpression]
-from typing import Undefined, List
-aa = Undefined # type: List[A]
-ao = Undefined # type: List[object]
-a = Undefined # type: A
+from typing import List
+aa = None # type: List[A]
+ao = None # type: List[object]
+a = None # type: A
 
 a = [] # E: Incompatible types in assignment (expression has type List[None], variable has type "A")
 
@@ -347,12 +347,12 @@ class A: pass
 [builtins fixtures/list.py]
 
 [case testSingleItemListExpressions]
-from typing import Undefined, List
-aa = Undefined # type: List[A]
-ab = Undefined # type: List[B]
-ao = Undefined # type: List[object]
-a = Undefined # type: A
-b = Undefined # type: B
+from typing import List
+aa = None # type: List[A]
+ab = None # type: List[B]
+ao = None # type: List[object]
+a = None # type: A
+b = None # type: B
 
 aa = [b] # E: List item 1 has incompatible type "B"
 ab = [a] # E: List item 1 has incompatible type "A"
@@ -368,12 +368,12 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testMultiItemListExpressions]
-from typing import Undefined, List
-aa = Undefined # type: List[A]
-ab = Undefined # type: List[B]
-ao = Undefined # type: List[object]
-a = Undefined # type: A
-b = Undefined # type: B
+from typing import List
+aa = None # type: List[A]
+ab = None # type: List[B]
+ao = None # type: List[object]
+a = None # type: A
+b = None # type: B
 
 ab = [b, a] # E: List item 2 has incompatible type "A"
 ab = [a, b] # E: List item 1 has incompatible type "A"
@@ -399,12 +399,12 @@ class B: pass
 main: In function "f":
 
 [case testNestedListExpressions]
-from typing import Undefined, List
-aao = Undefined # type: List[List[object]]
-aab = Undefined # type: List[List[B]]
-ab = Undefined # type: List[B]
-b = Undefined # type: B
-o = Undefined # type: object
+from typing import List
+aao = None # type: List[List[object]]
+aab = None # type: List[List[B]]
+ab = None # type: List[B]
+b = None # type: B
+o = None # type: object
 
 aao = [[o], ab] # E: List item 2 has incompatible type List[B]
 aab = [[], [o]] # E: List item 1 has incompatible type "object"
@@ -556,17 +556,17 @@ class C(Generic[s, t]): pass
 
 
 [case testInferLambdaArgumentTypeUsingContext]
-from typing import Undefined, Callable
-f = Undefined # type: Callable[[B], A]
+from typing import Callable
+f = None # type: Callable[[B], A]
 f = lambda x: x.o
 f = lambda x: x.x # E: "B" has no attribute "x"
 class A: pass
 class B:
-  o = Undefined # type: A
+  o = None # type: A
 
 [case testInferLambdaReturnTypeUsingContext]
-from typing import Undefined, List, Callable
-f = Undefined # type: Callable[[], List[A]]
+from typing import List, Callable
+f = None # type: Callable[[], List[A]]
 f = lambda: []
 f = lambda: [B()]  # E: List item 1 has incompatible type "B"
 class A: pass
@@ -574,10 +574,10 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testInferLambdaAsGenericFunctionArgument]
-from typing import TypeVar, List, Any, Callable, Undefined
+from typing import TypeVar, List, Any, Callable
 t = TypeVar('t')
 class A:
-  x = Undefined # type: A
+  x = None # type: A
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
 list_a = [] # type: List[A]
 f(list_a, lambda a: a.x)
@@ -623,8 +623,8 @@ a = m # type: List[A] # E: Incompatible types in assignment (expression has type
 
 
 [case testOrOperationInferredFromContext]
-from typing import Undefined, List
-a, b, c = Undefined, Undefined, Undefined # type: (List[A], List[B], List[C])
+from typing import List
+a, b, c = None, None, None # type: (List[A], List[B], List[C])
 a = a or []
 a = [] or a
 b = b or [C()]
@@ -642,11 +642,11 @@ class C(B): pass
 
 
 [case testSomeTypeVarsInferredFromContext]
-from typing import Undefined, List, TypeVar
+from typing import List, TypeVar
 t = TypeVar('t')
 s = TypeVar('s')
 # Some type variables can be inferred using context, but not all of them.
-a = Undefined # type: List[A]
+a = None # type: List[A]
 a = f(A(), B())
 a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
@@ -655,11 +655,11 @@ class B: pass
 [builtins fixtures/list.py]
 
 [case testSomeTypeVarsInferredFromContext2]
-from typing import Undefined, List, TypeVar
+from typing import List, TypeVar
 s = TypeVar('s')
 t = TypeVar('t')
 # Like testSomeTypeVarsInferredFromContext, but tvars in different order.
-a = Undefined # type: List[A]
+a = None # type: List[A]
 a = f(A(), B())
 a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
@@ -679,9 +679,9 @@ class A: pass
 [out]
 
 [case testChainedAssignmentInferenceContexts]
-from typing import Undefined, List
-i = Undefined # type: List[int]
-s = Undefined # type: List[str]
+from typing import List
+i = None # type: List[int]
+s = None # type: List[str]
 i = i = []
 i = s = [] # E: Incompatible types in assignment (expression has type List[str], variable has type List[int])
 [builtins fixtures/list.py]
@@ -698,14 +698,14 @@ a.x = [''] # E: List item 1 has incompatible type "str"
 [builtins fixtures/list.py]
 
 [case testListMultiplyInContext]
-from typing import Undefined, List
-a = Undefined(List[int])
+from typing import List
+a = None  # type: List[int]
 a = [None] * 3
 a = [''] * 3 # E: List item 1 has incompatible type "str"
 [builtins fixtures/list.py]
 
 [case testUnionTypeContext]
-from typing import Undefined, Union, List, TypeVar
+from typing import Union, List, TypeVar
 T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])

@@ -101,6 +101,8 @@ def ignore_node(node):
         return True
     if isinstance(node, NameExpr) and node.fullname == 'builtins.object':
         return True
+    if isinstance(node, NameExpr) and node.fullname == 'builtins.None':
+        return True
     if isinstance(node, CallExpr) and (ignore_node(node.callee) or
                                        node.analyzed):
         return True

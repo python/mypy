@@ -31,9 +31,9 @@ class B(A): pass
 
 
 [case testIntLiteral]
-from typing import Undefined
+
 a = 0
-b = Undefined # type: A
+b = None # type: A
 b = 1
 a = 1
 class A:
@@ -42,9 +42,9 @@ class A:
 main, line 4: Incompatible types in assignment (expression has type "int", variable has type "A")
 
 [case testStrLiteral]
-from typing import Undefined
+
 a = ''
-b = Undefined # type: A
+b = None # type: A
 b = 'x'
 a = 'x'
 a = r"x"
@@ -55,9 +55,9 @@ class A:
 main, line 4: Incompatible types in assignment (expression has type "str", variable has type "A")
 
 [case testFloatLiteral]
-from typing import Undefined
+
 a = 0.0
-b = Undefined # type: A
+b = None # type: A
 b = 1.1
 a = 1.1
 class A:
@@ -73,9 +73,9 @@ class str: pass
 main, line 4: Incompatible types in assignment (expression has type "float", variable has type "A")
 
 [case testComplexLiteral]
-from typing import Undefined
+
 a = 0.0j
-b = Undefined # type: A
+b = None # type: A
 b = 1.1j
 a = 1.1j
 class A:
@@ -91,8 +91,8 @@ class str: pass
 main, line 4: Incompatible types in assignment (expression has type "complex", variable has type "A")
 
 [case testBytesLiteral]
-from typing import Undefined
-b, a = Undefined, Undefined # type: (bytes, A)
+
+b, a = None, None # type: (bytes, A)
 b = b'foo'
 b = br"foo"
 b = b'''foo'''
@@ -108,10 +108,10 @@ class bytes: pass
 class str: pass
 
 [case testUnicodeLiteralInPython3]
-from typing import Undefined
-s = Undefined(str)
+
+s = None  # type: str
 s = u'foo'
-b = Undefined(bytes)
+b = None  # type: bytes
 b = u'foo' # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
 [builtins fixtures/primitives.py]
 
@@ -121,8 +121,8 @@ b = u'foo' # E: Incompatible types in assignment (expression has type "str", var
 
 
 [case testAdd]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a + c  # Fail
 a = a + b  # Fail
 c = b + a  # Fail
@@ -137,8 +137,8 @@ main, line 3: Unsupported operand types for + ("A" and "C")
 main, line 4: Incompatible types in assignment (expression has type "C", variable has type "A")
 main, line 5: Unsupported left operand type for + ("B")
 [case testAdd]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a + c  # Fail
 a = a + b  # Fail
 c = b + a  # Fail
@@ -157,8 +157,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for + ("B")
 
 [case testSub]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a - c  # Fail
 a = a - b  # Fail
 c = b - a  # Fail
@@ -177,8 +177,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for - ("B")
 
 [case testMul]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a * c  # Fail
 a = a * b  # Fail
 c = b * a  # Fail
@@ -197,8 +197,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for * ("B")
 
 [case testDiv]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a / c  # Fail
 a = a / b  # Fail
 c = b / a  # Fail
@@ -217,8 +217,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for / ("B")
 
 [case testIntDiv]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a // c  # Fail
 a = a // b  # Fail
 c = b // a  # Fail
@@ -237,8 +237,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for // ("B")
 
 [case testMod]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a % c  # Fail
 a = a % b  # Fail
 c = b % a  # Fail
@@ -257,8 +257,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for % ("B")
 
 [case testPow]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a ** c  # Fail
 a = a ** b  # Fail
 c = b ** a  # Fail
@@ -277,8 +277,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Unsupported left operand type for ** ("B")
 
 [case testMiscBinaryOperators]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
+
+a, b = None, None # type: (A, B)
 b = a & a  # Fail
 b = a | b  # Fail
 b = a ^ a  # Fail
@@ -305,8 +305,8 @@ main, line 6: Unsupported operand types for << ("A" and "B")
 main, line 7: Unsupported operand types for >> ("A" and "A")
 
 [case testBooleanAndOr]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 b = b and b
 b = b or b
 b = b and a # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
@@ -317,8 +317,8 @@ class A: pass
 [builtins fixtures/bool.py]
 
 [case testNonBooleanOr]
-from typing import Undefined
-c, d, b = Undefined, Undefined, Undefined # type: (C, D, bool)
+
+c, d, b = None, None, None # type: (C, D, bool)
 c = c or c
 c = c or d
 c = d or c
@@ -330,8 +330,8 @@ class D(C): pass
 [builtins fixtures/bool.py]
 
 [case testInOperator]
-from typing import Undefined, Iterator, Iterable, Any
-a, b, c, d, e = Undefined, Undefined, Undefined, Undefined, Undefined # type: (A, B, bool, D, Any)
+from typing import Iterator, Iterable, Any
+a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
 c = c in a  # Fail
 a = b in a  # Fail
 c = a in b  # Fail
@@ -354,8 +354,8 @@ main, line 5: Unsupported right operand type for in ("B")
 main, line 6: Unsupported operand types for in ("B" and "D")
 
 [case testNotInOperator]
-from typing import Undefined, Iterator, Iterable, Any
-a, b, c, d, e = Undefined, Undefined, Undefined, Undefined, Undefined # type: (A, B, bool, D, Any)
+from typing import Iterator, Iterable, Any
+a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
 c = c not in a  # Fail
 a = b not in a  # Fail
 c = a not in b  # Fail
@@ -378,8 +378,8 @@ main, line 5: Unsupported right operand type for in ("B")
 main, line 6: Unsupported operand types for in ("B" and "D")
 
 [case testNonBooleanContainsReturnValue]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 b = a not in a
 b = a in a
 
@@ -390,8 +390,8 @@ class A:
 main, line 4: Incompatible types in assignment (expression has type "object", variable has type "bool")
 
 [case testEq]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 a = a == b # Fail
 a = a != b # Fail
 b = a == b
@@ -406,8 +406,8 @@ main, line 3: Incompatible types in assignment (expression has type "bool", vari
 main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testLtAndGt]
-from typing import Undefined
-a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
+
+a, b, bo = None, None, None # type: (A, B, bool)
 a = a < b # Fail
 a = a > b # Fail
 bo = a < b
@@ -425,8 +425,8 @@ main, line 3: Incompatible types in assignment (expression has type "bool", vari
 main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testLeAndGe]
-from typing import Undefined
-a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
+
+a, b, bo = None, None, None # type: (A, B, bool)
 a = a <= b # Fail
 a = a >= b # Fail
 bo = a <= b
@@ -444,8 +444,8 @@ main, line 3: Incompatible types in assignment (expression has type "bool", vari
 main, line 4: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testChainedComp]
-from typing import Undefined
-a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
+
+a, b, bo = None, None, None # type: (A, B, bool)
 a < a < b < b # Fail
 a < b < b < b
 a < a > a < b # Fail
@@ -464,8 +464,8 @@ main, line 5: Unsupported operand types for < ("A" and "A")
 
 
 [case testChainedCompBoolRes]
-from typing import Undefined
-a, b, bo = Undefined, Undefined, Undefined # type: (A, B, bool)
+
+a, b, bo = None, None, None # type: (A, B, bool)
 bo = a < b < b
 a = a < b < b # Fail
 
@@ -481,9 +481,9 @@ main, line 4: Incompatible types in assignment (expression has type "bool", vari
 
 
 [case testChainedCompResTyp]
-from typing import Undefined
-x, y = Undefined, Undefined # type: (X, Y)
-a, b, p, bo = Undefined, Undefined, Undefined, Undefined # type: (A, B, P, bool)
+
+x, y = None, None # type: (X, Y)
+a, b, p, bo = None, None, None, None # type: (A, B, P, bool)
 b = y == y == y
 bo = y == y == y # Fail
 a = x < y
@@ -511,8 +511,8 @@ main, line 7: Incompatible types in assignment (expression has type "P", variabl
 
 
 [case testIs]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 a = a is b # Fail
 b = a is b
 b = b is a
@@ -523,8 +523,8 @@ class A: pass
 main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testIsNot]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 a = a is not b # Fail
 b = a is not b
 b = b is not a
@@ -535,37 +535,37 @@ class A: pass
 main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testReverseBinaryOperator]
-from typing import Undefined
+
 class A:
     def __add__(self, x: int) -> int: pass
 class B:
     def __radd__(self, x: A) -> str: pass
-s = Undefined(str)
-n = Undefined(int)
+s = None  # type: str
+n = None  # type: int
 n = A() + 1
 s = A() + B()
 n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReverseBinaryOperator2]
-from typing import Undefined
+
 class A:
     def __add__(self, x: 'A') -> object: pass
 class B:
     def __radd__(self, x: A) -> str: pass
-s = Undefined(str)
-n = Undefined(int)
+s = None  # type: str
+n = None  # type: int
 s = A() + B()
 n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testReverseBinaryOperator3]
-from typing import Undefined
+
 class N:
     def __add__(self, x: 'N') -> object: pass
 class A:
     def __add__(self, x: N) -> int: pass
 class B:
     def __radd__(self, x: N) -> str: pass
-s = Undefined(str)
+s = None  # type: str
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testBinaryOperatorWithAnyRightOperand]
@@ -574,15 +574,15 @@ class A: pass
 A() + Any(1)
 
 [case testReverseComparisonOperator]
-from typing import Undefined
+
 class C:
     def __gt__(self, x: 'A') -> object: pass
 class A:
     def __lt__(self, x: C) -> int: pass
 class B:
     def __gt__(self, x: A) -> str: pass
-s = Undefined(str)
-n = Undefined(int)
+s = None  # type: str
+n = None  # type: int
 n = A() < C()
 s = A() < B()
 n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -631,8 +631,8 @@ tmp/m.py, line 8: Invalid index type "int" for "A"
 
 
 [case testUnaryMinus]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
+
+a, b = None, None # type: (A, B)
 a = -a   # Fail
 b = -b   # Fail
 b = -a
@@ -647,8 +647,8 @@ main, line 3: Incompatible types in assignment (expression has type "B", variabl
 main, line 4: Unsupported operand type for unary - ("B")
 
 [case testUnaryPlus]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
+
+a, b = None, None # type: (A, B)
 a = +a   # Fail
 b = +b   # Fail
 b = +a
@@ -663,8 +663,8 @@ main, line 3: Incompatible types in assignment (expression has type "B", variabl
 main, line 4: Unsupported operand type for unary + ("B")
 
 [case testUnaryNot]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 a = not b  # Fail
 b = not a
 b = not b
@@ -675,8 +675,8 @@ class A:
 main, line 3: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testUnaryBitwiseNeg]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
+
+a, b = None, None # type: (A, B)
 a = ~a   # Fail
 b = ~b   # Fail
 b = ~a
@@ -696,8 +696,8 @@ main, line 4: Unsupported operand type for ~ ("B")
 
 
 [case testIndexing]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 c = a[c]  # Fail
 a = a[b]  # Fail
 c = b[a]  # Fail
@@ -714,8 +714,8 @@ main, line 4: Incompatible types in assignment (expression has type "C", variabl
 main, line 5: Value of type "B" is not indexable
 
 [case testIndexingAsLvalue]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 a[c] = c  # Fail
 a[b] = a  # Fail
 b[a] = c  # Fail
@@ -739,11 +739,11 @@ main, line 5: Unsupported target for indexed assignment
 
 
 [case testCastExpressions]
-from typing import Undefined, cast, Any
+from typing import cast, Any
 class A: pass
 class B: pass
 class C(A): pass
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+a, b, c = None, None, None # type: (A, B, C)
 
 a = cast(A, a())       # E: "A" not callable
 a = cast(Any, a())     # E: "A" not callable
@@ -758,8 +758,8 @@ b = cast(Any, a)
 [out]
 
 [case testAnyCast]
-from typing import Undefined, cast, Any
-a, b = Undefined, Undefined # type: (A, B)
+from typing import cast, Any
+a, b = None, None # type: (A, B)
 a = Any(a())     # Fail
 a = Any(b)
 b = Any(a)
@@ -774,8 +774,8 @@ main, line 3: "A" not callable
 
 
 [case testVoidTypeBasics]
-from typing import Undefined
-a, o = Undefined, Undefined # type: (A, object)
+
+a, o = None, None # type: (A, object)
 a = f()         # Fail
 o = A().g(a)    # Fail
 A().g(f())      # Fail
@@ -818,8 +818,8 @@ main: In function "g":
 main, line 10: "f" does not return a value
 
 [case testVoidWithExpressions]
-from typing import Undefined, cast
-a = Undefined # type: A
+from typing import cast
+a = None # type: A
 [f()]       # E: "f" does not return a value
 f() + a     # E: "f" does not return a value
 a + f()     # E: "f" does not return a value
@@ -834,8 +834,8 @@ class A:
 [builtins fixtures/list.py]
 
 [case testVoidWithExpressions2]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, bool)
+
+a, b = None, None # type: (A, bool)
 a < f()    # E: Unsupported left operand type for < ("A")
 f() <= a   # E: "f" does not return a value
 f() in a   # E: Unsupported right operand type for in ("A")
@@ -857,8 +857,8 @@ class A:
 
 
 [case testGetSlice]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
+
+a, b = None, None # type: (A, B)
 a = a[1:2] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = a[1:]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = a[:2]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -875,8 +875,8 @@ class B: pass
 [builtins fixtures/slice.py]
 
 [case testSlicingWithInvalidBase]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a[1:2] # E: Invalid index type "slice" for "A"
 a[:]   # E: Invalid index type "slice" for "A"
 class A:
@@ -884,15 +884,15 @@ class A:
 [builtins fixtures/slice.py]
 
 [case testSlicingWithNonindexable]
-from typing import Undefined
-o = Undefined # type: object
+
+o = None # type: object
 o[1:2] # E: Value of type "object" is not indexable
 o[:]   # E: Value of type "object" is not indexable
 [builtins fixtures/slice.py]
 
 [case testNonIntSliceBounds]
-from typing import Undefined, Any
-a, o = Undefined, Undefined # type: (Any, object)
+from typing import Any
+a, o = None, None # type: (Any, object)
 a[o:1] # E: Slice index must be an integer or None
 a[1:o] # E: Slice index must be an integer or None
 a[o:]  # E: Slice index must be an integer or None
@@ -900,8 +900,8 @@ a[:o]  # E: Slice index must be an integer or None
 [builtins fixtures/slice.py]
 
 [case testNoneSliceBounds]
-from typing import Undefined, Any
-a = Undefined # type: Any
+from typing import Any
+a = None # type: Any
 a[None:1]
 a[1:None]
 a[None:]
@@ -914,8 +914,8 @@ a[:None]
 
 
 [case testStringInterpolationType]
-from typing import Undefined, Any
-i, f, s = Undefined, Undefined, Undefined # type: (int, float, str)
+from typing import Any
+i, f, s = None, None, None # type: (int, float, str)
 '%d' % i
 '%f' % f
 '%s' % s
@@ -924,8 +924,8 @@ i, f, s = Undefined, Undefined, Undefined # type: (int, float, str)
 [builtins fixtures/primitives.py]
 
 [case testStringInterpolationSAcceptsAnyType]
-from typing import Undefined, Any
-i, o, s = Undefined, Undefined, Undefined # type: (int, object, str)
+from typing import Any
+i, o, s = None, None, None # type: (int, object, str)
 '%s %s %s' % (i, o, s)
 [builtins fixtures/primitives.py]
 
@@ -940,8 +940,8 @@ t = 1, 's'
 [builtins fixtures/primitives.py]
 
 [case testStringInterpolationWithAnyType]
-from typing import Undefined, Any
-a = Undefined # type: Any
+from typing import Any
+a = None # type: Any
 '%d %d' % a
 [builtins fixtures/primitives.py]
 
@@ -1003,9 +1003,9 @@ a = Undefined # type: Any
 [builtins fixtures/dict.py]
 
 [case testStringInterpolationMappingDictTypes]
-from typing import Undefined, Any, Dict
-a = Undefined # type: Any
-ds, do, di = Undefined, Undefined, Undefined # type: Dict[str, int], Dict[object, int], Dict[int, int]
+from typing import Any, Dict
+a = None # type: Any
+ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
 '%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is Dict[Any, Any])
 '%()d' % a
 '%()d' % ds
@@ -1013,8 +1013,8 @@ ds, do, di = Undefined, Undefined, Undefined # type: Dict[str, int], Dict[object
 [builtins fixtures/dict.py]
 
 [case testStringInterpolationMappingInvalidDictTypes-skip]
-from typing import Undefined, Any, Dict
-di = Undefined # type: Dict[int, int]
+from typing import Any, Dict
+di = None # type: Dict[int, int]
 '%()d' % di  # E: Format requires a mapping (expression has type Dict[int, int], expected type for mapping is Dict[str, Any])
 [builtins fixtures/dict.py]
 
@@ -1056,8 +1056,8 @@ x = lambda: void() # type: typing.Callable[[], None]
 
 
 [case testSimpleListComprehension]
-from typing import Undefined, List
-a = Undefined # type: List[A]
+from typing import List
+a = None # type: List[A]
 a = [x for x in a]
 b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type List[A]
 class A: pass
@@ -1065,8 +1065,8 @@ class B: pass
 [builtins fixtures/for.py]
 
 [case testSimpleListComprehensionNestedTuples]
-from typing import Undefined, List
-l = Undefined # type: List[(A, (A, B))]
+from typing import List
+l = None # type: List[(A, (A, B))]
 a = [a2 for a1, (a2, b1) in l] # type: List[A]
 b = [a2 for a1, (a2, b1) in l] # type: List[B] # E: List comprehension has incompatible type List[A]
 class A: pass
@@ -1074,8 +1074,8 @@ class B: pass
 [builtins fixtures/for.py]
 
 [case testSimpleListComprehensionNestedTuples2]
-from typing import Undefined, List
-l = Undefined # type: List[(int, (int, str))]
+from typing import List
+l = None # type: List[(int, (int, str))]
 a = [f(d) for d, (i, s) in l]
 b = [f(s) for d, (i, s) in l] # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
@@ -1083,9 +1083,9 @@ def f(x: int): pass
 [builtins fixtures/for.py]
 
 [case testListComprehensionWithNonDirectMapping]
-from typing import Undefined, List
-a = Undefined # type: List[A]
-b = Undefined # type: List[B]
+from typing import List
+a = None # type: List[A]
+b = None # type: List[B]
 b = [f(x) for x in a]
 a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]
 ([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
@@ -1095,15 +1095,15 @@ def f(a: A) -> B: pass
 [builtins fixtures/for.py]
 
 [case testErrorInListComprehensionCondition]
-from typing import Undefined, List
-a = Undefined # type: List[A]
+from typing import List
+a = None # type: List[A]
 a = [x for x in a if x()] # E: "A" not callable
 class A: pass
 [builtins fixtures/for.py]
 
 [case testTypeInferenceOfListComprehension]
-from typing import Undefined, List
-a = Undefined # type: List[A]
+from typing import List
+a = None # type: List[A]
 o = [x for x in a] # type: List[object]
 class A: pass
 [builtins fixtures/for.py]
@@ -1114,8 +1114,8 @@ class A: pass
 
 
 [case testSimpleSetComprehension]
-from typing import Undefined, Set
-a = Undefined # type: Set[A]
+from typing import Set
+a = None # type: Set[A]
 a = {x for x in a}
 b = {x for x in a} # type: Set[B] # E: Set comprehension has incompatible type Set[A]
 class A: pass
@@ -1128,9 +1128,9 @@ class B: pass
 
 
 [case testSimpleDictionaryComprehension]
-from typing import Undefined, Dict, List, Tuple
-abd = Undefined # type: Dict[A, B]
-abl = Undefined # type: List[Tuple[A, B]]
+from typing import Dict, List, Tuple
+abd = None # type: Dict[A, B]
+abl = None # type: List[Tuple[A, B]]
 abd = {a: b for a, b in abl}
 x = {a: b for a, b in abl} # type: Dict[B, A]
 y = {a: b for a, b in abl} # type: A
@@ -1144,9 +1144,9 @@ main, line 6: Incompatible types in assignment (expression has type Dict[A, B], 
 
 
 [case testDictionaryComprehensionWithNonDirectMapping]
-from typing import Undefined, Dict, List, Tuple
-abd = Undefined # type: Dict[A, B]
-abl = Undefined # type: List[Tuple[A, B]]
+from typing import Dict, List, Tuple
+abd = None # type: Dict[A, B]
+abl = None # type: List[Tuple[A, B]]
 abd = {a: f(b) for a, b in abl}
 class A: pass
 class B: pass
@@ -1163,12 +1163,12 @@ main, line 4: Value expression in dictionary comprehension has incompatible type
 
 
 [case testSimpleGeneratorExpression]
-from typing import Undefined, Iterator
+from typing import Iterator
 # The implementation is mostly identical to list comprehensions, so a single
 # test case is ok.
-a = Undefined # type: Iterator[int]
+a = None # type: Iterator[int]
 a = x for x in a
-b = Undefined # type: Iterator[str]
+b = None # type: Iterator[str]
 b = x for x in a # E: Generator has incompatible item type "int"
 [builtins fixtures/for.py]
 
@@ -1213,10 +1213,10 @@ x = ['x'] # E: List item 1 has incompatible type "str"
 
 
 [case testOperationsWithNonInstanceTypes]
-from typing import Undefined, cast
+from typing import cast
 class A:
     def __add__(self, a: 'A') -> 'A': pass
-a = Undefined # type: A
+a = None # type: A
 None + a   # Fail
 f + a      # Fail
 a + f      # Fail
@@ -1230,8 +1230,8 @@ main, line 6: Unsupported left operand type for + (Callable[[], None])
 main, line 7: Unsupported operand types for + ("A" and Callable[[], None])
 
 [case testOperatorMethodWithInvalidArgCount]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a + a  # Fail
 
 class A:
@@ -1241,28 +1241,28 @@ class A:
 main, line 3: Too many arguments for "__add__" of "A"
 
 [case testOperatorMethodAsVar]
-from typing import Any, Undefined
+from typing import Any
 class A:
     def __init__(self, _add: Any) -> None:
         self.__add__ = _add
-a = Undefined # type: A
+a = None # type: A
 a + a
 [out]
 
 [case testOperatorMethodAsVar2]
-from typing import Undefined
+
 class A:
     def f(self, x: int) -> str: pass
     __add__ = f
-s = Undefined(str)
+s = None  # type: str
 s = A() + 1
 A() + (A() + 1)
 [out]
 main, line 7: Argument 1 has incompatible type "str"; expected "int"
 
 [case testIndexedLvalueWithSubtypes]
-from typing import Undefined
-a, b, c = Undefined, Undefined, Undefined # type: (A, B, C)
+
+a, b, c = None, None, None # type: (A, B, C)
 a[c] = c
 a[b] = c
 a[c] = b
@@ -1282,8 +1282,8 @@ class C(B):
 
 
 [case testEllipsis]
-from typing import Undefined
-a = Undefined  # type: A
+
+a = None # type: A
 a = ...  # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "A")
 b = ...
 c = ...

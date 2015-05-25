@@ -6,14 +6,14 @@
 
 
 [case testAbstractClassSubclasses]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
-i = Undefined # type: I
-j = Undefined # type: J
-a = Undefined # type: A
-b = Undefined # type: B
-c = Undefined # type: C
+i = None # type: I
+j = None # type: J
+a = None # type: A
+b = None # type: B
+c = None # type: C
 
 j = c  # E: Incompatible types in assignment (expression has type "C", variable has type "J")
 a = i  # E: Incompatible types in assignment (expression has type "I", variable has type "A")
@@ -38,13 +38,13 @@ class B(A): pass
 class C(I): pass
 
 [case testAbstractClassSubtypingViaExtension]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
-i = Undefined # type: I
-j = Undefined # type: J
-a = Undefined # type: A
-o = Undefined # type: object
+i = None # type: I
+j = None # type: J
+a = None # type: A
+o = None # type: object
 
 j = i # E: Incompatible types in assignment (expression has type "I", variable has type "J")
 a = i # E: Incompatible types in assignment (expression has type "I", variable has type "A")
@@ -65,12 +65,12 @@ class J(I): pass
 class A(J): pass
 
 [case testInheritingAbstractClassInSubclass]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
-i = Undefined # type: I
-a = Undefined # type: A
-b = Undefined # type: B
+i = None # type: I
+a = None # type: A
+b = None # type: B
 
 i = a # E: Incompatible types in assignment (expression has type "A", variable has type "I")
 b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -90,11 +90,11 @@ class B(A, I): pass
 
 
 [case testAbstractClassAsTypeObject]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
-o = Undefined # type: object
-t = Undefined # type: type
+o = None # type: object
+t = None # type: type
 
 o = I
 t = I
@@ -104,7 +104,7 @@ class I(metaclass=ABCMeta):
   def f(self): pass
 
 [case testAbstractClassInCasts]
-from typing import Undefined, cast
+from typing import cast
 from abc import abstractmethod, ABCMeta
 
 class I(metaclass=ABCMeta):
@@ -113,8 +113,8 @@ class I(metaclass=ABCMeta):
 class A(I): pass
 class B: pass
 
-i, a, b = Undefined, Undefined, Undefined # type: (I, A, B)
-o = Undefined # type: object
+i, a, b = None, None, None # type: (I, A, B)
+o = None # type: object
 
 a = cast(I, o) # E: Incompatible types in assignment (expression has type "I", variable has type "A")
 b = cast(B, i) # Ok; a subclass of B might inherit I
@@ -249,14 +249,14 @@ main, line 11: Return type of "h" incompatible with supertype "I"
 
 
 [case testAccessingAbstractMethod]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
 class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self, a: int) -> str: pass
 
-i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
+i, a, b = None, None, None # type: (I, int, str)
 
 a = i.f(a) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
@@ -265,7 +265,7 @@ i.g()      # E: "I" has no attribute "g"
 b = i.f(a)
 
 [case testAccessingInheritedAbstractMethod]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
 class J(metaclass=ABCMeta):
@@ -273,7 +273,7 @@ class J(metaclass=ABCMeta):
     def f(self, a: int) -> str: pass
 class I(J): pass
 
-i, a, b = Undefined, Undefined, Undefined # type: (I, int, str)
+i, a, b = None, None, None # type: (I, int, str)
 
 a = i.f(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 b = i.f(1)
@@ -343,7 +343,7 @@ class C(A, B):
   def h(self) -> None: pass
 
 [case testMemberAccessWithMultipleAbstractBaseClasses]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
 class A(metaclass=ABCMeta):
@@ -353,14 +353,14 @@ class B(metaclass=ABCMeta):
     @abstractmethod
     def g(self) -> None: pass
 class C(A, B): pass
-x = Undefined # type: C
+x = None # type: C
 x.f()
 x.g()
 x.f(x) # E: Too many arguments for "f" of "A"
 x.g(x) # E: Too many arguments for "g" of "B"
 
 [case testInstantiatingAbstractClassWithMultipleBaseClasses]
-from typing import Undefined
+
 from abc import abstractmethod, ABCMeta
 
 class A(metaclass=ABCMeta):

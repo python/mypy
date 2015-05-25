@@ -2,9 +2,9 @@
 [out]
 
 [case testAssignmentAndVarDef]
-from typing import Undefined
-a = Undefined # type: A
-b = Undefined # type: B
+
+a = None # type: A
+b = None # type: B
 a = a
 a = b # Fail
 class A: pass
@@ -13,8 +13,8 @@ class B: pass
 main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testConstructionAndAssignment]
-from typing import Undefined
-x = Undefined # type: A
+
+x = None # type: A
 x = A()
 x = B()
 class A:
@@ -25,8 +25,8 @@ class B:
 main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInheritInitFromObject]
-from typing import Undefined
-x = Undefined # type: A
+
+x = None # type: A
 x = A()
 x = B()
 class A(object): pass
@@ -35,9 +35,9 @@ class B(object): pass
 main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testImplicitInheritInitFromObject]
-from typing import Undefined
-x = Undefined # type: A
-o = Undefined # type: object
+
+x = None # type: A
+o = None # type: object
 x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 x = A()
 o = x
@@ -69,8 +69,8 @@ class B(A): pass
 main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testDeclaredVariableInParentheses]
-from typing import Undefined
-(x) = Undefined # type: int
+
+(x) = None # type: int
 x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 x = 1
 
@@ -122,10 +122,10 @@ main, line 4: Too many arguments for "f"
 
 
 [case testLocalVariables]
-from typing import Undefined
+
 def f() -> None:
-  x = Undefined # type: A
-  y = Undefined # type: B
+  x = None # type: A
+  y = None # type: B
   x = x
   x = y # Fail
 class A: pass
@@ -135,12 +135,12 @@ main: In function "f":
 main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableScope]
-from typing import Undefined
+
 def f() -> None:
-  x = Undefined # type: A
+  x = None # type: A
   x = A()
 def g() -> None:
-  x = Undefined # type: B
+  x = None # type: B
   x = A() # Fail
 class A: pass
 class B: pass
@@ -235,12 +235,12 @@ class A: pass
 
 
 [case testLocalVariableShadowing]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a = B()       # Fail
 a = A()
 def f() -> None:
-  a = Undefined # type: B
+  a = None # type: B
   a = A()     # Fail
   a = B()
 a = B()       # Fail
@@ -256,10 +256,10 @@ main: At top level:
 main, line 9: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
-from typing import Undefined
+
 class A: pass
 while A:
-    a = Undefined # type: A
+    a = None # type: A
     a = A()
     a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
@@ -269,34 +269,30 @@ while A:
 
 
 [case testDeclareGlobalUsingUndefindWithArgument]
-from typing import Undefined
-a = Undefined(int)
+
+a = None  # type: int
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDeclareGlobalUsingUndefindWithAnyArgument]
-from typing import Undefined, Any
-a = Undefined(Any)
+from typing import Any
+a = None  # type: Any
 a = 1
 a = ''
 a = None
 
 [case testDeclareLocalUsingUndefinedWithArgument]
-from typing import Undefined
+
 def f() -> None:
-    a = Undefined(int)
+    a = None  # type: int
     a = 1
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: In function "f":
 
-[case testDeclareTypeUsingUndefinedAndComment]
-from typing import Undefined
-x = Undefined(int) # type: str # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-
 [case testDeclareMultipleVarsUsingUndefinedWithArgument]
-from typing import Undefined
-x = y = Undefined(int)
+
+x = y = None  # type: int
 x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 x = 1
