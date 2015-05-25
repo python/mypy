@@ -38,8 +38,8 @@ from random import Random as _Random
 
 from typing import (
     Any as _Any, Callable as _Callable, Iterator as _Iterator,
-    Undefined as _Undefined, List as _List, Tuple as _Tuple, Dict as _Dict,
-    Iterable as _Iterable, IO as _IO, cast as _cast,
+    List as _List, Tuple as _Tuple, Dict as _Dict, Iterable as _Iterable,
+    IO as _IO, cast as _cast,
 )
 from types import TracebackType as _TracebackType
 
@@ -502,7 +502,7 @@ class SpooledTemporaryFile:
     when a fileno is needed.
     """
     _rolled = False
-    _file = _Undefined # type: _Any   # BytesIO, StringIO or TemporaryFile
+    _file = None  # type: _Any   # BytesIO, StringIO or TemporaryFile
 
     def __init__(self, max_size: int = 0, mode: str = 'w+b',
                  buffering: int = -1, encoding: str = None,

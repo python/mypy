@@ -348,8 +348,8 @@ import warnings
 import errno
 
 from typing import (
-    Any, Tuple, List, Sequence, Undefined, Callable, Mapping, cast, Set, Dict,
-    IO, TextIO, AnyStr
+    Any, Tuple, List, Sequence, Callable, Mapping, cast, Set, Dict, IO,
+    TextIO, AnyStr
 )
 from types import TracebackType
 

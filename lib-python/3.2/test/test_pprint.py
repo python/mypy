@@ -6,7 +6,7 @@ import random
 import collections
 import itertools
 
-from typing import List, Any, Dict, Tuple, cast, Undefined, Callable
+from typing import List, Any, Dict, Tuple, cast, Callable
 
 # list, tuple and dict subclasses that do or don't overwrite __repr__
 class list2(list):
@@ -457,8 +457,7 @@ class QueryTestCase(unittest.TestCase):
         keys = [Unorderable() for i in range(n)]
         random.shuffle(keys)
         skeys = sorted(keys, key=id)
-        clean = Undefined(Callable[[str], str])
-        clean = lambda s: s.replace(' ', '').replace('\n','')
+        clean = lambda s: s.replace(' ', '').replace('\n','')  # type: Callable[[str], str]
 
         self.assertEqual(clean(pprint.pformat(set(keys))),
             '{' + ','.join(map(repr, skeys)) + '}')

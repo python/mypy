@@ -9,7 +9,7 @@ from random import randrange, shuffle
 import sys
 import warnings
 import collections
-from typing import Set, Any, Undefined
+from typing import Set, Any
 
 class PassThru(Exception):
     pass
@@ -1683,7 +1683,7 @@ class TestVariousIteratorArgs(unittest.TestCase):
                 self.assertRaises(TypeError, getattr(set('january'), methname), N(data))
                 self.assertRaises(ZeroDivisionError, getattr(set('january'), methname), E(data))
 
-be_bad = set2 = dict2 = Undefined(Any)
+be_bad = set2 = dict2 = None  # type: Any
 
 class bad_eq:
     def __eq__(self, other):
