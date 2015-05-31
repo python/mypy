@@ -1024,30 +1024,12 @@ class SemanticAnalyzer(NodeVisitor):
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        if not isinstance(s.rvalue, CallExpr):
-            return
-        call = cast(CallExpr, s.rvalue)
-        if not isinstance(call.callee, RefExpr):
-            return
-        callee = cast(RefExpr, call.callee)
-        if callee.fullname != 'typing.TypeVar':
-            return
-        # TODO Share code with check_argument_count in checkexpr.py?
-        if len(call.args) < 1:
-            self.fail("Too few arguments for TypeVar()", s)
+        call = self.get_typevar_declaration(s)
+        if not call:
             return
 
-        # Type var name
-        if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
-            self.fail("TypeVar() expects a string literal as first argument", s)
-            return
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
-        if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected TypeVar() argument value", s)
-            return
         if not lvalue.is_def:
             if s.type:
                 self.fail("Cannot declare the type of a type variable", s)
@@ -1055,65 +1037,19 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return
 
-        # Contraining types
-        n_values = call.arg_kinds[1:].count(ARG_POS)
-        if n_values > 0:
-            # Analyze enumeration of type variable values.
-            values = self.analyze_types(call.args[1:1+n_values])
-        else:
-            # Type variables can refer to an arbitrary type.
-            values = []
-
-        # Parameters
-        covariant = False
-        contravariant = False
-        for param_value, param_name, param_kind in zip(call.args[1+n_values:],
-                                                       call.arg_names[1+n_values:],
-                                                       call.arg_kinds[1+n_values:]):
-            if not param_kind == ARG_NAMED:
-                self.fail("Unexpected argument to TypeVar()", s)
-                return
-            if param_name == 'covariant':
-                if isinstance(param_value, NameExpr):
-                    if param_value.name == 'True':
-                        covariant = True
-                    else:
-                        self.fail("TypeVar 'covariant' may only be 'True'", s)
-                        return
-                else:
-                    self.fail("TypeVar 'covariant' may only be 'True'", s)
-                    return
-            elif param_name == 'contravariant':
-                if isinstance(param_value, NameExpr):
-                    if param_value.name == 'True':
-                        contravariant = True
-                    else:
-                        self.fail("TypeVar 'contravariant' may only be 'True'", s)
-                        return
-                else:
-                    self.fail("TypeVar 'contravariant' may only be 'True'", s)
-                    return
-            elif param_name == 'bound':
-                self.fail("TypeVar 'bound' argument not supported yet.", s)
-                return
-            elif param_name == 'values':
-                # Probably using obsolete syntax with values=(...). Explain the current syntax.
-                self.fail("TypeVar 'values' argument not supported", s)
-                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
-                          s)
-                return
-            else:
-                self.fail("Unexpected argument to TypeVar(): {}".format(param_name), s)
-                return
-        if covariant and contravariant:
-            self.fail("TypeVar cannot be both covariant and contravariant.", s)
+        if not self.check_typevar_name(call, name, s):
             return
-        elif covariant:
-            variance = COVARIANT
-        elif contravariant:
-            variance = CONTRAVARIANT
-        else:
-            variance = INVARIANT
+
+        # Constraining types
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        values = self.analyze_types(call.args[1:1+n_values])
+
+        variance = self.process_typevar_parameters(call.args[1+n_values:],
+                                                   call.arg_names[1+n_values:],
+                                                   call.arg_kinds[1+n_values:],
+                                                   s)
+        if variance is None:
+            return
 
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
@@ -1122,6 +1058,86 @@ class SemanticAnalyzer(NodeVisitor):
         TypeVar.line = call.line
         call.analyzed = TypeVar
         node.node = TypeVar
+
+    def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
+        if len(call.args) < 1:
+            self.fail("Too few arguments for TypeVar()", context)
+            return False
+        if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
+            self.fail("TypeVar() expects a string literal as first argument", context)
+            return False
+        if cast(StrExpr, call.args[0]).value != name:
+            self.fail("Unexpected TypeVar() argument value", context)
+            return False
+        return True
+
+    def get_typevar_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
+        """ Returns the TypeVar() call expression if `s` is a type var declaration
+        or None otherwise.
+        """
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return None
+        if not isinstance(s.rvalue, CallExpr):
+            return None
+        call = cast(CallExpr, s.rvalue)
+        if not isinstance(call.callee, RefExpr):
+            return None
+        callee = cast(RefExpr, call.callee)
+        if callee.fullname != 'typing.TypeVar':
+            return None
+        return call
+
+    def process_typevar_parameters(self, args: List[Node],
+                                   names: List[Optional[str]],
+                                   kinds: List[int],
+                                   context: Context) -> Optional[int]:
+        covariant = False
+        contravariant = False
+        for param_value, param_name, param_kind in zip(args, names, kinds):
+            if not param_kind == ARG_NAMED:
+                self.fail("Unexpected argument to TypeVar()", context)
+                return None
+            if param_name == 'covariant':
+                if isinstance(param_value, NameExpr):
+                    if param_value.name == 'True':
+                        covariant = True
+                    else:
+                        self.fail("TypeVar 'covariant' may only be 'True'", context)
+                        return None
+                else:
+                    self.fail("TypeVar 'covariant' may only be 'True'", context)
+                    return None
+            elif param_name == 'contravariant':
+                if isinstance(param_value, NameExpr):
+                    if param_value.name == 'True':
+                        contravariant = True
+                    else:
+                        self.fail("TypeVar 'contravariant' may only be 'True'", context)
+                        return None
+                else:
+                    self.fail("TypeVar 'contravariant' may only be 'True'", context)
+                    return None
+            elif param_name == 'bound':
+                self.fail("TypeVar 'bound' argument not supported yet.", context)
+                return None
+            elif param_name == 'values':
+                # Probably using obsolete syntax with values=(...). Explain the current syntax.
+                self.fail("TypeVar 'values' argument not supported", context)
+                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
+                          context)
+                return None
+            else:
+                self.fail("Unexpected argument to TypeVar(): {}".format(param_name), context)
+                return None
+        if covariant and contravariant:
+            self.fail("TypeVar cannot be both covariant and contravariant.", context)
+            return None
+        elif covariant:
+            return COVARIANT
+        elif contravariant:
+            return CONTRAVARIANT
+        else:
+            return INVARIANT
 
     def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
