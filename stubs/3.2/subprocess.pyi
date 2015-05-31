@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/subprocess.html
 
-from typing import Sequence, Any, Mapping, Undefined, Callable, Tuple, IO
+from typing import Sequence, Any, Mapping, Callable, Tuple, IO
 
 # TODO force keyword arguments
 # TODO more keyword arguments
@@ -19,8 +19,8 @@ def check_output(args: Sequence[str], *, stdin: Any = None, stderr: Any = None,
                  env: Mapping[str, str] = None) -> Any: pass
 
 # TODO types
-PIPE = Undefined(Any)
-STDOUT = Undefined(Any)
+PIPE = ... # type: Any
+STDOUT = ... # type: Any
 
 class CalledProcessError(Exception):
     returncode = 0
@@ -28,9 +28,9 @@ class CalledProcessError(Exception):
     output = b'' # May be None
 
 class Popen:
-    stdin = Undefined(IO[Any])
-    stdout = Undefined(IO[Any])
-    stderr = Undefined(IO[Any])
+    stdin = ... # type: IO[Any]
+    stdout = ... # type: IO[Any]
+    stderr = ... # type: IO[Any]
     pid = 0
     returncode = 0
 

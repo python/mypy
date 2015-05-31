@@ -1,5 +1,5 @@
 # Stubs for urllib.parse
-from typing import List, Dict, Tuple, AnyStr, Undefined, Generic, overload, Sequence, Mapping
+from typing import List, Dict, Tuple, AnyStr, Generic, overload, Sequence, Mapping
 
 __all__ = (
     'urlparse',
@@ -32,10 +32,10 @@ class _ResultMixinBytes(_ResultMixinBase[str]):
 
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
-    username = Undefined(AnyStr)
-    password = Undefined(AnyStr)
-    hostname = Undefined(AnyStr)
-    port = Undefined(int)
+    username = ... # type: AnyStr
+    password = ... # type: AnyStr
+    hostname = ... # type: AnyStr
+    port = ... # type: int
 
 class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): pass
 
@@ -43,23 +43,23 @@ class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): pass
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[str], _ResultMixinBytes): pass
 
 class _DefragResultBase(tuple, Generic[AnyStr]):
-    url = Undefined(AnyStr)
-    fragment = Undefined(AnyStr)
+    url = ... # type: AnyStr
+    fragment = ... # type: AnyStr
 
 class _SplitResultBase(tuple, Generic[AnyStr]):
-    scheme = Undefined(AnyStr)
-    netloc = Undefined(AnyStr)
-    path = Undefined(AnyStr)
-    query = Undefined(AnyStr)
-    fragment = Undefined(AnyStr)
+    scheme = ... # type: AnyStr
+    netloc = ... # type: AnyStr
+    path = ... # type: AnyStr
+    query = ... # type: AnyStr
+    fragment = ... # type: AnyStr
 
 class _ParseResultBase(tuple, Generic[AnyStr]):
-    scheme = Undefined(AnyStr)
-    netloc = Undefined(AnyStr)
-    path = Undefined(AnyStr)
-    params = Undefined(AnyStr)
-    query = Undefined(AnyStr)
-    fragment = Undefined(AnyStr)
+    scheme = ... # type: AnyStr
+    netloc = ... # type: AnyStr
+    path = ... # type: AnyStr
+    params = ... # type: AnyStr
+    query = ... # type: AnyStr
+    fragment = ... # type: AnyStr
 
 # Structured result objects for string data
 class DefragResult(_DefragResultBase[str], _ResultMixinStr): pass

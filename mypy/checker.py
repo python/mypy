@@ -15,7 +15,7 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
+    Decorator, SetExpr, PassStmt, TypeVarExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr,
@@ -1004,13 +1004,9 @@ class TypeChecker(NodeVisitor[Type]):
         if not msg:
             msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
 
-        # First handle case where rvalue is of form Undefined, ...
-        rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
-        undefined_rvalue = True
-        if not rvalue_type:
-            # Infer the type of an ordinary rvalue expression.
-            rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
-            undefined_rvalue = False
+        # Infer the type of an ordinary rvalue expression.
+        rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
+        undefined_rvalue = False
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -1243,13 +1239,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
                                 context: Node,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
-        """Checks the assignment of rvalue to a lvalue of type lvalue_type."""
-        if refers_to_fullname(rvalue, 'typing.Undefined'):
-            # The rvalue is just 'Undefined'; this is always valid.
-            # Infer the type of 'Undefined' from the lvalue type.
-            self.store_type(rvalue, lvalue_type)
-            return None
-        elif self.is_stub and isinstance(rvalue, EllipsisNode):
+        if self.is_stub and isinstance(rvalue, EllipsisNode):
             # '...' is always a valid initializer in a stub.
             return AnyType()
         else:
@@ -1797,9 +1787,6 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         return self.expr_checker.visit_dictionary_comprehension(e)
 
-    def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
-        return self.expr_checker.visit_undefined_expr(e)
-
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type
 
@@ -1979,21 +1966,6 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     # in inst_type they are interpreted in subtype context. This works even if
     # the names of type variables in supertype and subtype overlap.
     return expand_type_by_instance(typ, inst_type)
-
-
-def get_undefined_tuple(rvalue: Node, tuple_type: Instance) -> Type:
-    """Get tuple type corresponding to a tuple of Undefined values.
-
-    The type is Tuple[Any, ...]. If rvalue is not of the right form, return
-    None.
-    """
-    if isinstance(rvalue, TupleExpr):
-        for item in rvalue.items:
-            if not refers_to_fullname(item, 'typing.Undefined'):
-                break
-        else:
-            return TupleType([AnyType()] * len(rvalue.items), tuple_type)
-    return None
 
 
 def find_isinstance_check(node: Node,

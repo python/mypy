@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Undefined, Any
+from typing import Any
 
 class LockType:
     def acquire(self) -> None: pass

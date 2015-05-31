@@ -54,7 +54,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
@@ -829,7 +829,6 @@ class SemanticAnalyzer(NodeVisitor):
         if s.type:
             s.type = self.anal_type(s.type)
         else:
-            s.type = self.infer_type_from_undefined(s.rvalue)
             # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
@@ -995,13 +994,6 @@ class SemanticAnalyzer(NodeVisitor):
     def check_lvalue_validity(self, node: Node, ctx: Context) -> None:
         if isinstance(node, (FuncDef, TypeInfo, TypeVarExpr)):
             self.fail('Invalid assignment target', ctx)
-
-    def infer_type_from_undefined(self, rvalue: Node) -> Type:
-        if isinstance(rvalue, CallExpr):
-            if isinstance(rvalue.analyzed, UndefinedExpr):
-                undef = cast(UndefinedExpr, rvalue.analyzed)
-                return undef.type
-        return None
 
     def store_declared_types(self, lvalue: Node, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
@@ -1484,7 +1476,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Analyze a call expression.
 
         Some call expressions are recognized as special forms, including
-        cast(...), Undefined(...) and Any(...).
+        cast(...) and Any(...).
         """
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
@@ -1507,18 +1499,6 @@ class SemanticAnalyzer(NodeVisitor):
             if not self.check_fixed_args(expr, 1, 'Any'):
                 return
             expr.analyzed = CastExpr(expr.args[0], AnyType())
-            expr.analyzed.line = expr.line
-            expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'typing.Undefined'):
-            # Special form Undefined(...).
-            if not self.check_fixed_args(expr, 1, 'Undefined'):
-                return
-            try:
-                type = expr_to_unanalyzed_type(expr.args[0])
-            except TypeTranslationError:
-                self.fail('Argument to Undefined is not a type', expr)
-                return
-            expr.analyzed = UndefinedExpr(type)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing._promote'):
@@ -1631,9 +1611,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
-        expr.type = self.anal_type(expr.type)
-
-    def visit_undefined_expr(self, expr: UndefinedExpr) -> None:
         expr.type = self.anal_type(expr.type)
 
     def visit_type_application(self, expr: TypeApplication) -> None:
@@ -2013,9 +1990,6 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
         super().visit_assignment_stmt(s)
-
-    def visit_undefined_expr(self, e: UndefinedExpr) -> None:
-        self.analyze(e.type)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
         self.analyze(e.type)

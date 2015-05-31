@@ -2,7 +2,7 @@
 
 # NOTE: These are incomplete!
 
-from typing import Optional, SupportsAbs, Tuple, Undefined, Union, overload
+from typing import Optional, SupportsAbs, Tuple, Union, overload
 
 MINYEAR = 0
 MAXYEAR = 0
@@ -14,9 +14,9 @@ class tzinfo:
     def fromutc(self, dt: datetime) -> datetime: pass
 
 class timezone(tzinfo):
-    utc = Undefined(tzinfo)
-    min = Undefined(tzinfo)
-    max = Undefined(tzinfo)
+    utc = ...  # type: tzinfo
+    min = ...  # type: tzinfo
+    max = ...  # type: tzinfo
 
     def __init__(self, offset: timedelta, name: str = '') -> None: pass
     def __hash__(self) -> int: pass
@@ -25,9 +25,9 @@ _tzinfo = tzinfo
 _timezone = timezone
 
 class date:
-    min = Undefined(date)
-    max = Undefined(date)
-    resolution = Undefined(timedelta)
+    min = ...  # type: date
+    max = ...  # type: date
+    resolution = ...  # type: timedelta
 
     def __init__(self, year: int, month: int = None, day: int = None) -> None: pass
 
@@ -67,9 +67,9 @@ class date:
     def isocalendar(self) -> Tuple[int, int, int]: pass
 
 class time:
-    min = Undefined(time)
-    max = Undefined(time)
-    resolution = Undefined(timedelta)
+    min = ...  # type: time
+    max = ...  # type: time
+    resolution = ...  # type: timedelta
 
     def __init__(self, hour: int = 0, minute: int = 0, second: int = 0, microsecond: int = 0,
                  tzinfo: tzinfo = None) -> None: pass
@@ -103,9 +103,9 @@ _date = date
 _time = time
 
 class timedelta(SupportsAbs[timedelta]):
-    min = Undefined(timedelta)
-    max = Undefined(timedelta)
-    resolution = Undefined(timedelta)
+    min = ...  # type: timedelta
+    max = ...  # type: timedelta
+    resolution = ...  # type: timedelta
 
     def __init__(self, days: int = 0, seconds: int = 0, microseconds: int = 0,
                  milliseconds: int = 0, minutes: int = 0, hours: int = 0,
@@ -147,9 +147,9 @@ class timedelta(SupportsAbs[timedelta]):
 
 class datetime:
     # TODO: Is a subclass of date, but this would make some types incompatible.
-    min = Undefined(datetime)
-    max = Undefined(datetime)
-    resolution = Undefined(timedelta)
+    min = ...  # type: datetime
+    max = ...  # type: datetime
+    resolution = ...  # type: timedelta
 
     def __init__(self, year: int, month: int = None, day: int = None, hour: int = None,
                  minute: int = None, second: int = None, microseconds: int = None,

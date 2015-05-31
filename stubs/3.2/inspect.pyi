@@ -1,6 +1,6 @@
 # Stubs for inspect
 
-from typing import Undefined, Any, Tuple, List, Callable
+from typing import Any, Tuple, List, Callable
 
 _object = object
 
@@ -10,10 +10,10 @@ def isclass(obj: object) -> bool: pass
 
 # namedtuple('Attribute', 'name kind defining_class object')
 class Attribute(tuple):
-    name = Undefined(str)
-    kind = Undefined(str)
-    defining_class = Undefined(type)
-    object = Undefined(_object)
+    name = ...  # type: str
+    kind = ...  # type: str
+    defining_class = ...  # type: type
+    object = ...  # type: _object
 
 def classify_class_attrs(cls: type) -> List[Attribute]: pass
 
@@ -23,9 +23,9 @@ def getsourcelines(obj: object) -> Tuple[List[str], int]: pass
 
 # namedtuple('ArgSpec', 'args varargs keywords defaults')
 class ArgSpec(tuple):
-    args = Undefined(List[str])
-    varargs = Undefined(str)
-    keywords = Undefined(str)
-    defaults = Undefined(tuple)
+    args = ...  # type: List[str]
+    varargs = ...  # type: str
+    keywords = ...  # type: str
+    defaults = ...  # type: tuple
 
 def getargspec(func: object) -> ArgSpec: pass

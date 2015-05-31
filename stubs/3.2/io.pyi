@@ -2,17 +2,15 @@
 
 # Based on http://docs.python.org/3.2/library/io.html
 
-DEFAULT_BUFFER_SIZE = 0
-
-from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Undefined, Any
+from typing import List, BinaryIO, TextIO, IO, overload, Iterator, Iterable, Any
 import builtins
 import codecs
 import _io
 
-DEFAULT_BUFFER_SIZE = Undefined(int)
-SEEK_SET = Undefined(int)
-SEEK_CUR = Undefined(int)
-SEEK_END = Undefined(int)
+DEFAULT_BUFFER_SIZE = 0  # type: int
+SEEK_SET = ...  # type: int
+SEEK_CUR = ...  # type: int
+SEEK_END = ...  # type: int
 
 open = builtins.open
 
@@ -20,7 +18,7 @@ class BlockingIOError(OSError): pass
 class UnsupportedOperation(ValueError, OSError): pass
 
 class IncrementalNewlineDecoder(codecs.IncrementalDecoder):
-    newlines = Undefined(Any)
+    newlines = ...  # type: Any
     def __init__(self, *args, **kwargs): pass
     def decode(self, input, final=False): pass
     def getstate(self): pass
@@ -33,34 +31,34 @@ class BufferedIOBase(_io._BufferedIOBase, IOBase): pass
 class TextIOBase(_io._TextIOBase, IOBase): pass
 
 class FileIO(_io._RawIOBase):
-    closefd = Undefined(Any)
-    mode = Undefined(Any)
-    def __init__(self, name, mode=Undefined, closefd=Undefined, opener=Undefined): pass
+    closefd = ...  # type: Any
+    mode = ...  # type: Any
+    def __init__(self, name, mode=..., closefd=..., opener=...): pass
     def readinto(self, b): pass
     def write(self, b): pass
 
 class BufferedReader(_io._BufferedIOBase):
-    mode = Undefined(Any)
-    name = Undefined(Any)
-    raw = Undefined(Any)
-    def __init__(self, raw, buffer_size=Undefined): pass
+    mode = ...  # type: Any
+    name = ...  # type: Any
+    raw = ...  # type: Any
+    def __init__(self, raw, buffer_size=...): pass
     def peek(self, size: int = -1): pass
 
 class BufferedWriter(_io._BufferedIOBase):
-    mode = Undefined(Any)
-    name = Undefined(Any)
-    raw = Undefined(Any)
-    def __init__(self, raw, buffer_size=Undefined): pass
+    mode = ...  # type: Any
+    name = ...  # type: Any
+    raw = ...  # type: Any
+    def __init__(self, raw, buffer_size=...): pass
 
 class BufferedRWPair(_io._BufferedIOBase):
-    def __init__(self, reader, writer, buffer_size=Undefined): pass
+    def __init__(self, reader, writer, buffer_size=...): pass
     def peek(self, size: int = -1): pass
 
 class BufferedRandom(_io._BufferedIOBase):
-    mode = Undefined(Any)
-    name = Undefined(Any)
-    raw = Undefined(Any)
-    def __init__(self, raw, buffer_size=Undefined): pass
+    mode = ...  # type: Any
+    name = ...  # type: Any
+    raw = ...  # type: Any
+    def __init__(self, raw, buffer_size=...): pass
     def peek(self, size: int = -1): pass
 
 class BytesIO(BinaryIO):

@@ -6,7 +6,7 @@
 # and http://hg.python.org/cpython/file/618ea5612e83/Lib/re.py
 
 from typing import (
-    Undefined, List, Iterator, Callable, Tuple, Sequence, Dict, Union,
+    List, Iterator, Callable, Tuple, Sequence, Dict, Union,
     Generic, AnyStr, Match, Pattern
 )
 

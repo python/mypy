@@ -5,7 +5,7 @@
 # based on: http://docs.python.org/2.7/library/re.html
 
 from typing import (
-    Undefined, List, Iterator, overload, Callable, Tuple, Sequence, Dict,
+    List, Iterator, overload, Callable, Tuple, Sequence, Dict,
     Generic, AnyStr, Match, Pattern
 )
 

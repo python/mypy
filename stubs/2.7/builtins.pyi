@@ -1,7 +1,7 @@
 # Stubs for builtins (Python 2.7)
 
 from typing import (
-    Undefined, TypeVar, Iterator, Iterable, overload,
+    TypeVar, Iterator, Iterable, overload,
     Sequence, Mapping, Tuple, List, Any, Dict, Callable, Generic, Set,
     AbstractSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, BinaryIO, Union, AnyStr
@@ -23,7 +23,7 @@ property = object()
 
 class object:
     __doc__ = ''
-    __class__ = Undefined # type: type
+    __class__ = None # type: type
 
     def __init__(self) -> None: pass
     def __eq__(self, o: object) -> bool: pass
@@ -35,7 +35,7 @@ class object:
 class type:
     __name__ = ''
     __module__ = ''
-    __dict__ = Undefined # type: Dict[unicode, Any]
+    __dict__ = None # type: Dict[unicode, Any]
 
     def __init__(self, o: object) -> None: pass
     # TODO: __new__ may have to be special and not a static method.
@@ -578,7 +578,7 @@ class list(Sequence[_T], Reversible[_T], Generic[_T]):
     def append(self, object: _T) -> None: pass
     def extend(self, iterable: Iterable[_T]) -> None: pass
     def pop(self, index: int = -1) -> _T: pass
-    def index(self, object: _T, start: int = 0, stop: int = Undefined(int)) -> int: pass
+    def index(self, object: _T, start: int = 0, stop: int = None) -> int: pass
     def count(self, object: _T) -> int: pass
     def insert(self, index: int, object: _T) -> None: pass
     def remove(self, object: _T) -> None: pass
@@ -709,16 +709,16 @@ class xrange(Sized, Iterable[int], Reversible[int]):
 class module:
     __name__ = ''
     __file__ = ''
-    __dict__ = Undefined # type: Dict[unicode, Any]
+    __dict__ = None # type: Dict[unicode, Any]
 
-True = Undefined # type: bool
-False = Undefined # type: bool
+True = None # type: bool
+False = None # type: bool
 __debug__ = False
 
 long = int
 bytes = str
 
-NotImplemented = Undefined  # type: Any
+NotImplemented = None  # type: Any
 
 def abs(n: SupportsAbs[_T]) -> _T: pass
 def all(i: Iterable) -> bool: pass
@@ -841,7 +841,7 @@ def __import__(name: unicode,
 # Exceptions
 
 class BaseException:
-    args = Undefined # type: Any
+    args = None # type: Any
     def __init__(self, *args: Any) -> None: pass
     def with_traceback(self, tb: Any) -> BaseException: pass
 

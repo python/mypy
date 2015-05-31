@@ -4,56 +4,56 @@
 # based on http://docs.python.org/3.2/library/sys.html
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, TextIO, overload, Optional
+    List, Sequence, Any, Dict, Tuple, TextIO, overload, Optional
 )
 from types import TracebackType
 
 # ----- sys variables -----
 abiflags = ''
-argv = Undefined(List[str])
+argv = ... # type: List[str]
 byteorder = ''
-builtin_module_names = Undefined(Sequence[str]) # actually a tuple of strings
+builtin_module_names = ... # type: Sequence[str] # actually a tuple of strings
 copyright = ''
 #dllhandle = 0  # Windows only
 dont_write_bytecode = False
-__displayhook__ = Undefined(Any) # contains the original value of displayhook
-__excepthook__ = Undefined(Any)  # contains the original value of excepthook
+__displayhook__ = ... # type: Any # contains the original value of displayhook
+__excepthook__ = ... # type: Any  # contains the original value of excepthook
 exec_prefix = ''
 executable = ''
 float_repr_style = ''
 hexversion = 0  # this is a 32-bit int
-last_type = Undefined(Any)
-last_value = Undefined(Any)
-last_traceback = Undefined(Any)
+last_type = ... # type: Any
+last_value = ... # type: Any
+last_traceback = ... # type: Any
 maxsize = 0
 maxunicode = 0
-meta_path = Undefined(List[Any])
-modules = Undefined(Dict[str, Any])
-path = Undefined(List[str])
-path_hooks = Undefined(List[Any]) # TODO precise type; function, path to finder
-path_importer_cache = Undefined(Dict[str, Any]) # TODO precise type
+meta_path = ... # type: List[Any]
+modules = ... # type: Dict[str, Any]
+path = ... # type: List[str]
+path_hooks = ... # type: List[Any] # TODO precise type; function, path to finder
+path_importer_cache = ... # type: Dict[str, Any] # TODO precise type
 platform = ''
 prefix = ''
 ps1 = ''
 ps2 = ''
-stdin = Undefined(TextIO)
-stdout = Undefined(TextIO)
-stderr = Undefined(TextIO)
-__stdin__ = Undefined(TextIO)
-__stdout__ = Undefined(TextIO)
-__stderr__ = Undefined(TextIO)
+stdin = ... # type: TextIO
+stdout = ... # type: TextIO
+stderr = ... # type: TextIO
+__stdin__ = ... # type: TextIO
+__stdout__ = ... # type: TextIO
+__stderr__ = ... # type: TextIO
 # deprecated and removed in Python 3.3:
-subversion = Undefined(Tuple[str, str, str])
+subversion = ... # type: Tuple[str, str, str]
 tracebacklimit = 0
 version = ''
 api_version = 0
-warnoptions = Undefined(Any)
+warnoptions = ... # type: Any
 #  Each entry is a tuple of the form (action, message, category, module,
 #    lineno)
 #winver = ''  # Windows only
-_xoptions = Undefined(Dict[Any, Any])
+_xoptions = ... # type: Dict[Any, Any]
 
-flags = Undefined(_flags)
+flags = ... # type: _flags
 class _flags:
     debug = 0
     division_warning = 0
@@ -69,7 +69,7 @@ class _flags:
     quiet = 0
     hash_randomization = 0
 
-float_info = Undefined(_float_info)
+float_info = ... # type: _float_info
 class _float_info:
     epsilon = 0.0   # DBL_EPSILON
     dig = 0         # DBL_DIG
@@ -83,7 +83,7 @@ class _float_info:
     radix = 0       # FLT_RADIX
     rounds = 0      # FLT_ROUNDS
 
-hash_info = Undefined(_hash_info)
+hash_info = ... # type: _hash_info
 class _hash_info:
     width = 0    # width in bits used for hash values
     modulus = 0  # prime modulus P used for numeric hash scheme
@@ -91,14 +91,14 @@ class _hash_info:
     nan = 0      # hash value returned for a nan
     imag = 0     # multiplier used for the imaginary part of a complex number
 
-int_info = Undefined(_int_info)
+int_info = ... # type: _int_info
 class _int_info:
     bits_per_digit = 0  # number of bits held in each digit. Python integers
                         # are stored internally in
                         # base 2**int_info.bits_per_digit
     sizeof_digit = 0    # size in bytes of C type used to represent a digit
 
-version_info = Undefined(_version_info)
+version_info = ... # type: _version_info
 class _version_info:
     major = 0
     minor = 0

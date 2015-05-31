@@ -8,7 +8,7 @@
 # Only a subset of functionality is included.
 
 from typing import (
-    Any, Callable, Iterable, Undefined, Tuple, List, TextIO, Sequence,
+    Any, Callable, Iterable, Tuple, List, TextIO, Sequence,
     overload, TypeVar, Pattern
 )
 from abc import abstractmethod, ABCMeta
@@ -27,8 +27,8 @@ class Testable(metaclass=ABCMeta):
 # TODO ABC for test runners?
 
 class TestResult:
-    errors = Undefined(List[Tuple[Testable, str]])
-    failures = Undefined(List[Tuple[Testable, str]])
+    errors = ... # type: List[Tuple[Testable, str]]
+    failures = ... # type: List[Tuple[Testable, str]]
     testsRun = 0
     shouldStop = False
 
@@ -43,18 +43,18 @@ class TestResult:
     def addSuccess(self, test: Testable) -> None: pass
 
 class _AssertRaisesBaseContext:
-    expected = Undefined(Any)
-    failureException = Undefined(type)
+    expected = ... # type: Any
+    failureException = ... # type: type
     obj_name = ''
-    expected_regex = Undefined(Pattern[str])
+    expected_regex = ... # type: Pattern[str]
 
 class _AssertRaisesContext(_AssertRaisesBaseContext):
-    exception = Undefined(Any) # TODO precise type
+    exception = ... # type: Any # TODO precise type
     def __enter__(self) -> _AssertRaisesContext: pass
     def __exit__(self, exc_type, exc_value, tb) -> bool: pass
 
 class _AssertWarnsContext(_AssertRaisesBaseContext):
-    warning = Undefined(Any) # TODO precise type
+    warning = ... # type: Any # TODO precise type
     filename = ''
     lineno = 0
     def __enter__(self) -> _AssertWarnsContext: pass

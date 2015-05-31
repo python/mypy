@@ -6,54 +6,54 @@
 # Partially adapted to Python 2.7 by Jukka Lehtosalo.
 
 from typing import (
-    Undefined, List, Sequence, Any, Dict, Tuple, BinaryIO, overload
+    List, Sequence, Any, Dict, Tuple, BinaryIO, overload
 )
 
 # ----- sys variables -----
 abiflags = ''
-argv = Undefined(List[str])
+argv = None  # type: List[str]
 byteorder = ''
-builtin_module_names = Undefined(Sequence[str]) # actually a tuple of strings
+builtin_module_names = None  # type: Sequence[str] # actually a tuple of strings
 copyright = ''
 #dllhandle = 0  # Windows only
 dont_write_bytecode = False
-__displayhook__ = Undefined(Any) # contains the original value of displayhook
-__excepthook__ = Undefined(Any)  # contains the original value of excepthook
+__displayhook__ = None  # type: Any # contains the original value of displayhook
+__excepthook__ = None  # type: Any  # contains the original value of excepthook
 exec_prefix = ''
 executable = ''
 float_repr_style = ''
 hexversion = 0  # this is a 32-bit int
-last_type = Undefined(Any)
-last_value = Undefined(Any)
-last_traceback = Undefined(Any)
+last_type = None  # type: Any
+last_value = None  # type: Any
+last_traceback = None  # type: Any
 maxsize = 0
 maxunicode = 0
-meta_path = Undefined(List[Any])
-modules = Undefined(Dict[str, Any])
-path = Undefined(List[str])
-path_hooks = Undefined(List[Any]) # TODO precise type; function, path to finder
-path_importer_cache = Undefined(Dict[str, Any]) # TODO precise type
+meta_path = None  # type: List[Any]
+modules = None  # type: Dict[str, Any]
+path = None  # type: List[str]
+path_hooks = None  # type: List[Any] # TODO precise type; function, path to finder
+path_importer_cache = None  # type: Dict[str, Any] # TODO precise type
 platform = ''
 prefix = ''
 ps1 = ''
 ps2 = ''
-stdin = Undefined(BinaryIO)
-stdout = Undefined(BinaryIO)
-stderr = Undefined(BinaryIO)
-__stdin__ = Undefined(BinaryIO)
-__stdout__ = Undefined(BinaryIO)
-__stderr__ = Undefined(BinaryIO)
-subversion = Undefined(Tuple[str, str, str])
+stdin = None  # type: BinaryIO
+stdout = None  # type: BinaryIO
+stderr = None  # type: BinaryIO
+__stdin__ = None  # type: BinaryIO
+__stdout__ = None  # type: BinaryIO
+__stderr__ = None  # type: BinaryIO
+subversion = None  # type: Tuple[str, str, str]
 tracebacklimit = 0
 version = ''
 api_version = 0
-warnoptions = Undefined(Any)
+warnoptions = None  # type: Any
 #  Each entry is a tuple of the form (action, message, category, module,
 #    lineno)
 #winver = ''  # Windows only
-_xoptions = Undefined(Dict[Any, Any])
+_xoptions = None  # type: Dict[Any, Any]
 
-flags = Undefined(_flags)
+flags = None  # type: _flags
 class _flags:
     debug = 0
     division_warning = 0
@@ -69,7 +69,7 @@ class _flags:
     quiet = 0
     hash_randomization = 0
 
-float_info = Undefined(_float_info)
+float_info = None  # type: _float_info
 class _float_info:
     epsilon = 0.0   # DBL_EPSILON
     dig = 0         # DBL_DIG
@@ -83,7 +83,7 @@ class _float_info:
     radix = 0       # FLT_RADIX
     rounds = 0      # FLT_ROUNDS
 
-hash_info = Undefined(_hash_info)
+hash_info = None  # type: _hash_info
 class _hash_info:
     width = 0    # width in bits used for hash values
     modulus = 0  # prime modulus P used for numeric hash scheme
@@ -91,14 +91,14 @@ class _hash_info:
     nan = 0      # hash value returned for a nan
     imag = 0     # multiplier used for the imaginary part of a complex number
 
-int_info = Undefined(_int_info)
+int_info = None  # type: _int_info
 class _int_info:
     bits_per_digit = 0  # number of bits held in each digit. Python integers
                         # are stored internally in
                         # base 2**int_info.bits_per_digit
     sizeof_digit = 0    # size in bytes of C type used to represent a digit
 
-version_info = Undefined(_version_info)
+version_info = None  # type: _version_info
 class _version_info:
     major = 0
     minor = 0

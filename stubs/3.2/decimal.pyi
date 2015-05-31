@@ -1,28 +1,28 @@
 # Stubs for decimal (Python 3.4)
 
 from typing import (
-    Any, Undefined, Union, SupportsInt, SupportsFloat, SupportsAbs, SupportsRound, Sequence,
+    Any, Union, SupportsInt, SupportsFloat, SupportsAbs, SupportsRound, Sequence,
     Tuple, NamedTuple, Dict
 )
 
 _Decimal = Union[Decimal, int]
 
-BasicContext = Undefined(Context)
-DefaultContext = Undefined(Context)
-ExtendedContext = Undefined(Context)
-HAVE_THREADS = Undefined(bool)
-MAX_EMAX = Undefined(int)
-MAX_PREC = Undefined(int)
-MIN_EMIN = Undefined(int)
-MIN_ETINY = Undefined(int)
-ROUND_05UP = Undefined(str)
-ROUND_CEILING = Undefined(str)
-ROUND_DOWN = Undefined(str)
-ROUND_FLOOR = Undefined(str)
-ROUND_HALF_DOWN = Undefined(str)
-ROUND_HALF_EVEN = Undefined(str)
-ROUND_HALF_UP = Undefined(str)
-ROUND_UP = Undefined(str)
+BasicContext = ...  # type: Context
+DefaultContext = ...  # type: Context
+ExtendedContext = ...  # type: Context
+HAVE_THREADS = ...  # type: bool
+MAX_EMAX = ...  # type: int
+MAX_PREC = ...  # type: int
+MIN_EMIN = ...  # type: int
+MIN_ETINY = ...  # type: int
+ROUND_05UP = ...  # type: str
+ROUND_CEILING = ...  # type: str
+ROUND_DOWN = ...  # type: str
+ROUND_FLOOR = ...  # type: str
+ROUND_HALF_DOWN = ...  # type: str
+ROUND_HALF_EVEN = ...  # type: str
+ROUND_HALF_UP = ...  # type: str
+ROUND_UP = ...  # type: str
 
 def getcontext() -> Context: pass
 def localcontext(ctx: Context = None) -> _ContextManager: pass
@@ -38,13 +38,13 @@ class _ContextManager:
     def __exit__(self, t, v, tb) -> None: pass
 
 class Context:
-    Emax = Undefined(int)
-    Emin = Undefined(int)
-    capitals = Undefined(int)
-    clamp = Undefined(int)
-    prec = Undefined(int)
-    rounding = Undefined(str)
-    traps = Undefined(Dict[type, bool])
+    Emax = ...  # type: int
+    Emin = ...  # type: int
+    capitals = ...  # type: int
+    clamp = ...  # type: int
+    prec = ...  # type: int
+    rounding = ...  # type: str
+    traps = ...  # type: Dict[type, bool]
     def __init__(self, prec: int = None, rounding: str = None, Emin: int = None, Emax: int = None,
                  capitals: int = None, clamp: int = None, flags=None, traps=None,
                  _ignored_flags=None) -> None: pass

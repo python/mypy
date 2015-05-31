@@ -1,6 +1,6 @@
 # Stubs for requests.structures (Python 3)
 
-from typing import Undefined, Any
+from typing import Any
 import collections
 
 class CaseInsensitiveDict(collections.MutableMapping):
@@ -15,7 +15,7 @@ class CaseInsensitiveDict(collections.MutableMapping):
     def copy(self): pass
 
 class LookupDict(dict):
-    name = Undefined(Any)
+    name = ...  # type: Any
     def __init__(self, name=None): pass
     def __getitem__(self, key): pass
     def get(self, key, default=None): pass

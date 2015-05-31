@@ -4,7 +4,7 @@
 # based on http://docs.python.org/3.2/library/os.html
 
 from typing import (
-    Undefined, Mapping, MutableMapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr,
+    Mapping, MutableMapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr,
     Optional, Generic
 )
 from builtins import OSError as error
@@ -64,12 +64,12 @@ X_OK = 0
 class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
     def copy(self) -> _Environ[AnyStr]: pass
 
-environ = Undefined(_Environ[str])
-environb = Undefined(_Environ[bytes])
+environ = ...  # type: _Environ[str]
+environb = ...  # type: _Environ[bytes]
 
-confstr_names = Undefined(Dict[str, int])  # Unix only
-pathconf_names = Undefined(Dict[str, int]) # Unix only
-sysconf_names = Undefined(Dict[str, int])  # Unix only
+confstr_names = ...  # type: Dict[str, int]  # Unix only
+pathconf_names = ...  # type: Dict[str, int] # Unix only
+sysconf_names = ...  # type: Dict[str, int]  # Unix only
 
 EX_OK = 0        # Unix only
 EX_USAGE = 0     # Unix only
