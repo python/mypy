@@ -21,29 +21,7 @@ initialized within the class. Mypy infers the types of attributes:
 
 This is a bit like each class having an implicitly defined
 ``__slots__`` attribute. In Python semantics this is only enforced
-during type checking: at runtime we use standard Python semantics. You
-can selectively define a class as *dynamic*; dynamic classes have
-Python-like compile-time semantics, and they allow you to assign to
-arbitrary attributes anywhere in a program without the type checker
-complaining:
-
-.. code-block:: python
-
-   from typing import Dynamic
-
-   class A(Dynamic):
-       pass
-
-   a = A()
-   a.x = 2     # OK, no need to define x explicitly.
-
-Mypy also lets you read arbitrary attributes of dynamic class
-instances. This limits type checking effectiveness, so you should only
-use dynamic classes when you really need them.
-
-.. note::
-
-   Dynamic classes are not implemented in the current mypy version.
+during type checking: at runtime we use standard Python semantics.
 
 You can declare types of variables in the class body explicitly using
 a type comment:

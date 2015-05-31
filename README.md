@@ -8,13 +8,20 @@ What is mypy?
 -------------
 
 Mypy is an optional static type checker for Python.  You can add type
-annotations to your Python programs and use mypy to type check them
-statically to find errors before running them.  You can also
-seamlessly mix dynamic and static typing in your programs, so you can
-always fall back to dynamic typing.  Mypy programs are valid Python
-3.x and you use a normal Python interpreter to run them. There is
-essentially no performance overhead when using mypy, since mypy does
-not introduce additional runtime type checking.
+hints to your Python programs using the upcoming standard for type
+annotations introduced in Python 3.5 beta 1 (PEP 484), and use mypy to
+type check them statically. Find bugs in your programs without even
+running them!
+
+The type annotation notation has also been backported to earlier
+Python 3.x versions.  Mypy programs are valid Python 3.x and you use a
+normal Python interpreter to run them.  There is essentially no
+performance overhead when using mypy, since mypy does not introduce
+runtime type checking.
+
+You can mix dynamic and static typing in your programs. You can always
+fall back to dynamic typing when static typing is not convenient, such
+as for legacy code.
 
 Here is a small example to whet your appetite:
 
@@ -118,28 +125,20 @@ Development status
 ------------------
 
 Mypy is work in progress and is not yet production quality (though
-mypy development is already done in mypy!).
+mypy development is already done using mypy!).
 
 Here are some of the more significant Python features not supported
 right now (but all of these will improve):
 
- - Python 2.x support not really yet usable
+ - Python 2.x support not usable yet
  - properties with setters not supported
- - somewhat limited operator overloading
+ - limited metaclass support
  - only a subset of Python standard library modules are supported, and some
    only partially
- - limited metaclass support
+ - 3rd party module support is limited
 
-Some mypy-specific features are also not supported or only partially
-supported, including these:
-
- - function overloading does not work properly in all cases, including
-   some instances of method overriding, and keyword arguments
- - no 'Dynamic' classes
- - there is no way to use dynamic typing by default for top-level code
-
-The current development focus is to support static type checking with a good
-subset of Python features (both 2.x and 3.x).
+The current development focus is to have a good coverage of Python
+features and the standard library (initially 3.x, and later 2.7).
 
 
 Issue tracker
@@ -149,6 +148,8 @@ Please report any bugs and enhancement ideas using the mypy issue
 tracker:
 
   https://github.com/JukkaL/mypy/issues
+
+Feel free to also ask questions on the tracker.
 
 
 Help wanted
