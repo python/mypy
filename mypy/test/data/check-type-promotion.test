@@ -20,3 +20,8 @@ f(1)
 def f(x: complex) -> None: pass
 f(1)
 [builtins fixtures/primitives.py]
+
+[case testPromoteBytearrayToByte]
+def f(x: bytes) -> None: pass
+f(bytearray())
+[builtins fixtures/primitives.py]

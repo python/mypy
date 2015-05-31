@@ -83,12 +83,32 @@ ALWAYS_TRUE = 0
 ALWAYS_FALSE = 1
 TRUTH_VALUE_UNKNOWN = 2
 
-
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
     'typing.Function': 'typing.Callable',
     'typing.typevar': 'typing.TypeVar',
 }
+
+# Hard coded type promotions (shared between all Python versions).
+# These add extra ad-hoc edges to the subtyping relation. For example,
+# int is considered a subtype of float, even though there is no
+# subclass relationship.
+TYPE_PROMOTIONS = {
+    'builtins.int': 'builtins.float',
+    'builtins.float': 'builtins.complex',
+}
+
+# Hard coded type promotions for Python 3.
+TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON3.update({
+    'builtins.bytearray': 'builtins.bytes',
+})
+
+# Hard coded type promotions for Python 2.
+TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON2.update({
+    'builtins.str': 'builtins.unicode',
+})
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -484,18 +504,6 @@ class SemanticAnalyzer(NodeVisitor):
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
-    # Hard coded type promotions.
-    TYPE_PROMOTIONS = {
-        'builtins.int': 'builtins.float',
-        'builtins.float': 'builtins.complex',
-    }
-
-    # Hard coded type promotions for Python 2.
-    TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
-    TYPE_PROMOTIONS_PYTHON2.update({
-        'builtins.str': 'builtins.unicode',
-    })
-
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
 
@@ -509,8 +517,8 @@ class SemanticAnalyzer(NodeVisitor):
                     # _promote class decorator (undocumented faeture).
                     promote_target = analyzed.type
         if not promote_target:
-            promotions = (self.TYPE_PROMOTIONS if self.pyversion >= 3
-                          else self.TYPE_PROMOTIONS_PYTHON2)
+            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.pyversion >= 3
+                          else TYPE_PROMOTIONS_PYTHON2)
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
