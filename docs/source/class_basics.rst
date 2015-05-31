@@ -45,14 +45,13 @@ use dynamic classes when you really need them.
 
    Dynamic classes are not implemented in the current mypy version.
 
-You can declare variables in the class body explicitly using
-``Undefined`` or a type comment:
+You can declare types of variables in the class body explicitly using
+a type comment:
 
 .. code-block:: python
 
    class A:
-       x = Undefined(List[int])  # Declare attribute x of type List[int]
-       y = 0  # type: Any        # Declare attribute y of type Any
+       x = None  # type: List[int]  # Declare attribute x of type List[int]
 
    a = A()
    a.x = [1]     # OK
@@ -67,10 +66,10 @@ in a method:
 
    class A:
        def __init__(self) -> None:
-           self.x = Undefined(List[int])     # OK
+           self.x = []  # type: List[int]
 
        def f(self) -> None:
-           self.y = 0 # type: Any            # OK
+           self.y = 0  # type: Any
 
 You can only define an instance variable within a method if you assign
 to it explicitly using ``self``:

@@ -221,8 +221,8 @@ string-literal types with non-string-literal types freely:
 
 .. code-block:: python
 
-   a = Undefined(List['A'])  # OK
-   n = Undefined('int')      # OK, though not useful
+   def f(a: List['A']) -> None: ...  # OK
+   def g(n: 'int') -> None: ...      # OK, though not useful
 
    class A: pass
 
