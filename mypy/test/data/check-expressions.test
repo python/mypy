@@ -31,34 +31,27 @@ class B(A): pass
 
 
 [case testIntLiteral]
-
 a = 0
 b = None # type: A
-b = 1
+b = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 a = 1
 class A:
     pass
-[out]
-main, line 4: Incompatible types in assignment (expression has type "int", variable has type "A")
 
 [case testStrLiteral]
-
 a = ''
 b = None # type: A
-b = 'x'
+b = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 a = 'x'
 a = r"x"
 a = """foo"""
 class A:
     pass
-[out]
-main, line 4: Incompatible types in assignment (expression has type "str", variable has type "A")
 
 [case testFloatLiteral]
-
 a = 0.0
 b = None # type: A
-b = 1.1
+b = 1.1 # E: Incompatible types in assignment (expression has type "float", variable has type "A")
 a = 1.1
 class A:
     pass
@@ -69,14 +62,11 @@ class type: pass
 class function: pass
 class float: pass
 class str: pass
-[out]
-main, line 4: Incompatible types in assignment (expression has type "float", variable has type "A")
 
 [case testComplexLiteral]
-
 a = 0.0j
 b = None # type: A
-b = 1.1j
+b = 1.1j # E: Incompatible types in assignment (expression has type "complex", variable has type "A")
 a = 1.1j
 class A:
     pass
@@ -87,11 +77,8 @@ class type: pass
 class function: pass
 class complex: pass
 class str: pass
-[out]
-main, line 4: Incompatible types in assignment (expression has type "complex", variable has type "A")
 
 [case testBytesLiteral]
-
 b, a = None, None # type: (bytes, A)
 b = b'foo'
 b = br"foo"
@@ -108,7 +95,6 @@ class bytes: pass
 class str: pass
 
 [case testUnicodeLiteralInPython3]
-
 s = None  # type: str
 s = u'foo'
 b = None  # type: bytes
