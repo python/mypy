@@ -6,8 +6,7 @@ from typing import (
     List, Dict, Set, Tuple, Pattern, Match, Any, Callable, Generic,
     _Protocol, Sized, Iterable, Iterator, Sequence, Union, Optional,
     AbstractSet, Mapping, BinaryIO, TextIO, SupportsInt, SupportsFloat,
-    SupportsAbs, Reversible, Undefined, AnyStr, annotations,
-    cast, overload, TypeVar
+    SupportsAbs, Reversible, AnyStr, annotations, cast, overload, TypeVar
 )
 
 
@@ -367,23 +366,6 @@ class TestTyping(unittest.TestCase):
         @annotations(a='Iterable[int]', returns='List[int]')
         def f(a):
             return list(a)
-
-    def test_undefined(self):
-        self.assertEqual(unicode(Undefined), '<typing.Undefined>')
-        with self.assertRaises(AttributeError):
-            Undefined.x = 1
-        with self.assertRaises(AttributeError):
-            Undefined.x
-        with self.assertRaises(TypeError):
-            if Undefined == 0: pass
-        with self.assertRaises(TypeError):
-            if Undefined != 0: pass
-        with self.assertRaises(TypeError):
-            hash(Undefined)
-        with self.assertRaises(TypeError):
-            if Undefined: pass
-        with self.assertRaises(TypeError):
-            if not Undefined: pass
 
     def test_construct_class_with_abstract_method(self):
         t = TypeVar('t')
