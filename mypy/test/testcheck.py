@@ -47,6 +47,7 @@ files = [
     'check-namedtuple.test',
     'check-type-aliases.test',
     'check-ignore.test',
+    'check-type-promotion.test',
 ]
 
 
