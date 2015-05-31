@@ -1,6 +1,6 @@
 # Stubs for requests.models (Python 3)
 
-from typing import Undefined, Any, List, MutableMapping, Iterator, Dict
+from typing import Any, List, MutableMapping, Iterator, Dict
 import datetime
 
 from . import hooks
@@ -48,11 +48,11 @@ super_len = utils.super_len
 to_native_string = utils.to_native_string
 codes = status_codes.codes
 
-REDIRECT_STATI = Undefined(Any)
-DEFAULT_REDIRECT_LIMIT = Undefined(Any)
-CONTENT_CHUNK_SIZE = Undefined(Any)
-ITER_CHUNK_SIZE = Undefined(Any)
-json_dumps = Undefined(Any)
+REDIRECT_STATI = ...  # type: Any
+DEFAULT_REDIRECT_LIMIT = ...  # type: Any
+CONTENT_CHUNK_SIZE = ...  # type: Any
+ITER_CHUNK_SIZE = ...  # type: Any
+json_dumps = ...  # type: Any
 
 class RequestEncodingMixin:
     @property
@@ -63,26 +63,26 @@ class RequestHooksMixin:
     def deregister_hook(self, event, hook): pass
 
 class Request(RequestHooksMixin):
-    hooks = Undefined(Any)
-    method = Undefined(Any)
-    url = Undefined(Any)
-    headers = Undefined(Any)
-    files = Undefined(Any)
-    data = Undefined(Any)
-    json = Undefined(Any)
-    params = Undefined(Any)
-    auth = Undefined(Any)
-    cookies = Undefined(Any)
+    hooks = ...  # type: Any
+    method = ...  # type: Any
+    url = ...  # type: Any
+    headers = ...  # type: Any
+    files = ...  # type: Any
+    data = ...  # type: Any
+    json = ...  # type: Any
+    params = ...  # type: Any
+    auth = ...  # type: Any
+    cookies = ...  # type: Any
     def __init__(self, method=None, url=None, headers=None, files=None, data=None, params=None,
                  auth=None, cookies=None, hooks=None, json=None): pass
     def prepare(self): pass
 
 class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
-    method = Undefined(Any)
-    url = Undefined(Any)
-    headers = Undefined(Any)
-    body = Undefined(Any)
-    hooks = Undefined(Any)
+    method = ...  # type: Any
+    url = ...  # type: Any
+    headers = ...  # type: Any
+    body = ...  # type: Any
+    hooks = ...  # type: Any
     def __init__(self): pass
     def prepare(self, method=None, url=None, headers=None, files=None, data=None, params=None,
                 auth=None, cookies=None, hooks=None, json=None): pass
@@ -97,17 +97,17 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
     def prepare_hooks(self, hooks): pass
 
 class Response:
-    __attrs__ = Undefined(Any)
-    status_code = Undefined(int)
-    headers = Undefined(MutableMapping[str, str])
-    raw = Undefined(Any)
-    url = Undefined(str)
-    encoding = Undefined(str)
-    history = Undefined(List[Response])
-    reason = Undefined(str)
-    cookies = Undefined(RequestsCookieJar)
-    elapsed = Undefined(datetime.timedelta)
-    request = Undefined(PreparedRequest)
+    __attrs__ = ...  # type: Any
+    status_code = ...  # type: int
+    headers = ...  # type: MutableMapping[str, str]
+    raw = ...  # type: Any
+    url = ...  # type: str
+    encoding = ...  # type: str
+    history = ...  # type: List[Response]
+    reason = ...  # type: str
+    cookies = ...  # type: RequestsCookieJar
+    elapsed = ...  # type: datetime.timedelta
+    request = ...  # type: PreparedRequest
     def __init__(self) -> None: pass
     def __bool__(self) -> bool: pass
     def __nonzero__(self) -> bool: pass
@@ -122,7 +122,7 @@ class Response:
     def apparent_encoding(self) -> str: pass
     def iter_content(self, chunk_size: int = 1,
                      decode_unicode: bool = False) -> Iterator[Any]: pass
-    def iter_lines(self, chunk_size=Undefined, decode_unicode=None, delimiter=None): pass
+    def iter_lines(self, chunk_size=..., decode_unicode=None, delimiter=None): pass
     @property
     def content(self) -> bytes: pass
     @property

@@ -5,7 +5,7 @@
 # see: http://hg.python.org/cpython/file/3d0686d90f55/Lib/socket.py
 # see: http://nullege.com/codes/search/socket
 
-from typing import Undefined, Any, Tuple, overload, List
+from typing import Any, Tuple, overload, List
 
 # ----- variables and constants -----
 
@@ -22,8 +22,8 @@ SOCK_NONBLOCK = 0
 SOMAXCONN = 0
 has_ipv6 = False
 _GLOBAL_DEFAULT_TIMEOUT = 0.0
-SocketType = Undefined(Any)
-SocketIO = Undefined(Any)
+SocketType = ...  # type: Any
+SocketIO = ...  # type: Any
 
 
 # the following constants are included with Python 3.2.3 (Ubuntu)

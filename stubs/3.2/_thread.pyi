@@ -2,10 +2,10 @@
 
 # NOTE: These are incomplete!
 
-from typing import Undefined, Any
+from typing import Any
 
 def _count() -> int: pass
-_dangling = Undefined(Any)
+_dangling = ...  # type: Any
 
 class LockType:
     def acquire(self) -> None: pass

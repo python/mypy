@@ -1278,22 +1278,6 @@ class ConditionalExpr(Node):
         return visitor.visit_conditional_expr(self)
 
 
-class UndefinedExpr(Node):
-    """Expression None  # type: type, used as an initializer.
-
-    This is used to declare the type of a variable without initializing with
-    a proper value. For example:
-
-      x = None  # type: List[int]
-    """
-
-    def __init__(self, type: 'mypy.types.Type') -> None:
-        self.type = type
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_undefined_expr(self)
-
-
 class TypeApplication(Node):
     """Type application expr[type, ...]"""
 

@@ -2,18 +2,18 @@
 
 # TODO this is work in progress
 
-from typing import Any, Undefined
+from typing import Any
 
 class ModuleType:
-    __name__ = Undefined(str)
-    __file__ = Undefined(str)
+    __name__ = ... # type: str
+    __file__ = ... # type: str
     def __init__(self, name: str, doc: Any) -> None: pass
 
 class MethodType: pass
 class BuiltinMethodType: pass
 
 class TracebackType:
-    tb_frame = Undefined(Any)
-    tb_lasti = Undefined(int)
-    tb_lineno = Undefined(int)
-    tb_next = Undefined(Any)
+    tb_frame = ... # type: Any
+    tb_lasti = ... # type: int
+    tb_lineno = ... # type: int
+    tb_next = ... # type: Any

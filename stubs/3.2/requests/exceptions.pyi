@@ -1,11 +1,11 @@
 # Stubs for requests.exceptions (Python 3)
 
-from typing import Undefined, Any
+from typing import Any
 from .packages.urllib3.exceptions import HTTPError as BaseHTTPError
 
 class RequestException(IOError):
-    response = Undefined(Any)
-    request = Undefined(Any)
+    response = ...  # type: Any
+    request = ...  # type: Any
     def __init__(self, *args, **kwargs): pass
 
 class HTTPError(RequestException): pass

@@ -8,12 +8,12 @@ except ImportError:
     import mock  # 3rd party install, for PY3.2.
 
 from typing import Any
-from typing import TypeVar, T, KT, VT, AnyStr
+from typing import TypeVar, AnyStr
+from typing import T, KT, VT  # Not in __all__.
 from typing import Union, Optional
 from typing import Tuple
 from typing import Callable
 from typing import Generic
-from typing import Undefined
 from typing import cast
 from typing import get_type_hints
 from typing import no_type_check, no_type_check_decorator
@@ -21,19 +21,6 @@ from typing import NamedTuple
 from typing import IO, TextIO, BinaryIO
 from typing import Pattern, Match
 import typing
-
-
-class ConstantsTests(TestCase):
-
-    def test_py23(self):
-        assert isinstance(typing.PY2, bool)
-        assert isinstance(typing.PY3, bool)
-        assert typing.PY3 == (not typing.PY2)
-
-    def test_poswin(self):
-        assert isinstance(typing.POSIX, bool)
-        assert isinstance(typing.WINDOWS, bool)
-        assert typing.POSIX == (not typing.WINDOWS)
 
 
 class Employee:
@@ -120,39 +107,78 @@ class AnyTests(TestCase):
 
 class TypeVarTests(TestCase):
 
-    def test_isinstance(self):
-        self.assertNotIsInstance(42, T)
-        self.assertIsInstance(b'b', AnyStr)
-        self.assertIsInstance('s', AnyStr)
-        self.assertNotIsInstance(42, AnyStr)
+    def test_basic_plain(self):
+        T = TypeVar('T')
+        # Nothing is an instance if T.
+        with self.assertRaises(TypeError):
+            isinstance('', T)
+        # Every class is a subclass of T.
+        assert issubclass(int, T)
+        assert issubclass(str, T)
+        # T equals itself.
+        assert T == T
+        # T is a subclass of itself.
+        assert issubclass(T, T)
 
-    def test_issubclass(self):
-        self.assertTrue(issubclass(T, Any))
-        self.assertFalse(issubclass(int, T))
-        self.assertTrue(issubclass(bytes, AnyStr))
-        self.assertTrue(issubclass(str, AnyStr))
-        self.assertTrue(issubclass(T, T))
-        self.assertTrue(issubclass(AnyStr, AnyStr))
+    def test_basic_constrained(self):
+        A = TypeVar('A', str, bytes)
+        # Nothing is an instance of A.
+        with self.assertRaises(TypeError):
+            isinstance('', A)
+        # Only str and bytes are subclasses of A.
+        assert issubclass(str, A)
+        assert issubclass(bytes, A)
+        assert not issubclass(int, A)
+        # A equals itself.
+        assert A == A
+        # A is a subclass of itself.
+        assert issubclass(A, A)
+
+    def test_constrained_error(self):
+        with self.assertRaises(TypeError):
+            X = TypeVar('X', int)
+
+    def test_union_unique(self):
+        X = TypeVar('X')
+        Y = TypeVar('Y')
+        assert X != Y
+        assert Union[X] == X
+        assert Union[X] != Union[X, Y]
+        assert Union[X, X] == X
+        assert Union[X, int] != Union[X]
+        assert Union[X, int] != Union[int]
+        assert Union[X, int].__union_params__ == (X, int)
+        assert Union[X, int].__union_set_params__ == {X, int}
+
+    def test_union_constrained(self):
+        A = TypeVar('A', str, bytes)
+        assert Union[A, str] != Union[A]
 
     def test_repr(self):
         self.assertEqual(repr(T), '~T')
         self.assertEqual(repr(KT), '~KT')
         self.assertEqual(repr(VT), '~VT')
         self.assertEqual(repr(AnyStr), '~AnyStr')
+        T_co = TypeVar('T_co', covariant=True)
+        self.assertEqual(repr(T_co), '+T_co')
+        T_contra = TypeVar('T_contra', contravariant=True)
+        self.assertEqual(repr(T_contra), '-T_contra')
 
     def test_no_redefinition(self):
         self.assertNotEqual(TypeVar('T'), TypeVar('T'))
         self.assertNotEqual(TypeVar('T', int, str), TypeVar('T', int, str))
 
     def test_subclass_as_unions(self):
-        self.assertTrue(issubclass(TypeVar('T', int, str),
-                                   TypeVar('T', int, str)))
-        self.assertTrue(issubclass(TypeVar('T', int), TypeVar('T', int, str)))
-        self.assertTrue(issubclass(TypeVar('T', int, str),
-                                   TypeVar('T', str, int)))
+        # None of these are true -- each type var is its own world.
+        self.assertFalse(issubclass(TypeVar('T', int, str),
+                                    TypeVar('T', int, str)))
+        self.assertFalse(issubclass(TypeVar('T', int, float),
+                                    TypeVar('T', int, float, str)))
+        self.assertFalse(issubclass(TypeVar('T', int, str),
+                                    TypeVar('T', str, int)))
         A = TypeVar('A', int, str)
         B = TypeVar('B', int, str, float)
-        self.assertTrue(issubclass(A, B))
+        self.assertFalse(issubclass(A, B))
         self.assertFalse(issubclass(B, A))
 
     def test_cannot_subclass_vars(self):
@@ -169,53 +195,17 @@ class TypeVarTests(TestCase):
         with self.assertRaises(TypeError):
             TypeVar('A')()
 
-    def test_bind(self):
-        self.assertNotIsInstance(42, T)  # Baseline.
-        with T.bind(int):
-            self.assertIsInstance(42, T)
-            self.assertNotIsInstance(3.14, T)
-            self.assertTrue(issubclass(int, T))
-            self.assertFalse(issubclass(T, int))
-            self.assertFalse(issubclass(float, T))
-        self.assertNotIsInstance(42, T)  # Baseline restored.
+    def test_bound(self):
+        X = TypeVar('X', bound=Employee)
+        assert issubclass(Employee, X)
+        assert issubclass(Manager, X)
+        assert not issubclass(int, X)
 
-    def test_bind_reuse(self):
-        self.assertNotIsInstance(42, T)  # Baseline.
-        bv = T.bind(int)
-        with bv:
-            self.assertIsInstance(42, T)  # Bound.
-            self.assertNotIsInstance(3.14, T)
-        self.assertNotIsInstance(42, T)  # Baseline restored.
-        # Reusing bv will work.
-        with bv:
-            self.assertIsInstance(42, T)  # Bound.
-            self.assertNotIsInstance(3.14, T)
-            # Reusing bv recursively won't work.
-            with self.assertRaises(TypeError):
-                with bv:
-                    self.assertFalse("Should not get here")
-            # Rebinding T explicitly will work.
-            with T.bind(float):
-                self.assertIsInstance(3.14, T)
-                self.assertNotIsInstance(42, T)
-            # Now the previous binding should be restored.
-            self.assertIsInstance(42, T)
-            self.assertNotIsInstance(3.14, T)
-        self.assertNotIsInstance(42, T)  # Baseline restored.
-
-    def test_bind_fail(self):
-        # This essentially tests what happens when __enter__() raises
-        # an exception.  __exit__() won't be called, but the
-        # VarBinding and the TypeVar are still in consistent states.
-        bv = T.bind(int)
-        with mock.patch('typing.TypeVar._bind', side_effect=RuntimeError):
-            with self.assertRaises(RuntimeError):
-                with bv:
-                    self.assertFalse("Should not get here")
-        self.assertNotIsInstance(42, T)
-        with bv:
-            self.assertIsInstance(42, T)
-        self.assertNotIsInstance(42, T)
+    def test_bound_errors(self):
+        with self.assertRaises(TypeError):
+            TypeVar('X', bound=42)
+        with self.assertRaises(TypeError):
+            TypeVar('X', str, float, bound=Employee)
 
 
 class UnionTests(TestCase):
@@ -327,6 +317,16 @@ class UnionTests(TestCase):
         with self.assertRaises(TypeError):
             Union[()]
 
+    def test_issubclass_union(self):
+        assert issubclass(Union[int, str], Union)
+        assert not issubclass(int, Union)
+
+    def test_isinstance_union(self):
+        # Nothing is an instance of bare Union.
+        assert not isinstance(42, Union)
+        assert not isinstance(int, Union)
+        assert not isinstance(Union[int, str], Union)
+
 
 class TypeVarUnionTests(TestCase):
 
@@ -335,10 +335,10 @@ class TypeVarUnionTests(TestCase):
         B = TypeVar('B', int, str)
         assert issubclass(A, A)
         assert issubclass(B, B)
-        assert issubclass(B, A)
+        assert not issubclass(B, A)
         assert issubclass(A, Union[int, str, float])
-        assert issubclass(Union[int, str, float], A)
-        assert issubclass(Union[int, str], B)
+        assert not issubclass(Union[int, str, float], A)
+        assert not issubclass(Union[int, str], B)
         assert issubclass(B, Union[int, str])
         assert not issubclass(A, B)
         assert not issubclass(Union[int, str, float], B)
@@ -349,53 +349,13 @@ class TypeVarUnionTests(TestCase):
         self.assertTrue(issubclass(KT, Union[KT, VT]))
 
     def test_var_union(self):
-        TU = TypeVar('TU', Union[int, float])
-        self.assertIsInstance(42, TU)
-        self.assertIsInstance(3.14, TU)
-        self.assertNotIsInstance('', TU)
-        with TU.bind(int):
-            # The effective binding is the union.
-            self.assertIsInstance(42, TU)
-            self.assertIsInstance(3.14, TU)
-            self.assertNotIsInstance('', TU)
+        TU = TypeVar('TU', Union[int, float], None)
+        assert issubclass(int, TU)
+        assert issubclass(float, TU)
         with self.assertRaises(TypeError):
-            with TU.bind(str):
-                self.assertFalse("Should not get here")
-
-    def test_var_union_and_more_precise(self):
-        TU = TypeVar('TU', Union[int, float], int)
-        with TU.bind(int):
-            # The binding is ambiguous, but the second alternative
-            # is strictly more precise.  Choose the more precise match.
-            # The effective binding is int.
-            self.assertIsInstance(42, TU)
-            self.assertNotIsInstance(3.14, TU)
-            self.assertNotIsInstance('', TU)
-        with TU.bind(float):
-            # The effective binding is the union.
-            self.assertIsInstance(42, TU)
-            self.assertIsInstance(3.14, TU)
-            self.assertNotIsInstance('', TU)
-
-    def test_var_union_overlapping(self):
-        TU = TypeVar('TU', Union[int, float], Union[float, str])
-        with TU.bind(int):
-            # The effective binding is the first union.
-            self.assertIsInstance(42, TU)
-            self.assertIsInstance(3.14, TU)
-            self.assertNotIsInstance('', TU)
-        with TU.bind(float):
-            # The binding is ambiguous, but neither constraint is a
-            # subclass of the other.  Choose the first match.
-            # The effective binding is the first union.
-            self.assertIsInstance(42, TU)
-            self.assertIsInstance(3.14, TU)
-            self.assertNotIsInstance('', TU)
-        with TU.bind(str):
-            # The effective binding is the second union.
-            self.assertNotIsInstance(42, TU)
-            self.assertIsInstance(3.14, TU)
-            self.assertIsInstance('', TU)
+            isinstance(42, TU)
+        with self.assertRaises(TypeError):
+            isinstance('', TU)
 
 
 class TupleTests(TestCase):
@@ -422,10 +382,33 @@ class TupleTests(TestCase):
             pass
         self.assertTrue(issubclass(MyTuple, Tuple))
 
+    def test_tuple_ellipsis(self):
+        t = Tuple[int, ...]
+        assert isinstance((), t)
+        assert isinstance((1,), t)
+        assert isinstance((1, 2), t)
+        assert isinstance((1, 2, 3), t)
+        assert not isinstance((3.14,), t)
+        assert not isinstance((1, 2, 3.14,), t)
+
+    def test_tuple_ellipsis_subclass(self):
+
+        class B:
+            pass
+
+        class C(B):
+            pass
+
+        assert not issubclass(Tuple[B], Tuple[B, ...])
+        assert issubclass(Tuple[C, ...], Tuple[B, ...])
+        assert not issubclass(Tuple[C, ...], Tuple[B])
+        assert not issubclass(Tuple[C], Tuple[B, ...])
+
     def test_repr(self):
         self.assertEqual(repr(Tuple), 'typing.Tuple')
         self.assertEqual(repr(Tuple[()]), 'typing.Tuple[]')
         self.assertEqual(repr(Tuple[int, float]), 'typing.Tuple[int, float]')
+        self.assertEqual(repr(Tuple[int, ...]), 'typing.Tuple[int, ...]')
 
     def test_errors(self):
         with self.assertRaises(TypeError):
@@ -573,7 +556,7 @@ class CallableTests(TestCase):
         with self.assertRaises(TypeError):
             c()
 
-    def test_callable_varargs(self):
+    def test_varargs(self):
         ct = Callable[..., int]
 
         def foo(a, b) -> int:
@@ -588,6 +571,14 @@ class CallableTests(TestCase):
         self.assertIsInstance(foo, ct)
         self.assertIsInstance(bar, ct)
         self.assertIsInstance(baz, ct)
+
+    def test_repr(self):
+        ct0 = Callable[[], bool]
+        self.assertEqual(repr(ct0), 'typing.Callable[[], bool]')
+        ct2 = Callable[[str, float], int]
+        self.assertEqual(repr(ct2), 'typing.Callable[[str, float], int]')
+        ctv = Callable[..., str]
+        self.assertEqual(repr(ctv), 'typing.Callable[..., str]')
 
 
 XK = TypeVar('XK', str, bytes)
@@ -634,6 +625,26 @@ class ProtocolTests(TestCase):
         assert issubclass(float, typing.SupportsFloat)
         assert not issubclass(str, typing.SupportsFloat)
 
+    def test_supports_complex(self):
+
+        # Note: complex itself doesn't have __complex__.
+        class C:
+            def __complex__(self):
+                return 0j
+
+        assert issubclass(C, typing.SupportsComplex)
+        assert not issubclass(str, typing.SupportsComplex)
+
+    def test_supports_bytes(self):
+
+        # Note: bytes itself doesn't have __bytes__.
+        class B:
+            def __bytes__(self):
+                return b''
+
+        assert issubclass(B, typing.SupportsBytes)
+        assert not issubclass(str, typing.SupportsBytes)
+
     def test_supports_abs(self):
         assert issubclass(float, typing.SupportsAbs)
         assert issubclass(int, typing.SupportsAbs)
@@ -653,7 +664,7 @@ class GenericTests(TestCase):
 
     def test_basics(self):
         X = SimpleMapping[str, Any]
-        Y = SimpleMapping[AnyStr, str]
+        Y = SimpleMapping[XK, str]
         X[str, str]
         Y[str, str]
         with self.assertRaises(TypeError):
@@ -666,13 +677,6 @@ class GenericTests(TestCase):
                          __name__ + '.' + 'SimpleMapping[~XK, ~XV]')
         self.assertEqual(repr(MySimpleMapping),
                          __name__ + '.' + 'MySimpleMapping[~XK, ~XV]')
-        A = TypeVar('A', str)  # Must be a subclass of XK.
-        B = TypeVar('B')
-
-        class X(SimpleMapping[A, B]):
-            pass
-
-        self.assertEqual(repr(X).split('.')[-1], 'X[~A, ~B]')
 
     def test_errors(self):
         with self.assertRaises(TypeError):
@@ -767,34 +771,71 @@ class GenericTests(TestCase):
         a.append(42)
         assert a.get() == [1, 42]
 
+    def test_type_erasure(self):
+        T = TypeVar('T')
 
-class UndefinedTest(TestCase):
+        class Node(Generic[T]):
+            def __init__(self, label: T, left: 'Node[T]' = None, right: 'Node[T]' = None):
+                self.label = label  # type: T
+                self.left = left  # type: Optional[Node[T]]
+                self.right = right  # type: Optional[Node[T]]
 
-    def test_basics(self):
-        x = Undefined(int)
-        x = Undefined(Any)
-        x = Undefined(Union[int, str])
-        x = Undefined(None)
+        def foo(x: T):
+            a = Node(x)
+            b = Node[T](x)
+            c = Node[Any](x)
+            assert type(a) is Node
+            assert type(b) is Node
+            assert type(c) is Node
 
-    def test_errors(self):
-        with self.assertRaises(TypeError):
-            x = Undefined(42)
-        u = Undefined(int)
-        with self.assertRaises(TypeError):
-            {u: 42}
-
-    def test_repr(self):
-        self.assertEqual(repr(Undefined(Any)), 'typing.Undefined(typing.Any)')
-
-    def test_type_alias(self):
-        # These simply must not fail.
-        Undefined(typing.re.Pattern)
-        Undefined(typing.re.Pattern[str])
-        Undefined(typing.re.Pattern[bytes])
-        Undefined(typing.re.Pattern[Any])
+        foo(42)
 
 
-class CastTest(TestCase):
+class VarianceTests(TestCase):
+
+    def test_invariance(self):
+        # Because of invariance, List[subclass of X] is not a subclass
+        # of List[X], and ditto for MutableSequence.
+        assert not issubclass(typing.List[Manager], typing.List[Employee])
+        assert not issubclass(typing.MutableSequence[Manager],
+                              typing.MutableSequence[Employee])
+        # It's still reflexive.
+        assert issubclass(typing.List[Employee], typing.List[Employee])
+        assert issubclass(typing.MutableSequence[Employee],
+                          typing.MutableSequence[Employee])
+
+    def test_covariance_tuple(self):
+        # Check covariace for Tuple (which are really special cases).
+        assert issubclass(Tuple[Manager], Tuple[Employee])
+        assert not issubclass(Tuple[Employee], Tuple[Manager])
+        # And pairwise.
+        assert issubclass(Tuple[Manager, Manager], Tuple[Employee, Employee])
+        assert not issubclass(Tuple[Employee, Employee],
+                              Tuple[Manager, Employee])
+        # And using ellipsis.
+        assert issubclass(Tuple[Manager, ...], Tuple[Employee, ...])
+        assert not issubclass(Tuple[Employee, ...], Tuple[Manager, ...])
+
+    def test_covariance_sequence(self):
+        # Check covariance for Sequence (which is just a generic class
+        # for this purpose, but using a covariant type variable).
+        assert issubclass(typing.Sequence[Manager], typing.Sequence[Employee])
+        assert not issubclass(typing.Sequence[Employee],
+                              typing.Sequence[Manager])
+
+    def test_covariance_mapping(self):
+        # Ditto for Mapping (a generic class with two parameters).
+        assert issubclass(typing.Mapping[Employee, Manager],
+                          typing.Mapping[Employee, Employee])
+        assert issubclass(typing.Mapping[Manager, Employee],
+                          typing.Mapping[Employee, Employee])
+        assert not issubclass(typing.Mapping[Employee, Manager],
+                              typing.Mapping[Manager, Manager])
+        assert not issubclass(typing.Mapping[Manager, Employee],
+                              typing.Mapping[Manager, Manager])
+
+
+class CastTests(TestCase):
 
     def test_basics(self):
         assert cast(int, 42) == 42
@@ -812,7 +853,7 @@ class CastTest(TestCase):
         cast('hello', 42)
 
 
-class ForwardRefTest(TestCase):
+class ForwardRefTests(TestCase):
 
     def test_basics(self):
 
@@ -837,15 +878,15 @@ class ForwardRefTest(TestCase):
                 self.add_both(None, node)
 
         t = Node[int]
-        both_hints = get_type_hints(t.add_both)
+        both_hints = get_type_hints(t.add_both, globals(), locals())
         assert both_hints['left'] == both_hints['right'] == Optional[Node[T]]
         assert both_hints['stuff'] == Optional[int]
         assert 'blah' not in both_hints
 
-        left_hints = get_type_hints(t.add_left)
+        left_hints = get_type_hints(t.add_left, globals(), locals())
         assert left_hints['node'] == Optional[Node[T]]
 
-        right_hints = get_type_hints(t.add_right)
+        right_hints = get_type_hints(t.add_right, globals(), locals())
         assert right_hints['node'] == Optional[Node[T]]
 
     def test_union_forward(self):
@@ -853,21 +894,24 @@ class ForwardRefTest(TestCase):
         def foo(a: Union['T']):
             pass
 
-        self.assertEqual(get_type_hints(foo), {'a': Union[T]})
+        self.assertEqual(get_type_hints(foo, globals(), locals()),
+                         {'a': Union[T]})
 
     def test_tuple_forward(self):
 
         def foo(a: Tuple['T']):
             pass
 
-        self.assertEqual(get_type_hints(foo), {'a': Tuple[T]})
+        self.assertEqual(get_type_hints(foo, globals(), locals()),
+                         {'a': Tuple[T]})
 
     def test_callable_forward(self):
 
         def foo(a: Callable[['T'], 'T']):
             pass
 
-        self.assertEqual(get_type_hints(foo), {'a': Callable[[T], T]})
+        self.assertEqual(get_type_hints(foo, globals(), locals()),
+                         {'a': Callable[[T], T]})
 
     def test_syntax_error(self):
 
@@ -882,13 +926,21 @@ class ForwardRefTest(TestCase):
         with self.assertRaises(SyntaxError):
             get_type_hints(foo)
 
+    def test_type_error(self):
+
+        def foo(a: Tuple['42']):
+            pass
+
+        with self.assertRaises(TypeError):
+            get_type_hints(foo)
+
     def test_name_error(self):
 
         def foo(a: 'Noode[T]'):
             pass
 
         with self.assertRaises(NameError):
-            get_type_hints(foo)
+            get_type_hints(foo, locals())
 
     def test_no_type_check(self):
 
@@ -898,6 +950,18 @@ class ForwardRefTest(TestCase):
 
         th = get_type_hints(foo)
         self.assertEqual(th, {})
+
+    def test_no_type_check_class(self):
+
+        @no_type_check
+        class C:
+            def foo(a: 'whatevers') -> {}:
+                pass
+
+        cth = get_type_hints(C.foo)
+        self.assertEqual(cth, {})
+        ith = get_type_hints(C().foo)
+        self.assertEqual(ith, {})
 
     def test_meta_no_type_check(self):
 
@@ -911,9 +975,29 @@ class ForwardRefTest(TestCase):
         def foo(a: 'whatevers') -> {}:
             pass
 
+        @magic_decorator
+        class C:
+            def foo(a: 'whatevers') -> {}:
+                pass
+
         self.assertEqual(foo.__name__, 'foo')
         th = get_type_hints(foo)
         self.assertEqual(th, {})
+        cth = get_type_hints(C.foo)
+        self.assertEqual(cth, {})
+        ith = get_type_hints(C().foo)
+        self.assertEqual(ith, {})
+
+    def test_default_globals(self):
+        code = ("class C:\n"
+                "    def foo(self, a: 'C') -> 'D': pass\n"
+                "class D:\n"
+                "    def bar(self, b: 'D') -> C: pass\n"
+                )
+        ns = {}
+        exec(code, ns)
+        hints = get_type_hints(ns['C'].foo)
+        assert hints == {'a': ns['C'], 'return': ns['D']}
 
 
 class OverloadTests(TestCase):
@@ -994,12 +1078,24 @@ class CollectionsAbcTests(TestCase):
 
     def test_set(self):
         assert issubclass(set, typing.Set)
+        assert not issubclass(frozenset, typing.Set)
         assert isinstance(set(), typing.Set)
         assert not isinstance({}, typing.Set)
         t = typing.Set[int]
         assert isinstance(set(), t)
         assert isinstance({42}, t)
         assert not isinstance({''}, t)
+
+    def test_frozenset(self):
+        assert issubclass(frozenset, typing.FrozenSet)
+        assert not issubclass(set, typing.FrozenSet)
+        assert isinstance(frozenset(), typing.FrozenSet)
+        assert not isinstance({}, typing.FrozenSet)
+        t = typing.FrozenSet[int]
+        assert isinstance(frozenset(), t)
+        assert isinstance(frozenset({42}), t)
+        assert not isinstance(frozenset({''}), t)
+        assert not isinstance({42}, t)
 
     def test_mapping_views(self):
         # TODO: These tests are kind of lame.
@@ -1017,6 +1113,126 @@ class CollectionsAbcTests(TestCase):
         assert not isinstance({42: 42}, t)
         assert not isinstance({'': 42}, t)
         assert not isinstance({'': ''}, t)
+
+    def test_no_list_instantiation(self):
+        with self.assertRaises(TypeError):
+            typing.List()
+        with self.assertRaises(TypeError):
+            typing.List[T]()
+        with self.assertRaises(TypeError):
+            typing.List[int]()
+
+    def test_list_subclass_instantiation(self):
+
+        class MyList(typing.List[int]):
+            pass
+
+        a = MyList()
+        assert isinstance(a, MyList)
+
+    def test_no_dict_instantiation(self):
+        with self.assertRaises(TypeError):
+            typing.Dict()
+        with self.assertRaises(TypeError):
+            typing.Dict[KT, VT]()
+        with self.assertRaises(TypeError):
+            typing.Dict[str, int]()
+
+    def test_dict_subclass_instantiation(self):
+
+        class MyDict(typing.Dict[str, int]):
+            pass
+
+        d = MyDict()
+        assert isinstance(d, MyDict)
+
+    def test_no_set_instantiation(self):
+        with self.assertRaises(TypeError):
+            typing.Set()
+        with self.assertRaises(TypeError):
+            typing.Set[T]()
+        with self.assertRaises(TypeError):
+            typing.Set[int]()
+
+    def test_set_subclass_instantiation(self):
+
+        class MySet(typing.Set[int]):
+            pass
+
+        d = MySet()
+        assert isinstance(d, MySet)
+
+    def test_no_frozenset_instantiation(self):
+        with self.assertRaises(TypeError):
+            typing.FrozenSet()
+        with self.assertRaises(TypeError):
+            typing.FrozenSet[T]()
+        with self.assertRaises(TypeError):
+            typing.FrozenSet[int]()
+
+    def test_frozenset_subclass_instantiation(self):
+
+        class MyFrozenSet(typing.FrozenSet[int]):
+            pass
+
+        d = MyFrozenSet()
+        assert isinstance(d, MyFrozenSet)
+
+    def test_no_tuple_instantiation(self):
+        with self.assertRaises(TypeError):
+            Tuple()
+        with self.assertRaises(TypeError):
+            Tuple[T]()
+        with self.assertRaises(TypeError):
+            Tuple[int]()
+
+    def test_generator(self):
+        def foo():
+            yield 42
+        g = foo()
+        assert issubclass(type(g), typing.Generator)
+        assert isinstance(g, typing.Generator)
+        assert not isinstance(foo, typing.Generator)
+        assert issubclass(typing.Generator[Manager, Employee, Manager],
+                          typing.Generator[Employee, Manager, Employee])
+        assert not issubclass(typing.Generator[Manager, Manager, Manager],
+                              typing.Generator[Employee, Employee, Employee])
+
+    def test_no_generator_instantiation(self):
+        with self.assertRaises(TypeError):
+            typing.Generator()
+        with self.assertRaises(TypeError):
+            typing.Generator[T, T, T]()
+        with self.assertRaises(TypeError):
+            typing.Generator[int, int, int]()
+
+    def test_subclassing(self):
+
+        class MMA(typing.MutableMapping):
+            pass
+
+        with self.assertRaises(TypeError):  # It's abstract
+            MMA()
+
+        class MMC(MMA):
+            def __len__(self):
+                return 0
+
+        assert len(MMC()) == 0
+
+        class MMB(typing.MutableMapping[KT, VT]):
+            def __len__(self):
+                return 0
+
+        assert len(MMB()) == 0
+        assert len(MMB[str, str]()) == 0
+        assert len(MMB[KT, VT]()) == 0
+
+    def test_recursive_dict(self):
+        D = typing.Dict[int, 'D']  # Uses a _ForwardRef
+        assert isinstance({}, D)  # Easy
+        assert isinstance({0: {}}, D)  # Touches _ForwardRef
+        assert isinstance({0: {0: {}}}, D)  # Etc...
 
 
 class NamedTupleTests(TestCase):
@@ -1077,16 +1293,16 @@ class RETests(TestCase):
 
     def test_basics(self):
         pat = re.compile('[a-z]+', re.I)
-        assert isinstance(pat, Pattern)
+        assert issubclass(pat.__class__, Pattern)
         assert isinstance(pat, Pattern[str])
         assert not isinstance(pat, Pattern[bytes])
         assert issubclass(type(pat), Pattern)
         assert issubclass(type(pat), Pattern[str])
 
         mat = pat.search('12345abcde.....')
-        assert isinstance(mat, Match)
-        assert isinstance(mat, Match[str])
-        assert not isinstance(mat, Match[bytes])
+        assert issubclass(mat.__class__, Match)
+        assert issubclass(mat.__class__, Match[str])
+        assert issubclass(mat.__class__, Match[bytes])  # Sad but true.
         assert issubclass(type(mat), Match)
         assert issubclass(type(mat), Match[str])
 
@@ -1127,17 +1343,23 @@ class RETests(TestCase):
         assert set(__all__) == set(['Match', 'Pattern'])
         assert __name__ == 'typing.re'
 
+    def test_cannot_subclass(self):
+        with self.assertRaises(TypeError) as ex:
+
+            class A(typing.Match):
+                pass
+
+        assert str(ex.exception) == "A type alias cannot be subclassed"
+
 
 class AllTests(TestCase):
     """Tests for __all__."""
 
     def test_all(self):
         from typing import __all__ as a
-        # Don't test everything, just spot-check the first and last of every category.
+        # Just spot-check the first and last of every category.
         assert 'AbstractSet' in a
         assert 'ValuesView' in a
-        assert 'POSIX' in a
-        assert 'WINDOWS' in a
         assert 'cast' in a
         assert 'overload' in a
         assert 'io' in a

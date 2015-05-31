@@ -12,7 +12,7 @@ from mypy.nodes import (
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
-    UndefinedExpr, ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
+    ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisNode, LITERAL_TYPE,
     TypeAliasExpr
 )
@@ -1196,9 +1196,6 @@ class ExpressionChecker:
             for condition in conditions:
                 self.accept(condition)
         self.chk.binder.pop_frame()
-
-    def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
-        return e.type
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)

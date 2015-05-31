@@ -378,9 +378,6 @@ class StrConv(NodeVisitor[str]):
     def visit_super_expr(self, o):
         return self.dump([o.name], o)
 
-    def visit_undefined_expr(self, o):
-        return 'UndefinedExpr:{}({})'.format(o.line, o.type)
-
     def visit_type_application(self, o):
         return self.dump([o.expr, ('Types', o.types)], o)
 
