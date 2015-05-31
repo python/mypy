@@ -3,12 +3,12 @@
 -- See also:
 --  * check-functions.test contains test cases for calls.
 --  * check-varargs.test contains test cases for *args.
---  * check-dynamic.test contains test cases related to 'any' type.
+--  * check-dynamic.test contains test cases related to 'Any' type.
 --  * check-generics.test contains test cases for generic values.
 
 
--- None
--- ----
+-- None expression
+-- ---------------
 
 
 [case testNoneAsRvalue]
@@ -769,11 +769,11 @@ class B: pass
 main, line 3: "A" not callable
 
 
--- Void type
--- ---------
+-- None return type
+-- ----------------
 
 
-[case testVoidTypeBasics]
+[case testNoneReturnTypeBasics]
 
 a, o = None, None # type: (A, object)
 a = f()         # Fail
@@ -795,7 +795,7 @@ main, line 4: "g" of "A" does not return a value
 main, line 5: "f" does not return a value
 main, line 6: "f" does not return a value
 
-[case testVoidWithStatements]
+[case testNoneReturnTypeWithStatements]
 import typing
 raise f() # Fail
 if f():   # Fail
@@ -817,7 +817,7 @@ main, line 7: "f" does not return a value
 main: In function "g":
 main, line 10: "f" does not return a value
 
-[case testVoidWithExpressions]
+[case testNoneReturnTypeWithExpressions]
 from typing import cast
 a = None # type: A
 [f()]       # E: "f" does not return a value
@@ -833,7 +833,7 @@ class A:
     def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/list.py]
 
-[case testVoidWithExpressions2]
+[case testNoneReturnTypeWithExpressions2]
 
 a, b = None, None # type: (A, bool)
 a < f()    # E: Unsupported left operand type for < ("A")
@@ -1124,7 +1124,7 @@ class B: pass
 
 
 -- Dictionary comprehension
--- -----------------
+-- ------------------------
 
 
 [case testSimpleDictionaryComprehension]
