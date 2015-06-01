@@ -795,3 +795,10 @@ def f(x: Callable[..., int]) -> None:
 from typing import Callable, cast
 f = cast(Callable[..., int], None)
 f(x=4) + '' # E: Unsupported left operand type for + ("int")
+
+[case testCallableWithArbitraryArgsInErrorMessage]
+from typing import Callable
+def f(x: Callable[..., int]) -> None:
+    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
+[out]
+main: In function "f":

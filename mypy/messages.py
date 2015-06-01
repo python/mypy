@@ -13,7 +13,7 @@ from mypy.types import (
     Overloaded, FunctionLike
 )
 from mypy.nodes import (
-    TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases
+    TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases, ARG_STAR, ARG_STAR2
 )
 
 
@@ -143,8 +143,10 @@ class MessageBuilder:
                     result += ' (type object)'
                 return result
             elif isinstance(func, CallableType):
-                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return_type = strip_quotes(self.format(func.ret_type))
+                if func.arg_kinds == [ARG_STAR, ARG_STAR2]:
+                    return 'Callable[..., {}]'.format(return_type)
+                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return 'Callable[[{}], {}]'.format(", ".join(arg_types), return_type)
             else:
                 # Use a simple representation for function types; proper
