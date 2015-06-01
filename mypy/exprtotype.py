@@ -2,9 +2,11 @@
 
 from typing import cast
 
-from mypy.nodes import Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr
+from mypy.nodes import (
+    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, EllipsisNode
+)
 from mypy.parsetype import parse_str_as_type, TypeParseError
-from mypy.types import Type, UnboundType, TypeList
+from mypy.types import Type, UnboundType, TypeList, EllipsisType
 
 
 class TypeTranslationError(Exception):
@@ -49,6 +51,8 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
         except TypeParseError:
             raise TypeTranslationError()
         return result
+    elif isinstance(expr, EllipsisNode):
+        return EllipsisType(expr.line)
     else:
         raise TypeTranslationError()
 

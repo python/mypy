@@ -784,3 +784,14 @@ def f(x: Callable[..., int]) -> None:
     x() + '' # E: Unsupported left operand type for + ("int")
 [out]
 main: In function "f":
+
+[case testCallableWithArbitraryArgs2]
+from typing import Callable
+def f(x: Callable[..., int]) -> None:
+    x(*[1], **{'x': 2})
+[builtins fixtures/dict.py]
+
+[case testCastWithCallableAndArbitraryArgs]
+from typing import Callable, cast
+f = cast(Callable[..., int], None)
+f(x=4) + '' # E: Unsupported left operand type for + ("int")
