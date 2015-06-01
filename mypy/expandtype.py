@@ -77,13 +77,15 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return CallableType(self.expand_types(t.arg_types),
-                        t.arg_kinds,
-                        t.arg_names,
-                        t.ret_type.accept(self),
-                        t.fallback,
-                        t.name,
-                        t.variables,
-                        self.expand_bound_vars(t.bound_vars), t.line)
+                            t.arg_kinds,
+                            t.arg_names,
+                            t.ret_type.accept(self),
+                            t.fallback,
+                            t.name,
+                            t.variables,
+                            self.expand_bound_vars(t.bound_vars),
+                            t.line,
+                            t.is_ellipsis_args)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]

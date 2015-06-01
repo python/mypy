@@ -211,11 +211,15 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             # FIX verify argument counts
             # FIX what if one of the functions is generic
             res = []  # type: List[Constraint]
-            for i in range(len(template.arg_types)):
-                # Negate constraints due function argument type contravariance.
-                res.extend(negate_constraints(infer_constraints(
-                    template.arg_types[i], cactual.arg_types[i],
-                    self.direction)))
+
+            # We can't infer constraints from arguments if the template is Callable[..., T] (with
+            # literal '...').
+            if not template.is_ellipsis_args:
+                for i in range(len(template.arg_types)):
+                    # Negate constraints due function argument type contravariance.
+                    res.extend(negate_constraints(infer_constraints(
+                        template.arg_types[i], cactual.arg_types[i],
+                        self.direction)))
             res.extend(infer_constraints(template.ret_type, cactual.ret_type,
                                          self.direction))
             return res

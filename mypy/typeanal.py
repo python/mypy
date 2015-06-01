@@ -4,7 +4,7 @@ from typing import Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
-    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType
+    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType, EllipsisType
 )
 from mypy.nodes import (
     GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, BOUND_TVAR, TypeVarExpr, Var, Node,
@@ -99,7 +99,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # Currently Optional[t] is just an alias for t.
                 return items[0]
             elif fullname == 'typing.Callable':
-                return self.analyze_function_type(t)
+                return self.analyze_callable_type(t)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
                 return sym.type_override
@@ -178,17 +178,31 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
 
-    def analyze_function_type(self, t: UnboundType) -> Type:
+    def analyze_callable_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
             self.fail('Invalid function type', t)
-        if not isinstance(t.args[0], TypeList):
+            return AnyType()
+        ret_type = t.args[1].accept(self)
+        fallback = self.builtin_type('builtins.function')
+        if isinstance(t.args[0], TypeList):
+            # Callable[[ARG, ...], RET] (ordinary callable type)
+            args = t.args[0].items
+            return CallableType(self.anal_array(args),
+                                [nodes.ARG_POS] * len(args),
+                                [None] * len(args),
+                                ret_type=ret_type,
+                                fallback=fallback)
+        elif isinstance(t.args[0], EllipsisType):
+            # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
+            return CallableType([AnyType(), AnyType()],
+                                [nodes.ARG_STAR, nodes.ARG_STAR2],
+                                [None, None],
+                                ret_type=ret_type,
+                                fallback=fallback,
+                                is_ellipsis_args=True)
+        else:
             self.fail('Invalid function type', t)
             return AnyType()
-        args = (cast(TypeList, t.args[0])).items
-        return CallableType(self.anal_array(args),
-                        [nodes.ARG_POS] * len(args), [None] * len(args),
-                        ret_type=t.args[1].accept(self),
-                        fallback=self.builtin_type('builtins.function'))
 
     def anal_array(self, a: List[Type]) -> List[Type]:
         res = []  # type: List[Type]

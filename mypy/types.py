@@ -246,16 +246,19 @@ class CallableType(FunctionLike):
     # Stored as tuples (id, type).
     bound_vars = None  # type: List[Tuple[int, Type]]
 
-    _is_type_obj = False  # Does this represent a type object?
+    # Is this Callable[..., t] (with literal '...')?
+    is_ellipsis_args = False
 
     def __init__(self, arg_types: List[Type],
                  arg_kinds: List[int],
                  arg_names: List[str],
                  ret_type: Type,
                  fallback: Instance,
-                 name: str = None, variables: List[TypeVarDef] = None,
+                 name: str = None,
+                 variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
-                 line: int = -1) -> None:
+                 line: int = -1,
+                 is_ellipsis_args: bool = False) -> None:
         if variables is None:
             variables = []
         if not bound_vars:
@@ -271,6 +274,7 @@ class CallableType(FunctionLike):
         self.name = name
         self.variables = variables
         self.bound_vars = bound_vars
+        self.is_ellipsis_args = is_ellipsis_args
         super().__init__(line)
 
     def is_type_obj(self) -> bool:
@@ -459,6 +463,18 @@ class UnionType(Type):
                    for x in self.items)
 
 
+class EllipsisType(Type):
+    """The type ... (ellipsis).
+
+    This is not a real type but a syntactic AST construct, used in Callable[..., T], for example.
+
+    A semantically analyzed type will never have ellipsis types.
+    """
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_ellipsis_type(self)
+
+
 #
 # Visitor-related classes
 #
@@ -510,7 +526,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_union_type(self, t: UnionType) -> T:
-        assert(0)               # XXX catch visitors that don't have Union cases yet
+        pass
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> T:
+        assert False               # XXX catch visitors that don't have this implemented yet
 
 
 class TypeTranslator(TypeVisitor[Type]):
@@ -556,7 +575,8 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.name,
                         self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
-                        t.line)
+                        t.line,
+                        t.is_ellipsis_args)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
@@ -568,6 +588,9 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line)
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        return t
 
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
@@ -692,6 +715,9 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_union_type(self, t):
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
+
+    def visit_ellipsis_type(self, t):
+        return '...'
 
     def list_str(self, a):
         """Convert items of an array to strings (pretty-print types)

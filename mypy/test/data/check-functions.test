@@ -769,3 +769,68 @@ f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
+
+
+-- Callable[..., T]
+-- ----------------
+
+
+[case testCallableWithArbitraryArgs]
+from typing import Callable
+def f(x: Callable[..., int]) -> None:
+    x()
+    x(1)
+    x(z=1)
+    x() + '' # E: Unsupported left operand type for + ("int")
+[out]
+main: In function "f":
+
+[case testCallableWithArbitraryArgs2]
+from typing import Callable
+def f(x: Callable[..., int]) -> None:
+    x(*[1], **{'x': 2})
+[builtins fixtures/dict.py]
+
+[case testCastWithCallableAndArbitraryArgs]
+from typing import Callable, cast
+f = cast(Callable[..., int], None)
+f(x=4) + '' # E: Unsupported left operand type for + ("int")
+
+[case testCallableWithArbitraryArgsInErrorMessage]
+from typing import Callable
+def f(x: Callable[..., int]) -> None:
+    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
+[out]
+main: In function "f":
+
+[case testCallableWithArbitraryArgsInGenericFunction]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+def f(x: Callable[..., T]) -> T: pass
+def g(*x: int) -> str: pass
+x = f(g)
+x + 1 # E: Unsupported left operand type for + ("str")
+[builtins fixtures/list.py]
+
+[case testCallableWithArbitraryArgsSubtyping]
+from typing import Callable
+def f(x: Callable[..., int]) -> None: pass
+def g1(): pass
+def g2(x, y) -> int: pass
+def g3(*, y: str) -> int: pass
+def g4(*, y: int) -> str: pass
+f(g1)
+f(g2)
+f(g3)
+f(g4) # E: Argument 1 to "f" has incompatible type Callable[[int], str]; expected Callable[..., int]
+
+[case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+def f(x: Callable[..., int]) -> None: pass
+def g1(x: T) -> int: pass
+def g2(*x: T) -> int: pass
+def g3(*x: T) -> T: pass
+f(g1)
+f(g2)
+f(g3)
