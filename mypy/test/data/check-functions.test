@@ -802,3 +802,12 @@ def f(x: Callable[..., int]) -> None:
     x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
 [out]
 main: In function "f":
+
+[case testCallableWithArbitraryArgsInGenericFunction]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+def f(x: Callable[..., T]) -> T: pass
+def g(*x: int) -> str: pass
+x = f(g)
+x + 1 # E: Unsupported left operand type for + ("str")
+[builtins fixtures/list.py]

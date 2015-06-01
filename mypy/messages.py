@@ -12,9 +12,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
-from mypy.nodes import (
-    TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases, ARG_STAR, ARG_STAR2
-)
+from mypy.nodes import TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -144,7 +142,7 @@ class MessageBuilder:
                 return result
             elif isinstance(func, CallableType):
                 return_type = strip_quotes(self.format(func.ret_type))
-                if func.arg_kinds == [ARG_STAR, ARG_STAR2]:
+                if func.is_ellipsis_args():
                     return 'Callable[..., {}]'.format(return_type)
                 arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return 'Callable[[{}], {}]'.format(", ".join(arg_types), return_type)

@@ -313,6 +313,9 @@ class CallableType(FunctionLike):
     def is_generic(self) -> bool:
         return bool(self.variables)
 
+    def is_ellipsis_args(self) -> bool:
+        return self.arg_kinds == [mypy.nodes.ARG_STAR, mypy.nodes.ARG_STAR2]
+
     def type_var_ids(self) -> List[int]:
         a = []  # type: List[int]
         for tv in self.variables:
