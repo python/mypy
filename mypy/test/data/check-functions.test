@@ -822,7 +822,7 @@ def g4(*, y: int) -> str: pass
 f(g1)
 f(g2)
 f(g3)
-f(g4) # E: Argument 1 to "f" has incompatible type Callable[..., str]; expected Callable[..., int]
+f(g4) # E: Argument 1 to "f" has incompatible type Callable[[int], str]; expected Callable[..., int]
 
 [case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
 from typing import Callable, TypeVar

@@ -74,7 +74,8 @@ class SameTypeVisitor(TypeVisitor[bool]):
                     is_same_types(left.arg_types, cright.arg_types) and
                     left.arg_names == cright.arg_names and
                     left.arg_kinds == cright.arg_kinds and
-                    left.is_type_obj() == cright.is_type_obj())
+                    left.is_type_obj() == cright.is_type_obj() and
+                    left.is_ellipsis_args == cright.is_ellipsis_args)
         else:
             return False
 

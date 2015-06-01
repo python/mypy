@@ -257,8 +257,8 @@ class CallableType(FunctionLike):
                  name: str = None,
                  variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
-                 is_ellipsis_args: bool = False,
-                 line: int = -1) -> None:
+                 line: int = -1,
+                 is_ellipsis_args: bool = False) -> None:
         if variables is None:
             variables = []
         if not bound_vars:
@@ -575,7 +575,8 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.name,
                         self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
-                        t.line)
+                        t.line,
+                        t.is_ellipsis_args)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
