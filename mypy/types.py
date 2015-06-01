@@ -246,15 +246,18 @@ class CallableType(FunctionLike):
     # Stored as tuples (id, type).
     bound_vars = None  # type: List[Tuple[int, Type]]
 
-    _is_type_obj = False  # Does this represent a type object?
+    # Is this Callable[..., t] (with literal '...')?
+    is_ellipsis_args = False
 
     def __init__(self, arg_types: List[Type],
                  arg_kinds: List[int],
                  arg_names: List[str],
                  ret_type: Type,
                  fallback: Instance,
-                 name: str = None, variables: List[TypeVarDef] = None,
+                 name: str = None,
+                 variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
+                 is_ellipsis_args: bool = False,
                  line: int = -1) -> None:
         if variables is None:
             variables = []
@@ -271,6 +274,7 @@ class CallableType(FunctionLike):
         self.name = name
         self.variables = variables
         self.bound_vars = bound_vars
+        self.is_ellipsis_args = is_ellipsis_args
         super().__init__(line)
 
     def is_type_obj(self) -> bool:
@@ -312,9 +316,6 @@ class CallableType(FunctionLike):
 
     def is_generic(self) -> bool:
         return bool(self.variables)
-
-    def is_ellipsis_args(self) -> bool:
-        return self.arg_kinds == [mypy.nodes.ARG_STAR, mypy.nodes.ARG_STAR2]
 
     def type_var_ids(self) -> List[int]:
         a = []  # type: List[int]

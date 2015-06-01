@@ -811,3 +811,26 @@ def g(*x: int) -> str: pass
 x = f(g)
 x + 1 # E: Unsupported left operand type for + ("str")
 [builtins fixtures/list.py]
+
+[case testCallableWithArbitraryArgsSubtyping]
+from typing import Callable
+def f(x: Callable[..., int]) -> None: pass
+def g1(): pass
+def g2(x, y) -> int: pass
+def g3(*, y: str) -> int: pass
+def g4(*, y: int) -> str: pass
+f(g1)
+f(g2)
+f(g3)
+f(g4) # E: Argument 1 to "f" has incompatible type Callable[..., str]; expected Callable[..., int]
+
+[case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+def f(x: Callable[..., int]) -> None: pass
+def g1(x: T) -> int: pass
+def g2(*x: T) -> int: pass
+def g3(*x: T) -> T: pass
+f(g1)
+f(g2)
+f(g3)

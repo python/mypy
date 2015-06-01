@@ -214,7 +214,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
             # We can't infer constraints from arguments if the template is Callable[..., T] (with
             # literal '...').
-            if not template.is_ellipsis_args():
+            if not template.is_ellipsis_args:
                 for i in range(len(template.arg_types)):
                     # Negate constraints due function argument type contravariance.
                     res.extend(negate_constraints(infer_constraints(

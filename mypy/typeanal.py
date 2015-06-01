@@ -198,7 +198,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                                 [nodes.ARG_STAR, nodes.ARG_STAR2],
                                 [None, None],
                                 ret_type=ret_type,
-                                fallback=fallback)
+                                fallback=fallback,
+                                is_ellipsis_args=True)
         else:
             self.fail('Invalid function type', t)
             return AnyType()
