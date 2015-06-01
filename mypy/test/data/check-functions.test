@@ -769,3 +769,18 @@ f(1)
 f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
+
+
+-- Callable[..., T]
+-- ----------------
+
+
+[case testCallableWithArbitraryArgs]
+from typing import Callable
+def f(x: Callable[..., int]) -> None:
+    x()
+    x(1)
+    x(z=1)
+    x() + '' # E: Unsupported left operand type for + ("int")
+[out]
+main: In function "f":

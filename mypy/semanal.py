@@ -66,7 +66,7 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
@@ -271,7 +271,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def find_type_variables_in_type(
             self, type: Type) -> List[Tuple[str, List[Type]]]:
-        """Return a list of all unique type variable references in type."""
+        """Return a list of all unique type variable references in an non-analyzed type.
+
+        This effectively does partial name binding, results of which are mostly thrown away.
+        """
         result = []  # type: List[Tuple[str, List[Type]]]
         if isinstance(type, UnboundType):
             name = type.name
@@ -287,6 +290,8 @@ class SemanticAnalyzer(NodeVisitor):
             for item in type.items:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
+            pass
+        elif isinstance(type, EllipsisType):
             pass
         else:
             assert False, 'Unsupported type %s' % type
