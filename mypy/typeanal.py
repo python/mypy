@@ -181,6 +181,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def analyze_callable_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
             self.fail('Invalid function type', t)
+            return AnyType()
         ret_type = t.args[1].accept(self)
         fallback = self.builtin_type('builtins.function')
         if isinstance(t.args[0], TypeList):
