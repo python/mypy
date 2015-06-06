@@ -27,11 +27,12 @@ class SubtypingSuite(Suite):
 
         self.assert_not_subtype(self.fx.ga, self.fx.g2a)
         self.assert_not_subtype(self.fx.ga, self.fx.gb)
-        self.assert_not_subtype(self.fx.gb, self.fx.ga)
+        self.assert_subtype(self.fx.gb, self.fx.ga)
 
     def test_generic_subtyping_with_inheritance(self):
         self.assert_subtype(self.fx.gsab, self.fx.gb)
-        self.assert_not_subtype(self.fx.gsab, self.fx.ga)
+        self.assert_subtype(self.fx.gsab, self.fx.ga)
+        self.assert_not_subtype(self.fx.gsaa, self.fx.gb)
 
     def test_interface_subtyping(self):
         self.assert_subtype(self.fx.e, self.fx.f)

@@ -19,19 +19,19 @@ class TypeFixture:
     The members are initialized to contain various type-related values.
     """
 
-    def __init__(self):
+    def __init__(self, variance: int=COVARIANT):
         # The 'object' class
         self.oi = self.make_type_info('builtins.object')               # class object
         self.o = Instance(self.oi, [])                        # object
 
         # Type variables
-        self.t = TypeVarType('T', 1, [], self.o, COVARIANT)     # T`1 (type variable)
-        self.tf = TypeVarType('T', -1, [], self.o, COVARIANT)   # T`-1 (type variable)
-        self.tf2 = TypeVarType('T', -2, [], self.o, COVARIANT)  # T`-2 (type variable)
-        self.s = TypeVarType('S', 2, [], self.o, COVARIANT)     # S`2 (type variable)
-        self.s1 = TypeVarType('S', 1, [], self.o, COVARIANT)    # S`1 (type variable)
-        self.sf = TypeVarType('S', -2, [], self.o, COVARIANT)   # S`-2 (type variable)
-        self.sf1 = TypeVarType('S', -1, [], self.o, COVARIANT)  # S`-1 (type variable)
+        self.t = TypeVarType('T', 1, [], self.o, variance)     # T`1 (type variable)
+        self.tf = TypeVarType('T', -1, [], self.o, variance)   # T`-1 (type variable)
+        self.tf2 = TypeVarType('T', -2, [], self.o, variance)  # T`-2 (type variable)
+        self.s = TypeVarType('S', 2, [], self.o, variance)     # S`2 (type variable)
+        self.s1 = TypeVarType('S', 1, [], self.o, variance)    # S`1 (type variable)
+        self.sf = TypeVarType('S', -2, [], self.o, variance)   # S`-2 (type variable)
+        self.sf1 = TypeVarType('S', -1, [], self.o, variance)  # S`-1 (type variable)
 
         # Simple types
         self.anyt = AnyType()
@@ -67,22 +67,31 @@ class TypeFixture:
 
         # Generic class TypeInfos
         # G[T]
-        self.gi = self.make_type_info('G', mro=[self.oi], typevars=['T'])
+        self.gi = self.make_type_info('G', mro=[self.oi],
+                                      typevars=['T'],
+                                      variances=[variance])
         # G2[T]
-        self.g2i = self.make_type_info('G2', mro=[self.oi], typevars=['T'])
+        self.g2i = self.make_type_info('G2', mro=[self.oi],
+                                       typevars=['T'],
+                                       variances=[variance])
         # H[S, T]
-        self.hi = self.make_type_info('H', mro=[self.oi], typevars=['S', 'T'])
+        self.hi = self.make_type_info('H', mro=[self.oi],
+                                      typevars=['S', 'T'],
+                                      variances=[variance, variance])
         # GS[T, S] <: G[S]
         self.gsi = self.make_type_info('GS', mro=[self.gi, self.oi],
                                        typevars=['T', 'S'],
+                                       variances=[variance, variance],
                                        bases=[Instance(self.gi, [self.s])])
         # GS2[S] <: G[S]
         self.gs2i = self.make_type_info('GS2', mro=[self.gi, self.oi],
                                         typevars=['S'],
+                                        variances=[variance],
                                         bases=[Instance(self.gi, [self.s1])])
         # list[T]
         self.std_listi = self.make_type_info('builtins.list', mro=[self.oi],
-                                             typevars=['T'])
+                                             typevars=['T'],
+                                             variances=[variance])
 
         # Instance types
         self.std_tuple = Instance(self.std_tuplei, [])        # tuple
@@ -104,6 +113,7 @@ class TypeFixture:
         # Generic instance types
         self.ga = Instance(self.gi, [self.a])        # G[A]
         self.gb = Instance(self.gi, [self.b])        # G[B]
+        self.gd = Instance(self.gi, [self.d])        # G[D]
         self.go = Instance(self.gi, [self.o])        # G[object]
         self.gt = Instance(self.gi, [self.t])        # G[T`1]
         self.gtf = Instance(self.gi, [self.tf])      # G[T`-1]
@@ -113,15 +123,19 @@ class TypeFixture:
 
         self.g2a = Instance(self.g2i, [self.a])      # G2[A]
 
+        self.gsaa = Instance(self.gsi, [self.a, self.a])  # GS[A, A]
         self.gsab = Instance(self.gsi, [self.a, self.b])  # GS[A, B]
         self.gsba = Instance(self.gsi, [self.b, self.a])  # GS[B, A]
 
         self.gs2a = Instance(self.gs2i, [self.a])    # GS2[A]
+        self.gs2b = Instance(self.gs2i, [self.b])    # GS2[B]
+        self.gs2d = Instance(self.gs2i, [self.d])    # GS2[D]
 
         self.hab = Instance(self.hi, [self.a, self.b])    # H[A, B]
         self.haa = Instance(self.hi, [self.a, self.a])    # H[A, A]
         self.hbb = Instance(self.hi, [self.b, self.b])    # H[B, B]
         self.hts = Instance(self.hi, [self.t, self.s])    # H[T, S]
+        self.had = Instance(self.hi, [self.a, self.d])    # H[A, D]
 
         self.lsta = Instance(self.std_listi, [self.a])  # List[A]
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
@@ -169,7 +183,8 @@ class TypeFixture:
                        is_abstract: bool = False,
                        mro: List[TypeInfo] = None,
                        bases: List[Instance] = None,
-                       typevars: List[str] = None) -> TypeInfo:
+                       typevars: List[str] = None,
+                       variances: List[int] = None) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
 
         class_def = ClassDef(name, Block([]), None, [])
@@ -177,10 +192,12 @@ class TypeFixture:
 
         if typevars:
             v = []  # type: List[TypeVarDef]
-            id = 1
-            for n in typevars:
-                v.append(TypeVarDef(n, id, None, self.oi))
-                id += 1
+            for id, n in enumerate(typevars, 1):
+                if variances:
+                    variance = variances[id-1]
+                else:
+                    variance = COVARIANT
+                v.append(TypeVarDef(n, id, None, self.oi, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def)
