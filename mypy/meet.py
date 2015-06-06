@@ -23,7 +23,7 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
+def meet_simple(s: Type, t: Type, default_right: bool=True) -> Type:
     if s == t:
         return s
     if isinstance(s, UnionType):
@@ -131,7 +131,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(self.s, Instance):
             si = cast(Instance, self.s)
             if t.type == si.type:
-                if is_subtype(t, self.s):
+                if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     args = []  # type: List[Type]
