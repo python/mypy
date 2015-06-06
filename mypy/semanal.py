@@ -276,7 +276,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         This effectively does partial name binding, results of which are mostly thrown away.
         """
-        result = []  # type: List[Tuple[str, List[Type]]]
+        result = []  # type: List[Tuple[str, TypeVarExpr]]
         if isinstance(type, UnboundType):
             name = type.name
             node = self.lookup_qualified(name, type)

@@ -19,7 +19,7 @@ class TypeFixture:
     The members are initialized to contain various type-related values.
     """
 
-    def __init__(self, variance: int=COVARIANT):
+    def __init__(self, variance: int=COVARIANT) -> None:
         # The 'object' class
         self.oi = self.make_type_info('builtins.object')               # class object
         self.o = Instance(self.oi, [])                        # object
@@ -197,7 +197,7 @@ class TypeFixture:
                     variance = variances[id-1]
                 else:
                     variance = COVARIANT
-                v.append(TypeVarDef(n, id, None, self.oi, variance=variance))
+                v.append(TypeVarDef(n, id, None, self.o, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def)

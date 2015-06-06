@@ -1292,9 +1292,9 @@ class TypeApplication(Node):
         return visitor.visit_type_application(self)
 
 
-INVARIANT = 0
-COVARIANT = 1
-CONTRAVARIANT = 2
+INVARIANT = 0  # type: int
+COVARIANT = 1  # type: int
+CONTRAVARIANT = 2  # type: int
 
 class TypeVarExpr(SymbolNode):
     """Type variable expression TypeVar(...)."""

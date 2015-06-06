@@ -60,8 +60,6 @@ def is_equivalent(a: Type, b: Type,
 
 class SubtypeVisitor(TypeVisitor[bool]):
 
-    check_type_parameter = None  # Callable[[Type, Type, int], bool]
-
     def __init__(self, right: Type,
                  type_parameter_checker: TypeParameterChecker) -> None:
         self.right = right
