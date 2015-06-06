@@ -3,9 +3,9 @@
 
 
 [case testAssignmentWithDynamic]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a = Undefined # type: A
+from typing import Any
+d = None # type: Any
+a = None # type: A
 
 a = d # Everything ok
 d = a
@@ -16,9 +16,9 @@ d.x = d
 class A: pass
 
 [case testMultipleAssignmentWithDynamic]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a, b = Undefined, Undefined # type: (A, B)
+from typing import Any
+d = None # type: Any
+a, b = None, None # type: (A, B)
 
 d, a = b, b    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 d, d = d, d, d # E: Too many values to unpack (2 expected, 3 provided)
@@ -37,8 +37,8 @@ class B: pass
 
 
 [case testCallingFunctionWithDynamicArgumentTypes]
-from typing import Undefined, Any
-a, b = Undefined, Undefined # type: (A, B)
+from typing import Any
+a, b = None, None # type: (A, B)
 
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
@@ -54,8 +54,8 @@ class A: pass
 class B: pass
 
 [case testCallingWithDynamicReturnType]
-from typing import Undefined, Any
-a, b = Undefined, Undefined # type: (A, B)
+from typing import Any
+a, b = None, None # type: (A, B)
 
 a = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 
@@ -69,11 +69,11 @@ class A: pass
 class B: pass
 
 [case testBinaryOperationsWithDynamicLeftOperand]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a = Undefined # type: A
-c = Undefined # type: C
-b = Undefined # type: bool
+from typing import Any
+d = None # type: Any
+a = None # type: A
+c = None # type: C
+b = None # type: bool
 n = 0
 
 d in a  # E: Unsupported right operand type for in ("A")
@@ -113,11 +113,11 @@ class function: pass
 class str: pass
 
 [case testBinaryOperationsWithDynamicAsRightOperand]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a = Undefined # type: A
-c = Undefined # type: C
-b = Undefined # type: bool
+from typing import Any
+d = None # type: Any
+a = None # type: A
+c = None # type: C
+b = None # type: bool
 n = 0
 
 a and d
@@ -170,10 +170,10 @@ class function: pass
 class str: pass
 
 [case testDynamicWithUnaryExpressions]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a = Undefined # type: A
-b = Undefined # type: bool
+from typing import Any
+d = None # type: Any
+a = None # type: A
+b = None # type: bool
 a = not d # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 b = not d
 a = -d
@@ -182,9 +182,9 @@ class A: pass
 [out]
 
 [case testDynamicWithMemberAccess]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a = Undefined # type: A
+from typing import Any
+d = None # type: Any
+a = None # type: A
 
 a = d.foo(a()) # E: "A" not callable
 
@@ -197,9 +197,9 @@ class A: pass
 [out]
 
 [case testIndexingWithDynamic]
-from typing import Undefined, Any
-d = Undefined # type: Any
-a = Undefined # type: A
+from typing import Any
+d = None # type: Any
+a = None # type: A
 
 a = d[a()] # E: "A" not callable
 d[a()] = a # E: "A" not callable
@@ -211,9 +211,9 @@ d[a], d[a] = a, a
 class A: pass
 
 [case testTupleExpressionsWithDynamci]
-from typing import Undefined, Tuple, Any
-t2 = Undefined # type: Tuple[A, A]
-d = Undefined # type: Any
+from typing import Tuple, Any
+t2 = None # type: Tuple[A, A]
+d = None # type: Any
 
 t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[A, A]")
 t2 = (d, d)
@@ -222,12 +222,12 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testCastsWithDynamicType]
-from typing import Undefined, Any, cast
+from typing import Any, cast
 class A: pass
 class B: pass
-d = Undefined # type: Any
-a = Undefined # type: A
-b = Undefined # type: B
+d = None # type: Any
+a = None # type: A
+b = None # type: B
 b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = cast(A, d)
 b = Any(d)
@@ -235,9 +235,9 @@ a = Any(f())
 def f() -> None: pass
 
 [case testCompatibilityOfDynamicWithOtherTypes]
-from typing import Undefined, Any, Tuple
-d = Undefined # type: Any
-t = Undefined # type: Tuple[A, A]
+from typing import Any, Tuple
+d = None # type: Any
+t = None # type: Tuple[A, A]
 # TODO: callable types, overloaded functions
 
 d = None # All ok
@@ -260,8 +260,8 @@ class B: pass
 
 
 [case testDynamicCondition]
-from typing import Undefined, Any
-d = Undefined # type: Any
+from typing import Any
+d = None # type: Any
 while d:
     pass
 if d:
@@ -271,14 +271,14 @@ elif d:
 [builtins fixtures/bool.py]
 
 [case testRaiseWithDynamic]
-from typing import Undefined, Any
-d = Undefined # type: Any
+from typing import Any
+d = None # type: Any
 raise d
 [builtins fixtures/exception.py]
 
 [case testReturnWithDynamic]
-from typing import Undefined, Any
-d = Undefined # type: Any
+from typing import Any
+d = None # type: Any
 
 def f() -> None:
     return d # Ok
@@ -294,11 +294,11 @@ class A: pass
 
 
 [case testImplicitGlobalFunctionSignature]
-from typing import Undefined, Any, Callable
-x = Undefined # type: Any
-a = Undefined # type: A
-g = Undefined # type: Callable[[], None]
-h = Undefined # type: Callable[[A], None]
+from typing import Any, Callable
+x = None # type: Any
+a = None # type: A
+g = None # type: Callable[[], None]
+h = None # type: Callable[[A], None]
 
 f()     # E: Too few arguments for "f"
 f(x, x) # E: Too many arguments for "f"
@@ -313,11 +313,11 @@ def f(x): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDifferentArgCounts]
-from typing import Undefined, Callable
-g0 = Undefined # type: Callable[[], None]
-g1 = Undefined # type: Callable[[A], None]
-g2 = Undefined # type: Callable[[A, A], None]
-a = Undefined # type: A
+from typing import Callable
+g0 = None # type: Callable[[], None]
+g1 = None # type: Callable[[A], None]
+g2 = None # type: Callable[[A, A], None]
+a = None # type: A
 
 g1 = f0 # E: Incompatible types in assignment (expression has type Callable[[], Any], variable has type Callable[[A], None])
 g2 = f0 # E: Incompatible types in assignment (expression has type Callable[[], Any], variable has type Callable[[A, A], None])
@@ -336,14 +336,14 @@ def f2(x, y): pass
 class A: pass
 
 [case testImplicitGlobalFunctionSignatureWithDefaultArgs]
-from typing import Undefined, Callable
-a, b = Undefined, Undefined # type: (A, B)
+from typing import Callable
+a, b = None, None # type: (A, B)
 
-g0 = Undefined # type: Callable[[], None]
-g1 = Undefined # type: Callable[[A], None]
-g2 = Undefined # type: Callable[[A, A], None]
-g3 = Undefined # type: Callable[[A, A, A], None]
-g4 = Undefined # type: Callable[[A, A, A, A], None]
+g0 = None # type: Callable[[], None]
+g1 = None # type: Callable[[A], None]
+g2 = None # type: Callable[[A, A], None]
+g3 = None # type: Callable[[A, A, A], None]
+g4 = None # type: Callable[[A, A, A, A], None]
 
 f01(a, a)       # Fail
 f13()           # Fail
@@ -378,8 +378,8 @@ main, line 14: Incompatible types in assignment (expression has type Callable[[A
 main, line 15: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[A, A, A, A], None])
 
 [case testSkipTypeCheckingWithImplicitSignature]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 def f():
     a()
 def g(x):
@@ -392,8 +392,8 @@ class A: pass
 [builtins fixtures/bool.py]
 
 [case testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 def f(x=a()):
     a()
 def g(x, y=a, z=a()):
@@ -401,11 +401,11 @@ def g(x, y=a, z=a()):
 class A: pass
 
 [case testImplicitMethodSignature]
-from typing import Undefined, Callable
-g0 = Undefined # type: Callable[[], None]
-g1 = Undefined # type: Callable[[A], None]
-g2 = Undefined # type: Callable[[A, A], None]
-a = Undefined # type: A
+from typing import Callable
+g0 = None # type: Callable[[], None]
+g1 = None # type: Callable[[A], None]
+g2 = None # type: Callable[[A, A], None]
+a = None # type: A
 
 g0 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
 g2 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
@@ -420,8 +420,8 @@ g1 = a.f
 a = a.f(a)
 
 [case testSkipTypeCheckingImplicitMethod]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 class A:
     def f(self):
         a()
@@ -429,10 +429,10 @@ class A:
         a()
 
 [case testImplicitInheritedMethod]
-from typing import Undefined, Callable
-g0 = Undefined # type: Callable[[], None]
-g1 = Undefined # type: Callable[[A], None]
-a = Undefined # type: A
+from typing import Callable
+g0 = None # type: Callable[[], None]
+g1 = None # type: Callable[[A], None]
+a = None # type: A
 
 g0 = a.f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[], None])
 
@@ -455,8 +455,8 @@ class A:
         return
 
 [case testVarArgsWithImplicitSignature]
-from typing import Undefined, Any
-o = Undefined # type: Any
+from typing import Any
+o = None # type: Any
 def f(x, *a): pass
 f() # E: Too few arguments for "f"
 f(o)
@@ -470,10 +470,10 @@ f(o, o, o)
 
 
 [case testInitMethodWithImplicitSignature]
-from typing import Undefined, Callable
-f1 = Undefined # type: Callable[[A], A]
-f2 = Undefined # type: Callable[[A, A], A]
-a = Undefined # type: A
+from typing import Callable
+f1 = None # type: Callable[[A], A]
+f2 = None # type: Callable[[A, A], A]
+a = None # type: A
 
 A(a)   # Fail
 f1 = A # Fail
@@ -488,8 +488,8 @@ main, line 6: Too few arguments for "A"
 main, line 7: Incompatible types in assignment (expression has type "A" (type object), variable has type Callable[[A], A])
 
 [case testUsingImplicitTypeObjectWithIs]
-from typing import Undefined
-t = Undefined # type: type
+
+t = None # type: type
 t = A
 t = B
 
@@ -503,12 +503,12 @@ class B:
 
 
 [case testTupleTypeCompatibility]
-from typing import Undefined, Any, Tuple
-t1 = Undefined # type: Tuple[Any, A]
-t2 = Undefined # type: Tuple[A, Any]
-t3 = Undefined # type: Tuple[Any, Any]
-t4 = Undefined # type: Tuple[A, A]
-t5 = Undefined # type: Tuple[Any, Any, Any]
+from typing import Any, Tuple
+t1 = None # type: Tuple[Any, A]
+t2 = None # type: Tuple[A, Any]
+t3 = None # type: Tuple[Any, Any]
+t4 = None # type: Tuple[A, A]
+t5 = None # type: Tuple[Any, Any, Any]
 
 t3 = t5 # E: Incompatible types in assignment (expression has type "Tuple[Any, Any, Any]", variable has type "Tuple[Any, Any]")
 t5 = t4 # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[Any, Any, Any]")
@@ -531,11 +531,11 @@ class A: pass
 [builtins fixtures/tuple.py]
 
 [case testFunctionTypeCompatibilityAndReturnTypes]
-from typing import Undefined, Any, Callable
-f1 = Undefined # type: Callable[[], Any]
-f11 = Undefined # type: Callable[[], Any]
-f2 = Undefined # type: Callable[[], A]
-f3 = Undefined # type: Callable[[], None]
+from typing import Any, Callable
+f1 = None # type: Callable[[], Any]
+f11 = None # type: Callable[[], Any]
+f2 = None # type: Callable[[], A]
+f3 = None # type: Callable[[], None]
 
 f2 = f3 # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], A])
 
@@ -547,10 +547,10 @@ f3 = f11
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentTypes]
-from typing import Undefined, Any, Callable
-f1 = Undefined # type: Callable[[A, Any], None]
-f2 = Undefined # type: Callable[[Any, A], None]
-f3 = Undefined # type: Callable[[A, A], None]
+from typing import Any, Callable
+f1 = None # type: Callable[[A, Any], None]
+f2 = None # type: Callable[[Any, A], None]
+f3 = None # type: Callable[[A, A], None]
 
 f1 = f1
 f1 = f2
@@ -567,9 +567,9 @@ f3 = f3
 class A: pass
 
 [case testFunctionTypeCompatibilityAndArgumentCounts]
-from typing import Undefined, Any, Callable
-f1 = Undefined # type: Callable[[Any], None]
-f2 = Undefined # type: Callable[[Any, Any], None]
+from typing import Any, Callable
+f1 = None # type: Callable[[Any], None]
+f2 = None # type: Callable[[Any, Any], None]
 
 f1 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
@@ -579,8 +579,8 @@ f1 = f2 # E: Incompatible types in assignment (expression has type Callable[[Any
 
 
 [case testOverridingMethodWithDynamicTypes]
-from typing import Undefined, Any
-a, b = Undefined, Undefined # type: (A, B)
+from typing import Any
+a, b = None, None # type: (A, B)
 
 b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
 a = a.f(b)
@@ -597,8 +597,8 @@ class A(B):
         pass
 
 [case testOverridingMethodWithImplicitDynamicTypes]
-from typing import Undefined
-a, b = Undefined, Undefined # type: (A, B)
+
+a, b = None, None # type: (A, B)
 
 b.f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
 a = a.f(b)

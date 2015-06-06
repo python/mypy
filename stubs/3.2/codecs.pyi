@@ -1,4 +1,4 @@
-from typing import Any, BinaryIO, Callable, Undefined
+from typing import Any, BinaryIO, Callable
 
 BOM_UTF8 = b''
 
@@ -20,7 +20,7 @@ def lookup(encoding: str) -> CodecInfo:
 def getwriter(encoding: str) -> Callable[[BinaryIO], StreamWriter]: pass
 
 class IncrementalDecoder:
-    errors = Undefined(Any)
+    errors = ...  # type: Any
     def __init__(self, errors=''): pass
     def decode(self, input, final=False): pass
     def reset(self): pass

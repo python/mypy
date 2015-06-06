@@ -21,14 +21,14 @@ f((1, 'x'))
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
 
 [case testCallableTypeAlias]
-from typing import Callable, Undefined
+from typing import Callable
 A = Callable[[int], None]
-f = Undefined(A)
+f = None  # type: A
 f(1)
 f('') # E: Argument 1 has incompatible type "str"; expected "int"
 
 [case testListTypeAlias]
-from typing import List, Undefined
+from typing import List
 A = List[int]
 def f(x: A) -> None: pass
 f([1])

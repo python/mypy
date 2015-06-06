@@ -5,7 +5,6 @@ from abc import abstractmethod
 
 cast = object()
 overload = object()
-Undefined = object()
 Any = object()
 Union = object()
 Optional = object()

@@ -184,9 +184,6 @@ class NodeVisitor(Generic[T]):
     def visit_index_expr(self, o: 'mypy.nodes.IndexExpr') -> T:
         pass
 
-    def visit_undefined_expr(self, o: 'mypy.nodes.UndefinedExpr') -> T:
-        pass
-
     def visit_type_application(self, o: 'mypy.nodes.TypeApplication') -> T:
         pass
 

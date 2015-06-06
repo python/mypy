@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from typing import Undefined, Tuple, List, TypeVar, Sequence, Any, Callable, Set
+from typing import Tuple, List, TypeVar, Sequence, Any, Callable, Set
 
 
 T = TypeVar('T')
@@ -12,7 +12,7 @@ class ErrorInfo:
 
     # Description of a sequence of imports that refer to the source file
     # related to this error. Each item is a (path, line number) tuple.
-    import_ctx = Undefined(List[Tuple[str, int]])
+    import_ctx = None  # type: List[Tuple[str, int]]
 
     # The source file that was the source of this error.
     file = ''
@@ -51,11 +51,10 @@ class Errors:
     """
 
     # List of generated error messages.
-    error_info = Undefined(List[ErrorInfo])
+    error_info = None  # type: List[ErrorInfo]
 
-    # Current error context.
-    # Import context, as a list of (path, line) pairs.
-    import_ctx = Undefined(List[Tuple[str, int]])
+    # Current error context: nested import context/stack, as a list of (path, line) pairs.
+    import_ctx = None  # type: List[Tuple[str, int]]
 
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix = None  # type: str
@@ -64,13 +63,13 @@ class Errors:
     file = None  # type: str
 
     # Stack of short names of currents types (or None).
-    type_name = Undefined(List[str])
+    type_name = None  # type: List[str]
 
     # Stack of short names of current functions or members (or None).
-    function_or_member = Undefined(List[str])
+    function_or_member = None  # type: List[str]
 
     # Ignore errors on these lines.
-    ignored_lines = Undefined(Set[int])
+    ignored_lines = None  # type: Set[int]
 
     def __init__(self) -> None:
         self.error_info = []
@@ -303,7 +302,7 @@ class CompileError(Exception):
     compilation-related error.
     """
 
-    messages = Undefined(List[str])
+    messages = None  # type: List[str]
 
     def __init__(self, messages: List[str]) -> None:
         super().__init__()

@@ -1,11 +1,9 @@
-from typing import Undefined
-
 class _Feature: pass
 
-absolute_import = Undefined(_Feature)
-division = Undefined(_Feature)
-generators = Undefined(_Feature)
-nested_scopes = Undefined(_Feature)
-print_function = Undefined(_Feature)
-unicode_literals = Undefined(_Feature)
-with_statement = Undefined(_Feature)
+absolute_import = ...  # type: _Feature
+division = ...  # type: _Feature
+generators = ...  # type: _Feature
+nested_scopes = ...  # type: _Feature
+print_function = ...  # type: _Feature
+unicode_literals = ...  # type: _Feature
+with_statement = ...  # type: _Feature

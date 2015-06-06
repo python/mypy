@@ -16,7 +16,7 @@ import subprocess
 import sys
 from os.path import dirname, basename
 
-from typing import Undefined, Dict, List, Tuple, cast, Set, Union
+from typing import Dict, List, Tuple, cast, Set, Union
 
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
@@ -574,12 +574,12 @@ class State:
     """
 
     # The StateInfo attributes are duplicated here for convenience.
-    path = Undefined(str)
-    id = Undefined(str)
-    import_context = Undefined(List[Tuple[str, int]])
-    manager = Undefined(BuildManager)
+    path = ''
+    id = ''
+    import_context = None  # type: List[Tuple[str, int]]
+    manager = None  # type: BuildManager
     # Modules that this file directly depends on (in no particular order).
-    dependencies = Undefined(List[str])
+    dependencies = None  # type: List[str]
 
     def __init__(self, info: StateInfo) -> None:
         self.path = info.path
@@ -747,7 +747,7 @@ class UnprocessedFile(State):
 
 
 class ParsedFile(State):
-    tree = Undefined(MypyFile)
+    tree = None  # type: MypyFile
 
     def __init__(self, info: StateInfo, tree: MypyFile) -> None:
         super().__init__(info)

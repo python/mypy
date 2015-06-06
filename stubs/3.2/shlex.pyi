@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/shlex.html
 
-from typing import List, Undefined, Tuple, Any, TextIO
+from typing import List, Tuple, Any, TextIO
 
 def split(s: str, comments: bool = False,
           posix: bool = True) -> List[str]: pass
@@ -16,7 +16,7 @@ class shlex:
     escapedquotes = ''
     whitespace_split = ''
     infile = ''
-    instream = Undefined(TextIO)
+    instream = ...  # type: TextIO
     source = ''
     debug = 0
     lineno = 0

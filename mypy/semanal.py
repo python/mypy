@@ -41,7 +41,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    Undefined, List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
+    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
 )
 
 from mypy.nodes import (
@@ -54,7 +54,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, UndefinedExpr, TypeVarExpr,
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
@@ -67,7 +67,7 @@ from mypy.errors import Errors
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
@@ -84,12 +84,32 @@ ALWAYS_TRUE = 0
 ALWAYS_FALSE = 1
 TRUTH_VALUE_UNKNOWN = 2
 
-
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
     'typing.Function': 'typing.Callable',
     'typing.typevar': 'typing.TypeVar',
 }
+
+# Hard coded type promotions (shared between all Python versions).
+# These add extra ad-hoc edges to the subtyping relation. For example,
+# int is considered a subtype of float, even though there is no
+# subclass relationship.
+TYPE_PROMOTIONS = {
+    'builtins.int': 'builtins.float',
+    'builtins.float': 'builtins.complex',
+}
+
+# Hard coded type promotions for Python 3.
+TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON3.update({
+    'builtins.bytearray': 'builtins.bytes',
+})
+
+# Hard coded type promotions for Python 2.
+TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON2.update({
+    'builtins.str': 'builtins.unicode',
+})
 
 
 class SemanticAnalyzer(NodeVisitor):
@@ -103,35 +123,35 @@ class SemanticAnalyzer(NodeVisitor):
     """
 
     # Library search paths
-    lib_path = Undefined(List[str])
+    lib_path = None  # type: List[str]
     # Module name space
-    modules = Undefined(Dict[str, MypyFile])
+    modules = None  # type: Dict[str, MypyFile]
     # Global name space for current module
-    globals = Undefined(SymbolTable)
+    globals = None  # type: SymbolTable
     # Names declared using "global" (separate set for each scope)
-    global_decls = Undefined(List[Set[str]])
+    global_decls = None  # type: List[Set[str]]
     # Names declated using "nonlocal" (separate set for each scope)
-    nonlocal_decls = Undefined(List[Set[str]])
+    nonlocal_decls = None  # type: List[Set[str]]
     # Local names of function scopes; None for non-function scopes.
-    locals = Undefined(List[SymbolTable])
+    locals = None  # type: List[SymbolTable]
     # Nested block depths of scopes
-    block_depth = Undefined(List[int])
+    block_depth = None  # type: List[int]
     # TypeInfo of directly enclosing class (or None)
-    type = Undefined(TypeInfo)
+    type = None  # type: TypeInfo
     # Stack of outer classes (the second tuple item contains tvars).
-    type_stack = Undefined(List[TypeInfo])
+    type_stack = None  # type: List[TypeInfo]
     # Type variables that are bound by the directly enclosing class
-    bound_tvars = Undefined(List[SymbolTableNode])
+    bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type varialbes that were bound by outer classess
-    tvar_stack = Undefined(List[List[SymbolTableNode]])
+    tvar_stack = None  # type: List[List[SymbolTableNode]]
 
     # Stack of functions being analyzed
-    function_stack = Undefined(List[FuncItem])
+    function_stack = None  # type: List[FuncItem]
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
-    imports = Undefined(Set[str])  # Imported modules (during phase 2 analysis)
-    errors = Undefined(Errors)     # Keep track of generated errors
+    imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
+    errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self, lib_path: List[str], errors: Errors,
                  pyversion: int = 3) -> None:
@@ -252,7 +272,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def find_type_variables_in_type(
             self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
-        """Return a list of all unique type variable references in type."""
+        """Return a list of all unique type variable references in type.
+
+        This effectively does partial name binding, results of which are mostly thrown away.
+        """
         result = []  # type: List[Tuple[str, List[Type]]]
         if isinstance(type, UnboundType):
             name = type.name
@@ -268,6 +291,8 @@ class SemanticAnalyzer(NodeVisitor):
             for item in type.items:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
+            pass
+        elif isinstance(type, EllipsisType):
             pass
         else:
             assert False, 'Unsupported type %s' % type
@@ -485,18 +510,6 @@ class SemanticAnalyzer(NodeVisitor):
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
 
-    # Hard coded type promotions.
-    TYPE_PROMOTIONS = {
-        'builtins.int': 'builtins.float',
-        'builtins.float': 'builtins.complex',
-    }
-
-    # Hard coded type promotions for Python 2.
-    TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
-    TYPE_PROMOTIONS_PYTHON2.update({
-        'builtins.str': 'builtins.unicode',
-    })
-
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
 
@@ -510,8 +523,8 @@ class SemanticAnalyzer(NodeVisitor):
                     # _promote class decorator (undocumented faeture).
                     promote_target = analyzed.type
         if not promote_target:
-            promotions = (self.TYPE_PROMOTIONS if self.pyversion >= 3
-                          else self.TYPE_PROMOTIONS_PYTHON2)
+            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.pyversion >= 3
+                          else TYPE_PROMOTIONS_PYTHON2)
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
         defn.info._promote = promote_target
@@ -819,7 +832,6 @@ class SemanticAnalyzer(NodeVisitor):
         if s.type:
             s.type = self.anal_type(s.type)
         else:
-            s.type = self.infer_type_from_undefined(s.rvalue)
             # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
@@ -985,13 +997,6 @@ class SemanticAnalyzer(NodeVisitor):
     def check_lvalue_validity(self, node: Node, ctx: Context) -> None:
         if isinstance(node, (FuncDef, TypeInfo, TypeVarExpr)):
             self.fail('Invalid assignment target', ctx)
-
-    def infer_type_from_undefined(self, rvalue: Node) -> Type:
-        if isinstance(rvalue, CallExpr):
-            if isinstance(rvalue.analyzed, UndefinedExpr):
-                undef = cast(UndefinedExpr, rvalue.analyzed)
-                return undef.type
-        return None
 
     def store_declared_types(self, lvalue: Node, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
@@ -1538,7 +1543,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Analyze a call expression.
 
         Some call expressions are recognized as special forms, including
-        cast(...), Undefined(...) and Any(...).
+        cast(...) and Any(...).
         """
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
@@ -1561,18 +1566,6 @@ class SemanticAnalyzer(NodeVisitor):
             if not self.check_fixed_args(expr, 1, 'Any'):
                 return
             expr.analyzed = CastExpr(expr.args[0], AnyType())
-            expr.analyzed.line = expr.line
-            expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'typing.Undefined'):
-            # Special form Undefined(...).
-            if not self.check_fixed_args(expr, 1, 'Undefined'):
-                return
-            try:
-                type = expr_to_unanalyzed_type(expr.args[0])
-            except TypeTranslationError:
-                self.fail('Argument to Undefined is not a type', expr)
-                return
-            expr.analyzed = UndefinedExpr(type)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing._promote'):
@@ -1685,9 +1678,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
-        expr.type = self.anal_type(expr.type)
-
-    def visit_undefined_expr(self, expr: UndefinedExpr) -> None:
         expr.type = self.anal_type(expr.type)
 
     def visit_type_application(self, expr: TypeApplication) -> None:
@@ -2067,9 +2057,6 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
         super().visit_assignment_stmt(s)
-
-    def visit_undefined_expr(self, e: UndefinedExpr) -> None:
-        self.analyze(e.type)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
         self.analyze(e.type)

@@ -2,7 +2,7 @@
 
 import itertools
 
-from typing import Undefined, Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union
+from typing import Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -15,7 +15,7 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr, UndefinedExpr, PrintStmt,
+    Decorator, SetExpr, PassStmt, TypeVarExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr,
@@ -291,34 +291,34 @@ class TypeChecker(NodeVisitor[Type]):
     pyversion = 3
     # Are we type checking a stub?
     is_stub = False
-    # Error message reporting
-    errors = Undefined(Errors)
+    # Error message reporter
+    errors = None  # type: Errors
     # SymbolNode table for the whole program
-    symtable = Undefined(SymbolTable)
+    symtable = None  # type: SymbolTable
     # Utility for generating messages
-    msg = Undefined(MessageBuilder)
+    msg = None  # type: MessageBuilder
     # Types of type checked nodes
-    type_map = Undefined(Dict[Node, Type])
+    type_map = None  # type: Dict[Node, Type]
 
     # Helper for managing conditional types
-    binder = Undefined(ConditionalTypeBinder)
+    binder = None  # type: ConditionalTypeBinder
     # Helper for type checking expressions
-    expr_checker = Undefined('mypy.checkexpr.ExpressionChecker')
+    expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
     # Stack of function return types
-    return_types = Undefined(List[Type])
+    return_types = None  # type: List[Type]
     # Type context for type inference
-    type_context = Undefined(List[Type])
+    type_context = None  # type: List[Type]
     # Flags; true for dynamically typed functions
-    dynamic_funcs = Undefined(List[bool])
+    dynamic_funcs = None  # type: List[bool]
     # Stack of functions being type checked
-    function_stack = Undefined(List[FuncItem])
+    function_stack = None  # type: List[FuncItem]
     # Set to True on return/break/raise, False on blocks that can block any of them
     breaking_out = False
 
-    globals = Undefined(SymbolTable)
-    locals = Undefined(SymbolTable)
-    modules = Undefined(Dict[str, MypyFile])
+    globals = None  # type: SymbolTable
+    locals = None  # type: SymbolTable
+    modules = None  # type: Dict[str, MypyFile]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: int = 3) -> None:
@@ -539,10 +539,10 @@ class TypeChecker(NodeVisitor[Type]):
         #           return 1                     # __add__!
         #   class C(A):
         #       def __add__(self, x: Any) -> str: return 'x'
-        #   a = Undefined(A)
-        #   a = C()
-        #   a + B()  # Result would be 'x', even though static type seems to
-        #            # be int!
+        #   def f(a: A) -> None:
+        #       a + B()  # Result would be 'x', even though static type seems to
+        #                # be int!
+        #   f(C())
 
         if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
@@ -617,9 +617,9 @@ class TypeChecker(NodeVisitor[Type]):
         #   class B:
         #       def __radd__(self, x: A) -> str: return 'x'
         #   class C(X, B): pass
-        #   b = Undefined(B)
-        #   b = C()
-        #   A() + b # Result is 1, even though static type seems to be str!
+        #   def f(b: B) -> None:
+        #       A() + b # Result is 1, even though static type seems to be str!
+        #   f(C())
         #
         # The reason for the problem is that B and X are overlapping
         # types, and the return types are different. Also, if the type
@@ -1004,13 +1004,9 @@ class TypeChecker(NodeVisitor[Type]):
         if not msg:
             msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
 
-        # First handle case where rvalue is of form Undefined, ...
-        rvalue_type = get_undefined_tuple(rvalue, self.named_type('builtins.tuple'))
-        undefined_rvalue = True
-        if not rvalue_type:
-            # Infer the type of an ordinary rvalue expression.
-            rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
-            undefined_rvalue = False
+        # Infer the type of an ordinary rvalue expression.
+        rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
+        undefined_rvalue = False
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -1243,13 +1239,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
                                 context: Node,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
-        """Checks the assignment of rvalue to a lvalue of type lvalue_type."""
-        if refers_to_fullname(rvalue, 'typing.Undefined'):
-            # The rvalue is just 'Undefined'; this is always valid.
-            # Infer the type of 'Undefined' from the lvalue type.
-            self.store_type(rvalue, lvalue_type)
-            return None
-        elif self.is_stub and isinstance(rvalue, EllipsisNode):
+        if self.is_stub and isinstance(rvalue, EllipsisNode):
             # '...' is always a valid initializer in a stub.
             return AnyType()
         else:
@@ -1797,9 +1787,6 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         return self.expr_checker.visit_dictionary_comprehension(e)
 
-    def visit_undefined_expr(self, e: UndefinedExpr) -> Type:
-        return self.expr_checker.visit_undefined_expr(e)
-
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type
 
@@ -1979,21 +1966,6 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     # in inst_type they are interpreted in subtype context. This works even if
     # the names of type variables in supertype and subtype overlap.
     return expand_type_by_instance(typ, inst_type)
-
-
-def get_undefined_tuple(rvalue: Node, tuple_type: Instance) -> Type:
-    """Get tuple type corresponding to a tuple of Undefined values.
-
-    The type is Tuple[Any, ...]. If rvalue is not of the right form, return
-    None.
-    """
-    if isinstance(rvalue, TupleExpr):
-        for item in rvalue.items:
-            if not refers_to_fullname(item, 'typing.Undefined'):
-                break
-        else:
-            return TupleType([AnyType()] * len(rvalue.items), tuple_type)
-    return None
 
 
 def find_isinstance_check(node: Node,

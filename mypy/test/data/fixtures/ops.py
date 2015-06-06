@@ -1,4 +1,4 @@
-from typing import Undefined, builtinclass
+from typing import builtinclass
 
 # This is an extension of transform builtins with additional operations.
 
@@ -37,7 +37,7 @@ class float: pass
 
 class BaseException: pass
 
-True = Undefined(bool)
-False = Undefined(bool)
+True = None # type: bool
+False = None # type: bool
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass

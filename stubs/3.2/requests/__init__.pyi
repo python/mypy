@@ -1,6 +1,6 @@
 # Stubs for requests (based on version 2.6.0, Python 3)
 
-from typing import Undefined, Any
+from typing import Any
 from . import models
 from . import api
 from . import sessions
@@ -8,10 +8,10 @@ from . import status_codes
 from . import exceptions
 import logging
 
-__title__ = Undefined(Any)
-__build__ = Undefined(Any)
-__license__ = Undefined(Any)
-__copyright__ = Undefined(Any)
+__title__ = ...  # type: Any
+__build__ = ...  # type: Any
+__license__ = ...  # type: Any
+__copyright__ = ...  # type: Any
 
 Request = models.Request
 Response = models.Response

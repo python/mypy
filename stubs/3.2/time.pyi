@@ -4,14 +4,14 @@
 # based on: http://docs.python.org/3.2/library/time.html#module-time
 # see: http://nullege.com/codes/search?cq=time
 
-from typing import Undefined, Tuple, Union
+from typing import Tuple, Union
 
 # ----- variables and constants -----
 accept2dyear = False
 altzone = 0
 daylight = 0
 timezone = 0
-tzname = Undefined(Tuple[str, str])
+tzname = ... # type: Tuple[str, str]
 
 
 # ----- classes/methods -----

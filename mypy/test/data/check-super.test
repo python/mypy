@@ -6,12 +6,12 @@
 
 
 [case testAccessingSupertypeMethod]
-from typing import Undefined
+
 class B:
   def f(self) -> 'B': pass
 class A(B):
   def f(self) -> 'A':
-    a, b = Undefined, Undefined # type: (A, B)
+    a, b = None, None # type: (A, B)
     a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     a = super().g() # E: "g" undefined in superclass
     b = super().f()
@@ -19,12 +19,12 @@ class A(B):
 main: In member "f" of class "A":
 
 [case testAccessingSuperTypeMethodWithArgs]
-from typing import Any, Undefined
+from typing import Any
 class B:
   def f(self, y: 'A') -> None: pass
 class A(B):
   def f(self, x: Any) -> None:
-    a, b = Undefined, Undefined # type: (A, B)
+    a, b = None, None # type: (A, B)
     super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
     super().f(a)
     self.f(b)

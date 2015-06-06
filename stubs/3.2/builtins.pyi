@@ -1,7 +1,7 @@
 # Stubs for builtins
 
 from typing import (
-    Undefined, TypeVar, Iterator, Iterable, overload,
+    TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
     Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
     SupportsRound, IO, Union, ItemsView, KeysView, ValuesView, ByteString
@@ -24,11 +24,9 @@ staticmethod = object() # Only valid as a decorator.
 classmethod = object() # Only valid as a decorator.
 property = object()
 
-_byte_types = Union[bytes, bytearray]
-
 class object:
     __doc__ = ''
-    __class__ = Undefined # type: type
+    __class__ = ...  # type: type
 
     def __init__(self) -> None: pass
     def __eq__(self, o: object) -> bool: pass
@@ -41,14 +39,14 @@ class type:
     __name__ = ''
     __qualname__ = ''
     __module__ = ''
-    __dict__ = Undefined # type: Dict[str, Any]
+    __dict__ = ...  # type: Dict[str, Any]
 
     def __init__(self, o: object) -> None: pass
     @staticmethod
     def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: pass
 
 class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
-    def __init__(self, x: Union[SupportsInt, str, _byte_types]=None, base: int=None) -> None: pass
+    def __init__(self, x: Union[SupportsInt, str, bytes]=None, base: int=None) -> None: pass
     def bit_length(self) -> int: pass
     def to_bytes(self, length: int, byteorder: str, *, signed: bool = False) -> bytes: pass
     @classmethod
@@ -97,7 +95,7 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __hash__(self) -> int: pass
 
 class float(SupportsFloat, SupportsInt, SupportsAbs[float]):
-    def __init__(self, x: Union[SupportsFloat, str, _byte_types]=None) -> None: pass
+    def __init__(self, x: Union[SupportsFloat, str, bytes]=None) -> None: pass
     def as_integer_ratio(self) -> Tuple[int, int]: pass
     def hex(self) -> str: pass
     def is_integer(self) -> bool: pass
@@ -173,7 +171,7 @@ class str(Sequence[str]):
     @overload
     def __init__(self, o: object) -> None: pass
     @overload
-    def __init__(self, o: _byte_types, encoding: str = None, errors: str = 'strict') -> None: pass
+    def __init__(self, o: bytes, encoding: str = None, errors: str = 'strict') -> None: pass
     def capitalize(self) -> str: pass
     def center(self, width: int, fillchar: str = ' ') -> str: pass
     def count(self, x: str) -> int: pass
@@ -252,13 +250,13 @@ class bytes(ByteString):
     @overload
     def __init__(self) -> None: pass
     def capitalize(self) -> bytes: pass
-    def center(self, width: int, fillchar: _byte_types = None) -> bytes: pass
-    def count(self, x: _byte_types) -> int: pass
+    def center(self, width: int, fillchar: bytes = None) -> bytes: pass
+    def count(self, x: bytes) -> int: pass
     def decode(self, encoding: str = 'utf-8', errors: str = 'strict') -> str: pass
-    def endswith(self, suffix: _byte_types) -> bool: pass
+    def endswith(self, suffix: bytes) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytes: pass
-    def find(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
-    def index(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def find(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
     def isdigit(self) -> bool: pass
@@ -266,25 +264,25 @@ class bytes(ByteString):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    def join(self, iterable: Iterable[_byte_types]) -> bytes: pass
-    def ljust(self, width: int, fillchar: _byte_types = None) -> bytes: pass
+    def join(self, iterable: Iterable[bytes]) -> bytes: pass
+    def ljust(self, width: int, fillchar: bytes = None) -> bytes: pass
     def lower(self) -> bytes: pass
-    def lstrip(self, chars: _byte_types = None) -> bytes: pass
-    def partition(self, sep: _byte_types) -> Tuple[bytes, bytes, bytes]: pass
-    def replace(self, old: _byte_types, new: _byte_types, count: int = -1) -> bytes: pass
-    def rfind(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rindex(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rjust(self, width: int, fillchar: _byte_types = None) -> bytes: pass
-    def rpartition(self, sep: _byte_types) -> Tuple[bytes, bytes, bytes]: pass
-    def rsplit(self, sep: _byte_types = None, maxsplit: int = -1) -> List[bytes]: pass
-    def rstrip(self, chars: _byte_types = None) -> bytes: pass
-    def split(self, sep: _byte_types = None, maxsplit: int = -1) -> List[bytes]: pass
+    def lstrip(self, chars: bytes = None) -> bytes: pass
+    def partition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
+    def replace(self, old: bytes, new: bytes, count: int = -1) -> bytes: pass
+    def rfind(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
+    def rjust(self, width: int, fillchar: bytes = None) -> bytes: pass
+    def rpartition(self, sep: bytes) -> Tuple[bytes, bytes, bytes]: pass
+    def rsplit(self, sep: bytes = None, maxsplit: int = -1) -> List[bytes]: pass
+    def rstrip(self, chars: bytes = None) -> bytes: pass
+    def split(self, sep: bytes = None, maxsplit: int = -1) -> List[bytes]: pass
     def splitlines(self, keepends: bool = False) -> List[bytes]: pass
-    def startswith(self, prefix: _byte_types) -> bool: pass
-    def strip(self, chars: _byte_types = None) -> bytes: pass
+    def startswith(self, prefix: bytes) -> bool: pass
+    def strip(self, chars: bytes = None) -> bytes: pass
     def swapcase(self) -> bytes: pass
     def title(self) -> bytes: pass
-    def translate(self, table: _byte_types) -> bytes: pass
+    def translate(self, table: bytes) -> bytes: pass
     def upper(self) -> bytes: pass
     def zfill(self, width: int) -> bytes: pass
     # TODO fromhex
@@ -301,7 +299,7 @@ class bytes(ByteString):
     def __getitem__(self, i: int) -> int: pass
     @overload
     def __getitem__(self, s: slice) -> bytes: pass
-    def __add__(self, s: _byte_types) -> bytes: pass
+    def __add__(self, s: bytes) -> bytes: pass
     def __mul__(self, n: int) -> bytes: pass
     def __rmul__(self, n: int) -> bytes: pass
     def __contains__(self, o: object) -> bool: pass
@@ -322,13 +320,13 @@ class bytearray(MutableSequence[int], ByteString):
     @overload
     def __init__(self) -> None: pass
     def capitalize(self) -> bytearray: pass
-    def center(self, width: int, fillchar: _byte_types = None) -> bytearray: pass
-    def count(self, x: _byte_types) -> int: pass
+    def center(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    def count(self, x: bytes) -> int: pass
     def decode(self, encoding: str = 'utf-8', errors: str = 'strict') -> str: pass
-    def endswith(self, suffix: _byte_types) -> bool: pass
+    def endswith(self, suffix: bytes) -> bool: pass
     def expandtabs(self, tabsize: int = 8) -> bytearray: pass
-    def find(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
-    def index(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
+    def find(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
+    def index(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
     def insert(self, index: int, object: int) -> None: pass
     def isalnum(self) -> bool: pass
     def isalpha(self) -> bool: pass
@@ -337,25 +335,25 @@ class bytearray(MutableSequence[int], ByteString):
     def isspace(self) -> bool: pass
     def istitle(self) -> bool: pass
     def isupper(self) -> bool: pass
-    def join(self, iterable: Iterable[_byte_types]) -> bytearray: pass
-    def ljust(self, width: int, fillchar: _byte_types = None) -> bytearray: pass
+    def join(self, iterable: Iterable[bytes]) -> bytearray: pass
+    def ljust(self, width: int, fillchar: bytes = None) -> bytearray: pass
     def lower(self) -> bytearray: pass
-    def lstrip(self, chars: _byte_types = None) -> bytearray: pass
-    def partition(self, sep: _byte_types) -> Tuple[bytearray, bytearray, bytearray]: pass
-    def replace(self, old: _byte_types, new: bytes, count: int = -1) -> bytearray: pass
-    def rfind(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rindex(self, sub: _byte_types, start: int = 0, end: int = 0) -> int: pass
-    def rjust(self, width: int, fillchar: _byte_types = None) -> bytearray: pass
-    def rpartition(self, sep: _byte_types) -> Tuple[bytearray, bytearray, bytearray]: pass
-    def rsplit(self, sep: _byte_types = None, maxsplit: int = -1) -> List[bytearray]: pass
-    def rstrip(self, chars: _byte_types = None) -> bytearray: pass
-    def split(self, sep: _byte_types = None, maxsplit: int = -1) -> List[bytearray]: pass
+    def lstrip(self, chars: bytes = None) -> bytearray: pass
+    def partition(self, sep: bytes) -> Tuple[bytearray, bytearray, bytearray]: pass
+    def replace(self, old: bytes, new: bytes, count: int = -1) -> bytearray: pass
+    def rfind(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
+    def rindex(self, sub: bytes, start: int = 0, end: int = 0) -> int: pass
+    def rjust(self, width: int, fillchar: bytes = None) -> bytearray: pass
+    def rpartition(self, sep: bytes) -> Tuple[bytearray, bytearray, bytearray]: pass
+    def rsplit(self, sep: bytes = None, maxsplit: int = -1) -> List[bytearray]: pass
+    def rstrip(self, chars: bytes = None) -> bytearray: pass
+    def split(self, sep: bytes = None, maxsplit: int = -1) -> List[bytearray]: pass
     def splitlines(self, keepends: bool = False) -> List[bytearray]: pass
-    def startswith(self, prefix: _byte_types) -> bool: pass
-    def strip(self, chars: _byte_types = None) -> bytearray: pass
+    def startswith(self, prefix: bytes) -> bool: pass
+    def strip(self, chars: bytes = None) -> bytearray: pass
     def swapcase(self) -> bytearray: pass
     def title(self) -> bytearray: pass
-    def translate(self, table: _byte_types) -> bytearray: pass
+    def translate(self, table: bytes) -> bytearray: pass
     def upper(self) -> bytearray: pass
     def zfill(self, width: int) -> bytearray: pass
     # TODO fromhex
@@ -377,7 +375,7 @@ class bytearray(MutableSequence[int], ByteString):
     @overload
     def __setitem__(self, s: slice, x: Sequence[int]) -> None: pass
     def __delitem__(self, i: Union[int, slice]) -> None: pass
-    def __add__(self, s: _byte_types) -> bytearray: pass
+    def __add__(self, s: bytes) -> bytearray: pass
     # TODO: Mypy complains about __add__ and __iadd__ having different signatures.
     def __iadd__(self, s: Iterable[int]) -> bytearray: pass # type: ignore
     def __mul__(self, n: int) -> bytearray: pass
@@ -386,10 +384,10 @@ class bytearray(MutableSequence[int], ByteString):
     def __contains__(self, o: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    def __lt__(self, x: _byte_types) -> bool: pass
-    def __le__(self, x: _byte_types) -> bool: pass
-    def __gt__(self, x: _byte_types) -> bool: pass
-    def __ge__(self, x: _byte_types) -> bool: pass
+    def __lt__(self, x: bytes) -> bool: pass
+    def __le__(self, x: bytes) -> bool: pass
+    def __gt__(self, x: bytes) -> bool: pass
+    def __ge__(self, x: bytes) -> bool: pass
 
 class memoryview():
     # TODO arg can be any obj supporting the buffer protocol
@@ -431,7 +429,7 @@ class function:
     __name__ = ''
     __qualname__ = ''
     __module__ = ''
-    __code__ = Undefined(Any)
+    __code__ = ... # type: Any
 
 class list(MutableSequence[_T], Generic[_T]):
     @overload
@@ -443,7 +441,7 @@ class list(MutableSequence[_T], Generic[_T]):
     def append(self, object: _T) -> None: pass
     def extend(self, iterable: Iterable[_T]) -> None: pass
     def pop(self, index: int = -1) -> _T: pass
-    def index(self, object: _T, start: int = 0, stop: int = Undefined(int)) -> int: pass
+    def index(self, object: _T, start: int = 0, stop: int = ...) -> int: pass
     def count(self, object: _T) -> int: pass
     def insert(self, index: int, object: _T) -> None: pass
     def remove(self, object: _T) -> None: pass
@@ -594,13 +592,13 @@ class module:
     # TODO not defined in builtins!
     __name__ = ''
     __file__ = ''
-    __dict__ = Undefined # type: Dict[str, Any]
+    __dict__ = ...  # type: Dict[str, Any]
 
-True = Undefined # type: bool
-False = Undefined # type: bool
+True = ...  # type: bool
+False = ...  # type: bool
 __debug__ = False
 
-NotImplemented = Undefined # type: Any
+NotImplemented = ...  # type: Any
 
 def abs(n: SupportsAbs[_T]) -> _T: pass
 def all(i: Iterable) -> bool: pass
@@ -718,7 +716,7 @@ Ellipsis = ellipsis()
 # Exceptions
 
 class BaseException:
-    args = Undefined # type: Any
+    args = ...  # type: Any
     def __init__(self, *args: Any) -> None: pass
     def with_traceback(self, tb: Any) -> BaseException: pass
 
@@ -776,11 +774,11 @@ class TypeError(Exception): pass
 class UnboundLocalError(NameError): pass
 class UnicodeError(ValueError): pass
 class UnicodeDecodeError(UnicodeError):
-    encoding = Undefined(str)
-    object = Undefined(bytes)
-    start = Undefined(int)
-    end = Undefined(int)
-    reason = Undefined(str)
+    encoding = ... # type: str
+    object = ... # type: bytes
+    start = ... # type: int
+    end = ... # type: int
+    reason = ... # type: str
     def __init__(self, __encoding: str, __object: bytes, __start: int, __end: int,
                  __reason: str) -> None: pass
 class UnicodeEncodeError(UnicodeError): pass

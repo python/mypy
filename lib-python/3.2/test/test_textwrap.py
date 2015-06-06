@@ -11,7 +11,7 @@
 import unittest
 from test import support
 
-from typing import Any, List, Sequence, Undefined
+from typing import Any, List, Sequence
 
 from textwrap import TextWrapper, wrap, fill, dedent
 
@@ -19,7 +19,7 @@ from textwrap import TextWrapper, wrap, fill, dedent
 class BaseTestCase(unittest.TestCase):
     '''Parent class with utility methods for textwrap tests.'''
 
-    wrapper = Undefined(TextWrapper)
+    wrapper = None  # type: TextWrapper
 
     def show(self, textin: Sequence[str]) -> str:
         if isinstance(textin, list):

@@ -70,10 +70,10 @@ operations:
         o.foo()       # Error!
         o + 2         # Error!
         open(o)       # Error!
-        n = Undefined(int)
+        n = 1  # type: int
         n = o         # Error!
 
-You can use ``cast()`` (see chapter :ref:`casts`) to go from a general
-type such as ``object`` to a more specific type (subtype) such as
-``int``.  ``cast()`` is not needed with dynamically typed values
-(values with type ``Any``).
+You can use ``cast()`` (see chapter :ref:`casts`) or ``isinstance`` to
+go from a general type such as ``object`` to a more specific
+type (subtype) such as ``int``.  ``cast()`` is not needed with
+dynamically typed values (values with type ``Any``).

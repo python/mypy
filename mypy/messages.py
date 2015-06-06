@@ -5,16 +5,14 @@ improve code clarity and to simplify localization (in the future)."""
 
 import re
 
-from typing import Undefined, cast, List, Any, Sequence, Iterable
+from typing import cast, List, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
-from mypy.nodes import (
-    TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases
-)
+from mypy.nodes import TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -81,7 +79,7 @@ class MessageBuilder:
 
     # Report errors using this instance. It knows about the current file and
     # import context.
-    errors = Undefined(Errors)
+    errors = None  # type: Errors
 
     # Number of times errors have been disabled.
     disable_count = 0
@@ -143,8 +141,10 @@ class MessageBuilder:
                     result += ' (type object)'
                 return result
             elif isinstance(func, CallableType):
-                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return_type = strip_quotes(self.format(func.ret_type))
+                if func.is_ellipsis_args:
+                    return 'Callable[..., {}]'.format(return_type)
+                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
                 return 'Callable[[{}], {}]'.format(", ".join(arg_types), return_type)
             else:
                 # Use a simple representation for function types; proper

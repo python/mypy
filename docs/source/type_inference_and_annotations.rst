@@ -60,32 +60,23 @@ to ``Any``, which is discussed later.
 Explicit types for variables
 ****************************
 
-.. code-block:: python
-
-   s = Undefined(str)   # Declare type of x to be str.
-   s = 'x'              # OK
-   s = 1                # Type check error
-
-The Undefined call evaluates to a special ``Undefined`` object that
-raises an exception on any operation (except for ``is``, which cannot
-be overloaded):
+You can override the inferred type of a variable by using a
+special type comment after an assignment statement:
 
 .. code-block:: python
 
-   s = Undefined(str)
-   if s:                # Runtime error: undefined value
-       print('hello')
+   x = 1  # type: Union[int, str]
 
-You can also override the inferred type of a variable by using a
-special comment after an assignment statement:
+Without the type comment, the type of ``x`` would be just ``int``. We
+use an annotation to give it a more general type ``Union[int, str]``.
+Mypy checks that the type of the initializer is compatible with the
+declared type. This example is not valid, since the initializer is
+a floating point number, and this is incompatible with the declared
+type:
 
 .. code-block:: python
 
-   x = 1 # type: Union[int, str]
-
-Here the ``# type:`` comment applies both to the assignment target, in
-this case ``x``, and also the initializer expression, via context.
-The type checker infers the value of a variable from the initializer.
+   x = 1.1  # type: Union[int, str]  # Error!
 
 Explicit types for collections
 ******************************
@@ -116,11 +107,10 @@ type separately:
 
 .. code-block:: python
 
-   n, s = Undefined(int), Undefined(str)  # Declare an integer and a string
    i, found = 0, False # type: int, bool
 
-When using the latter form, you can optionally use parentheses around
-the types, assignment targets and assigned expression:
+You can optionally use parentheses around the types, assignment targets
+and assigned expression:
 
 .. code-block:: python
 
@@ -130,7 +120,7 @@ the types, assignment targets and assigned expression:
    (i, found) = (0, False) # type: (int, bool)  # OK
 
 Starred expressions
-******************************
+*******************
 
 In most cases, mypy can infer the type of starred expressions from the
 right-hand side of an assignment, but not always:

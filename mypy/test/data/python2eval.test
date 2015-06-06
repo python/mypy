@@ -6,9 +6,9 @@
 
 
 [case testAbs2_python2]
-from typing import Undefined
-n = Undefined(int)
-f = Undefined(float)
+
+n = None  # type: int
+f = None  # type: float
 n = abs(1)
 abs(1) + 'x'  # Error
 f = abs(1.1)
@@ -96,11 +96,11 @@ foo
 zar
 
 [case testGenericPatterns_python2]
-from typing import Pattern, Undefined
+from typing import Pattern
 import re
-p = Undefined(Pattern[unicode])
+p = None  # type: Pattern[unicode]
 p = re.compile(u'foo*')
-b = Undefined(Pattern[str])
+b = None  # type: Pattern[str]
 b = re.compile('foo*')
 print(p.match(u'fooo').group(0))
 [out]
@@ -236,8 +236,8 @@ print 'ok'
 ok
 
 [case testUnionType_python2]
-from typing import Undefined, Union
-y = Undefined(Union[int, str])
+from typing import Union
+y = None  # type: Union[int, str]
 def f(x): # type: (Union[int, str]) -> str
     if isinstance(x, int):
         x = str(x)

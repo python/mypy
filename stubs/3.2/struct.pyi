@@ -2,7 +2,7 @@
 
 # Based on http://docs.python.org/3.2/library/struct.html
 
-from typing import overload, Any, Undefined, AnyStr
+from typing import overload, Any, AnyStr
 
 class error(Exception): pass
 

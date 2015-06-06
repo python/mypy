@@ -7,7 +7,6 @@ from abc import abstractmethod, ABCMeta
 
 cast = object()
 overload = object()
-Undefined = object()
 Any = object()
 TypeVar = object()
 Generic = object()
@@ -242,12 +241,12 @@ class Match(Generic[AnyStr]):
     pos = 0
     endpos = 0
     lastindex = 0
-    lastgroup = Undefined(AnyStr)
-    string = Undefined(AnyStr)
+    lastgroup = None  # type: AnyStr
+    string = None  # type: AnyStr
 
     # The regular expression object whose match() or search() method produced
     # this match instance.
-    re = Undefined('Pattern[AnyStr]')
+    re = None  # type: 'Pattern[AnyStr]'
 
     def expand(self, template: AnyStr) -> AnyStr: pass
 
@@ -272,7 +271,7 @@ class Pattern(Generic[AnyStr]):
     flags = 0
     groupindex = 0
     groups = 0
-    pattern = Undefined(AnyStr)
+    pattern = None  # type: AnyStr
 
     def search(self, string: AnyStr, pos: int = 0,
                endpos: int = -1) -> Match[AnyStr]: pass

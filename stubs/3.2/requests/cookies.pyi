@@ -1,6 +1,6 @@
 # Stubs for requests.cookies (Python 3)
 
-from typing import Undefined, Any, MutableMapping
+from typing import Any, MutableMapping
 #import cookielib
 from http import cookiejar as cookielib
 import collections
@@ -9,7 +9,7 @@ from . import compat
 #cookielib = compat.cookielib
 
 class MockRequest:
-    type = Undefined(Any)
+    type = ...  # type: Any
     def __init__(self, request): pass
     def get_type(self): pass
     def get_host(self): pass

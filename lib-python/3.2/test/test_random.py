@@ -8,7 +8,7 @@ import warnings
 from math import log, exp, pi, fsum, sin
 from test import support
 
-from typing import Undefined, Any, Dict, List, Callable, Generic, TypeVar, cast
+from typing import Any, Dict, List, Callable, Generic, TypeVar, cast
 
 RT = TypeVar('RT', random.Random, random.SystemRandom)
 
@@ -17,7 +17,7 @@ class TestBasicOps(unittest.TestCase, Generic[RT]):
     # Subclasses must arrange for self.gen to retrieve the Random instance
     # to be tested.
 
-    gen = Undefined(RT) # Either Random or SystemRandom
+    gen = None  # type: RT  # Either Random or SystemRandom
 
     def randomlist(self, n: int) -> List[float]:
         """Helper function to make a list of random numbers"""
@@ -463,7 +463,7 @@ class TestDistributions(unittest.TestCase):
         g = random.Random()
         N = 5000
         x = [i/float(N) for i in range(1,N)]
-        variate = Undefined(Any)
+        variate = None  # type: Any
         for variate, args, mu, sigmasqrd in [
                 (g.uniform, (1.0,10.0), (10.0+1.0)/2, (10.0-1.0)**2/12),
                 (g.triangular, (0.0, 1.0, 1.0/3.0), 4.0/9.0, 7.0/9.0/18.0),

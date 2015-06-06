@@ -1,7 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Undefined, Any, TypeVar, List, Tuple, cast, Generic, Set
+from typing import Any, TypeVar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
 from mypy.nodes import INVARIANT
@@ -33,8 +33,8 @@ class TypeVarDef(mypy.nodes.Context):
 
     name = ''
     id = 0
-    values = Undefined(List[Type])
-    upper_bound = Undefined(Type)
+    values = None  # type: List[Type]
+    upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
     line = 0
 
@@ -61,7 +61,7 @@ class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
 
     name = ''
-    args = Undefined(List[Type])
+    args = None  # type: List[Type]
 
     def __init__(self, name: str, args: List[Type] = None, line: int = -1) -> None:
         if not args:
@@ -85,10 +85,11 @@ class TypeList(Type):
     """A list of types [...].
 
     This is only used for the arguments of a Callable type, i.e. for
-    [arg, ...] in Callable[[arg, ...], ret].
+    [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
+    but a syntactic AST construct.
     """
 
-    items = Undefined(List[Type])
+    items = None  # type: List[Type]
 
     def __init__(self, items: List[Type], line: int = -1) -> None:
         super().__init__(line)
@@ -162,8 +163,8 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    type = Undefined(mypy.nodes.TypeInfo)
-    args = Undefined(List[Type])
+    type = None  # type: mypy.nodes.TypeInfo
+    args = None  # type: List[Type]
     erased = False      # True if result of type variable substitution
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
@@ -186,8 +187,8 @@ class TypeVarType(Type):
 
     name = ''  # Name of the type variable (for messages and debugging)
     id = 0     # 1, 2, ... for type-related, -1, ... for function-related
-    values = Undefined(List[Type])  # Value restriction, empty list if no restriction
-    upper_bound = Undefined(Type)   # Upper bound for values (currently always 'object')
+    values = None  # type: List[Type]  # Value restriction, empty list if no restriction
+    upper_bound = None  # type: Type   # Upper bound for values (currently always 'object')
     variance = INVARIANT  # type: int
 
     def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
@@ -219,21 +220,21 @@ class FunctionLike(Type):
     def with_name(self, name: str) -> 'FunctionLike': pass
 
     # Corresponding instance type (e.g. builtins.type)
-    fallback = Undefined(Instance)
+    fallback = None  # type: Instance
 
 
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
-    arg_types = Undefined(List[Type])  # Types of function arguments
-    arg_kinds = Undefined(List[int])   # mypy.nodes.ARG_ constants
-    arg_names = Undefined(List[str])   # None if not a keyword argument
+    arg_types = None  # type: List[Type]  # Types of function arguments
+    arg_kinds = None  # type: List[int]   # mypy.nodes.ARG_ constants
+    arg_names = None  # type: List[str]   # None if not a keyword argument
     min_args = 0                    # Minimum number of arguments
     is_var_arg = False              # Is it a varargs function?
-    ret_type = Undefined(Type)      # Return value type
+    ret_type = None  # type:Type    # Return value type
     name = ''                       # Name (may be None; for error messages)
     # Type variables for a generic function
-    variables = Undefined(List[TypeVarDef])
+    variables = None  # type: List[TypeVarDef]
 
     # Implicit bound values of type variables. These can be either for
     # class type variables or for generic function type variables.
@@ -248,18 +249,21 @@ class CallableType(FunctionLike):
     # (absolute value this time).
     #
     # Stored as tuples (id, type).
-    bound_vars = Undefined(List[Tuple[int, Type]])
+    bound_vars = None  # type: List[Tuple[int, Type]]
 
-    _is_type_obj = False  # Does this represent a type object?
+    # Is this Callable[..., t] (with literal '...')?
+    is_ellipsis_args = False
 
     def __init__(self, arg_types: List[Type],
                  arg_kinds: List[int],
                  arg_names: List[str],
                  ret_type: Type,
                  fallback: Instance,
-                 name: str = None, variables: List[TypeVarDef] = None,
+                 name: str = None,
+                 variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
-                 line: int = -1) -> None:
+                 line: int = -1,
+                 is_ellipsis_args: bool = False) -> None:
         if variables is None:
             variables = []
         if not bound_vars:
@@ -275,6 +279,7 @@ class CallableType(FunctionLike):
         self.name = name
         self.variables = variables
         self.bound_vars = bound_vars
+        self.is_ellipsis_args = is_ellipsis_args
         super().__init__(line)
 
     def is_type_obj(self) -> bool:
@@ -327,11 +332,13 @@ class CallableType(FunctionLike):
 class Overloaded(FunctionLike):
     """Overloaded function type T1, ... Tn, where each Ti is CallableType.
 
-    The variant to call is chosen based on runtime argument types; the first
-    matching signature is the target.
+    The variant to call is chosen based on static argument
+    types. Overloaded function types can only be defined in stub
+    files, and thus there is no explicit runtime dispatch
+    implementation.
     """
 
-    _items = Undefined(List[CallableType])  # Must not be empty
+    _items = None  # type: List[CallableType]  # Must not be empty
 
     def __init__(self, items: List[CallableType]) -> None:
         self._items = items
@@ -374,8 +381,8 @@ class TupleType(Type):
         tuples, for example)
     """
 
-    items = Undefined(List[Type])
-    fallback = Undefined(Instance)
+    items = None  # type: List[Type]
+    fallback = None  # type: Instance
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1) -> None:
         self.items = items
@@ -390,9 +397,12 @@ class TupleType(Type):
 
 
 class StarType(Type):
-    """The star type *type_parameter"""
+    """The star type *type_parameter.
 
-    type = Undefined(Type)
+    This is not a real type but a syntactic AST construct.
+    """
+
+    type = None  # type: Type
 
     def __init__(self, type: Type, line: int = -1) -> None:
         self.type = type
@@ -405,7 +415,7 @@ class StarType(Type):
 class UnionType(Type):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
-    items = Undefined(List[Type])
+    items = None  # type: List[Type]
 
     def __init__(self, items: List[Type], line: int = -1) -> None:
         self.items = items
@@ -447,33 +457,27 @@ class UnionType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_union_type(self)
 
-    def has_readable_member(self, name):
-        """For a tree of unions of instances, check whether all
-        instances have a given member.
+    def has_readable_member(self, name: str) -> bool:
+        """For a tree of unions of instances, check whether all instances have a given member.
 
-        This should probably be refactored to go elsewhere."""
-        return all(isinstance(x, UnionType) and x.has_readable_member(name) or
-                   isinstance(x, Instance) and
-                   x.type.has_readable_member(name)
+        TODO: Deal with attributes of TupleType etc.
+        TODO: This should probably be refactored to go elsewhere.
+        """
+        return all((isinstance(x, UnionType) and cast(UnionType, x).has_readable_member(name)) or
+                   (isinstance(x, Instance) and cast(Instance, x).type.has_readable_member(name))
                    for x in self.items)
 
 
-class RuntimeTypeVar(Type):
-    """Reference to a runtime variable with the value of a type variable.
+class EllipsisType(Type):
+    """The type ... (ellipsis).
 
-    The reference can must be a expression node, but only some node
-    types are properly supported (NameExpr, MemberExpr and IndexExpr
-    mainly).
+    This is not a real type but a syntactic AST construct, used in Callable[..., T], for example.
+
+    A semantically analyzed type will never have ellipsis types.
     """
 
-    node = Undefined(mypy.nodes.Node)
-
-    def __init__(self, node: mypy.nodes.Node) -> None:
-        self.node = node
-        super().__init__(-1)
-
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_runtime_type_var(self)
+        return visitor.visit_ellipsis_type(self)
 
 
 #
@@ -527,10 +531,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_union_type(self, t: UnionType) -> T:
-        assert(0)               # XXX catch visitors that don't have Union cases yet
-
-    def visit_runtime_type_var(self, t: RuntimeTypeVar) -> T:
         pass
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> T:
+        assert False               # XXX catch visitors that don't have this implemented yet
 
 
 class TypeTranslator(TypeVisitor[Type]):
@@ -576,7 +580,8 @@ class TypeTranslator(TypeVisitor[Type]):
                         t.name,
                         self.translate_variables(t.variables),
                         self.translate_bound_vars(t.bound_vars),
-                        t.line)
+                        t.line,
+                        t.is_ellipsis_args)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
@@ -588,6 +593,9 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line)
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        return t
 
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
@@ -713,8 +721,8 @@ class TypeStrVisitor(TypeVisitor[str]):
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
 
-    def visit_runtime_type_var(self, t):
-        return '<RuntimeTypeVar>'
+    def visit_ellipsis_type(self, t):
+        return '...'
 
     def list_str(self, a):
         """Convert items of an array to strings (pretty-print types)
@@ -744,7 +752,7 @@ class TypeQuery(TypeVisitor[bool]):
     """
 
     default = False  # Default result
-    strategy = 0     # Strategy for combining multiple values
+    strategy = 0     # Strategy for combining multiple values (ANY_TYPE_STRATEGY or ALL_TYPES_...).
 
     def __init__(self, default: bool, strategy: int) -> None:
         """Construct a query visitor.
@@ -795,9 +803,6 @@ class TypeQuery(TypeVisitor[bool]):
 
     def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)
-
-    def visit_runtime_type_var(self, t: RuntimeTypeVar) -> bool:
-        return self.default
 
     def query_types(self, types: List[Type]) -> bool:
         """Perform a query for a list of types.

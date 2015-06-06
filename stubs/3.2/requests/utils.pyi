@@ -1,6 +1,6 @@
 # Stubs for requests.utils (Python 3)
 
-from typing import Undefined, Any
+from typing import Any
 from . import compat
 from . import cookies
 from . import structures
@@ -12,8 +12,8 @@ cookiejar_from_dict = cookies.cookiejar_from_dict
 CaseInsensitiveDict = structures.CaseInsensitiveDict
 InvalidURL = exceptions.InvalidURL
 
-NETRC_FILES = Undefined(Any)
-DEFAULT_CA_BUNDLE_PATH = Undefined(Any)
+NETRC_FILES = ...  # type: Any
+DEFAULT_CA_BUNDLE_PATH = ...  # type: Any
 
 def dict_to_sequence(d): pass
 def super_len(o): pass
@@ -32,7 +32,7 @@ def stream_decode_response_unicode(iterator, r): pass
 def iter_slices(string, slice_length): pass
 def get_unicode_from_response(r): pass
 
-UNRESERVED_SET = Undefined(Any)
+UNRESERVED_SET = ...  # type: Any
 
 def unquote_unreserved(uri): pass
 def requote_uri(uri): pass

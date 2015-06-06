@@ -2,9 +2,9 @@
 
 # Based on http://docs.python.org/3.2/library/errno.html
 
-from typing import Undefined, Dict
+from typing import Dict
 
-errorcode = Undefined(Dict[int, str])
+errorcode = ...  # type: Dict[int, str]
 
 # TODO some of the names below are platform specific
 

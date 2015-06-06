@@ -21,38 +21,15 @@ initialized within the class. Mypy infers the types of attributes:
 
 This is a bit like each class having an implicitly defined
 ``__slots__`` attribute. In Python semantics this is only enforced
-during type checking: at runtime we use standard Python semantics. You
-can selectively define a class as *dynamic*; dynamic classes have
-Python-like compile-time semantics, and they allow you to assign to
-arbitrary attributes anywhere in a program without the type checker
-complaining:
+during type checking: at runtime we use standard Python semantics.
 
-.. code-block:: python
-
-   from typing import Dynamic
-
-   class A(Dynamic):
-       pass
-
-   a = A()
-   a.x = 2     # OK, no need to define x explicitly.
-
-Mypy also lets you read arbitrary attributes of dynamic class
-instances. This limits type checking effectiveness, so you should only
-use dynamic classes when you really need them.
-
-.. note::
-
-   Dynamic classes are not implemented in the current mypy version.
-
-You can declare variables in the class body explicitly using
-``Undefined`` or a type comment:
+You can declare types of variables in the class body explicitly using
+a type comment:
 
 .. code-block:: python
 
    class A:
-       x = Undefined(List[int])  # Declare attribute x of type List[int]
-       y = 0  # type: Any        # Declare attribute y of type Any
+       x = None  # type: List[int]  # Declare attribute x of type List[int]
 
    a = A()
    a.x = [1]     # OK
@@ -67,10 +44,10 @@ in a method:
 
    class A:
        def __init__(self) -> None:
-           self.x = Undefined(List[int])     # OK
+           self.x = []  # type: List[int]
 
        def f(self) -> None:
-           self.y = 0 # type: Any            # OK
+           self.y = 0  # type: Any
 
 You can only define an instance variable within a method if you assign
 to it explicitly using ``self``:

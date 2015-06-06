@@ -3,9 +3,9 @@
 
 
 [case testMethodCall]
-from typing import Undefined
-a = Undefined # type: A
-b = Undefined # type: B
+
+a = None # type: A
+b = None # type: B
 
 a.foo(B())        # Fail
 a.bar(B(), A())   # Fail
@@ -22,8 +22,8 @@ main, line 5: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
 main, line 6: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a.foo(A())
 a.foo(B())
 a.bar(A()) # Fail
@@ -37,8 +37,8 @@ class B(A): pass
 main, line 5: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
 
 [case testInheritingMethod]
-from typing import Undefined
-a = Undefined # type: B
+
+a = None # type: B
 a.foo(A()) # Fail
 a.foo(B())
 
@@ -49,8 +49,8 @@ class B(A): pass
 main, line 3: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
 [case testMethodCallWithInvalidNumberOfArguments]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a.foo()               # Fail
 a.foo(object(), A())  # Fail
 
@@ -124,11 +124,11 @@ A().f = None # E: Cannot assign to a method
 
 
 [case testReferToInvalidAttribute]
-from typing import Undefined
+
 class A:
     def __init__(self):
         self.x = object()
-a = Undefined # type: A
+a = None # type: A
 a.y
 a.y = object()
 a.x
@@ -138,14 +138,14 @@ main, line 6: "A" has no attribute "y"
 main, line 7: "A" has no attribute "y"
 
 [case testArgumentTypeInference]
-from typing import Undefined
+
 class A:
     def __init__(self, aa: 'A', bb: 'B') -> None:
         self.a = aa
         self.b = bb
 class B: pass
-a = Undefined # type: A
-b = Undefined # type: B
+a = None # type: A
+b = None # type: B
 a.a = b # Fail
 a.b = a # Fail
 b.a     # Fail
@@ -157,12 +157,12 @@ main, line 10: Incompatible types in assignment (expression has type "A", variab
 main, line 11: "B" has no attribute "a"
 
 [case testExplicitAttributeInBody]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a.x = object() # Fail
 a.x = A()
 class A:
-  x = Undefined # type: A
+  x = None # type: A
 [out]
 main, line 3: Incompatible types in assignment (expression has type "object", variable has type "A")
 
@@ -388,10 +388,10 @@ class B: pass
 main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testAccessingInit]
-from typing import Undefined, Any
+from typing import Any
 class A:
     def __init__(self, a: 'A') -> None: pass
-a = Undefined # type: A
+a = None # type: A
 a.__init__(a)  # E: Cannot access "__init__" directly
 (Any(a)).__init__(a)
 
@@ -532,12 +532,12 @@ A.x = B()
 A.x = A()   # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testInitMethodUnbound]
-from typing import Undefined
+
 class B: pass
 class A:
     def __init__(self, b: B) -> None: pass
-a = Undefined # type: A
-b = Undefined # type: B
+a = None # type: A
+b = None # type: B
 A.__init__(a, b)
 A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"; expected "A"
 A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"; expected "B"
@@ -560,11 +560,11 @@ A.B = None # E: Cannot assign to a type
 
 
 [case testClassWithinFunction]
-from typing import Undefined
+
 def f() -> None:
     class A:
         def g(self) -> None: pass
-    a = Undefined # type: A
+    a = None # type: A
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
 [out]
@@ -593,20 +593,20 @@ class A:
 main: In member "f" of class "A":
 
 [case testDeclareVariableWithNestedClassType]
-from typing import Undefined
+
 def f() -> None:
     class A: pass
-    a = Undefined # type: A
+    a = None # type: A
     a = A()
     a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [out]
 main: In function "f":
 
 [case testExternalReferenceToClassWithinClass]
-from typing import Undefined
+
 class A:
     class B: pass
-b = Undefined # type: A.B
+b = None # type: A.B
 b = A.B()
 b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = A.B(b) # E: Too many arguments for "B"
@@ -617,17 +617,17 @@ b = A.B(b) # E: Too many arguments for "B"
 
 
 [case testDeclareAttributeTypeInInit]
-from typing import Undefined
+
 class A:
     def __init__(self):
         self.x = None # type: int
-a = Undefined # type: A
+a = None # type: A
 a.x = 1
 a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testAccessAttributeDeclaredInInitBeforeDeclaration]
-from typing import Undefined
-a = Undefined # type: A
+
+a = None # type: A
 a.x = 1
 a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 class A:
@@ -668,39 +668,6 @@ main: In function "g":
 main, line 5: Need type annotation for variable
 main: In member "f" of class "A":
 main, line 6: Need type annotation for variable
-
-
--- Using Undefined(type) to declare attributes
--- -------------------------------------------
-
-
-[case testDeclareClassVariableUsingUndefinedWithArgument]
-from typing import Undefined
-class A:
-    x = Undefined(int)
-a = Undefined(A)
-a.x = 1
-a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-[case testDeclareInstanceVariableUsingUndefinedWithArgument]
-from typing import Undefined
-class A:
-    def __init__(self):
-        self.x = Undefined(int)
-a = Undefined(A)
-a.x = 1
-a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-
-[case testAccessInstanceVariableDeclaredUsingUndefinedWithArgumentBeforeDecl]
-from typing import Undefined
-class A:
-    def f(self) -> None:
-        self.x = 1
-        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    def __init__(self):
-        self.x = Undefined(int)
-[out]
-main: In member "f" of class "A":
 
 
 -- Static methods
@@ -869,24 +836,24 @@ main: In class "B":
 
 
 [case testSimpleDucktypeDecorator]
-from typing import _promote, Undefined
+from typing import _promote
 class A: pass
 @_promote(A)
 class B: pass
-a = Undefined(A)
-b = Undefined(B)
+a = None  # type: A
+b = None  # type: B
 b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = b
 
 [case testDucktypeTransitivityDecorator]
-from typing import _promote, Undefined
+from typing import _promote
 class A: pass
 @_promote(A)
 class B: pass
 @_promote(B)
 class C: pass
-a = Undefined(A)
-c = Undefined(C)
+a = None  # type: A
+c = None  # type: C
 c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
 a = c
 
@@ -1150,8 +1117,8 @@ main, line 8: Signatures of "__iadd__" and "__add__" are incompatible
 
 
 [case testGetAttr]
-from typing import Undefined
-a, b = Undefined, Undefined  # type: A, B
+
+a, b = None, None # type: A, B
 class A:
     def __getattr__(self, x: str) -> A:
         return A()

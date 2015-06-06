@@ -1,0 +1,27 @@
+-- Test cases for type promotion (e.g. int -> float).
+
+
+[case testPromoteIntToFloat]
+def f(x: float) -> None: pass
+f(1)
+[builtins fixtures/primitives.py]
+
+[case testCantPromoteFloatToInt]
+def f(x: int) -> None: pass
+f(1.1) # E: Argument 1 to "f" has incompatible type "float"; expected "int"
+[builtins fixtures/primitives.py]
+
+[case testPromoteFloatToComplex]
+def f(x: complex) -> None: pass
+f(1)
+[builtins fixtures/primitives.py]
+
+[case testPromoteIntToComplex]
+def f(x: complex) -> None: pass
+f(1)
+[builtins fixtures/primitives.py]
+
+[case testPromoteBytearrayToByte]
+def f(x: bytes) -> None: pass
+f(bytearray())
+[builtins fixtures/primitives.py]

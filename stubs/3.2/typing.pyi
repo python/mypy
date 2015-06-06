@@ -7,7 +7,6 @@ from abc import abstractmethod, ABCMeta
 
 cast = object()
 overload = object()
-Undefined = object()
 Any = object()
 TypeVar = object()
 Generic = object()
@@ -169,7 +168,7 @@ class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass
     # Mixin methods
-    def get(self, k: _KT, default: _VT = Undefined) -> _VT: pass
+    def get(self, k: _KT, default: _VT = ...) -> _VT: pass
     def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
     def keys(self) -> AbstractSet[_KT]: pass
     def values(self) -> ValuesView[_VT]: pass
@@ -182,9 +181,9 @@ class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     def __delitem__(self, v: _KT) -> None: pass
 
     def clear(self) -> None: pass
-    def pop(self, k: _KT, default: _VT = Undefined) -> _VT: pass
+    def pop(self, k: _KT, default: _VT = ...) -> _VT: pass
     def popitem(self) -> Tuple[_KT, _VT]: pass
-    def setdefault(self, k: _KT, default: _VT = Undefined) -> _VT: pass
+    def setdefault(self, k: _KT, default: _VT = ...) -> _VT: pass
     def update(self, m: Union[Mapping[_KT, _VT],
                               Iterable[Tuple[_KT, _VT]]]) -> None: pass
 
@@ -273,12 +272,12 @@ class Match(Generic[AnyStr]):
     pos = 0
     endpos = 0
     lastindex = 0
-    lastgroup = Undefined(AnyStr)
-    string = Undefined(AnyStr)
+    lastgroup = ...  # type: AnyStr
+    string = ...  # type: AnyStr
 
     # The regular expression object whose match() or search() method produced
     # this match instance.
-    re = Undefined('Pattern[AnyStr]')
+    re = ...  # type: 'Pattern[AnyStr]'
 
     def expand(self, template: AnyStr) -> AnyStr: pass
 
@@ -303,7 +302,7 @@ class Pattern(Generic[AnyStr]):
     flags = 0
     groupindex = 0
     groups = 0
-    pattern = Undefined(AnyStr)
+    pattern = ...  # type: AnyStr
 
     def search(self, string: AnyStr, pos: int = 0,
                endpos: int = -1) -> Match[AnyStr]: pass

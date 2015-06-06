@@ -1,6 +1,6 @@
 # Stubs for requests.sessions (Python 3)
 
-from typing import Undefined, Any, Union, MutableMapping
+from typing import Any, Union, MutableMapping
 from . import auth
 from . import compat
 from . import cookies
@@ -42,10 +42,10 @@ get_auth_from_url = utils.get_auth_from_url
 codes = status_codes.codes
 REDIRECT_STATI = models.REDIRECT_STATI
 
-REDIRECT_CACHE_SIZE = Undefined(Any)
+REDIRECT_CACHE_SIZE = ... # type: Any
 
-def merge_setting(request_setting, session_setting, dict_class=Undefined): pass
-def merge_hooks(request_hooks, session_hooks, dict_class=Undefined): pass
+def merge_setting(request_setting, session_setting, dict_class=...): pass
+def merge_hooks(request_hooks, session_hooks, dict_class=...): pass
 
 class SessionRedirectMixin:
     def resolve_redirects(self, resp, req, stream=False, timeout=None, verify=True, cert=None,
@@ -54,20 +54,20 @@ class SessionRedirectMixin:
     def rebuild_proxies(self, prepared_request, proxies): pass
 
 class Session(SessionRedirectMixin):
-    __attrs__ = Undefined(Any)
-    headers = Undefined(MutableMapping[str, str])
-    auth = Undefined(Any)
-    proxies = Undefined(Any)
-    hooks = Undefined(Any)
-    params = Undefined(Any)
-    stream = Undefined(Any)
-    verify = Undefined(Any)
-    cert = Undefined(Any)
-    max_redirects = Undefined(Any)
-    trust_env = Undefined(Any)
-    cookies = Undefined(Any)
-    adapters = Undefined(Any)
-    redirect_cache = Undefined(Any)
+    __attrs__ = ... # type: Any
+    headers = ... # type: MutableMapping[str, str]
+    auth = ... # type: Any
+    proxies = ... # type: Any
+    hooks = ... # type: Any
+    params = ... # type: Any
+    stream = ... # type: Any
+    verify = ... # type: Any
+    cert = ... # type: Any
+    max_redirects = ... # type: Any
+    trust_env = ... # type: Any
+    cookies = ... # type: Any
+    adapters = ... # type: Any
+    redirect_cache = ... # type: Any
     def __init__(self) -> None: pass
     def __enter__(self) -> 'Session': pass
     def __exit__(self, *args) -> None: pass

@@ -3,7 +3,8 @@
 from typing import List, Tuple, Union, cast
 
 from mypy.types import (
-    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType
+    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType,
+    EllipsisType
 )
 from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
@@ -58,6 +59,8 @@ class TypeParser:
             return self.parse_type_list()
         elif t.string == '*':
             return self.parse_star_type()
+        elif t.string == '...':
+            return self.parse_ellipsis_type()
         elif isinstance(t, StrLit):
             # Type escaped as string literal.
             typestr = t.parsed()
@@ -148,6 +151,10 @@ class TypeParser:
         star = self.expect('*')
         type = self.parse_type()
         return StarType(type, star.line)
+
+    def parse_ellipsis_type(self) -> Type:
+        self.expect('...')
+        return EllipsisType()
 
     # Helpers
 

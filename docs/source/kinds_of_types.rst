@@ -40,9 +40,10 @@ to a variable with a more precise type:
 
 .. code-block:: python
 
-   a, s = Undefined(Any), Undefined(str)
-   a = 2      # OK
-   s = a      # OK
+   a = None  # type: Any
+   s = ''    # type: str
+   a = 2     # OK
+   s = a     # OK
 
 Declared (and inferred) types are erased at runtime (they are
 basically treated as comments), and thus the above code does not
@@ -220,8 +221,8 @@ string-literal types with non-string-literal types freely:
 
 .. code-block:: python
 
-   a = Undefined(List['A'])  # OK
-   n = Undefined('int')      # OK, though not useful
+   def f(a: List['A']) -> None: ...  # OK
+   def g(n: 'int') -> None: ...      # OK, though not useful
 
    class A: pass
 

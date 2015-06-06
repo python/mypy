@@ -5,14 +5,14 @@
 # TODO: Support unicode?
 
 from typing import (
-    TypeVar, Callable, Iterable, List, NamedTuple, Sequence, Tuple, Generic, Undefined
+    TypeVar, Callable, Iterable, List, NamedTuple, Sequence, Tuple, Generic
 )
 
 _T = TypeVar('_T')
 
 class SequenceMatcher(Generic[_T]):
     def __init__(self, isjunk: Callable[[_T], bool] = None,
-                 a: Sequence[_T] = Undefined, b: Sequence[_T] = Undefined,
+                 a: Sequence[_T] = None, b: Sequence[_T] = None,
                  autojunk: bool = True) -> None: pass
     def set_seqs(self, a: Sequence[_T], b: Sequence[_T]) -> None: pass
     def set_seq1(self, a: Sequence[_T]) -> None: pass
