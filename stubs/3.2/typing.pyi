@@ -35,9 +35,15 @@ AnyStr = TypeVar('AnyStr', str, bytes)
 
 # Abstract base classes.
 
-_T = TypeVar('_T', covariant=True)
-_KT = TypeVar('_KT', covariant=True)
-_VT = TypeVar('_VT', covariant=True)
+# Some unconstrained type variables.  These are used by the container types.
+_T = TypeVar('_T')  # Any type.
+_KT = TypeVar('_KT')  # Key type.
+_VT = TypeVar('_VT')  # Value type.
+_T_co = TypeVar('_T_co', covariant=True)  # Any type covariant containers.
+_V_co = TypeVar('_V_co', covariant=True)  # Any type covariant containers.
+_KT_co = TypeVar('_KT_co', covariant=True)  # Key type covariant containers.
+_VT_co = TypeVar('_VT_co', covariant=True)  # Value type covariant containers.
+_T_contra = TypeVar('_T_contra', contravariant=True)  # Ditto contravariant.
 
 # TODO Container etc.
 
@@ -72,32 +78,32 @@ class Hashable(metaclass=ABCMeta):
     @abstractmethod
     def __hash__(self) -> int: pass
 
-class Iterable(Generic[_T]):
+class Iterable(Generic[_T_co]):
     @abstractmethod
-    def __iter__(self) -> Iterator[_T]: pass
+    def __iter__(self) -> Iterator[_T_co]: pass
 
-class Iterator(Iterable[_T], Generic[_T]):
+class Iterator(Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
-    def __next__(self) -> _T: pass
-    def __iter__(self) -> Iterator[_T]: pass
+    def __next__(self) -> _T_co: pass
+    def __iter__(self) -> Iterator[_T_co]: pass
 
-class Container(Generic[_T]):
+class Container(Generic[_T_co]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
 
-class Sequence(Iterable[_T], Container[_T], Sized, Reversible[_T], Generic[_T]):
+class Sequence(Iterable[_T_co], Container[_T_co], Sized, Reversible[_T_co], Generic[_T_co]):
     @overload
     @abstractmethod
-    def __getitem__(self, i: int) -> _T: pass
+    def __getitem__(self, i: int) -> _T_co: pass
     @overload
     @abstractmethod
-    def __getitem__(self, s: slice) -> Sequence[_T]: pass
+    def __getitem__(self, s: slice) -> Sequence[_T_co]: pass
     # Mixin methods
     def index(self, x: Any) -> int: pass
     def count(self, x: Any) -> int: pass
     def __contains__(self, x: object) -> bool: pass
-    def __iter__(self) -> Iterator[_T]: pass
-    def __reversed__(self) -> Iterator[_T]: pass
+    def __iter__(self) -> Iterator[_T_co]: pass
+    def __reversed__(self) -> Iterator[_T_co]: pass
 
 class MutableSequence(Sequence[_T], Generic[_T]):
     @abstractmethod
@@ -118,7 +124,7 @@ class MutableSequence(Sequence[_T], Generic[_T]):
     def remove(self, object: _T) -> None: pass
     def __iadd__(self, x: Iterable[_T]) -> MutableSequence[_T]: pass
 
-class AbstractSet(Iterable[_T], Container[_T], Sized, Generic[_T]):
+class AbstractSet(Iterable[_KT_co], Container[_KT_co], Sized, Generic[_KT_co]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     # Mixin methods
@@ -126,12 +132,12 @@ class AbstractSet(Iterable[_T], Container[_T], Sized, Generic[_T]):
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
     def __gt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
-    def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_T]: pass
+    def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_KT_co]: pass
     # In order to support covariance, _T should not be used within an argument
     # type. We need union types to properly model this.
-    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_T]: pass
-    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
+    def __or__(self, s: AbstractSet[_KT_co]) -> AbstractSet[_KT_co]: pass
+    def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_KT_co]: pass
+    def __xor__(self, s: AbstractSet[_KT_co]) -> AbstractSet[_KT_co]: pass
     # TODO: Argument can be a more general ABC?
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
@@ -152,26 +158,26 @@ class MutableSet(AbstractSet[_T], Generic[_T]):
 class MappingView(Sized):
     def __len__(self) -> int: pass
 
-class ItemsView(AbstractSet[Tuple[_KT, _VT]], MappingView, Generic[_KT, _VT]):
+class ItemsView(AbstractSet[Tuple[_KT_co, _VT_co]], MappingView, Generic[_KT_co, _VT_co]):
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[Tuple[_KT, _VT]]: pass
+    def __iter__(self) -> Iterator[Tuple[_KT_co, _VT_co]]: pass
 
-class KeysView(AbstractSet[_T], MappingView, Generic[_T]):
+class KeysView(AbstractSet[_KT_co], MappingView, Generic[_KT_co]):
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[_T]: pass
+    def __iter__(self) -> Iterator[_KT_co]: pass
 
-class ValuesView(MappingView, Iterable[_T], Generic[_T]):
+class ValuesView(MappingView, Iterable[_VT_co], Generic[_VT_co]):
     def __contains__(self, o: object) -> bool: pass
-    def __iter__(self) -> Iterator[_T]: pass
+    def __iter__(self) -> Iterator[_VT_co]: pass
 
-class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
+class Mapping(Iterable[_KT_co], Container[_KT_co], Sized, Generic[_KT_co, _VT_co]):
     @abstractmethod
-    def __getitem__(self, k: _KT) -> _VT: pass
+    def __getitem__(self, k: _KT_co) -> _VT_co: pass
     # Mixin methods
-    def get(self, k: _KT, default: _VT = ...) -> _VT: pass
-    def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
-    def keys(self) -> AbstractSet[_KT]: pass
-    def values(self) -> ValuesView[_VT]: pass
+    def get(self, k: _KT, default: _VT = ...) -> _VT_co: pass
+    def items(self) -> AbstractSet[Tuple[_KT_co, _VT_co]]: pass
+    def keys(self) -> AbstractSet[_KT_co]: pass
+    def values(self) -> ValuesView[_VT_co]: pass
     def __contains__(self, o: object) -> bool: pass
 
 class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
