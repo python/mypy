@@ -1,6 +1,5 @@
-import typing
-
 from mypy.myunit import Suite, assert_true, run_test
+from mypy.nodes import CONTRAVARIANT
 from mypy.subtypes import is_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
@@ -8,6 +7,7 @@ from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 class SubtypingSuite(Suite):
     def set_up(self):
         self.fx = TypeFixture()
+        self.fx_contra = TypeFixture(CONTRAVARIANT)
 
     def test_trivial_cases(self):
         for simple in self.fx.void, self.fx.a, self.fx.o, self.fx.b:
@@ -29,10 +29,22 @@ class SubtypingSuite(Suite):
         self.assert_not_subtype(self.fx.ga, self.fx.gb)
         self.assert_subtype(self.fx.gb, self.fx.ga)
 
+    def test_simple_generic_instance_subtyping_contra_variant(self):
+        self.assert_subtype(self.fx_contra.ga, self.fx_contra.ga)
+        self.assert_subtype(self.fx_contra.hab, self.fx_contra.hab)
+
+        self.assert_subtype(self.fx_contra.ga, self.fx_contra.gb)
+        self.assert_not_subtype(self.fx_contra.gb, self.fx_contra.ga)
+
     def test_generic_subtyping_with_inheritance(self):
         self.assert_subtype(self.fx.gsab, self.fx.gb)
         self.assert_subtype(self.fx.gsab, self.fx.ga)
         self.assert_not_subtype(self.fx.gsaa, self.fx.gb)
+
+    def test_generic_subtyping_with_inheritance_contra_variant(self):
+        self.assert_subtype(self.fx_contra.gsab, self.fx_contra.gb)
+        self.assert_not_subtype(self.fx_contra.gsab, self.fx_contra.ga)
+        self.assert_subtype(self.fx_contra.gsaa, self.fx_contra.gb)
 
     def test_interface_subtyping(self):
         self.assert_subtype(self.fx.e, self.fx.f)
