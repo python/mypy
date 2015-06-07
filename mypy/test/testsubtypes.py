@@ -1,16 +1,17 @@
 from mypy.myunit import Suite, assert_true, run_test
-from mypy.nodes import CONTRAVARIANT
+from mypy.nodes import CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class SubtypingSuite(Suite):
     def set_up(self):
-        self.fx = TypeFixture()
+        self.fx = TypeFixture(INVARIANT)
         self.fx_contra = TypeFixture(CONTRAVARIANT)
+        self.fx_co = TypeFixture(COVARIANT)
 
     def test_trivial_cases(self):
-        for simple in self.fx.void, self.fx.a, self.fx.o, self.fx.b:
+        for simple in self.fx_co.void, self.fx_co.a, self.fx_co.o, self.fx_co.b:
             self.assert_subtype(simple, simple)
 
     def test_instance_subtyping(self):
@@ -21,27 +22,41 @@ class SubtypingSuite(Suite):
         self.assert_not_subtype(self.fx.a, self.fx.d)
         self.assert_not_subtype(self.fx.b, self.fx.c)
 
-    def test_simple_generic_instance_subtyping(self):
+    def test_simple_generic_instance_subtyping_invariant(self):
         self.assert_subtype(self.fx.ga, self.fx.ga)
         self.assert_subtype(self.fx.hab, self.fx.hab)
 
         self.assert_not_subtype(self.fx.ga, self.fx.g2a)
         self.assert_not_subtype(self.fx.ga, self.fx.gb)
-        self.assert_subtype(self.fx.gb, self.fx.ga)
+        self.assert_not_subtype(self.fx.gb, self.fx.ga)
 
-    def test_simple_generic_instance_subtyping_contra_variant(self):
+    def test_simple_generic_instance_subtyping_covariant(self):
+        self.assert_subtype(self.fx_co.ga, self.fx_co.ga)
+        self.assert_subtype(self.fx_co.hab, self.fx_co.hab)
+
+        self.assert_not_subtype(self.fx_co.ga, self.fx_co.g2a)
+        self.assert_not_subtype(self.fx_co.ga, self.fx_co.gb)
+        self.assert_subtype(self.fx_co.gb, self.fx_co.ga)
+
+    def test_simple_generic_instance_subtyping_contravariant(self):
         self.assert_subtype(self.fx_contra.ga, self.fx_contra.ga)
         self.assert_subtype(self.fx_contra.hab, self.fx_contra.hab)
 
+        self.assert_not_subtype(self.fx_contra.ga, self.fx_contra.g2a)
         self.assert_subtype(self.fx_contra.ga, self.fx_contra.gb)
         self.assert_not_subtype(self.fx_contra.gb, self.fx_contra.ga)
 
-    def test_generic_subtyping_with_inheritance(self):
+    def test_generic_subtyping_with_inheritance_invariant(self):
         self.assert_subtype(self.fx.gsab, self.fx.gb)
-        self.assert_subtype(self.fx.gsab, self.fx.ga)
+        self.assert_not_subtype(self.fx.gsab, self.fx.ga)
         self.assert_not_subtype(self.fx.gsaa, self.fx.gb)
 
-    def test_generic_subtyping_with_inheritance_contra_variant(self):
+    def test_generic_subtyping_with_inheritance_covariant(self):
+        self.assert_subtype(self.fx_co.gsab, self.fx_co.gb)
+        self.assert_subtype(self.fx_co.gsab, self.fx_co.ga)
+        self.assert_not_subtype(self.fx_co.gsaa, self.fx_co.gb)
+
+    def test_generic_subtyping_with_inheritance_contravariant(self):
         self.assert_subtype(self.fx_contra.gsab, self.fx_contra.gb)
         self.assert_not_subtype(self.fx_contra.gsab, self.fx_contra.ga)
         self.assert_subtype(self.fx_contra.gsaa, self.fx_contra.gb)
