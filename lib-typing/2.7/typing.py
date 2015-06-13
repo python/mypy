@@ -156,7 +156,7 @@ def NamedTuple(typename, fields):
 
 
 class TypeVar(object):
-    def __init__(self, name, *values):
+    def __init__(self, name, *values, **kwargs):
         self.name = name
         if not values:
             values = None
@@ -204,6 +204,7 @@ def overload(func):
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+VT_co = TypeVar('VT_co', covariant=True)
 
 
 class SupportsInt(_Protocol):
@@ -231,7 +232,7 @@ class Sized(_Protocol):
     def __len__(self): pass
 
 
-class Container(_Protocol[T]):
+class Container(_Protocol[VT_co]):
     @abstractmethod
     def __contains__(self, x): pass
 
@@ -241,12 +242,12 @@ class Iterable(_Protocol[T]):
     def __iter__(self): pass
 
 
-class Iterator(Iterable[T], _Protocol[T]):
+class Iterator(Iterable[VT_co], _Protocol[VT_co]):
     @abstractmethod
     def next(self): pass
 
 
-class Sequence(Sized, Iterable[T], Container[T], Generic[T]):
+class Sequence(Sized, Iterable[VT_co], Container[VT_co], Generic[VT_co]):
     @abstractmethod
     def __getitem__(self, i): pass
 
@@ -267,7 +268,7 @@ for t in list, tuple, unicode, str, xrange:
     Sequence.register(t)
 
 
-class AbstractSet(Sized, Iterable[T], Generic[T]):
+class AbstractSet(Sized, Iterable[VT_co], Generic[VT_co]):
     @abstractmethod
     def __contains__(self, x): pass
     @abstractmethod
