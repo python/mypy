@@ -15,9 +15,9 @@ class SubtypingSuite(Suite):
             self.assert_subtype(simple, simple)
 
     def test_instance_subtyping(self):
-        self.assert_proper_subtype(self.fx.a, self.fx.o)
-        self.assert_proper_subtype(self.fx.b, self.fx.o)
-        self.assert_proper_subtype(self.fx.b, self.fx.a)
+        self.assert_strict_subtype(self.fx.a, self.fx.o)
+        self.assert_strict_subtype(self.fx.b, self.fx.o)
+        self.assert_strict_subtype(self.fx.b, self.fx.a)
 
         self.assert_not_subtype(self.fx.a, self.fx.d)
         self.assert_not_subtype(self.fx.b, self.fx.c)
@@ -78,9 +78,9 @@ class SubtypingSuite(Suite):
         self.assert_equivalent(fx2.gfa, fx2.gfa)
 
     def test_basic_callable_subtyping(self):
-        self.assert_proper_subtype(self.fx.callable(self.fx.o, self.fx.d),
+        self.assert_strict_subtype(self.fx.callable(self.fx.o, self.fx.d),
                                    self.fx.callable(self.fx.a, self.fx.d))
-        self.assert_proper_subtype(self.fx.callable(self.fx.d, self.fx.b),
+        self.assert_strict_subtype(self.fx.callable(self.fx.d, self.fx.b),
                                    self.fx.callable(self.fx.d, self.fx.a))
 
         self.assert_unrelated(self.fx.callable(self.fx.a, self.fx.a),
@@ -91,15 +91,15 @@ class SubtypingSuite(Suite):
             self.fx.callable(self.fx.a, self.fx.a))
 
     def test_default_arg_callable_subtyping(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a),
             self.fx.callable(self.fx.a, self.fx.d, self.fx.a))
 
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a),
             self.fx.callable(self.fx.a, self.fx.a))
 
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_default(0, self.fx.a, self.fx.d, self.fx.a),
             self.fx.callable_default(1, self.fx.a, self.fx.d, self.fx.a))
 
@@ -116,32 +116,32 @@ class SubtypingSuite(Suite):
             self.fx.callable(self.fx.a, self.fx.a, self.fx.a))
 
     def test_var_arg_callable_subtyping_1(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
             self.fx.callable_var_arg(0, self.fx.b, self.fx.a))
 
     def test_var_arg_callable_subtyping_2(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
             self.fx.callable(self.fx.b, self.fx.a))
 
     def test_var_arg_callable_subtyping_3(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.a),
             self.fx.callable(self.fx.a))
 
     def test_var_arg_callable_subtyping_4(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_var_arg(1, self.fx.a, self.fx.d, self.fx.a),
             self.fx.callable(self.fx.b, self.fx.a))
 
     def test_var_arg_callable_subtyping_5(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.d, self.fx.a),
             self.fx.callable(self.fx.b, self.fx.a))
 
     def test_var_arg_callable_subtyping_6(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_var_arg(0, self.fx.a, self.fx.f, self.fx.d),
             self.fx.callable_var_arg(0, self.fx.b, self.fx.e, self.fx.d))
 
@@ -167,14 +167,14 @@ class SubtypingSuite(Suite):
             self.fx.callable_var_arg(0, self.fx.b, self.fx.d))
 
     def test_type_callable_subtyping(self):
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_type(self.fx.d, self.fx.a), self.fx.type_type)
 
-        self.assert_proper_subtype(
+        self.assert_strict_subtype(
             self.fx.callable_type(self.fx.d, self.fx.b),
             self.fx.callable(self.fx.d, self.fx.a))
 
-        self.assert_proper_subtype(self.fx.callable_type(self.fx.a, self.fx.b),
+        self.assert_strict_subtype(self.fx.callable_type(self.fx.a, self.fx.b),
                                    self.fx.callable(self.fx.a, self.fx.b))
 
     # IDEA: Maybe add these test cases (they are tested pretty well in type
@@ -194,7 +194,7 @@ class SubtypingSuite(Suite):
     def assert_not_subtype(self, s, t):
         assert_true(not is_subtype(s, t), '{} subtype of {}'.format(s, t))
 
-    def assert_proper_subtype(self, s, t):
+    def assert_strict_subtype(self, s, t):
         self.assert_subtype(s, t)
         self.assert_not_subtype(t, s)
 
