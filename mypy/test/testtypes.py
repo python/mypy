@@ -13,7 +13,7 @@ from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
     Instance, NoneTyp, ErrorType
 )
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
@@ -96,7 +96,9 @@ class TypesSuite(Suite):
 
 class TypeOpsSuite(Suite):
     def set_up(self):
-        self.fx = TypeFixture()
+        self.fx = TypeFixture(INVARIANT)
+        self.fx_co = TypeFixture(COVARIANT)
+        self.fx_contra = TypeFixture(CONTRAVARIANT)
 
     # expand_type
 
@@ -220,16 +222,16 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(fx.t, fx.s))
 
     def test_is_proper_subtype_covariance(self):
-        fx = self.fx
+        fx_co = self.fx_co
 
-        assert_true(is_proper_subtype(fx.gsab, fx.gb))
-        assert_true(is_proper_subtype(fx.gsab, fx.ga))
-        assert_false(is_proper_subtype(fx.gsaa, fx.gb))
-        assert_true(is_proper_subtype(fx.gb, fx.ga))
-        assert_false(is_proper_subtype(fx.ga, fx.gb))
+        assert_true(is_proper_subtype(fx_co.gsab, fx_co.gb))
+        assert_true(is_proper_subtype(fx_co.gsab, fx_co.ga))
+        assert_false(is_proper_subtype(fx_co.gsaa, fx_co.gb))
+        assert_true(is_proper_subtype(fx_co.gb, fx_co.ga))
+        assert_false(is_proper_subtype(fx_co.ga, fx_co.gb))
 
     def test_is_proper_subtype_contravariance(self):
-        fx_contra = TypeFixture(CONTRAVARIANT)
+        fx_contra = self.fx_contra
 
         assert_true(is_proper_subtype(fx_contra.gsab, fx_contra.gb))
         assert_false(is_proper_subtype(fx_contra.gsab, fx_contra.ga))
@@ -238,13 +240,13 @@ class TypeOpsSuite(Suite):
         assert_true(is_proper_subtype(fx_contra.ga, fx_contra.gb))
 
     def test_is_proper_subtype_invariance(self):
-        fx_inv = TypeFixture(INVARIANT)
+        fx = self.fx
 
-        assert_true(is_proper_subtype(fx_inv.gsab, fx_inv.gb))
-        assert_false(is_proper_subtype(fx_inv.gsab, fx_inv.ga))
-        assert_false(is_proper_subtype(fx_inv.gsaa, fx_inv.gb))
-        assert_false(is_proper_subtype(fx_inv.gb, fx_inv.ga))
-        assert_false(is_proper_subtype(fx_inv.ga, fx_inv.gb))
+        assert_true(is_proper_subtype(fx.gsab, fx.gb))
+        assert_false(is_proper_subtype(fx.gsab, fx.ga))
+        assert_false(is_proper_subtype(fx.gsaa, fx.gb))
+        assert_false(is_proper_subtype(fx.gb, fx.ga))
+        assert_false(is_proper_subtype(fx.ga, fx.gb))
 
     # Helpers
 
