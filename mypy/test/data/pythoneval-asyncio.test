@@ -270,8 +270,8 @@ try:
 finally:
     loop.close()
 [out]
-_program.py: In function "test":
-_program.py, line 13: Function does not return a value
+_program.py: note: In function "test":
+_program.py:13: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 import asyncio
@@ -293,8 +293,8 @@ loop.run_until_complete(print_sum(1, 2))
 loop.close()
 
 [out]
-_program.py: In function "compute":
-_program.py, line 8: Incompatible return value type: expected asyncio.futures.Future[builtins.int], got asyncio.futures.Future[builtins.str]
+_program.py: note: In function "compute":
+_program.py:8: error: Incompatible return value type: expected asyncio.futures.Future[builtins.int], got asyncio.futures.Future[builtins.str]
 
 [case testErrorSetFutureDifferentInternalType]
 import asyncio
@@ -312,8 +312,8 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py: In function "slow_operation":
-_program.py, line 7: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
+_program.py: note: In function "slow_operation":
+_program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
 
 
 [case testErrorUsingDifferentFutureType]
@@ -332,7 +332,7 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py, line 11: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
+_program.py:11: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
 
 [case testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType]
 import asyncio
@@ -350,10 +350,10 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py: In function "slow_operation":
-_program.py, line 7: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
-_program.py: At top level:
-_program.py, line 11: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
+_program.py: note: In function "slow_operation":
+_program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
+_program.py: note: At top level:
+_program.py:11: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
 
 [case testErrorSettingCallbackWithDifferentFutureType]
 import typing
@@ -379,7 +379,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py, line 17: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Callable[[Future[str]], Any]
+_program.py:17: error: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Callable[[Future[str]], Any]
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
@@ -414,8 +414,8 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py: In function "h3":
-_program.py, line 17: Incompatible return value type: expected asyncio.futures.Future[asyncio.futures.Future[asyncio.futures.Future[asyncio.futures.Future[builtins.int]]]], got asyncio.futures.Future[asyncio.futures.Future[builtins.int]]
+_program.py: note: In function "h3":
+_program.py:17: error: Incompatible return value type: expected asyncio.futures.Future[asyncio.futures.Future[asyncio.futures.Future[asyncio.futures.Future[builtins.int]]]], got asyncio.futures.Future[asyncio.futures.Future[builtins.int]]
 
 [case testErrorOneLessFutureInReturnType]
 import typing
@@ -448,8 +448,8 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py: In function "h3":
-_program.py, line 17: Incompatible return value type: expected asyncio.futures.Future[asyncio.futures.Future[builtins.int]], got asyncio.futures.Future[asyncio.futures.Future[builtins.int]]
+_program.py: note: In function "h3":
+_program.py:17: error: Incompatible return value type: expected asyncio.futures.Future[asyncio.futures.Future[builtins.int]], got asyncio.futures.Future[asyncio.futures.Future[builtins.int]]
 
 [case testErrorAssignmentDifferentType]
 import typing
@@ -475,5 +475,5 @@ future.set_result(A(42))
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py: In function "h":
-_program.py, line 15: Incompatible types in assignment (expression has type "A", variable has type "B")
+_program.py: note: In function "h":
+_program.py:15: error: Incompatible types in assignment (expression has type "A", variable has type "B")

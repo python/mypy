@@ -209,7 +209,7 @@ def f(x: 'A' = A()) -> None:
 class B: pass
 class A: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testDefaultArgumentExpressions2]
 import typing
@@ -220,7 +220,7 @@ def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression h
 class B: pass
 class A: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testDefaultArgumentsWithSubtypes]
 import typing
@@ -232,7 +232,7 @@ def g(x: 'A' = B()) -> None:
 class A: pass
 class B(A): pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
@@ -244,7 +244,7 @@ def h(x: 'A' = A(), y: 'B' = B()) -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
@@ -254,7 +254,7 @@ def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment
 class A: pass
 class B: pass
 [out]
-main: In function "g":
+main: note: In function "g":
 
 [case testDefaultArgumentsAndSignatureAsComment]
 import typing
@@ -402,10 +402,10 @@ def f(a: 'A') -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "g":
-main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
-main: In function "f":
-main, line 7: Argument 1 to "g" has incompatible type "A"; expected "B"
+main: note: In function "g":
+main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main: note: In function "f":
+main:7: error: Argument 1 to "g" has incompatible type "A"; expected "B"
 
 [case testReturnAndNestedFunction]
 import typing
@@ -418,10 +418,10 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: In function "g":
-main, line 4: Incompatible return value type: expected __main__.B, got __main__.A
-main: In function "f":
-main, line 6: Incompatible return value type: expected __main__.A, got __main__.B
+main: note: In function "g":
+main:4: error: Incompatible return value type: expected __main__.B, got __main__.A
+main: note: In function "f":
+main:6: error: Incompatible return value type: expected __main__.A, got __main__.B
 
 [case testDynamicallyTypedNestedFunction]
 import typing
@@ -431,7 +431,7 @@ def f(x: object) -> None:
     g() # E: Too few arguments for "g"
     g(x)
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testNestedFunctionInMethod]
 import typing
@@ -443,10 +443,10 @@ class A:
         g(2)
         g(A()) # fail
 [out]
-main: In function "g":
-main, line 6: Incompatible types in assignment (expression has type "int", variable has type "A")
-main: In member "f" of class "A":
-main, line 8: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
+main: note: In function "g":
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
+main: note: In member "f" of class "A":
+main:8: error: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
 
 
 -- Casts
@@ -502,7 +502,7 @@ def g() -> None:
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
-main: In function "g":
+main: note: In function "g":
 
 [case testCheckingDecoratedFunction]
 import typing
@@ -513,7 +513,7 @@ def f(x: 'A') -> None:
     x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testDecoratorThatSwitchesType]
 from typing import Callable
@@ -618,7 +618,7 @@ if x:
         x = 1
         x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testCallConditionalFunction]
 from typing import Any
@@ -644,11 +644,11 @@ else:
 f(1)
 f('x') # fail
 [out]
-main: In function "f":
-main, line 5: Incompatible types in assignment (expression has type "str", variable has type "int")
-main, line 9: Unsupported left operand type for + ("int")
-main: At top level:
-main, line 12: Argument 1 to "f" has incompatible type "str"; expected "int"
+main: note: In function "f":
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:9: error: Unsupported left operand type for + ("int")
+main: note: At top level:
+main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
 from typing import Any
@@ -695,7 +695,7 @@ class A:
             x = 1
             x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: In member "f" of class "A":
+main: note: In member "f" of class "A":
 
 [case testCallConditionalMethodInClassBody]
 from typing import Any
@@ -708,7 +708,7 @@ class A:
     f(x, 1)
     f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testCallConditionalMethodViaInstance]
 from typing import Any
@@ -734,11 +734,11 @@ class A:
 A().f(1)
 A().f('x') # fail
 [out]
-main: In member "f" of class "A":
-main, line 6: Incompatible types in assignment (expression has type "str", variable has type "int")
-main, line 10: Unsupported left operand type for + ("int")
-main: At top level:
-main, line 13: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main: note: In member "f" of class "A":
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:10: error: Unsupported left operand type for + ("int")
+main: note: At top level:
+main:13: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]
 from typing import Any
@@ -757,7 +757,7 @@ class A:
     else:
         def f(self, x): pass # E: All conditional function variants must have identical signatures
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testConditionalFunctionDefinitionInTry]
 import typing
@@ -783,7 +783,7 @@ def f(x: Callable[..., int]) -> None:
     x(z=1)
     x() + '' # E: Unsupported left operand type for + ("int")
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testCallableWithArbitraryArgs2]
 from typing import Callable
@@ -801,7 +801,7 @@ from typing import Callable
 def f(x: Callable[..., int]) -> None:
     x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testCallableWithArbitraryArgsInGenericFunction]
 from typing import Callable, TypeVar

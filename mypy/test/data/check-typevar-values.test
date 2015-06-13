@@ -69,10 +69,10 @@ def f(x: AB) -> AB:
 def g(x: AB) -> AB:
     return x.g() # Error
 [out]
-main: In function "f":
-main, line 10: Incompatible return value type: expected __main__.B*, got __main__.A
-main: In function "g":
-main, line 12: Incompatible return value type: expected __main__.A*, got __main__.B
+main: note: In function "f":
+main:10: error: Incompatible return value type: expected __main__.B*, got __main__.A
+main: note: In function "g":
+main:12: error: Incompatible return value type: expected __main__.A*, got __main__.B
 
 [case testTypeInferenceAndTypeVarValues]
 from typing import TypeVar
@@ -90,7 +90,7 @@ def f(x: AB) -> AB:
     else:
         return y.g() # E: Incompatible return value type: expected __main__.A*, got __main__.B
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testTypeDeclaredBasedOnTypeVarWithValues]
 from typing import TypeVar
@@ -103,7 +103,7 @@ def f(x: T) -> T:
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testIsinstanceAndTypeVarValues]
 from typing import TypeVar
@@ -120,7 +120,7 @@ def h(x: T) -> T:
     return x
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "h":
+main: note: In function "h":
 
 [case testIsinstanceAndTypeVarValues2]
 from typing import TypeVar
@@ -138,7 +138,7 @@ def g(x: T) -> T:
     return x
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "g":
+main: note: In function "g":
 
 [case testIsinstanceAndTypeVarValues3]
 from typing import TypeVar
@@ -162,7 +162,7 @@ def f(x: T) -> T:
     return y # E: Incompatible return value type: expected builtins.str*, got builtins.object
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testIsinstanceAndTypeVarValues5]
 from typing import TypeVar
@@ -175,7 +175,7 @@ def f(x: T) -> T:
     return y # E: Incompatible return value type: expected builtins.int*, got builtins.object
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues]
 from typing import TypeVar
@@ -199,7 +199,7 @@ def g(x: S) -> None:
         x = y
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues2]
 from typing import TypeVar
@@ -218,7 +218,7 @@ def f(x: T) -> None:
         x = S() # E: Incompatible types in assignment (expression has type "S", variable has type "int")
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testTypeVarValuesAndNestedCalls]
 from typing import TypeVar
@@ -263,10 +263,10 @@ def g(x: Y) -> None:
 def h(x: Z) -> None:
     a = None  # type: D[Z]
 [out]
-main: In function "g":
-main, line 11: Invalid type argument value for "D"
-main: In function "h":
-main, line 13: Type variable "Z" not valid as type argument value for "D"
+main: note: In function "g":
+main:11: error: Invalid type argument value for "D"
+main: note: In function "h":
+main:13: error: Type variable "Z" not valid as type argument value for "D"
 
 [case testGenericTypeWithTypevarValuesAndSubtypePromotion]
 from typing import TypeVar, Generic
@@ -298,7 +298,7 @@ class C(Generic[X]):
         x.g(1) # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
         x.h(1) # E: Argument 1 to "h" of "A" has incompatible type "int"; expected "str"
 [out]
-main: In member "f" of class "C":
+main: note: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues1]
 from typing import TypeVar, Generic
@@ -309,7 +309,7 @@ class C(Generic[X]):
         self.x = x
         self.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [out]
-main: In member "f" of class "C":
+main: note: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues2]
 from typing import TypeVar, Generic
@@ -343,9 +343,9 @@ class C(Generic[X, Y]):
     def f(self, x: X, y: Y) -> None:
         x.f(y)
 [out]
-main: In member "f" of class "C":
-main, line 10: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-main, line 10: Argument 1 to "f" of "B" has incompatible type "int"; expected "str"
+main: note: In member "f" of class "C":
+main:10: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main:10: error: Argument 1 to "f" of "B" has incompatible type "int"; expected "str"
 
 [case testMultipleClassTypevarsWithValues2]
 from typing import TypeVar, Generic
@@ -384,12 +384,12 @@ def f(x: X, y: Y, z: int) -> None:
     z = y # Error
     y.foo # Error
 [out]
-main: In function "f":
-main, line 8: Type argument 1 of "C" has incompatible value "X"
-main, line 9: Incompatible types in assignment (expression has type "X", variable has type "int")
-main, line 10: Incompatible types in assignment (expression has type "str", variable has type "int")
-main, line 11: "int" has no attribute "foo"
-main, line 11: "str" has no attribute "foo"
+main: note: In function "f":
+main:8: error: Type argument 1 of "C" has incompatible value "X"
+main:9: error: Incompatible types in assignment (expression has type "X", variable has type "int")
+main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:11: error: "int" has no attribute "foo"
+main:11: error: "str" has no attribute "foo"
 
 [case testTypeVarWithValueInferredFromObjectReturnTypeContext]
 from typing import TypeVar
@@ -413,8 +413,8 @@ def g(x: T) -> T: pass
 c(g(''))
 c(g(1))
 [out]
-main, line 6: Argument 1 to "c" has incompatible type "str"; expected "ss"
-main, line 7: Argument 1 to "c" has incompatible type "int"; expected "ss"
+main:6: error: Argument 1 to "c" has incompatible type "str"; expected "ss"
+main:7: error: Argument 1 to "c" has incompatible type "int"; expected "ss"
 
 
 -- Special cases
@@ -436,7 +436,7 @@ class C(A[str]):
     def f(self) -> int: # E: Return type of "f" incompatible with supertype "A"
         pass
 [out]
-main: In class "C":
+main: note: In class "C":
 
 [case testDefaultArgumentValueInGenericClassWithTypevarValues]
 from typing import TypeVar, Generic
@@ -462,6 +462,6 @@ def g(x: int) -> int: return x
 @overload
 def g(x: str) -> str: return x
 [out]
-main: In function "f":
-main, line 7: Incompatible types in assignment (expression has type "object", variable has type "int")
-main, line 7: Incompatible types in assignment (expression has type "object", variable has type "str")
+main: note: In function "f":
+main:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
+main:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")

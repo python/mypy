@@ -12,271 +12,271 @@
 def f()
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before end of line
-file: At top level:
-file, line 2: Inconsistent indentation
+file: note: In function "f":
+file:1: error: Parse error before end of line
+file: note: At top level:
+file:2: error: Inconsistent indentation
 
 [case testMissingIndent]
 if x:
 1
 [out]
-file, line 2: Expected an indented block
+file:2: error: Expected an indented block
 
 [case testUnexpectedIndent]
 1
  2
 [out]
-file, line 2: Inconsistent indentation
+file:2: error: Inconsistent indentation
 
 [case testInconsistentIndent]
 if x:
   1
    1
 [out]
-file, line 3: Inconsistent indentation
+file:3: error: Inconsistent indentation
 
 [case testInconsistentIndent]
 if x:
    1
   1
 [out]
-file, line 3: Inconsistent indentation
+file:3: error: Inconsistent indentation
 
 [case testInvalidBinaryOp]
 1>
 a*
 a+1*
 [out]
-file, line 1: Parse error before end of line
-file, line 2: Parse error before end of line
-file, line 3: Parse error before end of line
+file:1: error: Parse error before end of line
+file:2: error: Parse error before end of line
+file:3: error: Parse error before end of line
 
 [case testDoubleStar]
 **a
 [out]
-file, line 1: Parse error before **
+file:1: error: Parse error before **
 
 [case testInvalidSuperClass]
 class A(C[):
   pass
 [out]
-file: In class "A":
-file, line 1: Parse error before )
-file, line 2: Parse error before end of file
+file: note: In class "A":
+file:1: error: Parse error before )
+file:2: error: Parse error before end of file
 
 [case testMissingSuperClass]
 class A(:
   pass
 [out]
-file: In class "A":
-file, line 1: Parse error before :
-file, line 2: Parse error before end of file
+file: note: In class "A":
+file:1: error: Parse error before :
+file:2: error: Parse error before end of file
 
 [case testUnexpectedEof]
 if 1:
 [out]
-file, line 1: Expected an indented block
+file:1: error: Expected an indented block
 
 [case testInvalidKeywordArguments1]
 f(x=y, z)
 [out]
-file, line 1: Parse error before "z"
+file:1: error: Parse error before "z"
 
 [case testInvalidKeywordArguments2]
 f(**x, y=z)
 [out]
-file, line 1: Parse error before "y"
+file:1: error: Parse error before "y"
 
 [case testInvalidKeywordArguments3]
 f(**x, y)
 [out]
-file, line 1: Parse error before "y"
+file:1: error: Parse error before "y"
 
 [case testInvalidVarArgs]
 f(*x, y)
 [out]
-file, line 1: Parse error before "y"
+file:1: error: Parse error before "y"
 
 [case testInvalidBareAsteriskAndVarArgs2]
 def f(*x: A, *) -> None: pass
 [out]
-file: In function "f":
-file, line 1: Parse error before )
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before )
+file:1: error: Parse error before end of line
 
 [case testInvalidBareAsteriskAndVarArgs3]
 def f(*, *x: A) -> None: pass
 [out]
-file: In function "f":
-file, line 1: Parse error before *
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before *
+file:1: error: Parse error before end of line
 
 [case testInvalidBareAsteriskAndVarArgs4]
 def f(*, **x: A) -> None: pass
 [out]
-file: In function "f":
-file, line 1: Parse error before **
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before **
+file:1: error: Parse error before end of line
 
 [case testInvalidBareAsterisk1]
 def f(*) -> None: pass
 [out]
-file: In function "f":
-file, line 1: Parse error before )
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before )
+file:1: error: Parse error before end of line
 
 [case testInvalidBareAsterisk2]
 def f(x, *) -> None: pass
 [out]
-file: In function "f":
-file, line 1: Parse error before )
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before )
+file:1: error: Parse error before end of line
 
 [case testInvalidFuncDefArgs1]
 def f(x = y, x): pass
 [out]
-file: In function "f":
-file, line 1: Invalid argument list
+file: note: In function "f":
+file:1: error: Invalid argument list
 
 [case testInvalidFuncDefArgs3]
 def f(**x, y):
    pass
 [out]
-file: In function "f":
-file, line 1: Invalid argument list
+file: note: In function "f":
+file:1: error: Invalid argument list
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x):
     pass
 [out]
-file: In function "f":
-file, line 1: Invalid argument list
+file: note: In function "f":
+file:1: error: Invalid argument list
 
 [case testInvalidStringLiteralType]
 def f(x:
      'A['
      ) -> None: pass
 [out]
-file: In function "f":
-file, line 2: Parse error before end of line
-file, line 3: Parse error before end of line
+file: note: In function "f":
+file:2: error: Parse error before end of line
+file:3: error: Parse error before end of line
 
 [case testInvalidStringLiteralType2]
 def f(x:
       'A B'
       ) -> None: pass
 [out]
-file: In function "f":
-file, line 2: Parse error before "B"
-file, line 3: Parse error before end of line
+file: note: In function "f":
+file:2: error: Parse error before "B"
+file:3: error: Parse error before end of line
 
 [case testInvalidTypeComment]
 0
 x = 0 # type: A A
 [out]
-file, line 2: Parse error before "A"
+file:2: error: Parse error before "A"
 
 [case testInvalidTypeComment2]
 0
 x = 0 # type: A[
 [out]
-file, line 2: Parse error before end of line
+file:2: error: Parse error before end of line
 
 [case testInvalidTypeComment3]
 0
 x = 0 # type:
 [out]
-file, line 2: Empty type annotation
+file:2: error: Empty type annotation
 
 [case testInvalidTypeComment4]
 0
 x = 0 # type: *
 [out]
-file, line 2: Parse error before end of line
+file:2: error: Parse error before end of line
 
 [case testInvalidMultilineLiteralType]
 def f() -> "A\nB": pass
 [out]
-file: In function "f":
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before end of line
 
 [case testInvalidMetaclass]
 class A(metaclass=1): pass
 [out]
-file: In class "A":
-file, line 1: Parse error before numeric literal
-file, line 1: Parse error before end of file
+file: note: In class "A":
+file:1: error: Parse error before numeric literal
+file:1: error: Parse error before end of file
 
 [case testInvalidSignatureInComment1]
 def f(): # type: x
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before "x"
+file: note: In function "f":
+file:1: error: Parse error before "x"
 
 [case testInvalidSignatureInComment2]
 def f(): # type:
   pass
 [out]
-file: In function "f":
-file, line 1: Empty type annotation
+file: note: In function "f":
+file:1: error: Empty type annotation
 
 [case testInvalidSignatureInComment3]
 def f(): # type: (
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment4]
 def f(): # type: (.
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before .
+file: note: In function "f":
+file:1: error: Parse error before .
 
 [case testInvalidSignatureInComment5]
 def f(): # type: (x
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment6]
 def f(): # type: (x)
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment7]
 def f(): # type: (x) -
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before -
+file: note: In function "f":
+file:1: error: Parse error before -
 
 [case testInvalidSignatureInComment8]
 def f(): # type: (x) ->
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before end of line
+file: note: In function "f":
+file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment9]
 def f(): # type: (x) -> .
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before .
+file: note: In function "f":
+file:1: error: Parse error before .
 
 [case testInvalidSignatureInComment10]
 def f(): # type: (x) -> x x
   pass
 [out]
-file: In function "f":
-file, line 1: Parse error before "x"
+file: note: In function "f":
+file:1: error: Parse error before "x"
 
 [case testDuplicateSignatures1]
 def f() -> None: # type: () -> None
@@ -284,15 +284,15 @@ def f() -> None: # type: () -> None
 def f(): # type: () -> None
     pass
 [out]
-file: In function "f":
-file, line 1: Function has duplicate type signatures
+file: note: In function "f":
+file:1: error: Function has duplicate type signatures
 
 [case testDuplicateSignatures2]
 def f(x, y: Z): # type: (x, y) -> z
   pass
 [out]
-file: In function "f":
-file, line 1: Function has duplicate type signatures
+file: note: In function "f":
+file:1: error: Function has duplicate type signatures
 
 [case testCommentFunctionAnnotationVarArgMispatch]
 def f(x): # type: (*X) -> Y
@@ -300,10 +300,10 @@ def f(x): # type: (*X) -> Y
 def g(*x): # type: (X) -> Y
     pass
 [out]
-file: In function "f":
-file, line 1: Inconsistent use of '*' in function signature
-file: In function "g":
-file, line 3: Inconsistent use of '*' in function signature
+file: note: In function "f":
+file:1: error: Inconsistent use of '*' in function signature
+file: note: In function "g":
+file:3: error: Inconsistent use of '*' in function signature
 
 [case testCommentFunctionAnnotationVarArgMispatch2]
 def f(*x, **y): # type: (**X, *Y) -> Z
@@ -311,136 +311,136 @@ def f(*x, **y): # type: (**X, *Y) -> Z
 def g(*x, **y): # type: (*X, *Y) -> Z
     pass
 [out]
-file: In function "f":
-file, line 1: Inconsistent use of '*' in function signature
-file, line 1: Inconsistent use of '**' in function signature
-file: In function "g":
-file, line 3: Inconsistent use of '*' in function signature
-file, line 3: Inconsistent use of '**' in function signature
+file: note: In function "f":
+file:1: error: Inconsistent use of '*' in function signature
+file:1: error: Inconsistent use of '**' in function signature
+file: note: In function "g":
+file:3: error: Inconsistent use of '*' in function signature
+file:3: error: Inconsistent use of '**' in function signature
 
 [case testPrintStatementInPython3]
 print 1
 [out]
-file, line 1: Parse error before numeric literal
+file:1: error: Parse error before numeric literal
 
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4
 [out]
-file, line 1: Parse error before ,
+file:1: error: Parse error before ,
 
 [case testInvalidConditionInConditionalExpression2]
 1 if x for y in z else 4
 [out]
-file, line 1: Parse error before "for"
+file:1: error: Parse error before "for"
 
 [case testInvalidConditionInConditionalExpression2]
 1 if x else for y in z
 [out]
-file, line 1: Parse error before "for"
+file:1: error: Parse error before "for"
 
 [case testYieldFromNotRightParameter]
 def f():
     yield from
 [out]
-file: In function "f":
-file, line 2: Parse error before end of line
+file: note: In function "f":
+file:2: error: Parse error before end of line
 
 [case testYieldFromAfterReturn]
 def f():
     return yield from h()
 [out]
-file: In function "f":
-file, line 2: Parse error before "yield"
+file: note: In function "f":
+file:2: error: Parse error before "yield"
 
 [case testImportDotModule]
 import .x
 [out]
-file, line 1: Parse error before .
+file:1: error: Parse error before .
 
 [case testImportDot]
 import .
 [out]
-file, line 1: Parse error before .
+file:1: error: Parse error before .
 
 [case testInvalidFunctionName]
 def while(): pass
 [out]
-file, line 1: Parse error before "while"
-file, line 1: Parse error before end of line
+file:1: error: Parse error before "while"
+file:1: error: Parse error before end of line
 
 [case testInvalidEllipsis1]
 ...0
 ..._
 ...a
 [out]
-file, line 1: Parse error before numeric literal
-file, line 2: Parse error before "_"
-file, line 3: Parse error before "a"
+file:1: error: Parse error before numeric literal
+file:2: error: Parse error before "_"
+file:3: error: Parse error before "a"
 
 [case testBlockStatementInSingleLineIf]
 if 1: if 2: pass
 [out]
-file, line 1: Parse error before "if"
+file:1: error: Parse error before "if"
 
 [case testBlockStatementInSingleLineIf2]
 if 1: while 2: pass
 [out]
-file, line 1: Parse error before "while"
+file:1: error: Parse error before "while"
 
 [case testBlockStatementInSingleLineIf3]
 if 1: for x in y: pass
 [out]
-file, line 1: Parse error before "for"
+file:1: error: Parse error before "for"
 
 [case testUnexpectedEllipsis]
 a = a...
 [out]
-file, line 1: Parse error before ...
+file:1: error: Parse error before ...
 
 [case testFromFutureImportStar]
 from __future__ import *
 x = 1
 [out]
-file, line 1: Parse error before *
+file:1: error: Parse error before *
 
 [case testParseErrorBeforeUnicodeLiteral]
 x u'y'
 [out]
-file, line 1: Parse error before string literal
+file:1: error: Parse error before string literal
 
 [case testParseErrorInExtendedSlicing]
 x[:,
 [out]
-file, line 1: Parse error before end of line
+file:1: error: Parse error before end of line
 
 [case testParseErrorInExtendedSlicing2]
 x[:,::
 [out]
-file, line 1: Parse error before end of line
+file:1: error: Parse error before end of line
 
 [case testParseErrorInExtendedSlicing3]
 x[:,:
 [out]
-file, line 1: Parse error before end of line
+file:1: error: Parse error before end of line
 
 [case testPython2OctalIntLiteralInPython3]
 0377
 [out]
-file, line 1: Invalid numeric literal
+file:1: error: Invalid numeric literal
 
 [case testInvalidEncoding]
 # foo
 # coding: uft-8
 [out]
-file, line 2: Unknown encoding 'uft-8'
+file:2: error: Unknown encoding 'uft-8'
 
 [case testInvalidEncoding2]
 # coding=Uft.8
 [out]
-file, line 1: Unknown encoding 'Uft.8'
+file:1: error: Unknown encoding 'Uft.8'
 
 [case testInvalidEncoding2]
 #!/usr/bin python
 # vim: set fileencoding=uft8 :
 [out]
-file, line 2: Unknown encoding 'uft8'
+file:2: error: Unknown encoding 'uft8'

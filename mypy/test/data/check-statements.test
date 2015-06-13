@@ -14,10 +14,10 @@ class A:
 class B:
     pass
 [out]
-main: In function "f":
-main, line 4: Incompatible return value type: expected __main__.A, got __main__.B
-main: In function "g":
-main, line 6: Incompatible return value type: expected __main__.B, got __main__.A
+main: note: In function "f":
+main:4: error: Incompatible return value type: expected __main__.A, got __main__.B
+main: note: In function "g":
+main:6: error: Incompatible return value type: expected __main__.B, got __main__.A
 
 [case testReturnSubtype]
 import typing
@@ -30,8 +30,8 @@ class A:
 class B(A):
     pass
 [out]
-main: In function "f":
-main, line 3: Incompatible return value type: expected __main__.B, got __main__.A
+main: note: In function "f":
+main:3: error: Incompatible return value type: expected __main__.B, got __main__.A
 
 [case testReturnWithoutAValue]
 import typing
@@ -42,8 +42,8 @@ def g() -> None:
 class A:
     pass
 [out]
-main: In function "f":
-main, line 3: Return value expected
+main: note: In function "f":
+main:3: error: Return value expected
 
 [case testReturnNoneInFunctionReturningNone]
 import typing
@@ -52,7 +52,7 @@ def f() -> None:
 def g() -> None:
     return f()  # E: No return value expected
 [out]
-main: In function "g":
+main: note: In function "g":
 
 
 -- If statement
@@ -81,10 +81,10 @@ if b:
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 5: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main, line 7: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main, line 9: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main, line 11: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main:9: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main:11: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 
 -- Loops
@@ -105,8 +105,8 @@ while b:
 class A: pass
 [builtins fixtures/bool.py]
 [out]
-main, line 5: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main, line 7: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
+main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testForStatement]
 
@@ -120,8 +120,8 @@ else:
 class A: pass
 [builtins fixtures/list.py]
 [out]
-main, line 5: Incompatible types in assignment (expression has type "object", variable has type "A")
-main, line 7: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:7: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testBreakStatement]
 import typing
@@ -158,9 +158,9 @@ class B:
 
 class C: pass
 [out]
-main, line 3: Unsupported operand types for + ("A" and "B")
-main, line 4: Result type of + incompatible in assignment
-main, line 5: Unsupported left operand type for + ("C")
+main:3: error: Unsupported operand types for + ("A" and "B")
+main:4: error: Result type of + incompatible in assignment
+main:5: error: Unsupported left operand type for + ("C")
 
 [case testMinusAssign]
 
@@ -178,9 +178,9 @@ class B:
 
 class C: pass
 [out]
-main, line 3: Unsupported operand types for - ("A" and "B")
-main, line 4: Result type of - incompatible in assignment
-main, line 5: Unsupported left operand type for - ("C")
+main:3: error: Unsupported operand types for - ("A" and "B")
+main:4: error: Result type of - incompatible in assignment
+main:5: error: Unsupported left operand type for - ("C")
 
 [case testMulAssign]
 
@@ -194,8 +194,8 @@ class A:
 
 class C: pass
 [out]
-main, line 3: Unsupported operand types for * ("A" and "A")
-main, line 4: Unsupported left operand type for * ("C")
+main:3: error: Unsupported operand types for * ("A" and "A")
+main:4: error: Unsupported left operand type for * ("C")
 
 [case testDivAssign]
 
@@ -209,8 +209,8 @@ class A:
 
 class C: pass
 [out]
-main, line 3: Unsupported operand types for / ("A" and "A")
-main, line 4: Unsupported left operand type for / ("C")
+main:3: error: Unsupported operand types for / ("A" and "A")
+main:4: error: Unsupported left operand type for / ("C")
 
 [case testPowAssign]
 
@@ -224,8 +224,8 @@ class A:
 
 class C: pass
 [out]
-main, line 3: Unsupported operand types for ** ("A" and "A")
-main, line 4: Unsupported left operand type for ** ("C")
+main:3: error: Unsupported operand types for ** ("A" and "A")
+main:4: error: Unsupported left operand type for ** ("C")
 
 [case testSubtypesInOperatorAssignment]
 
@@ -255,9 +255,9 @@ class A:
     def __floordiv__(self, x: 'C') -> 'A': pass
 class C: pass
 [out]
-main, line 3: Unsupported operand types for & ("A" and "A")
-main, line 4: Unsupported operand types for >> ("A" and "A")
-main, line 5: Unsupported operand types for // ("A" and "A")
+main:3: error: Unsupported operand types for & ("A" and "A")
+main:4: error: Unsupported operand types for >> ("A" and "A")
+main:5: error: Unsupported operand types for // ("A" and "A")
 
 [case testInplaceOperatorMethods]
 import typing
@@ -280,7 +280,7 @@ import typing
 assert None + None # Fail
 assert None
 [out]
-main, line 2: Unsupported left operand type for + (None)
+main:2: error: Unsupported left operand type for + (None)
 
 
 -- Exception handling
@@ -299,7 +299,7 @@ class A: pass
 class MyError(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 5: Exception must be derived from BaseException
+main:5: error: Exception must be derived from BaseException
 
 [case testRaiseClassobject]
 import typing
@@ -345,8 +345,8 @@ finally:
     c = object() # type: A # Fail
 class A: pass
 [out]
-main, line 3: Incompatible types in assignment (expression has type "object", variable has type "A")
-main, line 5: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:3: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testSimpleTryExcept]
 
@@ -360,7 +360,7 @@ class A: pass
 class B: pass
 [builtins fixtures/exception.py]
 [out]
-main, line 7: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+main:7: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testTypeErrorInBlock]
 
@@ -371,8 +371,8 @@ while object:
 class A: pass
 class B: pass
 [out]
-main, line 4: Incompatible types in assignment (expression has type "object", variable has type "A")
-main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeErrorInvolvingBaseException]
 
@@ -385,10 +385,10 @@ x = BaseException()
 class A: pass
 [builtins fixtures/exception.py]
 [out]
-main, line 3: Incompatible types in assignment (expression has type "BaseException", variable has type "A")
-main, line 4: Incompatible types in assignment (expression has type "object", variable has type "A")
-main, line 5: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
-main, line 6: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+main:3: error: Incompatible types in assignment (expression has type "BaseException", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+main:6: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
 
 [case testSimpleTryExcept2]
 import typing
@@ -399,7 +399,7 @@ except BaseException as e:
   e = BaseException()
 [builtins fixtures/exception.py]
 [out]
-main, line 5: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testBaseClassAsExceptionTypeInExcept]
 import typing
@@ -411,7 +411,7 @@ except Err as e:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 5: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+main:5: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testMultipleExceptHandlers]
 import typing
@@ -425,7 +425,7 @@ except Err as f:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 7: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+main:7: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testTryExceptStatement]
 import typing
@@ -442,9 +442,9 @@ class B: pass
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
-main, line 5: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
-main, line 8: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testTryExceptWithinFunction]
 import typing
@@ -459,9 +459,9 @@ def f() -> None:
 class Err(BaseException): pass
 [builtins fixtures/exception.py]
 [out]
-main: In function "f":
-main, line 5: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
-main, line 8: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+main: note: In function "f":
+main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
+main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
 [case testTryWithElse]
 import typing
@@ -593,7 +593,7 @@ def f() -> Iterator[int]:
     yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldInFunctionReturningAny]
 from typing import Any
@@ -606,7 +606,7 @@ from typing import Callable
 def f() -> Callable[[], None]:
     yield object() # E: Iterator function return type expected for "yield"
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldInDynamicallyTypedFunction]
 import typing
@@ -619,7 +619,7 @@ def f() -> int:
     yield 1 # E: Iterator function return type expected for "yield"
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testTypeInferenceContextAndYield]
 from typing import List, Iterator
@@ -628,7 +628,7 @@ def f() -> 'Iterator[List[int]]':
     yield [object()] # E: List item 0 has incompatible type "object"
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldAndReturnWithoutValue]
 from typing import Iterator
@@ -660,7 +660,7 @@ def f() -> Iterator[str]:
     yield from g()
     yield from h()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldFromAppliedToAny]
 from typing import Any
@@ -677,7 +677,7 @@ def g() -> Iterator[int]:
 def f() -> Callable[[], None]:
     yield from g()  # E: Iterable function return type expected for "yield from"
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldFromNotIterableReturnType]
 from typing import Iterator
@@ -686,7 +686,7 @@ def g() -> Iterator[int]:
 def f() -> int:
     yield from g()  # E: Iterable function return type expected for "yield from"
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldFromNotAppliedIterator]
 from typing import Iterator
@@ -695,7 +695,7 @@ def g() -> int:
 def f() -> Iterator[int]:
     yield from g()  # E: "yield from" can't be applied to "int"
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldFromCheckIncompatibleTypesTwoIterables]
 from typing import List, Iterator
@@ -706,13 +706,13 @@ def f() -> Iterator[List[int]]:
     yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type List[int])
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testYieldFromNotAppliedToNothing]
 def h():
     yield from  # E: Parse error before end of line
 [out]
-main: In function "h":
+main: note: In function "h":
 
 [case testYieldFromAndYieldTogether]
 from typing import Iterator
@@ -841,7 +841,7 @@ def f() -> None:
     x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/primitives.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testChainedAssignmentWithType]
 
@@ -915,8 +915,8 @@ def f() -> None:
 class A(): pass
 class B(): pass
 [out]
-main: In function "f":
-main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeOfNonlocalUsed]
 import typing
@@ -929,8 +929,8 @@ def f() -> None:
 class A(): pass
 class B(): pass
 [out]
-main: In function "g":
-main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "g":
+main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeOfOuterMostNonlocalUsed]
 import typing
@@ -946,5 +946,5 @@ def f() -> None:
 class A(): pass
 class B(): pass
 [out]
-main: In function "h":
-main, line 8: Incompatible types in assignment (expression has type "A", variable has type "B")
+main: note: In function "h":
+main:8: error: Incompatible types in assignment (expression has type "A", variable has type "B")

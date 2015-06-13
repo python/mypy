@@ -66,8 +66,8 @@ import typing
 x = 1
 x = 'a'
 [out]
-In module imported in main, line 9:
-tmp/m.py, line 3: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:9: note: In module imported here:
+tmp/m.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNegatedMypyConditional]
 import typing

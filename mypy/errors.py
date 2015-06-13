@@ -176,9 +176,16 @@ class Errors:
             s = ''
             if file is not None:
                 if line is not None and line >= 0:
-                    s = '{}, line {}: {}'.format(file, line, message)
+                    s = '{}:{}: error: {}'.format(file, line, message)
                 else:
-                    s = '{}: {}'.format(file, message)
+                    # Currently, `message` has one of the following forms:
+                    #   'In class "X"'
+                    #   'In function "X"'
+                    #   'In member "X" of class "Y"'
+                    #   'At top level'
+                    # all of which are notes, not errors. This will need
+                    # changing if their line numbers get remembered.
+                    s = '{}: note: {}'.format(file, message)
             else:
                 s = message
             a.append(s)
@@ -206,9 +213,9 @@ class Errors:
                 i = last
                 while i >= 0:
                     path, line = e.import_ctx[i]
-                    fmt = 'In module imported in {}, line {}'
+                    fmt = '{}:{}: note: In module imported here'
                     if i < last:
-                        fmt = '                   in {}, line {}'
+                        fmt = '{}:{}: note: ... from here'
                     if i > 0:
                         fmt += ','
                     else:

@@ -117,7 +117,7 @@ class B(A):
         i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 [out]
-main: In member "f" of class "B":
+main: note: In member "f" of class "B":
 
 [case testTypeReferenceToClassDerivedFromNamedTuple]
 from typing import NamedTuple
@@ -134,7 +134,7 @@ class B(A):
         i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 [out]
-main: In member "f" of class "B":
+main: note: In member "f" of class "B":
 
 [case testNamedTupleSubtyping]
 from typing import NamedTuple, Tuple

@@ -16,7 +16,7 @@ class A(B):
     a = super().g() # E: "g" undefined in superclass
     b = super().f()
 [out]
-main: In member "f" of class "A":
+main: note: In member "f" of class "A":
 
 [case testAccessingSuperTypeMethodWithArgs]
 from typing import Any
@@ -30,7 +30,7 @@ class A(B):
     self.f(b)
     self.f(a)
 [out]
-main: In member "f" of class "A":
+main: note: In member "f" of class "A":
 
 [case testAccessingSuperInit]
 import typing
@@ -42,7 +42,7 @@ class A(B):
     super().__init__()       # E: Too few arguments for "__init__" of "B"
     super().__init__(A())
 [out]
-main: In member "__init__" of class "A":
+main: note: In member "__init__" of class "A":
 
 [case testAccessingSuperMemberWithDeepHierarchy]
 import typing
@@ -54,7 +54,7 @@ class A(B):
     super().g() # E: "g" undefined in superclass
     super().f()
 [out]
-main: In member "f" of class "A":
+main: note: In member "f" of class "A":
 
 [case testAssignToBaseClassMethod]
 import typing
@@ -64,5 +64,5 @@ class B(A):
     def g(self) -> None:
         super().f = None
 [out]
-main: In function "g":
-main, line 6: Invalid assignment target
+main: note: In function "g":
+main:6: error: Invalid assignment target
