@@ -170,13 +170,13 @@ class ValuesView(MappingView, Iterable[_VT_co], Generic[_VT_co]):
     def __contains__(self, o: object) -> bool: pass
     def __iter__(self) -> Iterator[_VT_co]: pass
 
-class Mapping(Iterable[_KT_co], Container[_KT_co], Sized, Generic[_KT_co, _VT_co]):
+class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT_co]):
     @abstractmethod
-    def __getitem__(self, k: _KT_co) -> _VT_co: pass
+    def __getitem__(self, k: _KT) -> _VT_co: pass
     # Mixin methods
     def get(self, k: _KT, default: _VT = ...) -> _VT_co: pass
-    def items(self) -> AbstractSet[Tuple[_KT_co, _VT_co]]: pass
-    def keys(self) -> AbstractSet[_KT_co]: pass
+    def items(self) -> AbstractSet[Tuple[_KT, _VT_co]]: pass
+    def keys(self) -> AbstractSet[_KT]: pass
     def values(self) -> ValuesView[_VT_co]: pass
     def __contains__(self, o: object) -> bool: pass
 
