@@ -4,7 +4,7 @@
 
 from typing import (
     TypeVar, Generic, Any, Callable, overload, Mapping, Iterator, Dict, Tuple,
-    Iterable
+    Iterable, Optional
 )
 
 _T = TypeVar('_T')
@@ -12,8 +12,9 @@ _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
 
 class ReferenceType(Generic[_T]):
-    # TODO members
-    pass
+    # TODO rest of members
+    def __call__(self) -> Optional[_T]:
+        pass
 
 def ref(o: _T, callback: Callable[[ReferenceType[_T]],
                                  Any] = None) -> ReferenceType[_T]: pass
