@@ -1190,7 +1190,7 @@ y = '' # E: Incompatible types in assignment (expression has type "str", variabl
 import typing
 x = [1] if None else []
 x = [1]
-x = ['x'] # E: List item 1 has incompatible type "str"
+x = ['x'] # E: List item 0 has incompatible type "str"
 [builtins fixtures/list.py]
 
 

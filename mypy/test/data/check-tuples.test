@@ -431,8 +431,8 @@ na = a  # E
 class A: pass
 [builtins fixtures/list.py]
 [out]
+main, line 6: List item 0 has incompatible type "A"
 main, line 6: List item 1 has incompatible type "A"
-main, line 6: List item 2 has incompatible type "A"
 main, line 9: Incompatible types in assignment (expression has type "A", variable has type List[A])
 
 [case testAssignmentToStarFromTupleInference]
