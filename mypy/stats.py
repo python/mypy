@@ -261,10 +261,19 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
                          output_dir: str) -> None:
     if is_special_module(path):
         return
+    # There may be more than one right answer for "what should we do here?"
+    # but this is a reasonable one.
+    path = os.path.relpath(path)
+    if path.startswith('..'):
+        return
     visitor = StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
     tree.accept(visitor)
+    assert not os.path.isabs(path) and not path.startswith('..')
+    # This line is *wrong* if the preceding assert fails.
     target_path = os.path.join(output_dir, 'html', path)
-    target_path = re.sub(r'\.py$', '.html', target_path)
+    # replace .py or .pyi with .html
+    target_path = os.path.splitext(target_path)[0] + '.html'
+    assert target_path.endswith('.html')
     ensure_dir_exists(os.path.dirname(target_path))
     output = []  # type: List[str]
     append = output.append
