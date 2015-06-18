@@ -164,6 +164,7 @@ def build(program_path: str,
 
 
 def default_data_dir(bin_dir: str) -> str:
+    # TODO fix this logic
     if not bin_dir:
         # Default to current directory.
         return ''
@@ -199,7 +200,13 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
         path[:0] = path_env.split(os.pathsep)
 
     # Add library stubs directory. By convention, they are stored in the
-    # stubs/x.y directory of the mypy installation.
+    # stubs/x.y directory of the mypy installation. Additionally, stubs
+    # for earlier versions in the same major version will be added, and
+    # as a last resort, third-party stubs will be added.
+    if pyversion == 2:
+        major, minor = 2, 7
+    else:
+        major, minor = sys.version_info[:2]
     version_dir = '3.2'
     third_party_dir = 'third-party-3.2'
     if pyversion < 3:
