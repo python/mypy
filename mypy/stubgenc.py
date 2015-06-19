@@ -109,7 +109,10 @@ def generate_c_function_stub(module, name, obj, output, self_var=None, sigs={}, 
             else:
                 sig = sigs.get(name, '(*args, **kwargs)')
     sig = sig[1:-1]
-    if not sig:
+    if sig:
+        if sig.split(',', 1)[0] == self_var:
+            self_arg = ''
+    else:
         self_arg = self_arg.replace(', ', '')
     output.append('def %s(%s%s): pass' % (name, self_arg, sig))
 
@@ -129,6 +132,11 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
                     self_var = 'self'
                 if attr == '__new__':
                     # TODO: We should support __new__.
+                    if '__init__' in obj.__dict__:
+                        # Avoid duplicate functions if both are present.
+                        # But is there any case where .__new__() has a
+                        # better signature than __init__() ?
+                        continue
                     attr = '__init__'
                 generate_c_function_stub(module, attr, value, methods, self_var, sigs=sigs,
                                          class_name=class_name, class_sigs=class_sigs)
