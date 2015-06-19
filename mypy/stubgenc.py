@@ -3,6 +3,7 @@
 The public interface is via the mypy.stubgen module.
 """
 
+import importlib
 import os.path
 import re
 
@@ -14,8 +15,11 @@ from mypy.stubutil import (
 
 
 def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, class_sigs={}):
-    module = __import__(module_name)
+    module = importlib.import_module(module_name)
     assert is_c_module(module), '%s is not a C module' % module_name
+    subdir = os.path.dirname(target)
+    if subdir and not os.path.isdir(subdir):
+        os.makedirs(subdir)
     functions = []
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
