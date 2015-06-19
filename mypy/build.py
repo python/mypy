@@ -26,6 +26,7 @@ from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
 from mypy import parse
 from mypy import stats
+from mypy.report import Reports
 
 
 # We need to know the location of this file to load data, but
@@ -45,6 +46,8 @@ VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build module as a script
 PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
+DUMP_TYPE_STATS = 'dump-type-stats'
+DUMP_INFER_STATS = 'dump-infer-stats'
 
 # State ids. These describe the states a source file / module can be in a
 # build.
@@ -94,7 +97,7 @@ def build(program_path: str,
           bin_dir: str = None,
           pyversion: int = 3,
           custom_typing_module: str = None,
-          html_report_dir: str = None,
+          report_dirs: Dict[str, str] = {},
           flags: List[str] = None,
           python_path: bool = False) -> BuildResult:
     """Analyze a program.
@@ -143,6 +146,8 @@ def build(program_path: str,
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
+    reports = Reports(data_dir, report_dirs)
+
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
     #
@@ -151,7 +156,7 @@ def build(program_path: str,
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
-                           html_report_dir=html_report_dir)
+                           reports=reports)
 
     if program_text is None:
         program_path = program_path or lookup_program(module, lib_path)
@@ -166,8 +171,7 @@ def build(program_path: str,
     # initial state of all files) to the manager. The manager will process the
     # file and all dependant modules recursively.
     result = manager.process(UnprocessedFile(info, program_text))
-    if 'html-report' in flags:
-        stats.generate_html_index(html_report_dir)
+    reports.finish()
     return result
 
 
@@ -309,7 +313,7 @@ class BuildManager:
                  flags: List[str],
                  ignore_prefix: str,
                  custom_typing_module: str,
-                 html_report_dir: str) -> None:
+                 reports: Reports) -> None:
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
@@ -318,7 +322,7 @@ class BuildManager:
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
-        self.html_report_dir = html_report_dir
+        self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
@@ -800,7 +804,7 @@ class PartiallySemanticallyAnalyzedFile(ParsedFile):
     def process(self) -> None:
         """Perform final pass of semantic analysis and advance state."""
         self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
-        if 'dump-type-stats' in self.manager.flags:
+        if DUMP_TYPE_STATS in self.manager.flags:
             stats.dump_type_stats(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
 
@@ -813,14 +817,10 @@ class SemanticallyAnalyzedFile(ParsedFile):
         """Type check file and advance to the next state."""
         if self.manager.target >= TYPE_CHECK:
             self.type_checker().visit_file(self.tree, self.tree.path)
-            if 'dump-infer-stats' in self.manager.flags:
+            if DUMP_INFER_STATS in self.manager.flags:
                 stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
                                       typemap=self.manager.type_checker.type_map)
-            elif 'html-report' in self.manager.flags:
-                stats.generate_html_report(
-                    self.tree, self.tree.path,
-                    type_map=self.manager.type_checker.type_map,
-                    output_dir=self.manager.html_report_dir)
+            self.manager.reports.file(self.tree, type_map=self.manager.type_checker.type_map)
 
         # FIX remove from active state list to speed up processing
 
