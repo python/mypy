@@ -1,0 +1,35 @@
+/* I don't know CSS but this is at least better than before. */
+
+/*
+    Used by both summary and file.
+*/
+body { font-family: courier; }
+
+/*
+    Used only by summary.
+*/
+table.summary { border-collapse: collapse; }
+table.summary, tr.summary, th.summary, td.summary { border: 1px solid black; }
+th.summary, td.summary: { padding: 0.4em; }
+
+.summary-quality-0 { background-color: #efe; }
+.summary-quality-1 { background-color: #ff5; }
+.summary-quality-2 { background-color: #faa; }
+
+.summary-filename { text-align: left; }
+.summary-precision { text-align: right; }
+.summary-lines { text-align: right; }
+
+/*
+    Used only by file.
+*/
+.table-lines { text-align: right; }
+.table-code { }
+
+span.lineno { text-align: right; }
+a:link.lineno, a:visited.lineno { color: #999; text-decoration: none; }
+a:hover.lineno, a:active.lineno { color: #000; text-decoration: underline; }
+
+.line-empty, .line-precise { background-color: #efe; }
+.line-imprecise { background-color: #ff5; }
+.line-any { background-color: #faa; }
