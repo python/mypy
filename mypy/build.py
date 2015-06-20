@@ -146,7 +146,13 @@ def build(program_path: str,
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    reports = Reports(data_dir, report_dirs)
+    if program_text is None:
+        program_path = program_path or lookup_program(module, lib_path)
+        program_text = read_program(program_path)
+    else:
+        program_path = program_path or '<string>'
+
+    reports = Reports(program_path, data_dir, report_dirs)
 
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
@@ -157,12 +163,6 @@ def build(program_path: str,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
                            reports=reports)
-
-    if program_text is None:
-        program_path = program_path or lookup_program(module, lib_path)
-        program_text = read_program(program_path)
-    else:
-        program_path = program_path or '<string>'
 
     # Construct information that describes the initial file. __main__ is the
     # implicit module id and the import context is empty initially ([]).

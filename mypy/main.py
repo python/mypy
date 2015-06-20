@@ -117,7 +117,7 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
         elif args[0] == '--custom-typing' and args[1:]:
             options.custom_typing_module = args[1]
             args = args[2:]
-        elif args[0] in ('--html-report', '--old-html-report') and args[1:]:
+        elif is_report(args[0]) and args[1:]:
             report_type = args[0][2:-7]
             report_dir = args[1]
             options.report_dirs[report_type] = report_dir
@@ -150,6 +150,22 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     return args[0], None, None, options
 
 
+# Don't generate this from mypy.reports, not all are meant to be public.
+REPORTS = [
+        'html',
+        'old-html',
+        'xslt-html',
+        'xml',
+        'txt',
+        'xslt-txt',
+]
+
+def is_report(arg: str) -> bool:
+    if arg.startswith('--') and arg.endswith('-report'):
+        report_type = arg[2:-7]
+        return report_type in REPORTS
+    return False
+
 def usage(msg: str = None) -> None:
     if msg:
         sys.stderr.write('%s\n' % msg)
@@ -164,7 +180,7 @@ usage: mypy [option ...] [-m mod | file]
 Optional arguments:
   -h, --help         print this help message and exit
   --<fmt>-report dir generate a <fmt> report of type precision under dir/
-                     <fmt> may be one of: html, old-html.
+                     <fmt> may be one of: %s
   -m mod             type check module
   -c string          type check string
   --verbose          more verbose messages
@@ -173,7 +189,7 @@ Optional arguments:
 
 Environment variables:
   MYPYPATH     additional module search path
-""")
+""" % ', '.join(REPORTS))
     sys.exit(2)
 
 

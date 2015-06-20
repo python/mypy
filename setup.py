@@ -52,6 +52,8 @@ data_files = []
 
 data_files += find_data_files('stubs', ['*.py', '*.pyi'])
 
+data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
+
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
     'Environment :: Console',
