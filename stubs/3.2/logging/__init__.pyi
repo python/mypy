@@ -4,6 +4,8 @@
 
 from typing import Any
 
+traceback = ...  # type: Any
+
 CRITICAL = ...  # type: Any
 FATAL = ...  # type: Any
 ERROR = ...  # type: Any
