@@ -220,6 +220,9 @@ def analyse_class_attribute_access(itype: Instance,
         if isinstance(node.node, TypeInfo):
             msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
 
+    if itype.type.is_enum and not (is_lvalue or is_decorated or is_method):
+        return itype
+
     t = node.type
     if t:
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
