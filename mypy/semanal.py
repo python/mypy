@@ -622,6 +622,8 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.base_types.append(base)
             elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
+            if isinstance(base, Instance):
+                defn.info.is_enum = base.type.fullname() == 'enum.Enum'
         # Add 'object' as implicit base if there is no other base class.
         if (not defn.base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()

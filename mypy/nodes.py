@@ -1398,6 +1398,7 @@ class TypeInfo(SymbolNode):
     names = None  # type: SymbolTable       # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     abstract_attributes = None  # type: List[str]
+    is_enum = False
 
     # Information related to type annotations.
 
