@@ -7,7 +7,7 @@ from asyncio.events import (AbstractEventLoopPolicy, AbstractEventLoop,
 from asyncio.queues import (Queue, PriorityQueue, LifoQueue, JoinableQueue,
     QueueFull, QueueEmpty)
 
-__all__ = (futures.__all__,
-            tasks.__all__,
-            events.__all__,
+__all__ = (futures.__all__ +
+            tasks.__all__ +
+            events.__all__ +
             queues.__all__)
