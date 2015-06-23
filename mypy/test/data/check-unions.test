@@ -33,7 +33,7 @@ def f(x: Union[int, str]) -> None:
         z = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 
 [case testUnionAttributeAccess]

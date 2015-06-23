@@ -175,7 +175,7 @@ class A(B[C]):
         # E: Argument 1 of "f" incompatible with supertype "B"
     def g(self, a: C) -> None: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testOverridingMethodInGenericTypeInheritingSimpleType]
 from typing import TypeVar, Generic
@@ -189,7 +189,7 @@ class A(B, Generic[T]):
         # E: Argument 1 of "f" incompatible with supertype "B"
     def g(self, a: 'C') -> None: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testOverridingMethodInGenericTypeInheritingGenericType]
 from typing import TypeVar, Generic
@@ -203,7 +203,7 @@ class A(B[S], Generic[T, S]):
         # E: Argument 1 of "f" incompatible with supertype "B"
     def g(self, a: S) -> None: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testOverridingMethodInMultilevelHierarchyOfGenericTypes]
 from typing import TypeVar, Generic
@@ -222,7 +222,7 @@ class A(B[S], Generic[T, S]):
         # E: Argument 1 of "f" incompatible with supertype "C"
     def g(self, a: S) -> None: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 
 -- Inheritance from generic types with implicit dynamic supertype
@@ -288,7 +288,7 @@ class A(B):
 
 class C: pass
 [out]
-main: In member "g" of class "A":
+main: note: In member "g" of class "A":
 
 [case testInheritanceFromGenericWithImplicitDynamicAndOverriding]
 from typing import TypeVar, Generic, Tuple
@@ -317,7 +317,7 @@ class A(B[S], Generic[T, S]):
         super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
-main: In member "g" of class "A":
+main: note: In member "g" of class "A":
 
 [case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy]
 from typing import TypeVar, Generic
@@ -334,7 +334,7 @@ class A(B[S], Generic[T, S]):
         super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
-main: In member "g" of class "A":
+main: note: In member "g" of class "A":
 
 
 -- Subtyping with a generic abstract base class
@@ -399,8 +399,8 @@ class B(A, I[D]): pass # Fail
 class C: pass
 class D: pass
 [out]
-main: In class "B":
-main, line 5: Class "B" has base "I" duplicated inconsistently
+main: note: In class "B":
+main:5: error: Class "B" has base "I" duplicated inconsistently
 
 [case testSubtypingAndABCExtension]
 from typing import TypeVar, Generic
@@ -440,7 +440,7 @@ class A(I[C]):
 class C: pass
 class D: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 
 -- Extending a generic ABC with deep type hierarchy
@@ -472,8 +472,8 @@ class A(B):
 class C: pass
 class D: pass
 [out]
-main, line 7: Incompatible types in assignment (expression has type "A", variable has type I[D])
-main: In class "A":
+main:7: error: Incompatible types in assignment (expression has type "A", variable has type I[D])
+main: note: In class "A":
 
 [case testSubclassingGenenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
@@ -490,7 +490,7 @@ class A(B):
 class C: pass
 class D: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 
 -- Implicit Any types and subclassing generic ABC

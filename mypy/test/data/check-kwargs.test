@@ -102,9 +102,9 @@ f(A(), b=B())
 class A: pass
 class B: pass
 [out]
-main, line 3: Unexpected keyword argument "a"
-main, line 3: Unexpected keyword argument "b"
-main, line 4: Unexpected keyword argument "b"
+main:3: error: Unexpected keyword argument "a"
+main:3: error: Unexpected keyword argument "b"
+main:4: error: Unexpected keyword argument "b"
 
 [case testKeywordOnlyArguments]
 import typing
@@ -166,7 +166,7 @@ def f( **kwargs: 'A') -> None:
 class A: pass
 [builtins fixtures/dict.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testKwargsArgumentInFunctionBodyWithImplicitAny]
 from typing import Dict, Any
@@ -177,7 +177,7 @@ def f(**kwargs) -> None:
 class A: pass
 [builtins fixtures/dict.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testCallingFunctionThatAcceptsVarKwargs]
 import typing

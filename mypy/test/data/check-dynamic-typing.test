@@ -370,12 +370,12 @@ def f13(x, y = b, z = b): pass
 class A: pass
 class B: pass
 [out]
-main, line 10: Too many arguments for "f01"
-main, line 11: Too few arguments for "f13"
-main, line 12: Too many arguments for "f13"
-main, line 13: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
-main, line 14: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[], None])
-main, line 15: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[A, A, A, A], None])
+main:10: error: Too many arguments for "f01"
+main:11: error: Too few arguments for "f13"
+main:12: error: Too many arguments for "f13"
+main:13: error: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[A, A], None])
+main:14: error: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[], None])
+main:15: error: Incompatible types in assignment (expression has type Callable[[Any, Any, Any], Any], variable has type Callable[[A, A, A, A], None])
 
 [case testSkipTypeCheckingWithImplicitSignature]
 
@@ -484,8 +484,8 @@ f2 = A
 class A:
   def __init__(self, a, b): pass
 [out]
-main, line 6: Too few arguments for "A"
-main, line 7: Incompatible types in assignment (expression has type "A" (type object), variable has type Callable[[A], A])
+main:6: error: Too few arguments for "A"
+main:7: error: Incompatible types in assignment (expression has type "A" (type object), variable has type Callable[[A], A])
 
 [case testUsingImplicitTypeObjectWithIs]
 
@@ -625,7 +625,7 @@ class A(B):
         pass
 class D: pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature1]
 import typing
@@ -644,7 +644,7 @@ class A(B):
     def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
         pass
 [out]
-main: In class "A":
+main: note: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature3]
 import typing
@@ -654,4 +654,4 @@ class A(B):
     def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
         x()
 [out]
-main: In class "A":
+main: note: In class "A":

@@ -771,8 +771,8 @@ import m.x
 [file m/x.py]
 from .x import nonexistent
 [out]
-In module imported in main, line 1:
-tmp/m/x.py, line 1: Module has no attribute 'nonexistent'
+main:1: note: In module imported here:
+tmp/m/x.py:1: error: Module has no attribute 'nonexistent'
 
 [case testImportFromSameModule]
 import m.x
@@ -780,5 +780,5 @@ import m.x
 [file m/x.py]
 from m.x import nonexistent
 [out]
-In module imported in main, line 1:
-tmp/m/x.py, line 1: Module has no attribute 'nonexistent'
+main:1: note: In module imported here:
+tmp/m/x.py:1: error: Module has no attribute 'nonexistent'

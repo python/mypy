@@ -14,8 +14,8 @@ abs(1) + 'x'  # Error
 f = abs(1.1)
 abs(1.1) + 'x'  # Error
 [out]
-_program.py, line 5: Unsupported operand types for + ("int" and "str")
-_program.py, line 7: Unsupported operand types for + ("float" and "str")
+_program.py:5: error: Unsupported operand types for + ("int" and "str")
+_program.py:7: error: Unsupported operand types for + ("float" and "str")
 
 [case testUnicode_python2]
 import typing
@@ -134,8 +134,8 @@ f(b'')
 f(u'')
 f('')
 [out]
-_program.py, line 4: Argument 1 to "f" has incompatible type "unicode"; expected "str"
-_program.py, line 5: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py:4: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py:5: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 
 [case testStrUnicodeCompatibility_python2]
 import typing
@@ -184,7 +184,7 @@ f.write(u'foo')
 f.write('bar')
 f.close()
 [out]
-_program.py, line 3: No overload variant of "write" of "BinaryIO" matches argument types
+_program.py:3: error: No overload variant of "write" of "BinaryIO" matches argument types
 
 [case testPrintFunctionWithFileArg_python2]
 from __future__ import print_function
@@ -256,8 +256,8 @@ n = 0
 n = s + '' # E
 s = s + u'' # E
 [out]
-_program.py, line 5: Incompatible types in assignment (expression has type "str", variable has type "int")
-_program.py, line 6: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+_program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+_program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
 [case testStrJoin_python2]
 import typing
@@ -267,8 +267,8 @@ n = 0
 n = ''.join([''])   # Error
 s = ''.join([u''])  # Error
 [out]
-_program.py, line 5: Incompatible types in assignment (expression has type "str", variable has type "int")
-_program.py, line 6: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+_program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+_program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
 [case testNamedTuple_python2]
 import typing
@@ -286,7 +286,7 @@ X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 x.c
 [out]
-_program.py, line 5: "X" has no attribute "c"
+_program.py:5: error: "X" has no attribute "c"
 
 [case testAssignToComplexReal_python2]
 import typing
@@ -295,8 +295,8 @@ y = x.real
 y = x         # Error
 x.imag = 2.0  # Error
 [out]
-_program.py, line 4: Incompatible types in assignment (expression has type "complex", variable has type "float")
-_program.py, line 5: Property "imag" defined in "complex" is read-only
+_program.py:4: error: Incompatible types in assignment (expression has type "complex", variable has type "float")
+_program.py:5: error: Property "imag" defined in "complex" is read-only
 
 [case testComplexArithmetic_python2]
 import typing
@@ -327,7 +327,7 @@ U = Union[int, str]
 u = 1 # type: U
 u = 1.1
 [out]
-_program.py, line 4: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
+_program.py:4: error: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
 
 [case testSuperNew_python2]
 from typing import Dict, Any

@@ -123,8 +123,8 @@ class B:
     def f(self, x: str) -> None: pass
 class C(A, B): pass
 [out]
-main: In class "C":
-main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "C":
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs2]
 import typing
@@ -135,10 +135,10 @@ class B:
 class C(A, B): pass
 class D(B, A): pass
 [out]
-main: In class "C":
-main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
-main: In class "D":
-main, line 7: Definition of "f" in base class "B" is incompatible with definition in base class "A"
+main: note: In class "C":
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "D":
+main:7: error: Definition of "f" in base class "B" is incompatible with definition in base class "A"
 
 
 [case testMethodOverridingWithBothDynamicallyAndStaticallyTypedMethods]
@@ -160,8 +160,8 @@ class B:
         self.x = ''
 class C(A, B): pass
 [out]
-main: In class "C":
-main, line 8: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "C":
+main:8: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes]
 import typing
@@ -171,8 +171,8 @@ class B:
     x = ''
 class C(A, B): pass
 [out]
-main: In class "C":
-main, line 6: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "C":
+main:6: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodOverlapsWithClassVariableInMultipleInheritance]
 from typing import Callable
@@ -182,8 +182,8 @@ class B:
     f = ''
 class C(A, B): pass
 [out]
-main: In class "C":
-main, line 6: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "C":
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodOverlapsWithInstanceVariableInMultipleInheritance]
 from typing import Callable
@@ -194,8 +194,8 @@ class B:
         self.f = ''
 class C(A, B): pass
 [out]
-main: In class "C":
-main, line 7: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "C":
+main:7: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMultipleInheritanceAndInit]
 import typing
@@ -215,8 +215,8 @@ class B:
 class C(B, A): pass
 class D(A, B): pass
 [out]
-main: In class "D":
-main, line 8: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
+main: note: In class "D":
+main:8: error: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
 
 
 -- Special cases

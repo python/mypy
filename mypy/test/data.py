@@ -290,10 +290,10 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
 def expand_errors(input, output, fnam):
     """Transform comments such as '# E: message' in input.
 
-    The result is lines like 'fnam, line N: message'.
+    The result is lines like 'fnam:line: error: message'.
     """
 
     for i in range(len(input)):
         m = re.search('# E: (.*)$', input[i])
         if m:
-            output.append('{}, line {}: {}'.format(fnam, i + 1, m.group(1)))
+            output.append('{}:{}: error: {}'.format(fnam, i + 1, m.group(1)))

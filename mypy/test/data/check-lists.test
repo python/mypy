@@ -61,4 +61,4 @@ class B: pass
 class C: pass
 [builtins fixtures/list.py]
 [out]
-main: In function "f":
+main: note: In function "f":

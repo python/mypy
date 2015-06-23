@@ -10,7 +10,7 @@ a = b # Fail
 class A: pass
 class B: pass
 [out]
-main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testConstructionAndAssignment]
 
@@ -22,7 +22,7 @@ class A:
 class B:
     def __init__(self): pass
 [out]
-main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInheritInitFromObject]
 
@@ -32,7 +32,7 @@ x = B()
 class A(object): pass
 class B(object): pass
 [out]
-main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testImplicitInheritInitFromObject]
 
@@ -49,7 +49,7 @@ class B: pass
 import typing
 object(object())
 [out]
-main, line 2: Too many arguments for "object"
+main:2: error: Too many arguments for "object"
 
 [case testVarDefWithInit]
 import typing
@@ -57,7 +57,7 @@ a = A() # type: A
 b = object() # type: A
 class A: pass
 [out]
-main, line 3: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:3: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testInheritanceBasedSubtyping]
 import typing
@@ -66,7 +66,7 @@ y = A() # type: B # Fail
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testDeclaredVariableInParentheses]
 
@@ -87,14 +87,14 @@ f(B()) # Fail
 class A: pass
 class B: pass
 [out]
-main, line 4: Argument 1 to "f" has incompatible type "B"; expected "A"
+main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 [case testNotCallable]
 import typing
 A()()
 class A: pass
 [out]
-main, line 2: "A" not callable
+main:2: error: "A" not callable
 
 [case testSubtypeArgument]
 import typing
@@ -105,7 +105,7 @@ f(B(), B())
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Argument 2 to "f" has incompatible type "A"; expected "B"
+main:3: error: Argument 2 to "f" has incompatible type "A"; expected "B"
 
 [case testInvalidArgumentCount]
 import typing
@@ -113,8 +113,8 @@ def f(x, y) -> None: pass
 f(object())
 f(object(), object(), object())
 [out]
-main, line 3: Too few arguments for "f"
-main, line 4: Too many arguments for "f"
+main:3: error: Too few arguments for "f"
+main:4: error: Too many arguments for "f"
 
 
 -- Locals
@@ -131,8 +131,8 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
-main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableScope]
 
@@ -145,8 +145,8 @@ def g() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "g":
-main, line 7: Incompatible types in assignment (expression has type "A", variable has type "B")
+main: note: In function "g":
+main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testFunctionArguments]
 import typing
@@ -157,8 +157,8 @@ def f(x: 'A', y: 'B') -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
-main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableInitialization]
 import typing
@@ -168,8 +168,8 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
-main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testVariableInitializationWithSubtype]
 import typing
@@ -178,7 +178,7 @@ y = A() # type: B # Fail
 class A: pass
 class B(A): pass
 [out]
-main, line 3: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 
 -- Misc
@@ -192,8 +192,8 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: In function "f":
-main, line 3: Incompatible return value type: expected __main__.A, got __main__.B
+main: note: In function "f":
+main:3: error: Incompatible return value type: expected __main__.A, got __main__.B
 
 [case testTopLevelContextAndInvalidReturn]
 import typing
@@ -203,10 +203,10 @@ a = B() # type: A
 class A: pass
 class B: pass
 [out]
-main: In function "f":
-main, line 3: Incompatible return value type: expected __main__.A, got __main__.B
-main: At top level:
-main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:3: error: Incompatible return value type: expected __main__.A, got __main__.B
+main: note: At top level:
+main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testModule__name__]
 import typing
@@ -249,11 +249,11 @@ a = A()
 class A: pass
 class B: pass
 [out]
-main, line 3: Incompatible types in assignment (expression has type "B", variable has type "A")
-main: In function "f":
-main, line 7: Incompatible types in assignment (expression has type "A", variable has type "B")
-main: At top level:
-main, line 9: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main: note: At top level:
+main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
 
@@ -273,10 +273,10 @@ def f(x): # type: (int) -> str
     return 1
 f('')
 [out]
-main: In function "f":
-main, line 2: Incompatible return value type: expected builtins.str, got builtins.int
-main: At top level:
-main, line 3: Argument 1 to "f" has incompatible type "str"; expected "int"
+main: note: In function "f":
+main:2: error: Incompatible return value type: expected builtins.str, got builtins.int
+main: note: At top level:
+main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodSignatureAsComment]
 class A:
@@ -286,8 +286,8 @@ class A:
         return 1
 A().f('') # Fail
 [out]
-main: In member "f" of class "A":
-main, line 4: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-main, line 5: Incompatible return value type: expected builtins.str, got builtins.int
-main: At top level:
-main, line 6: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main: note: In member "f" of class "A":
+main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main:5: error: Incompatible return value type: expected builtins.str, got builtins.int
+main: note: At top level:
+main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"

@@ -991,13 +991,13 @@ MypyFile:1(
 x not y
 x not is y
 [out]
-<input>, line 1: Parse error before "y"
-<input>, line 2: Parse error before is
+<input>:1: error: Parse error before "y"
+<input>:2: error: Parse error before is
 
 [case testBinaryNegAsBinaryOp]
 1 ~ 2
 [out]
-<input>, line 1: Parse error before ~
+<input>:1: error: Parse error before ~
 
 [case testDictionaryExpression]
 {}

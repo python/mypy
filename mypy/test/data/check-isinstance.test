@@ -55,7 +55,7 @@ x = None # type: int
 y = [x]
 [builtins fixtures/isinstancelist.py]
 [out]
-main: In function "foo":
+main: note: In function "foo":
 
 [case testFunctionDefaultArgs]
 
@@ -68,7 +68,7 @@ def foo(x: A = B()):
     x.y   # E: "A" has no attribute "y"
 [builtins fixtures/isinstance.py]
 [out]
-main: In function "foo":
+main: note: In function "foo":
 
 [case testIsinstanceFancyConditionals]
 
@@ -187,7 +187,7 @@ def bar() -> None:
     x + 'a'
 [builtins fixtures/isinstancelist.py]
 [out]
-main: In function "bar":
+main: note: In function "bar":
 
 [case testUnionTryExcept]
 
@@ -254,7 +254,7 @@ def f(x: Union[List[int], List[str], int]) -> None:
     x + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testUnionStrictDefnBasic]
 from typing import Union
@@ -420,7 +420,7 @@ def foo() -> None:
 foo()
 [builtins fixtures/isinstancelist.py]
 [out]
-main: In function "foo":
+main: note: In function "foo":
 [case testIsInstanceThreeUnion]
 from typing import Union, List
 
@@ -656,7 +656,7 @@ def bar() -> None:
 
 [builtins fixtures/isinstancelist.py]
 [out]
-main: In function "bar":
+main: note: In function "bar":
 
 [case testCastIsinstance]
 from typing import Union

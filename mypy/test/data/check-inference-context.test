@@ -85,7 +85,7 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 [out]
-main: In function "g":
+main: note: In function "g":
 
 [case testInferLocalVariableTypeWithUnderspecifiedGenericType]
 from typing import TypeVar, Generic
@@ -96,7 +96,7 @@ def g() -> None:
 def f() -> 'A[T]': pass
 class A(Generic[T]): pass
 [out]
-main: In function "g":
+main: note: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithTupleRvalue]
 from typing import TypeVar, Generic
@@ -115,7 +115,7 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 [out]
-main: In function "g":
+main: note: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
 from typing import TypeVar, List, Generic
@@ -137,7 +137,7 @@ class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/for.py]
 [out]
-main: In function "h":
+main: note: In function "h":
 
 
 -- Return types with multiple tvar instances
@@ -165,8 +165,8 @@ class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 8: Incompatible types in assignment (expression has type A[B], variable has type A[object])
-main, line 9: Incompatible types in assignment (expression has type A[B], variable has type A[object])
+main:8: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
+main:9: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
 
 [case testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables]
 from typing import TypeVar, Tuple, Generic
@@ -194,10 +194,10 @@ class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 9: Incompatible types in assignment (expression has type A[B], variable has type A[object])
-main, line 10: Incompatible types in assignment (expression has type A[B], variable has type A[object])
-main, line 11: Incompatible types in assignment (expression has type A[B], variable has type A[object])
-main, line 12: Incompatible types in assignment (expression has type A[B], variable has type A[object])
+main:9: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
+main:10: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
+main:11: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
+main:12: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
 
 
 -- Multiple tvar instances in arguments
@@ -396,7 +396,7 @@ def f() -> None:
 class B: pass
 [builtins fixtures/list.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testNestedListExpressions]
 from typing import List
@@ -487,7 +487,7 @@ class B: pass
 class C(B): pass
 class D: pass
 [out]
-main: In function "t":
+main: note: In function "t":
 
 [case testIntersectionWithInferredGenericArgument]
 from typing import overload, TypeVar, Generic
@@ -589,9 +589,9 @@ f = lambda x: A() # type: Callable[[], A]
 f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
-main, line 2: Cannot infer type of lambda
-main, line 3: Cannot infer type of lambda
-main, line 3: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
+main:2: error: Cannot infer type of lambda
+main:3: error: Cannot infer type of lambda
+main:3: error: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
 
 
 -- Overloads + generic functions

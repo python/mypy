@@ -13,8 +13,8 @@ x = x
 class A: pass
 class B: pass
 [out]
-main, line 4: Incompatible types in assignment (expression has type "B", variable has type "A")
-main, line 6: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInferSimpleLvarType]
 import typing
@@ -28,9 +28,9 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
-main, line 5: Incompatible types in assignment (expression has type "B", variable has type "A")
-main, line 7: Incompatible types in assignment (expression has type "B", variable has type "A")
+main: note: In function "f":
+main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:7: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLvarInitializedToNoneWithoutType]
 import typing
@@ -38,7 +38,7 @@ def f() -> None:
     a = None # E: Need type annotation for variable
     a.x()
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testLvarInitializedToVoid]
 import typing
@@ -48,7 +48,7 @@ def f() -> None:
 
 def g() -> None: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypeFromArgument]
 import typing
@@ -61,7 +61,7 @@ def f(a: 'A') -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypeFromGvar]
 
@@ -75,7 +75,7 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringImplicitDynamicTypeForLvar]
 import typing
@@ -86,7 +86,7 @@ def f() -> None:
 
 def g(): pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringExplicitDynamicTypeForLvar]
 from typing import Any
@@ -97,7 +97,7 @@ def f(a: Any) -> None:
     None(b) # E: None not callable
     a.x()
 [out]
-main: In function "f":
+main: note: In function "f":
 
 
 -- Inferring types of local variables with complex types
@@ -119,7 +119,7 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringTupleTypeForLvarWithNones]
 import typing
@@ -130,7 +130,7 @@ def f() -> None:
 class A: pass
 [builtins fixtures/tuple.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringGenericTypeForLvar]
 from typing import TypeVar, Generic
@@ -146,7 +146,7 @@ def f() -> None:
     a = a_i
 [builtins fixtures/tuple.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringFunctionTypeForLvar]
 import typing
@@ -160,7 +160,7 @@ def g(a: 'A') -> None: pass
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringFunctionTypeForLvarFromTypeObject]
 import typing
@@ -172,7 +172,7 @@ def f() -> None:
 
 class A: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 
 -- Inferring variable types in multiple definition
@@ -193,7 +193,7 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInTupleAssignment]
 from typing import Tuple
@@ -210,7 +210,7 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInNestedTupleAssignment1]
 from typing import Tuple
@@ -227,7 +227,7 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInNestedTupleAssignment2]
 import typing
@@ -246,7 +246,7 @@ class A: pass
 class B: pass
 class C: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInNestedListAssignment]
 import typing
@@ -265,7 +265,7 @@ class A: pass
 class B: pass
 class C: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInMultiDefWithNoneTypes]
 import typing
@@ -275,7 +275,7 @@ def f() -> None:
 
 class A: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInNestedTupleAssignmentWithNoneTypes]
 import typing
@@ -284,7 +284,7 @@ def f() -> None:
 
 class A: pass
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
 from typing import Tuple
@@ -296,9 +296,9 @@ def f() -> None:
     g, h, i = t
 [builtins fixtures/tuple.py]
 [out]
-main: In function "f":
-main, line 5: Too many values to unpack (2 expected, 3 provided)
-main, line 6: Need more than 3 values to unpack (4 expected)
+main: note: In function "f":
+main:5: error: Too many values to unpack (2 expected, 3 provided)
+main:6: error: Need more than 3 values to unpack (4 expected)
 
 [case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
 import typing
@@ -308,7 +308,7 @@ def f() -> None:
 class A: pass
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInvalidRvalueTypeInInferredNestedTupleAssignment]
 import typing
@@ -318,7 +318,7 @@ def f() -> None:
 class A: pass
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringMultipleLvarDefinitionWithListRvalue]
 from typing import List
@@ -347,7 +347,7 @@ def f() -> None:
     d = e
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringNestedTupleAssignmentWithListRvalue]
 from typing import List
@@ -376,7 +376,7 @@ def f() -> None:
     d = e
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue]
 import typing
@@ -443,7 +443,7 @@ def f() -> None:
 def id(x: T) -> T:
     return x
 [out]
-main: In function "f":
+main: note: In function "f":
 
 [case testUnderspecifiedInferenceResult]
 from typing import TypeVar
@@ -461,7 +461,7 @@ g(a)
 def f() -> T: pass
 def g(a: T) -> None: pass
 [out]
-main: In function "ff":
+main: note: In function "ff":
 
 [case testUnsolvableInferenceResult]
 from typing import TypeVar
@@ -473,8 +473,8 @@ def f(a: T, b: T) -> None: pass
 def g() -> None: pass
 class A: pass
 [out]
-main, line 3: Cannot infer type argument 1 of "f"
-main, line 3: "g" does not return a value
+main:3: error: Cannot infer type argument 1 of "f"
+main:3: error: "g" does not return a value
 
 [case testInferenceWithMultipleConstraints]
 from typing import TypeVar
@@ -514,10 +514,10 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.py]
 [out]
-main, line 9: Argument 2 to "f" has incompatible type "B"; expected "A"
-main, line 10: Argument 1 to "f" has incompatible type "B"; expected "A"
-main, line 11: Argument 1 to "f" has incompatible type "A"; expected "B"
-main, line 11: Argument 2 to "f" has incompatible type "B"; expected "A"
+main:9: error: Argument 2 to "f" has incompatible type "B"; expected "A"
+main:10: error: Argument 1 to "f" has incompatible type "B"; expected "A"
+main:11: error: Argument 1 to "f" has incompatible type "A"; expected "B"
+main:11: error: Argument 2 to "f" has incompatible type "B"; expected "A"
 
 [case testConstraintSolvingWithSimpleGenerics]
 from typing import TypeVar, Generic
@@ -767,12 +767,12 @@ class B: pass
 class C: pass
 [builtins fixtures/for.py]
 [out]
-main, line 4: Incompatible types in assignment (expression has type "A", variable has type "B")
-main, line 5: Incompatible types in assignment (expression has type "B", variable has type "C")
-main, line 6: Incompatible types in assignment (expression has type "C", variable has type "A")
-main, line 10: Need more than 2 values to unpack (3 expected)
-main, line 12: '__main__.B' object is not iterable
-main, line 14: Need type annotation for variable
+main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:5: error: Incompatible types in assignment (expression has type "B", variable has type "C")
+main:6: error: Incompatible types in assignment (expression has type "C", variable has type "A")
+main:10: error: Need more than 2 values to unpack (3 expected)
+main:12: error: '__main__.B' object is not iterable
+main:14: error: Need type annotation for variable
 
 [case testInferenceOfFor3]
 
@@ -823,7 +823,7 @@ class A: pass
 class B: pass
 [builtins fixtures/for.py]
 [out]
-main: In function "f":
+main: note: In function "f":
 
 
 -- Regression tests
@@ -893,7 +893,7 @@ class A:
         self.a = B()
 class B: pass
 [out]
-main: In member "__init__" of class "A":
+main: note: In member "__init__" of class "A":
 
 [case testInferAttributeInInit]
 import typing
