@@ -27,7 +27,8 @@ from mypy.test.helpers import assert_string_arrays_equal
 python_eval_files = ['pythoneval.test',
                     'python2eval.test']
 
-python_34_eval_files = ['pythoneval-asyncio.test']
+python_34_eval_files = ['pythoneval-asyncio.test',
+                        'pythoneval-enum.test']
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
