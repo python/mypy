@@ -7,7 +7,7 @@
 #  - type check example code (for regression testing)
 #  - run a linter to catch style issues (flake8)
 
-PYTHON=${PYTHON-python}
+PYTHON=${PYTHON-python3}
 
 result=0
 

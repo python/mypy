@@ -170,11 +170,11 @@ def default_data_dir(bin_dir: str) -> str:
         return ''
     base = os.path.basename(bin_dir)
     dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'scripts'
+    if (sys.platform == 'win32' and base.lower() == 'mypy'
             and not os.path.isdir(os.path.join(dir, 'stubs'))):
         # Installed, on Windows.
         return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'scripts':
+    elif base == 'mypy':
         # Assume that we have a repo check out or unpacked source tarball.
         return os.path.dirname(bin_dir)
     elif base == 'bin':
