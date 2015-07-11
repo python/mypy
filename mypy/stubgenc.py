@@ -107,7 +107,7 @@ def generate_c_function_stub(module, name, obj, output, self_var=None, sigs={}, 
     sig = sig[1:-1]
     if not sig:
         self_arg = self_arg.replace(', ', '')
-    output.append('def %s(%s%s): pass' % (name, self_arg, sig))
+    output.append('def %s(%s%s): ...' % (name, self_arg, sig))
 
 
 def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}):
@@ -148,7 +148,7 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
     else:
         bases_str = ''
     if not methods and not variables:
-        output.append('class %s%s: pass' % (class_name, bases_str))
+        output.append('class %s%s: ...' % (class_name, bases_str))
     else:
         output.append('class %s%s:' % (class_name, bases_str))
         for variable in variables:
