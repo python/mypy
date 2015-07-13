@@ -57,7 +57,7 @@ class StringFormatterChecker:
         expression: str % replacements
         """
         specifiers = self.parse_conversion_specifiers(str.value)
-        has_mapping_keys = self.analyse_conversion_specifiers(specifiers, str)
+        has_mapping_keys = self.analyze_conversion_specifiers(specifiers, str)
         if has_mapping_keys == None:
             pass # Error was reported
         elif has_mapping_keys:
@@ -82,7 +82,7 @@ class StringFormatterChecker:
             specifiers.append(ConversionSpecifier(key, flags, width, precision, type))
         return specifiers
 
-    def analyse_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
+    def analyze_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
                                       context: Context) -> bool:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)

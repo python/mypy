@@ -17,7 +17,7 @@ from mypy import messages
 from mypy import subtypes
 
 
-def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
+def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                           is_super: bool,
                           builtin_type: Callable[[str], Instance],
                           msg: MessageBuilder, override_info: TypeInfo = None,
@@ -58,7 +58,7 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                 method_type_with_fallback(method, builtin_type('builtins.function')), typ)
         else:
             # Not a method.
-            return analyse_member_var_access(name, typ, info, node,
+            return analyze_member_var_access(name, typ, info, node,
                                              is_lvalue, is_super, builtin_type,
                                              msg,
                                              report_type=report_type)
@@ -68,14 +68,14 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
-        results = [analyse_member_access(name, subtype, node, is_lvalue,
+        results = [analyze_member_access(name, subtype, node, is_lvalue,
                                          is_super, builtin_type, msg)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
-        return analyse_member_access(name, typ.fallback, node, is_lvalue,
+        return analyze_member_access(name, typ.fallback, node, is_lvalue,
                                      is_super, builtin_type, msg)
     elif (isinstance(typ, FunctionLike) and
           cast(FunctionLike, typ).is_type_obj()):
@@ -83,30 +83,30 @@ def analyse_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # TODO super?
         sig = cast(FunctionLike, typ)
         itype = cast(Instance, sig.items()[0].ret_type)
-        result = analyse_class_attribute_access(itype, name, node, is_lvalue, builtin_type, msg)
+        result = analyze_class_attribute_access(itype, name, node, is_lvalue, builtin_type, msg)
         if result:
             return result
         # Look up from the 'type' type.
-        return analyse_member_access(name, sig.fallback, node, is_lvalue, is_super,
+        return analyze_member_access(name, sig.fallback, node, is_lvalue, is_super,
                                      builtin_type, msg, report_type=report_type)
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
-        return analyse_member_access(name, typ.fallback, node, is_lvalue, is_super,
+        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                      builtin_type, msg, report_type=report_type)
     elif isinstance(typ, TypeVarType):
-        return analyse_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
+        return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
                                      builtin_type, msg, report_type=report_type)
     return msg.has_no_attr(report_type, name, node)
 
 
-def analyse_member_var_access(name: str, itype: Instance, info: TypeInfo,
+def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               node: Context, is_lvalue: bool, is_super: bool,
                               builtin_type: Callable[[str], Instance],
                               msg: MessageBuilder,
                               report_type: Type = None) -> Type:
     """Analyse attribute access that does not target a method.
 
-    This is logically part of analyse_member_access and the arguments are
+    This is logically part of analyze_member_access and the arguments are
     similar.
     """
     # It was not a method. Try looking up a variable.
@@ -143,7 +143,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                is_lvalue: bool, msg: MessageBuilder) -> Type:
     """Analyze access to an attribute via a Var node.
 
-    This is conceptually part of analyse_member_access and the arguments are similar.
+    This is conceptually part of analyze_member_access and the arguments are similar.
     """
     # Found a member variable.
     itype = map_instance_to_supertype(itype, var.info)
@@ -202,7 +202,7 @@ def check_method_type(functype: FunctionLike, itype: Instance,
                 msg.invalid_method_type(item, context)
 
 
-def analyse_class_attribute_access(itype: Instance,
+def analyze_class_attribute_access(itype: Instance,
                                    name: str,
                                    context: Context,
                                    is_lvalue: bool,

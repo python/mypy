@@ -18,7 +18,7 @@ from mypy import nodes
 type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
 
 
-def analyse_type_alias(node: Node,
+def analyze_type_alias(node: Node,
                        lookup_func: Callable[[str, Context], SymbolTableNode],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        fail_func: Callable[[str, Context], None]) -> Type:
@@ -51,8 +51,8 @@ def analyse_type_alias(node: Node,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyser = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func)
-    return type.accept(analyser)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func)
+    return type.accept(analyzer)
 
 
 class TypeAnalyser(TypeVisitor[Type]):
@@ -148,7 +148,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        raise RuntimeError('TypeVarType is already analysed')
+        raise RuntimeError('TypeVarType is already analyzed')
 
     def visit_callable_type(self, t: CallableType) -> Type:
         res = CallableType(self.anal_array(t.arg_types),

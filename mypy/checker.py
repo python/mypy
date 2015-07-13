@@ -284,7 +284,7 @@ def meet_frames(*frames: Frame) -> Frame:
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
-    Type check mypy source files that have been semantically analysed.
+    Type check mypy source files that have been semantically analyzed.
     """
 
     # Target Python major version
@@ -582,7 +582,7 @@ class TypeChecker(NodeVisitor[Type]):
                     method, other_method, defn)
                 return
 
-            typ2 = self.expr_checker.analyse_external_member_access(
+            typ2 = self.expr_checker.analyze_external_member_access(
                 other_method, arg_type, defn)
             self.check_overlapping_op_methods(
                 typ, method, defn.info,
@@ -678,7 +678,7 @@ class TypeChecker(NodeVisitor[Type]):
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
             instance = self_type(cls)
-            typ2 = self.expr_checker.analyse_external_member_access(
+            typ2 = self.expr_checker.analyze_external_member_access(
                 other_method, instance, defn)
             fail = False
             if isinstance(typ2, FunctionLike):
@@ -1136,11 +1136,11 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(lvalue, IndexExpr):
             index_lvalue = lvalue
         elif isinstance(lvalue, MemberExpr):
-            lvalue_type = self.expr_checker.analyse_ordinary_member_access(lvalue,
+            lvalue_type = self.expr_checker.analyze_ordinary_member_access(lvalue,
                                                                  True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
-            lvalue_type = self.expr_checker.analyse_ref_expr(lvalue)
+            lvalue_type = self.expr_checker.analyze_ref_expr(lvalue)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             lv = cast(Union[TupleExpr, ListExpr], lvalue)
@@ -1255,7 +1255,7 @@ class TypeChecker(NodeVisitor[Type]):
         The lvalue argument is the base[index] expression.
         """
         basetype = self.accept(lvalue.base)
-        method_type = self.expr_checker.analyse_external_member_access(
+        method_type = self.expr_checker.analyze_external_member_access(
             '__setitem__', basetype, context)
         lvalue.method_type = method_type
         self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
@@ -1349,7 +1349,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
             elif is_subtype(type_func, self.named_type('typing.Iterable')):
                 # If it's and Iterable-Like, let's check the types.
-                # Maybe just check if have __iter__? (like in analyse_iterable)
+                # Maybe just check if have __iter__? (like in analyze_iterable)
                 self.check_iterable_yield_from(s)
             else:
                 self.msg.yield_from_invalid_operand_type(type_func, s)
@@ -1564,8 +1564,8 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
-        item_type = self.analyse_iterable_item_type(s.expr)
-        self.analyse_index_variables(s.index, item_type, s)
+        item_type = self.analyze_iterable_item_type(s.expr)
+        self.analyze_index_variables(s.index, item_type, s)
         self.binder.push_frame()
         self.binder.push_loop_frame()
         self.accept_in_frame(s.body, repeat_till_fixed=True)
@@ -1574,7 +1574,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(s.else_body)
         self.binder.pop_frame(False, True)
 
-    def analyse_iterable_item_type(self, expr: Node) -> Type:
+    def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
         iterable = self.accept(expr)
 
@@ -1595,18 +1595,18 @@ class TypeChecker(NodeVisitor[Type]):
                                expr, messages.ITERABLE_EXPECTED)
 
             echk = self.expr_checker
-            method = echk.analyse_external_member_access('__iter__', iterable,
+            method = echk.analyze_external_member_access('__iter__', iterable,
                                                          expr)
             iterator = echk.check_call(method, [], [], expr)[0]
             if self.pyversion >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
-            method = echk.analyse_external_member_access(nextmethod, iterator,
+            method = echk.analyze_external_member_access(nextmethod, iterator,
                                                          expr)
             return echk.check_call(method, [], [], expr)[0]
 
-    def analyse_index_variables(self, index: Node, item_type: Type,
+    def analyze_index_variables(self, index: Node, item_type: Type,
                                 context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
         self.check_assignment(index, self.temp_node(item_type, context))
@@ -1649,11 +1649,11 @@ class TypeChecker(NodeVisitor[Type]):
         echk = self.expr_checker
         for expr, target in zip(s.expr, s.target):
             ctx = self.accept(expr)
-            enter = echk.analyse_external_member_access('__enter__', ctx, expr)
+            enter = echk.analyze_external_member_access('__enter__', ctx, expr)
             obj = echk.check_call(enter, [], [], expr)[0]
             if target:
                 self.check_assignment(target, self.temp_node(obj, expr))
-            exit = echk.analyse_external_member_access('__exit__', ctx, expr)
+            exit = echk.analyze_external_member_access('__exit__', ctx, expr)
             arg = self.temp_node(AnyType(), expr)
             echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
         self.accept(s.body)

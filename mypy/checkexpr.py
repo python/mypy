@@ -31,7 +31,7 @@ from mypy.expandtype import expand_type, expand_caller_var_args
 from mypy.subtypes import is_subtype, is_more_precise
 from mypy import applytype
 from mypy import erasetype
-from mypy.checkmember import analyse_member_access, type_object_type
+from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
@@ -63,15 +63,15 @@ class ExpressionChecker:
 
         It can be of any kind: local, member or global.
         """
-        result = self.analyse_ref_expr(e)
+        result = self.analyze_ref_expr(e)
         return self.chk.narrow_type_from_binder(e, result)
 
-    def analyse_ref_expr(self, e: RefExpr) -> Type:
+    def analyze_ref_expr(self, e: RefExpr) -> Type:
         result = None  # type: Type
         node = e.node
         if isinstance(node, Var):
             # Variable reference.
-            result = self.analyse_var_ref(node, e)
+            result = self.analyze_var_ref(node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
@@ -84,14 +84,14 @@ class ExpressionChecker:
             # Reference to a module object.
             result = self.named_type('builtins.module')
         elif isinstance(node, Decorator):
-            result = self.analyse_var_ref(node.var, e)
+            result = self.analyze_var_ref(node.var, e)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType()
         return result
 
-    def analyse_var_ref(self, var: Var, context: Context) -> Type:
+    def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if not var.type:
             if not var.is_ready:
                 self.msg.cannot_determine_type(var.name(), context)
@@ -208,7 +208,7 @@ class ExpressionChecker:
             return (UnionType.make_simplified_union([res[0] for res in results]),
                     callee)
         elif isinstance(callee, Instance):
-            call_function = analyse_member_access('__call__', callee, context,
+            call_function = analyze_member_access('__call__', callee, context,
                                          False, False, self.named_type, self.msg)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
@@ -666,28 +666,28 @@ class ExpressionChecker:
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
-        result = self.analyse_ordinary_member_access(e, False)
+        result = self.analyze_ordinary_member_access(e, False)
         return self.chk.narrow_type_from_binder(e, result)
 
-    def analyse_ordinary_member_access(self, e: MemberExpr,
+    def analyze_ordinary_member_access(self, e: MemberExpr,
                                        is_lvalue: bool) -> Type:
         """Analyse member expression or member lvalue."""
         if e.kind is not None:
             # This is a reference to a module attribute.
-            return self.analyse_ref_expr(e)
+            return self.analyze_ref_expr(e)
         else:
             # This is a reference to a non-module attribute.
-            return analyse_member_access(e.name, self.accept(e.expr), e,
+            return analyze_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False,
                                          self.named_type, self.msg)
 
-    def analyse_external_member_access(self, member: str, base_type: Type,
+    def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
         """Analyse member access that is external, i.e. it cannot
         refer to private definitions. Return the result type.
         """
         # TODO remove; no private definitions in mypy
-        return analyse_member_access(member, base_type, context, False, False,
+        return analyze_member_access(member, base_type, context, False, False,
                                      self.named_type, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
@@ -761,7 +761,7 @@ class ExpressionChecker:
                 if (local_errors.is_errors() and
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
-                    itertype = self.chk.analyse_iterable_item_type(right)
+                    itertype = self.chk.analyze_iterable_item_type(right)
                     method_type = CallableType([left_type],
                                            [nodes.ARG_POS],
                                            [None],
@@ -810,7 +810,7 @@ class ExpressionChecker:
 
         Return tuple (result type, inferred operator method type).
         """
-        method_type = analyse_member_access(method, base_type, context, False, False,
+        method_type = analyze_member_access(method, base_type, context, False, False,
                                             self.named_type, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
@@ -853,7 +853,7 @@ class ExpressionChecker:
             rmethod = self.get_reverse_op_method(method)
             arg_type = self.accept(arg)
             if self.has_member(arg_type, rmethod):
-                method_type = self.analyse_external_member_access(
+                method_type = self.analyze_external_member_access(
                     rmethod, arg_type, context)
                 temp = TempNode(base_type)
                 return self.check_call(method_type, [temp], [nodes.ARG_POS],
@@ -913,18 +913,18 @@ class ExpressionChecker:
             self.check_not_void(operand_type, e)
             result = self.chk.bool_type()  # type: Type
         elif op == '-':
-            method_type = self.analyse_external_member_access('__neg__',
+            method_type = self.analyze_external_member_access('__neg__',
                                                               operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         elif op == '+':
-            method_type = self.analyse_external_member_access('__pos__',
+            method_type = self.analyze_external_member_access('__pos__',
                                                               operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
         else:
             assert op == '~', "unhandled unary operator"
-            method_type = self.analyse_external_member_access('__invert__',
+            method_type = self.analyze_external_member_access('__invert__',
                                                               operand_type, e)
             result, method_type = self.check_call(method_type, [], [], e)
             e.method_type = method_type
@@ -1111,19 +1111,19 @@ class ExpressionChecker:
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
-        t = self.analyse_super(e, False)
+        t = self.analyze_super(e, False)
         return t
 
-    def analyse_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
+    def analyze_super(self, e: SuperExpr, is_lvalue: bool) -> Type:
         """Type check a super expression."""
         if e.info and e.info.bases:
             # TODO fix multiple inheritance etc
-            return analyse_member_access(e.name, self_type(e.info), e,
+            return analyze_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
                                          self.named_type, self.msg,
                                          e.info.mro[1])
         else:
-            # Invalid super. This has been reported by the semantic analyser.
+            # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
@@ -1191,8 +1191,8 @@ class ExpressionChecker:
         self.chk.binder.push_frame()
         for index, sequence, conditions in zip(e.indices, e.sequences,
                                                e.condlists):
-            sequence_type = self.chk.analyse_iterable_item_type(sequence)
-            self.chk.analyse_index_variables(index, sequence_type, e)
+            sequence_type = self.chk.analyze_iterable_item_type(sequence)
+            self.chk.analyze_index_variables(index, sequence_type, e)
             for condition in conditions:
                 self.accept(condition)
         self.chk.binder.pop_frame()
