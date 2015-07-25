@@ -28,6 +28,10 @@ from mypy import parse
 from mypy import stats
 
 
+# We need to know the location of this file to load data, but
+# until Python 3.4, __file__ is relative.
+__file__ = os.path.realpath(__file__)
+
 debug = False
 
 
@@ -125,7 +129,7 @@ def build(program_path: str,
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
-        lib_path.insert(0, os.path.join('mypy', 'test', 'data', 'lib-stub'))
+        lib_path.insert(0, os.path.join(os.path.dirname(__file__), 'test', 'data', 'lib-stub'))
     elif program_path:
         # Include directory of the program file in the module search path.
         lib_path.insert(
@@ -170,8 +174,8 @@ def build(program_path: str,
 def default_data_dir(bin_dir: str) -> str:
     # TODO fix this logic
     if not bin_dir:
-        # Default to current directory.
-        return ''
+        # Default to directory containing this file's parent.
+        return os.path.dirname(os.path.dirname(__file__))
     base = os.path.basename(bin_dir)
     dir = os.path.dirname(bin_dir)
     if (sys.platform == 'win32' and base.lower() == 'mypy'

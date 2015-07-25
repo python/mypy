@@ -1,5 +1,7 @@
+import os
 import sys
 import re
+import tempfile
 import time
 import traceback
 
@@ -91,18 +93,28 @@ class TestCase:
         self.func = func
         self.name = name
         self.suite = suite
+        self.old_cwd = None # type: str
+        self.tmpdir = None # type: tempfile.TemporaryDirectory
 
     def run(self) -> None:
         if self.func:
             self.func()
 
     def set_up(self) -> None:
+        self.old_cwd = os.getcwd()
+        self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-', dir=os.path.abspath('tmp-test-dirs'))
+        os.chdir(self.tmpdir.name)
+        os.mkdir('tmp')
         if self.suite:
             self.suite.set_up()
 
     def tear_down(self) -> None:
         if self.suite:
             self.suite.tear_down()
+        os.chdir(self.old_cwd)
+        self.tmpdir.cleanup()
+        self.old_cwd = None
+        self.tmpdir = None
 
 
 class Suite:

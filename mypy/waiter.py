@@ -44,8 +44,6 @@ class Waiter:
                 # Note: only count CPUs we are allowed to use. It is a
                 # major mistake to count *all* CPUs on the machine.
                 limit = len(sched_getaffinity(0))
-        # Temporarily force until test parallelization bugs are fixed.
-        limit = 1
         self.limit = limit
         assert limit > 0
         print('%-8s %d' % ('PARALLEL', limit))

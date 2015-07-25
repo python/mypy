@@ -1,0 +1,4 @@
+# This directory is used to store temporary directories for the testsuite.
+# If anything manages to exist here, it means python crashed instead of
+# calling tempfile.TemporaryDirectory's cleanup while unwinding.
+# Therefore, don't actually provide any ignore patterns.
