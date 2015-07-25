@@ -39,6 +39,7 @@ TYPE_CHECK = 1          # Type check
 # Build flags
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build module as a script
+PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
 # State ids. These describe the states a source file / module can be in a
@@ -83,6 +84,7 @@ class BuildResult:
 def build(program_path: str,
           target: int,
           module: str = None,
+          argument: str = None,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
@@ -147,9 +149,11 @@ def build(program_path: str,
                            custom_typing_module=custom_typing_module,
                            html_report_dir=html_report_dir)
 
-    program_path = program_path or lookup_program(module, lib_path)
     if program_text is None:
+        program_path = program_path or lookup_program(module, lib_path)
         program_text = read_program(program_path)
+    else:
+        program_path = program_path or '<string>'
 
     # Construct information that describes the initial file. __main__ is the
     # implicit module id and the import context is empty initially ([]).
@@ -451,7 +455,7 @@ class BuildManager:
         for state in self.states:
             if state.id == module:
                 return state
-        raise RuntimeError('%s not found' % str)
+        raise RuntimeError('%s not found' % module)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[str, int]]:
@@ -466,7 +470,7 @@ class BuildManager:
             rel = imp.relative
             if rel == 0:
                 return imp.id
-            if os.path.basename(file.path) == '__init__.py':
+            if os.path.basename(file.path).startswith('__init__.'):
                 rel -= 1
             if rel != 0:
                 file_id = ".".join(file_id.split(".")[:-rel])
