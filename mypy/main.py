@@ -29,10 +29,10 @@ class Options:
 
 def main() -> None:
     bin_dir = find_bin_directory()
-    path, module, options = process_options(sys.argv[1:])
+    path, module, program_text, options = process_options(sys.argv[1:])
     try:
         if options.target == build.TYPE_CHECK:
-            type_check_only(path, module, bin_dir, options)
+            type_check_only(path, module, program_text, bin_dir, options)
         else:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
@@ -66,10 +66,11 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(path: str, module: str, bin_dir: str, options: Options) -> None:
+def type_check_only(path: str, module: str, program_text: str, bin_dir: str, options: Options) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
+                program_text=program_text,
                 bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
                 pyversion=options.pyversion,
@@ -79,7 +80,7 @@ def type_check_only(path: str, module: str, bin_dir: str, options: Options) -> N
                 python_path=options.python_path)
 
 
-def process_options(args: List[str]) -> Tuple[str, str, Options]:
+def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     """Process command line arguments.
 
     Return (mypy program path (or None),
@@ -99,7 +100,10 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
             args = args[1:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
-            return None, args[1], options
+            return None, args[1], None, options
+        elif args[0] == '-c' and args[1:]:
+            options.build_flags.append(build.PROGRAM_TEXT)
+            return None, None, args[1], options
         elif args[0] in ('-h', '--help'):
             help = True
             args = args[1:]
@@ -141,7 +145,7 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
         usage('--py2 specified, '
               'but --use-python-path will search in sys.path of Python 3')
 
-    return args[0], None, options
+    return args[0], None, None, options
 
 
 def usage(msg: str = None) -> None:
@@ -159,6 +163,7 @@ Optional arguments:
   -h, --help         print this help message and exit
   --html-report dir  generate a HTML report of type precision under dir/
   -m mod             type check module
+  -c string          type check string
   --verbose          more verbose messages
   --use-python-path  search for modules in sys.path of running Python
   --version          show the current version information

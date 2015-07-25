@@ -163,7 +163,7 @@ class MypyFile(SymbolNode):
 
     def is_package_init_file(self) -> bool:
         return not (self.path is None) and len(self.path) != 0 \
-            and os.path.basename(self.path) == '__init__.py'
+            and os.path.basename(self.path).startswith('__init__.')
 
 
 class ImportBase(Node):
