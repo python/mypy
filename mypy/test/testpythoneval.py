@@ -69,25 +69,24 @@ def test_python_evaluation(testcase):
     with open(program_path, 'w') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
-    # Set up module path.
-    typing_path = os.path.join(os.getcwd(), 'lib-typing', '3.2')
-    assert os.path.isdir(typing_path)
-    env = os.environ.copy()
-    env['PYTHONPATH'] = os.pathsep.join([typing_path, os.getcwd()])
     # Type check the program.
+    # This uses the same PYTHONPATH as the current process.
     process = subprocess.Popen([python3_path,
-                                os.path.join(os.getcwd(), 'scripts', 'mypy')] + args + [program],
+                                os.path.join(testcase.old_cwd, 'scripts', 'mypy')] + args + [program],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
-                               cwd=test_temp_dir,
-                               env=env)
+                               cwd=test_temp_dir)
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     if not process.wait():
-        if py2:
-            typing_path = os.path.join(os.getcwd(), 'lib-typing', '2.7')
-            env['PYTHONPATH'] = typing_path
+        # Set up module path for the execution.
+        # This needs the typing module but *not* the mypy module.
+        vers_dir = '2.7' if py2 else '3.2'
+        typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
+        assert os.path.isdir(typing_path)
+        env = os.environ.copy()
+        env['PYTHONPATH'] = typing_path
         process = subprocess.Popen([interpreter, program],
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,

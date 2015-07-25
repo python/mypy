@@ -3,6 +3,8 @@ import importlib
 import os.path
 import random
 import shutil
+import sys
+import tempfile
 import time
 
 import typing
@@ -102,9 +104,15 @@ class StubgenPythonSuite(Suite):
 
 
 def test_stubgen(testcase):
+    if 'stubgen-test-path' not in sys.path:
+        sys.path.insert(0, 'stubgen-test-path')
+    os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
-    name = 'prog%d' % random.randrange(1000 * 1000 * 1000)
-    path = '%s.py' % name
+    handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path')
+    assert os.path.isabs(handle.name)
+    path = os.path.basename(handle.name)
+    name = path[:-3]
+    path = os.path.join('stubgen-test-path', path)
     out_dir = '_out'
     os.mkdir(out_dir)
     try:
@@ -127,7 +135,7 @@ def test_stubgen(testcase):
                                            testcase.file, testcase.line))
     finally:
         shutil.rmtree(out_dir)
-        os.remove(path)
+        handle.close()
 
 
 def reset_importlib_caches():
