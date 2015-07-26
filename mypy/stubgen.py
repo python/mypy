@@ -28,6 +28,7 @@ TODO:
 
 import glob
 import imp
+import importlib
 import os.path
 import sys
 
@@ -50,10 +51,9 @@ def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, m
     ast.accept(gen)
     if not target:
         target = os.path.join(output_dir, os.path.basename(path))
-    for i in range(target.count('/')):
-        subdir = os.path.dirname(target)
-        if subdir and not os.path.isdir(subdir):
-            os.makedirs(subdir)
+    subdir = os.path.dirname(target)
+    if subdir and not os.path.isdir(subdir):
+        os.makedirs(subdir)
     with open(target, 'w') as file:
         if add_header:
             write_header(file, module)
@@ -62,13 +62,10 @@ def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, m
 
 def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, sigs={},
                              class_sigs={}):
-    mod = __import__(module)
+    mod = importlib.import_module(module)
     imp.reload(mod)
-    components = module.split('.')
-    for attr in components[1:]:
-        mod = getattr(mod, attr)
     if is_c_module(mod):
-        target = '/'.join(components[:-1] + [components[-1] + '.pyi'])
+        target = module.replace('.', '/') + '.pyi'
         target = os.path.join(output_dir, target)
         generate_stub_for_c_module(module_name=module,
                                    target=target,
@@ -76,12 +73,11 @@ def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, 
                                    sigs=sigs,
                                    class_sigs=class_sigs)
     else:
-        target = '/'.join(module.split('.')[:-1])
-        modfnam = os.path.basename(mod.__file__)
-        if modfnam == '__init__.py':
-            target = os.path.join(target, module.split('.')[-1], '__init__.pyi')
+        target = module.replace('.', '/')
+        if os.path.basename(mod.__file__) == '__init__.py':
+            target += '/__init__.pyi'
         else:
-            target = os.path.join(target, modfnam.replace('.py', '.pyi'))
+            target += '.pyi'
         target = os.path.join(output_dir, target)
         generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None),
                       target=target, add_header=add_header, module=module)
