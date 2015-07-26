@@ -172,7 +172,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 arg = name
             args.append(arg)
         self.add(', '.join(args))
-        self.add("): pass\n")
+        self.add("): ...\n")
         self._state = FUNC
 
     def visit_decorator(self, o):
@@ -209,7 +209,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if len(self._output) == n:
             if self._state == EMPTY_CLASS and sep is not None:
                 self._output[sep] = ''
-            self._output[-1] = self._output[-1][:-1] + ' pass\n'
+            self._output[-1] = self._output[-1][:-1] + ' ...\n'
             self._state = EMPTY_CLASS
         else:
             self._state = CLASS

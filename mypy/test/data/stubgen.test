@@ -5,7 +5,7 @@
 def f():
     x = 1
 [out]
-def f(): pass
+def f(): ...
 
 [case testTwoFunctions]
 def f(a, b):
@@ -13,66 +13,66 @@ def f(a, b):
 def g(arg):
     pass
 [out]
-def f(a, b): pass
-def g(arg): pass
+def f(a, b): ...
+def g(arg): ...
 
 [case testDefaltArgInt]
-def f(a, b=2): pass
-def g(b=-1, c=0): pass
+def f(a, b=2): ...
+def g(b=-1, c=0): ...
 [out]
-def f(a, b=2): pass
-def g(b=-1, c=0): pass
+def f(a, b=2): ...
+def g(b=-1, c=0): ...
 
 [case testDefaultArgNone]
-def f(x=None): pass
+def f(x=None): ...
 [out]
-def f(x=None): pass
+def f(x=None): ...
 
 [case testDefaultArgBool]
-def f(x=True, y=False): pass
+def f(x=True, y=False): ...
 [out]
-def f(x=True, y=False): pass
+def f(x=True, y=False): ...
 
 [case testDefaultArgStr]
-def f(x='foo'): pass
+def f(x='foo'): ...
 [out]
-def f(x=''): pass
+def f(x=''): ...
 
 [case testDefaultArgBytes]
-def f(x=b'foo'): pass
+def f(x=b'foo'): ...
 [out]
-def f(x=b''): pass
+def f(x=b''): ...
 
 [case testDefaultArgFloat]
-def f(x=1.2): pass
+def f(x=1.2): ...
 [out]
-def f(x=0.0): pass
+def f(x=0.0): ...
 
 [case testDefaultArgOther]
-def f(x=ord): pass
+def f(x=ord): ...
 [out]
-def f(x=...): pass
+def f(x=...): ...
 
 [case testVarArgs]
-def f(x, *y): pass
+def f(x, *y): ...
 [out]
-def f(x, *y): pass
+def f(x, *y): ...
 
 [case testKwVarArgs]
-def f(x, **y): pass
+def f(x, **y): ...
 [out]
-def f(x, **y): pass
+def f(x, **y): ...
 
 [case testClass]
 class A:
     def f(self, x):
         x = 1
-def g(): pass
+def g(): ...
 [out]
 class A:
-    def f(self, x): pass
+    def f(self, x): ...
 
-def g(): pass
+def g(): ...
 
 [case testVariable]
 x = 1
@@ -100,7 +100,7 @@ from typing import Any
 
 class C:
     x = ... # type: Any
-    def __init__(self): pass
+    def __init__(self): ...
 
 [case testSelfAndClassBodyAssignment]
 x = 1
@@ -116,31 +116,31 @@ x = ... # type: Any
 
 class C:
     x = ... # type: Any
-    def __init__(self): pass
+    def __init__(self): ...
 
 [case testEmptyClass]
-class A: pass
+class A: ...
 [out]
-class A: pass
+class A: ...
 
 [case testPrivateFunction]
-def _f(): pass
-def g(): pass
+def _f(): ...
+def g(): ...
 [out]
-def g(): pass
+def g(): ...
 
 [case testPrivateMethod]
 class A:
-    def _f(self): pass
+    def _f(self): ...
 [out]
-class A: pass
+class A: ...
 
 [case testPrivateVar]
 _x = 1
 class A:
     _y = 1
 [out]
-class A: pass
+class A: ...
 
 [case testSpecialInternalVar]
 __all__ = []
@@ -149,17 +149,17 @@ __version__ = ''
 [out]
 
 [case testBaseClass]
-class A: pass
-class B(A): pass
+class A: ...
+class B(A): ...
 [out]
-class A: pass
-class B(A): pass
+class A: ...
+class B(A): ...
 
 [case testDecoratedFunction]
 @decorator
-def foo(x): pass
+def foo(x): ...
 [out]
-def foo(x): pass
+def foo(x): ...
 
 [case testMultipleAssignment]
 x, y = 1, 2
@@ -178,11 +178,11 @@ x = ... # type: Any
 y = ... # type: Any
 
 [case testKeywordOnlyArg]
-def f(x, *, y=1): pass
-def g(x, *, y=1, z=2): pass
+def f(x, *, y=1): ...
+def g(x, *, y=1, z=2): ...
 [out]
-def f(x, *, y=1): pass
-def g(x, *, y=1, z=2): pass
+def f(x, *, y=1): ...
+def g(x, *, y=1, z=2): ...
 
 [case testProperty]
 class A:
@@ -190,134 +190,134 @@ class A:
     def f(self):
         return 1
     @f.setter
-    def f(self, x): pass
+    def f(self, x): ...
 [out]
 class A:
     @property
-    def f(self): pass
+    def f(self): ...
     @f.setter
-    def f(self, x): pass
+    def f(self, x): ...
 
 [case testStaticMethod]
 class A:
     @staticmethod
-    def f(x): pass
+    def f(x): ...
 [out]
 class A:
     @staticmethod
-    def f(x): pass
+    def f(x): ...
 
 [case testClassMethod]
 class A:
     @classmethod
-    def f(cls): pass
+    def f(cls): ...
 [out]
 class A:
     @classmethod
-    def f(cls): pass
+    def f(cls): ...
 
 [case testIfMainCheck]
-def a(): pass
+def a(): ...
 if __name__ == '__main__':
     x = 1
-    def f(): pass
-def b(): pass
+    def f(): ...
+def b(): ...
 [out]
-def a(): pass
-def b(): pass
+def a(): ...
+def b(): ...
 
 [case testImportStar]
 from x import *
 from a.b import *
-def f(): pass
+def f(): ...
 [out]
 from x import *
 from a.b import *
 
-def f(): pass
+def f(): ...
 
 [case testNoSpacesBetweenEmptyClasses]
 class X:
-    def g(self): pass
-class A: pass
-class B: pass
+    def g(self): ...
+class A: ...
+class B: ...
 class C:
-    def f(self): pass
+    def f(self): ...
 [out]
 class X:
-    def g(self): pass
+    def g(self): ...
 
-class A: pass
-class B: pass
+class A: ...
+class B: ...
 
 class C:
-    def f(self): pass
+    def f(self): ...
 
 [case testExceptionBaseClasses]
-class A(Exception): pass
-class B(ValueError): pass
+class A(Exception): ...
+class B(ValueError): ...
 [out]
-class A(Exception): pass
-class B(ValueError): pass
+class A(Exception): ...
+class B(ValueError): ...
 
 [case testOmitSomeSpecialMethos]
 class A:
-    def __str__(self): pass
-    def __repr__(self): pass
-    def __eq__(self): pass
-    def __getstate__(self): pass
-    def __setstate__(self, state): pass
+    def __str__(self): ...
+    def __repr__(self): ...
+    def __eq__(self): ...
+    def __getstate__(self): ...
+    def __setstate__(self, state): ...
 [out]
 class A:
-    def __eq__(self): pass
+    def __eq__(self): ...
 
 [case testOmitDefsNotInAll_import]
 __all__ = [] + ['f']
-def f(): pass
-def g(): pass
+def f(): ...
+def g(): ...
 [out]
-def f(): pass
+def f(): ...
 
 [case testVarDefsNotInAll_import]
 __all__ = [] + ['f', 'g']
-def f(): pass
+def f(): ...
 x = 1
 y = 1
-def g(): pass
+def g(): ...
 [out]
-def f(): pass
-def g(): pass
+def f(): ...
+def g(): ...
 
 [case testIncludeClassNotInAll_import]
 __all__ = [] + ['f']
-def f(): pass
-class A: pass
+def f(): ...
+class A: ...
 [out]
-def f(): pass
+def f(): ...
 
-class A: pass
+class A: ...
 
 [case testAllAndClass_import]
 __all__ = ['A']
 class A:
     x = 1
-    def f(self): pass
+    def f(self): ...
 [out]
 from typing import Any
 
 class A:
     x = ... # type: Any
-    def f(self): pass
+    def f(self): ...
 
 [case testMultiplePrivateDefs]
-class A: pass
+class A: ...
 _x = 1
 _y = 1
 _z = 1
-class C: pass
+class C: ...
 [out]
-class A: pass
-class C: pass
+class A: ...
+class C: ...
 
 [case testIncludeFromImportIfInAll_import]
 from re import match, search, sub
@@ -339,19 +339,19 @@ from .x import *
 
 [case testCommentForUndefinedName_import]
 __all__ = ['f', 'x', 'C', 'g']
-def f(): pass
+def f(): ...
 x = 1
 class C:
-    def g(self): pass
+    def g(self): ...
 [out]
 from typing import Any
 
-def f(): pass
+def f(): ...
 
 x = ... # type: Any
 
 class C:
-    def g(self): pass
+    def g(self): ...
 
 # Names in __all__ with no definition:
 #   g
@@ -360,23 +360,23 @@ class C:
 class A:
     __slots__ = ()
 [out]
-class A: pass
+class A: ...
 
 [case testSkipPrivateProperty]
 class A:
     @property
-    def _foo(self): pass
+    def _foo(self): ...
 [out]
-class A: pass
+class A: ...
 
 [case testSkipPrivateStaticAndClassMethod]
 class A:
     @staticmethod
-    def _foo(): pass
+    def _foo(): ...
     @classmethod
-    def _bar(cls): pass
+    def _bar(cls): ...
 [out]
-class A: pass
+class A: ...
 
 [case testNamedtuple]
 import collections, x
@@ -396,97 +396,97 @@ X = namedtuple('X', 'a b')
 
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
-def f(): pass
+def f(): ...
 X = _namedtuple('X', 'a b')
-def g(): pass
+def g(): ...
 [out]
 from collections import namedtuple
 
-def f(): pass
+def f(): ...
 
 X = namedtuple('X', 'a b')
 
-def g(): pass
+def g(): ...
 
 [case testNamedtupleBaseClass]
 import collections, x
 _X = collections.namedtuple('_X', ['a', 'b'])
-class Y(_X): pass
+class Y(_X): ...
 [out]
 from collections import namedtuple
 
 _X = namedtuple('_X', ['a', 'b'])
 
-class Y(_X): pass
+class Y(_X): ...
 
 [case testArbitraryBaseClass]
 import x
-class D(x.C): pass
+class D(x.C): ...
 [out]
 import x
 
-class D(x.C): pass
+class D(x.C): ...
 
 [case testArbitraryBaseClass]
 import x.y
-class D(x.y.C): pass
+class D(x.y.C): ...
 [out]
 import x.y
 
-class D(x.y.C): pass
+class D(x.y.C): ...
 
 [case testUnqualifiedArbitraryBaseClassWithNoDef]
-class A(int): pass
+class A(int): ...
 [out]
-class A(int): pass
+class A(int): ...
 
 [case testUnqualifiedArbitraryBaseClass]
 from x import X
-class A(X): pass
+class A(X): ...
 [out]
 from x import X
 
-class A(X): pass
+class A(X): ...
 
 [case testUnqualifiedArbitraryBaseClassWithImportAs]
 from x import X as _X
-class A(_X): pass
+class A(_X): ...
 [out]
 from x import X as _X
 
-class A(_X): pass
+class A(_X): ...
 
 [case testObjectBaseClass]
-class A(object): pass
+class A(object): ...
 [out]
-class A: pass
+class A: ...
 
 [case testEmptyLines]
-def x(): pass
+def x(): ...
 def f():
     class A:
         def f(self):
             self.x = 1
-def g(): pass
+def g(): ...
 [out]
-def x(): pass
-def f(): pass
-def g(): pass
+def x(): ...
+def f(): ...
+def g(): ...
 
 [case testNestedClass]
 class A:
     class B:
         x = 1
-        def f(self): pass
-    def g(self): pass
+        def f(self): ...
+    def g(self): ...
 [out]
 from typing import Any
 
 class A:
     class B:
         x = ... # type: Any
-        def f(self): pass
-    def g(self): pass
+        def f(self): ...
+    def g(self): ...
 
 [case testExportViaRelativeImport]
 from .api import get
