@@ -110,6 +110,9 @@ TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'builtins.unicode',
 })
 
+# Keywords parsed as names, but that cannot be assigned to
+RESERVED_NAMES = ('None', 'True', 'False', '__debug__')
+
 
 class SemanticAnalyzer(NodeVisitor):
     """Semantically analyze parsed mypy files.
@@ -886,6 +889,10 @@ class SemanticAnalyzer(NodeVisitor):
         """
 
         if isinstance(lval, NameExpr):
+            if self.cur_mod_id != 'builtins' and lval.name in RESERVED_NAMES:
+                self.fail('Cannot assign value to keyword "{0}"'.format(lval.name), lval)
+                return
+
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and
                              not self.type)
