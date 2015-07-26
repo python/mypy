@@ -69,7 +69,7 @@ from mypy.types import (
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyse_type_alias
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.lex import lex
 from mypy.parsetype import parse_type
@@ -233,7 +233,7 @@ class SemanticAnalyzer(NodeVisitor):
             defn._fullname = defn.name()
 
         self.errors.push_function(defn.name())
-        self.analyse_function(defn)
+        self.analyze_function(defn)
         self.errors.pop_function()
 
     def is_conditional_func(self, n: Node, defn: FuncDef) -> bool:
@@ -311,7 +311,7 @@ class SemanticAnalyzer(NodeVisitor):
                                                   self.builtin_type('builtins.function'))))
             if item.func.is_property and i == 0:
                 # This defines a property, probably with a setter and/or deleter.
-                self.analyse_property_with_multi_part_definition(defn)
+                self.analyze_property_with_multi_part_definition(defn)
                 break
             if not [dec for dec in item.decorators
                     if refers_to_fullname(dec, 'typing.overload')]:
@@ -327,7 +327,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.is_func_scope():
             self.add_local_func(defn, defn)
 
-    def analyse_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
+    def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a propery defined using multiple methods (e.g., using @x.setter).
 
         Assume that the first method (@property) has already been analyzed.
@@ -345,7 +345,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Decorated property not supported", item)
             item.func.accept(self)
 
-    def analyse_function(self, defn: FuncItem) -> None:
+    def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         tvarnodes = self.add_func_type_variables_to_symbol_table(defn)
         if defn.type:
@@ -829,7 +829,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
-            self.analyse_lvalue(lval, explicit_type=s.type is not None)
+            self.analyze_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
         if s.type:
             s.type = self.anal_type(s.type)
@@ -837,7 +837,7 @@ class SemanticAnalyzer(NodeVisitor):
             # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
-                res = analyse_type_alias(s.rvalue,
+                res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.fail)
@@ -876,7 +876,7 @@ class SemanticAnalyzer(NodeVisitor):
                         #       just an alias for the type.
                         self.globals[lvalue.name].node = node
 
-    def analyse_lvalue(self, lval: Node, nested: bool = False,
+    def analyze_lvalue(self, lval: Node, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target.
@@ -934,7 +934,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyse_member_lvalue(lval)
+                self.analyze_member_lvalue(lval)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -948,17 +948,17 @@ class SemanticAnalyzer(NodeVisitor):
             items = cast(Any, lval).items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("Can't assign to ()", lval)
-            self.analyse_tuple_or_list_lvalue(cast(Union[ListExpr, TupleExpr], lval),
+            self.analyze_tuple_or_list_lvalue(cast(Union[ListExpr, TupleExpr], lval),
                                               add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
-                self.analyse_lvalue(lval.expr, nested, add_global, explicit_type)
+                self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
             else:
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
             self.fail('Invalid assignment target', lval)
 
-    def analyse_tuple_or_list_lvalue(self, lval: Union[ListExpr, TupleExpr],
+    def analyze_tuple_or_list_lvalue(self, lval: Union[ListExpr, TupleExpr],
                                      add_global: bool = False,
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
@@ -972,10 +972,10 @@ class SemanticAnalyzer(NodeVisitor):
             if len(star_exprs) == 1:
                 star_exprs[0].valid = True
             for i in items:
-                self.analyse_lvalue(i, nested=True, add_global=add_global,
+                self.analyze_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
 
-    def analyse_member_lvalue(self, lval: MemberExpr) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr) -> None:
         lval.accept(self)
         if (self.is_self_member_ref(lval) and
                 self.type.get(lval.name) is None):
@@ -1345,7 +1345,7 @@ class SemanticAnalyzer(NodeVisitor):
         s.expr.accept(self)
 
         # Bind index variables and check if they define new names.
-        self.analyse_lvalue(s.index)
+        self.analyze_lvalue(s.index)
 
         self.loop_depth += 1
         self.visit_block(s.body)
@@ -1378,7 +1378,7 @@ class SemanticAnalyzer(NodeVisitor):
             if type:
                 type.accept(visitor)
             if var:
-                self.analyse_lvalue(var, add_global=add_global)
+                self.analyze_lvalue(var, add_global=add_global)
             handler.accept(visitor)
         if s.else_body:
             s.else_body.accept(visitor)
@@ -1390,7 +1390,7 @@ class SemanticAnalyzer(NodeVisitor):
             e.accept(self)
         for n in s.target:
             if n:
-                self.analyse_lvalue(n)
+                self.analyze_lvalue(n)
         self.visit_block(s.body)
 
     def visit_del_stmt(self, s: DelStmt) -> None:
@@ -1631,18 +1631,18 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
         self.enter()
-        self.analyse_comp_for(expr)
+        self.analyze_comp_for(expr)
         expr.key.accept(self)
         expr.value.accept(self)
         self.leave()
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
-        self.analyse_comp_for(expr)
+        self.analyze_comp_for(expr)
         expr.left_expr.accept(self)
         self.leave()
 
-    def analyse_comp_for(self, expr: Union[GeneratorExpr,
+    def analyze_comp_for(self, expr: Union[GeneratorExpr,
                                            DictionaryComprehension]) -> None:
         """Analyses the 'comp_for' part of comprehensions.
         That is the part after 'for' in (x for x in l if p)
@@ -1651,12 +1651,12 @@ class SemanticAnalyzer(NodeVisitor):
                                                expr.condlists):
             sequence.accept(self)
             # Bind index variables.
-            self.analyse_lvalue(index)
+            self.analyze_lvalue(index)
             for cond in conditions:
                 cond.accept(self)
 
     def visit_func_expr(self, expr: FuncExpr) -> None:
-        self.analyse_function(expr)
+        self.analyze_function(expr)
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> None:
         expr.if_expr.accept(self)
@@ -1913,7 +1913,7 @@ class FirstPass(NodeVisitor):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
-            self.sem.analyse_lvalue(lval, add_global=True,
+            self.sem.analyze_lvalue(lval, add_global=True,
                                     explicit_type=s.type is not None)
 
     def visit_func_def(self, d: FuncDef) -> None:
@@ -1945,12 +1945,12 @@ class FirstPass(NodeVisitor):
                                                    self.sem.cur_mod_id)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
-        self.sem.analyse_lvalue(s.index, add_global=True)
+        self.sem.analyze_lvalue(s.index, add_global=True)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for n in s.target:
             if n:
-                self.sem.analyse_lvalue(n, add_global=True)
+                self.sem.analyze_lvalue(n, add_global=True)
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())

@@ -18,8 +18,8 @@ class float: pass
 
 # The functions below are special functions used in test cases; their
 # implementations are actually in the __dynchk module, but they are defined
-# here so that the semantic analyser and the type checker are happy without
-# having to analyse the entire __dynchk module all the time.
+# here so that the semantic analyzer and the type checker are happy without
+# having to analyze the entire __dynchk module all the time.
 #
 # The transformation implementation has special case handling for these
 # functions; it's a bit ugly but it works for now.

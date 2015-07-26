@@ -13,7 +13,7 @@ from mypy.errors import CompileError
 from mypy.nodes import TypeInfo
 
 
-# Semantic analyser test cases: dump parse tree
+# Semantic analyzer test cases: dump parse tree
 
 # Semantic analysis test case description files.
 semanal_files = ['semanal-basic.test',
@@ -75,7 +75,7 @@ def test_semanal(testcase):
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
                                                                 testcase.line))
 
-# Semantic analyser error test cases
+# Semantic analyzer error test cases
 
 # Paths to files containing test case descriptions.
 semanal_error_files = ['semanal-errors.test']
