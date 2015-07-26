@@ -842,6 +842,13 @@ class A: pass
 A = None # E: Invalid assignment target
 [out]
 
+[case testAssignToKeyword]
+True = 10 # E: Cannot assign value to keyword "True"
+False = 10 # E: Cannot assign value to keyword "False"
+None = 10 # E: Cannot assign value to keyword "None"
+__debug__ = 10 # E: Cannot assign value to keyword "__debug__"
+[out]
+
 [case testInvalidQualifiedName]
 from typing import Any
 x = 0 # type: Any
