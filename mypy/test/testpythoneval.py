@@ -17,7 +17,7 @@ import sys
 
 import typing
 
-from mypy.myunit import Suite, run_test, SkipTestCaseException
+from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal
@@ -113,7 +113,3 @@ def try_find_python2_interpreter():
         except OSError:
             pass
     return None
-
-
-if __name__ == '__main__':
-    run_test(PythonEvaluationSuite(), sys.argv[1:])

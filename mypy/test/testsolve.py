@@ -2,7 +2,7 @@
 
 import typing
 
-from mypy.myunit import Suite, assert_equal, run_test
+from mypy.myunit import Suite, assert_equal
 from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
 from mypy.solve import solve_constraints
 from mypy.typefixture import TypeFixture
@@ -149,8 +149,3 @@ class SolveSuite(Suite):
 
     def subc(self, type_var, bound):
         return Constraint(type_var.name, SUBTYPE_OF, bound)
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(SolveSuite(), sys.argv[1:])

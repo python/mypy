@@ -7,6 +7,8 @@ from mypy.types import (
 )
 import mypy.applytype
 import mypy.constraints
+# Circular import; done in the function instead.
+#import mypy.solve
 from mypy import messages, sametypes
 from mypy.nodes import CONTRAVARIANT, COVARIANT
 from mypy.maptype import map_instance_to_supertype
@@ -252,6 +254,7 @@ def unify_generic_callable(type: CallableType, target: CallableType) -> Callable
 
     Return unified CallableType if successful; otherwise, return None.
     """
+    import mypy.solve
     constraints = []  # type: List[mypy.constraints.Constraint]
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(

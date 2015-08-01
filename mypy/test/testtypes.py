@@ -3,7 +3,7 @@
 from typing import List
 
 from mypy.myunit import (
-    Suite, assert_equal, assert_true, assert_false, run_test
+    Suite, assert_equal, assert_true, assert_false
 )
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
@@ -729,17 +729,3 @@ class MeetSuite(Suite):
         return CallableType(a[:-1],
                             [ARG_POS] * n, [None] * n,
                             a[-1], self.fx.function)
-
-
-class CombinedTypesSuite(Suite):
-    def __init__(self):
-        self.test_types = TypesSuite()
-        self.test_type_ops = TypeOpsSuite()
-        self.test_join = JoinSuite()
-        self.test_meet = MeetSuite()
-        super().__init__()
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(CombinedTypesSuite(), sys.argv[1:])

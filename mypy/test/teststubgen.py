@@ -9,7 +9,7 @@ import time
 
 import typing
 
-from mypy.myunit import Suite, AssertionFailure, run_test, assert_equal
+from mypy.myunit import Suite, AssertionFailure, assert_equal
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases
 from mypy.test import config
@@ -181,18 +181,3 @@ class StubgencSuite(Suite):
     def test_infer_unary_op_sig(self):
         for op in ('neg', 'pos'):
             assert_equal(infer_method_sig('__%s__' % op), '()')
-
-
-class StubgenSuite(Suite):
-    """Collect all the test classes defined in this file."""
-
-    def __init__(self):
-        self.test_python = StubgenPythonSuite()
-        self.test_c = StubgencSuite()
-        self.test_util = StubgenUtilSuite()
-        super().__init__()
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(StubgenSuite(), sys.argv[1:])

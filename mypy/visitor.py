@@ -2,7 +2,9 @@
 
 from typing import TypeVar, Generic
 
-import mypy.nodes
+if False:
+    # break import cycle only needed for mypy
+    import mypy.nodes
 
 
 T = TypeVar('T')
