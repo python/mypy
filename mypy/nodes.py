@@ -20,7 +20,9 @@ class Context(metaclass=ABCMeta):
     def get_line(self) -> int: pass
 
 
-import mypy.types
+if False:
+    # break import cycle only needed for mypy
+    import mypy.types
 
 
 T = TypeVar('T')
