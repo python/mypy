@@ -124,6 +124,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
+        # TODO: Consider subtyping instead of just similarity.
         if isinstance(self.s, CallableType) and is_similar_callables(
                 t, cast(CallableType, self.s)):
             return combine_similar_callables(t, cast(CallableType, self.s))
