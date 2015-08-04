@@ -492,6 +492,7 @@ class TypeVisitor(Generic[T]):
     The parameter T is the return type of the visit methods.
     """
 
+    @abstractmethod
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
 
@@ -501,41 +502,49 @@ class TypeVisitor(Generic[T]):
     def visit_error_type(self, t: ErrorType) -> T:
         pass
 
+    @abstractmethod
     def visit_any(self, t: AnyType) -> T:
         pass
 
+    @abstractmethod
     def visit_void(self, t: Void) -> T:
         pass
 
+    @abstractmethod
     def visit_none_type(self, t: NoneTyp) -> T:
         pass
 
     def visit_erased_type(self, t: ErasedType) -> T:
         pass
 
+    @abstractmethod
     def visit_type_var(self, t: TypeVarType) -> T:
         pass
 
+    @abstractmethod
     def visit_instance(self, t: Instance) -> T:
         pass
 
+    @abstractmethod
     def visit_callable_type(self, t: CallableType) -> T:
         pass
 
     def visit_overloaded(self, t: Overloaded) -> T:
         pass
 
+    @abstractmethod
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
     def visit_star_type(self, t: StarType) -> T:
         pass
 
+    @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
         pass
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        assert False               # XXX catch visitors that don't have this implemented yet
+        pass
 
 
 class TypeTranslator(TypeVisitor[Type]):
