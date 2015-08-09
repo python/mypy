@@ -25,7 +25,7 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
 
 
 def is_subtype(left: Type, right: Type,
-               type_parameter_checker: TypeParameterChecker=check_type_parameter) -> bool:
+               type_parameter_checker: TypeParameterChecker = check_type_parameter) -> bool:
     """Is 'left' subtype of 'right'?
 
     Also consider Any to be a subtype of any type, and vice versa. This
