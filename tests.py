@@ -1,7 +1,5 @@
 import sys
 
-import typing
-
 from mypy.myunit import Suite, run_test
 from mypy.test import testtypes
 from mypy.test import testsubtypes
