@@ -39,7 +39,7 @@ class TypeVarDef(mypy.nodes.Context):
     line = 0
 
     def __init__(self, name: str, id: int, values: List[Type],
-                 upper_bound: Type, variance: int=INVARIANT, line: int=-1) -> None:
+                 upper_bound: Type, variance: int = INVARIANT, line: int = -1) -> None:
         self.name = name
         self.id = id
         self.values = values
@@ -189,10 +189,11 @@ class TypeVarType(Type):
     id = 0     # 1, 2, ... for type-related, -1, ... for function-related
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type   # Upper bound for values (currently always 'object')
+    # See comments in TypeVarDef for more about variance.
     variance = INVARIANT  # type: int
 
     def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
-                 variance: int=INVARIANT, line: int=-1) -> None:
+                 variance: int = INVARIANT, line: int = -1) -> None:
         self.name = name
         self.id = id
         self.values = values
