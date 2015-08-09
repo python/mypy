@@ -37,6 +37,7 @@ AnyStr = TypeVar('AnyStr', str, bytes)
 
 # Some unconstrained type variables.  These are used by the container types.
 _T = TypeVar('_T')  # Any type.
+_S = TypeVar('_S')  # Any type.
 _KT = TypeVar('_KT')  # Key type.
 _VT = TypeVar('_VT')  # Value type.
 _T_co = TypeVar('_T_co', covariant=True)  # Any type covariant containers.
@@ -133,11 +134,9 @@ class AbstractSet(Iterable[_KT_co], Container[_KT_co], Sized, Generic[_KT_co]):
     def __gt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
     def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_KT_co]: pass
-    # In order to support covariance, _T should not be used within an argument
-    # type. We need union types to properly model this.
-    def __or__(self, s: AbstractSet[_KT_co]) -> AbstractSet[_KT_co]: pass
+    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_KT_co, _T]]: pass
     def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_KT_co]: pass
-    def __xor__(self, s: AbstractSet[_KT_co]) -> AbstractSet[_KT_co]: pass
+    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_KT_co, _T]]: pass
     # TODO: Argument can be a more general ABC?
     def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
@@ -150,9 +149,9 @@ class MutableSet(AbstractSet[_T], Generic[_T]):
     def clear(self) -> None: pass
     def pop(self) -> _T: pass
     def remove(self, element: _T) -> None: pass
-    def __ior__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
+    def __ior__(self, s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]: pass
     def __iand__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
-    def __ixor__(self, s: AbstractSet[_T]) -> MutableSet[_T]: pass
+    def __ixor__(self, s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]: pass
     def __isub__(self, s: AbstractSet[Any]) -> MutableSet[_T]: pass
 
 class MappingView(Sized):
@@ -170,14 +169,16 @@ class ValuesView(MappingView, Iterable[_VT_co], Generic[_VT_co]):
     def __contains__(self, o: object) -> bool: pass
     def __iter__(self) -> Iterator[_VT_co]: pass
 
-class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT_co]):
+class Mapping(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
+    # TODO: Value type should be covariant, but currently we can't give a good signature for
+    #   get if this is the case.
     @abstractmethod
-    def __getitem__(self, k: _KT) -> _VT_co: pass
+    def __getitem__(self, k: _KT) -> _VT: pass
     # Mixin methods
-    def get(self, k: _KT, default: _VT = ...) -> _VT_co: pass
-    def items(self) -> AbstractSet[Tuple[_KT, _VT_co]]: pass
+    def get(self, k: _KT, default: _VT = ...) -> _VT: pass
+    def items(self) -> AbstractSet[Tuple[_KT, _VT]]: pass
     def keys(self) -> AbstractSet[_KT]: pass
-    def values(self) -> ValuesView[_VT_co]: pass
+    def values(self) -> ValuesView[_VT]: pass
     def __contains__(self, o: object) -> bool: pass
 
 class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):

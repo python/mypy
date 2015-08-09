@@ -482,10 +482,10 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def __init__(self, iterable: Iterable[Tuple[_KT, _VT]]) -> None: pass  # TODO keyword args
     def clear(self) -> None: pass
     def copy(self) -> Dict[_KT, _VT]: pass
-    def get(self, k: _KT, default: _VT=None) -> _VT: pass
-    def pop(self, k: _KT, default: _VT=None) -> _VT: pass
+    def get(self, k: _KT, default: _VT = None) -> _VT: pass
+    def pop(self, k: _KT, default: _VT = None) -> _VT: pass
     def popitem(self) -> Tuple[_KT, _VT]: pass
-    def setdefault(self, k: _KT, default: _VT=None) -> _VT: pass
+    def setdefault(self, k: _KT, default: _VT = None) -> _VT: pass
     def update(self, m: Union[Mapping[_KT, _VT],
                               Iterable[Tuple[_KT, _VT]]]) -> None: pass
     def keys(self) -> KeysView[_KT]: pass
@@ -530,12 +530,12 @@ class set(MutableSet[_T], Generic[_T]):
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[Any]) -> set[_T]: pass
     def __iand__(self, s: AbstractSet[Any]) -> set[_T]: pass
-    def __or__(self, s: AbstractSet[_T]) -> set[_T]: pass
-    def __ior__(self, s: AbstractSet[_T]) -> set[_T]: pass
+    def __or__(self, s: AbstractSet[_S]) -> set[Union[_T, _S]]: pass
+    def __ior__(self, s: AbstractSet[_S]) -> set[Union[_T, _S]]: pass
     def __sub__(self, s: AbstractSet[Any]) -> set[_T]: pass
     def __isub__(self, s: AbstractSet[Any]) -> set[_T]: pass
-    def __xor__(self, s: AbstractSet[_T]) -> set[_T]: pass
-    def __ixor__(self, s: AbstractSet[_T]) -> set[_T]: pass
+    def __xor__(self, s: AbstractSet[_S]) -> set[Union[_T, _S]]: pass
+    def __ixor__(self, s: AbstractSet[_S]) -> set[Union[_T, _S]]: pass
     def __le__(self, s: AbstractSet[Any]) -> bool: pass
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
@@ -557,9 +557,9 @@ class frozenset(AbstractSet[_T], Generic[_T]):
     def __iter__(self) -> Iterator[_T]: pass
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
-    def __or__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __or__(self, s: AbstractSet[_S]) -> frozenset[Union[_T, _S]]: pass
     def __sub__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
-    def __xor__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __xor__(self, s: AbstractSet[_S]) -> frozenset[Union[_T, _S]]: pass
     def __le__(self, s: AbstractSet[Any]) -> bool: pass
     def __lt__(self, s: AbstractSet[Any]) -> bool: pass
     def __ge__(self, s: AbstractSet[Any]) -> bool: pass
