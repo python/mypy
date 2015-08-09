@@ -112,7 +112,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
         if isinstance(right, TypeVarType):
-            return left.name == right.name
+            return left.id == right.id
         else:
             return is_named_instance(self.right, 'builtins.object')
 
