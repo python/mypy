@@ -1063,6 +1063,13 @@ f = TypeVar('f', (int, str)) # E: Type expected
 g = TypeVar('g', x=(int, str)) # E: Unexpected argument to TypeVar(): x
 [out]
 
+[case testMoreInvalidTypevarArguments]
+from typing import TypeVar
+T = TypeVar('T', bound=int) # E: TypeVar 'bound' argument not supported yet
+S = TypeVar('S', covariant=True, contravariant=True) \
+    # E: TypeVar cannot be both covariant and contravariant
+[builtins fixtures/bool.py]
+
 [case testInvalidTypevarValues]
 from typing import TypeVar
 b = TypeVar('b', *[int]) # E: Unexpected argument to TypeVar()

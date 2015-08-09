@@ -1123,7 +1123,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("TypeVar 'contravariant' may only be 'True'", context)
                     return None
             elif param_name == 'bound':
-                self.fail("TypeVar 'bound' argument not supported yet.", context)
+                self.fail("TypeVar 'bound' argument not supported yet", context)
                 return None
             elif param_name == 'values':
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
@@ -1135,7 +1135,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Unexpected argument to TypeVar(): {}".format(param_name), context)
                 return None
         if covariant and contravariant:
-            self.fail("TypeVar cannot be both covariant and contravariant.", context)
+            self.fail("TypeVar cannot be both covariant and contravariant", context)
             return None
         elif covariant:
             return COVARIANT
