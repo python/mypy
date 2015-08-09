@@ -23,7 +23,7 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool=True) -> Type:
+def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
     if s == t:
         return s
     if isinstance(s, UnionType):
