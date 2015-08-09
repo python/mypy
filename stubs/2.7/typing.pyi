@@ -34,9 +34,14 @@ AnyStr = TypeVar('AnyStr', str, unicode)
 
 # Abstract base classes.
 
-_T = TypeVar('_T')
-_KT = TypeVar('_KT')
-_VT = TypeVar('_VT')
+# Some unconstrained type variables.  These are used by the container types.
+_T = TypeVar('_T')  # Any type.
+_KT = TypeVar('_KT')  # Key type.
+_VT = TypeVar('_VT')  # Value type.
+_T_co = TypeVar('_T_co', covariant=True)  # Any type covariant containers.
+_V_co = TypeVar('_V_co', covariant=True)  # Any type covariant containers.
+_VT_co = TypeVar('_VT_co', covariant=True)  # Value type covariant containers.
+_T_contra = TypeVar('_T_contra', contravariant=True)  # Ditto contravariant.
 
 # TODO Container etc.
 
@@ -64,99 +69,57 @@ class Sized(metaclass=ABCMeta):
     @abstractmethod
     def __len__(self) -> int: pass
 
-class Iterable(Generic[_T]):
+class Iterable(Generic[_T_co]):
     @abstractmethod
-    def __iter__(self) -> Iterator[_T]: pass
+    def __iter__(self) -> Iterator[_T_co]: pass
 
-class Iterator(Iterable[_T], Generic[_T]):
+class Iterator(Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
-    def next(self) -> _T: pass
+    def next(self) -> _T_co: pass
 
-class Sequence(Sized, Iterable[_T], Generic[_T]):
+class Sequence(Sized, Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
     @overload
     @abstractmethod
-    def __getitem__(self, i: int) -> _T: pass
+    def __getitem__(self, i: int) -> _T_co: pass
     @overload
     @abstractmethod
-    def __getitem__(self, s: slice) -> Sequence[_T]: pass
+    def __getitem__(self, s: slice) -> Sequence[_T_co]: pass
     @abstractmethod
     def index(self, x: Any) -> int: pass
     @abstractmethod
     def count(self, x: Any) -> int: pass
 
-class AbstractSet(Sized, Iterable[_T], Generic[_T]):
+class AbstractSet(Sized, Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: pass
-    # TODO __le__, __lt__, __gt__, __ge__
-    @abstractmethod
-    def __and__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    @abstractmethod
-    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    @abstractmethod
-    def __sub__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    @abstractmethod
-    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    # TODO argument can be any container?
-    @abstractmethod
-    def isdisjoint(self, s: AbstractSet[_T]) -> bool: pass
+    # Mixin methods
+    def __le__(self, s: AbstractSet[Any]) -> bool: pass
+    def __lt__(self, s: AbstractSet[Any]) -> bool: pass
+    def __gt__(self, s: AbstractSet[Any]) -> bool: pass
+    def __ge__(self, s: AbstractSet[Any]) -> bool: pass
+    def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_T_co]: pass
+    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_T_co, _T]]: pass
+    def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_T_co]: pass
+    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_T_co, _T]]: pass
+    # TODO: argument can be any container?
+    def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
 
 class Mapping(Sized, Iterable[_KT], Generic[_KT, _VT]):
     @abstractmethod
     def __getitem__(self, k: _KT) -> _VT: pass
-    @abstractmethod
-    def __setitem__(self, k: _KT, v: _VT) -> None: pass
-    @abstractmethod
-    def __delitem__(self, v: _KT) -> None: pass
-    @abstractmethod
+    # Mixin methods
+    def get(self, k: _KT, default: _VT = ...) -> _VT: pass
+    def keys(self) -> list[_KT]: pass
+    def values(self) -> list[_VT]: pass
+    def items(self) -> list[Tuple[_KT, _VT]]: pass
+    def iterkeys(self) -> Iterator[_KT]: pass
+    def itervalues(self) -> Iterator[_VT]: pass
+    def iteritems(self) -> Iterator[Tuple[_KT, _VT]]: pass
     def __contains__(self, o: object) -> bool: pass
 
-    @abstractmethod
-    def clear(self) -> None: pass
-    @abstractmethod
-    def copy(self) -> Mapping[_KT, _VT]: pass
-    @overload
-    @abstractmethod
-    def get(self, k: _KT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def get(self, k: _KT, default: _VT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def pop(self, k: _KT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def pop(self, k: _KT, default: _VT) -> _VT: pass
-    @abstractmethod
-    def popitem(self) -> Tuple[_KT, _VT]: pass
-    @overload
-    @abstractmethod
-    def setdefault(self, k: _KT) -> _VT: pass
-    @overload
-    @abstractmethod
-    def setdefault(self, k: _KT, default: _VT) -> _VT: pass
-
-    # TODO keyword arguments
-    @overload
-    @abstractmethod
-    def update(self, m: Mapping[_KT, _VT]) -> None: pass
-    @overload
-    @abstractmethod
-    def update(self, m: Iterable[Tuple[_KT, _VT]]) -> None: pass
-
-    @abstractmethod
-    def keys(self) -> list[_KT]: pass
-    @abstractmethod
-    def values(self) -> list[_VT]: pass
-    @abstractmethod
-    def items(self) -> list[Tuple[_KT, _VT]]: pass
-    @abstractmethod
-    def iterkeys(self) -> Iterator[_KT]: pass
-    @abstractmethod
-    def itervalues(self) -> Iterator[_VT]: pass
-    @abstractmethod
-    def iteritems(self) -> Iterator[Tuple[_KT, _VT]]: pass
+# TODO: MutableMapping
 
 class IO(Iterable[AnyStr], Generic[AnyStr]):
     # TODO detach

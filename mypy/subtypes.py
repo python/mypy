@@ -1,4 +1,4 @@
-from typing import cast, List, Dict
+from typing import cast, List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
@@ -8,42 +8,62 @@ from mypy.types import (
 import mypy.applytype
 import mypy.constraints
 from mypy import messages, sametypes
-from mypy.nodes import TypeInfo
-from mypy.expandtype import expand_type
+from mypy.nodes import CONTRAVARIANT, COVARIANT
 from mypy.maptype import map_instance_to_supertype
 
 
-def is_immutable(t: Instance) -> bool:
-    # TODO: The name is confusing, since the values need not be immutable.
-    return t.type.fullname() in ('typing.Iterable',
-                                 'typing.Sequence',
-                                 'typing.Reversible',
-                                 )
+TypeParameterChecker = Callable[[Type, Type, int], bool]
 
 
-def is_subtype(left: Type, right: Type) -> bool:
+def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
+    if variance == COVARIANT:
+        return is_subtype(lefta, righta, check_type_parameter)
+    elif variance == CONTRAVARIANT:
+        return is_subtype(righta, lefta, check_type_parameter)
+    else:
+        return is_equivalent(lefta, righta, check_type_parameter)
+
+
+def is_subtype(left: Type, right: Type,
+               type_parameter_checker: TypeParameterChecker = check_type_parameter) -> bool:
     """Is 'left' subtype of 'right'?
 
     Also consider Any to be a subtype of any type, and vice versa. This
     recursively applies to components of composite types (List[int] is subtype
     of List[Any], for example).
+
+    type_parameter_checker is used to check the type parameters (for example,
+    A with B in is_subtype(C[A], C[B]). The default checks for subtype relation
+    between the type arguments (e.g., A and B), taking the variance of the
+    type var into account.
     """
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
     elif isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any(is_subtype(left, item) for item in cast(UnionType, right).items)
+        return any(is_subtype(left, item, type_parameter_checker)
+                   for item in cast(UnionType, right).items)
     else:
-        return left.accept(SubtypeVisitor(right))
+        return left.accept(SubtypeVisitor(right, type_parameter_checker))
 
 
-def is_equivalent(a: Type, b: Type) -> bool:
-    return is_subtype(a, b) and is_subtype(b, a)
+def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
+    def ignore_tvars(s: Type, t: Type, v: int) -> bool:
+        return True
+    return is_subtype(left, right, ignore_tvars)
+
+
+def is_equivalent(a: Type, b: Type,
+                  type_parameter_checker=check_type_parameter) -> bool:
+    return is_subtype(a, b, type_parameter_checker) and is_subtype(b, a, type_parameter_checker)
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
-    def __init__(self, right: Type) -> None:
+
+    def __init__(self, right: Type,
+                 type_parameter_checker: TypeParameterChecker) -> None:
         self.right = right
+        self.check_type_parameter = type_parameter_checker
 
     # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
@@ -73,7 +93,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, Instance):
             if left.type._promote and is_subtype(left.type._promote,
-                                                 self.right):
+                                                 self.right,
+                                                 self.check_type_parameter):
                 return True
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
@@ -81,20 +102,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             # Map left type to corresponding right instances.
             t = map_instance_to_supertype(left, right.type)
-            if not is_immutable(right):
-                result = all(is_equivalent(ta, ra) for (ta, ra) in
-                             zip(t.args, right.args))
-            else:
-                result = all(is_subtype(ta, ra) for (ta, ra) in
-                             zip(t.args, right.args))
-            return result
+
+            return all(self.check_type_parameter(lefta, righta, tvar.variance)
+                       for lefta, righta, tvar in
+                       zip(t.args, right.args, right.type.defn.type_vars))
         else:
             return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
         if isinstance(right, TypeVarType):
-            return left.name == right.name
+            return left.id == right.id
         else:
             return is_named_instance(self.right, 'builtins.object')
 
@@ -103,7 +121,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, CallableType):
             return is_callable_subtype(left, right)
         elif isinstance(right, Overloaded):
-            return all(is_subtype(left, item) for item in right.items())
+            return all(is_subtype(left, item, self.check_type_parameter)
+                       for item in right.items())
         elif is_named_instance(right, 'builtins.object'):
             return True
         elif (is_named_instance(right, 'builtins.type') and
@@ -128,9 +147,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if len(left.items) != len(right.items):
                 return False
             for i in range(len(left.items)):
-                if not is_subtype(left.items[i], right.items[i]):
+                if not is_subtype(left.items[i], right.items[i], self.check_type_parameter):
                     return False
-            if not is_subtype(left.fallback, right.fallback):
+            if not is_subtype(left.fallback, right.fallback, self.check_type_parameter):
                 return False
             return True
         else:
@@ -143,7 +162,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, CallableType) or is_named_instance(
                 right, 'builtins.type'):
             for item in left.items():
-                if is_subtype(item, right):
+                if is_subtype(item, right, self.check_type_parameter):
                     return True
             return False
         elif isinstance(right, Overloaded):
@@ -151,7 +170,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if len(left.items()) != len(right.items()):
                 return False
             for i in range(len(left.items())):
-                if not is_subtype(left.items()[i], right.items()[i]):
+                if not is_subtype(left.items()[i], right.items()[i], self.check_type_parameter):
                     return False
             return True
         elif isinstance(right, UnboundType):
@@ -160,7 +179,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all(is_subtype(item, self.right) for item in left.items)
+        return all(is_subtype(item, self.right, self.check_type_parameter)
+                   for item in left.items)
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
@@ -271,13 +291,20 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
         if isinstance(s, Instance):
             if not t.type.has_base(s.type.fullname()):
                 return False
+
+            def check_argument(left: Type, right: Type, variance: int) -> bool:
+                if variance == COVARIANT:
+                    return is_proper_subtype(left, right)
+                elif variance == CONTRAVARIANT:
+                    return is_proper_subtype(right, left)
+                else:
+                    return sametypes.is_same_type(left, right)
+
+            # Map left type to corresponding right instances.
             t = map_instance_to_supertype(t, s.type)
-            if not is_immutable(s):
-                return all(sametypes.is_same_type(ta, ra) for (ta, ra) in
-                           zip(t.args, s.args))
-            else:
-                return all(is_proper_subtype(ta, ra) for (ta, ra) in
-                           zip(t.args, s.args))
+
+            return all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
+                       zip(t.args, s.args, s.type.defn.type_vars))
         return False
     else:
         return sametypes.is_same_type(t, s)

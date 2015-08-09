@@ -224,6 +224,21 @@ class A(B[S], Generic[T, S]):
 [out]
 main: note: In class "A":
 
+[case testOverrideGenericMethodInNonGenericClass]
+from typing import TypeVar
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A:
+    def f(self, x: T, y: S) -> None: pass
+class B(A):
+    def f(self, x: S, y: T) -> None: pass
+class C(A):
+    def f(self, x: T, y: T) -> None: pass # E: Argument 2 of "f" incompatible with supertype "A"
+[out]
+main: note: In class "C":
+
 
 -- Inheritance from generic types with implicit dynamic supertype
 -- --------------------------------------------------------------
@@ -612,4 +627,66 @@ class Nums(Iterable[int]):
 n, n = Nums()
 s, s = Nums() # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/for.py]
+[out]
+
+
+-- Variance
+-- --------
+
+
+[case testCovariant]
+from typing import TypeVar, Generic
+True = 1
+
+T = TypeVar('T', covariant=True)
+
+class G(Generic[T]): pass
+class A: pass
+class B(A): pass
+class C(B): pass
+
+a = None  # type: G[A]
+b = None  # type: G[B]
+c = None  # type: G[C]
+
+b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
+b = c
+[out]
+
+[case testContravariant]
+from typing import TypeVar, Generic
+True = 1
+
+T = TypeVar('T', contravariant=True)
+
+class G(Generic[T]): pass
+class A: pass
+class B(A): pass
+class C(B): pass
+
+a = None  # type: G[A]
+b = None  # type: G[B]
+c = None  # type: G[C]
+
+b = a
+b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+[out]
+
+[case testInvariant]
+from typing import TypeVar, Generic
+True = 1
+
+T = TypeVar('T')  # invariant (default)
+
+class G(Generic[T]): pass
+class A: pass
+class B(A): pass
+class C(B): pass
+
+a = None  # type: G[A]
+b = None  # type: G[B]
+c = None  # type: G[C]
+
+b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
+b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
 [out]

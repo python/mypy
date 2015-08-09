@@ -1292,6 +1292,20 @@ class TypeApplication(Node):
         return visitor.visit_type_application(self)
 
 
+# Variance of a type variable. For example, T in the definition of
+# List[T] is invariant, so List[int] is not a subtype of List[object],
+# and also List[object] is not a subtype of List[int].
+#
+# The T in Iterable[T] is covariant, so Iterable[int] is a subtype of
+# Iterable[object], but not vice versa.
+#
+# If T is contravariant in Foo[T], Foo[object] is a subtype of
+# Foo[int], but not vice versa.
+INVARIANT = 0  # type: int
+COVARIANT = 1  # type: int
+CONTRAVARIANT = 2  # type: int
+
+
 class TypeVarExpr(SymbolNode):
     """Type variable expression TypeVar(...)."""
 
@@ -1300,12 +1314,19 @@ class TypeVarExpr(SymbolNode):
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
     values = None  # type: List[mypy.types.Type]
+    # Variance of the type variable. Invariant is the default.
+    # TypeVar(..., covariant=True) defines a covariant type variable.
+    # TypeVar(..., contravariant=True) defines a contravariant type
+    # variable.
+    variance = INVARIANT
 
     def __init__(self, name: str, fullname: str,
-                 values: List['mypy.types.Type']) -> None:
+                 values: List['mypy.types.Type'],
+                 variance: int=INVARIANT) -> None:
         self._name = name
         self._fullname = fullname
         self.values = values
+        self.variance = variance
 
     def name(self) -> str:
         return self._name

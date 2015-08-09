@@ -624,10 +624,7 @@ class dict(Mapping[_KT, _VT], Generic[_KT, _VT]):
     def has_key(self, k: _KT) -> bool: pass
     def clear(self) -> None: pass
     def copy(self) -> Dict[_KT, _VT]: pass
-    @overload
-    def get(self, k: _KT) -> _VT: pass
-    @overload
-    def get(self, k: _KT, default: _VT) -> _VT: pass
+    def get(self, k: _KT, default: _VT = None) -> _VT: pass
     @overload
     def pop(self, k: _KT) -> _VT: pass
     @overload
@@ -669,9 +666,9 @@ class set(AbstractSet[_T], Generic[_T]):
     def __iter__(self) -> Iterator[_T]: pass
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
+    def __or__(self, s: AbstractSet[_S]) -> AbstractSet[Union[_T, _S]]: pass
     def __sub__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
-    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[_T]: pass
+    def __xor__(self, s: AbstractSet[_S]) -> AbstractSet[Union[_T, _S]]: pass
     # TODO more set operations
 
 class frozenset(AbstractSet[_T], Generic[_T]):
@@ -685,9 +682,9 @@ class frozenset(AbstractSet[_T], Generic[_T]):
     def __iter__(self) -> Iterator[_T]: pass
     def __str__(self) -> str: pass
     def __and__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
-    def __or__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __or__(self, s: AbstractSet[_S]) -> frozenset[Union[_T, _S]]: pass
     def __sub__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
-    def __xor__(self, s: AbstractSet[_T]) -> frozenset[_T]: pass
+    def __xor__(self, s: AbstractSet[_S]) -> frozenset[Union[_T, _S]]: pass
     # TODO more set operations
 
 class enumerate(Iterator[Tuple[int, _T]], Generic[_T]):

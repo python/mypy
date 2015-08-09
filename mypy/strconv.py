@@ -382,6 +382,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr, ('Types', o.types)], o)
 
     def visit_type_var_expr(self, o):
+        if o.variance == mypy.nodes.COVARIANT:
+            return self.dump(['Variance(COVARIANT)'], o)
+        if o.variance == mypy.nodes.CONTRAVARIANT:
+            return self.dump(['Variance(CONTRAVARIANT)'], o)
         if o.values:
             return self.dump([('Values', o.values)], o)
         else:

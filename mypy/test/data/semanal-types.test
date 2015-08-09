@@ -1357,3 +1357,20 @@ from typing import Optional
 x = 1  # type: Optional[int, str]  # E: Optional[...] must have exactly one type argument
 y = 1  # type: Optional[x]  # E: Invalid type "__main__.x"
 [out]
+
+[case testCoAndContravariantTypeVar]
+from typing import TypeVar
+T = TypeVar('T', covariant=True)
+S = TypeVar('S', contravariant=True)
+[builtins fixtures/bool.py]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar : TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Variance(COVARIANT)))
+  AssignmentStmt:3(
+    NameExpr(S* [__main__.S])
+    TypeVarExpr:3(
+      Variance(CONTRAVARIANT))))

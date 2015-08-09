@@ -8,7 +8,7 @@ from mypy.types import (
     UnionType, FunctionLike
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent
+from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
 
 
 def join_simple(declaration: Type, s: Type, t: Type) -> Type:
@@ -180,7 +180,7 @@ def join_instances(t: Instance, s: Instance) -> Type:
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
-        if is_subtype(t, s):
+        if is_subtype(t, s) or is_subtype(s, t):
             # Compatible; combine type arguments.
             args = []  # type: List[Type]
             for i in range(len(t.args)):
@@ -189,7 +189,7 @@ def join_instances(t: Instance, s: Instance) -> Type:
         else:
             # Incompatible; return trivial result object.
             return object_from_instance(t)
-    elif t.type.bases and is_subtype(t, s):
+    elif t.type.bases and is_subtype_ignoring_tvars(t, s):
         return join_instances_via_supertype(t, s)
     else:
         # Now t is not a subtype of s, and t != s. Now s could be a subtype
