@@ -112,7 +112,6 @@ class TypeParser:
             if self.current_token_str() != ',':
                 break
             commas.append(self.skip())
-        rbracket = self.expect(']')
         return TypeList(items, line=lbracket.line)
 
     def parse_named_type(self) -> Type:
@@ -129,20 +128,15 @@ class TypeParser:
             components.append(t)
             name += '.' + t.string
 
-        lbracket, rbracket = none, none
         commas = []  # type: List[Token]
         args = []  # type: List[Type]
         if self.current_token_str() == '[':
-            lbracket = self.skip()
-
             while True:
                 typ = self.parse_type()
                 args.append(typ)
                 if self.current_token_str() != ',':
                     break
                 commas.append(self.skip())
-
-            rbracket = self.expect(']')
 
         typ = UnboundType(name, args, line)
         return typ
@@ -233,6 +227,6 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
     i += 1
     ret_type, i = parse_type(tokens, i)
     return CallableType(arg_types,
-                    arg_kinds,
-                    [None] * len(arg_types),
-                    ret_type, None), i
+                        arg_kinds,
+                        [None] * len(arg_types),
+                        ret_type, None), i

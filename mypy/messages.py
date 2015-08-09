@@ -389,7 +389,8 @@ class MessageBuilder:
             msg = 'Set comprehension has incompatible type Set[{}]'.format(
                 strip_quotes(self.format(arg_type)))
         elif callee.name == '<dictionary-comprehension>':
-            msg = '{} expression in dictionary comprehension has incompatible type {}; expected type {}'.format(
+            msg = ('{} expression in dictionary comprehension has incompatible type {}; '
+                   'expected type {}').format(
                 'Key' if n == 1 else 'Value',
                 self.format(arg_type),
                 self.format(callee.arg_types[n-1]))
