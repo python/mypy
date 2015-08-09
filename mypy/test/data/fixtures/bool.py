@@ -12,3 +12,6 @@ class function: pass
 class bool: pass
 class int: pass
 class str: pass
+
+True = bool()
+False = bool()
