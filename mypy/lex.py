@@ -158,13 +158,13 @@ INVALID_DEDENT = 5
 
 
 def lex(string: Union[str, bytes], first_line: int = 1,
-        pyversion: int = 3) -> Tuple[List[Token], Set[int]]:
+        pyversion: int = 3, is_stub_file: bool = False) -> Tuple[List[Token], Set[int]]:
     """Analyze string, and return an array of token objects and the lines to ignore.
 
     The last token is always Eof. The intention is to ignore any
     semantic and type check errors on the ignored lines.
     """
-    l = Lexer(pyversion)
+    l = Lexer(pyversion, is_stub_file=is_stub_file)
     l.lex(string, first_line)
     return l.tok, l.ignored_lines
 
@@ -296,12 +296,13 @@ class Lexer:
     # Ignore errors on these lines (defined using '# type: ignore').
     ignored_lines = None  # type: Set[int]
 
-    def __init__(self, pyversion: int = 3) -> None:
+    def __init__(self, pyversion: int = 3, is_stub_file : bool = False) -> None:
         self.map = [self.unknown_character] * 256
         self.tok = []
         self.indents = [0]
         self.open_brackets = []
         self.pyversion = pyversion
+        self.is_stub_file = is_stub_file
         self.ignored_lines = set()
         # Fill in the map from valid character codes to relevant lexer methods.
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
@@ -422,11 +423,11 @@ class Lexer:
         """Analyse a token starting with a dot.
 
         It can be the member access operator, a float literal such as '.123',
-        or an ellipsis (for Python 3)
+        or an ellipsis (for Python 3 and for all stub files).
         """
         if self.is_at_number():
             self.lex_number()
-        elif self.is_at_ellipsis() and self.pyversion >= 3:
+        elif self.is_at_ellipsis() and (self.pyversion >= 3 or self.is_stub_file):
             self.lex_ellipsis()
         else:
             self.lex_misc()

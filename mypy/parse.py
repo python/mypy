@@ -76,10 +76,11 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     The pyversion argument determines the Python syntax variant (2 for 2.x and
     3 for 3.x).
     """
-    parser = Parser(fnam, errors, pyversion, custom_typing_module)
+    is_stub_file = bool(fnam) and fnam.endswith('.pyi')
+    parser = Parser(fnam, errors, pyversion, custom_typing_module, is_stub_file=is_stub_file)
     tree = parser.parse(source)
     tree.path = fnam
-    tree.is_stub = bool(fnam) and fnam.endswith('.pyi')
+    tree.is_stub = is_stub_file
     return tree
 
 
@@ -108,10 +109,11 @@ class Parser:
     ignored_lines = None  # type: Set[int]
 
     def __init__(self, fnam: str, errors: Errors, pyversion: int,
-                 custom_typing_module: str = None) -> None:
+                 custom_typing_module: str = None, is_stub_file: bool = False) -> None:
         self.raise_on_error = errors is None
         self.pyversion = pyversion
         self.custom_typing_module = custom_typing_module
+        self.is_stub_file = is_stub_file
         if errors is not None:
             self.errors = errors
         else:
@@ -122,7 +124,8 @@ class Parser:
             self.errors.set_file('<input>')
 
     def parse(self, s: Union[str, bytes]) -> MypyFile:
-        self.tok, self.ignored_lines = lex.lex(s, pyversion=self.pyversion)
+        self.tok, self.ignored_lines = lex.lex(s, pyversion=self.pyversion,
+                                               is_stub_file=self.is_stub_file)
         self.ind = 0
         self.imports = []
         self.future_options = []
