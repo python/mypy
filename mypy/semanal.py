@@ -1077,7 +1077,7 @@ class SemanticAnalyzer(NodeVisitor):
         return True
 
     def get_typevar_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
-        """ Returns the TypeVar() call expression if `s` is a type var declaration
+        """Returns the TypeVar() call expression if `s` is a type var declaration
         or None otherwise.
         """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
