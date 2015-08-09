@@ -13,7 +13,7 @@ from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
     Instance, NoneTyp, ErrorType
 )
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
@@ -96,7 +96,9 @@ class TypesSuite(Suite):
 
 class TypeOpsSuite(Suite):
     def set_up(self):
-        self.fx = TypeFixture()
+        self.fx = TypeFixture(INVARIANT)
+        self.fx_co = TypeFixture(COVARIANT)
+        self.fx_contra = TypeFixture(CONTRAVARIANT)
 
     # expand_type
 
@@ -213,14 +215,38 @@ class TypeOpsSuite(Suite):
 
         assert_true(is_proper_subtype(fx.ga, fx.ga))
         assert_true(is_proper_subtype(fx.gdyn, fx.gdyn))
-        assert_true(is_proper_subtype(fx.gsab, fx.gb))
-        assert_false(is_proper_subtype(fx.gsab, fx.ga))
-        assert_false(is_proper_subtype(fx.gb, fx.ga))
         assert_false(is_proper_subtype(fx.ga, fx.gdyn))
         assert_false(is_proper_subtype(fx.gdyn, fx.ga))
 
         assert_true(is_proper_subtype(fx.t, fx.t))
         assert_false(is_proper_subtype(fx.t, fx.s))
+
+    def test_is_proper_subtype_covariance(self):
+        fx_co = self.fx_co
+
+        assert_true(is_proper_subtype(fx_co.gsab, fx_co.gb))
+        assert_true(is_proper_subtype(fx_co.gsab, fx_co.ga))
+        assert_false(is_proper_subtype(fx_co.gsaa, fx_co.gb))
+        assert_true(is_proper_subtype(fx_co.gb, fx_co.ga))
+        assert_false(is_proper_subtype(fx_co.ga, fx_co.gb))
+
+    def test_is_proper_subtype_contravariance(self):
+        fx_contra = self.fx_contra
+
+        assert_true(is_proper_subtype(fx_contra.gsab, fx_contra.gb))
+        assert_false(is_proper_subtype(fx_contra.gsab, fx_contra.ga))
+        assert_true(is_proper_subtype(fx_contra.gsaa, fx_contra.gb))
+        assert_false(is_proper_subtype(fx_contra.gb, fx_contra.ga))
+        assert_true(is_proper_subtype(fx_contra.ga, fx_contra.gb))
+
+    def test_is_proper_subtype_invariance(self):
+        fx = self.fx
+
+        assert_true(is_proper_subtype(fx.gsab, fx.gb))
+        assert_false(is_proper_subtype(fx.gsab, fx.ga))
+        assert_false(is_proper_subtype(fx.gsaa, fx.gb))
+        assert_false(is_proper_subtype(fx.gb, fx.ga))
+        assert_false(is_proper_subtype(fx.ga, fx.gb))
 
     # Helpers
 
@@ -350,7 +376,8 @@ class JoinSuite(Suite):
 
     def test_simple_generics(self):
         self.assert_join(self.fx.ga, self.fx.ga, self.fx.ga)
-        self.assert_join(self.fx.ga, self.fx.gb, self.fx.o)
+        self.assert_join(self.fx.ga, self.fx.gb, self.fx.ga)
+        self.assert_join(self.fx.ga, self.fx.gd, self.fx.o)
         self.assert_join(self.fx.ga, self.fx.g2a, self.fx.o)
 
         self.assert_join(self.fx.ga, self.fx.nonet, self.fx.ga)
@@ -362,16 +389,18 @@ class JoinSuite(Suite):
 
     def test_generics_with_multiple_args(self):
         self.assert_join(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_join(self.fx.hab, self.fx.haa, self.fx.o)
-        self.assert_join(self.fx.hab, self.fx.hbb, self.fx.o)
+        self.assert_join(self.fx.hab, self.fx.hbb, self.fx.hab)
+        self.assert_join(self.fx.had, self.fx.haa, self.fx.o)
 
     def test_generics_with_inheritance(self):
         self.assert_join(self.fx.gsab, self.fx.gb, self.fx.gb)
-        self.assert_join(self.fx.gsba, self.fx.gb, self.fx.o)
+        self.assert_join(self.fx.gsba, self.fx.gb, self.fx.ga)
+        self.assert_join(self.fx.gsab, self.fx.gd, self.fx.o)
 
     def test_generics_with_inheritance_and_shared_supertype(self):
         self.assert_join(self.fx.gsba, self.fx.gs2a, self.fx.ga)
-        self.assert_join(self.fx.gsab, self.fx.gs2a, self.fx.o)
+        self.assert_join(self.fx.gsab, self.fx.gs2a, self.fx.ga)
+        self.assert_join(self.fx.gsab, self.fx.gs2d, self.fx.o)
 
     def test_generic_types_and_any(self):
         self.assert_join(self.fx.gdyn, self.fx.ga, self.fx.gdyn)
@@ -581,7 +610,8 @@ class MeetSuite(Suite):
     def test_simple_generics(self):
         self.assert_meet(self.fx.ga, self.fx.ga, self.fx.ga)
         self.assert_meet(self.fx.ga, self.fx.o, self.fx.ga)
-        self.assert_meet(self.fx.ga, self.fx.gb, self.fx.nonet)
+        self.assert_meet(self.fx.ga, self.fx.gb, self.fx.gb)
+        self.assert_meet(self.fx.ga, self.fx.gd, self.fx.nonet)
         self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nonet)
 
         self.assert_meet(self.fx.ga, self.fx.nonet, self.fx.nonet)
@@ -593,8 +623,9 @@ class MeetSuite(Suite):
 
     def test_generics_with_multiple_args(self):
         self.assert_meet(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.nonet)
-        self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.nonet)
+        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.hab)
+        self.assert_meet(self.fx.hab, self.fx.had, self.fx.nonet)
+        self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.hbb)
 
     def test_generics_with_inheritance(self):
         self.assert_meet(self.fx.gsab, self.fx.gb, self.fx.gsab)

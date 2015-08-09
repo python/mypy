@@ -1374,7 +1374,7 @@ class MutableSet(AbstractSet[T], extra=collections_abc.MutableSet):
     pass
 
 
-class Mapping(Sized, Iterable[KT_co], Container[KT_co], Generic[KT_co, VT_co],
+class Mapping(Sized, Iterable[KT], Container[KT], Generic[KT, VT_co],
               extra=collections_abc.Mapping):
     pass
 

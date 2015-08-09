@@ -58,7 +58,8 @@ from mypy.nodes import (
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
-    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr
+    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
+    COVARIANT, CONTRAVARIANT, INVARIANT
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -250,37 +251,37 @@ class SemanticAnalyzer(NodeVisitor):
             functype = cast(CallableType, defn.type)
             typevars = self.infer_type_variables(functype)
             # Do not define a new type variable if already defined in scope.
-            typevars = [(tvar, values) for tvar, values in typevars
-                        if not self.is_defined_type_var(tvar, defn)]
+            typevars = [(name, tvar) for name, tvar in typevars
+                        if not self.is_defined_type_var(name, defn)]
             if typevars:
-                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1], self.object_type())
+                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1].values, self.object_type(), tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
                 functype.variables = defs
 
     def infer_type_variables(self,
-                             type: CallableType) -> List[Tuple[str, List[Type]]]:
+                             type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
         """Return list of unique type variables referred to in a callable."""
         names = []  # type: List[str]
-        values = []  # type: List[List[Type]]
+        tvars = []  # type: List[TypeVarExpr]
         for arg in type.arg_types + [type.ret_type]:
-            for tvar, vals in self.find_type_variables_in_type(arg):
-                if tvar not in names:
-                    names.append(tvar)
-                    values.append(vals)
-        return list(zip(names, values))
+            for name, tvar_expr in self.find_type_variables_in_type(arg):
+                if name not in names:
+                    names.append(name)
+                    tvars.append(tvar_expr)
+        return list(zip(names, tvars))
 
     def find_type_variables_in_type(
-            self, type: Type) -> List[Tuple[str, List[Type]]]:
-        """Return a list of all unique type variable references in an non-analyzed type.
+            self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
+        """Return a list of all unique type variable references in type.
 
         This effectively does partial name binding, results of which are mostly thrown away.
         """
-        result = []  # type: List[Tuple[str, List[Type]]]
+        result = []  # type: List[Tuple[str, TypeVarExpr]]
         if isinstance(type, UnboundType):
             name = type.name
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
-                result.append((name, cast(TypeVarExpr, node.node).values))
+                result.append((name, cast(TypeVarExpr, node.node)))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
@@ -553,10 +554,9 @@ class SemanticAnalyzer(NodeVisitor):
                 if type_vars:
                     self.fail('Duplicate Generic in bases', defn)
                 removed.append(i)
-                for j, tvar in enumerate(tvars):
-                    name, values = tvar
-                    type_vars.append(TypeVarDef(name, j + 1, values,
-                                                self.object_type()))
+                for j, (name, tvar_expr) in enumerate(tvars):
+                    type_vars.append(TypeVarDef(name, j + 1, tvar_expr.values,
+                                                self.object_type(), tvar_expr.variance))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -564,8 +564,7 @@ class SemanticAnalyzer(NodeVisitor):
         for i in reversed(removed):
             del defn.base_type_exprs[i]
 
-    def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str,
-                                                                 List[Type]]]:
+    def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str, TypeVarExpr]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
@@ -573,7 +572,7 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is None:
             return None
         if sym.node.fullname() == 'typing.Generic':
-            tvars = []  # type: List[Tuple[str, List[Type]]]
+            tvars = []  # type: List[Tuple[str, TypeVarExpr]]
             for arg in unbound.args:
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
@@ -584,13 +583,13 @@ class SemanticAnalyzer(NodeVisitor):
             return tvars
         return None
 
-    def analyze_unbound_tvar(self, t: Type) -> Tuple[str, List[Type]]:
+    def analyze_unbound_tvar(self, t: Type) -> Tuple[str, TypeVarExpr]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
-            return unbound.name, cast(TypeVarExpr, sym.node).values[:]
+            return unbound.name, cast(TypeVarExpr, sym.node)
         return None
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
@@ -713,10 +712,9 @@ class SemanticAnalyzer(NodeVisitor):
             self, info: TypeInfo) -> List[SymbolTableNode]:
         vars = info.type_vars
         nodes = []  # type: List[SymbolTableNode]
-        if vars:
-            for i in range(len(vars)):
-                node = self.bind_type_var(vars[i], i + 1, info)
-                nodes.append(node)
+        for index, var in enumerate(vars, 1):
+            node = self.bind_type_var(var, index, info)
+            nodes.append(node)
         return nodes
 
     def visit_import(self, i: Import) -> None:
@@ -1031,56 +1029,120 @@ class SemanticAnalyzer(NodeVisitor):
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+        call = self.get_typevar_declaration(s)
+        if not call:
             return
-        if not isinstance(s.rvalue, CallExpr):
-            return
-        call = cast(CallExpr, s.rvalue)
-        if not isinstance(call.callee, RefExpr):
-            return
-        callee = cast(RefExpr, call.callee)
-        if callee.fullname != 'typing.TypeVar':
-            return
-        # TODO Share code with check_argument_count in checkexpr.py?
-        if len(call.args) < 1:
-            self.fail("Too few arguments for TypeVar()", s)
-            return
-        if call.arg_kinds != [ARG_POS] * len(call.arg_kinds):
-            if call.arg_kinds == [ARG_POS, ARG_NAMED] and call.arg_names[1] == 'values':
-                # Probably using obsolete syntax with values=(...). Explain the current syntax.
-                self.fail("TypeVar 'values' argument not supported", s)
-                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
-                          s)
-            else:
-                self.fail("Unexpected arguments to TypeVar()", s)
-            return
-        if not isinstance(call.args[0], StrExpr):
-            self.fail("TypeVar() expects a string literal argument", s)
-            return
+
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
-        if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected TypeVar() argument value", s)
-            return
         if not lvalue.is_def:
             if s.type:
                 self.fail("Cannot declare the type of a type variable", s)
             else:
                 self.fail("Cannot redefine '%s' as a type variable" % name, s)
             return
-        if len(call.args) > 1:
-            # Analyze enumeration of type variable values.
-            values = self.analyze_types(call.args[1:])
-        else:
-            # Type variables can refer to an arbitrary type.
-            values = []
+
+        if not self.check_typevar_name(call, name, s):
+            return
+
+        # Constraining types
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        values = self.analyze_types(call.args[1:1+n_values])
+
+        variance = self.process_typevar_parameters(call.args[1+n_values:],
+                                                   call.arg_names[1+n_values:],
+                                                   call.arg_kinds[1+n_values:],
+                                                   s)
+        if variance is None:
+            return
+
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = UNBOUND_TVAR
-        TypeVar = TypeVarExpr(name, node.fullname, values)
+        TypeVar = TypeVarExpr(name, node.fullname, values, variance)
         TypeVar.line = call.line
         call.analyzed = TypeVar
         node.node = TypeVar
+
+    def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
+        if len(call.args) < 1:
+            self.fail("Too few arguments for TypeVar()", context)
+            return False
+        if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
+            self.fail("TypeVar() expects a string literal as first argument", context)
+            return False
+        if cast(StrExpr, call.args[0]).value != name:
+            self.fail("Unexpected TypeVar() argument value", context)
+            return False
+        return True
+
+    def get_typevar_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
+        """ Returns the TypeVar() call expression if `s` is a type var declaration
+        or None otherwise.
+        """
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return None
+        if not isinstance(s.rvalue, CallExpr):
+            return None
+        call = cast(CallExpr, s.rvalue)
+        if not isinstance(call.callee, RefExpr):
+            return None
+        callee = cast(RefExpr, call.callee)
+        if callee.fullname != 'typing.TypeVar':
+            return None
+        return call
+
+    def process_typevar_parameters(self, args: List[Node],
+                                   names: List[Optional[str]],
+                                   kinds: List[int],
+                                   context: Context) -> Optional[int]:
+        covariant = False
+        contravariant = False
+        for param_value, param_name, param_kind in zip(args, names, kinds):
+            if not param_kind == ARG_NAMED:
+                self.fail("Unexpected argument to TypeVar()", context)
+                return None
+            if param_name == 'covariant':
+                if isinstance(param_value, NameExpr):
+                    if param_value.name == 'True':
+                        covariant = True
+                    else:
+                        self.fail("TypeVar 'covariant' may only be 'True'", context)
+                        return None
+                else:
+                    self.fail("TypeVar 'covariant' may only be 'True'", context)
+                    return None
+            elif param_name == 'contravariant':
+                if isinstance(param_value, NameExpr):
+                    if param_value.name == 'True':
+                        contravariant = True
+                    else:
+                        self.fail("TypeVar 'contravariant' may only be 'True'", context)
+                        return None
+                else:
+                    self.fail("TypeVar 'contravariant' may only be 'True'", context)
+                    return None
+            elif param_name == 'bound':
+                self.fail("TypeVar 'bound' argument not supported yet.", context)
+                return None
+            elif param_name == 'values':
+                # Probably using obsolete syntax with values=(...). Explain the current syntax.
+                self.fail("TypeVar 'values' argument not supported", context)
+                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
+                          context)
+                return None
+            else:
+                self.fail("Unexpected argument to TypeVar(): {}".format(param_name), context)
+                return None
+        if covariant and contravariant:
+            self.fail("TypeVar cannot be both covariant and contravariant.", context)
+            return None
+        elif covariant:
+            return COVARIANT
+        elif contravariant:
+            return CONTRAVARIANT
+        else:
+            return INVARIANT
 
     def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
@@ -2022,7 +2084,8 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     for i in range(len(typ.type_vars)):
         tv.append(TypeVarType(typ.type_vars[i], i + 1,
                           typ.defn.type_vars[i].values,
-                          typ.defn.type_vars[i].upper_bound))
+                          typ.defn.type_vars[i].upper_bound,
+                          typ.defn.type_vars[i].variance))
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
