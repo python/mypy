@@ -104,9 +104,10 @@ def test_python_evaluation(testcase):
 
 def try_find_python2_interpreter():
     try:
-        process = subprocess.Popen([default_python2_interpreter, '-V'], stderr=subprocess.PIPE)
+        process = subprocess.Popen([default_python2_interpreter, '-V'], stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
         stdout, stderr = process.communicate()
-        if b'Python 2.7' in stderr:
+        if b'Python 2.7' in stdout:
             return default_python2_interpreter
         else:
             return None
