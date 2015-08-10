@@ -1369,7 +1369,9 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
                 return None
             elif expected_item_type.args:
-                expected_item_type = map_instance_to_supertype(expected_item_type, self.lookup_typeinfo('typing.Iterable'))
+                expected_item_type = map_instance_to_supertype(
+                    expected_item_type,
+                    self.lookup_typeinfo('typing.Iterable'))
                 expected_item_type = expected_item_type.args[0]  # Take the item inside the iterator
         elif isinstance(expected_item_type, AnyType):
             expected_item_type = AnyType()
@@ -1377,11 +1379,13 @@ class TypeChecker(NodeVisitor[Type]):
             self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
             return None
         if s.expr is None:
-            actual_item_type = Void() # type: Type
+            actual_item_type = Void()  # type: Type
         else:
             actual_item_type = self.accept(s.expr, expected_item_type)
-            if hasattr(actual_item_type, 'args') and cast(Instance,actual_item_type).args:
-                actual_item_type = map_instance_to_supertype(cast(Instance,actual_item_type), self.lookup_typeinfo('typing.Iterable'))
+            if hasattr(actual_item_type, 'args') and cast(Instance, actual_item_type).args:
+                actual_item_type = map_instance_to_supertype(
+                    cast(Instance,actual_item_type),
+                    self.lookup_typeinfo('typing.Iterable'))
                 actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
         self.check_subtype(actual_item_type, expected_item_type, s,
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
@@ -1513,7 +1517,7 @@ class TypeChecker(NodeVisitor[Type]):
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
                     self.check_assignment(s.vars[i],
-                                           self.temp_node(t, s.vars[i]))
+                                          self.temp_node(t, s.vars[i]))
             self.binder.push_frame()
             self.accept(s.handlers[i])
             changed, frame_on_completion = self.binder.pop_frame()

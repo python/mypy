@@ -100,7 +100,7 @@ def update_testcase_output(testcase, output, append):
         if test.count(old) == len(mapping[old]):
             betweens = test.split(old)
 
-            #interleave betweens and mapping[old]
+            # Interleave betweens and mapping[old]
             from itertools import chain
             interleaved = [betweens[0]] + \
                 list(chain.from_iterable(zip(mapping[old], betweens[1:])))
