@@ -43,9 +43,9 @@ class TypesSuite(Suite):
 
     def test_callable_type(self):
         c = CallableType([self.x, self.y],
-                     [ARG_POS, ARG_POS],
-                     [None, None],
-                     AnyType(), self.function)
+                         [ARG_POS, ARG_POS],
+                         [None, None],
+                         AnyType(), self.function)
         assert_equal(str(c), 'def (X?, Y?) -> Any')
 
         c2 = CallableType([], [], [], Void(None), False)
@@ -264,12 +264,12 @@ class TypeOpsSuite(Suite):
             tv.append(TypeVarDef(v, n, None, self.fx.o))
             n -= 1
         return CallableType(list(a[:-1]),
-                        [ARG_POS] * (len(a) - 1),
-                        [None] * (len(a) - 1),
-                        a[-1],
-                        self.fx.std_function,
-                        None,
-                        tv)
+                            [ARG_POS] * (len(a) - 1),
+                            [None] * (len(a) - 1),
+                            a[-1],
+                            self.fx.std_function,
+                            None,
+                            tv)
 
 
 class JoinSuite(Suite):
@@ -700,8 +700,8 @@ class MeetSuite(Suite):
         """
         n = len(a) - 1
         return CallableType(a[:-1],
-                        [ARG_POS] * n, [None] * n,
-                        a[-1], self.fx.std_function)
+                            [ARG_POS] * n, [None] * n,
+                            a[-1], self.fx.std_function)
 
 
 class CombinedTypesSuite(Suite):
