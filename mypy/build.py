@@ -193,7 +193,7 @@ def default_data_dir(bin_dir: str) -> str:
 
 
 def default_lib_path(data_dir: str, target: int, pyversion: int,
-        python_path:bool) -> List[str]:
+        python_path: bool) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = []  # type: List[str]
@@ -210,7 +210,7 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
         version_dir = '2.7'
     path.append(os.path.join(data_dir, 'stubs', version_dir))
     path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-    #Add py3.3 and 3.4 stubs
+    # Add py3.3 and 3.4 stubs.
     if sys.version_info.major == 3:
         versions = ['3.' + str(x) for x in range(3, sys.version_info.minor + 1)]
         for v in versions:
@@ -758,7 +758,7 @@ class ParsedFile(State):
         for id, line in self.manager.all_imported_modules_in_file(tree):
             # Omit missing modules, as otherwise we could not type check
             # programs with missing modules.
-            if not id in self.manager.missing_modules and id != self.id:
+            if id not in self.manager.missing_modules and id != self.id:
                 imp.append(id)
         if self.id != 'builtins':
             imp.append('builtins')
@@ -881,7 +881,6 @@ def find_module(id: str, lib_path: List[str]) -> str:
         for extension in PYTHON_EXTENSIONS:
             comp = id.split('.')
             path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
-            text = ''
             if not os.path.isfile(path):
                 path = os.path.join(pathitem, os.sep.join(comp), '__init__{}'.format(extension))
             if os.path.isfile(path) and verify_module(id, path):

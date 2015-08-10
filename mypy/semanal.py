@@ -254,7 +254,8 @@ class SemanticAnalyzer(NodeVisitor):
             typevars = [(name, tvar) for name, tvar in typevars
                         if not self.is_defined_type_var(name, defn)]
             if typevars:
-                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1].values, self.object_type(), tvar[1].variance)
+                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1].values, self.object_type(),
+                                   tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
                 functype.variables = defs
 
@@ -515,7 +516,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         This includes things like 'int' being compatible with 'float'.
         """
-        promote_target = None # type: Type
+        promote_target = None  # type: Type
         for decorator in defn.decorators:
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
@@ -653,7 +654,6 @@ class SemanticAnalyzer(NodeVisitor):
         return self.anal_type(typ)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
-        base_classes = []  # type: List[str]
         info = defn.info
         for base in info.bases:
             baseinfo = base.type
@@ -961,8 +961,9 @@ class SemanticAnalyzer(NodeVisitor):
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
-        star_exprs = [cast(StarExpr, item) for item in items
-                               if isinstance(item, StarExpr)]
+        star_exprs = [cast(StarExpr, item)
+                      for item in items
+                      if isinstance(item, StarExpr)]
 
         if len(star_exprs) > 1:
             self.fail('Two starred expressions in assignment', lval)
@@ -1047,11 +1048,11 @@ class SemanticAnalyzer(NodeVisitor):
 
         # Constraining types
         n_values = call.arg_kinds[1:].count(ARG_POS)
-        values = self.analyze_types(call.args[1:1+n_values])
+        values = self.analyze_types(call.args[1:1 + n_values])
 
-        variance = self.process_typevar_parameters(call.args[1+n_values:],
-                                                   call.arg_names[1+n_values:],
-                                                   call.arg_kinds[1+n_values:],
+        variance = self.process_typevar_parameters(call.args[1 + n_values:],
+                                                   call.arg_names[1 + n_values:],
+                                                   call.arg_kinds[1 + n_values:],
                                                    s)
         if variance is None:
             return
@@ -1181,7 +1182,6 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
-            listexpr = cast(ListExpr, call.args[1])
             name = cast(StrExpr, call.args[0]).value
             info = self.build_namedtuple_typeinfo(name, items, types)
         call.analyzed = NamedTupleExpr(info).set_line(call.line)
@@ -1200,7 +1200,7 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(args[0], StrExpr):
             return self.fail_namedtuple_arg(
                 "namedtuple() expects a string literal as the first argument", call)
-        types = [] # type: List[Type]
+        types = []  # type: List[Type]
         if not isinstance(args[1], ListExpr):
             if fullname == 'collections.namedtuple' and isinstance(args[1], StrExpr):
                 str_expr = cast(StrExpr, args[1])
@@ -1279,11 +1279,11 @@ class SemanticAnalyzer(NodeVisitor):
         args = [Var('__self')] + args
         arg_kinds = [ARG_POS] * (len(items) + 1)
         signature = CallableType([cast(Type, None)] + types,
-                             arg_kinds,
-                             ['__self'] + items,
-                             NoneTyp(),
-                             self.named_type('__builtins__.function'),
-                             name=info.name())
+                                 arg_kinds,
+                                 ['__self'] + items,
+                                 NoneTyp(),
+                                 self.named_type('__builtins__.function'),
+                                 name=info.name())
         return FuncDef('__init__',
                        args, arg_kinds,
                        [None] * (len(items) + 1),
@@ -1950,7 +1950,7 @@ class FirstPass(NodeVisitor):
         defs = file.defs
 
         # Add implicit definitions of module '__name__' etc.
-        for name,t  in implicit_module_attrs.items():
+        for name, t in implicit_module_attrs.items():
             v = Var(name, UnboundType(t))
             v._fullname = self.sem.qualified_name(name)
             self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
@@ -2051,7 +2051,6 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_class_def(self, tdef: ClassDef) -> None:
         for type in tdef.info.bases:
             self.analyze(type)
-        info = tdef.info
         super().visit_class_def(tdef)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
@@ -2163,7 +2162,6 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 
 def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
-    always_true = False
     for i in range(len(s.expr)):
         result = infer_if_condition_value(s.expr[i], pyversion)
         if result == ALWAYS_FALSE:
@@ -2172,7 +2170,6 @@ def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
         elif result == ALWAYS_TRUE:
             # This condition is always true, so all of the remaining
             # elif/else bodies will never be executed.
-            always_true = True
             for body in s.body[i + 1:]:
                 mark_block_unreachable(s.body[i])
             if s.else_body:

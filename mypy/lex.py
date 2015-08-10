@@ -179,7 +179,7 @@ keywords_common = set([
 # Reserved words specific for Python version 2
 # TODO (jukka): 'print' should be here, but it breaks the parsing of Python 2
 #               builtins, since they also define the function 'print'.
-keywords2 = set([]) # type: Set[str]
+keywords2 = set([])  # type: Set[str]
 
 # Reserved words specific for Python version 3
 keywords3 = set(['nonlocal'])
@@ -296,7 +296,7 @@ class Lexer:
     # Ignore errors on these lines (defined using '# type: ignore').
     ignored_lines = None  # type: Set[int]
 
-    def __init__(self, pyversion: int = 3, is_stub_file : bool = False) -> None:
+    def __init__(self, pyversion: int = 3, is_stub_file: bool = False) -> None:
         self.map = [self.unknown_character] * 256
         self.tok = []
         self.indents = [0]
@@ -406,7 +406,7 @@ class Lexer:
             self.line = 1
         self.add_token(
             LexError('', DECODE_ERROR,
-                        "%r codec can't decode byte %d in column %d" % (
+                     "%r codec can't decode byte %d in column %d" % (
                          self.enc, line[exc.start], exc.start + 1)))
         self.add_token(Break(''))
         self.add_token(Eof(''))
@@ -415,7 +415,7 @@ class Lexer:
         self.line = encoding_line
         self.add_token(
             LexError('', DECODE_ERROR,
-                        "Unknown encoding %r" % self.enc))
+                     "Unknown encoding %r" % self.enc))
         self.add_token(Break(''))
         self.add_token(Eof(''))
 
@@ -775,8 +775,8 @@ class Lexer:
         s = ''
         t = None  # type: Any
         for re_list, type in [(operators, Op), (punctuators, Punct)]:
-            for re in re_list:
-                s2 = self.match(re)
+            for regexp in re_list:
+                s2 = self.match(regexp)
                 if len(s2) > len(s):
                     t = type
                     s = s2

@@ -254,7 +254,8 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
                         t.bound_vars,
                         t.line)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod, builtin_type))
+        return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod,
+                                                              builtin_type))
                            for i in t.items()])
     return t
 
@@ -290,7 +291,8 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance)
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
-        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound, tvar.variance))
+        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound,
+                                    tvar.variance))
 
     initvars = init_type.variables
     variables.extend(initvars)
@@ -319,7 +321,8 @@ class TvarTranslator(TypeTranslator):
         if t.id < 0:
             return t
         else:
-            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound, t.variance)
+            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound,
+                               t.variance)
 
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:

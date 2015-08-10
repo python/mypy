@@ -164,9 +164,9 @@ class TypeFixture:
         """
         n = len(a) - 1
         return CallableType(a[:-1],
-                        [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
-                        [None] * n,
-                        a[-1], self.std_function)
+                            [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
+                            [None] * n,
+                            a[-1], self.std_function)
 
     def callable_var_arg(self, min_args, *a):
         """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
@@ -174,10 +174,10 @@ class TypeFixture:
         """
         n = len(a) - 1
         return CallableType(a[:-1],
-                        [ARG_POS] * min_args +
-                        [ARG_OPT] * (n - 1 - min_args) +
-                        [ARG_STAR], [None] * n,
-                        a[-1], self.std_function)
+                            [ARG_POS] * min_args +
+                            [ARG_OPT] * (n - 1 - min_args) +
+                            [ARG_STAR], [None] * n,
+                            a[-1], self.std_function)
 
     def make_type_info(self, name: str,
                        is_abstract: bool = False,
@@ -194,7 +194,7 @@ class TypeFixture:
             v = []  # type: List[TypeVarDef]
             for id, n in enumerate(typevars, 1):
                 if variances:
-                    variance = variances[id-1]
+                    variance = variances[id - 1]
                 else:
                     variance = COVARIANT
                 v.append(TypeVarDef(n, id, None, self.o, variance=variance))

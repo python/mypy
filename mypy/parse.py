@@ -47,7 +47,7 @@ precedence = {
     '^': 9,
     '|': 8,
     '==': 7, '!=': 7, '<': 7, '>': 7, '<=': 7, '>=': 7, 'is': 7, 'in': 7,
-    '*u': 7, # unary * for star expressions
+    '*u': 7,  # unary * for star expressions
     'not': 6,
     'and': 5,
     'or': 4,
@@ -420,8 +420,9 @@ class Parser:
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
 
-    def parse_function_header(self, no_type_checks: bool=False) -> Tuple[str, List[Var], List[Node],
-                                                                         List[int], CallableType, bool]:
+    def parse_function_header(self, no_type_checks: bool=False) -> Tuple[str, List[Var],
+                                                                         List[Node], List[int],
+                                                                         CallableType, bool]:
         """Parse function header (a name followed by arguments)
 
         Returns a 7-tuple with the following items:
@@ -452,7 +453,8 @@ class Parser:
 
         return (name, args, init, kinds, typ, False)
 
-    def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Var], List[Node], List[int], CallableType]:
+    def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Var], List[Node], List[int],
+                                                              CallableType]:
         """Parse a function signature (...) [-> t]."""
         lparen = self.expect('(')
 
@@ -496,11 +498,12 @@ class Parser:
             return None
 
     def parse_arg_list(
-        self, allow_signature: bool = True, no_type_checks: bool=False) -> Tuple[List[Var], List[Node],
-                                                     List[int], bool,
-                                                     List[Token], List[Token],
-                                                     List[Token], List[Token],
-                                                     List[Type]]:
+        self, allow_signature: bool = True,
+        no_type_checks: bool=False) -> Tuple[List[Var], List[Node],
+                                             List[int], bool,
+                                             List[Token], List[Token],
+                                             List[Token], List[Token],
+                                             List[Type]]:
         """Parse function definition argument list.
 
         This includes everything between '(' and ')').
@@ -633,7 +636,7 @@ class Parser:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
-            nodes = [] # type: List[Node]
+            nodes = []  # type: List[Node]
             while True:
                 ind = self.ind
                 stmt, is_simple = self.parse_statement()
@@ -825,11 +828,11 @@ class Parser:
         return node
 
     def parse_yield_from_expr(self) -> YieldFromExpr:
-        y_tok = self.expect("yield")
-        expr = None # type: Node
+        self.expect("yield")
+        expr = None  # type: Node
         node = YieldFromExpr(expr)
         if self.current_str() == "from":
-            f_tok = self.expect("from")
+            self.expect("from")
             tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
             node = YieldFromExpr(tok)
         else:
@@ -1094,7 +1097,8 @@ class Parser:
             elif isinstance(current, ComplexLit):
                 expr = self.parse_complex_expr()
             elif isinstance(current, Keyword) and s == "yield":
-                expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
+                # The expression yield from and yield to assign
+                expr = self.parse_yield_from_expr()
             elif isinstance(current, EllipsisToken):
                 expr = self.parse_ellipsis()
             else:
@@ -1544,7 +1548,6 @@ class Parser:
         return node
 
     def parse_lambda_expr(self) -> FuncExpr:
-        is_error = False
         lambda_tok = self.expect('lambda')
 
         (args, init, kinds, has_inits,
@@ -1660,7 +1663,6 @@ class Parser:
     # Type annotation related functionality
 
     def parse_type(self) -> Type:
-        line = self.current().line
         try:
             typ, self.ind = parse_type(self.tok, self.ind)
         except TypeParseError as e:

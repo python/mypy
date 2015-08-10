@@ -957,21 +957,21 @@ class TypeChecker(NodeVisitor[Type]):
 
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
                 star_index = next((i for i, lv in enumerate(lvalues) if
-                                                isinstance(lv, StarExpr)), len(lvalues))
+                                   isinstance(lv, StarExpr)), len(lvalues))
 
                 left_lvs = lvalues[:star_index]
                 star_lv = cast(StarExpr,
                                lvalues[star_index]) if star_index != len(lvalues) else None
-                right_lvs = lvalues[star_index+1:]
+                right_lvs = lvalues[star_index + 1:]
 
                 left_rvs, star_rvs, right_rvs = self.split_around_star(
-                                                rvalues, star_index, len(lvalues))
+                    rvalues, star_index, len(lvalues))
 
                 lr_pairs = list(zip(left_lvs, left_rvs))
                 if star_lv:
                     rv_list = ListExpr(star_rvs)
                     rv_list.set_line(rvalue.get_line())
-                    lr_pairs.append( (star_lv.expr, rv_list) )
+                    lr_pairs.append((star_lv.expr, rv_list))
                 lr_pairs.extend(zip(right_lvs, right_rvs))
 
                 for lv, rv in lr_pairs:
@@ -980,11 +980,11 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
 
     def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int,
-                                                                    context: Context) -> bool:
+                                         context: Context) -> bool:
         if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
-            if len(lvalues)-1 > rvalue_count:
+            if len(lvalues) - 1 > rvalue_count:
                 self.msg.wrong_number_values_to_unpack(rvalue_count,
-                                len(lvalues)-1, context)
+                                                       len(lvalues) - 1, context)
                 return False
         elif rvalue_count != len(lvalues):
             self.msg.wrong_number_values_to_unpack(rvalue_count,
@@ -993,10 +993,10 @@ class TypeChecker(NodeVisitor[Type]):
         return True
 
     def check_multi_assignment(self, lvalues: List[Node],
-                                  rvalue: Node,
-                                  context: Context,
-                                  infer_lvalue_type: bool = True,
-                                  msg: str = None) -> None:
+                               rvalue: Node,
+                               context: Context,
+                               infer_lvalue_type: bool = True,
+                               msg: str = None) -> None:
         """Check the assignment of one rvalue to a number of lvalues
         for example from a ListExpr or TupleExpr.
         """
@@ -1030,7 +1030,7 @@ class TypeChecker(NodeVisitor[Type]):
 
             left_lvs = lvalues[:star_index]
             star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
-            right_lvs = lvalues[star_index+1:]
+            right_lvs = lvalues[star_index + 1:]
 
             if not undefined_rvalue:
                 # Infer rvalue again, now in the correct type context.
@@ -1038,7 +1038,7 @@ class TypeChecker(NodeVisitor[Type]):
                 rvalue_type = cast(TupleType, self.accept(rvalue, lvalue_type))
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
-                                            rvalue_type.items, star_index, len(lvalues))
+                rvalue_type.items, star_index, len(lvalues))
 
             for lv, rv_type in zip(left_lvs, left_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
@@ -1055,9 +1055,9 @@ class TypeChecker(NodeVisitor[Type]):
                            if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
         star_lv = cast(StarExpr, lvalues[star_index]) if star_index != len(lvalues) else None
-        right_lvs = lvalues[star_index+1:]
+        right_lvs = lvalues[star_index + 1:]
         left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
-                                        rvalue_type.items, star_index, len(lvalues))
+            rvalue_type.items, star_index, len(lvalues))
 
         type_parameters = []  # type: List[Type]
 
@@ -1110,7 +1110,7 @@ class TypeChecker(NodeVisitor[Type]):
                                              context: Context,
                                              infer_lvalue_type: bool = True) -> None:
         if self.type_is_iterable(rvalue_type):
-            item_type = self.iterable_item_type(cast(Instance,rvalue_type))
+            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
                     self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
@@ -1122,9 +1122,9 @@ class TypeChecker(NodeVisitor[Type]):
             self.msg.type_not_iterable(rvalue_type, context)
 
     def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:
-        lvalue_type = None # type: Type
-        index_lvalue = None # type: IndexExpr
-        inferred = None # type: Var
+        lvalue_type = None  # type: Type
+        index_lvalue = None  # type: IndexExpr
+        inferred = None  # type: Var
 
         if self.is_definition(lvalue):
             if isinstance(lvalue, NameExpr):
@@ -1281,9 +1281,12 @@ class TypeChecker(NodeVisitor[Type]):
                                 not isinstance(typ, NoneTyp)):
                             self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                     else:
-                        if self.function_stack[-1].is_coroutine: # Something similar will be needed to mix return and yield
-                            # If the function is a coroutine, wrap the return type in a Future
-                            typ = self.wrap_generic_type(cast(Instance,typ), cast(Instance,self.return_types[-1]), 'asyncio.futures.Future', s)
+                        if self.function_stack[-1].is_coroutine:
+                            # Something similar will be needed to mix return and yield.
+                            # If the function is a coroutine, wrap the return type in a Future.
+                            typ = self.wrap_generic_type(cast(Instance, typ),
+                                                         cast(Instance, self.return_types[-1]),
+                                                         'asyncio.futures.Future', s)
                         self.check_subtype(
                             typ, self.return_types[-1], s,
                             messages.INCOMPATIBLE_RETURN_VALUE_TYPE
@@ -1291,13 +1294,16 @@ class TypeChecker(NodeVisitor[Type]):
                         )
             else:
                 # Return without a value. It's valid in a generator and coroutine function.
-                if not self.function_stack[-1].is_generator and not self.function_stack[-1].is_coroutine:
+                if (not self.function_stack[-1].is_generator and
+                        not self.function_stack[-1].is_coroutine):
                     if (not isinstance(self.return_types[-1], Void) and
                             not self.is_dynamic_function()):
                             self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type: str, context: Context) -> Type:
-        n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ, check_type)
+    def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
+                          str, context: Context) -> Type:
+        n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ,
+                                                                                     check_type)
         if n_diff == 1:
             return self.named_generic_type(check_type, [typ])
         elif n_diff == 0 or n_diff > 1:
@@ -1310,9 +1316,10 @@ class TypeChecker(NodeVisitor[Type]):
         c = 0
         while is_subtype(typ, self.named_type(check_type)):
             c += 1
-            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args), self.lookup_typeinfo(check_type))
+            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args),
+                                            self.lookup_typeinfo(check_type))
             if typ.args:
-                typ = cast(Instance,typ.args[0])
+                typ = cast(Instance, typ.args[0])
             else:
                 return c
         return c
@@ -1369,19 +1376,24 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
                 return None
             elif expected_item_type.args:
-                expected_item_type = map_instance_to_supertype(expected_item_type, self.lookup_typeinfo('typing.Iterable'))
-                expected_item_type = expected_item_type.args[0]  # Take the item inside the iterator
+                expected_item_type = map_instance_to_supertype(
+                    expected_item_type,
+                    self.lookup_typeinfo('typing.Iterable'))
+                # Take the item inside the iterator.
+                expected_item_type = expected_item_type.args[0]
         elif isinstance(expected_item_type, AnyType):
             expected_item_type = AnyType()
         else:
             self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
             return None
         if s.expr is None:
-            actual_item_type = Void() # type: Type
+            actual_item_type = Void()  # type: Type
         else:
             actual_item_type = self.accept(s.expr, expected_item_type)
-            if hasattr(actual_item_type, 'args') and cast(Instance,actual_item_type).args:
-                actual_item_type = map_instance_to_supertype(cast(Instance,actual_item_type), self.lookup_typeinfo('typing.Iterable'))
+            if hasattr(actual_item_type, 'args') and cast(Instance, actual_item_type).args:
+                actual_item_type = map_instance_to_supertype(
+                    cast(Instance, actual_item_type),
+                    self.lookup_typeinfo('typing.Iterable'))
                 actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
         self.check_subtype(actual_item_type, expected_item_type, s,
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
@@ -1513,7 +1525,7 @@ class TypeChecker(NodeVisitor[Type]):
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
                     self.check_assignment(s.vars[i],
-                                           self.temp_node(t, s.vars[i]))
+                                          self.temp_node(t, s.vars[i]))
             self.binder.push_frame()
             self.accept(s.handlers[i])
             changed, frame_on_completion = self.binder.pop_frame()
