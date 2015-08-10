@@ -826,10 +826,10 @@ class Parser:
 
     def parse_yield_from_expr(self) -> YieldFromExpr:
         y_tok = self.expect("yield")
-        expr = None # type: Node
+        expr = None  # type: Node
         node = YieldFromExpr(expr)
         if self.current_str() == "from":
-            f_tok = self.expect("from")
+            self.expect("from")
             tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
             node = YieldFromExpr(tok)
         else:
@@ -1094,7 +1094,8 @@ class Parser:
             elif isinstance(current, ComplexLit):
                 expr = self.parse_complex_expr()
             elif isinstance(current, Keyword) and s == "yield":
-                expr = self.parse_yield_from_expr() # The expression yield from and yield to assign
+                # The expression yield from and yield to assign
+                expr = self.parse_yield_from_expr()
             elif isinstance(current, EllipsisToken):
                 expr = self.parse_ellipsis()
             else:
@@ -1544,7 +1545,6 @@ class Parser:
         return node
 
     def parse_lambda_expr(self) -> FuncExpr:
-        is_error = False
         lambda_tok = self.expect('lambda')
 
         (args, init, kinds, has_inits,
@@ -1660,7 +1660,6 @@ class Parser:
     # Type annotation related functionality
 
     def parse_type(self) -> Type:
-        line = self.current().line
         try:
             typ, self.ind = parse_type(self.tok, self.ind)
         except TypeParseError as e:

@@ -112,6 +112,7 @@ class TypeParser:
             if self.current_token_str() != ',':
                 break
             commas.append(self.skip())
+        self.expect(']')
         return TypeList(items, line=lbracket.line)
 
     def parse_named_type(self) -> Type:
@@ -131,12 +132,15 @@ class TypeParser:
         commas = []  # type: List[Token]
         args = []  # type: List[Type]
         if self.current_token_str() == '[':
+            self.skip()
             while True:
                 typ = self.parse_type()
                 args.append(typ)
                 if self.current_token_str() != ',':
                     break
                 commas.append(self.skip())
+
+            self.expect(']')
 
         typ = UnboundType(name, args, line)
         return typ
