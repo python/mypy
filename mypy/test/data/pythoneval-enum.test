@@ -1,0 +1,18 @@
+-- Test cases for type checking mypy programs using full stubs and running
+-- using CPython.
+--
+-- These are mostly regression tests -- no attempt is made to make these
+-- complete.
+--
+-- This test file checks Enum
+
+[case testEnum]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+    bronze = 3
+m = Medal.gold
+m = 1
+[out]
+_program.py, line 7: Incompatible types in assignment (expression has type "int", variable has type "Medal")
