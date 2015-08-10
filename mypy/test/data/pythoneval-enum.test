@@ -29,3 +29,14 @@ print(Truth.false.value)
 [out]
 true
 False
+
+[case testEnumUnique]
+import enum
+@enum.unique
+class E(enum.Enum):
+    x = 1
+    y = 1  # NOTE: This duplicate value is not detected by mypy at the moment
+x = 1
+x = E.x
+[out]
+_program.py:7: error: Incompatible types in assignment (expression has type "E", variable has type "int")
