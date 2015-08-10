@@ -52,3 +52,20 @@ s = ''
 s = N.y
 [out]
 _program.py:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testEnumMethods]
+from enum import Enum
+
+class Color(Enum):
+    red = 1
+    green = 2
+
+    def m(self, x: int): pass
+    @staticmethod
+    def m2(x: int): pass
+
+Color.red.m('')
+Color.m2('')
+[out]
+_program.py:11: error: Argument 1 to "m" of "Color" has incompatible type "str"; expected "int"
+_program.py:12: error: Argument 1 to "m2" of "Color" has incompatible type "str"; expected "int"
