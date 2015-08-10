@@ -1,0 +1,54 @@
+-- Test cases for type checking mypy programs using full stubs and running
+-- using CPython.
+--
+-- These are mostly regression tests -- no attempt is made to make these
+-- complete.
+--
+-- This test file checks Enum
+
+[case testEnumBasics]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+    bronze = 3
+m = Medal.gold
+m = 1
+[out]
+_program.py:7: error: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+
+[case testEnumNameAndValue]
+from enum import Enum
+class Truth(Enum):
+    true = True
+    false = False
+x = ''
+x = Truth.true.name
+print(Truth.true.name)
+print(Truth.false.value)
+[out]
+true
+False
+
+[case testEnumUnique]
+import enum
+@enum.unique
+class E(enum.Enum):
+    x = 1
+    y = 1  # NOTE: This duplicate value is not detected by mypy at the moment
+x = 1
+x = E.x
+[out]
+_program.py:7: error: Incompatible types in assignment (expression has type "E", variable has type "int")
+
+[case testIntEnum]
+from enum import IntEnum
+class N(IntEnum):
+    x = 1
+    y = 1
+n = 1
+n = N.x
+s = ''
+s = N.y
+[out]
+_program.py:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
