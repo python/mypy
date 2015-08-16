@@ -65,15 +65,9 @@ Depending on your configuration, you may have to use `pip3`:
 
     $ pip3 install mypy-lang
 
-If you want to contribute and have git,
-first clone the mypy git repository:
+If you want to contribute, first clone the mypy git repository:
 
     $ git clone https://github.com/JukkaL/mypy.git
-
-Alternatively, you can download the latest development version as a
-zip archive from this URL:
-
-  https://github.com/JukkaL/mypy/archive/master.zip
 
 Run the supplied `setup.py` script to install mypy:
 
