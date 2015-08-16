@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Travis CI script that does these things:
+#  - run tests
+#  - type check the implementation
+#  - type check stubs
+#  - type check example code (for regression testing)
+#  - run a linter to catch style issues (flake8)
+
 PYTHON=${PYTHON-python}
 
 result=0
@@ -49,11 +56,16 @@ rm $STUBTEST
 
 echo Type checking lib-python...
 echo
-cd lib-python/3.2
+pushd lib-python/3.2
 for f in test/test_*.py; do
     mod=test.`basename "$f" .py`
     echo $mod
     "$PYTHON" "$DRIVER" -m $mod || fail
 done
+popd
+
+echo Linting...
+echo
+./lint.sh || fail
 
 exit $result
