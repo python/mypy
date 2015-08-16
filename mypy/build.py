@@ -839,7 +839,7 @@ def read_module_source_from_file(id: str,
     Return a pair (path, file contents). Return (None, None) if the module
     could not be found or read.
 
-    Arguments:
+    Args:
       id:       module name, a string of form 'foo' or 'foo.bar'
       lib_path: library search path
     """
