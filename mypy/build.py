@@ -37,7 +37,6 @@ TYPE_CHECK = 1          # Type check
 
 
 # Build flags
-DO_NOT_RUN = 'do-not-run'        # Only type check, don't run the program
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build/run module as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
