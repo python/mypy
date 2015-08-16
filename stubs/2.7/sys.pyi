@@ -15,7 +15,7 @@ argv = None  # type: List[str]
 byteorder = ''
 builtin_module_names = None  # type: Sequence[str] # actually a tuple of strings
 copyright = ''
-#dllhandle = 0  # Windows only
+dllhandle = 0  # Windows only
 dont_write_bytecode = False
 __displayhook__ = None  # type: Any # contains the original value of displayhook
 __excepthook__ = None  # type: Any  # contains the original value of excepthook
@@ -50,7 +50,7 @@ api_version = 0
 warnoptions = None  # type: Any
 #  Each entry is a tuple of the form (action, message, category, module,
 #    lineno)
-#winver = ''  # Windows only
+winver = ''  # Windows only
 _xoptions = None  # type: Dict[Any, Any]
 
 flags = None  # type: _flags
@@ -106,7 +106,6 @@ class _version_info:
     releaselevel = ''
     serial = 0
 
-
 # ----- sys function stubs -----
 def call_tracing(fn: Any, args: Any) -> object: ...
 def _clear_type_cache() -> None: ...
@@ -119,9 +118,9 @@ def exc_info() -> Tuple[type, Any, Any]: ... # see above
 def exit(arg: int = 0) -> None: ...  # arg might be None
 def getcheckinterval() -> int: ...  # deprecated
 def getdefaultencoding() -> str: ...
-#def getdlopenflags() -> int: ...  # Unix only
-def getfilesystemencoding() -> str: ...  # cannot return None
-#def getrefcount(object) -> int: ...  # no ref counts in MyPy!
+def getdlopenflags() -> int: ...
+def getfilesystemencoding() -> str: ...
+def getrefcount(object) -> int: ...
 def getrecursionlimit() -> int: ...
 
 @overload
@@ -138,10 +137,10 @@ def _getframe(depth: int) -> Any: ...
 
 def getprofile() -> Any: ... # TODO return type
 def gettrace() -> Any: ... # TODO return
-def getwindowsversion() -> Any: ...  # Windows only, TODO return type
+def getwindowsversion() -> Any: ...  # TODO return type
 def intern(string: str) -> str: ...
 def setcheckinterval(interval: int) -> None: ...  # deprecated
-#def setdlopenflags(n: int) -> None: ...  # Linux only
+def setdlopenflags(n: int) -> None: ...
 def setprofile(profilefunc: Any) -> None: ... # TODO type
 def setrecursionlimit(limit: int) -> None: ...
 def setswitchinterval(interval: float) -> None: ...
