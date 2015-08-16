@@ -528,21 +528,6 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-def is_stub(path: str) -> bool:
-    """Does path refer to a stubs file?
-
-    Currently check if there is a 'stubs' directory component somewhere
-    in the path.
-    """
-    # TODO more precise check
-    dirname, basename = os.path.split(path)
-    if basename == '':
-        return False
-    else:
-        stubnames = ['stubs', 'stubs-auto']
-        return (basename in stubnames) or is_stub(dirname)
-
-
 class StateInfo:
     """Description of a source file that is being built."""
 
