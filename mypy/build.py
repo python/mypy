@@ -1,7 +1,7 @@
-"""Facilities to build mypy programs and modules they depend on.
+"""Facilities to analyze entire programs, including imported modules.
 
-Parse, analyze and translate the source files of a program in the correct
-order (based on file dependencies), and collect the results.
+Parse and analyze the source files of a program in the correct order
+(based on file dependencies), and collect the results.
 
 This module only directs a build, which is performed in multiple passes per
 file.  The individual passes are implemented in separate modules.
@@ -37,9 +37,8 @@ TYPE_CHECK = 1          # Type check
 
 
 # Build flags
-DO_NOT_RUN = 'do-not-run'        # Only type check, don't run the program
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
-MODULE = 'module'                # Build/run module as a script
+MODULE = 'module'                # Build module as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
 # State ids. These describe the states a source file / module can be in a
@@ -87,32 +86,28 @@ def build(program_path: str,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
-          output_dir: str = None,
           pyversion: int = 3,
           custom_typing_module: str = None,
           html_report_dir: str = None,
           flags: List[str] = None,
           python_path: bool = False) -> BuildResult:
-    """Build a mypy program.
+    """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
-    type checking and other build passes for the program *and* all imported
-    modules, recursively.
+    type checking for the program *and* all imported modules, recursively.
 
     Return BuildResult if successful; otherwise raise CompileError.
 
-    Arguments:
+    Args:
       program_path: the path to the main source file (if module argument is
         given, this can be None => will be looked up)
       target: select passes to perform (a build target constant, e.g. C)
-    Optional arguments:
       module: name of the initial module; __main__ by default
       program_text: the main source file contents; if omitted, read from file
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
-      output_dir: directory where the output (Python) is stored
       pyversion: Python version (2 for 2.x or 3 for 3.x)
       custom_typing_module: if not None, use this module id as an alias for typing
       flags: list of build options (e.g. COMPILE_ONLY)
@@ -146,7 +141,7 @@ def build(program_path: str,
     # build in the correct order.
     #
     # Ignore current directory prefix in error messages.
-    manager = BuildManager(data_dir, lib_path, target, output_dir,
+    manager = BuildManager(data_dir, lib_path, target,
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
@@ -266,7 +261,6 @@ class BuildManager:
                        Semantic analyzer, pass 3
       type_checker:    Type checker
       errors:          Used for reporting all errors
-      output_dir:      Store output files here (Python)
       pyversion:       Python version (2 or 3)
       flags:           Build options
       states:          States of all individual files that are being
@@ -285,7 +279,6 @@ class BuildManager:
     def __init__(self, data_dir: str,
                  lib_path: List[str],
                  target: int,
-                 output_dir: str,
                  pyversion: int,
                  flags: List[str],
                  ignore_prefix: str,
@@ -296,7 +289,6 @@ class BuildManager:
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = lib_path
         self.target = target
-        self.output_dir = output_dir
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
@@ -321,6 +313,7 @@ class BuildManager:
         values of the build function.
         """
         self.states.append(initial_state)
+        self.module_files[initial_state.id] = initial_state.path
 
         # Process states in a loop until all files (states) have been
         # semantically analyzed or type checked (depending on target).
@@ -497,17 +490,6 @@ class BuildManager:
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
-    def get_python_out_path(self, f: MypyFile) -> str:
-        if f.fullname() == '__main__':
-            return os.path.join(self.output_dir, basename(f.path))
-        else:
-            components = f.fullname().split('.')
-            if os.path.basename(f.path) == '__init__.py':
-                components.append('__init__.py')
-            else:
-                components[-1] += '.py'
-            return os.path.join(self.output_dir, *components)
-
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
             print('LOG: %s' % message)
@@ -529,21 +511,6 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     if p == '':
         p = '.'
     return p
-
-
-def is_stub(path: str) -> bool:
-    """Does path refer to a stubs file?
-
-    Currently check if there is a 'stubs' directory component somewhere
-    in the path.
-    """
-    # TODO more precise check
-    dirname, basename = os.path.split(path)
-    if basename == '':
-        return False
-    else:
-        stubnames = ['stubs', 'stubs-auto']
-        return (basename in stubnames) or is_stub(dirname)
 
 
 class StateInfo:
@@ -662,6 +629,8 @@ class UnprocessedFile(State):
         tree = self.parse(self.program_text, self.path)
 
         # Store the parsed module in the shared module symbol table.
+        assert self.id not in self.manager.semantic_analyzer.modules, (
+            'Module %s processed twice' % self.id)
         self.manager.semantic_analyzer.modules[self.id] = tree
 
         if '.' in self.id:
@@ -857,7 +826,7 @@ def read_module_source_from_file(id: str,
     Return a pair (path, file contents). Return (None, None) if the module
     could not be found or read.
 
-    Arguments:
+    Args:
       id:       module name, a string of form 'foo' or 'foo.bar'
       lib_path: library search path
     """
