@@ -61,6 +61,10 @@ Mypy can be installed from pip:
 
     $ pip install mypy-lang
 
+Depending on your configuration, you may have to `pip3`:
+
+    $ pip3 install mypy-lang
+
 If you want to contribute and have git,
 first clone the mypy git repository:
 
