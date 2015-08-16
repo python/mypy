@@ -25,7 +25,7 @@ as for legacy code.
 
 Here is a small example to whet your appetite:
 
-```python
+```
 from typing import Iterator
 
 def fib(n: int) -> Iterator[int]:
