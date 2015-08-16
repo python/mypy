@@ -1,8 +1,10 @@
 """Type checker test cases"""
 
 import os.path
+import re
+import sys
 
-import typing
+from typing import Tuple
 
 from mypy import build
 from mypy.myunit import Suite, run_test
@@ -14,7 +16,7 @@ from mypy.test.helpers import (
 from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
 
-import sys
+
 APPEND_TESTCASES = '.new' if '-u' in sys.argv else ''
 UPDATE_TESTCASES = '-i' in sys.argv or '-u' in sys.argv
 
@@ -64,11 +66,13 @@ class TypeCheckSuite(Suite):
     def run_test(self, testcase):
         a = []
         pyversion = testcase_pyversion(testcase.file, testcase.name)
+        program_text = '\n'.join(testcase.input)
+        module_name, program_name, program_text = self.parse_options(program_text)
         try:
-            src = '\n'.join(testcase.input)
-            build.build('main',
+            build.build(program_name,
                         target=build.TYPE_CHECK,
-                        program_text=src,
+                        module=module_name,
+                        program_text=program_text,
                         pyversion=pyversion,
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
@@ -82,6 +86,29 @@ class TypeCheckSuite(Suite):
             testcase.output, a,
             'Invalid type checker output ({}, line {})'.format(
                 testcase.file, testcase.line))
+
+    def parse_options(self, program_text: str) -> Tuple[str, str, str]:
+        """Return type check options for a test case.
+
+        The default ('__main__') module name can be overriden by
+        using a comment like this in the test case input:
+
+          # cmd: mypy -m foo.bar
+
+        Return tuple (main module name, main file name, main program text).
+        """
+        m = re.search('# cmd: mypy -m ([a-zA-Z0-9_.]+) *$', program_text, flags=re.MULTILINE)
+        if m:
+            # The test case wants to use a non-default main
+            # module. Look up the module and give it as the thing to
+            # analyze.
+            module_name = m.group(1)
+            path = build.find_module(module_name, [test_temp_dir])
+            with open(path) as f:
+                program_text = f.read()
+            return m.group(1), path, program_text
+        else:
+            return '__main__', 'main', program_text
 
 
 if __name__ == '__main__':

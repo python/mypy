@@ -313,6 +313,7 @@ class BuildManager:
         values of the build function.
         """
         self.states.append(initial_state)
+        self.module_files[initial_state.id] = initial_state.path
 
         # Process states in a loop until all files (states) have been
         # semantically analyzed or type checked (depending on target).
@@ -628,6 +629,8 @@ class UnprocessedFile(State):
         tree = self.parse(self.program_text, self.path)
 
         # Store the parsed module in the shared module symbol table.
+        assert self.id not in self.manager.semantic_analyzer.modules, (
+            'Module %s processed twice' % self.id)
         self.manager.semantic_analyzer.modules[self.id] = tree
 
         if '.' in self.id:
