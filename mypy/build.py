@@ -86,7 +86,6 @@ def build(program_path: str,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
-          output_dir: str = None,
           pyversion: int = 3,
           custom_typing_module: str = None,
           html_report_dir: str = None,
@@ -109,7 +108,6 @@ def build(program_path: str,
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
-      output_dir: directory where the output (Python) is stored
       pyversion: Python version (2 for 2.x or 3 for 3.x)
       custom_typing_module: if not None, use this module id as an alias for typing
       flags: list of build options (e.g. COMPILE_ONLY)
@@ -143,7 +141,7 @@ def build(program_path: str,
     # build in the correct order.
     #
     # Ignore current directory prefix in error messages.
-    manager = BuildManager(data_dir, lib_path, target, output_dir,
+    manager = BuildManager(data_dir, lib_path, target,
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
@@ -263,7 +261,6 @@ class BuildManager:
                        Semantic analyzer, pass 3
       type_checker:    Type checker
       errors:          Used for reporting all errors
-      output_dir:      Store output files here (Python)
       pyversion:       Python version (2 or 3)
       flags:           Build options
       states:          States of all individual files that are being
@@ -282,7 +279,6 @@ class BuildManager:
     def __init__(self, data_dir: str,
                  lib_path: List[str],
                  target: int,
-                 output_dir: str,
                  pyversion: int,
                  flags: List[str],
                  ignore_prefix: str,
@@ -293,7 +289,6 @@ class BuildManager:
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = lib_path
         self.target = target
-        self.output_dir = output_dir
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
@@ -493,17 +488,6 @@ class BuildManager:
             pass  # Nothing to do.
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
-
-    def get_python_out_path(self, f: MypyFile) -> str:
-        if f.fullname() == '__main__':
-            return os.path.join(self.output_dir, basename(f.path))
-        else:
-            components = f.fullname().split('.')
-            if os.path.basename(f.path) == '__init__.py':
-                components.append('__init__.py')
-            else:
-                components[-1] += '.py'
-            return os.path.join(self.output_dir, *components)
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
