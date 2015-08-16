@@ -71,7 +71,7 @@ zip archive from this URL:
 
   https://github.com/JukkaL/mypy/archive/master.zip
 
-Run the supplied setup.py script to install mypy:
+Run the supplied `setup.py` script to install mypy:
 
     $ python3 setup.py install
 
@@ -82,8 +82,8 @@ the above as root. For example, in Ubuntu and Mac OS X:
 
 This installs the `mypy` script and dependencies, including the
 `typing` module, to system-dependent locations.  Sometimes the script
-directory will not be in PATH, and you have to add the target
-directory to PATH manually or create a symbolic link to the script.
+directory will not be in `PATH`, and you have to add the target
+directory to `PATH` manually or create a symbolic link to the script.
 In particular, on Mac OS X, the script may be installed under
 `/Library/Frameworks`:
 
@@ -118,7 +118,7 @@ Running tests and linting
 
 First install any additional dependencies needed for testing:
 
-   $ pip install -r test-requirements.txt
+    $ pip install -r test-requirements.txt
 
 To run tests, run the script `tests.py` in the mypy repository:
 
@@ -179,7 +179,7 @@ Help wanted
 Any help in testing, development, documentation and other tasks is
 highly appreciated and useful to the project.  Contact the developers
 to join the project, or just start coding and send pull requests!
-There are tasks for contributors of all skill levels.
+There are tasks for contributors of all experience levels.
 
 
 License
