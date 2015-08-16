@@ -1,7 +1,7 @@
-"""Facilities to build mypy programs and modules they depend on.
+"""Facilities to analyze entire programs, including imported modules.
 
-Parse, analyze and translate the source files of a program in the correct
-order (based on file dependencies), and collect the results.
+Parse and analyze the source files of a program in the correct order
+(based on file dependencies), and collect the results.
 
 This module only directs a build, which is performed in multiple passes per
 file.  The individual passes are implemented in separate modules.
@@ -38,7 +38,7 @@ TYPE_CHECK = 1          # Type check
 
 # Build flags
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
-MODULE = 'module'                # Build/run module as a script
+MODULE = 'module'                # Build module as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
 # State ids. These describe the states a source file / module can be in a
@@ -92,19 +92,17 @@ def build(program_path: str,
           html_report_dir: str = None,
           flags: List[str] = None,
           python_path: bool = False) -> BuildResult:
-    """Build a mypy program.
+    """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
-    type checking and other build passes for the program *and* all imported
-    modules, recursively.
+    type checking for the program *and* all imported modules, recursively.
 
     Return BuildResult if successful; otherwise raise CompileError.
 
-    Arguments:
+    Args:
       program_path: the path to the main source file (if module argument is
         given, this can be None => will be looked up)
       target: select passes to perform (a build target constant, e.g. C)
-    Optional arguments:
       module: name of the initial module; __main__ by default
       program_text: the main source file contents; if omitted, read from file
       alt_lib_dir: an additional directory for looking up library modules
