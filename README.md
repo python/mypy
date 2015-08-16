@@ -57,7 +57,7 @@ For other Linux flavors, OS X and Windows, packages are available at
 Quick start
 -----------
 
-Mypy can be installed from pip:
+Mypy can be installed using pip:
 
     $ pip install mypy-lang
 
