@@ -18,7 +18,7 @@ from mypy.nodes import (
     SymbolTable, RefExpr, TypeVarExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
-    DictionaryComprehension, ComplexExpr, TypeAliasExpr
+    DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisNode
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
@@ -279,6 +279,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_complex_expr(self, node: ComplexExpr) -> Node:
         return ComplexExpr(node.value)
+
+    def visit_ellipsis(self, node: EllipsisNode) -> Node:
+        return EllipsisNode()
 
     def visit_name_expr(self, node: NameExpr) -> Node:
         return self.duplicate_name(node)

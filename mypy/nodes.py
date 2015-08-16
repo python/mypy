@@ -811,6 +811,13 @@ class ComplexExpr(Node):
         return visitor.visit_complex_expr(self)
 
 
+class EllipsisNode(Node):
+    """Ellipsis (...)"""
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_ellipsis(self)
+
+
 class StarExpr(Node):
     """Star expression"""
 
@@ -1380,13 +1387,6 @@ class PromoteExpr(Node):
 
 
 # Constants
-
-
-class EllipsisNode(Node):
-    """Ellipsis (...)"""
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_ellipsis(self)
 
 
 class TempNode(Node):
