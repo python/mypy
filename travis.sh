@@ -56,13 +56,13 @@ rm $STUBTEST
 
 echo Type checking lib-python...
 echo
-pushd lib-python/3.2
+pushd lib-python/3.2 > /dev/null
 for f in test/test_*.py; do
     mod=test.`basename "$f" .py`
     echo $mod
     "$PYTHON" "$DRIVER" -m $mod || fail
 done
-popd
+popd > /dev/null
 
 echo Linting...
 echo
