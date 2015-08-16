@@ -75,17 +75,17 @@ Run the supplied setup.py script to install mypy:
 
     $ python3 setup.py install
 
-Replace 'python3' with your Python 3 interpreter.  You may have to do
+Replace `python3` with your Python 3 interpreter.  You may have to do
 the above as root. For example, in Ubuntu and Mac OS X:
 
     $ sudo python3 setup.py install
 
-This installs the 'mypy' script and dependencies, including the
-'typing' module, to system-dependent locations.  Sometimes the script
+This installs the `mypy` script and dependencies, including the
+`typing` module, to system-dependent locations.  Sometimes the script
 directory will not be in PATH, and you have to add the target
 directory to PATH manually or create a symbolic link to the script.
 In particular, on Mac OS X, the script may be installed under
-/Library/Frameworks:
+`/Library/Frameworks`:
 
     /Library/Frameworks/Python.framework/Versions/<version>/bin
 
@@ -94,10 +94,10 @@ Now, on a Unix-like system, you can type check a program like this:
     $ mypy PROGRAM
 
 In Windows, the script is generally installed in
-\PythonNN\Scripts. So, type check a program like this (replace
-\Python33 with your Python installation path):
+`\PythonNN\Scripts`. So, type check a program like this (replace
+`\Python34` with your Python installation path):
 
-    C:\>\Python33\python \Python33\Scripts\mypy PROGRAM
+    C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
 
 You can always use a Python interpreter to run your statically typed
 programs, even if they have type errors:
@@ -113,12 +113,33 @@ Documentation and additional information is available at the web site:
   http://www.mypy-lang.org/
 
 
-Running tests
--------------
+Running tests and linting
+-------------------------
 
-To run tests, run the script 'tests.py' in the mypy repository:
+First install any additional dependencies needed for testing:
+
+   $ pip install -r test-requirements.txt
+
+To run tests, run the script `tests.py` in the mypy repository:
 
     $ python3 tests.py
+
+You can also run tests without having to run `setup.py` first by
+setting up the Python module search path suitably:
+
+    $ export PYTHONPATH=PREFIX/mypy:PREFIX/mypy/lib-typing/3.2
+    $ python3 tests.py
+
+Replace `PREFIX` with the path where you have the repository cloned.
+
+You can also run the type checker for manual testing now without
+installing anything by running `scripts/mypy`:
+
+    $ python3 PREFIX/mypy/scripts/mypy PROGRAM
+
+To run the linter:
+
+    $ ./lint.sh
 
 
 Development status

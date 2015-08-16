@@ -6,6 +6,8 @@ python:
   - "3.4"
   - "pypy3"
 
-install: python setup.py install
+install:
+  - pip install -r test-requirements.txt
+  - python setup.py install
 
 script: bash travis.sh

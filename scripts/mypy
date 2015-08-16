@@ -140,7 +140,7 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
 
     if options.python_path and options.pyversion == 2:
         usage('--py2 specified, '
-                'but --use-python-path will search in sys.path of Python 3')
+              'but --use-python-path will search in sys.path of Python 3')
 
     return args[0], None, options
 
@@ -148,13 +148,13 @@ def process_options(args: List[str]) -> Tuple[str, str, Options]:
 def usage(msg: str = None) -> None:
     if msg:
         sys.stderr.write('%s\n' % msg)
-        sys.stderr.write(
-"""usage: mypy [option ...] [-m mod | file]
+        sys.stderr.write("""\
+usage: mypy [option ...] [-m mod | file]
 Try 'mypy -h' for more information.
 """)
     else:
-        sys.stderr.write(
-"""usage: mypy [option ...] [-m mod | file]
+        sys.stderr.write("""\
+usage: mypy [option ...] [-m mod | file]
 
 Optional arguments:
   -h, --help         print this help message and exit
@@ -169,9 +169,11 @@ Environment variables:
 """)
     sys.exit(2)
 
+
 def version() -> None:
     sys.stdout.write("mypy {}\n".format(__version__))
     exit(0)
+
 
 def fail(msg: str) -> None:
     sys.stderr.write('%s\n' % msg)
