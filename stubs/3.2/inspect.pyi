@@ -4,9 +4,9 @@ from typing import Any, Tuple, List, Callable
 
 _object = object
 
-def getmembers(obj: object, predicate: Callable[[Any], bool]) -> List[Tuple[str, object]]: pass
+def getmembers(obj: object, predicate: Callable[[Any], bool]) -> List[Tuple[str, object]]: ...
 
-def isclass(obj: object) -> bool: pass
+def isclass(obj: object) -> bool: ...
 
 # namedtuple('Attribute', 'name kind defining_class object')
 class Attribute(tuple):
@@ -15,11 +15,11 @@ class Attribute(tuple):
     defining_class = ...  # type: type
     object = ...  # type: _object
 
-def classify_class_attrs(cls: type) -> List[Attribute]: pass
+def classify_class_attrs(cls: type) -> List[Attribute]: ...
 
-def cleandoc(doc: str) -> str: pass
+def cleandoc(doc: str) -> str: ...
 
-def getsourcelines(obj: object) -> Tuple[List[str], int]: pass
+def getsourcelines(obj: object) -> Tuple[List[str], int]: ...
 
 # namedtuple('ArgSpec', 'args varargs keywords defaults')
 class ArgSpec(tuple):
@@ -28,4 +28,4 @@ class ArgSpec(tuple):
     keywords = ...  # type: str
     defaults = ...  # type: tuple
 
-def getargspec(func: object) -> ArgSpec: pass
+def getargspec(func: object) -> ArgSpec: ...

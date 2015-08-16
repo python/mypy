@@ -4,32 +4,32 @@
 
 from typing import Any
 
-class Error(Exception): pass
+class Error(Exception): ...
 
-def register(name, klass, instance=None, update_tryorder=1): pass
-def get(using=None): pass
-def open(url, new=0, autoraise=True): pass
-def open_new(url): pass
-def open_new_tab(url): pass
+def register(name, klass, instance=None, update_tryorder=1): ...
+def get(using=None): ...
+def open(url, new=0, autoraise=True): ...
+def open_new(url): ...
+def open_new_tab(url): ...
 
 class BaseBrowser:
     args = ... # type: Any
     name = ... # type: Any
     basename = ... # type: Any
-    def __init__(self, name=''): pass
-    def open(self, url, new=0, autoraise=True): pass
-    def open_new(self, url): pass
-    def open_new_tab(self, url): pass
+    def __init__(self, name=''): ...
+    def open(self, url, new=0, autoraise=True): ...
+    def open_new(self, url): ...
+    def open_new_tab(self, url): ...
 
 class GenericBrowser(BaseBrowser):
     name = ... # type: Any
     args = ... # type: Any
     basename = ... # type: Any
-    def __init__(self, name): pass
-    def open(self, url, new=0, autoraise=True): pass
+    def __init__(self, name): ...
+    def open(self, url, new=0, autoraise=True): ...
 
 class BackgroundBrowser(GenericBrowser):
-    def open(self, url, new=0, autoraise=True): pass
+    def open(self, url, new=0, autoraise=True): ...
 
 class UnixBrowser(BaseBrowser):
     raise_opts = ... # type: Any
@@ -39,7 +39,7 @@ class UnixBrowser(BaseBrowser):
     remote_action = ... # type: Any
     remote_action_newwin = ... # type: Any
     remote_action_newtab = ... # type: Any
-    def open(self, url, new=0, autoraise=True): pass
+    def open(self, url, new=0, autoraise=True): ...
 
 class Mozilla(UnixBrowser):
     raise_opts = ... # type: Any
@@ -80,19 +80,19 @@ class Elinks(UnixBrowser):
     redirect_stdout = ... # type: Any
 
 class Konqueror(BaseBrowser):
-    def open(self, url, new=0, autoraise=True): pass
+    def open(self, url, new=0, autoraise=True): ...
 
 class Grail(BaseBrowser):
-    def open(self, url, new=0, autoraise=True): pass
+    def open(self, url, new=0, autoraise=True): ...
 
 class WindowsDefault(BaseBrowser):
-    def open(self, url, new=0, autoraise=True): pass
+    def open(self, url, new=0, autoraise=True): ...
 
 class MacOSX(BaseBrowser):
     name = ... # type: Any
-    def __init__(self, name): pass
-    def open(self, url, new=0, autoraise=True): pass
+    def __init__(self, name): ...
+    def open(self, url, new=0, autoraise=True): ...
 
 class MacOSXOSAScript(BaseBrowser):
-    def __init__(self, name): pass
-    def open(self, url, new=0, autoraise=True): pass
+    def __init__(self, name): ...
+    def open(self, url, new=0, autoraise=True): ...

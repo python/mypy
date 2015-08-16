@@ -7,61 +7,61 @@ Bytes = __builtins__.bytes
 FieldsType = Tuple[Int, Int, Int, Int, Int, Int]
 
 class UUID:
-    def __init__(self, hex: str=None, bytes: Bytes=None, bytes_le: Bytes=None, fields: FieldsType=None, int: Int=None, version: Int=None) -> None: pass
+    def __init__(self, hex: str=None, bytes: Bytes=None, bytes_le: Bytes=None, fields: FieldsType=None, int: Int=None, version: Int=None) -> None: ...
 
     @property
-    def bytes(self) -> Bytes: pass
+    def bytes(self) -> Bytes: ...
 
     @property
-    def bytes_le(self) -> Bytes: pass
+    def bytes_le(self) -> Bytes: ...
 
     @property
-    def clock_seq(self) -> Int: pass
+    def clock_seq(self) -> Int: ...
 
     @property
-    def clock_seq_hi_variant(self) -> Int: pass
+    def clock_seq_hi_variant(self) -> Int: ...
 
     @property
-    def clock_seq_low(self) -> Int: pass
+    def clock_seq_low(self) -> Int: ...
 
     @property
-    def fields(self) -> FieldsType: pass
+    def fields(self) -> FieldsType: ...
 
     @property
-    def hex(self) -> str: pass
+    def hex(self) -> str: ...
 
     @property
-    def int(self) -> Int: pass
+    def int(self) -> Int: ...
 
     @property
-    def node(self) -> Int: pass
+    def node(self) -> Int: ...
 
     @property
-    def time(self) -> Int: pass
+    def time(self) -> Int: ...
 
     @property
-    def time_hi_version(self) -> Int: pass
+    def time_hi_version(self) -> Int: ...
 
     @property
-    def time_low(self) -> Int: pass
+    def time_low(self) -> Int: ...
 
     @property
-    def time_mid(self) -> Int: pass
+    def time_mid(self) -> Int: ...
 
     @property
-    def urn(self) -> str: pass
+    def urn(self) -> str: ...
 
     @property
-    def variant(self) -> str: pass
+    def variant(self) -> str: ...
 
     @property
-    def version(self) -> str: pass
+    def version(self) -> str: ...
 
-def getnode() -> Int: pass
-def uuid1(node: Int=None, clock_seq: Int=None) -> UUID: pass
-def uuid3(namespace: UUID, name: str) -> UUID: pass
-def uuid4() -> UUID: pass
-def uuid5(namespace: UUID, name: str) -> UUID: pass
+def getnode() -> Int: ...
+def uuid1(node: Int=None, clock_seq: Int=None) -> UUID: ...
+def uuid3(namespace: UUID, name: str) -> UUID: ...
+def uuid4() -> UUID: ...
+def uuid5(namespace: UUID, name: str) -> UUID: ...
 
 NAMESPACE_DNS = ... # type: UUID
 NAMESPACE_URL = ... # type: UUID

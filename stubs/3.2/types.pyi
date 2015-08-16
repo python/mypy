@@ -7,10 +7,10 @@ from typing import Any
 class ModuleType:
     __name__ = ... # type: str
     __file__ = ... # type: str
-    def __init__(self, name: str, doc: Any) -> None: pass
+    def __init__(self, name: str, doc: Any) -> None: ...
 
-class MethodType: pass
-class BuiltinMethodType: pass
+class MethodType: ...
+class BuiltinMethodType: ...
 
 class TracebackType:
     tb_frame = ... # type: Any

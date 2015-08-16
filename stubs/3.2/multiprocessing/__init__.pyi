@@ -2,11 +2,11 @@
 
 from typing import Any
 
-class Lock(): pass
-class Process(): pass
+class Lock(): ...
+class Process(): ...
 
 class Queue():
-    def get(block: bool = None, timeout: float = None) -> Any: pass
+    def get(block: bool = None, timeout: float = None) -> Any: ...
 
 class Value():
-    def __init__(typecode_or_type: str, *args: Any, lock: bool = True) -> None: pass
+    def __init__(typecode_or_type: str, *args: Any, lock: bool = True) -> None: ...

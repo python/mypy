@@ -4,7 +4,7 @@
 
 from typing import Tuple
 
-class BaseRequestHandler(): pass
+class BaseRequestHandler(): ...
 
 class TCPServer():
     def __init__(
@@ -12,4 +12,4 @@ class TCPServer():
         server_address: Tuple[str, int],
         request_handler: BaseRequestHandler,
         bind_and_activate: bool = True,
-    ) -> None: pass
+    ) -> None: ...

@@ -5,4 +5,4 @@
 from email.mime.nonmultipart import MIMENonMultipart
 
 class MIMEApplication(MIMENonMultipart):
-    def __init__(self, _data, _subtype='', _encoder=..., **_params): pass
+    def __init__(self, _data, _subtype='', _encoder=..., **_params): ...

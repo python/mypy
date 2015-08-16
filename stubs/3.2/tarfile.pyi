@@ -2,7 +2,7 @@
 
 from typing import Any, List, overload, Callable
 
-class TarError(Exception): pass
+class TarError(Exception): ...
 
 class TarInfo:
     name = ''
@@ -11,23 +11,23 @@ class TarInfo:
     gid = 0
 
 class TarFile:
-    def getmember(self, name: str) -> TarInfo: pass
-    def getmembers(self) -> List[TarInfo]: pass
-    def getnames(self) -> List[str]: pass
+    def getmember(self, name: str) -> TarInfo: ...
+    def getmembers(self) -> List[TarInfo]: ...
+    def getnames(self) -> List[str]: ...
     def extractall(self, path: str = ".",
-                   members: List[TarInfo] = None) -> None: pass
+                   members: List[TarInfo] = None) -> None: ...
 
     @overload
     def extract(self, member: str, path: str = "",
-                set_attrs: bool = True) -> None: pass
+                set_attrs: bool = True) -> None: ...
     @overload
     def extract(self, member: TarInfo, path: str = "",
-                set_attrs: bool = True) -> None: pass
+                set_attrs: bool = True) -> None: ...
 
     def add(self, name: str, arcname: str = None, recursive: bool = True,
             exclude: Callable[[str], bool] = None, *,
-            filter: 'Callable[[TarFile], TarFile]' = None) -> None: pass
-    def close(self) -> None: pass
+            filter: 'Callable[[TarFile], TarFile]' = None) -> None: ...
+    def close(self) -> None: ...
 
 def open(name: str = None, mode: str = 'r', fileobj: Any = None, bufsize: int = 10240,
-         **kwargs) -> TarFile: pass
+         **kwargs) -> TarFile: ...

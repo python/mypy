@@ -14,5 +14,5 @@ class struct_passwd:
     pw_dir = ''
     pw_shell = ''
 
-def getpwuid(uid: int) -> struct_passwd: pass
-def getpwnam(name: str) -> struct_passwd: pass
+def getpwuid(uid: int) -> struct_passwd: ...
+def getpwnam(name: str) -> struct_passwd: ...

@@ -15,16 +15,16 @@ CONTENT_TYPE_FORM_URLENCODED = ...  # type: Any
 CONTENT_TYPE_MULTI_PART = ...  # type: Any
 
 class AuthBase:
-    def __call__(self, r): pass
+    def __call__(self, r): ...
 
 class HTTPBasicAuth(AuthBase):
     username = ...  # type: Any
     password = ...  # type: Any
-    def __init__(self, username, password): pass
-    def __call__(self, r): pass
+    def __init__(self, username, password): ...
+    def __call__(self, r): ...
 
 class HTTPProxyAuth(HTTPBasicAuth):
-    def __call__(self, r): pass
+    def __call__(self, r): ...
 
 class HTTPDigestAuth(AuthBase):
     username = ...  # type: Any
@@ -34,8 +34,8 @@ class HTTPDigestAuth(AuthBase):
     chal = ...  # type: Any
     pos = ...  # type: Any
     num_401_calls = ...  # type: Any
-    def __init__(self, username, password): pass
-    def build_digest_header(self, method, url): pass
-    def handle_redirect(self, r, **kwargs): pass
-    def handle_401(self, r, **kwargs): pass
-    def __call__(self, r): pass
+    def __init__(self, username, password): ...
+    def build_digest_header(self, method, url): ...
+    def handle_redirect(self, r, **kwargs): ...
+    def handle_401(self, r, **kwargs): ...
+    def __call__(self, r): ...

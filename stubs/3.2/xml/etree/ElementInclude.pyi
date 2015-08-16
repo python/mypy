@@ -8,7 +8,7 @@ XINCLUDE = ... # type: Any
 XINCLUDE_INCLUDE = ... # type: Any
 XINCLUDE_FALLBACK = ... # type: Any
 
-class FatalIncludeError(SyntaxError): pass
+class FatalIncludeError(SyntaxError): ...
 
-def default_loader(href, parse, encoding=None): pass
-def include(elem, loader=None): pass
+def default_loader(href, parse, encoding=None): ...
+def include(elem, loader=None): ...

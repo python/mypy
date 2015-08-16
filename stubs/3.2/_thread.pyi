@@ -4,11 +4,11 @@
 
 from typing import Any
 
-def _count() -> int: pass
+def _count() -> int: ...
 _dangling = ...  # type: Any
 
 class LockType:
-    def acquire(self) -> None: pass
-    def release(self) -> None: pass
+    def acquire(self) -> None: ...
+    def release(self) -> None: ...
 
-def allocate_lock() -> LockType: pass
+def allocate_lock() -> LockType: ...

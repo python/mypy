@@ -5,4 +5,4 @@
 from email.mime.nonmultipart import MIMENonMultipart
 
 class MIMEAudio(MIMENonMultipart):
-    def __init__(self, _audiodata, _subtype=None, _encoder=..., **_params): pass
+    def __init__(self, _audiodata, _subtype=None, _encoder=..., **_params): ...

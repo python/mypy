@@ -2,4 +2,4 @@
 
 # NOTE: These are incomplete!
 
-def getuser() -> str: pass
+def getuser() -> str: ...

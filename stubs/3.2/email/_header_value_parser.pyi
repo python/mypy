@@ -16,7 +16,7 @@ ASPECIALS = ...  # type: Any
 ATTRIBUTE_ENDS = ...  # type: Any
 EXTENDED_ATTRIBUTE_ENDS = ...  # type: Any
 
-def quote_string(value): pass
+def quote_string(value): ...
 
 class _Folded:
     maxlen = ...  # type: Any
@@ -26,56 +26,56 @@ class _Folded:
     firstline = ...  # type: Any
     done = ...  # type: Any
     current = ...  # type: Any
-    def __init__(self, maxlen, policy): pass
-    def newline(self): pass
-    def finalize(self): pass
-    def append(self, stoken): pass
-    def append_if_fits(self, token, stoken=None): pass
+    def __init__(self, maxlen, policy): ...
+    def newline(self): ...
+    def finalize(self): ...
+    def append(self, stoken): ...
+    def append_if_fits(self, token, stoken=None): ...
 
 class TokenList(list):
     token_type = ...  # type: Any
     defects = ...  # type: Any
-    def __init__(self, *args, **kw): pass
+    def __init__(self, *args, **kw): ...
     @property
-    def value(self): pass
+    def value(self): ...
     @property
-    def all_defects(self): pass
+    def all_defects(self): ...
     @property
-    def parts(self): pass
-    def startswith_fws(self): pass
-    def pop_leading_fws(self): pass
-    def pop_trailing_ws(self): pass
+    def parts(self): ...
+    def startswith_fws(self): ...
+    def pop_leading_fws(self): ...
+    def pop_trailing_ws(self): ...
     @property
-    def has_fws(self): pass
-    def has_leading_comment(self): pass
+    def has_fws(self): ...
+    def has_leading_comment(self): ...
     @property
-    def comments(self): pass
-    def fold(self, policy): pass
-    def as_encoded_word(self, charset): pass
-    def cte_encode(self, charset, policy): pass
-    def pprint(self, indent=''): pass
-    def ppstr(self, indent=''): pass
+    def comments(self): ...
+    def fold(self, policy): ...
+    def as_encoded_word(self, charset): ...
+    def cte_encode(self, charset, policy): ...
+    def pprint(self, indent=''): ...
+    def ppstr(self, indent=''): ...
 
 class WhiteSpaceTokenList(TokenList):
     @property
-    def value(self): pass
+    def value(self): ...
     @property
-    def comments(self): pass
+    def comments(self): ...
 
 class UnstructuredTokenList(TokenList):
     token_type = ...  # type: Any
-    def cte_encode(self, charset, policy): pass
+    def cte_encode(self, charset, policy): ...
 
 class Phrase(TokenList):
     token_type = ...  # type: Any
-    def cte_encode(self, charset, policy): pass
+    def cte_encode(self, charset, policy): ...
 
 class Word(TokenList):
     token_type = ...  # type: Any
 
 class CFWSList(WhiteSpaceTokenList):
     token_type = ...  # type: Any
-    def has_leading_comment(self): pass
+    def has_leading_comment(self): ...
 
 class Atom(TokenList):
     token_type = ...  # type: Any
@@ -89,123 +89,123 @@ class EncodedWord(TokenList):
     charset = ...  # type: Any
     lang = ...  # type: Any
     @property
-    def encoded(self): pass
+    def encoded(self): ...
 
 class QuotedString(TokenList):
     token_type = ...  # type: Any
     @property
-    def content(self): pass
+    def content(self): ...
     @property
-    def quoted_value(self): pass
+    def quoted_value(self): ...
     @property
-    def stripped_value(self): pass
+    def stripped_value(self): ...
 
 class BareQuotedString(QuotedString):
     token_type = ...  # type: Any
     @property
-    def value(self): pass
+    def value(self): ...
 
 class Comment(WhiteSpaceTokenList):
     token_type = ...  # type: Any
-    def quote(self, value): pass
+    def quote(self, value): ...
     @property
-    def content(self): pass
+    def content(self): ...
     @property
-    def comments(self): pass
+    def comments(self): ...
 
 class AddressList(TokenList):
     token_type = ...  # type: Any
     @property
-    def addresses(self): pass
+    def addresses(self): ...
     @property
-    def mailboxes(self): pass
+    def mailboxes(self): ...
     @property
-    def all_mailboxes(self): pass
+    def all_mailboxes(self): ...
 
 class Address(TokenList):
     token_type = ...  # type: Any
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     @property
-    def mailboxes(self): pass
+    def mailboxes(self): ...
     @property
-    def all_mailboxes(self): pass
+    def all_mailboxes(self): ...
 
 class MailboxList(TokenList):
     token_type = ...  # type: Any
     @property
-    def mailboxes(self): pass
+    def mailboxes(self): ...
     @property
-    def all_mailboxes(self): pass
+    def all_mailboxes(self): ...
 
 class GroupList(TokenList):
     token_type = ...  # type: Any
     @property
-    def mailboxes(self): pass
+    def mailboxes(self): ...
     @property
-    def all_mailboxes(self): pass
+    def all_mailboxes(self): ...
 
 class Group(TokenList):
     token_type = ...  # type: Any
     @property
-    def mailboxes(self): pass
+    def mailboxes(self): ...
     @property
-    def all_mailboxes(self): pass
+    def all_mailboxes(self): ...
     @property
-    def display_name(self): pass
+    def display_name(self): ...
 
 class NameAddr(TokenList):
     token_type = ...  # type: Any
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     @property
-    def local_part(self): pass
+    def local_part(self): ...
     @property
-    def domain(self): pass
+    def domain(self): ...
     @property
-    def route(self): pass
+    def route(self): ...
     @property
-    def addr_spec(self): pass
+    def addr_spec(self): ...
 
 class AngleAddr(TokenList):
     token_type = ...  # type: Any
     @property
-    def local_part(self): pass
+    def local_part(self): ...
     @property
-    def domain(self): pass
+    def domain(self): ...
     @property
-    def route(self): pass
+    def route(self): ...
     @property
-    def addr_spec(self): pass
+    def addr_spec(self): ...
 
 class ObsRoute(TokenList):
     token_type = ...  # type: Any
     @property
-    def domains(self): pass
+    def domains(self): ...
 
 class Mailbox(TokenList):
     token_type = ...  # type: Any
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     @property
-    def local_part(self): pass
+    def local_part(self): ...
     @property
-    def domain(self): pass
+    def domain(self): ...
     @property
-    def route(self): pass
+    def route(self): ...
     @property
-    def addr_spec(self): pass
+    def addr_spec(self): ...
 
 class InvalidMailbox(TokenList):
     token_type = ...  # type: Any
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     local_part = ...  # type: Any
 
 class Domain(TokenList):
     token_type = ...  # type: Any
     @property
-    def domain(self): pass
+    def domain(self): ...
 
 class DotAtom(TokenList):
     token_type = ...  # type: Any
@@ -216,13 +216,13 @@ class DotAtomText(TokenList):
 class AddrSpec(TokenList):
     token_type = ...  # type: Any
     @property
-    def local_part(self): pass
+    def local_part(self): ...
     @property
-    def domain(self): pass
+    def domain(self): ...
     @property
-    def value(self): pass
+    def value(self): ...
     @property
-    def addr_spec(self): pass
+    def addr_spec(self): ...
 
 class ObsLocalPart(TokenList):
     token_type = ...  # type: Any
@@ -230,23 +230,23 @@ class ObsLocalPart(TokenList):
 class DisplayName(Phrase):
     token_type = ...  # type: Any
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     @property
-    def value(self): pass
+    def value(self): ...
 
 class LocalPart(TokenList):
     token_type = ...  # type: Any
     @property
-    def value(self): pass
+    def value(self): ...
     @property
-    def local_part(self): pass
+    def local_part(self): ...
 
 class DomainLiteral(TokenList):
     token_type = ...  # type: Any
     @property
-    def domain(self): pass
+    def domain(self): ...
     @property
-    def ip(self): pass
+    def ip(self): ...
 
 class MIMEVersion(TokenList):
     token_type = ...  # type: Any
@@ -259,9 +259,9 @@ class Parameter(TokenList):
     extended = ...  # type: Any
     charset = ...  # type: Any
     @property
-    def section_number(self): pass
+    def section_number(self): ...
     @property
-    def param_value(self): pass
+    def param_value(self): ...
 
 class InvalidParameter(Parameter):
     token_type = ...  # type: Any
@@ -269,7 +269,7 @@ class InvalidParameter(Parameter):
 class Attribute(TokenList):
     token_type = ...  # type: Any
     @property
-    def stripped_value(self): pass
+    def stripped_value(self): ...
 
 class Section(TokenList):
     token_type = ...  # type: Any
@@ -278,18 +278,18 @@ class Section(TokenList):
 class Value(TokenList):
     token_type = ...  # type: Any
     @property
-    def stripped_value(self): pass
+    def stripped_value(self): ...
 
 class MimeParameters(TokenList):
     token_type = ...  # type: Any
     @property
-    def params(self): pass
+    def params(self): ...
 
 class ParameterizedHeaderValue(TokenList):
     @property
-    def params(self): pass
+    def params(self): ...
     @property
-    def parts(self): pass
+    def parts(self): ...
 
 class ContentType(ParameterizedHeaderValue):
     token_type = ...  # type: Any
@@ -313,85 +313,85 @@ class Header(TokenList):
 class Terminal(str):
     token_type = ...  # type: Any
     defects = ...  # type: Any
-    def __new__(cls, value, token_type): pass
+    def __new__(cls, value, token_type): ...
     @property
-    def all_defects(self): pass
-    def cte_encode(self, charset, policy): pass
-    def pop_trailing_ws(self): pass
-    def pop_leading_fws(self): pass
+    def all_defects(self): ...
+    def cte_encode(self, charset, policy): ...
+    def pop_trailing_ws(self): ...
+    def pop_leading_fws(self): ...
     @property
-    def comments(self): pass
-    def has_leading_comment(self): pass
-    def __getnewargs__(self): pass
+    def comments(self): ...
+    def has_leading_comment(self): ...
+    def __getnewargs__(self): ...
 
 class WhiteSpaceTerminal(Terminal):
     @property
-    def value(self): pass
-    def startswith_fws(self): pass
+    def value(self): ...
+    def startswith_fws(self): ...
     has_fws = ...  # type: Any
 
 class ValueTerminal(Terminal):
     @property
-    def value(self): pass
-    def startswith_fws(self): pass
+    def value(self): ...
+    def startswith_fws(self): ...
     has_fws = ...  # type: Any
-    def as_encoded_word(self, charset): pass
+    def as_encoded_word(self, charset): ...
 
 class EWWhiteSpaceTerminal(WhiteSpaceTerminal):
     @property
-    def value(self): pass
+    def value(self): ...
     @property
-    def encoded(self): pass
+    def encoded(self): ...
     has_fws = ...  # type: Any
 
 DOT = ...  # type: Any
 ListSeparator = ...  # type: Any
 RouteComponentMarker = ...  # type: Any
 
-def get_fws(value): pass
-def get_encoded_word(value): pass
-def get_unstructured(value): pass
-def get_qp_ctext(value): pass
-def get_qcontent(value): pass
-def get_atext(value): pass
-def get_bare_quoted_string(value): pass
-def get_comment(value): pass
-def get_cfws(value): pass
-def get_quoted_string(value): pass
-def get_atom(value): pass
-def get_dot_atom_text(value): pass
-def get_dot_atom(value): pass
-def get_word(value): pass
-def get_phrase(value): pass
-def get_local_part(value): pass
-def get_obs_local_part(value): pass
-def get_dtext(value): pass
-def get_domain_literal(value): pass
-def get_domain(value): pass
-def get_addr_spec(value): pass
-def get_obs_route(value): pass
-def get_angle_addr(value): pass
-def get_display_name(value): pass
-def get_name_addr(value): pass
-def get_mailbox(value): pass
-def get_invalid_mailbox(value, endchars): pass
-def get_mailbox_list(value): pass
-def get_group_list(value): pass
-def get_group(value): pass
-def get_address(value): pass
-def get_address_list(value): pass
-def parse_mime_version(value): pass
-def get_invalid_parameter(value): pass
-def get_ttext(value): pass
-def get_token(value): pass
-def get_attrtext(value): pass
-def get_attribute(value): pass
-def get_extended_attrtext(value): pass
-def get_extended_attribute(value): pass
-def get_section(value): pass
-def get_value(value): pass
-def get_parameter(value): pass
-def parse_mime_parameters(value): pass
-def parse_content_type_header(value): pass
-def parse_content_disposition_header(value): pass
-def parse_content_transfer_encoding_header(value): pass
+def get_fws(value): ...
+def get_encoded_word(value): ...
+def get_unstructured(value): ...
+def get_qp_ctext(value): ...
+def get_qcontent(value): ...
+def get_atext(value): ...
+def get_bare_quoted_string(value): ...
+def get_comment(value): ...
+def get_cfws(value): ...
+def get_quoted_string(value): ...
+def get_atom(value): ...
+def get_dot_atom_text(value): ...
+def get_dot_atom(value): ...
+def get_word(value): ...
+def get_phrase(value): ...
+def get_local_part(value): ...
+def get_obs_local_part(value): ...
+def get_dtext(value): ...
+def get_domain_literal(value): ...
+def get_domain(value): ...
+def get_addr_spec(value): ...
+def get_obs_route(value): ...
+def get_angle_addr(value): ...
+def get_display_name(value): ...
+def get_name_addr(value): ...
+def get_mailbox(value): ...
+def get_invalid_mailbox(value, endchars): ...
+def get_mailbox_list(value): ...
+def get_group_list(value): ...
+def get_group(value): ...
+def get_address(value): ...
+def get_address_list(value): ...
+def parse_mime_version(value): ...
+def get_invalid_parameter(value): ...
+def get_ttext(value): ...
+def get_token(value): ...
+def get_attrtext(value): ...
+def get_attribute(value): ...
+def get_extended_attrtext(value): ...
+def get_extended_attribute(value): ...
+def get_section(value): ...
+def get_value(value): ...
+def get_parameter(value): ...
+def parse_mime_parameters(value): ...
+def parse_content_type_header(value): ...
+def parse_content_disposition_header(value): ...
+def parse_content_transfer_encoding_header(value): ...

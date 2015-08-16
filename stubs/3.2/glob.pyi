@@ -4,5 +4,5 @@
 
 from typing import List, Iterator, AnyStr
 
-def glob(pathname: AnyStr) -> List[AnyStr]: pass
-def iglob(pathname: AnyStr) -> Iterator[AnyStr]: pass
+def glob(pathname: AnyStr) -> List[AnyStr]: ...
+def iglob(pathname: AnyStr) -> Iterator[AnyStr]: ...

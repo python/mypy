@@ -5,4 +5,4 @@
 from typing import Any
 
 class BaseManager():
-    def register(typeid: str, callable: Any = None) -> None: pass
+    def register(typeid: str, callable: Any = None) -> None: ...

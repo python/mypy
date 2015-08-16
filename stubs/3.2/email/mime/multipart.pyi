@@ -5,4 +5,4 @@
 from email.mime.base import MIMEBase
 
 class MIMEMultipart(MIMEBase):
-    def __init__(self, _subtype='', boundary=None, _subparts=None, **_params): pass
+    def __init__(self, _subtype='', boundary=None, _subparts=None, **_params): ...

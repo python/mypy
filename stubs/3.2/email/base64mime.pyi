@@ -4,10 +4,10 @@
 
 from typing import Any
 
-def header_length(bytearray): pass
-def header_encode(header_bytes, charset=''): pass
-def body_encode(s, maxlinelen=76, eol=...): pass
-def decode(string): pass
+def header_length(bytearray): ...
+def header_encode(header_bytes, charset=''): ...
+def body_encode(s, maxlinelen=76, eol=...): ...
+def decode(string): ...
 
 body_decode = ...  # type: Any
 decodestring = ...  # type: Any

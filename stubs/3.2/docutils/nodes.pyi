@@ -5,4 +5,4 @@ class reference:
                  rawsource: str = '',
                  text: str = '',
                  *children: List[Any],
-                 **attributes) -> None: pass
+                 **attributes) -> None: ...

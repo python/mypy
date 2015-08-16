@@ -10,7 +10,7 @@ from .util import ssl_
 from . import util
 import http.client
 
-class DummyConnection: pass
+class DummyConnection: ...
 
 import ssl
 BaseSSLError = ssl.SSLError
@@ -36,16 +36,16 @@ class HTTPConnection(_HTTPConnection):
     is_verified = ...  # type: Any
     source_address = ...  # type: Any
     socket_options = ...  # type: Any
-    def __init__(self, *args, **kw): pass
-    def connect(self): pass
+    def __init__(self, *args, **kw): ...
+    def connect(self): ...
 
 class HTTPSConnection(HTTPConnection):
     default_port = ...  # type: Any
     key_file = ...  # type: Any
     cert_file = ...  # type: Any
-    def __init__(self, host, port=None, key_file=None, cert_file=None, strict=None, timeout=..., **kw): pass
+    def __init__(self, host, port=None, key_file=None, cert_file=None, strict=None, timeout=..., **kw): ...
     sock = ...  # type: Any
-    def connect(self): pass
+    def connect(self): ...
 
 class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = ...  # type: Any
@@ -55,10 +55,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     key_file = ...  # type: Any
     cert_file = ...  # type: Any
     assert_hostname = ...  # type: Any
-    def set_cert(self, key_file=None, cert_file=None, cert_reqs=None, ca_certs=None, assert_hostname=None, assert_fingerprint=None): pass
+    def set_cert(self, key_file=None, cert_file=None, cert_reqs=None, ca_certs=None, assert_hostname=None, assert_fingerprint=None): ...
     sock = ...  # type: Any
     auto_open = ...  # type: Any
     is_verified = ...  # type: Any
-    def connect(self): pass
+    def connect(self): ...
 
 UnverifiedHTTPSConnection = ...  # type: Any

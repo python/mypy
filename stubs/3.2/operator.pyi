@@ -4,4 +4,4 @@
 
 from typing import Any
 
-def add(a: Any, b: Any) -> Any: pass
+def add(a: Any, b: Any) -> Any: ...

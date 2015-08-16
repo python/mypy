@@ -32,20 +32,20 @@ ITIMER_REAL = 0
 ITIMER_VIRTUAL = 0
 ITIMER_PROF = 0
 
-class ItimerError(IOError): pass
+class ItimerError(IOError): ...
 
-def alarm(time: int) -> int: pass # Unix
-def getsignal(signalnum: int) -> Any: pass
-def pause() -> None: pass # Unix
+def alarm(time: int) -> int: ... # Unix
+def getsignal(signalnum: int) -> Any: ...
+def pause() -> None: ... # Unix
 #def setitimer(which: int, seconds: float,
-#              internval: float = None) -> Tuple[float, float]: pass # Unix
-#def getitimer(int which): pass # Unix
-def set_wakeup_fd(fd: int) -> None: pass
-def siginterrupt(signalnum: int, flag: bool) -> None: pass
+#              internval: float = None) -> Tuple[float, float]: ... # Unix
+#def getitimer(int which): ... # Unix
+def set_wakeup_fd(fd: int) -> None: ...
+def siginterrupt(signalnum: int, flag: bool) -> None: ...
 
 @overload
-def signal(signalnum: int, handler: int) -> Any: pass
+def signal(signalnum: int, handler: int) -> Any: ...
 @overload
 def signal(signalnum: int,
            handler: Callable[[int, Any], None]) -> Any:
-    pass # TODO frame object type
+    ... # TODO frame object type
