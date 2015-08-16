@@ -383,6 +383,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
 def find_self_initializers(fdef):
     results = []
+
     class SelfTraverser(mypy.traverser.TraverserVisitor):
         def visit_assignment_stmt(self, o):
             lvalue = o.lvalues[0]
@@ -390,15 +391,18 @@ def find_self_initializers(fdef):
                     isinstance(lvalue.expr, NameExpr) and
                     lvalue.expr.name == 'self'):
                 results.append(lvalue.name)
+
     fdef.accept(SelfTraverser())
     return results
 
 
 def find_classes(cdef):
     results = set()
+
     class ClassTraverser(mypy.traverser.TraverserVisitor):
         def visit_class_def(self, o):
             results.add(o.name)
+
     cdef.accept(ClassTraverser())
     return results
 
@@ -413,7 +417,6 @@ def get_qualified_name(o):
 
 
 def main():
-    import sys
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
     args = sys.argv[1:]

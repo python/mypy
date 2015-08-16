@@ -85,7 +85,6 @@ class StatisticsVisitor(TraverserVisitor):
             self.type(o.type)
         elif self.inferred:
             for lvalue in o.lvalues:
-                lvalue_ref = lvalue
                 if isinstance(lvalue, nodes.TupleExpr):
                     items = lvalue.items
                 elif isinstance(lvalue, nodes.ListExpr):
@@ -295,9 +294,9 @@ def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
         for i, line in enumerate(input_file):
             lineno = i + 1
             status = visitor.line_map.get(lineno, TYPE_PRECISE)
-            style_map = { TYPE_PRECISE: 'white',
-                          TYPE_IMPRECISE: 'yellow',
-                          TYPE_ANY: 'red' }
+            style_map = {TYPE_PRECISE: 'white',
+                         TYPE_IMPRECISE: 'yellow',
+                         TYPE_ANY: 'red'}
             style = style_map[status]
             append('<span class="lineno">%4d</span>   ' % lineno +
                    '<span class="%s">%s</span>' % (style,

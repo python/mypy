@@ -17,7 +17,7 @@ from mypy.nodes import (
     TypeAliasExpr
 )
 from mypy.errors import Errors
-from mypy.nodes import function_type, method_type
+from mypy.nodes import function_type
 from mypy import nodes
 import mypy.checker
 from mypy import types
@@ -151,8 +151,6 @@ class ExpressionChecker:
         arg_messages = arg_messages or self.msg
         is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, CallableType):
-            if callee.is_type_obj():
-                t = callee.type_object()
             if callee.is_type_obj() and callee.type_object().is_abstract:
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
@@ -762,11 +760,12 @@ class ExpressionChecker:
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
                     itertype = self.chk.analyze_iterable_item_type(right)
-                    method_type = CallableType([left_type],
-                                           [nodes.ARG_POS],
-                                           [None],
-                                           self.chk.bool_type(),
-                                           self.named_type('builtins.function'))
+                    method_type = CallableType(
+                        [left_type],
+                        [nodes.ARG_POS],
+                        [None],
+                        self.chk.bool_type(),
+                        self.named_type('builtins.function'))
                     sub_result = self.chk.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
@@ -788,7 +787,7 @@ class ExpressionChecker:
             e.method_types.append(method_type)
 
             #  Determine type of boolean-and of result and sub_result
-            if result == None:
+            if result is None:
                 result = sub_result
             else:
                 # TODO: check on void needed?
@@ -967,8 +966,7 @@ class ExpressionChecker:
                 self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
                 return AnyType()
         else:
-            result, method_type = self.check_op('__getitem__', left_type,
-                                                e.index, e)
+            result, method_type = self.check_op('__getitem__', left_type, e.index, e)
             e.method_type = method_type
             return result
 
@@ -1006,14 +1004,14 @@ class ExpressionChecker:
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
         tv = TypeVarType('T', -1, [], self.chk.object_type())
-        constructor = CallableType([tv],
-                               [nodes.ARG_STAR],
-                               [None],
-                               self.chk.named_generic_type(fullname,
-                                                           [tv]),
-                               self.named_type('builtins.function'),
-                               tag,
-                               [TypeVarDef('T', -1, None, self.chk.object_type())])
+        constructor = CallableType(
+            [tv],
+            [nodes.ARG_STAR],
+            [None],
+            self.chk.named_generic_type(fullname, [tv]),
+            self.named_type('builtins.function'),
+            tag,
+            [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -1046,15 +1044,15 @@ class ExpressionChecker:
         # The callable type represents a function like this:
         #
         #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-        constructor = CallableType([TupleType([tv1, tv2], self.named_type('builtins.tuple'))],
-                               [nodes.ARG_STAR],
-                               [None],
-                               self.chk.named_generic_type('builtins.dict',
-                                                           [tv1, tv2]),
-                               self.named_type('builtins.function'),
-                               '<list>',
-                               [TypeVarDef('KT', -1, None, self.chk.object_type()),
-                                TypeVarDef('VT', -2, None, self.chk.object_type())])
+        constructor = CallableType(
+            [TupleType([tv1, tv2], self.named_type('builtins.tuple'))],
+            [nodes.ARG_STAR],
+            [None],
+            self.chk.named_generic_type('builtins.dict', [tv1, tv2]),
+            self.named_type('builtins.function'),
+            '<list>',
+            [TypeVarDef('KT', -1, None, self.chk.object_type()),
+             TypeVarDef('VT', -2, None, self.chk.object_type())])
         # Synthesize function arguments.
         args = []  # type: List[Node]
         for key, value in e.items:
@@ -1155,13 +1153,14 @@ class ExpressionChecker:
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
         tv = TypeVarType('T', -1, [], self.chk.object_type())
-        constructor = CallableType([tv],
-                               [nodes.ARG_POS],
-                               [None],
-                               self.chk.named_generic_type(type_name, [tv]),
-                               self.chk.named_type('builtins.function'),
-                               id_for_messages,
-                               [TypeVarDef('T', -1, None, self.chk.object_type())])
+        constructor = CallableType(
+            [tv],
+            [nodes.ARG_POS],
+            [None],
+            self.chk.named_generic_type(type_name, [tv]),
+            self.chk.named_type('builtins.function'),
+            id_for_messages,
+            [TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
@@ -1173,14 +1172,15 @@ class ExpressionChecker:
         # callable type.
         key_tv = TypeVarType('KT', -1, [], self.chk.object_type())
         value_tv = TypeVarType('VT', -2, [], self.chk.object_type())
-        constructor = CallableType([key_tv, value_tv],
-                               [nodes.ARG_POS, nodes.ARG_POS],
-                               [None, None],
-                               self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
-                               self.chk.named_type('builtins.function'),
-                               '<dictionary-comprehension>',
-                               [TypeVarDef('KT', -1, None, self.chk.object_type()),
-                                TypeVarDef('VT', -2, None, self.chk.object_type())])
+        constructor = CallableType(
+            [key_tv, value_tv],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            [None, None],
+            self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
+            self.chk.named_type('builtins.function'),
+            '<dictionary-comprehension>',
+            [TypeVarDef('KT', -1, None, self.chk.object_type()),
+             TypeVarDef('VT', -2, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 

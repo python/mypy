@@ -161,6 +161,7 @@ class MypyFile(SymbolNode):
         return not (self.path is None) and len(self.path) != 0 \
             and os.path.basename(self.path) == '__init__.py'
 
+
 class ImportBase(Node):
     """Base class for all import statements."""
     is_unreachable = False
@@ -248,24 +249,25 @@ class OverloadedFuncDef(FuncBase):
 
 
 class FuncItem(FuncBase):
-    args = None  # type: List[Var]     # Argument names
+    args = None  # type: List[Var]  # Argument names
     arg_kinds = None  # type: List[int]  # Kinds of arguments (ARG_*)
 
-    # Initialization expessions for fixed args; None if no initialiser
+    # Initialization expessions for fixed args; None if no initializer
     init = None  # type: List[AssignmentStmt]
-    min_args = 0           # Minimum number of arguments
-    max_pos = 0            # Maximum number of positional arguments, -1 if
-                           # no explicit limit (*args not included)
+    # Minimum number of arguments
+    min_args = 0
+    # Maximum number of positional arguments, -1 if no explicit limit (*args not included)
+    max_pos = 0
     body = None  # type: Block
     is_implicit = False    # Implicit dynamic types?
-    is_overload = False    # Is this an overload variant of function with
-                           # more than one overload variant?
+    # Is this an overload variant of function with more than one overload variant?
+    is_overload = False
     is_generator = False   # Contains a yield statement?
     is_coroutine = False   # Contains @coroutine or yield from Future
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
-    expanded = None  # type: List[FuncItem]  # Variants of function with type
-                                            # variables with values expanded
+    # Variants of function with type variables with values expanded
+    expanded = None  # type: List[FuncItem]
 
     def __init__(self, args: List['Var'], arg_kinds: List[int],
                  init: List[Node], body: 'Block',
@@ -388,8 +390,8 @@ class Var(SymbolNode):
     _fullname = None  # type: str   # Name with module prefix
     info = None  # type: TypeInfo   # Defining class (for member variables)
     type = None  # type: mypy.types.Type # Declared or inferred type, or None
-    is_self = False   # Is this the first argument to an ordinary method
-                      # (usually "self")?
+    # Is this the first argument to an ordinary method (usually "self")?
+    is_self = False
     is_ready = False  # If inferred, is the inferred type available?
     # Is this initialized explicitly to a non-None value in class body?
     is_initialized_in_class = False
@@ -517,8 +519,8 @@ class AssignmentStmt(Node):
 
     lvalues = None  # type: List[Node]
     rvalue = None  # type: Node
-    type = None  # type: mypy.types.Type # Declared type in a comment,
-                                        # may be None.
+    # Declared type in a comment, may be None.
+    type = None  # type: mypy.types.Type
 
     def __init__(self, lvalues: List[Node], rvalue: Node,
                  type: 'mypy.types.Type' = None) -> None:
@@ -847,8 +849,9 @@ class NameExpr(RefExpr):
     """
 
     name = None  # type: str      # Name referred to (may be qualified)
-    info = None  # type: TypeInfo  # TypeInfo of class surrounding expression
-                                  # (may be None)
+    # TypeInfo of class surrounding expression (may be None)
+    info = None  # type: TypeInfo
+
     literal = LITERAL_TYPE
 
     def __init__(self, name: str) -> None:
@@ -904,11 +907,11 @@ class CallExpr(Node):
     callee = None  # type: Node
     args = None  # type: List[Node]
     arg_kinds = None  # type: List[int]  # ARG_ constants
-    arg_names = None  # type: List[str]  # Each name can be None if not a keyword
-                                      # argument.
-    analyzed = None  # type: Node        # If not None, the node that represents
-                                      # the meaning of the CallExpr. For
-                                      # cast(...) this is a CastExpr.
+    # Each name can be None if not a keyword argument.
+    arg_names = None  # type: List[str]
+    # If not None, the node that represents the meaning of the CallExpr. For
+    # cast(...) this is a CastExpr.
+    analyzed = None  # type: Node
 
     def __init__(self, callee: Node, args: List[Node], arg_kinds: List[int],
                  arg_names: List[str] = None, analyzed: Node = None) -> None:
@@ -1067,8 +1070,8 @@ class ComparisonExpr(Node):
         self.operands = operands
         self.method_types = []
         self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = ( ('Comparison',) + tuple(operators) +
-                               tuple(o.literal_hash for o in operands) )
+        self.literal_hash = (('Comparison',) + tuple(operators) +
+                             tuple(o.literal_hash for o in operands))
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
@@ -1437,7 +1440,7 @@ class TypeInfo(SymbolNode):
     # object used for this class is not an Instance but a TupleType;
     # the corresponding Instance is set as the fallback type of the
     # tuple type.
-    tuple_type = None # type: mypy.types.TupleType
+    tuple_type = None  # type: mypy.types.TupleType
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""

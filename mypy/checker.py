@@ -493,7 +493,6 @@ class TypeChecker(NodeVisitor[Type]):
             self.return_types.append(typ.ret_type)
 
             # Store argument types.
-            nargs = len(item.args)
             for i in range(len(typ.arg_types)):
                 arg_type = typ.arg_types[i]
                 if typ.arg_kinds[i] == nodes.ARG_STAR:
@@ -636,20 +635,21 @@ class TypeChecker(NodeVisitor[Type]):
             # operator methods. The first argument is the left operand and the
             # second operand is the right argument -- we switch the order of
             # the arguments of the reverse method.
-            forward_tweaked = CallableType([forward_base,
-                                        forward_type.arg_types[0]],
-                                       [nodes.ARG_POS] * 2,
-                                       [None] * 2,
-                                       forward_type.ret_type,
-                                       forward_type.fallback,
-                                       name=forward_type.name)
+            forward_tweaked = CallableType(
+                [forward_base, forward_type.arg_types[0]],
+                [nodes.ARG_POS] * 2,
+                [None] * 2,
+                forward_type.ret_type,
+                forward_type.fallback,
+                name=forward_type.name)
             reverse_args = reverse_type.arg_types
-            reverse_tweaked = CallableType([reverse_args[1], reverse_args[0]],
-                                       [nodes.ARG_POS] * 2,
-                                       [None] * 2,
-                                       reverse_type.ret_type,
-                                       fallback=self.named_type('builtins.function'),
-                                       name=reverse_type.name)
+            reverse_tweaked = CallableType(
+                [reverse_args[1], reverse_args[0]],
+                [nodes.ARG_POS] * 2,
+                [None] * 2,
+                reverse_type.ret_type,
+                fallback=self.named_type('builtins.function'),
+                name=reverse_type.name)
 
             if is_unsafe_overlapping_signatures(forward_tweaked,
                                                 reverse_tweaked):
@@ -692,10 +692,10 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_getattr_method(self, typ: CallableType, context: Context) -> None:
         method_type = CallableType([AnyType(), self.named_type('builtins.str')],
-                               [nodes.ARG_POS, nodes.ARG_POS],
-                               [None],
-                               AnyType(),
-                               self.named_type('builtins.function'))
+                                   [nodes.ARG_POS, nodes.ARG_POS],
+                                   [None],
+                                   AnyType(),
+                                   self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
 
@@ -854,7 +854,7 @@ class TypeChecker(NodeVisitor[Type]):
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
                     # checks suffice (these are implemented elsewhere).
-                    if name in base2.names and not base2 in base.mro:
+                    if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
         # Verify that base class layouts are compatible.
         builtin_bases = [nearest_builtin_ancestor(base.type)
@@ -913,14 +913,14 @@ class TypeChecker(NodeVisitor[Type]):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignment(s.lvalues[-1], s.rvalue, s.type == None)
+        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
             # Make sure that rvalue type will not be reinferred.
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
-                self.check_assignment(lv, rvalue, s.type == None)
+                self.check_assignment(lv, rvalue, s.type is None)
 
     def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
         """Type check a single assignment: lvalue = rvalue."""

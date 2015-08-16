@@ -393,7 +393,7 @@ class MessageBuilder:
                    'expected type {}').format(
                 'Key' if n == 1 else 'Value',
                 self.format(arg_type),
-                self.format(callee.arg_types[n-1]))
+                self.format(callee.arg_types[n - 1]))
         elif callee.name == '<generator>':
             msg = 'Generator has incompatible item type {}'.format(
                 self.format_simple(arg_type))
@@ -486,14 +486,18 @@ class MessageBuilder:
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
 
-    def wrong_number_values_to_unpack(self, provided: int, expected: int, context: Context) -> None:
+    def wrong_number_values_to_unpack(self, provided: int, expected: int,
+                                      context: Context) -> None:
         if provided < expected:
             if provided == 1:
-                self.fail('Need more than 1 value to unpack ({} expected)'.format(expected), context)
+                self.fail('Need more than 1 value to unpack ({} expected)'.format(expected),
+                          context)
             else:
-                self.fail('Need more than {} values to unpack ({} expected)'.format(provided, expected), context)
+                self.fail('Need more than {} values to unpack ({} expected)'.format(
+                    provided, expected), context)
         elif provided > expected:
-            self.fail('Too many values to unpack ({} expected, {} provided)'.format(expected, provided), context)
+            self.fail('Too many values to unpack ({} expected, {} provided)'.format(
+                expected, provided), context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail('\'{}\' object is not iterable'.format(type), context)
