@@ -3,7 +3,7 @@
 from typing import cast
 
 from mypy.nodes import (
-    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, EllipsisNode
+    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, EllipsisExpr
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
@@ -51,7 +51,7 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
         except TypeParseError:
             raise TypeTranslationError()
         return result
-    elif isinstance(expr, EllipsisNode):
+    elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     else:
         raise TypeTranslationError()

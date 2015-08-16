@@ -13,7 +13,7 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisNode, LITERAL_TYPE,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
     TypeAliasExpr
 )
 from mypy.errors import Errors
@@ -712,7 +712,7 @@ class ExpressionChecker:
         """Type check a complex literal."""
         return self.named_type('builtins.complex')
 
-    def visit_ellipsis(self, e: EllipsisNode) -> Type:
+    def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check ..."""
         return self.named_type('builtins.ellipsis')
 

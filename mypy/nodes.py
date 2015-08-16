@@ -811,7 +811,7 @@ class ComplexExpr(Node):
         return visitor.visit_complex_expr(self)
 
 
-class EllipsisNode(Node):
+class EllipsisExpr(Node):
     """Ellipsis (...)"""
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
