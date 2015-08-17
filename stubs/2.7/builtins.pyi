@@ -37,7 +37,10 @@ class type:
     __module__ = ''
     __dict__ = ...  # type: Dict[unicode, Any]
 
+    @overload
     def __init__(self, o: object) -> None: ...
+    @overload
+    def __init__(self, name: str, bases: tuple, dict: Dict[str, Any]) -> None: ...
     # TODO: __new__ may have to be special and not a static method.
     @staticmethod
     def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type: ...
