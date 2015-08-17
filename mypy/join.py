@@ -5,7 +5,7 @@ from typing import cast, List
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
-    UnionType, FunctionLike
+    UnionType, FunctionLike, Overloaded
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
@@ -68,7 +68,11 @@ def join_types(s: Type, t: Type) -> Type:
 
 
 class TypeJoinVisitor(TypeVisitor[Type]):
-    """Implementation of the least upper bound algorithm."""
+    """Implementation of the least upper bound algorithm.
+
+    Attributes:
+      s: The other (left) type operand.
+    """
 
     def __init__(self, s: Type) -> None:
         self.s = s
@@ -118,8 +122,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
             return join_instances(t, cast(Instance, self.s))
-        elif t.type.fullname() == 'builtins.type' and is_subtype(self.s, t):
-            return t
+        elif isinstance(self.s, FunctionLike):
+            return join_types(t, self.s.fallback)
         else:
             return self.default(self.s)
 
@@ -128,13 +132,57 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if isinstance(self.s, CallableType) and is_similar_callables(
                 t, cast(CallableType, self.s)):
             return combine_similar_callables(t, cast(CallableType, self.s))
-        elif t.is_type_obj() and is_subtype(self.s, t.fallback):
-            return t.fallback
-        elif (t.is_type_obj() and isinstance(self.s, Instance) and
-              cast(Instance, self.s).type == t.fallback):
-            return t.fallback
+        elif isinstance(self.s, Overloaded):
+            # Switch the order of arguments to that we'll get to visit_overloaded.
+            return join_types(t, self.s)
         else:
-            return self.default(self.s)
+            return join_types(t.fallback, self.s)
+
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        # This is more complex than most other cases. Here are some
+        # examples that illustrate how this works.
+        #
+        # First let's define a concise notation:
+        #  - Cn are callable types (for n in 1, 2, ...)
+        #  - Ov(C1, C2, ...) is an overloaded type with items C1, C2, ...
+        #  - Callable[[T, ...], S] is written as [T, ...] -> S.
+        #
+        # We want some basic properties to hold (assume Cn are all
+        # unrelated via Any-similarity):
+        #
+        #   join(Ov(C1, C2), C1) == C1
+        #   join(Ov(C1, C2), Ov(C1, C2)) == Ov(C1, C2)
+        #   join(Ov(C1, C2), Ov(C1, C3)) == C1
+        #   join(Ov(C2, C2), C3) == join of fallback types
+        #
+        # The presence of Any types makes things more interesting. The join is the
+        # most general type we can get with respect to Any:
+        #
+        #   join(Ov([int] -> int, [str] -> str), [Any] -> str) == Any -> str
+        #
+        # We could use a simplification step that removes redundancies, but that's not
+        # implemented right now. Consider this example, where we get a redundancy:
+        #
+        #   join(Ov([int, Any] -> Any, [str, Any] -> Any), [Any, int] -> Any) ==
+        #       Ov([Any, int] -> Any, [Any, int] -> Any)
+        #
+        # TODO: Use callable subtyping instead of just similarity.
+        result = []  # type: List[CallableType]
+        s = self.s
+        if isinstance(s, FunctionLike):
+            # The interesting case where both types are function types.
+            for t_item in t.items():
+                for s_item in s.items():
+                    if is_similar_callables(t_item, s_item):
+                        result.append(combine_similar_callables(t_item, s_item))
+            if result:
+                # TODO: Simplify redundancies from the result.
+                if len(result) == 1:
+                    return result[0]
+                else:
+                    return Overloaded(result)
+            return join_types(t.fallback, s.fallback)
+        return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if (isinstance(self.s, TupleType) and
