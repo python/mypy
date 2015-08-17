@@ -49,10 +49,10 @@ class ConnectionPool:
     QueueCls = ...  # type: Any
     host = ...  # type: Any
     port = ...  # type: Any
-    def __init__(self, host, port=None): pass
-    def __enter__(self): pass
-    def __exit__(self, exc_type, exc_val, exc_tb): pass
-    def close(self): pass
+    def __init__(self, host, port=None): ...
+    def __enter__(self): ...
+    def __exit__(self, exc_type, exc_val, exc_tb): ...
+    def close(self): ...
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     scheme = ...  # type: Any
@@ -67,10 +67,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     num_connections = ...  # type: Any
     num_requests = ...  # type: Any
     conn_kw = ...  # type: Any
-    def __init__(self, host, port=None, strict=False, timeout=..., maxsize=1, block=False, headers=None, retries=None, _proxy=None, _proxy_headers=None, **conn_kw): pass
-    def close(self): pass
-    def is_same_host(self, url): pass
-    def urlopen(self, method, url, body=None, headers=None, retries=None, redirect=True, assert_same_host=True, timeout=..., pool_timeout=None, release_conn=None, **response_kw): pass
+    def __init__(self, host, port=None, strict=False, timeout=..., maxsize=1, block=False, headers=None, retries=None, _proxy=None, _proxy_headers=None, **conn_kw): ...
+    def close(self): ...
+    def is_same_host(self, url): ...
+    def urlopen(self, method, url, body=None, headers=None, retries=None, redirect=True, assert_same_host=True, timeout=..., pool_timeout=None, release_conn=None, **response_kw): ...
 
 class HTTPSConnectionPool(HTTPConnectionPool):
     scheme = ...  # type: Any
@@ -82,6 +82,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     ssl_version = ...  # type: Any
     assert_hostname = ...  # type: Any
     assert_fingerprint = ...  # type: Any
-    def __init__(self, host, port=None, strict=False, timeout=..., maxsize=1, block=False, headers=None, retries=None, _proxy=None, _proxy_headers=None, key_file=None, cert_file=None, cert_reqs=None, ca_certs=None, ssl_version=None, assert_hostname=None, assert_fingerprint=None, **conn_kw): pass
+    def __init__(self, host, port=None, strict=False, timeout=..., maxsize=1, block=False, headers=None, retries=None, _proxy=None, _proxy_headers=None, key_file=None, cert_file=None, cert_reqs=None, ca_certs=None, ssl_version=None, assert_hostname=None, assert_fingerprint=None, **conn_kw): ...
 
-def connection_from_url(url, **kw): pass
+def connection_from_url(url, **kw): ...

@@ -252,16 +252,16 @@ TIPC_ZONE_SCOPE = 0
 
 # ----- exceptions -----
 class error(IOError):
-    pass
+    ...
 
 class herror(error):
-    def __init__(self, herror: int, string: str) -> None: pass
+    def __init__(self, herror: int, string: str) -> None: ...
 
 class gaierror(error):
-    def __init__(self, error: int, string: str) -> None: pass
+    def __init__(self, error: int, string: str) -> None: ...
 
 class timeout(error):
-    pass
+    ...
 
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
@@ -277,111 +277,111 @@ class socket:
     proto = 0
 
     def __init__(self, family: int = AF_INET, type: int = SOCK_STREAM,
-                 proto: int = 0, fileno: int = None) -> None: pass
+                 proto: int = 0, fileno: int = None) -> None: ...
 
     # --- methods ---
     # second tuple item is an address
-    def accept(self) -> Tuple['socket', Any]: pass
+    def accept(self) -> Tuple['socket', Any]: ...
 
     @overload
-    def bind(self, address: tuple) -> None: pass
+    def bind(self, address: tuple) -> None: ...
     @overload
-    def bind(self, address: str) -> None: pass
+    def bind(self, address: str) -> None: ...
 
-    def close(self) -> None: pass
-
-    @overload
-    def connect(self, address: tuple) -> None: pass
-    @overload
-    def connect(self, address: str) -> None: pass
+    def close(self) -> None: ...
 
     @overload
-    def connect_ex(self, address: tuple) -> int: pass
+    def connect(self, address: tuple) -> None: ...
     @overload
-    def connect_ex(self, address: str) -> int: pass
+    def connect(self, address: str) -> None: ...
 
-    def detach(self) -> int: pass
-    def fileno(self) -> int: pass
+    @overload
+    def connect_ex(self, address: tuple) -> int: ...
+    @overload
+    def connect_ex(self, address: str) -> int: ...
+
+    def detach(self) -> int: ...
+    def fileno(self) -> int: ...
 
     # return value is an address
-    def getpeername(self) -> Any: pass
-    def getsockname(self) -> Any: pass
+    def getpeername(self) -> Any: ...
+    def getsockname(self) -> Any: ...
 
     @overload
-    def getsockopt(self, level: int, optname: str) -> bytes: pass
+    def getsockopt(self, level: int, optname: str) -> bytes: ...
     @overload
-    def getsockopt(self, level: int, optname: str, buflen: int) -> bytes: pass
+    def getsockopt(self, level: int, optname: str, buflen: int) -> bytes: ...
 
-    def gettimeout(self) -> float: pass
+    def gettimeout(self) -> float: ...
     def ioctl(self, control: object,
-              option: Tuple[int, int, int]) -> None: pass
-    def listen(self, backlog: int) -> None: pass
+              option: Tuple[int, int, int]) -> None: ...
+    def listen(self, backlog: int) -> None: ...
     # TODO the return value may be BinaryIO or TextIO, depending on mode
     def makefile(self, mode: str = 'r', buffering: int = None,
                  encoding: str = None, errors: str = None,
                  newline: str = None) -> Any:
-        pass
-    def recv(self, bufsize: int, flags: int = 0) -> bytes: pass
+        ...
+    def recv(self, bufsize: int, flags: int = 0) -> bytes: ...
 
     # return type is an address
-    def recvfrom(self, bufsize: int, flags: int = 0) -> Any: pass
+    def recvfrom(self, bufsize: int, flags: int = 0) -> Any: ...
     def recvfrom_into(self, buffer: bytes, nbytes: int,
-                      flags: int = 0) -> Any: pass
+                      flags: int = 0) -> Any: ...
     def recv_into(self, buffer: bytes, nbytes: int,
-                  flags: int = 0) -> Any: pass
-    def send(self, data: bytes, flags=0) -> int: pass
+                  flags: int = 0) -> Any: ...
+    def send(self, data: bytes, flags=0) -> int: ...
     def sendall(self, data: bytes, flags=0) -> Any:
-        pass # return type: None on success
+        ... # return type: None on success
 
     @overload
-    def sendto(self, data: bytes, address: tuple, flags: int = 0) -> int: pass
+    def sendto(self, data: bytes, address: tuple, flags: int = 0) -> int: ...
     @overload
-    def sendto(self, data: bytes, address: str, flags: int = 0) -> int: pass
+    def sendto(self, data: bytes, address: str, flags: int = 0) -> int: ...
 
-    def setblocking(self, flag: bool) -> None: pass
+    def setblocking(self, flag: bool) -> None: ...
     # TODO None valid for the value argument
-    def settimeout(self, value: float) -> None: pass
+    def settimeout(self, value: float) -> None: ...
 
     @overload
-    def setsockopt(self, level: int, optname: str, value: int) -> None: pass
+    def setsockopt(self, level: int, optname: str, value: int) -> None: ...
     @overload
-    def setsockopt(self, level: int, optname: str, value: bytes) -> None: pass
+    def setsockopt(self, level: int, optname: str, value: bytes) -> None: ...
 
-    def shutdown(self, how: int) -> None: pass
+    def shutdown(self, how: int) -> None: ...
 
 
 # ----- functions -----
 def create_connection(address: Tuple[str, int],
                       timeout: float = _GLOBAL_DEFAULT_TIMEOUT,
-                      source_address: Tuple[str, int] = None) -> socket: pass
+                      source_address: Tuple[str, int] = None) -> socket: ...
 
 # the 5th tuple item is an address
 def getaddrinfo(
         host: str, port: int, family: int = 0, type: int = 0, proto: int = 0,
         flags: int = 0) -> List[Tuple[int, int, int, str, tuple]]:
-    pass
+    ...
 
-def getfqdn(name: str = '') -> str: pass
-def gethostbyname(hostname: str) -> str: pass
-def gethostbyname_ex(hostname: str) -> Tuple[str, List[str], List[str]]: pass
-def gethostname() -> str: pass
-def gethostbyaddr(ip_address: str) -> Tuple[str, List[str], List[str]]: pass
-def getnameinfo(sockaddr: tuple, flags: int) -> Tuple[str, int]: pass
-def getprotobyname(protocolname: str) -> int: pass
-def getservbyname(servicename: str, protocolname: str = None) -> int: pass
-def getservbyport(port: int, protocolname: str = None) -> str: pass
+def getfqdn(name: str = '') -> str: ...
+def gethostbyname(hostname: str) -> str: ...
+def gethostbyname_ex(hostname: str) -> Tuple[str, List[str], List[str]]: ...
+def gethostname() -> str: ...
+def gethostbyaddr(ip_address: str) -> Tuple[str, List[str], List[str]]: ...
+def getnameinfo(sockaddr: tuple, flags: int) -> Tuple[str, int]: ...
+def getprotobyname(protocolname: str) -> int: ...
+def getservbyname(servicename: str, protocolname: str = None) -> int: ...
+def getservbyport(port: int, protocolname: str = None) -> str: ...
 def socketpair(family: int = AF_INET,
                type: int = SOCK_STREAM,
-               proto: int = 0) -> Tuple[socket, socket]: pass
-def fromfd(fd: int, family: int, type: int, proto: int = 0) -> socket: pass
-def ntohl(x: int) -> int: pass  # param & ret val are 32-bit ints
-def ntohs(x: int) -> int: pass  # param & ret val are 16-bit ints
-def htonl(x: int) -> int: pass  # param & ret val are 32-bit ints
-def htons(x: int) -> int: pass  # param & ret val are 16-bit ints
-def inet_aton(ip_string: str) -> bytes: pass  # ret val 4 bytes in length
-def inet_ntoa(packed_ip: bytes) -> str: pass
-def inet_pton(address_family: int, ip_string: str) -> bytes: pass
-def inet_ntop(address_family: int, packed_ip: bytes) -> str: pass
+               proto: int = 0) -> Tuple[socket, socket]: ...
+def fromfd(fd: int, family: int, type: int, proto: int = 0) -> socket: ...
+def ntohl(x: int) -> int: ...  # param & ret val are 32-bit ints
+def ntohs(x: int) -> int: ...  # param & ret val are 16-bit ints
+def htonl(x: int) -> int: ...  # param & ret val are 32-bit ints
+def htons(x: int) -> int: ...  # param & ret val are 16-bit ints
+def inet_aton(ip_string: str) -> bytes: ...  # ret val 4 bytes in length
+def inet_ntoa(packed_ip: bytes) -> str: ...
+def inet_pton(address_family: int, ip_string: str) -> bytes: ...
+def inet_ntop(address_family: int, packed_ip: bytes) -> str: ...
 # TODO the timeout may be None
-def getdefaulttimeout() -> float: pass
-def setdefaulttimeout(timeout: float) -> None: pass
+def getdefaulttimeout() -> float: ...
+def setdefaulttimeout(timeout: float) -> None: ...

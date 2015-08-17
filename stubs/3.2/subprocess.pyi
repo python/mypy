@@ -9,14 +9,14 @@ from typing import Sequence, Any, Mapping, Callable, Tuple, IO
 def call(args: Sequence[str], *, stdin: Any = None, stdout: Any = None,
          stderr: Any = None, shell: bool = False,
          env: Mapping[str, str] = None,
-         cwd: str = None) -> int: pass
+         cwd: str = None) -> int: ...
 def check_call(args: Sequence[str], *, stdin: Any = None, stdout: Any = None,
                stderr: Any = None, shell: bool = False,
-               env: Mapping[str, str] = None) -> int: pass
+               env: Mapping[str, str] = None) -> int: ...
 # Return str/bytes
 def check_output(args: Sequence[str], *, stdin: Any = None, stderr: Any = None,
                  shell: bool = False, universal_newlines: bool = False,
-                 env: Mapping[str, str] = None) -> Any: pass
+                 env: Mapping[str, str] = None) -> Any: ...
 
 # TODO types
 PIPE = ... # type: Any
@@ -51,19 +51,19 @@ class Popen:
                   creationflags: int = 0,
                   restore_signals: bool = True,
                   start_new_session: bool = False,
-                  pass_fds: Any = ()) -> None: pass
+                  pass_fds: Any = ()) -> None: ...
 
-    def poll(self) -> int: pass
-    def wait(self) -> int: pass
+    def poll(self) -> int: ...
+    def wait(self) -> int: ...
     # Return str/bytes
-    def communicate(self, input=None) -> Tuple[Any, Any]: pass
-    def send_signal(self, signal: int) -> None: pass
-    def terminatate(self) -> None: pass
-    def kill(self) -> None: pass
-    def __enter__(self) -> 'Popen': pass
-    def __exit__(self, type, value, traceback) -> bool: pass
+    def communicate(self, input=None) -> Tuple[Any, Any]: ...
+    def send_signal(self, signal: int) -> None: ...
+    def terminatate(self) -> None: ...
+    def kill(self) -> None: ...
+    def __enter__(self) -> 'Popen': ...
+    def __exit__(self, type, value, traceback) -> bool: ...
 
-def getstatusoutput(cmd: str) -> Tuple[int, str]: pass
-def getoutput(cmd: str) -> str: pass
+def getstatusoutput(cmd: str) -> Tuple[int, str]: ...
+def getoutput(cmd: str) -> str: ...
 
 # Windows-only: STARTUPINFO etc.

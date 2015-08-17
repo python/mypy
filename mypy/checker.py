@@ -18,7 +18,7 @@ from mypy.nodes import (
     Decorator, SetExpr, PassStmt, TypeVarExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisNode, TypeAliasExpr,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
@@ -1239,7 +1239,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
                                 context: Node,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
-        if self.is_stub and isinstance(rvalue, EllipsisNode):
+        if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
             return AnyType()
         else:
@@ -1734,7 +1734,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_complex_expr(self, e: ComplexExpr) -> Type:
         return self.expr_checker.visit_complex_expr(e)
 
-    def visit_ellipsis(self, e: EllipsisNode) -> Type:
+    def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         return self.expr_checker.visit_ellipsis(e)
 
     def visit_op_expr(self, e: OpExpr) -> Type:

@@ -5,40 +5,40 @@
 from typing import Any
 
 class Address:
-    def __init__(self, display_name='', username='', domain='', addr_spec=None): pass
+    def __init__(self, display_name='', username='', domain='', addr_spec=None): ...
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     @property
-    def username(self): pass
+    def username(self): ...
     @property
-    def domain(self): pass
+    def domain(self): ...
     @property
-    def addr_spec(self): pass
-    def __eq__(self, other): pass
+    def addr_spec(self): ...
+    def __eq__(self, other): ...
 
 class Group:
-    def __init__(self, display_name=None, addresses=None): pass
+    def __init__(self, display_name=None, addresses=None): ...
     @property
-    def display_name(self): pass
+    def display_name(self): ...
     @property
-    def addresses(self): pass
-    def __eq__(self, other): pass
+    def addresses(self): ...
+    def __eq__(self, other): ...
 
 class BaseHeader(str):
-    def __new__(cls, name, value): pass
-    def init(self, name, parse_tree, defects): pass
+    def __new__(cls, name, value): ...
+    def init(self, name, parse_tree, defects): ...
     @property
-    def name(self): pass
+    def name(self): ...
     @property
-    def defects(self): pass
-    def __reduce__(self): pass
-    def fold(self, policy): pass
+    def defects(self): ...
+    def __reduce__(self): ...
+    def fold(self, policy): ...
 
 class UnstructuredHeader:
     max_count = ...  # type: Any
     value_parser = ...  # type: Any
     @classmethod
-    def parse(cls, value, kwds): pass
+    def parse(cls, value, kwds): ...
 
 class UniqueUnstructuredHeader(UnstructuredHeader):
     max_count = ...  # type: Any
@@ -47,10 +47,10 @@ class DateHeader:
     max_count = ...  # type: Any
     value_parser = ...  # type: Any
     @classmethod
-    def parse(cls, value, kwds): pass
-    def init(self, *args, **kw): pass
+    def parse(cls, value, kwds): ...
+    def init(self, *args, **kw): ...
     @property
-    def datetime(self): pass
+    def datetime(self): ...
 
 class UniqueDateHeader(DateHeader):
     max_count = ...  # type: Any
@@ -58,21 +58,21 @@ class UniqueDateHeader(DateHeader):
 class AddressHeader:
     max_count = ...  # type: Any
     @staticmethod
-    def value_parser(value): pass
+    def value_parser(value): ...
     @classmethod
-    def parse(cls, value, kwds): pass
-    def init(self, *args, **kw): pass
+    def parse(cls, value, kwds): ...
+    def init(self, *args, **kw): ...
     @property
-    def groups(self): pass
+    def groups(self): ...
     @property
-    def addresses(self): pass
+    def addresses(self): ...
 
 class UniqueAddressHeader(AddressHeader):
     max_count = ...  # type: Any
 
 class SingleAddressHeader(AddressHeader):
     @property
-    def address(self): pass
+    def address(self): ...
 
 class UniqueSingleAddressHeader(SingleAddressHeader):
     max_count = ...  # type: Any
@@ -81,53 +81,53 @@ class MIMEVersionHeader:
     max_count = ...  # type: Any
     value_parser = ...  # type: Any
     @classmethod
-    def parse(cls, value, kwds): pass
-    def init(self, *args, **kw): pass
+    def parse(cls, value, kwds): ...
+    def init(self, *args, **kw): ...
     @property
-    def major(self): pass
+    def major(self): ...
     @property
-    def minor(self): pass
+    def minor(self): ...
     @property
-    def version(self): pass
+    def version(self): ...
 
 class ParameterizedMIMEHeader:
     max_count = ...  # type: Any
     @classmethod
-    def parse(cls, value, kwds): pass
-    def init(self, *args, **kw): pass
+    def parse(cls, value, kwds): ...
+    def init(self, *args, **kw): ...
     @property
-    def params(self): pass
+    def params(self): ...
 
 class ContentTypeHeader(ParameterizedMIMEHeader):
     value_parser = ...  # type: Any
-    def init(self, *args, **kw): pass
+    def init(self, *args, **kw): ...
     @property
-    def maintype(self): pass
+    def maintype(self): ...
     @property
-    def subtype(self): pass
+    def subtype(self): ...
     @property
-    def content_type(self): pass
+    def content_type(self): ...
 
 class ContentDispositionHeader(ParameterizedMIMEHeader):
     value_parser = ...  # type: Any
-    def init(self, *args, **kw): pass
+    def init(self, *args, **kw): ...
     @property
-    def content_disposition(self): pass
+    def content_disposition(self): ...
 
 class ContentTransferEncodingHeader:
     max_count = ...  # type: Any
     value_parser = ...  # type: Any
     @classmethod
-    def parse(cls, value, kwds): pass
-    def init(self, *args, **kw): pass
+    def parse(cls, value, kwds): ...
+    def init(self, *args, **kw): ...
     @property
-    def cte(self): pass
+    def cte(self): ...
 
 class HeaderRegistry:
     registry = ...  # type: Any
     base_class = ...  # type: Any
     default_class = ...  # type: Any
-    def __init__(self, base_class=..., default_class=..., use_default_map=True): pass
-    def map_to_type(self, name, cls): pass
-    def __getitem__(self, name): pass
-    def __call__(self, name, value): pass
+    def __init__(self, base_class=..., default_class=..., use_default_map=True): ...
+    def map_to_type(self, name, cls): ...
+    def __getitem__(self, name): ...
+    def __call__(self, name, value): ...

@@ -1,4 +1,4 @@
 import typing
 
-class DistutilsError(Exception): pass
-class DistutilsExecError(DistutilsError): pass
+class DistutilsError(Exception): ...
+class DistutilsExecError(DistutilsError): ...

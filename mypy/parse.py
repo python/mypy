@@ -26,7 +26,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisNode
+    SetComprehension, ComplexExpr, EllipsisExpr
 )
 from mypy import nodes
 from mypy.errors import Errors, CompileError
@@ -843,9 +843,9 @@ class Parser:
             pass
         return node
 
-    def parse_ellipsis(self) -> EllipsisNode:
+    def parse_ellipsis(self) -> EllipsisExpr:
         self.expect('...')
-        node = EllipsisNode()
+        node = EllipsisExpr()
         return node
 
     def parse_del_stmt(self) -> DelStmt:

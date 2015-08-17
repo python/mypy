@@ -5,4 +5,4 @@
 from typing import Any
 
 # TODO more precise type?
-def contextmanager(func: Any) -> Any: pass
+def contextmanager(func: Any) -> Any: ...

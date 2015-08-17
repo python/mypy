@@ -62,7 +62,7 @@ W_OK = 0
 X_OK = 0
 
 class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
-    def copy(self) -> _Environ[AnyStr]: pass
+    def copy(self) -> _Environ[AnyStr]: ...
 
 environ = ...  # type: _Environ[str]
 environb = ...  # type: _Environ[bytes]
@@ -122,7 +122,7 @@ class stat_result:
     st_ctime = 0.0 # platform dependent (time of most recent metadata change
                    # on  Unix, or the time of creation on Windows)
 
-    def __init__(self, tuple) -> None: pass
+    def __init__(self, tuple) -> None: ...
 
     # On some Unix systems (such as Linux), the following attributes may also
     # be available:
@@ -154,120 +154,120 @@ class statvfs_result:  # Unix only
     f_namemax = 0
 
 # ----- os function stubs -----
-def name() -> str: pass
-def fsencode(filename: str) -> bytes: pass
-def fsdecode(filename: bytes) -> str: pass
-def get_exec_path(env=None) -> List[str] : pass
+def name() -> str: ...
+def fsencode(filename: str) -> bytes: ...
+def fsdecode(filename: bytes) -> str: ...
+def get_exec_path(env=None) -> List[str] : ...
 # NOTE: get_exec_path(): returns List[bytes] when env not None
-def ctermid() -> str: pass  # Unix only
-def getegid() -> int: pass  # Unix only
-def geteuid() -> int: pass  # Unix only
-def getgid() -> int: pass   # Unix only
-def getgroups() -> List[int]: pass  # Unix only, behaves differently on Mac
-def initgroups(username: str, gid: int) -> None: pass  # Unix only
-def getlogin() -> str: pass
-def getpgid(pid: int) -> int: pass  # Unix only
-def getpgrp() -> int: pass  # Unix only
-def getpid() -> int: pass
-def getppid() -> int: pass
-def getresuid() -> Tuple[int, int, int]: pass  # Unix only
-def getresgid() -> Tuple[int, int, int]: pass  # Unix only
-def getuid() -> int: pass  # Unix only
-def getenv(key: str, default: str = None) -> str: pass
-def getenvb(key: bytes, default: bytes = None) -> bytes: pass
+def ctermid() -> str: ...  # Unix only
+def getegid() -> int: ...  # Unix only
+def geteuid() -> int: ...  # Unix only
+def getgid() -> int: ...   # Unix only
+def getgroups() -> List[int]: ...  # Unix only, behaves differently on Mac
+def initgroups(username: str, gid: int) -> None: ...  # Unix only
+def getlogin() -> str: ...
+def getpgid(pid: int) -> int: ...  # Unix only
+def getpgrp() -> int: ...  # Unix only
+def getpid() -> int: ...
+def getppid() -> int: ...
+def getresuid() -> Tuple[int, int, int]: ...  # Unix only
+def getresgid() -> Tuple[int, int, int]: ...  # Unix only
+def getuid() -> int: ...  # Unix only
+def getenv(key: str, default: str = None) -> str: ...
+def getenvb(key: bytes, default: bytes = None) -> bytes: ...
 # TODO mixed str/bytes putenv arguments
-def putenv(key: AnyStr, value: AnyStr) -> None: pass
-def setegid(egid: int) -> None: pass  # Unix only
-def seteuid(euid: int) -> None: pass  # Unix only
-def setgid(gid: int) -> None: pass  # Unix only
-def setgroups(groups: List[int]) -> None: pass  # Unix only
-def setpgrp() -> int: pass  # Unix only
-def setpgid(pid: int, pgrp: int) -> int: pass  # Unix only
-def setregid(rgid: int, egid: int) -> None: pass  # Unix only
-def setresgid(rgid: int, egid: int, sgid: int) -> None: pass  # Unix only
-def setresuid(ruid: int, euid: int, suid: int) -> None: pass  # Unix only
-def setreuid(ruid: int, euid: int) -> None: pass  # Unix only
-def getsid(pid: int) -> int: pass  # Unix only
-def setsid() -> int: pass  # Unix only
-def setuid(uid) -> None: pass  # Unix only
-def strerror(code: int) -> str: pass
-def umask(mask: int) -> int: pass
-def uname() -> Tuple[str, str, str, str, str]: pass  # Unix only
-def unsetenv(key: AnyStr) -> None: pass
+def putenv(key: AnyStr, value: AnyStr) -> None: ...
+def setegid(egid: int) -> None: ...  # Unix only
+def seteuid(euid: int) -> None: ...  # Unix only
+def setgid(gid: int) -> None: ...  # Unix only
+def setgroups(groups: List[int]) -> None: ...  # Unix only
+def setpgrp() -> int: ...  # Unix only
+def setpgid(pid: int, pgrp: int) -> int: ...  # Unix only
+def setregid(rgid: int, egid: int) -> None: ...  # Unix only
+def setresgid(rgid: int, egid: int, sgid: int) -> None: ...  # Unix only
+def setresuid(ruid: int, euid: int, suid: int) -> None: ...  # Unix only
+def setreuid(ruid: int, euid: int) -> None: ...  # Unix only
+def getsid(pid: int) -> int: ...  # Unix only
+def setsid() -> int: ...  # Unix only
+def setuid(uid) -> None: ...  # Unix only
+def strerror(code: int) -> str: ...
+def umask(mask: int) -> int: ...
+def uname() -> Tuple[str, str, str, str, str]: ...  # Unix only
+def unsetenv(key: AnyStr) -> None: ...
 # Return IO or TextIO
 def fdopen(fd: int, mode: str = 'r', encoding: str = None, errors: str = None,
-           newline: str = None, closefd: bool = True) -> Any: pass
-def close(fd: int) -> None: pass
-def closerange(fd_low: int, fd_high: int) -> None: pass
-def device_encoding(fd: int) -> Optional[str]: pass
-def dup(fd: int) -> int: pass
-def dup2(fd: int, fd2: int) -> None: pass
-def fchmod(fd: int, intmode) -> None: pass  # Unix only
-def fchown(fd: int, uid: int, gid: int) -> None: pass  # Unix only
-def fdatasync(fd: int) -> None: pass  # Unix only, not Mac
-def fpathconf(fd: int, name: str) -> int: pass  # Unix only
-def fstat(fd: int) -> stat_result: pass
-def fstatvfs(fd: int) -> statvfs_result: pass  # Unix only
-def fsync(fd: int) -> None: pass
-def ftruncate(fd: int, length: int) -> None: pass  # Unix only
-def isatty(fd: int) -> bool: pass  # Unix only
-def lseek(fd: int, pos: int, how: int) -> int: pass
-def open(file: AnyStr, flags: int, mode: int = 0o777) -> int: pass
-def openpty() -> Tuple[int, int]: pass  # some flavors of Unix
-def pipe() -> Tuple[int, int]: pass
-def read(fd: int, n: int) -> bytes: pass
-def tcgetpgrp(fd: int) -> int: pass  # Unix only
-def tcsetpgrp(fd: int, pg: int) -> None: pass  # Unix only
-def ttyname(fd: int) -> str: pass  # Unix only
-def write(fd: int, string: bytes) -> int: pass
-def access(path: AnyStr, mode: int) -> bool: pass
-def chdir(path: AnyStr) -> None: pass
-def fchdir(fd: int) -> None: pass
-def getcwd() -> str: pass
-def getcwdb() -> bytes: pass
-def chflags(path: str, flags: int) -> None: pass  # Unix only
-def chroot(path: str) -> None: pass  # Unix only
-def chmod(path: AnyStr, mode: int) -> None: pass
-def chown(path: AnyStr, uid: int, gid: int) -> None: pass  # Unix only
-def lchflags(path: str, flags: int) -> None: pass  # Unix only
-def lchmod(path: str, mode: int) -> None: pass  # Unix only
-def lchown(path: str, uid: int, gid: int) -> None: pass  # Unix only
-def link(src: AnyStr, link_name: AnyStr) -> None: pass
+           newline: str = None, closefd: bool = True) -> Any: ...
+def close(fd: int) -> None: ...
+def closerange(fd_low: int, fd_high: int) -> None: ...
+def device_encoding(fd: int) -> Optional[str]: ...
+def dup(fd: int) -> int: ...
+def dup2(fd: int, fd2: int) -> None: ...
+def fchmod(fd: int, intmode) -> None: ...  # Unix only
+def fchown(fd: int, uid: int, gid: int) -> None: ...  # Unix only
+def fdatasync(fd: int) -> None: ...  # Unix only, not Mac
+def fpathconf(fd: int, name: str) -> int: ...  # Unix only
+def fstat(fd: int) -> stat_result: ...
+def fstatvfs(fd: int) -> statvfs_result: ...  # Unix only
+def fsync(fd: int) -> None: ...
+def ftruncate(fd: int, length: int) -> None: ...  # Unix only
+def isatty(fd: int) -> bool: ...  # Unix only
+def lseek(fd: int, pos: int, how: int) -> int: ...
+def open(file: AnyStr, flags: int, mode: int = 0o777) -> int: ...
+def openpty() -> Tuple[int, int]: ...  # some flavors of Unix
+def pipe() -> Tuple[int, int]: ...
+def read(fd: int, n: int) -> bytes: ...
+def tcgetpgrp(fd: int) -> int: ...  # Unix only
+def tcsetpgrp(fd: int, pg: int) -> None: ...  # Unix only
+def ttyname(fd: int) -> str: ...  # Unix only
+def write(fd: int, string: bytes) -> int: ...
+def access(path: AnyStr, mode: int) -> bool: ...
+def chdir(path: AnyStr) -> None: ...
+def fchdir(fd: int) -> None: ...
+def getcwd() -> str: ...
+def getcwdb() -> bytes: ...
+def chflags(path: str, flags: int) -> None: ...  # Unix only
+def chroot(path: str) -> None: ...  # Unix only
+def chmod(path: AnyStr, mode: int) -> None: ...
+def chown(path: AnyStr, uid: int, gid: int) -> None: ...  # Unix only
+def lchflags(path: str, flags: int) -> None: ...  # Unix only
+def lchmod(path: str, mode: int) -> None: ...  # Unix only
+def lchown(path: str, uid: int, gid: int) -> None: ...  # Unix only
+def link(src: AnyStr, link_name: AnyStr) -> None: ...
 
 @overload
-def listdir(path: str = '.') -> List[str]: pass
+def listdir(path: str = '.') -> List[str]: ...
 @overload
-def listdir(path: bytes) -> List[bytes]: pass
+def listdir(path: bytes) -> List[bytes]: ...
 
-def lstat(path: AnyStr) -> stat_result: pass
-def mkfifo(path, mode: int=0o666) -> None: pass  # Unix only
-def mknod(filename: AnyStr, mode: int = 0o600, device: int = 0) -> None: pass
-def major(device: int) -> int: pass
-def minor(device: int) -> int: pass
-def makedev(major: int, minor: int) -> int: pass
-def mkdir(path: AnyStr, mode: int = 0o777) -> None: pass
+def lstat(path: AnyStr) -> stat_result: ...
+def mkfifo(path, mode: int=0o666) -> None: ...  # Unix only
+def mknod(filename: AnyStr, mode: int = 0o600, device: int = 0) -> None: ...
+def major(device: int) -> int: ...
+def minor(device: int) -> int: ...
+def makedev(major: int, minor: int) -> int: ...
+def mkdir(path: AnyStr, mode: int = 0o777) -> None: ...
 def makedirs(path: AnyStr, mode: int = 0o777,
-             exist_ok: bool = False) -> None: pass
-def pathconf(path: str, name: str) -> int: pass  # Unix only
-def readlink(path: AnyStr) -> AnyStr: pass
-def remove(path: AnyStr) -> None: pass
-def removedirs(path: AnyStr) -> None: pass
-def rename(src: AnyStr, dst: AnyStr) -> None: pass
-def renames(old: AnyStr, new: AnyStr) -> None: pass
-def rmdir(path: AnyStr) -> None: pass
-def stat(path: AnyStr) -> stat_result: pass
-def stat_float_times(newvalue: Union[bool, None] = None) -> bool: pass
-def statvfs(path: str) -> statvfs_result: pass # Unix only
+             exist_ok: bool = False) -> None: ...
+def pathconf(path: str, name: str) -> int: ...  # Unix only
+def readlink(path: AnyStr) -> AnyStr: ...
+def remove(path: AnyStr) -> None: ...
+def removedirs(path: AnyStr) -> None: ...
+def rename(src: AnyStr, dst: AnyStr) -> None: ...
+def renames(old: AnyStr, new: AnyStr) -> None: ...
+def rmdir(path: AnyStr) -> None: ...
+def stat(path: AnyStr) -> stat_result: ...
+def stat_float_times(newvalue: Union[bool, None] = None) -> bool: ...
+def statvfs(path: str) -> statvfs_result: ... # Unix only
 def symlink(source: AnyStr, link_name: AnyStr,
             target_is_directory: bool = False) -> None:
-    pass  # final argument in Windows only
-def unlink(path: AnyStr) -> None: pass
-def utime(path: AnyStr, times: Union[Tuple[int, int], Tuple[float, float]] = None) -> None: pass
+    ...  # final argument in Windows only
+def unlink(path: AnyStr) -> None: ...
+def utime(path: AnyStr, times: Union[Tuple[int, int], Tuple[float, float]] = None) -> None: ...
 
 # TODO onerror: function from OSError to void
 def walk(top: AnyStr, topdown: bool = True, onerror: Any = None,
          followlinks: bool = False) -> Iterator[Tuple[AnyStr, List[AnyStr],
-                                                      List[AnyStr]]]: pass
+                                                      List[AnyStr]]]: ...
 # walk(): "By default errors from the os.listdir() call are ignored.  If
 # optional arg 'onerror' is specified, it should be a function; it
 # will be called with one argument, an os.error instance.  It can
@@ -275,64 +275,64 @@ def walk(top: AnyStr, topdown: bool = True, onerror: Any = None,
 # to abort the walk.  Note that the filename is available as the
 # filename attribute of the exception object."
 
-def abort() -> 'None': pass
-def execl(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: pass
+def abort() -> 'None': ...
+def execl(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: ...
 def execle(path: AnyStr, arg0: AnyStr,
-           *args: Any) -> None: pass # Imprecise signature
-def execlp(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: pass
+           *args: Any) -> None: ... # Imprecise signature
+def execlp(path: AnyStr, arg0: AnyStr, *args: AnyStr) -> None: ...
 def execlpe(path: AnyStr, arg0: AnyStr,
-            *args: Any) -> None: pass # Imprecise signature
-def execv(path: AnyStr, args: List[AnyStr]) -> None: pass
-def execve(path: AnyStr, args: List[AnyStr], env: Mapping[AnyStr, AnyStr]) -> None: pass
-def execvp(file: AnyStr, args: List[AnyStr]) -> None: pass
+            *args: Any) -> None: ... # Imprecise signature
+def execv(path: AnyStr, args: List[AnyStr]) -> None: ...
+def execve(path: AnyStr, args: List[AnyStr], env: Mapping[AnyStr, AnyStr]) -> None: ...
+def execvp(file: AnyStr, args: List[AnyStr]) -> None: ...
 def execvpe(file: AnyStr, args: List[AnyStr],
-            env: Mapping[str, str]) -> None: pass
-def _exit(n: int) -> None: pass
-def fork() -> int: pass  # Unix only
-def forkpty() -> Tuple[int, int]: pass  # some flavors of Unix
-def kill(pid: int, sig: int) -> None: pass
-def killpg(pgid: int, sig: int) -> None: pass  # Unix only
-def nice(increment: int) -> int: pass  # Unix only
-def plock(op: int) -> None: pass  # Unix only ???op is int?
+            env: Mapping[str, str]) -> None: ...
+def _exit(n: int) -> None: ...
+def fork() -> int: ...  # Unix only
+def forkpty() -> Tuple[int, int]: ...  # some flavors of Unix
+def kill(pid: int, sig: int) -> None: ...
+def killpg(pgid: int, sig: int) -> None: ...  # Unix only
+def nice(increment: int) -> int: ...  # Unix only
+def plock(op: int) -> None: ...  # Unix only ???op is int?
 
 from io import TextIOWrapper as _TextIOWrapper
 class popen(_TextIOWrapper):
     # TODO 'b' modes or bytes command not accepted?
     def __init__(self, command: str, mode: str = 'r',
-                 bufsize: int = -1) -> None: pass
-    def close(self) -> Any: pass # may return int
+                 bufsize: int = -1) -> None: ...
+    def close(self) -> Any: ... # may return int
 
-def spawnl(mode: int, path: AnyStr, arg0: AnyStr, *args: AnyStr) -> int: pass
+def spawnl(mode: int, path: AnyStr, arg0: AnyStr, *args: AnyStr) -> int: ...
 def spawnle(mode: int, path: AnyStr, arg0: AnyStr,
-            *args: Any) -> int: pass # Imprecise sig
+            *args: Any) -> int: ... # Imprecise sig
 def spawnlp(mode: int, file: AnyStr, arg0: AnyStr,
-            *args: AnyStr) -> int: pass  # Unix only TODO
+            *args: AnyStr) -> int: ...  # Unix only TODO
 def spawnlpe(mode: int, file: AnyStr, arg0: AnyStr, *args: Any) -> int:
-    pass # Imprecise signature; Unix only TODO
-def spawnv(mode: int, path: AnyStr, args: List[AnyStr]) -> int: pass
+    ... # Imprecise signature; Unix only TODO
+def spawnv(mode: int, path: AnyStr, args: List[AnyStr]) -> int: ...
 def spawnve(mode: int, path: AnyStr, args: List[AnyStr],
-            env: Mapping[str, str]) -> int: pass
-def spawnvp(mode: int, file: AnyStr, args: List[AnyStr]) -> int: pass  # Unix only
+            env: Mapping[str, str]) -> int: ...
+def spawnvp(mode: int, file: AnyStr, args: List[AnyStr]) -> int: ...  # Unix only
 def spawnvpe(mode: int, file: AnyStr, args: List[AnyStr],
              env: Mapping[str, str]) -> int:
-    pass  # Unix only
-def startfile(path: str, operation: Union[str, None] = None) -> None: pass  # Windows only
-def system(command: AnyStr) -> int: pass
-def times() -> Tuple[float, float, float, float, float]: pass
-def wait() -> Tuple[int, int]: pass  # Unix only
-def waitpid(pid: int, options: int) -> Tuple[int, int]: pass
-def wait3(options: Union[int, None] = None) -> Tuple[int, int, Any]: pass  # Unix only
+    ...  # Unix only
+def startfile(path: str, operation: Union[str, None] = None) -> None: ...  # Windows only
+def system(command: AnyStr) -> int: ...
+def times() -> Tuple[float, float, float, float, float]: ...
+def wait() -> Tuple[int, int]: ...  # Unix only
+def waitpid(pid: int, options: int) -> Tuple[int, int]: ...
+def wait3(options: Union[int, None] = None) -> Tuple[int, int, Any]: ...  # Unix only
 def wait4(pid: int, options: int) -> Tuple[int, int, Any]:
-    pass  # Unix only
-def WCOREDUMP(status: int) -> bool: pass  # Unix only
-def WIFCONTINUED(status: int) -> bool: pass  # Unix only
-def WIFSTOPPED(status: int) -> bool: pass  # Unix only
-def WIFSIGNALED(status: int) -> bool: pass  # Unix only
-def WIFEXITED(status: int) -> bool: pass  # Unix only
-def WEXITSTATUS(status: int) -> bool: pass  # Unix only
-def WSTOPSIG(status: int) -> bool: pass  # Unix only
-def WTERMSIG(status: int) -> bool: pass  # Unix only
-def confstr(name: str) -> str: pass  # Unix only
-def getloadavg() -> Tuple[float, float, float]: pass  # Unix only
-def sysconf(name: str) -> int: pass  # Unix only
-def urandom(n: int) -> bytes: pass
+    ...  # Unix only
+def WCOREDUMP(status: int) -> bool: ...  # Unix only
+def WIFCONTINUED(status: int) -> bool: ...  # Unix only
+def WIFSTOPPED(status: int) -> bool: ...  # Unix only
+def WIFSIGNALED(status: int) -> bool: ...  # Unix only
+def WIFEXITED(status: int) -> bool: ...  # Unix only
+def WEXITSTATUS(status: int) -> bool: ...  # Unix only
+def WSTOPSIG(status: int) -> bool: ...  # Unix only
+def WTERMSIG(status: int) -> bool: ...  # Unix only
+def confstr(name: str) -> str: ...  # Unix only
+def getloadavg() -> Tuple[float, float, float]: ...  # Unix only
+def sysconf(name: str) -> int: ...  # Unix only
+def urandom(n: int) -> bytes: ...

@@ -20,8 +20,8 @@ NamedTuple = object()
 
 class TypeAlias:
     # Class for defining generic aliases for library types.
-    def __init__(self, target_type): pass
-    def __getitem__(self, typeargs): pass
+    def __init__(self, target_type): ...
+    def __getitem__(self, typeargs): ...
 
 Union = TypeAlias(object)
 Optional = TypeAlias(object)
@@ -47,77 +47,77 @@ _T_contra = TypeVar('_T_contra', contravariant=True)  # Ditto contravariant.
 
 class SupportsInt(metaclass=ABCMeta):
     @abstractmethod
-    def __int__(self) -> int: pass
+    def __int__(self) -> int: ...
 
 class SupportsFloat(metaclass=ABCMeta):
     @abstractmethod
-    def __float__(self) -> float: pass
+    def __float__(self) -> float: ...
 
 class SupportsAbs(Generic[_T]):
     @abstractmethod
-    def __abs__(self) -> _T: pass
+    def __abs__(self) -> _T: ...
 
 class SupportsRound(Generic[_T]):
     @abstractmethod
-    def __round__(self, ndigits: int = 0) -> _T: pass
+    def __round__(self, ndigits: int = 0) -> _T: ...
 
 class Reversible(Generic[_T]):
     @abstractmethod
-    def __reversed__(self) -> Iterator[_T]: pass
+    def __reversed__(self) -> Iterator[_T]: ...
 
 class Sized(metaclass=ABCMeta):
     @abstractmethod
-    def __len__(self) -> int: pass
+    def __len__(self) -> int: ...
 
 class Iterable(Generic[_T_co]):
     @abstractmethod
-    def __iter__(self) -> Iterator[_T_co]: pass
+    def __iter__(self) -> Iterator[_T_co]: ...
 
 class Iterator(Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
-    def next(self) -> _T_co: pass
+    def next(self) -> _T_co: ...
 
 class Sequence(Sized, Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
-    def __contains__(self, x: object) -> bool: pass
+    def __contains__(self, x: object) -> bool: ...
     @overload
     @abstractmethod
-    def __getitem__(self, i: int) -> _T_co: pass
+    def __getitem__(self, i: int) -> _T_co: ...
     @overload
     @abstractmethod
-    def __getitem__(self, s: slice) -> Sequence[_T_co]: pass
+    def __getitem__(self, s: slice) -> Sequence[_T_co]: ...
     @abstractmethod
-    def index(self, x: Any) -> int: pass
+    def index(self, x: Any) -> int: ...
     @abstractmethod
-    def count(self, x: Any) -> int: pass
+    def count(self, x: Any) -> int: ...
 
 class AbstractSet(Sized, Iterable[_T_co], Generic[_T_co]):
     @abstractmethod
-    def __contains__(self, x: object) -> bool: pass
+    def __contains__(self, x: object) -> bool: ...
     # Mixin methods
-    def __le__(self, s: AbstractSet[Any]) -> bool: pass
-    def __lt__(self, s: AbstractSet[Any]) -> bool: pass
-    def __gt__(self, s: AbstractSet[Any]) -> bool: pass
-    def __ge__(self, s: AbstractSet[Any]) -> bool: pass
-    def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_T_co]: pass
-    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_T_co, _T]]: pass
-    def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_T_co]: pass
-    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_T_co, _T]]: pass
+    def __le__(self, s: AbstractSet[Any]) -> bool: ...
+    def __lt__(self, s: AbstractSet[Any]) -> bool: ...
+    def __gt__(self, s: AbstractSet[Any]) -> bool: ...
+    def __ge__(self, s: AbstractSet[Any]) -> bool: ...
+    def __and__(self, s: AbstractSet[Any]) -> AbstractSet[_T_co]: ...
+    def __or__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_T_co, _T]]: ...
+    def __sub__(self, s: AbstractSet[Any]) -> AbstractSet[_T_co]: ...
+    def __xor__(self, s: AbstractSet[_T]) -> AbstractSet[Union[_T_co, _T]]: ...
     # TODO: argument can be any container?
-    def isdisjoint(self, s: AbstractSet[Any]) -> bool: pass
+    def isdisjoint(self, s: AbstractSet[Any]) -> bool: ...
 
 class Mapping(Sized, Iterable[_KT], Generic[_KT, _VT]):
     @abstractmethod
-    def __getitem__(self, k: _KT) -> _VT: pass
+    def __getitem__(self, k: _KT) -> _VT: ...
     # Mixin methods
-    def get(self, k: _KT, default: _VT = ...) -> _VT: pass
-    def keys(self) -> list[_KT]: pass
-    def values(self) -> list[_VT]: pass
-    def items(self) -> list[Tuple[_KT, _VT]]: pass
-    def iterkeys(self) -> Iterator[_KT]: pass
-    def itervalues(self) -> Iterator[_VT]: pass
-    def iteritems(self) -> Iterator[Tuple[_KT, _VT]]: pass
-    def __contains__(self, o: object) -> bool: pass
+    def get(self, k: _KT, default: _VT = ...) -> _VT: ...
+    def keys(self) -> list[_KT]: ...
+    def values(self) -> list[_VT]: ...
+    def items(self) -> list[Tuple[_KT, _VT]]: ...
+    def iterkeys(self) -> Iterator[_KT]: ...
+    def itervalues(self) -> Iterator[_VT]: ...
+    def iteritems(self) -> Iterator[Tuple[_KT, _VT]]: ...
+    def __contains__(self, o: object) -> bool: ...
 
 # TODO: MutableMapping
 
@@ -125,51 +125,51 @@ class IO(Iterable[AnyStr], Generic[AnyStr]):
     # TODO detach
     # TODO use abstract properties
     @property
-    def mode(self) -> str: pass
+    def mode(self) -> str: ...
     @property
-    def name(self) -> str: pass
+    def name(self) -> str: ...
     @abstractmethod
-    def close(self) -> None: pass
+    def close(self) -> None: ...
     @property
-    def closed(self) -> bool: pass
+    def closed(self) -> bool: ...
     @abstractmethod
-    def fileno(self) -> int: pass
+    def fileno(self) -> int: ...
     @abstractmethod
-    def flush(self) -> None: pass
+    def flush(self) -> None: ...
     @abstractmethod
-    def isatty(self) -> bool: pass
+    def isatty(self) -> bool: ...
     # TODO what if n is None?
     @abstractmethod
-    def read(self, n: int = -1) -> AnyStr: pass
+    def read(self, n: int = -1) -> AnyStr: ...
     @abstractmethod
-    def readable(self) -> bool: pass
+    def readable(self) -> bool: ...
     @abstractmethod
-    def readline(self, limit: int = -1) -> AnyStr: pass
+    def readline(self, limit: int = -1) -> AnyStr: ...
     @abstractmethod
-    def readlines(self, hint: int = -1) -> list[AnyStr]: pass
+    def readlines(self, hint: int = -1) -> list[AnyStr]: ...
     @abstractmethod
-    def seek(self, offset: int, whence: int = 0) -> int: pass
+    def seek(self, offset: int, whence: int = 0) -> int: ...
     @abstractmethod
-    def seekable(self) -> bool: pass
+    def seekable(self) -> bool: ...
     @abstractmethod
-    def tell(self) -> int: pass
+    def tell(self) -> int: ...
     # TODO None should not be compatible with int
     @abstractmethod
-    def truncate(self, size: int = None) -> int: pass
+    def truncate(self, size: int = None) -> int: ...
     @abstractmethod
-    def writable(self) -> bool: pass
+    def writable(self) -> bool: ...
     # TODO buffer objects
     @abstractmethod
-    def write(self, s: AnyStr) -> int: pass
+    def write(self, s: AnyStr) -> int: ...
     @abstractmethod
-    def writelines(self, lines: Iterable[AnyStr]) -> None: pass
+    def writelines(self, lines: Iterable[AnyStr]) -> None: ...
 
     @abstractmethod
-    def __iter__(self) -> Iterator[AnyStr]: pass
+    def __iter__(self) -> Iterator[AnyStr]: ...
     @abstractmethod
-    def __enter__(self) -> 'IO[AnyStr]': pass
+    def __enter__(self) -> 'IO[AnyStr]': ...
     @abstractmethod
-    def __exit__(self, type, value, traceback) -> bool: pass
+    def __exit__(self, type, value, traceback) -> bool: ...
 
 class BinaryIO(IO[str]):
     # TODO readinto
@@ -177,28 +177,28 @@ class BinaryIO(IO[str]):
     # TODO peek?
     @overload
     @abstractmethod
-    def write(self, s: str) -> int: pass
+    def write(self, s: str) -> int: ...
     @overload
     @abstractmethod
-    def write(self, s: bytearray) -> int: pass
+    def write(self, s: bytearray) -> int: ...
 
     @abstractmethod
-    def __enter__(self) -> BinaryIO: pass
+    def __enter__(self) -> BinaryIO: ...
 
 class TextIO(IO[unicode]):
     # TODO use abstractproperty
     @property
-    def buffer(self) -> BinaryIO: pass
+    def buffer(self) -> BinaryIO: ...
     @property
-    def encoding(self) -> str: pass
+    def encoding(self) -> str: ...
     @property
-    def errors(self) -> str: pass
+    def errors(self) -> str: ...
     @property
-    def line_buffering(self) -> bool: pass
+    def line_buffering(self) -> bool: ...
     @property
-    def newlines(self) -> Any: pass # None, str or tuple
+    def newlines(self) -> Any: ... # None, str or tuple
     @abstractmethod
-    def __enter__(self) -> TextIO: pass
+    def __enter__(self) -> TextIO: ...
 
 class Match(Generic[AnyStr]):
     pos = 0
@@ -211,24 +211,24 @@ class Match(Generic[AnyStr]):
     # this match instance.
     re = None  # type: 'Pattern[AnyStr]'
 
-    def expand(self, template: AnyStr) -> AnyStr: pass
+    def expand(self, template: AnyStr) -> AnyStr: ...
 
     @overload
-    def group(self, group1: int = 0) -> AnyStr: pass
+    def group(self, group1: int = 0) -> AnyStr: ...
     @overload
-    def group(self, group1: str) -> AnyStr: pass
+    def group(self, group1: str) -> AnyStr: ...
     @overload
     def group(self, group1: int, group2: int,
-              *groups: int) -> Sequence[AnyStr]: pass
+              *groups: int) -> Sequence[AnyStr]: ...
     @overload
     def group(self, group1: str, group2: str,
-              *groups: str) -> Sequence[AnyStr]: pass
+              *groups: str) -> Sequence[AnyStr]: ...
 
-    def groups(self, default: AnyStr = None) -> Sequence[AnyStr]: pass
-    def groupdict(self, default: AnyStr = None) -> dict[str, AnyStr]: pass
-    def start(self, group: int = 0) -> int: pass
-    def end(self, group: int = 0) -> int: pass
-    def span(self, group: int = 0) -> Tuple[int, int]: pass
+    def groups(self, default: AnyStr = None) -> Sequence[AnyStr]: ...
+    def groupdict(self, default: AnyStr = None) -> dict[str, AnyStr]: ...
+    def start(self, group: int = 0) -> int: ...
+    def end(self, group: int = 0) -> int: ...
+    def span(self, group: int = 0) -> Tuple[int, int]: ...
 
 class Pattern(Generic[AnyStr]):
     flags = 0
@@ -237,25 +237,25 @@ class Pattern(Generic[AnyStr]):
     pattern = None  # type: AnyStr
 
     def search(self, string: AnyStr, pos: int = 0,
-               endpos: int = -1) -> Match[AnyStr]: pass
+               endpos: int = -1) -> Match[AnyStr]: ...
     def match(self, string: AnyStr, pos: int = 0,
-              endpos: int = -1) -> Match[AnyStr]: pass
-    def split(self, string: AnyStr, maxsplit: int = 0) -> list[AnyStr]: pass
+              endpos: int = -1) -> Match[AnyStr]: ...
+    def split(self, string: AnyStr, maxsplit: int = 0) -> list[AnyStr]: ...
     def findall(self, string: AnyStr, pos: int = 0,
-                endpos: int = -1) -> list[AnyStr]: pass
+                endpos: int = -1) -> list[AnyStr]: ...
     def finditer(self, string: AnyStr, pos: int = 0,
-                 endpos: int = -1) -> Iterator[Match[AnyStr]]: pass
+                 endpos: int = -1) -> Iterator[Match[AnyStr]]: ...
 
     @overload
     def sub(self, repl: AnyStr, string: AnyStr,
-            count: int = 0) -> AnyStr: pass
+            count: int = 0) -> AnyStr: ...
     @overload
     def sub(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr,
-            count: int = 0) -> AnyStr: pass
+            count: int = 0) -> AnyStr: ...
 
     @overload
     def subn(self, repl: AnyStr, string: AnyStr,
-             count: int = 0) -> Tuple[AnyStr, int]: pass
+             count: int = 0) -> Tuple[AnyStr, int]: ...
     @overload
     def subn(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr,
-             count: int = 0) -> Tuple[AnyStr, int]: pass
+             count: int = 0) -> Tuple[AnyStr, int]: ...

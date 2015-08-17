@@ -7,13 +7,13 @@ from typing import Any
 class Generator:
     maxheaderlen = ...  # type: Any
     policy = ...  # type: Any
-    def __init__(self, outfp, mangle_from_=True, maxheaderlen=None, *, policy=None): pass
-    def write(self, s): pass
-    def flatten(self, msg, unixfrom=False, linesep=None): pass
-    def clone(self, fp): pass
+    def __init__(self, outfp, mangle_from_=True, maxheaderlen=None, *, policy=None): ...
+    def write(self, s): ...
+    def flatten(self, msg, unixfrom=False, linesep=None): ...
+    def clone(self, fp): ...
 
 class BytesGenerator(Generator):
-    def write(self, s): pass
+    def write(self, s): ...
 
 class DecodedGenerator(Generator):
-    def __init__(self, outfp, mangle_from_=True, maxheaderlen=78, fmt=None): pass
+    def __init__(self, outfp, mangle_from_=True, maxheaderlen=78, fmt=None): ...

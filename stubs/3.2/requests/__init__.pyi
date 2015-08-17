@@ -35,4 +35,4 @@ HTTPError = exceptions.HTTPError
 ConnectionError = exceptions.ConnectionError
 
 class NullHandler(logging.Handler):
-    def emit(self, record): pass
+    def emit(self, record): ...

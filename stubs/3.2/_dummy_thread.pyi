@@ -5,7 +5,7 @@
 from typing import Any
 
 class LockType:
-    def acquire(self) -> None: pass
-    def release(self) -> None: pass
+    def acquire(self) -> None: ...
+    def release(self) -> None: ...
 
-def allocate_lock() -> LockType: pass
+def allocate_lock() -> LockType: ...

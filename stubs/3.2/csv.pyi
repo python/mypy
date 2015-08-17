@@ -9,15 +9,15 @@ QUOTE_MINIMAL = ...  # type: int
 QUOTE_NONE = ...  # type: int
 QUOTE_NONNUMERIC = ...  # type: int
 
-class Error(Exception): pass
+class Error(Exception): ...
 
-def writer(csvfile, dialect=..., **fmtparams): pass
-def reader(csvfile, dialect=..., **fmtparams): pass
-def register_dialect(name, dialect=..., **fmtparams): pass
-def unregister_dialect(name): pass
-def get_dialect(name): pass
-def list_dialects(): pass
-def field_size_limit(new_limit=...): pass
+def writer(csvfile, dialect=..., **fmtparams): ...
+def reader(csvfile, dialect=..., **fmtparams): ...
+def register_dialect(name, dialect=..., **fmtparams): ...
+def unregister_dialect(name): ...
+def get_dialect(name): ...
+def list_dialects(): ...
+def field_size_limit(new_limit=...): ...
 
 class Dialect:
     delimiter = ...  # type: Any
@@ -27,7 +27,7 @@ class Dialect:
     skipinitialspace = ...  # type: Any
     lineterminator = ...  # type: Any
     quoting = ...  # type: Any
-    def __init__(self): pass
+    def __init__(self): ...
 
 class excel(Dialect):
     delimiter = ...  # type: Any
@@ -56,22 +56,22 @@ class DictReader:
     line_num = ...  # type: Any
     fieldnames = ...  # type: Any # Actually a property
     def __init__(self, f, fieldnames=None, restkey=None, restval=None, dialect='',
-                 *args, **kwds): pass
-    def __iter__(self): pass
-    def __next__(self): pass
+                 *args, **kwds): ...
+    def __iter__(self): ...
+    def __next__(self): ...
 
 class DictWriter:
     fieldnames = ...  # type: Any
     restval = ...  # type: Any
     extrasaction = ...  # type: Any
     writer = ...  # type: Any
-    def __init__(self, f, fieldnames, restval='', extrasaction='', dialect='', *args, **kwds): pass
-    def writeheader(self): pass
-    def writerow(self, rowdict): pass
-    def writerows(self, rowdicts): pass
+    def __init__(self, f, fieldnames, restval='', extrasaction='', dialect='', *args, **kwds): ...
+    def writeheader(self): ...
+    def writerow(self, rowdict): ...
+    def writerows(self, rowdicts): ...
 
 class Sniffer:
     preferred = ...  # type: Any
-    def __init__(self): pass
-    def sniff(self, sample, delimiters=None): pass
-    def has_header(self, sample): pass
+    def __init__(self): ...
+    def sniff(self, sample, delimiters=None): ...
+    def has_header(self, sample): ...

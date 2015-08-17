@@ -6,10 +6,10 @@ from typing import overload, Tuple
 
 # TODO actually, any number of items larger than 5 is fine
 @overload
-def timegm(t: Tuple[int, int, int, int, int, int]) -> int: pass
+def timegm(t: Tuple[int, int, int, int, int, int]) -> int: ...
 @overload
-def timegm(t: Tuple[int, int, int, int, int, int, int]) -> int: pass
+def timegm(t: Tuple[int, int, int, int, int, int, int]) -> int: ...
 @overload
-def timegm(t: Tuple[int, int, int, int, int, int, int, int]) -> int: pass
+def timegm(t: Tuple[int, int, int, int, int, int, int, int]) -> int: ...
 @overload
-def timegm(t: Tuple[int, int, int, int, int, int, int, int, int]) -> int: pass
+def timegm(t: Tuple[int, int, int, int, int, int, int, int, int]) -> int: ...

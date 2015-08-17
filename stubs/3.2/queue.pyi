@@ -5,6 +5,6 @@
 from typing import Any
 
 class Queue():
-    def get(self, block: bool = True, timeout: float = None) -> Any: pass
+    def get(self, block: bool = True, timeout: float = None) -> Any: ...
 
-class Empty(): pass
+class Empty(): ...

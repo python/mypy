@@ -14,14 +14,14 @@ punctuation = ''
 printable = ''
 whitespace = ''
 
-def capwords(s: str, sep: str = None) -> str: pass
+def capwords(s: str, sep: str = None) -> str: ...
 
 class Template:
     template = ''
 
-    def __init__(self, template: str) -> None: pass
-    def substitute(self, mapping: Mapping[str, str], **kwds: str) -> str: pass
+    def __init__(self, template: str) -> None: ...
+    def substitute(self, mapping: Mapping[str, str], **kwds: str) -> str: ...
     def safe_substitute(self, mapping: Mapping[str, str],
-                        **kwds: str) -> str: pass
+                        **kwds: str) -> str: ...
 
 # TODO Formatter

@@ -2,5 +2,5 @@
 
 # NOTE: These are incomplete!
 
-class URLError(IOError): pass
-class HTTPError(URLError): pass
+class URLError(IOError): ...
+class HTTPError(URLError): ...

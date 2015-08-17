@@ -1,4 +1,4 @@
-class _Feature: pass
+class _Feature: ...
 
 absolute_import = None  # type: _Feature
 division = None  # type: _Feature

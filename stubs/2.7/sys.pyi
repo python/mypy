@@ -15,7 +15,7 @@ argv = None  # type: List[str]
 byteorder = ''
 builtin_module_names = None  # type: Sequence[str] # actually a tuple of strings
 copyright = ''
-#dllhandle = 0  # Windows only
+dllhandle = 0  # Windows only
 dont_write_bytecode = False
 __displayhook__ = None  # type: Any # contains the original value of displayhook
 __excepthook__ = None  # type: Any  # contains the original value of excepthook
@@ -50,7 +50,7 @@ api_version = 0
 warnoptions = None  # type: Any
 #  Each entry is a tuple of the form (action, message, category, module,
 #    lineno)
-#winver = ''  # Windows only
+winver = ''  # Windows only
 _xoptions = None  # type: Dict[Any, Any]
 
 flags = None  # type: _flags
@@ -106,48 +106,47 @@ class _version_info:
     releaselevel = ''
     serial = 0
 
-
 # ----- sys function stubs -----
-def call_tracing(fn: Any, args: Any) -> object: pass
-def _clear_type_cache() -> None: pass
-def _current_frames() -> Dict[int, Any]: pass
-def displayhook(value: int) -> None: pass  # value might be None
+def call_tracing(fn: Any, args: Any) -> object: ...
+def _clear_type_cache() -> None: ...
+def _current_frames() -> Dict[int, Any]: ...
+def displayhook(value: int) -> None: ...  # value might be None
 def excepthook(type_: type, value: BaseException, traceback: Any) -> None:
     # TODO traceback type
-    pass
-def exc_info() -> Tuple[type, Any, Any]: pass # see above
-def exit(arg: int = 0) -> None: pass  # arg might be None
-def getcheckinterval() -> int: pass  # deprecated
-def getdefaultencoding() -> str: pass
-#def getdlopenflags() -> int: pass  # Unix only
-def getfilesystemencoding() -> str: pass  # cannot return None
-#def getrefcount(object) -> int: pass  # no ref counts in MyPy!
-def getrecursionlimit() -> int: pass
+    ...
+def exc_info() -> Tuple[type, Any, Any]: ... # see above
+def exit(arg: int = 0) -> None: ...  # arg might be None
+def getcheckinterval() -> int: ...  # deprecated
+def getdefaultencoding() -> str: ...
+def getdlopenflags() -> int: ...
+def getfilesystemencoding() -> str: ...
+def getrefcount(object) -> int: ...
+def getrecursionlimit() -> int: ...
 
 @overload
-def getsizeof(obj: object) -> int: pass
+def getsizeof(obj: object) -> int: ...
 @overload
-def getsizeof(obj: object, default: int) -> int: pass
+def getsizeof(obj: object, default: int) -> int: ...
 
-def getswitchinterval() -> float: pass
+def getswitchinterval() -> float: ...
 
 @overload
-def _getframe() -> Any: pass
+def _getframe() -> Any: ...
 @overload
-def _getframe(depth: int) -> Any: pass
+def _getframe(depth: int) -> Any: ...
 
-def getprofile() -> Any: pass # TODO return type
-def gettrace() -> Any: pass # TODO return
-def getwindowsversion() -> Any: pass  # Windows only, TODO return type
-def intern(string: str) -> str: pass
-def setcheckinterval(interval: int) -> None: pass  # deprecated
-#def setdlopenflags(n: int) -> None: pass  # Linux only
-def setprofile(profilefunc: Any) -> None: pass # TODO type
-def setrecursionlimit(limit: int) -> None: pass
-def setswitchinterval(interval: float) -> None: pass
-def settrace(tracefunc: Any) -> None: pass # TODO type
+def getprofile() -> Any: ... # TODO return type
+def gettrace() -> Any: ... # TODO return
+def getwindowsversion() -> Any: ...  # TODO return type
+def intern(string: str) -> str: ...
+def setcheckinterval(interval: int) -> None: ...  # deprecated
+def setdlopenflags(n: int) -> None: ...
+def setprofile(profilefunc: Any) -> None: ... # TODO type
+def setrecursionlimit(limit: int) -> None: ...
+def setswitchinterval(interval: float) -> None: ...
+def settrace(tracefunc: Any) -> None: ... # TODO type
 # Trace functions should have three arguments: frame, event, and arg. frame
 # is the current stack frame. event is a string: 'call', 'line', 'return',
 # 'exception', 'c_call', 'c_return', or 'c_exception'. arg depends on the
 # event type.
-def settscdump(on_flag: bool) -> None: pass
+def settscdump(on_flag: bool) -> None: ...

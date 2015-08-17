@@ -8,6 +8,6 @@ class struct_group:
     gr_gid = 0
     gr_mem = ...  # type: List[str]
 
-def getgrgid(gid: int) -> struct_group: pass
-def getgrnam(name: str) -> struct_group: pass
-def getgrall() -> List[struct_group]: pass
+def getgrgid(gid: int) -> struct_group: ...
+def getgrnam(name: str) -> struct_group: ...
+def getgrall() -> List[struct_group]: ...

@@ -7,5 +7,5 @@ from typing import Any
 poll = ...  # type: Any
 select = ...  # type: Any
 
-def is_connection_dropped(conn): pass
-def create_connection(address, timeout=..., source_address=None, socket_options=None): pass
+def is_connection_dropped(conn): ...
+def create_connection(address, timeout=..., source_address=None, socket_options=None): ...

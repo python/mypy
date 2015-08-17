@@ -5,7 +5,7 @@
 from typing import List, Tuple, Any, TextIO
 
 def split(s: str, comments: bool = False,
-          posix: bool = True) -> List[str]: pass
+          posix: bool = True) -> List[str]: ...
 
 class shlex:
     commenters = ''
@@ -24,13 +24,13 @@ class shlex:
     eof = ''
 
     def __init__(self, instream=None, infile=None,
-                 posix: bool = False) -> None: pass
-    def get_token(self) -> str: pass
-    def push_token(self, tok: str) -> None: pass
-    def read_token(self) -> str: pass
-    def sourcehook(self, filename: str) -> Tuple[str, TextIO]: pass
+                 posix: bool = False) -> None: ...
+    def get_token(self) -> str: ...
+    def push_token(self, tok: str) -> None: ...
+    def read_token(self) -> str: ...
+    def sourcehook(self, filename: str) -> Tuple[str, TextIO]: ...
     # TODO argument types
-    def push_source(self, newstream: Any, newfile: Any = None) -> None: pass
-    def pop_source(self) -> None: pass
+    def push_source(self, newstream: Any, newfile: Any = None) -> None: ...
+    def pop_source(self) -> None: ...
     def error_leader(self, infile: str = None,
-                     lineno: int = None) -> None: pass
+                     lineno: int = None) -> None: ...
