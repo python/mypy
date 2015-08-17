@@ -1,6 +1,6 @@
 # Stubs for collections
 
-# Based on http://docs.python.org/3.2/library/collections.html
+# Based on http://docs.python.org/2.7/library/collections.html
 
 # TODO UserDict
 # TODO UserList
@@ -28,7 +28,7 @@ MutableMapping = typing.MutableMapping
 class deque(Sized, Iterable[_T], Generic[_T]):
     @property
     def maxlen(self) -> Optional[int]: ...
-    
+
     def __init__(self, iterable: Iterable[_T] = None,
                  maxlen: int = None) -> None: ...
     def append(self, x: _T) -> None: ...
