@@ -1,16 +1,6 @@
 # Stubs for collections
 
-# Based on http://docs.python.org/3.2/library/collections.html
-
-# TODO UserDict
-# TODO UserList
-# TODO UserString
-# TODO more abstract base classes (interfaces in mypy)
-
-# NOTE: These are incomplete!
-
-# namedtuple is special-cased in the type checker; the initializer is ignored.
-namedtuple = object()
+# Based on http://docs.python.org/2.7/library/collections.html
 
 from typing import (
     TypeVar, Iterable, Generic, Iterator, Dict, overload,
@@ -23,10 +13,15 @@ _T = TypeVar('_T')
 _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
 
+# TODO UserDict
+# TODO UserList
+# TODO UserString
+# TODO more abstract base classes (interfaces in mypy)
+
+# NOTE: These are incomplete!
 
 # namedtuple is special-cased in the type checker; the initializer is ignored.
 namedtuple = object()
-
 
 MutableMapping = typing.MutableMapping
 
@@ -34,7 +29,7 @@ MutableMapping = typing.MutableMapping
 class deque(Sized, Iterable[_T], Generic[_T]):
     @property
     def maxlen(self) -> Optional[int]: ...
-    
+
     def __init__(self, iterable: Iterable[_T] = None,
                  maxlen: int = None) -> None: ...
     def append(self, x: _T) -> None: ...
