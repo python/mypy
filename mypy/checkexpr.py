@@ -713,8 +713,16 @@ class ExpressionChecker:
         return self.named_type('builtins.complex')
 
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
-        """Type check ..."""
-        return self.named_type('builtins.ellipsis')
+        """Type check '...'."""
+        if self.chk.pyversion >= 3:
+            return self.named_type('builtins.ellipsis')
+        else:
+            # '...' is not valid in normal Python 2 code, but it can
+            # be used in stubs.  The parser makes sure that we only
+            # get this far if we are in a stub, and we can safely
+            # return 'object' as ellipsis is special cased elsewhere.
+            # The builtins.ellipsis type does not exist in Python 2.
+            return self.named_type('builtins.object')
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
