@@ -44,6 +44,13 @@ MypyFile:1(
       IntExpr(5))
     Newline))
 
+[case testPrintWithNoArgs]
+print
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    Newline))
+
 [case testSimpleWithTrailingComma]
 print 1,
 print 2, 3,

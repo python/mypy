@@ -1046,6 +1046,7 @@ class Parser:
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
         args = []  # type: List[Node]
+        comma = False
         while not isinstance(self.current(), Break):
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() == ',':
