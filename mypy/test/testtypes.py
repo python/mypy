@@ -418,8 +418,10 @@ class JoinSuite(Suite):
 
     def test_overloaded(self):
         c = self.callable
+
         def ov(*items):
             return Overloaded(items)
+
         fx = self.fx
         func = fx.function
         c1 = c(fx.a, fx.a)
@@ -434,10 +436,11 @@ class JoinSuite(Suite):
 
     def test_overloaded_with_any(self):
         c = self.callable
+
         def ov(*items):
             return Overloaded(items)
+
         fx = self.fx
-        func = fx.function
         any = fx.anyt
         self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), c(any, fx.b))
         self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), c(any, fx.b))
