@@ -53,7 +53,7 @@ class TypeFixture:
         # Class TypeInfos
         self.std_tuplei = self.make_type_info('builtins.tuple')        # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
-        self.std_functioni = self.make_type_info('builtins.function')  # function TODO
+        self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
         self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
         self.ci = self.make_type_info('C', mro=[self.ai, self.oi])     # class C(A)
@@ -96,7 +96,7 @@ class TypeFixture:
         # Instance types
         self.std_tuple = Instance(self.std_tuplei, [])        # tuple
         self.type_type = Instance(self.type_typei, [])        # type
-        self.std_function = Instance(self.std_functioni, [])  # function TODO
+        self.function = Instance(self.functioni, [])  # function TODO
         self.a = Instance(self.ai, [])          # A
         self.b = Instance(self.bi, [])          # B
         self.c = Instance(self.ci, [])          # C
@@ -147,7 +147,7 @@ class TypeFixture:
         a1, ... an and return type r.
         """
         return CallableType(a[:-1], [ARG_POS] * (len(a) - 1),
-                        [None] * (len(a) - 1), a[-1], self.std_function)
+                        [None] * (len(a) - 1), a[-1], self.function)
 
     def callable_type(self, *a):
         """callable_type(a1, ..., an, r) constructs a callable with
@@ -166,7 +166,7 @@ class TypeFixture:
         return CallableType(a[:-1],
                             [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
                             [None] * n,
-                            a[-1], self.std_function)
+                            a[-1], self.function)
 
     def callable_var_arg(self, min_args, *a):
         """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
@@ -177,7 +177,7 @@ class TypeFixture:
                             [ARG_POS] * min_args +
                             [ARG_OPT] * (n - 1 - min_args) +
                             [ARG_STAR], [None] * n,
-                            a[-1], self.std_function)
+                            a[-1], self.function)
 
     def make_type_info(self, name: str,
                        is_abstract: bool = False,

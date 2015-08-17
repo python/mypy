@@ -11,7 +11,7 @@ from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, ErrorType
+    Instance, NoneTyp, ErrorType, Overloaded
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
@@ -25,7 +25,7 @@ class TypesSuite(Suite):
         self.x = UnboundType('X')  # Helpers
         self.y = UnboundType('Y')
         self.fx = TypeFixture()
-        self.function = self.fx.std_function
+        self.function = self.fx.function
 
     def test_any(self):
         assert_equal(str(AnyType()), 'Any')
@@ -267,7 +267,7 @@ class TypeOpsSuite(Suite):
                             [ARG_POS] * (len(a) - 1),
                             [None] * (len(a) - 1),
                             a[-1],
-                            self.fx.std_function,
+                            self.fx.function,
                             None,
                             tv)
 
@@ -310,10 +310,13 @@ class JoinSuite(Suite):
 
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         self.fx.o)
+                         self.fx.function)
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         self.fx.o)
+                         self.fx.function)
+        self.assert_join(self.callable(self.fx.a, self.fx.b),
+                         self.fx.function,
+                         self.fx.function)
 
     def test_type_vars(self):
         self.assert_join(self.fx.t, self.fx.t, self.fx.t)
@@ -413,6 +416,32 @@ class JoinSuite(Suite):
                          self.callable(self.fx.a, self.fx.anyt, self.fx.anyt,
                                        self.fx.anyt))
 
+    def test_overloaded(self):
+        c = self.callable
+        def ov(*items):
+            return Overloaded(items)
+        fx = self.fx
+        func = fx.function
+        c1 = c(fx.a, fx.a)
+        c2 = c(fx.b, fx.b)
+        c3 = c(fx.c, fx.c)
+        self.assert_join(ov(c1, c2), c1, c1)
+        self.assert_join(ov(c1, c2), c2, c2)
+        self.assert_join(ov(c1, c2), ov(c1, c2), ov(c1, c2))
+        self.assert_join(ov(c1, c2), ov(c1, c3), c1)
+        self.assert_join(ov(c2, c1), ov(c3, c1), c1)
+        self.assert_join(ov(c1, c2), c3, func)
+
+    def test_overloaded_with_any(self):
+        c = self.callable
+        def ov(*items):
+            return Overloaded(items)
+        fx = self.fx
+        func = fx.function
+        any = fx.anyt
+        self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), c(any, fx.b))
+        self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), c(any, fx.b))
+
     def test_join_interface_types(self):
         self.skip()  # FIX
         self.assert_join(self.fx.f, self.fx.f, self.fx.f)
@@ -461,12 +490,7 @@ class JoinSuite(Suite):
 
     # There are additional test cases in check-inference.test.
 
-    # FIX interfaces with different paths
-
-    # FIX generic interfaces + inheritance
-    # FIX generic interfaces + ranges
-
-    # FIX function types + varargs and default args
+    # TODO: Function types + varargs and default args.
 
     def assert_join(self, s, t, join):
         self.assert_simple_join(s, t, join)
@@ -494,7 +518,7 @@ class JoinSuite(Suite):
         """
         n = len(a) - 1
         return CallableType(a[:-1], [ARG_POS] * n, [None] * n,
-                        a[-1], self.fx.std_function)
+                        a[-1], self.fx.function)
 
     def type_callable(self, *a):
         """type_callable(a1, ..., an, r) constructs a callable with
@@ -701,7 +725,7 @@ class MeetSuite(Suite):
         n = len(a) - 1
         return CallableType(a[:-1],
                             [ARG_POS] * n, [None] * n,
-                            a[-1], self.fx.std_function)
+                            a[-1], self.fx.function)
 
 
 class CombinedTypesSuite(Suite):

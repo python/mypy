@@ -123,11 +123,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             return all(is_subtype(left, item, self.check_type_parameter)
                        for item in right.items())
-        elif is_named_instance(right, 'builtins.object'):
-            return True
-        elif (is_named_instance(right, 'builtins.type') and
-              left.is_type_obj()):
-            return True
+        elif isinstance(right, Instance):
+            return is_subtype(left.fallback, right)
         else:
             return False
 
@@ -157,8 +154,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
-        if is_named_instance(right, 'builtins.object'):
-            return True
+        if isinstance(right, Instance):
+            return is_subtype(left.fallback, right)
         elif isinstance(right, CallableType) or is_named_instance(
                 right, 'builtins.type'):
             for item in left.items():
