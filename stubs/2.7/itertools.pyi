@@ -37,6 +37,11 @@ def islice(iterable: Iterable[_T], stop: int) -> Iterator[_T]: ...
 def islice(iterable: Iterable[_T], start: int, stop: int,
            step: int = 1) -> Iterator[_T]: ...
 
+_T1 = TypeVar('_T1')
+_T2 = TypeVar('_T2')
+_T3 = TypeVar('_T3')
+_T4 = TypeVar('_T4')
+
 @overload
 def imap(func: Callable[[_T1], _S], iter1: Iterable[_T1]) -> Iterable[_S]: ...
 @overload
