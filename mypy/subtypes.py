@@ -204,12 +204,14 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         return True
 
     # Check argument types.
-    if left.min_args > right.min_args:
+    if left.min_args > right.min_args and not right.is_kwargs:
         return False
     if left.is_var_arg:
         return is_var_arg_callable_subtype_helper(left, right)
     if right.is_var_arg:
         return False
+    if left.is_kwargs or right.is_kwargs:
+        return True
     if len(left.arg_types) < len(right.arg_types):
         return False
     for i in range(len(right.arg_types)):

@@ -1180,6 +1180,46 @@ a = A()
 a = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 
 
+[case testKwargsMethodSignature]
+import typing
+class A:
+    def f(self, y=None, **kw) -> None: pass
+
+class B(A):
+    def f(self, **kw) -> None: pass
+[builtins fixtures/dict.py]
+
+
+[case testKwargsMethodSignatureV2]
+import typing
+class A:
+    def f(self, **kw) -> None: pass
+
+class B(A):
+    def f(self, y=None, **kw) -> None: pass
+[builtins fixtures/dict.py]
+
+
+[case testKwargsMethodSignatureV3]
+import typing
+class A:
+    def f(self, a=1, b='string') -> None: pass
+
+class B(A):
+    def f(self, **kw) -> None: pass
+[builtins fixtures/dict.py]
+
+
+[case testKwargsMethodSignatureV4]
+import typing
+class A:
+    def f(self, a=1, b='string', **kwargs) -> None: pass
+
+class B(A):
+    def f(self, b:str, **kw) -> None: pass
+[builtins fixtures/dict.py]
+
+
 -- TODO
 --   attribute inherited from superclass; assign in __init__
 --   refer to attribute before type has been inferred (the initialization in
