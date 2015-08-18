@@ -114,7 +114,7 @@ def load_python2_module_info(module):
     #   Python 2 lives.
     cmd_template = '/usr/bin/python -c "%s"'
     code = ("import importlib, json; mod = importlib.import_module('%s'); "
-            "print mod.__file__; print json.dumps(getattr(mod, '__all__'))") % module
+            "print mod.__file__; print json.dumps(getattr(mod, '__all__', None))") % module
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError:
