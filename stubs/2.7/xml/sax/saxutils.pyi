@@ -4,9 +4,8 @@
 
 from typing import Mapping
 
-import io
-import handler
-import xmlreader
+from xml.sax import handler
+from xml.sax import xmlreader
 
 def escape(data: str, entities: Mapping[str, str] = None) -> str: ...
 def unescape(data: str, entities: Mapping[str, str] = None) -> str: ...
