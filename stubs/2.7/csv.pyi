@@ -23,7 +23,7 @@ class Writer(metaclass=ABCMeta):
     def writerow(self, row: _Row) -> None: ...
 
     @abstractmethod
-    def writerows(self, rows: List[_Row]) -> None: ...
+    def writerows(self, rows: Iterable[_Row]) -> None: ...
 
 QUOTE_ALL = ...  # type: int
 QUOTE_MINIMAL = ...  # type: int
@@ -53,23 +53,13 @@ class Dialect:
     def __init__(self) -> None: ...
 
 class excel(Dialect):
-    delimiter = ...  # type: str
-    quotechar = ...  # type: str
-    doublequote = ...  # type: bool
-    skipinitialspace = ...  # type: bool
-    lineterminator = ...  # type: str
-    quoting = ...  # type: int
+    pass
 
 class excel_tab(excel):
-    delimiter = ...  # type: str
+    pass
 
 class unix_dialect(Dialect):
-    delimiter = ...  # type: str
-    quotechar = ...  # type: str
-    doublequote = ...  # type: bool
-    skipinitialspace = ...  # type: bool
-    lineterminator = ...  # type: str
-    quoting = ...  # type: int
+    pass
 
 class DictReader:
     restkey = ...  # type: Any
@@ -94,7 +84,7 @@ class DictWriter:
                  dialect: _Dialect = '', *args, **kwds) -> None: ...
     def writeheader(self) -> None: ...
     def writerow(self, rowdict: _DictRow) -> None: ...
-    def writerows(self, rowdicts: Sequence[_DictRow]) -> None: ...
+    def writerows(self, rowdicts: Iterable[_DictRow]) -> None: ...
 
 class Sniffer:
     preferred = ...  # type: Any
