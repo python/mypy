@@ -54,3 +54,9 @@ f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[in
 [file _m.py]
 from typing import Union
 U = Union[int, str]
+
+[case testTypeAliasInBuiltins]
+def f(x: bytes): pass
+bytes
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+[builtins fixtures/alias.py]

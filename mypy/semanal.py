@@ -1770,10 +1770,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.name_not_defined(name, ctx)
                     return None
                 node = table[name]
-                # Only succeed if we are not using a type alias such List -- these must be
-                # be accessed via the typing module.
-                if node.node.name() == name:
-                    return node
+                return node
         # Give up.
         self.name_not_defined(name, ctx)
         self.check_for_obsolete_short_name(name, ctx)
