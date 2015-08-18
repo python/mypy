@@ -1756,7 +1756,7 @@ if __name__ == '__main__':
     import sys
 
     def usage():
-        print('Usage: parse.py [--py2] [--quiet] FILE')
+        print('Usage: parse.py [--py2] [--quiet] FILE [...]')
         sys.exit(2)
 
     args = sys.argv[1:]
@@ -1770,16 +1770,18 @@ if __name__ == '__main__':
         else:
             usage()
         args = args[1:]
-    if len(args) != 1:
+    if len(args) < 1:
         usage()
-    fnam = args[0]
-    s = open(fnam, 'rb').read()
-    errors = Errors()
-    try:
-        tree = parse(s, fnam, pyversion=pyversion)
-        if not quiet:
-            print(tree)
-    except CompileError as e:
-        for msg in e.messages:
-            sys.stderr.write('%s\n' % msg)
-        sys.exit(1)
+    status = 0
+    for fnam in args:
+        s = open(fnam, 'rb').read()
+        errors = Errors()
+        try:
+            tree = parse(s, fnam, pyversion=pyversion)
+            if not quiet:
+                print(tree)
+        except CompileError as e:
+            for msg in e.messages:
+                sys.stderr.write('%s\n' % msg)
+            status = 1
+    exit(status)
