@@ -324,8 +324,12 @@ class Lexer:
                 self.map[ord(c)] = method
         if pyversion == 2:
             self.keywords = keywords_common | keywords2
+            # Decimal/hex/octal/binary literal or integer complex literal
+            self.number_exp1 = re.compile('(0[xXoObB][0-9a-fA-F]+|[0-9]+)[lL]?')
+
         if pyversion == 3:
             self.keywords = keywords_common | keywords3
+            self.number_exp1 = re.compile('0[xXoObB][0-9a-fA-F]+|[0-9]+')
 
     def lex(self, text: Union[str, bytes], first_line: int) -> None:
         """Lexically analyze a string, storing the tokens at the tok list."""
@@ -446,14 +450,16 @@ class Lexer:
 
     # Regexps used by lex_number
 
-    # Decimal/hex/octal/binary literal or integer complex literal
-    number_exp1 = re.compile('0[xXoObB][0-9a-fA-F]+|[0-9]+')
+    # NOTE: number_exp1 depends on Python version and is defined in __init__.
+
     # Float literal, e.g. '1.23' or '12e+34' or '1.2j'
     number_exp2 = re.compile(
         r'[0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+[eE][-+]?[0-9]+')
+
     # Complex literal, e.g. '3j' or '1.5e2J'
     number_complex = re.compile(
         r'([0-9]*\.[0-9]*([eE][-+]?[0-9]+)?|[0-9]+([eE][-+]?[0-9]+)?)[jJ]')
+
     # These characters must not appear after a number literal.
     name_char_exp = re.compile('[a-zA-Z0-9_]')
     octal_int = re.compile('0+[1-9]')

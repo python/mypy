@@ -444,3 +444,10 @@ file:1: error: Unknown encoding 'Uft.8'
 # vim: set fileencoding=uft8 :
 [out]
 file:2: error: Unknown encoding 'uft8'
+
+[case testLongLiteralInPython3]
+2L
+0x2L
+[out]
+file:1: error: Invalid numeric literal
+file:2: error: Invalid numeric literal

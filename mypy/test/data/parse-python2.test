@@ -79,3 +79,19 @@ MypyFile:1(
     IntExpr(1))
   ExpressionStmt:3(
     IntExpr(255)))
+
+[case testLongLiteral]
+0L
+123L
+012L
+0x123l
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IntExpr(0))
+  ExpressionStmt:2(
+    IntExpr(123))
+  ExpressionStmt:3(
+    IntExpr(10))
+  ExpressionStmt:4(
+    IntExpr(291)))

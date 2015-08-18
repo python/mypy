@@ -1334,11 +1334,11 @@ class Parser:
 
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)
-        string = tok.string
+        string = tok.string.rstrip('lL')  # Strip L prefix (Python 2 long literals)
         if self.octal_int.match(string):
             value = int(string, 8)
         else:
-            value = int(tok.string, 0)
+            value = int(string, 0)
         node = IntExpr(value)
         return node
 
