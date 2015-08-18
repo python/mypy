@@ -1754,21 +1754,31 @@ def token_repr(tok: Token) -> str:
 if __name__ == '__main__':
     # Parse a file and dump the AST (or display errors).
     import sys
-    args = sys.argv[1:]
-    if args and args[0] == '--py2':
-        pyversion = 2
-        args = args[1:]
-    else:
-        pyversion = 3
-    if len(args) != 1:
-        print('Usage: parse.py [--py2] FILE')
+
+    def usage():
+        print('Usage: parse.py [--py2] [--quiet] FILE')
         sys.exit(2)
+
+    args = sys.argv[1:]
+    pyversion = 3
+    quiet = False
+    while args and args[0].startswith('--'):
+        if args[0] == '--py2':
+            pyversion = 2
+        elif args[0] == '--quiet':
+            quiet = True
+        else:
+            usage()
+        args = args[1:]
+    if len(args) != 1:
+        usage()
     fnam = args[0]
     s = open(fnam, 'rb').read()
     errors = Errors()
     try:
         tree = parse(s, fnam, pyversion=pyversion)
-        print(tree)
+        if not quiet:
+            print(tree)
     except CompileError as e:
         for msg in e.messages:
             sys.stderr.write('%s\n' % msg)
