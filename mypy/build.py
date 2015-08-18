@@ -201,12 +201,12 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
     # Add library stubs directory. By convention, they are stored in the
     # stubs/x.y directory of the mypy installation.
     version_dir = '3.2'
-    3rd_party_dir = 'third-party-3.2'
+    third_party_dir = 'third-party-3.2'
     if pyversion < 3:
         version_dir = '2.7'
-        3rd_party_dir = 'third-party-2.7'
+        third_party_dir = 'third-party-2.7'
     path.append(os.path.join(data_dir, 'stubs', version_dir))
-    path.append(os.path.join(data_dir, 'stubs', 3rd_party_dir))
+    path.append(os.path.join(data_dir, 'stubs', third_party_dir))
     path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
     if sys.version_info.major == 3:
         # Add additional stub directories.
@@ -216,9 +216,9 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
             if os.path.isdir(stubdir):
                 path.append(stubdir)
 
-            3rd_party_stubdir = os.path.join(data_dir, 'stubs', 'third-party-' + v)
-            if os.path.isdir(stubdir):
-                path.append(stubdir)
+            third_party_stubdir = os.path.join(data_dir, 'stubs', 'third-party-' + v)
+            if os.path.isdir(third_party_stubdir):
+                path.append(third_party_stubdir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
