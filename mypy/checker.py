@@ -1673,6 +1673,11 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_print_stmt(self, s: PrintStmt) -> Type:
         for arg in s.args:
             self.accept(arg)
+        if s.target:
+            target_type = self.accept(s.target)
+            if not isinstance(target_type, NoneTyp):
+                # TODO: Also verify the type of 'write'.
+                self.expr_checker.analyze_external_member_access('write', target_type, s.target)
 
     #
     # Expressions

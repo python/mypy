@@ -258,7 +258,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_print_stmt(self, node: PrintStmt) -> Node:
         return PrintStmt(self.nodes(node.args),
-                         node.newline)
+                         node.newline,
+                         self.optional_node(node.target))
 
     def visit_star_expr(self, node: StarExpr) -> Node:
         return StarExpr(node.expr)

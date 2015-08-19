@@ -715,10 +715,13 @@ class PrintStmt(Node):
 
     args = None  # type: List[Node]
     newline = False
+    # The file-like target object (given using >>).
+    target = None  # type: Optional[Node]
 
-    def __init__(self, args: List[Node], newline: bool) -> None:
+    def __init__(self, args: List[Node], newline: bool, target: Node = None) -> None:
         self.args = args
         self.newline = newline
+        self.target = target
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_print_stmt(self)

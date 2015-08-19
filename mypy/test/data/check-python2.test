@@ -2,7 +2,6 @@
 
 
 [case testUnicode]
-import typing
 u = u'foo'
 u = unicode()
 s = ''
@@ -11,12 +10,19 @@ s = b'foo'
 [builtins fixtures/python2.py]
 
 [case testPrintStatement]
-import typing
 print ''() # E: "str" not callable
 print 1, 1() # E: "int" not callable
 
+[case testPrintStatementWithTarget]
+class A:
+    def write(self, s: str) -> None: pass
+
+print >>A(), ''
+print >>None, ''
+print >>1, '' # E: "int" has no attribute "write"
+print >>(None + ''), None # E: Unsupported left operand type for + (None)
+
 [case testDivision]
-import typing
 class A:
     def __div__(self, x: int) -> str: pass
 s = A() / 1
