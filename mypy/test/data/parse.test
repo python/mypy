@@ -3322,3 +3322,18 @@ from m import ( # type: ignore
 MypyFile:1(
   ImportFrom:1(m, [x : x, y : y])
   IgnoredLines(1))
+
+[case testYieldExpression]
+def f():
+    x = yield f()
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      AssignmentStmt:2(
+        NameExpr(x)
+        YieldExpr:2(
+          CallExpr:2(
+            NameExpr(f)
+            Args()))))))

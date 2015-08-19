@@ -26,7 +26,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr
 )
 from mypy import nodes
 from mypy.errors import Errors, CompileError
@@ -827,20 +827,16 @@ class Parser:
                 node = YieldStmt(expr)
         return node
 
-    def parse_yield_from_expr(self) -> YieldFromExpr:
+    def parse_yield_or_yield_from_expr(self) -> Union[YieldFromExpr, YieldExpr]:
         self.expect("yield")
-        expr = None  # type: Node
-        node = YieldFromExpr(expr)
+        node = None  # type: Union[YieldFromExpr, YieldExpr]
         if self.current_str() == "from":
             self.expect("from")
-            tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
-            node = YieldFromExpr(tok)
+            expr = self.parse_expression()  # Here comes when yield from is assigned to a variable
+            node = YieldFromExpr(expr)
         else:
-            # TODO
-            # Here comes the yield expression (ex:  x = yield 3 )
-            # tok = self.parse_expression()
-            # node = YieldExpr(tok)  # Doesn't exist now
-            pass
+            expr = self.parse_expression()
+            node = YieldExpr(expr)
         return node
 
     def parse_ellipsis(self) -> EllipsisExpr:
@@ -1099,7 +1095,7 @@ class Parser:
                 expr = self.parse_complex_expr()
             elif isinstance(current, Keyword) and s == "yield":
                 # The expression yield from and yield to assign
-                expr = self.parse_yield_from_expr()
+                expr = self.parse_yield_or_yield_from_expr()
             elif isinstance(current, EllipsisToken):
                 expr = self.parse_ellipsis()
             else:

@@ -18,7 +18,8 @@ from mypy.nodes import (
     SymbolTable, RefExpr, TypeVarExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
-    DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr
+    DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
+    YieldExpr
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
@@ -313,6 +314,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_yield_from_expr(self, node: YieldFromExpr) -> Node:
         return YieldFromExpr(self.node(node.expr))
+
+    def visit_yield_expr(self, node: YieldExpr) -> Node:
+        return YieldExpr(self.node(node.expr))
 
     def visit_call_expr(self, node: CallExpr) -> Node:
         return CallExpr(self.node(node.callee),
