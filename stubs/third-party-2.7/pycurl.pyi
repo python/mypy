@@ -2,13 +2,13 @@
 
 from typing import Any, Tuple
 
-GLOBAL_SSL = ... # type: Any
-GLOBAL_WIN32 = ... # type: Any
-GLOBAL_ALL = ... # type: Any
-GLOBAL_NOTHING = ... # type: Any
-GLOBAL_DEFAULT = ... # type: Any
+GLOBAL_SSL = ... # type: int
+GLOBAL_WIN32 = ... # type: int
+GLOBAL_ALL = ... # type: int
+GLOBAL_NOTHING = ... # type: int
+GLOBAL_DEFAULT = ... # type: int
 
-def global_init(option: Any) -> None: ...
+def global_init(option: int) -> None: ...
 def global_cleanup() -> None: ...
 
 version = ... # type: str
