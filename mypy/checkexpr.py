@@ -14,7 +14,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
-    TypeAliasExpr
+    TypeAliasExpr, YieldExpr
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type
@@ -1068,6 +1068,11 @@ class ExpressionChecker:
         return self.check_call(constructor,
                                args,
                                [nodes.ARG_POS] * len(args), e)[0]
+
+    def visit_yield_expr(self, e: YieldExpr) -> Type:
+        # TODO: Implement proper type checking of yield expressions.
+        self.accept(e.expr)
+        return AnyType()
 
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""
