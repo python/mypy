@@ -18,11 +18,11 @@ def version_info() -> Tuple[int, str, int, str, int, str,
 
 class Curl(object):
     def close(self) -> None: ...
-    def setopt(self, option: Any, value: Any) -> None: ...
+    def setopt(self, option: int, value: Any) -> None: ...
     def perform(self) -> None: ...
     def getinfo(self, info: Any) -> Any: ...
     def reset(self) -> None: ...
-    def unsetopt(self, option: Any) -> Any: ...
+    def unsetopt(self, option: int) -> Any: ...
     def pause(self, bitmask: Any) -> Any: ...
     def errstr(self) -> str: ...
 
@@ -37,4 +37,37 @@ class CurlMulti(object):
 
 class CurlShare(object):
     def close(self) -> None: ...
-    def setopt(self, option: Any, value: Any) -> Any: ...
+    def setopt(self, option: int, value: Any) -> Any: ...
+
+NOSIGNAL = ... # type: int
+NOPROGRESS = ... # type: int
+PROGRESSFUNCTION = ... # type: int
+READFUNCTION = ... # type: int
+CUSTOMREQUEST = ... # type: int
+SSL_VERIFYPEER = ... # type: int
+SSL_VERIFYHOST = ... # type: int
+FOLLOWLOCATION = ... # type: int
+INFILESIE_LARGE = ... # type: int
+HTTPGET = ... # type: int
+NOBODY = ... # type: int
+POST = ... # type: int
+POSTFIELDS = ... # type: int
+POSTFIELDSIZE = ... # type: int
+UPLOAD = ... # type: int
+INFILESIZE_LARGE = ... # type: int
+CAINFO = ... # type: int
+SSLCERT = ... # type: int
+SSLCERTPASSWD = ... # type: int
+SSLKEY = ... # type: int
+SSLKEYPASSWD = ... # type: int
+TIMEOUT_MS = ... # type: int
+HEADERFUNCTION = ... # type: int
+CONNECTTIMEOUT_MS = ... # type: int
+PROXY = ... # type: int
+HTTPHEADER = ... # type: int
+URL = ... # type: int
+WRITEFUNCTION = ... # type: int
+RESPONSE_CODE = ... # type: int
+
+E_OPERATION_TIMEOUTED = ... # type: int
+PRIMARY_IP = ... # type: int
