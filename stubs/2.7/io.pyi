@@ -13,6 +13,10 @@ def open(file: Union[str, unicode, int],
          errors: unicode = None, newline: unicode = None,
          closefd: bool = True) -> IO[Any]: ...
 
+class IOBase:
+    # TODO
+    ...
+
 class BytesIO(BinaryIO):
     def __init__(self, initial_bytes: str = b'') -> None: ...
     # TODO getbuffer
