@@ -36,3 +36,12 @@ f('')
 f(u'')
 f(b'')
 [builtins fixtures/python2.py]
+
+[case testStaticMethodWithCommentSignature]
+class A:
+    @staticmethod
+    def f(x): # type: (int) -> str
+        return ''
+A.f(1)
+A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[builtins fixtures/staticmethod.py]
