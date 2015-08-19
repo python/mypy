@@ -607,15 +607,14 @@ class ExpressionChecker:
         # Fixed function arguments.
         func_fixed = callee.max_fixed_args()
         for i in range(min(len(arg_types), func_fixed)):
-            # Use is_more_precise rather than is_subtype because it ignores _promote
-            # declarations. This is important since _promote declarations are ignored
-            # when performing runtime type checking.
+            # Instead of just is_subtype, we use a relaxed overlapping check to determine
+            # which overload variant could apply.
             if not is_compatible_overload_arg(arg_types[i], callee.arg_types[i]):
                 return False
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
-                # See above for why we use is_more_precise.
+                # See above for why we use is_compatible_overload_arg.
                 if not is_compatible_overload_arg(arg_types[i],
                                                   callee.arg_types[func_fixed]):
                     return False
@@ -1441,7 +1440,10 @@ def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
         if isinstance(actual, TupleType):
             actual = actual.fallback
         if isinstance(actual, Instance):
-            return formal.type in actual.type.mro
+            # First perform a quick check (as an optimization) and fall back to generic
+            # subtyping algorithm if type promotions are possible (e.g., int vs. float).
+            return formal.type in actual.type.mro or (actual.type._promote and
+                                                      is_subtype(actual, formal))
         else:
             return False
     # Fall back to a conservative equality check for the remaining kinds of type.
