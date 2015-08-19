@@ -369,7 +369,7 @@ class Parser:
                     self.errors.report(
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(CallableType, comment_type)
-                if is_method:
+                if is_method and len(sig.arg_kinds) < len(kinds):
                     self.check_argument_kinds(kinds,
                                               [nodes.ARG_POS] + sig.arg_kinds,
                                               def_tok.line)
