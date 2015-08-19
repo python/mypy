@@ -838,6 +838,8 @@ def __import__(name: unicode,
                locals: Dict[str, Any] = ...,
                fromlist: List[str] = ..., level: int = ...) -> Any: ...
 
+globals = ... # type: Dict[str, Any]
+
 class BaseException:
     args = ...  # type: Any
     def __init__(self, *args: Any) -> None: ...
