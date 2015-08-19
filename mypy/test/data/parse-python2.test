@@ -51,6 +51,35 @@ MypyFile:1(
   PrintStmt:1(
     Newline))
 
+[case testPrintWithTarget]
+print >>foo
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    Target(
+      NameExpr(foo))
+    Newline))
+
+[case testPrintWithTargetAndArgs]
+print >>foo, x
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(x)
+    Target(
+      NameExpr(foo))
+    Newline))
+
+[case testPrintWithTargetAndArgsAndTrailingComma]
+print >>foo, x, y,
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(x)
+    NameExpr(y)
+    Target(
+      NameExpr(foo))))
+
 [case testSimpleWithTrailingComma]
 print 1,
 print 2, 3,

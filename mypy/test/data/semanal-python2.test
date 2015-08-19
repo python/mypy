@@ -8,3 +8,13 @@ MypyFile:1(
     NameExpr(int [builtins.int])
     NameExpr(None [builtins.None])
     Newline))
+
+[case testPrintStatementWithTarget]
+print >>int, None
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(None [builtins.None])
+    Target(
+      NameExpr(int [builtins.int]))
+    Newline))

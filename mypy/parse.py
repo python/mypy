@@ -1042,6 +1042,17 @@ class Parser:
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
         args = []  # type: List[Node]
+        target = None  # type: Node
+        if self.current_str() == '>>':
+            self.skip()
+            target = self.parse_expression(precedence[','])
+            if self.current_str() == ',':
+                self.skip()
+                if isinstance(self.current(), Break):
+                    self.parse_error()
+            else:
+                if not isinstance(self.current(), Break):
+                    self.parse_error()
         comma = False
         while not isinstance(self.current(), Break):
             args.append(self.parse_expression(precedence[',']))
@@ -1051,7 +1062,7 @@ class Parser:
             else:
                 comma = False
                 break
-        return PrintStmt(args, newline=not comma)
+        return PrintStmt(args, newline=not comma, target=target)
 
     # Parsing expressions
 

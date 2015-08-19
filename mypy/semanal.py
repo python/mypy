@@ -1490,6 +1490,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
             arg.accept(self)
+        if s.target:
+            s.target.accept(self)
 
     #
     # Expressions
