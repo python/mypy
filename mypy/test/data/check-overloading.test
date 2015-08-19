@@ -485,3 +485,17 @@ def f(n: A) -> A:
 
 f(B()) + 'x'  # E: Unsupported left operand type for + ("B")
 f(A()) + 'x'  # E: Unsupported left operand type for + ("A")
+
+[case testOverloadingAndIntFloatSubtyping]
+from typing import overload
+@overload
+def f(x: float) -> None: pass
+@overload
+def f(x: str) -> None: pass
+f(1.1)
+f('')
+f(1)
+f(()) # E: No overload variant of "f" matches argument types
+[builtins fixtures/primitives.py]
+[out]
+
