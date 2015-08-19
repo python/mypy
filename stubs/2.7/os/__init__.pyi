@@ -1,6 +1,7 @@
 # created from https://docs.python.org/2/library/os.html
 
 from typing import List, Tuple, Union, Sequence, Mapping, IO, Any, Optional
+import os.path as path
 
 error = OSError
 name = ... # type: str
