@@ -4,7 +4,6 @@
 
 from typing import Any
 from yaml.error import MarkedYAMLError
-from yaml.tokens import *
 
 class ScannerError(MarkedYAMLError): ...
 

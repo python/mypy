@@ -4,7 +4,6 @@
 
 from typing import Any
 from yaml.error import YAMLError
-from yaml.events import *
 
 class EmitterError(YAMLError): ...
 
