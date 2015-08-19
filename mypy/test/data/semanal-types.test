@@ -1374,3 +1374,13 @@ MypyFile:1(
     NameExpr(S* [__main__.S])
     TypeVarExpr:3(
       Variance(CONTRAVARIANT))))
+
+[case testForwardReferenceToNestedClass]
+def f(o: 'B.C') -> None:
+    o.x = ''
+
+class B:
+    class C:
+        x = 1
+[out]
+.
