@@ -12,3 +12,6 @@ class TracebackType:
 
 class FrameType:
     ...
+
+class GeneratorType:
+    ...
