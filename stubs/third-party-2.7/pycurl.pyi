@@ -1,6 +1,6 @@
 # TODO(MichalPokorny): more precise types
 
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 
 GLOBAL_SSL = ... # type: int
 GLOBAL_WIN32 = ... # type: int
@@ -16,6 +16,9 @@ version = ... # type: str
 def version_info() -> Tuple[int, str, int, str, int, str,
                             int, str, tuple, Any, int, Any]: ...
 
+class error(Exception):
+    pass
+
 class Curl(object):
     def close(self) -> None: ...
     def setopt(self, option: int, value: Any) -> None: ...
@@ -25,6 +28,9 @@ class Curl(object):
     def unsetopt(self, option: int) -> Any: ...
     def pause(self, bitmask: Any) -> Any: ...
     def errstr(self) -> str: ...
+
+    # TODO(MichalPokorny): wat?
+    USERPWD = ... # type: int
 
 class CurlMulti(object):
     def close(self) -> None: ...
