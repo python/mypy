@@ -33,7 +33,7 @@ python_34_eval_files = ['pythoneval-asyncio.test',
 # Path to Python 3 interpreter
 python3_path = sys.executable
 
-default_python2_interpreter = 'python'
+default_python2_interpreter = ['python', '/usr/bin/python', 'python2']
 
 
 class PythonEvaluationSuite(Suite):
@@ -104,16 +104,16 @@ def test_python_evaluation(testcase):
 
 
 def try_find_python2_interpreter():
-    try:
-        process = subprocess.Popen([default_python2_interpreter, '-V'], stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-        stdout, stderr = process.communicate()
-        if b'Python 2.7' in stdout:
-            return default_python2_interpreter
-        else:
-            return None
-    except OSError:
-        return False
+    for interpreter in default_python2_interpreter:
+        try:
+            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT)
+            stdout, stderr = process.communicate()
+            if b'Python 2.7' in stdout:
+                return interpreter
+        except OSError:
+            pass
+    return None
 
 
 if __name__ == '__main__':

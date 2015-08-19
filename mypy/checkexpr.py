@@ -555,8 +555,10 @@ class ExpressionChecker:
         # TODO for overlapping signatures we should try to get a more precise
         #      result than 'Any'
         match = []  # type: List[CallableType]
+        best_match = 0
         for typ in overload.items():
-            if self.matches_signature_erased(arg_types, is_var_arg, typ):
+            similarity = self.erased_signature_similarity(arg_types, is_var_arg, typ)
+            if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
                     not mypy.checker.is_more_precise_signature(
@@ -573,6 +575,7 @@ class ExpressionChecker:
                     return AnyType()
                 else:
                     match.append(typ)
+                best_match = max(best_match, similarity)
         if not match:
             messages.no_variant_matches_arguments(overload, context)
             return AnyType()
@@ -588,12 +591,15 @@ class ExpressionChecker:
                         return m
                 return match[0]
 
-    def matches_signature_erased(self, arg_types: List[Type], is_var_arg: bool,
-                                 callee: CallableType) -> bool:
+    def erased_signature_similarity(self, arg_types: List[Type], is_var_arg: bool,
+                                    callee: CallableType) -> int:
         """Determine whether arguments could match the signature at runtime.
 
         If is_var_arg is True, the caller uses varargs. This is used for
         overload resolution.
+
+        Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
+        overload_arg_similarity for a discussion of similarity levels.
         """
         if not is_valid_argc(len(arg_types), False, callee):
             return False
@@ -606,20 +612,24 @@ class ExpressionChecker:
 
         # Fixed function arguments.
         func_fixed = callee.max_fixed_args()
+        similarity = 2
         for i in range(min(len(arg_types), func_fixed)):
-            # Use is_more_precise rather than is_subtype because it ignores _promote
-            # declarations. This is important since _promote declarations are ignored
-            # when performing runtime type checking.
-            if not is_compatible_overload_arg(arg_types[i], callee.arg_types[i]):
-                return False
+            # Instead of just is_subtype, we use a relaxed overlapping check to determine
+            # which overload variant could apply.
+            similarity = min(similarity,
+                             overload_arg_similarity(arg_types[i], callee.arg_types[i]))
+            if similarity == 0:
+                return 0
         # Function varargs.
         if callee.is_var_arg:
             for i in range(func_fixed, len(arg_types)):
-                # See above for why we use is_more_precise.
-                if not is_compatible_overload_arg(arg_types[i],
-                                                  callee.arg_types[func_fixed]):
-                    return False
-        return True
+                # See above for why we use is_compatible_overload_arg.
+                similarity = min(similarity,
+                                 overload_arg_similarity(arg_types[i],
+                                                         callee.arg_types[func_fixed]))
+                if similarity == 0:
+                    return 0
+        return similarity
 
     def match_signature_types(self, arg_types: List[Type], is_var_arg: bool,
                               callee: CallableType) -> bool:
@@ -1421,17 +1431,27 @@ class HasErasedComponentsQuery(types.TypeQuery):
         return True
 
 
-def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
+def overload_arg_similarity(actual: Type, formal: Type) -> int:
+    """Return if caller argument (actual) is compatible with overloaded signature arg (formal).
+
+    Return a similarity level:
+      0: no match
+      1: actual is compatible, but only using type promitions (e.g. int vs float)
+      2: actual is compatible without type promotions (e.g. int vs object)
+
+    The distinction is important in cases where multiple overload items match. We want
+    give priority to higher similarity matches.
+    """
     if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
             isinstance(formal, AnyType) or isinstance(formal, TypeVarType) or
             isinstance(formal, CallableType)):
         # These could match anything at runtime.
-        return True
+        return 2
     if isinstance(actual, UnionType):
-        return any(is_compatible_overload_arg(item, formal)
+        return max(overload_arg_similarity(item, formal)
                    for item in actual.items)
     if isinstance(formal, UnionType):
-        return any(is_compatible_overload_arg(actual, item)
+        return max(overload_arg_similarity(actual, item)
                    for item in formal.items)
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
@@ -1441,8 +1461,15 @@ def is_compatible_overload_arg(actual: Type, formal: Type) -> bool:
         if isinstance(actual, TupleType):
             actual = actual.fallback
         if isinstance(actual, Instance):
-            return formal.type in actual.type.mro
+            # First perform a quick check (as an optimization) and fall back to generic
+            # subtyping algorithm if type promotions are possible (e.g., int vs. float).
+            if formal.type in actual.type.mro:
+                return 2
+            elif actual.type._promote and is_subtype(actual, formal):
+                return 1
+            else:
+                return 0
         else:
-            return False
+            return 0
     # Fall back to a conservative equality check for the remaining kinds of type.
-    return is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal))
+    return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
