@@ -1179,6 +1179,15 @@ n = A()
 a = A()
 a = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 
+[case testForwardReferenceToNestedClass]
+def f(o: 'B.C') -> None:
+    o.f('') # E: Argument 1 to "f" of "C" has incompatible type "str"; expected "int"
+
+class B:
+    class C:
+        def f(self, x: int) -> None: pass
+[out]
+main: note: In function "f":
 
 -- TODO
 --   attribute inherited from superclass; assign in __init__
