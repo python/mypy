@@ -74,6 +74,7 @@ from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.lex import lex
 from mypy.parsetype import parse_type
+from mypy.sametypes import is_same_type
 
 
 T = TypeVar('T')
@@ -1872,11 +1873,14 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.type:
             self.type.names[name] = node
         else:
-            if name in self.globals and (not isinstance(node.node, MypyFile) or
-                                         self.globals[name].node != node.node):
+            existing = self.globals.get(name)
+            if existing and (not isinstance(node.node, MypyFile) or
+                             existing.node != node.node):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
-                self.name_already_defined(name, context)
+                if not is_same_type(existing.type, node.type):
+                    # Only report an error if the symbol collision provides a different type.
+                    self.name_already_defined(name, context)
             self.globals[name] = node
 
     def add_var(self, v: Var, ctx: Context) -> None:
