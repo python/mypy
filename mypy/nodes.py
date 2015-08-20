@@ -420,7 +420,7 @@ class Var(SymbolNode):
 class ClassDef(Node):
     """Class definition"""
 
-    name = None  # type: str          # Name of the class without module prefix
+    name = None  # type: str       # Name of the class without module prefix
     fullname = None  # type: str   # Fully qualified name of the class
     defs = None  # type: Block
     type_vars = None  # type: List[mypy.types.TypeVarDef]
@@ -1422,7 +1422,7 @@ class TempNode(Node):
 class TypeInfo(SymbolNode):
     """Class representing the type structure of a single class.
 
-    The corresponding ClassDef instance represents the parse tree of
+    The corresponding ClassDef instance represents the AST of
     the class.
     """
 

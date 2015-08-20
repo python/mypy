@@ -1798,7 +1798,18 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        n = cast(TypeInfo, n.node).get(parts[i])
+                        result = cast(TypeInfo, n.node).get(parts[i])
+                        if not result:
+                            # Fall back to direct lookup from the class. This can be important
+                            # when we have a forward reference of a nested class that is being
+                            # bound before the outer class has been fully semantically analyzed.
+                            #
+                            # A better approach would be to introduce a new analysis pass or
+                            # to move things around between passes, but this unblocks a common
+                            # use case even though this is a little limited in case there is
+                            # inheritance involved, for example.
+                            result = cast(TypeInfo, n.node).names.get(parts[i])
+                        n = result
                     elif isinstance(n.node, MypyFile):
                         n = cast(MypyFile, n.node).names.get(parts[i], None)
                     if not n:
@@ -1932,7 +1943,10 @@ class SemanticAnalyzer(NodeVisitor):
 
 
 class FirstPass(NodeVisitor):
-    """First phase of semantic analysis"""
+    """First phase of semantic analysis.
+
+    See docstring of 'analyze' for a description of what this does.
+    """
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
@@ -2013,6 +2027,16 @@ class FirstPass(NodeVisitor):
         d.info = info
         self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
                                                    self.sem.cur_mod_id)
+        self.process_nested_classes(d)
+
+    def process_nested_classes(self, outer_def: ClassDef) -> None:
+        for node in outer_def.defs.body:
+            if isinstance(node, ClassDef):
+                node.info = TypeInfo(SymbolTable(), node)
+                node.info._fullname = node.info.name()
+                symbol = SymbolTableNode(MDEF, node.info)
+                outer_def.info.names[node.name] = symbol
+                self.process_nested_classes(node)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.sem.analyze_lvalue(s.index, add_global=True)
