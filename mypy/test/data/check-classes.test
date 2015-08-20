@@ -1189,6 +1189,17 @@ class B:
 [out]
 main: note: In function "f":
 
+[case testForwardReferenceToNestedClassDeep]
+def f(o: 'B.C.D') -> None:
+    o.f('') # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
+
+class B:
+    class C:
+        class D:
+            def f(self, x: int) -> None: pass
+[out]
+main: note: In function "f":
+
 -- TODO
 --   attribute inherited from superclass; assign in __init__
 --   refer to attribute before type has been inferred (the initialization in
