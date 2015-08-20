@@ -117,6 +117,11 @@ Returns:
 Arguments:
     x (int): a thing''', {'x': 'int'}, None)
 
+    def test_only_arg_type_no_description(self):
+        self.assert_annotation('''\
+Arguments:
+    x (int)''', {'x': 'int'}, None)
+
     def assert_no_annotation(self, docstring):
         assert_equal(parse_docstring(docstring), None)
 
