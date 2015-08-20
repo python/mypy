@@ -15,3 +15,6 @@ class FrameType:
 
 class GeneratorType:
     ...
+
+class ListType:
+    ...
