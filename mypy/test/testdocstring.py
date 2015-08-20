@@ -32,7 +32,7 @@ class DocstringSuite(Suite):
         check('Sequence[FooBar]', 'Sequence[FooBar]')
         check('an integer', 'int')
         check('list of integer', 'List[int]')
-    
+
     def test_no_annotations(self):
         self.assert_no_annotation('')
         self.assert_no_annotation('''foo\
@@ -53,9 +53,7 @@ Returns:
 
 Raises:
     IOError: Something happened.
-''', {'x': 'int',
-      'y': 'bool',
-      'z': 'str'}, 'Dict[str, int]')
+''', {'x': 'int', 'y': 'bool', 'z': 'str'}, 'Dict[str, int]')
 
     def test_partial_annotations(self):
         self.assert_annotation('''\
@@ -126,7 +124,7 @@ Arguments:
         assert_equal(parse_docstring(docstring), None)
 
     def assert_annotation(self, docstring, args, rettype):
-        parsed =  parse_docstring(docstring)
+        parsed = parse_docstring(docstring)
         assert parsed is not None
         assert_equal(parsed.args, args)
         assert_equal(parsed.rettype, rettype)

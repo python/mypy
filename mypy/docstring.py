@@ -2,7 +2,7 @@
 
 Do not actually try to parse the annotations, just return them as strings.
 
-Also recognize some common non-PEP-484 aliases such as 'a string' for 'str' 
+Also recognize some common non-PEP-484 aliases such as 'a string' for 'str'
 and 'list of int' for 'List[int]'.
 
 Based on original implementation by Kyle Consalus.
@@ -16,11 +16,11 @@ from typing import Optional, List, Tuple, Dict, Sequence
 
 
 _example1 = """Fetches rows from a Bigtable.
- 
+
     Retrieves rows pertaining to the given keys from the Table instance
     represented by big_table.  Silly things may happen if
     other_silly_variable is not None.
- 
+
     Args:
         big_table: An open Bigtable Table instance.
         keys (Sequence[str]): A sequence of strings representing the key of each table row
@@ -28,10 +28,10 @@ _example1 = """Fetches rows from a Bigtable.
             but: if the keys are broken, we die.
         other_silly_variable (int): Another optional variable, that has a much
             longer name than the other args, and which does nothing.
- 
+
     Returns:
         Dict[str, int]: Things.
- 
+
     Raises:
         IOError: An error occurred accessing the bigtable.Table object.
     """
@@ -44,18 +44,18 @@ PARAM_RE = re.compile(r'^\s*(?P<name>[A-Za-z_][A-Za-z_0-9]*)(\s+\((?P<type>[^)]+
 # Support some commonly used type aliases that aren't normally valid in annotations.
 # TODO: Optionally reject these (or give a warning if these are used).
 translations = {
-        'obj': 'Any',
-        'boolean': 'bool',
-        'string': 'str',
-        'integer': 'int',
-        'number': 'float',
-        'list': 'List[Any]',
-        'set': 'Set[Any]',
-        'sequence': 'Sequence[Any]',
-        'iterable': 'Iterable[Any]',
-        'dict': 'Dict[Any, Any]',
-        'dictionary': 'Dict[Any, Any]',
-        'mapping': 'Mapping[Any, Any]',
+    'obj': 'Any',
+    'boolean': 'bool',
+    'string': 'str',
+    'integer': 'int',
+    'number': 'float',
+    'list': 'List[Any]',
+    'set': 'Set[Any]',
+    'sequence': 'Sequence[Any]',
+    'iterable': 'Iterable[Any]',
+    'dict': 'Dict[Any, Any]',
+    'dictionary': 'Dict[Any, Any]',
+    'mapping': 'Mapping[Any, Any]',
 }
 
 # Some common types that we should recognize.
@@ -75,20 +75,20 @@ known_patterns = [
     ('optional ?', 'Optional[?]'),
 ]
 
- 
+
 class DocstringTypes(object):
     def __init__(self):
         self.args = {}  # type: Dict[str, Optional[str]]
         self.rettype = None  # type: Optional[str]
- 
+
     def __str__(self):
         return repr({'args': self.args, 'return': self.rettype})
- 
- 
-def wsprefix(s):  # type: (str) -> str
-    return s[:len(s)-len(s.lstrip())]
- 
- 
+
+
+def wsprefix(s: str) -> str:
+    return s[:len(s) - len(s.lstrip())]
+
+
 def scrubtype(typestr: Optional[str], only_known=False) -> Optional[str]:
     if typestr is None:
         return typestr
@@ -117,7 +117,7 @@ def scrubtype(typestr: Optional[str], only_known=False) -> Optional[str]:
         return None
     return typestr
 
- 
+
 def parse_args(lines: List[str]) -> Tuple[Dict[str, str], List[str]]:
     res = {}  # type: Dict[str, str]
     indent = wsprefix(lines[0])
@@ -135,8 +135,8 @@ def parse_args(lines: List[str]) -> Tuple[Dict[str, str], List[str]]:
             gd = m.groupdict()
             res[gd['name']] = scrubtype(gd['type'])
     return res, lines
- 
- 
+
+
 def parse_return(lines: List[str]) -> Tuple[Optional[str], List[str]]:
     res = None  # type: Optional[str]
     while lines and lines[0].strip == '':
@@ -148,13 +148,13 @@ def parse_return(lines: List[str]) -> Tuple[Optional[str], List[str]]:
         if len(segs) >= 1:
             res = scrubtype(segs[0], only_known=(len(segs) == 1))
     return res, lines
- 
- 
+
+
 def startswith(ln: str, opts: Sequence[str]) -> bool:
     ln = ln.lstrip()
     return any(ln.startswith(o) for o in opts)
- 
- 
+
+
 def parse_docstring(pds: str) -> DocstringTypes:
     ds = DocstringTypes()
     lines = pds.splitlines()
@@ -173,7 +173,7 @@ def parse_docstring(pds: str) -> DocstringTypes:
     if not ds.args:
         return None
     return ds
- 
- 
+
+
 if __name__ == '__main__':
     print(parse_docstring(_example1))
