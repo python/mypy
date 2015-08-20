@@ -12,6 +12,7 @@ from mypy.test import testtransform
 from mypy.test import testcheck
 from mypy.test import testtypegen
 from mypy.test import teststubgen
+from mypy.test import testdocstring
 
 
 class AllSuite(Suite):
@@ -34,6 +35,7 @@ class AllSuite(Suite):
         self.test_check = testcheck.TypeCheckSuite()
         self.test_typegen = testtypegen.TypeExportSuite()
         self.test_stubgen = teststubgen.StubgenSuite()
+        self.test_docstring = testdocstring.DocstringSuite()
         super().__init__()
 
 
