@@ -33,7 +33,7 @@ python_34_eval_files = ['pythoneval-asyncio.test',
 # Path to Python 3 interpreter
 python3_path = sys.executable
 
-default_python2_interpreter = ['python', '/usr/bin/python', 'python2']
+default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
 
 
 class PythonEvaluationSuite(Suite):

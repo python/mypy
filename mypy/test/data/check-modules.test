@@ -465,3 +465,12 @@ None + 1  # Does not generate error, as this file won't be analyzed.
 import m.a
 [file m/a.py]
 [out]
+
+[case testStarImportOverridingOtherImports-skip]
+from m1 import *
+from m2 import *
+x = '' # E: TODO (cannot assign str to int)
+[file m1.py]
+x = 1
+[file m2.py]
+x = 1
