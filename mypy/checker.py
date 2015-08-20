@@ -382,10 +382,6 @@ class TypeChecker(NodeVisitor[Type]):
     # Definitions
     #
 
-    def infer_local_variable_type(self, x, y, z):
-        # TODO
-        raise RuntimeError('Not implemented')
-
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> Type:
         num_abstract = 0
         if defn.is_property:
