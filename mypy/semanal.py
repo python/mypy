@@ -1878,7 +1878,7 @@ class SemanticAnalyzer(NodeVisitor):
                              existing.node != node.node):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
-                if not is_same_type(existing.type, node.type):
+                if not (existing.type and node.type and is_same_type(existing.type, node.type)):
                     # Only report an error if the symbol collision provides a different type.
                     self.name_already_defined(name, context)
             self.globals[name] = node
