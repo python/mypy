@@ -313,13 +313,6 @@ raise object # E: Exception must be derived from BaseException
 raise f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.py]
 
-[case testRaiseTuple]
-import typing
-raise BaseException, "a"
-raise BaseException, "a", None
-raise BaseException, "a", None, None # E: Exception must be derived from BaseException
-[builtins fixtures/exception.py]
-
 [case testRaiseFromStatement]
 
 e = None # type: BaseException

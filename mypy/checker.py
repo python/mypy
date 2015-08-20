@@ -1500,9 +1500,10 @@ class TypeChecker(NodeVisitor[Type]):
                     # Good!
                     return None
                 # Else fall back to the checks below (which will fail).
-        if isinstance(typ, TupleType):
+        if isinstance(typ, TupleType) and self.pyversion == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
+            # TODO: Also check tuple item types.
             if len(typ.items) in (2, 3):
                 return None
         self.check_subtype(typ,
