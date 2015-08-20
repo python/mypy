@@ -554,6 +554,23 @@ class A:
     class B: pass
 A.B = None # E: Cannot assign to a type
 
+[case testAccessingClassAttributeWithTypeInferenceIssue]
+x = C.x # E: Cannot determine type of 'x'
+class C:
+    x = 1
+[builtins fixtures/list.py]
+
+[case testAccessingClassAttributeWithTypeInferenceIssue]
+class C:
+    x = []
+x = C.x
+[builtins fixtures/list.py]
+[out]
+main: note: In class "C":
+main:2: error: Need type annotation for variable
+main: note: At top level:
+main:3: error: Cannot determine type of 'x'
+
 
 -- Nested classes
 -- --------------

@@ -227,6 +227,9 @@ def analyze_class_attribute_access(itype: Instance,
     if t:
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
         return add_class_tvars(t, itype.type, is_classmethod, builtin_type)
+    elif isinstance(node.node, Var):
+        msg.cannot_determine_type(name, context)
+        return AnyType()
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(cast(TypeInfo, node.node), builtin_type)
