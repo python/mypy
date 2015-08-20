@@ -467,13 +467,13 @@ class MessageBuilder:
             self.fail('{} does not return a value'.format(
                 capitalize((cast(Void, void_type)).source)), context)
 
-    def no_variant_matches_arguments(self, overload: Overloaded,
+    def no_variant_matches_arguments(self, overload: Overloaded, arg_types: List[Type],
                                      context: Context) -> None:
         if overload.name():
-            self.fail('No overload variant of {} matches argument types'
-                      .format(overload.name()), context)
+            self.fail('No overload variant of {} matches argument types {}'
+                      .format(overload.name(), arg_types), context)
         else:
-            self.fail('No overload variant matches argument types', context)
+            self.fail('No overload variant matches argument types {}'.format(arg_types), context)
 
     def function_variants_overlap(self, n1: int, n2: int,
                                   context: Context) -> None:
