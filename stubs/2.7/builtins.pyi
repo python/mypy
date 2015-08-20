@@ -836,7 +836,7 @@ def __import__(name: unicode,
                locals: Dict[str, Any] = ...,
                fromlist: List[str] = ..., level: int = ...) -> Any: ...
 
-globals = ... # type: Dict[str, Any]
+def globals() -> Dict[str, Any]: ...
 
 class BaseException:
     args = ...  # type: Any
