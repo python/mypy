@@ -14,7 +14,8 @@ def call(args: Sequence[str], *,
          cwd: str = None) -> int: ...
 def check_call(args: Sequence[str], *,
                stdin: _FILE = None, stdout: _FILE = None, stderr: _FILE = None,
-               shell: bool = False, env: Mapping[str, str] = None, cwd: str = None) -> int: ...
+               shell: bool = False, env: Mapping[str, str] = None, cwd: str = None,
+               close_fds: Sequence[_FILE] = None, preexec_fn: Callable[[], Any] = None) -> int: ...
 def check_output(args: Sequence[str], *,
                  stdin: _FILE = None, stderr: _FILE = None,
                  shell: bool = False, universal_newlines: bool = False,
