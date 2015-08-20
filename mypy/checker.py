@@ -1499,7 +1499,12 @@ class TypeChecker(NodeVisitor[Type]):
                 if base in typeinfo.mro:
                     # Good!
                     return None
-                # Else fall back to the check below (which will fail).
+                # Else fall back to the checks below (which will fail).
+        if isinstance(typ, TupleType):
+            # allow `raise type, value, traceback`
+            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
+            if len(typ.items) in (2, 3):
+                return None
         self.check_subtype(typ,
                            self.named_type('builtins.BaseException'), s,
                            messages.INVALID_EXCEPTION)
