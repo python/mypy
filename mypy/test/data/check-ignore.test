@@ -69,3 +69,17 @@ x, y = [], [] # type: ignore
 z = x
 z = y
 [builtins fixtures/list.py]
+
+[case testIgnoreSomeStarImportErrors]
+from m1 import *
+from m2 import * # type: ignore
+# We should still import things that don't conflict.
+y() # E: "str" not callable
+z() # E: "int" not callable
+x() # E: "str" not callable
+[file m1.py]
+x = 1
+y = ''
+[file m2.py]
+x = ''
+z = 1
