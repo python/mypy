@@ -577,7 +577,7 @@ class ExpressionChecker:
                     match.append(typ)
                 best_match = max(best_match, similarity)
         if not match:
-            messages.no_variant_matches_arguments(overload, context)
+            messages.no_variant_matches_arguments(overload, arg_types, context)
             return AnyType()
         else:
             if len(match) == 1:
