@@ -29,6 +29,8 @@ _example1 = """Fetches rows from a Bigtable.
             but: if the keys are broken, we die.
         other_silly_variable (int): Another optional variable, that has a much
             longer name than the other args, and which does nothing.
+        abc0 (Tuple[int, bool]): Hi.
+        abc (Tuple[int, bool], optional): Hi.
 
     Returns:
         Dict[str, int]: Things.
@@ -41,6 +43,9 @@ _example1 = """Fetches rows from a Bigtable.
 # Regular expression that finds the argument name and type in a line such
 # as '   name (type): description'.
 PARAM_RE = re.compile(r'^\s*(?P<name>[A-Za-z_][A-Za-z_0-9]*)(\s+\((?P<type>[^)]+)\))?:')
+
+# Type strings with these brackets are rejected.
+BRACKET_RE = re.compile(r'\(|\)|\{|\}')
 
 # Support some commonly used type aliases that aren't normally valid in annotations.
 # TODO: Optionally reject these (or give a warning if these are used).
@@ -97,6 +102,25 @@ def wsprefix(s: str) -> str:
 def scrubtype(typestr: Optional[str], only_known=False) -> Optional[str]:
     if typestr is None:
         return typestr
+
+    # Reject typestrs with parentheses or curly braces.
+    if BRACKET_RE.search(typestr):
+        return None
+
+    # Reject typestrs whose square brackets don't match & those with commas outside square brackets.
+    bracket_level = 0
+    for c in typestr:
+        if c == '[':
+            bracket_level += 1
+        elif c == ']':
+            bracket_level -= 1
+            if bracket_level < 0: # Square brackets don't match
+                return None
+        elif c == ',' and bracket_level == 0: # A comma appears outside brackets
+            return None
+    if bracket_level > 0:
+        return None
+
     recognized = False
     typestr = typestr.strip()
     for prefix in ('a', 'A', 'an', 'An', 'the', 'The'):
