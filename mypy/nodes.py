@@ -134,7 +134,7 @@ class MypyFile(SymbolNode):
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
     # Do weak typing globally in the file?
-    weak_opts = None # type: Set[str]
+    weak_opts = None  # type: Set[str]
 
     def __init__(self,
                  defs: List[Node],

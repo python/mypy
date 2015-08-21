@@ -772,7 +772,10 @@ class ExpressionChecker:
             if operator == 'in' or operator == 'not in':
                 right_type = self.accept(right)  # TODO only evaluate if needed
 
+                # Keep track of whether we get type check errors (these won't be reported, they
+                # are just to verify whether something is valid typing wise).
                 local_errors = self.msg.copy()
+                local_errors.disable_count = 0
                 sub_result, method_type = self.check_op_local('__contains__', right_type,
                                                           left, e, local_errors)
                 if (local_errors.is_errors() and
@@ -844,6 +847,7 @@ class ExpressionChecker:
         # type (but NOT other errors). This error may need to be suppressed
         # for operators which support __rX methods.
         local_errors = self.msg.copy()
+        local_errors.disable_count = 0
         if not allow_reverse or self.has_member(base_type, method):
             result = self.check_op_local(method, base_type, arg, context,
                                          local_errors)

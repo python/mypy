@@ -677,7 +677,7 @@ class UnprocessedFile(State):
                               blocker=True)
                 else:
                     if (line not in tree.ignored_lines and
-                        'import' not in tree.weak_opts):
+                            'import' not in tree.weak_opts):
                         self.fail(self.path, line, "No module named '{}'".format(id),
                                   blocker=False)
                 self.manager.missing_modules.add(id)

@@ -94,7 +94,7 @@ def update_testcase_output(testcase, output, append):
         PREFIX = 'error:'
         ind = old.find(PREFIX)
         if ind != -1 and old[:ind] == new[:ind]:
-            old, new = old[ind+len(PREFIX):], new[ind+len(PREFIX):]
+            old, new = old[ind + len(PREFIX):], new[ind + len(PREFIX):]
         mapping.setdefault(old, []).append(new)
 
     for old in mapping:
