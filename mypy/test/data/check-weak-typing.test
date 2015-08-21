@@ -191,3 +191,18 @@ x = [1]
 # XXX: not clear what the right result here is
 x[0]() # E: "int" not callable
 [builtins fixtures/list.py]
+
+[case testWeakArgsKws]
+# mypy: weak=global
+
+def f(x, y):
+    return x+y
+
+args = [1]
+f(*args, y=2)
+args = (1, 2)
+f(*args, y=2) # E: "f" gets multiple values for keyword argument "y"
+args = (1,)
+f(*args, y=2)
+[builtins fixtures/dict.py]
+[out]
