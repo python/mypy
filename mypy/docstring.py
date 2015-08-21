@@ -13,6 +13,7 @@ TODO: Decide whether it makes sense to do the heuristic analysis of aliases and 
 
 import re
 from typing import Optional, List, Tuple, Dict, Sequence
+from collections import OrderedDict
 
 
 _example1 = """Fetches rows from a Bigtable.
@@ -78,8 +79,12 @@ known_patterns = [
 
 class DocstringTypes(object):
     def __init__(self):
-        self.args = {}  # type: Dict[str, Optional[str]]
+        self.args = OrderedDict()  # type: Dict[str, Optional[str]]
         self.rettype = None  # type: Optional[str]
+
+    def as_type_str(self) -> str:
+        return ('(' + ','.join([v or 'Any' for v in self.args.values()]) +
+                ') -> ' + (self.rettype or 'Any'))
 
     def __str__(self):
         return repr({'args': self.args, 'return': self.rettype})
@@ -119,7 +124,7 @@ def scrubtype(typestr: Optional[str], only_known=False) -> Optional[str]:
 
 
 def parse_args(lines: List[str]) -> Tuple[Dict[str, str], List[str]]:
-    res = {}  # type: Dict[str, str]
+    res = OrderedDict()  # type: Dict[str, str]
     indent = wsprefix(lines[0])
     while lines:
         l = lines[0]
@@ -148,11 +153,6 @@ def parse_return(lines: List[str]) -> Tuple[Optional[str], List[str]]:
         if len(segs) >= 1:
             res = scrubtype(segs[0], only_known=(len(segs) == 1))
     return res, lines
-
-
-def startswith(ln: str, opts: Sequence[str]) -> bool:
-    ln = ln.lstrip()
-    return any(ln.startswith(o) for o in opts)
 
 
 def parse_docstring(pds: str) -> DocstringTypes:
