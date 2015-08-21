@@ -834,3 +834,44 @@ def g3(*x: T) -> T: pass
 f(g1)
 f(g2)
 f(g3)
+
+
+[case testDocstringFunction]
+def realtypes(x : int, y : int) -> int:
+    return x
+
+def f(x, y):
+    """A function that adds things.
+
+    Args:
+      x (int): First argument. To be used on all
+        occasions, even if feeling tired.
+      y (int): The other argument. Also mandatory,
+        but less so.
+
+    Returns:
+      int: The sum.
+    """
+    v = realtypes(x, y)
+    return v
+
+[case testDocstringFunctionMismatch]
+def realtypes(x : int, y : int) -> int:
+    return x
+
+def f(x, y):
+    """A function that adds things.
+
+    Args:
+      x (int): First argument. To be used on all
+        occasions, even if feeling tired.
+      y (object): The other argument. Also mandatory,
+        but less so.
+
+    Returns:
+      int: The sum.
+    """
+    v = realtypes(x, y) # E: Argument 2 to "realtypes" has incompatible type "object"; expected "int"
+    return v
+[out]
+main: note: In function "f": 
