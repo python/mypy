@@ -777,11 +777,14 @@ COMMON_MISTAKES = {
     'add': ('append', 'extend'),
 }
 
-def best_matches(current : str, options : Iterable[str]) -> List[str]:
-    ratios = {v: difflib.SequenceMatcher(a=current, b=v).ratio() for v in options}
-    return sorted((o for o in options if ratios[o] > 0.75), reverse=True, key=lambda v: (ratios[v], v))
 
-def pretty_or(args : List[str]) -> str:
+def best_matches(current: str, options: Iterable[str]) -> List[str]:
+    ratios = {v: difflib.SequenceMatcher(a=current, b=v).ratio() for v in options}
+    return sorted((o for o in options if ratios[o] > 0.75),
+                  reverse=True, key=lambda v: (ratios[v], v))
+
+
+def pretty_or(args: List[str]) -> str:
     quoted = ['"' + a + '"' for a in args]
     if len(quoted) == 1:
         return quoted[0]
