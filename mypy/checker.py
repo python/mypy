@@ -196,7 +196,8 @@ class ConditionalTypeBinder:
         else:
             return self.frames[0].get(expr.literal_hash)
 
-    def assign_type(self, expr: Node, type: Type) -> None:
+    def assign_type(self, expr: Node, type: Type,
+                    restrict_any: bool = False) -> None:
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
@@ -214,13 +215,14 @@ class ConditionalTypeBinder:
             # expression has a type error, though -- do other kinds of
             # errors cause this function to get called at invalid
             # times?
-
             return
 
         # If x is Any and y is int, after x = y we do not infer that x is int.
         # This could be changed.
+        # Eric: I'm changing it in weak typing mode, since Any is so common.
 
-        if isinstance(self.most_recent_enclosing_type(expr, type), AnyType):
+        if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
+            and not restrict_any):
             pass
         elif isinstance(type, AnyType):
             self.push(expr, declared_type)
@@ -315,6 +317,8 @@ class TypeChecker(NodeVisitor[Type]):
     function_stack = None  # type: List[FuncItem]
     # Set to True on return/break/raise, False on blocks that can block any of them
     breaking_out = False
+    # Do weak type checking in this file
+    weak_opts = {} # type: Set[str]
 
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
@@ -340,6 +344,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_context = []
         self.dynamic_funcs = []
         self.function_stack = []
+        self.weak_opts = {}
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -348,6 +353,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.errors.set_ignored_lines(file_node.ignored_lines)
         self.globals = file_node.names
         self.locals = None
+        self.weak_opts = file_node.weak_opts
 
         for d in file_node.defs:
             self.accept(d)
@@ -360,7 +366,7 @@ class TypeChecker(NodeVisitor[Type]):
         typ = node.accept(self)
         self.type_context.pop()
         self.store_type(node, typ)
-        if self.is_dynamic_function():
+        if self.typing_mode_none():
             return AnyType()
         else:
             return typ
@@ -899,10 +905,16 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_block(self, b: Block) -> Type:
         if b.is_unreachable:
             return None
+        n_frames_added = 0
         for s in b.body:
+            if self.typing_mode_weak() and isinstance(s, AssignmentStmt):
+                self.binder.push_frame()
+                n_frames_added += 1
             self.accept(s)
             if self.breaking_out:
                 break
+        for i in range(n_frames_added):
+            self.binder.pop_frame(False, True)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
         """Type check an assignment statement.
@@ -927,12 +939,14 @@ class TypeChecker(NodeVisitor[Type]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-
+            #if self.typing_mode_weak():
+            #    self.binder.assign_type(lvalue, AnyType())
             if lvalue_type:
                 rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue, rvalue_type)
+                    self.binder.assign_type(lvalue, rvalue_type,
+                                            self.typing_mode_weak())
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
 
@@ -1166,7 +1180,10 @@ class TypeChecker(NodeVisitor[Type]):
     def infer_variable_type(self, name: Var, lvalue: Node,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
-        if isinstance(init_type, Void):
+        if self.typing_mode_weak():
+            self.set_inferred_type(name, lvalue, AnyType())
+            self.binder.assign_type(lvalue, init_type, True)
+        elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif not self.is_valid_inferred_type(init_type):
@@ -1240,6 +1257,8 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         else:
             rvalue_type = self.accept(rvalue, lvalue_type)
+            if self.typing_mode_weak():
+                return rvalue_type
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                'expression has type', 'variable has type')
             return rvalue_type
@@ -1293,8 +1312,8 @@ class TypeChecker(NodeVisitor[Type]):
                 if (not self.function_stack[-1].is_generator and
                         not self.function_stack[-1].is_coroutine):
                     if (not isinstance(self.return_types[-1], Void) and
-                            not self.is_dynamic_function()):
-                            self.fail(messages.RETURN_VALUE_EXPECTED, s)
+                            self.typing_mode_full()):
+                        self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
     def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
                           str, context: Context) -> Type:
@@ -1888,6 +1907,30 @@ class TypeChecker(NodeVisitor[Type]):
     def store_type(self, node: Node, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
+
+    def typing_mode_none(self) -> bool:
+        if self.is_dynamic_function():
+            return not self.weak_opts
+        elif self.function_stack:
+            return False
+        else:
+            return False
+
+    def typing_mode_weak(self) -> bool:
+        if self.is_dynamic_function():
+            return self.weak_opts
+        elif self.function_stack:
+            return False
+        else:
+            return 'global' in self.weak_opts
+
+    def typing_mode_full(self) -> bool:
+        if self.is_dynamic_function():
+            return False
+        elif self.function_stack:
+            return True
+        else:
+            return 'global' not in self.weak_opts
 
     def is_dynamic_function(self) -> bool:
         return len(self.dynamic_funcs) > 0 and self.dynamic_funcs[-1]

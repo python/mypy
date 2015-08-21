@@ -676,7 +676,8 @@ class UnprocessedFile(State):
                               "No parent module -- cannot perform relative import".format(id),
                               blocker=True)
                 else:
-                    if line not in tree.ignored_lines:
+                    if (line not in tree.ignored_lines and
+                        'import' not in tree.weak_opts):
                         self.fail(self.path, line, "No module named '{}'".format(id),
                                   blocker=False)
                 self.manager.missing_modules.add(id)
