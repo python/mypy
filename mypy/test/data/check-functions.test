@@ -856,8 +856,8 @@ def f(x, y):
     return v
 
 [case testDocstringFunctionMismatch]
-def realtypes(x : int, y : int) -> int:
-    return x
+def realtypes(x : int, y : int) -> str:
+    return ''
 
 def f(x, y):
     """A function that adds things.
@@ -872,6 +872,21 @@ def f(x, y):
       int: The sum.
     """
     v = realtypes(x, y) # E: Argument 2 to "realtypes" has incompatible type "object"; expected "int"
-    return v
+    return v # E: Incompatible return value type: expected builtins.int, got builtins.str
 [out]
 main: note: In function "f": 
+
+[case testCallDocstringFunction]
+from typing import List
+def f(x):
+    """
+    Args:
+      x (List[int]): First argument.
+    Returns:
+      string
+    """
+    return ''
+f([1])() # E: "str" not callable
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected List[int]
+[builtins fixtures/list.py]
+[out]
