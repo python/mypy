@@ -683,7 +683,7 @@ class Parser:
             if allow_type:
                 cur = self.current()
                 if type is None and isinstance(cur, StrLit):
-                    ds = docstring.parse_docstring(cur.parsed())
+                    ds = docstring.parse_docstring(cast(StrLit, cur).parsed())
                     if ds and False:  # TODO: Enable when this is working.
                         try:
                             type = parse_str_as_signature(ds.as_type_str(), cur.line)

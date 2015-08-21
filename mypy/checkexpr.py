@@ -983,6 +983,7 @@ class ExpressionChecker:
             return self.accept(e.analyzed)
         left_type = self.accept(e.base)
         if isinstance(left_type, TupleType) and self.chk.typing_mode_full():
+            left_type = cast(TupleType, left_type)
             # Special case for tuples. They support indexing only by integer
             # literals.  (Except in weak type checking mode.)
             index = e.index

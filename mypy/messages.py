@@ -286,7 +286,8 @@ class MessageBuilder:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
                 failed = False
-                if isinstance(typ, Instance) and typ.type.names:
+                if isinstance(typ, Instance) and cast(Instance, typ).type.names:
+                    typ = cast(Instance, typ)
                     alternatives = set(typ.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
@@ -772,10 +773,11 @@ def temp_message_builder() -> MessageBuilder:
     """Return a message builder usable for collecting errors locally."""
     return MessageBuilder(Errors())
 
+
 # For hard-coding suggested missing member alternatives.
 COMMON_MISTAKES = {
     'add': ('append', 'extend'),
-}
+}  # type: Dict[str, Sequence[str]]
 
 
 def best_matches(current: str, options: Iterable[str]) -> List[str]:

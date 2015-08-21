@@ -318,7 +318,7 @@ class TypeChecker(NodeVisitor[Type]):
     # Set to True on return/break/raise, False on blocks that can block any of them
     breaking_out = False
     # Do weak type checking in this file
-    weak_opts = {}        # type: Set[str]
+    weak_opts = set()        # type: Set[str]
 
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
@@ -344,7 +344,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_context = []
         self.dynamic_funcs = []
         self.function_stack = []
-        self.weak_opts = {}
+        self.weak_opts = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -1917,7 +1917,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def typing_mode_weak(self) -> bool:
         if self.is_dynamic_function():
-            return self.weak_opts
+            return bool(self.weak_opts)
         elif self.function_stack:
             return False
         else:
