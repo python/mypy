@@ -33,6 +33,22 @@ class DocstringSuite(Suite):
         check('an integer', 'int')
         check('list of integer', 'List[int]')
 
+    def test_scrubtype_reject_parentheses(self):
+        assert_equal(scrubtype('('), None)
+        assert_equal(scrubtype(')'), None)
+        assert_equal(scrubtype('int (optional)'), None)
+        assert_equal(scrubtype('(optional) int'), None)
+
+    def test_scrubtype_reject_curly_braces(self):
+        assert_equal(scrubtype('{'), None)
+        assert_equal(scrubtype('}'), None)
+        assert_equal(scrubtype('int {optional}'), None)
+        assert_equal(scrubtype('{optional} int'), None)
+
+    def test_scrubtype_reject_comma_outside_brackets(self):
+        assert_equal(scrubtype('int, Optional'), None)
+        assert_equal(scrubtype('Tuple[int, int], or, Tuple[str, str]'), None)
+
     def test_no_annotations(self):
         self.assert_no_annotation('')
         self.assert_no_annotation('''foo\
