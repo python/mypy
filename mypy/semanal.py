@@ -59,7 +59,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, COVARIANT, CONTRAVARIANT, INVARIANT
+    YieldExpr, ExecStmt, COVARIANT, CONTRAVARIANT, INVARIANT
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1493,6 +1493,13 @@ class SemanticAnalyzer(NodeVisitor):
             arg.accept(self)
         if s.target:
             s.target.accept(self)
+
+    def visit_exec_stmt(self, s: ExecStmt) -> None:
+        s.expr.accept(self)
+        if s.variables1:
+            s.variables1.accept(self)
+        if s.variables2:
+            s.variables2.accept(self)
 
     #
     # Expressions
