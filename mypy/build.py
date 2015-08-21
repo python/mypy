@@ -437,7 +437,7 @@ class BuildManager:
         for state in self.states:
             if state.id == module:
                 return state
-        raise RuntimeError('%s not found' % str)
+        raise RuntimeError('%s not found' % module)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[str, int]]:
