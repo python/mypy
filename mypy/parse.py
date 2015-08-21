@@ -26,7 +26,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt
 )
 from mypy import nodes
 from mypy.errors import Errors, CompileError
@@ -747,6 +747,8 @@ class Parser:
         elif ts == 'print' and (self.pyversion == 2 and
                                 'print_function' not in self.future_options):
             stmt = self.parse_print_stmt()
+        elif ts == 'exec' and self.pyversion == 2:
+            stmt = self.parse_exec_stmt()
         else:
             stmt = self.parse_expression_or_assignment()
         if stmt is not None:
@@ -1076,6 +1078,19 @@ class Parser:
                 comma = False
                 break
         return PrintStmt(args, newline=not comma, target=target)
+
+    def parse_exec_stmt(self) -> ExecStmt:
+        self.expect('exec')
+        expr = self.parse_expression(precedence['in'])
+        variables1 = None  # type: Optional[Node]
+        variables2 = None  # type: Optional[Node]
+        if self.current_str() == 'in':
+            self.skip()
+            variables1 = self.parse_expression(precedence[','])
+            if self.current_str() == ',':
+                self.skip()
+                variables2 = self.parse_expression(precedence[','])
+        return ExecStmt(expr, variables1, variables2)
 
     # Parsing expressions
 

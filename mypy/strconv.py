@@ -268,6 +268,9 @@ class StrConv(NodeVisitor[str]):
             a.append('Newline')
         return self.dump(a, o)
 
+    def visit_exec_stmt(self, o):
+        return self.dump([o.expr, o.variables1, o.variables2], o)
+
     # Expressions
 
     # Simple expressions
