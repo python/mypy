@@ -59,3 +59,30 @@ try:
 except BaseException, e:
     e() # E: "BaseException" not callable
 [builtins fixtures/exception.py]
+
+
+[case testAlternateNameSuggestions]
+class Foo(object):
+    def say_hello(self):
+        pass
+    def say_hell(self):
+        pass
+    def say_hullo(self):
+        pass
+    def say_goodbye(self):
+        pass
+    def go_away(self):
+        pass
+    def go_around(self):
+        pass
+    def append(self):
+        pass
+    def extend(self):
+        pass
+    def _add(self):
+        pass
+
+f = Foo()
+f.say_hallo() # E: "Foo" has no attribute "say_hallo"; maybe "say_hullo", "say_hello", or "say_hell"?
+f.go_array() # E: "Foo" has no attribute "go_array"; maybe "go_away"?
+f.add() # E: "Foo" has no attribute "add"; maybe "append", "extend", or "_add"?

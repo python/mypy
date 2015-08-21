@@ -4,6 +4,7 @@ The type checker itself does not deal with message string literals to
 improve code clarity and to simplify localization (in the future)."""
 
 import re
+import difflib
 
 from typing import cast, List, Any, Sequence, Iterable
 
@@ -284,8 +285,18 @@ class MessageBuilder:
         else:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
-                self.fail('{} has no attribute "{}"'.format(self.format(typ),
-                                                            member), context)
+                failed = False
+                if isinstance(typ, Instance) and typ.type.names:
+                    alternatives = set(typ.type.names.keys())
+                    matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
+                    matches.extend(best_matches(member, alternatives)[:3])
+                    if matches:
+                        self.fail('{} has no attribute "{}"; maybe {}?'.format(
+                            self.format(typ), member, pretty_or(matches)), context)
+                        failed = True
+                if not failed:
+                    self.fail('{} has no attribute "{}"'.format(self.format(typ),
+                                                                member), context)
             else:
                 self.fail('Some element of union has no attribute "{}"'.format(
                     member), context)
@@ -760,3 +771,20 @@ def callable_name(type: CallableType) -> str:
 def temp_message_builder() -> MessageBuilder:
     """Return a message builder usable for collecting errors locally."""
     return MessageBuilder(Errors())
+
+# For hard-coding suggested missing member alternatives.
+COMMON_MISTAKES = {
+    'add': ('append', 'extend'),
+}
+
+def best_matches(current : str, options : Iterable[str]) -> List[str]:
+    ratios = {v: difflib.SequenceMatcher(a=current, b=v).ratio() for v in options}
+    return sorted((o for o in options if ratios[o] > 0.75), reverse=True, key=lambda v: (ratios[v], v))
+
+def pretty_or(args : List[str]) -> str:
+    quoted = ['"' + a + '"' for a in args]
+    if len(quoted) == 1:
+        return quoted[0]
+    if len(quoted) == 2:
+        return "{} or {}".format(quoted[0], quoted[1])
+    return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
