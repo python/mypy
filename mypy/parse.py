@@ -142,16 +142,16 @@ class Parser:
         # mypy: weak=local
         # mypy: weak      <- defaults to local
         """
-        regexp = re.compile(r'# *mypy: *weak(=?)([^\s]*)')
+        regexp = re.compile(r'^[\s]*# *mypy: *weak(=?)([^\s]*)', re.M)
         for t in self.tok[:10]:
             for s in [t.string, t.pre]:
-                m = regexp.match(s)
+                m = regexp.search(s)
                 if m:
                     opts = set(x for x in m.group(2).split(',') if x)
                     if not opts:
                         opts.add('local')
                     return opts
-        return {}
+        return  set()
 
     def parse_file(self) -> MypyFile:
         """Parse a mypy source file."""
