@@ -890,3 +890,15 @@ f([1])() # E: "str" not callable
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected List[int]
 [builtins fixtures/list.py]
 [out]
+
+[case testInvalidDocstringAnnotation]
+# TODO: Probably should generate an error.
+def f():
+    """
+    Args:
+        x (foobar/): zar
+    Returns:
+        int
+    """
+    return 1
+f() + ''
