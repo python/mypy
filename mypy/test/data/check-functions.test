@@ -836,7 +836,7 @@ f(g2)
 f(g3)
 
 
-[case testDocstringFunction]
+[case testDocstringFunction-skip]
 def realtypes(x : int, y : int) -> int:
     return x
 
@@ -855,7 +855,7 @@ def f(x, y):
     v = realtypes(x, y)
     return v
 
-[case testDocstringFunctionMismatch]
+[case testDocstringFunctionMismatch-skip]
 def realtypes(x : int, y : int) -> str:
     return ''
 
@@ -876,7 +876,7 @@ def f(x, y):
 [out]
 main: note: In function "f": 
 
-[case testCallDocstringFunction]
+[case testCallDocstringFunction-skip]
 from typing import List
 def f(x):
     """
@@ -891,7 +891,7 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected List[int]
 [builtins fixtures/list.py]
 [out]
 
-[case testInvalidDocstringAnnotation]
+[case testInvalidDocstringAnnotation-skip]
 # TODO: Probably should generate an error.
 def f():
     """
