@@ -438,9 +438,8 @@ class Parser:
         """
         for kind, token in [(nodes.ARG_STAR, '*'),
                             (nodes.ARG_STAR2, '**')]:
-            if ((kind in funckinds and
-                 sigkinds[funckinds.index(kind)] != kind) or
-                    (funckinds.count(kind) != sigkinds.count(kind))):
+            if ((funckinds.count(kind) != sigkinds.count(kind)) or
+                    (kind in funckinds and sigkinds.index(kind) != funckinds.index(kind))):
                 self.fail(
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
