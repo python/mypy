@@ -763,7 +763,7 @@ def map(func: Callable[[_T1, _T2], _S],
         iter1: Iterable[_T1],
         iter2: Iterable[_T2]) -> List[_S]: ...  # TODO more than two iterables
 @overload
-def max(iterable: Iterable[_T]) -> _T: ...  # TODO keyword argument key
+def max(iterable: Iterable[_T], key: Callable[[_T], Any] = None) -> _T: ...
 @overload
 def max(arg1: _T, arg2: _T, *args: _T) -> _T: ...
 # TODO memoryview
