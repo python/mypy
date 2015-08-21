@@ -1,0 +1,193 @@
+[case testNonWeakTyping]
+x = 17
+y = [] # E: Need type annotation for variable
+z = [2]
+[builtins fixtures/list.py]
+[out]
+
+[case testWeakLocalNotGlobal]
+# mypy: weak=local
+y = [] # E: Need type annotation for variable
+x = 1
+x = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/list.py]
+[out]
+
+[case testWeakMoo]
+# mypy: weak=global
+x = 7
+x + 'd' # E: Unsupported operand types for + ("int" and "str")
+
+[builtins fixtures/ops.py]
+
+[case testWeakGlobal]
+# mypy: weak=global
+y = []
+x = 1
+x()     # E: "int" not callable
+x = 'a'
+x()     # E: "str" not callable
+x = [1]
+x[0]()
+[builtins fixtures/list.py]
+[out]
+
+[case testWeakTypingList]
+# mypy: weak=global
+x = 17
+y = []
+z = [2]
+[builtins fixtures/list.py]
+[out]
+
+[case testWeakTypingRename]
+# mypy: weak=global
+x = 1
+x = 'a'
+
+[builtins fixtures/list.py]
+[out]
+
+[case testWeakFunctionCall]
+# mypy: weak
+def g(x: int) -> None:
+    pass
+
+def f():
+    g(1)
+    g('a') # E: Argument 1 to "g" has incompatible type "str"; expected "int"
+[out]
+main: note: In function "f":
+[case testNonWeakFunctionCall]
+def g(x: int) -> None:
+    pass
+
+def f():
+    g(1)
+    g('a')
+[out]
+[case testWeakListInFunction]
+# mypy: weak
+def f():
+    x = []
+    x[0] + 1
+    x[0] + 'a'
+    x.add('a') # E: List[Any] has no attribute "add"
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+[case testWeakAssignmentInFunction]
+# mypy: weak
+w = 1
+def f():
+    x = y
+    z = w
+y = 1
+[out]
+[case testWeakSubexpression]
+# mypy: weak
+def g(x: int) -> str:
+    return ''
+def f():
+    return g(g(1)) # E: Argument 1 to "g" has incompatible type "str"; expected "int"
+[out]
+main: note: In function "f":
+[case testWeakAnnotatedFunction]
+# mypy: weak
+def f() -> None:
+    x = []  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testWeakTupleAssignment]
+# mypy: weak
+def f():
+    x, y = g()   # E: 'builtins.int' object is not iterable
+def g() -> int:
+    return 0
+[out]
+main: note: In function "f":
+
+[case testWeakFunction2]
+# mypy: weak
+x = 1
+def f():
+    x() # E: "int" not callable
+[out]
+main: note: In function "f":
+[case testWeakFunction3]
+# mypy: weak
+def f():
+    1 + 'a' # E: Unsupported left operand type for + ("int")
+[out]
+main: note: In function "f":
+[case testNonWeakFunction]
+def f():
+    if y:      # E: Name 'y' is not defined
+        x = 1
+    else:
+        x = 'a'
+[out]
+main: note: In function "f":
+[case testWeakFunctionCall]
+# mypy: weak=global
+def f(a: str) -> None: pass
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+f('a')
+[case testWeakImportFunction]
+# mypy: weak=global
+import m
+m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+m.f(m.A())
+x = 1
+x = 'a'
+[file m.py]
+class A: pass
+def f(a: A) -> None: pass
+[out]
+[case testWeakImportCommentScope]
+# mypy: weak=global
+import m
+x = 1
+x = 'a'
+[file m.py]
+class A: pass
+def f(a: A) -> None: pass
+x = 1
+x = 'a'
+[out]
+main:2: note: In module imported here:
+tmp/m.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+[case testWeakReassignment]
+# mypy: weak=global
+x = 1
+x + 1
+x + 'a'  # E: Unsupported operand types for + ("int" and "str")
+x = 'a'
+x + 1    # E: Unsupported operand types for + ("str" and "int")
+x + 'a'
+[builtins fixtures/ops.py]
+
+[case testWeakConditionalChanges]
+# mypy: weak
+def f():
+    if 1:
+        x = 1
+        x + 1
+        x + 'a' # E: Unsupported operand types for + ("int" and "str")
+    else:
+        x = 'a'
+        x + 1   # E: Unsupported operand types for + ("str" and "int")
+        x + 'a'
+    x + 1
+    x + 'a'
+[builtins fixtures/ops.py]
+[out]
+main: note: In function "f":
+[case testWeakListInFunction2]
+# mypy: weak=global
+x = [1]
+# XXX: not clear what the right result here is
+x[0]() # E: "int" not callable
+[builtins fixtures/list.py]

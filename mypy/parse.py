@@ -134,10 +134,30 @@ class Parser:
             self.errors.raise_error()
         return file
 
+    def weak_opts(self) -> Set[str]:
+        """Do weak typing if any of the first ten tokens is a comment saying so.
+
+        The comment can be one of:
+        # mypy: weak=global
+        # mypy: weak=local
+        # mypy: weak      <- defaults to local
+        """
+        regexp = re.compile(r'# *mypy: *weak(=?)([^\s]*)')
+        for t in self.tok[:10]:
+            for s in [t.string, t.pre]:
+                m = regexp.match(s)
+                if m:
+                    opts = set(x for x in m.group(2).split(',') if x)
+                    if not opts:
+                        opts.add('local')
+                    return opts
+        return {}
+
     def parse_file(self) -> MypyFile:
         """Parse a mypy source file."""
         is_bom = self.parse_bom()
         defs = self.parse_defs()
+        weak_opts = self.weak_opts()
         self.expect_type(Eof)
         # Skip imports that have been ignored (so that we can ignore a C extension module without
         # stub, for example), except for 'from x import *', because we wouldn't be able to
@@ -145,7 +165,8 @@ class Parser:
         # ignore errors such as redefinitions when using the latter form.
         imports = [node for node in self.imports
                    if node.line not in self.ignored_lines or isinstance(node, ImportAll)]
-        node = MypyFile(defs, imports, is_bom, self.ignored_lines)
+        node = MypyFile(defs, imports, is_bom, self.ignored_lines,
+                        weak_opts=weak_opts)
         return node
 
     # Parse the initial part
@@ -663,7 +684,7 @@ class Parser:
                 cur = self.current()
                 if type is None and isinstance(cur, StrLit):
                     ds = docstring.parse_docstring(cur.parsed())
-                    if ds and False: # TODO: Enable when this is working.
+                    if ds and False:  # TODO: Enable when this is working.
                         try:
                             type = parse_str_as_signature(ds.as_type_str(), cur.line)
                         except TypeParseError:

@@ -93,7 +93,7 @@ class ExpressionChecker:
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if not var.type:
-            if not var.is_ready:
+            if not var.is_ready and self.chk.typing_mode_full():
                 self.msg.cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
@@ -194,7 +194,7 @@ class ExpressionChecker:
                                                messages=arg_messages)
             return self.check_call(target, args, arg_kinds, context, arg_names,
                                    arg_messages=arg_messages)
-        elif isinstance(callee, AnyType) or self.chk.is_dynamic_function():
+        elif isinstance(callee, AnyType) or self.chk.typing_mode_none():
             self.infer_arg_types_in_context(None, args)
             return AnyType(), AnyType()
         elif isinstance(callee, UnionType):
@@ -323,7 +323,7 @@ class ExpressionChecker:
         Return a derived callable type that has the arguments applied (and
         stored as implicit type arguments).
         """
-        if not self.chk.is_dynamic_function():
+        if not self.chk.typing_mode_none():
             # Disable type errors during type inference. There may be errors
             # due to partial available context information at this time, but
             # these errors can be safely ignored as the arguments will be
@@ -346,7 +346,8 @@ class ExpressionChecker:
                     pass1_args.append(arg)
 
             inferred_args = infer_function_type_arguments(
-                callee_type, pass1_args, arg_kinds, formal_to_actual)  # type: List[Type]
+                callee_type, pass1_args, arg_kinds, formal_to_actual,
+                strict=self.chk.typing_mode_full())  # type: List[Type]
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
@@ -601,7 +602,7 @@ class ExpressionChecker:
         Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
         overload_arg_similarity for a discussion of similarity levels.
         """
-        if not is_valid_argc(len(arg_types), False, callee):
+        if not is_valid_argc(len(arg_types), is_var_arg, callee):
             return False
 
         if is_var_arg:
@@ -771,7 +772,10 @@ class ExpressionChecker:
             if operator == 'in' or operator == 'not in':
                 right_type = self.accept(right)  # TODO only evaluate if needed
 
+                # Keep track of whether we get type check errors (these won't be reported, they
+                # are just to verify whether something is valid typing wise).
                 local_errors = self.msg.copy()
+                local_errors.disable_count = 0
                 sub_result, method_type = self.check_op_local('__contains__', right_type,
                                                           left, e, local_errors)
                 if (local_errors.is_errors() and
@@ -843,6 +847,7 @@ class ExpressionChecker:
         # type (but NOT other errors). This error may need to be suppressed
         # for operators which support __rX methods.
         local_errors = self.msg.copy()
+        local_errors.disable_count = 0
         if not allow_reverse or self.has_member(base_type, method):
             result = self.check_op_local(method, base_type, arg, context,
                                          local_errors)
@@ -852,7 +857,10 @@ class ExpressionChecker:
                     # If the right operand has type Any, we can't make any
                     # conjectures about the type of the result, since the
                     # operand could have a __r method that returns anything.
-                    result = AnyType(), result[1]
+
+                    # However, in weak mode, we do make conjectures.
+                    if not self.chk.typing_mode_weak():
+                        result = AnyType(), result[1]
             success = not local_errors.is_errors()
         else:
             result = AnyType(), AnyType()
@@ -960,9 +968,9 @@ class ExpressionChecker:
             # It's actually a type application.
             return self.accept(e.analyzed)
         left_type = self.accept(e.base)
-        if isinstance(left_type, TupleType):
+        if isinstance(left_type, TupleType) and self.chk.typing_mode_full():
             # Special case for tuples. They support indexing only by integer
-            # literals.
+            # literals.  (Except in weak type checking mode.)
             index = e.index
             ok = False
             if isinstance(index, IntExpr):

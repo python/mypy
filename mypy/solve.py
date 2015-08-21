@@ -9,12 +9,16 @@ from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
 
 
-def solve_constraints(vars: List[int], constraints: List[Constraint]) -> List[Type]:
+def solve_constraints(vars: List[int], constraints: List[Constraint],
+                      strict=True) -> List[Type]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable
-    could not be solved. If a variable has no constraints, arbitrarily pick NoneTyp as the value of
-    the type variable.
+    could not be solved.
+
+    If a variable has no constraints, if strict=True then arbitrarily
+    pick NoneTyp as the value of the type variable.  If strict=False,
+    pick AnyType.
     """
     # Collect a list of constraints for each type variable.
     cmap = {}  # type: Dict[int, List[Constraint]]
@@ -53,7 +57,10 @@ def solve_constraints(vars: List[int], constraints: List[Constraint]) -> List[Ty
                 candidate = top
             else:
                 # No constraints for type variable -- type 'None' is the most specific type.
-                candidate = NoneTyp()
+                if strict:
+                    candidate = NoneTyp()
+                else:
+                    candidate = AnyType()
         elif top is None:
             candidate = bottom
         elif is_subtype(bottom, top):

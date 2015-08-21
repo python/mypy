@@ -107,16 +107,17 @@ def scrubtype(typestr: Optional[str], only_known=False) -> Optional[str]:
     if BRACKET_RE.search(typestr):
         return None
 
-    # Reject typestrs whose square brackets don't match & those with commas outside square brackets.
+    # Reject typestrs whose square brackets don't match & those with commas outside square
+    # brackets.
     bracket_level = 0
     for c in typestr:
         if c == '[':
             bracket_level += 1
         elif c == ']':
             bracket_level -= 1
-            if bracket_level < 0: # Square brackets don't match
+            if bracket_level < 0:  # Square brackets don't match
                 return None
-        elif c == ',' and bracket_level == 0: # A comma appears outside brackets
+        elif c == ',' and bracket_level == 0:  # A comma appears outside brackets
             return None
     if bracket_level > 0:
         return None

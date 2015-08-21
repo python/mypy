@@ -11,7 +11,8 @@ from mypy.constraints import SUBTYPE_OF
 def infer_function_type_arguments(callee_type: CallableType,
                                   arg_types: List[Type],
                                   arg_kinds: List[int],
-                                  formal_to_actual: List[List[int]]) -> List[Type]:
+                                  formal_to_actual: List[List[int]],
+                                  strict: bool = True) -> List[Type]:
     """Infer the type arguments of a generic function.
 
     Return an array of lower bound types for the type variables -1 (at
@@ -30,7 +31,7 @@ def infer_function_type_arguments(callee_type: CallableType,
 
     # Solve constraints.
     type_vars = callee_type.type_var_ids()
-    return solve_constraints(type_vars, constraints)
+    return solve_constraints(type_vars, constraints, strict)
 
 
 def infer_type_arguments(type_var_ids: List[int],
