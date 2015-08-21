@@ -141,7 +141,6 @@ class Parser:
         # mypy: weak=global
         # mypy: weak=local
         # mypy: weak      <- defaults to local
-        
         """
         regexp = re.compile(r'# *mypy: *weak(=?)([^\s]*)')
         for t in self.tok[:10]:
@@ -686,7 +685,7 @@ class Parser:
                 cur = self.current()
                 if type is None and isinstance(cur, StrLit):
                     ds = docstring.parse_docstring(cur.parsed())
-                    if ds and False: # TODO: Enable when this is working.
+                    if ds and False:  # TODO: Enable when this is working.
                         try:
                             type = parse_str_as_signature(ds.as_type_str(), cur.line)
                         except TypeParseError:

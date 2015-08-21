@@ -222,7 +222,7 @@ class ConditionalTypeBinder:
         # Eric: I'm changing it in weak typing mode, since Any is so common.
 
         if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
-            and not restrict_any):
+                and not restrict_any):
             pass
         elif isinstance(type, AnyType):
             self.push(expr, declared_type)
@@ -318,7 +318,7 @@ class TypeChecker(NodeVisitor[Type]):
     # Set to True on return/break/raise, False on blocks that can block any of them
     breaking_out = False
     # Do weak type checking in this file
-    weak_opts = {} # type: Set[str]
+    weak_opts = {}        # type: Set[str]
 
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
@@ -939,8 +939,6 @@ class TypeChecker(NodeVisitor[Type]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-            #if self.typing_mode_weak():
-            #    self.binder.assign_type(lvalue, AnyType())
             if lvalue_type:
                 rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
