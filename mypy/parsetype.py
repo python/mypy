@@ -197,6 +197,7 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
         raise TypeParseError(tokens[i], i)
     return result
 
+
 def parse_str_as_signature(typestr: str, line: int) -> CallableType:
     """Parse a signature represented as a string.
 

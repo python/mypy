@@ -16,7 +16,6 @@ from typing import Optional, List, Tuple, Dict, Sequence
 from collections import OrderedDict
 
 
-
 _example1 = """Fetches rows from a Bigtable.
 
     Retrieves rows pertaining to the given keys from the Table instance
@@ -84,7 +83,8 @@ class DocstringTypes(object):
         self.rettype = None  # type: Optional[str]
 
     def as_type_str(self) -> str:
-        return '(' + ','.join([v or 'Any' for v in self.args.values()]) + ') -> ' + (self.rettype or 'Any')
+        return ('(' + ','.join([v or 'Any' for v in self.args.values()]) +
+                ') -> ' + (self.rettype or 'Any'))
 
     def __str__(self):
         return repr({'args': self.args, 'return': self.rettype})
