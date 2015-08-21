@@ -909,7 +909,19 @@ class ExpressionChecker:
         # '[1] or []' are inferred correctly.
         ctx = self.chk.type_context[-1]
         left_type = self.accept(e.left, ctx)
+
+        if e.op == 'and':
+            var, type, elsetype, kind = \
+                mypy.checker.find_isinstance_check(e, self.chk.type_map,
+                                                   self.chk.typing_mode_weak())
+        else:
+            var = None
+        if var:
+            self.chk.binder.push_frame()
+            self.chk.binder.push(var, type)
         right_type = self.accept(e.right, left_type)
+        if var:
+            self.chk.binder.pop_frame()
 
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)

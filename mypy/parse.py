@@ -151,7 +151,7 @@ class Parser:
                     if not opts:
                         opts.add('local')
                     return opts
-        return  set()
+        return set()
 
     def parse_file(self) -> MypyFile:
         """Parse a mypy source file."""

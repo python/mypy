@@ -1420,7 +1420,8 @@ class TypeChecker(NodeVisitor[Type]):
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
-            var, type, elsetype, kind = find_isinstance_check(e, self.type_map)
+            var, type, elsetype, kind = find_isinstance_check(e, self.type_map,
+                                            self.typing_mode_weak())
             if kind == ISINSTANCE_ALWAYS_FALSE:
                 # XXX should issue a warning?
                 pass
@@ -2032,7 +2033,8 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 
 
 def find_isinstance_check(node: Node,
-                          type_map: Dict[Node, Type]) -> Tuple[Node, Type, Type, int]:
+                          type_map: Dict[Node, Type],
+                          weak: bool=False) -> Tuple[Node, Type, Type, int]:
     """Check if node is an isinstance(variable, type) check.
 
     If successful, return tuple (variable, target-type, else-type,
@@ -2046,14 +2048,18 @@ def find_isinstance_check(node: Node,
           variable type => the test is always True.
       ISINSTANCE_ALWAYS_FALSE: The target type and the variable type are not
           overlapping => the test is always False.
+
+    If it is an isinstance check, but we don't understand the argument
+    type, then in weak mode it is treated as Any and in non-weak mode
+    it is not treated as an isinstance.
     """
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
+                vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 if type:
-                    vartype = type_map[expr]
                     kind = ISINSTANCE_OVERLAPPING
                     elsetype = vartype
                     if vartype:
@@ -2065,6 +2071,20 @@ def find_isinstance_check(node: Node,
                         else:
                             elsetype = restrict_subtype_away(vartype, type)
                     return expr, type, elsetype, kind
+                else:
+                    # An isinstance check, but we don't understand the type
+                    if weak:
+                        return expr, AnyType(), vartype, ISINSTANCE_OVERLAPPING
+    elif isinstance(node, OpExpr) and node.op == 'and':
+        # XXX We should extend this to support two isinstance checks in the same
+        # expression
+        (var, type, elsetype, kind) = find_isinstance_check(node.left, type_map, weak)
+        if var is None:
+            (var, type, elsetype, kind) = find_isinstance_check(node.left, type_map, weak)
+        if var:
+            if kind == ISINSTANCE_ALWAYS_TRUE:
+                kind = ISINSTANCE_OVERLAPPING
+            return (var, type, AnyType(), kind)
     # Not a supported isinstance check
     return None, AnyType(), AnyType(), -1
 
