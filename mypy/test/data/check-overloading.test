@@ -498,4 +498,15 @@ f(1)
 f(()) # E: No overload variant of "f" matches argument types [Tuple[]]
 [builtins fixtures/primitives.py]
 [out]
-
+[case testOverloadingVariableInputs]
+from typing import overload
+@overload
+def f(x: int, y: int) -> None: pass
+@overload
+def f(x: int) -> None: pass
+f(1)
+f(1, 2)
+z = (1, 2)
+f(*z)
+[builtins fixtures/primitives.py]
+[out]

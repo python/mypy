@@ -601,7 +601,7 @@ class ExpressionChecker:
         Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
         overload_arg_similarity for a discussion of similarity levels.
         """
-        if not is_valid_argc(len(arg_types), False, callee):
+        if not is_valid_argc(len(arg_types), is_var_arg, callee):
             return False
 
         if is_var_arg:
