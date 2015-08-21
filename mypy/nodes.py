@@ -727,6 +727,22 @@ class PrintStmt(Node):
         return visitor.visit_print_stmt(self)
 
 
+class ExecStmt(Node):
+    """Python 2 exec statement"""
+
+    expr = None  # type: Node
+    variables1 = None  # type: Optional[Node]
+    variables2 = None  # type: Optional[Node]
+
+    def __init__(self, expr: Node, variables1: Optional[Node], variables2: Optional[Node]) -> None:
+        self.expr = expr
+        self.variables1 = variables1
+        self.variables2 = variables2
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_exec_stmt(self)
+
+
 # Expressions
 
 

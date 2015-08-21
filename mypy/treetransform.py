@@ -19,7 +19,7 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr
+    YieldExpr, ExecStmt
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
@@ -260,6 +260,11 @@ class TransformVisitor(NodeVisitor[Node]):
         return PrintStmt(self.nodes(node.args),
                          node.newline,
                          self.optional_node(node.target))
+
+    def visit_exec_stmt(self, node: ExecStmt) -> Node:
+        return ExecStmt(self.node(node.expr),
+                        self.optional_node(node.variables1),
+                        self.optional_node(node.variables2))
 
     def visit_star_expr(self, node: StarExpr) -> Node:
         return StarExpr(node.expr)
