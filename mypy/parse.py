@@ -6,7 +6,7 @@ representing a source file. Performs only minimal semantic checks.
 
 import re
 
-from typing import List, Tuple, Any, Set, cast, Union
+from typing import List, Tuple, Any, Set, cast, Union, Optional
 
 from mypy import lex
 from mypy.lex import (
