@@ -18,3 +18,19 @@ MypyFile:1(
     Target(
       NameExpr(int [builtins.int]))
     Newline))
+
+[case testExecStatement]
+exec None
+exec None in int
+exec None in int, str
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(None [builtins.None]))
+  ExecStmt:2(
+    NameExpr(None [builtins.None])
+    NameExpr(int [builtins.int]))
+  ExecStmt:3(
+    NameExpr(None [builtins.None])
+    NameExpr(int [builtins.int])
+    NameExpr(str [builtins.str])))

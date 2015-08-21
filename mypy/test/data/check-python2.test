@@ -52,3 +52,10 @@ raise BaseException, "a"
 raise BaseException, "a", None
 raise BaseException, "a", None, None # E: Exception must be derived from BaseException
 [builtins fixtures/exception.py]
+
+[case testTryExceptWithTuple]
+try:
+    None
+except BaseException, e:
+    e() # E: "BaseException" not callable
+[builtins fixtures/exception.py]

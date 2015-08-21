@@ -1504,7 +1504,7 @@ class TypeChecker(NodeVisitor[Type]):
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
-            if len(typ.items) in (2, 3):
+            if len(cast(TupleType, typ).items) in (2, 3):
                 return None
         self.check_subtype(typ,
                            self.named_type('builtins.BaseException'), s,

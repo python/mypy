@@ -124,3 +124,46 @@ MypyFile:1(
     IntExpr(10))
   ExpressionStmt:4(
     IntExpr(291)))
+
+[case testTryExceptWithComma]
+try:
+    x
+except Exception, e:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(Exception)
+    NameExpr(e)
+    Block:3(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testExecStatement]
+exec a
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(a)))
+
+[case testExecStatementWithIn]
+exec a in globals()
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(a)
+    CallExpr:1(
+      NameExpr(globals)
+      Args())))
+
+[case testExecStatementWithInAnd2Expressions]
+exec a in x, y
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(a)
+    NameExpr(x)
+    NameExpr(y)))
