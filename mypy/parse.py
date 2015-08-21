@@ -1000,7 +1000,16 @@ class Parser:
                         self.expect('as')
                         vars.append(self.parse_name_expr())
                     else:
-                        vars.append(None)
+                        if (self.pyversion == 2 and
+                                isinstance(types[-1], TupleExpr) and
+                                len(cast(TupleExpr, types[-1]).items) == 2 and
+                                isinstance(cast(TupleExpr, types[-1]).items[1], NameExpr)):
+                            # Handle "except T, e:".
+                            tuple_expr = cast(TupleExpr, types[-1])
+                            vars.append(cast(NameExpr, tuple_expr.items[1]))
+                            types[-1] = tuple_expr.items[0]
+                        else:
+                            vars.append(None)
                 except ParseError:
                     is_error = True
             else:

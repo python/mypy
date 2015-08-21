@@ -124,3 +124,20 @@ MypyFile:1(
     IntExpr(10))
   ExpressionStmt:4(
     IntExpr(291)))
+
+[case testTryExceptWithComma]
+try:
+    x
+except Exception, e:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(Exception)
+    NameExpr(e)
+    Block:3(
+      ExpressionStmt:4(
+        NameExpr(y)))))
