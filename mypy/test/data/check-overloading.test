@@ -498,6 +498,7 @@ f(1)
 f(()) # E: No overload variant of "f" matches argument types [Tuple[]]
 [builtins fixtures/primitives.py]
 [out]
+
 [case testOverloadingVariableInputs]
 from typing import overload
 @overload
@@ -510,3 +511,18 @@ z = (1, 2)
 f(*z)
 [builtins fixtures/primitives.py]
 [out]
+
+[case testTypeInferenceSpecialCaseWithOverloading]
+from typing import overload
+
+class A:
+    def __add__(self, x: A) -> A: pass
+class B:
+    def __radd__(self, x: A) -> B: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+
+f(A() + B())() # E: "B" not callable
