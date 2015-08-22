@@ -628,8 +628,8 @@ a, b, c = None, None, None # type: (List[A], List[B], List[C])
 a = a or []
 a = [] or a
 b = b or [C()]
-a = a or b # E: Incompatible types in assignment (expression has type "object", variable has type List[A])
-b = b or c # E: Incompatible types in assignment (expression has type "object", variable has type List[B])
+a = a or b # E: Incompatible types in assignment (expression has type "Union[List[A], List[B]]", variable has type List[A])
+b = b or c # E: Incompatible types in assignment (expression has type "Union[List[B], List[C]]", variable has type List[B])
 
 class A: pass
 class B: pass

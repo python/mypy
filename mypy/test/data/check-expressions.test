@@ -295,10 +295,10 @@ main:7: error: Unsupported operand types for >> ("A" and "A")
 a, b = None, None # type: (A, bool)
 b = b and b
 b = b or b
-b = b and a # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
-b = a and b # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
-b = b or a  # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
-b = a or b  # E: Incompatible types in assignment (expression has type "object", variable has type "bool")
+b = b and a # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
+b = a and b # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
+b = b or a  # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
+b = a or b  # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
 class A: pass
 [builtins fixtures/bool.py]
 

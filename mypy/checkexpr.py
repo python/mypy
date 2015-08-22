@@ -925,8 +925,7 @@ class ExpressionChecker:
 
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
-
-        return join.join_types(left_type, right_type)
+        return UnionType.make_simplified_union([left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
