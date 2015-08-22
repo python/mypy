@@ -206,3 +206,22 @@ args = (1,)
 f(*args, y=2)
 [builtins fixtures/dict.py]
 [out]
+[case testWeakBinder]
+# mypy: weak=global
+
+# I couldn't come up with a simple example, but this showed a bug in
+# binders.
+if 1:
+    if 1:
+        pass
+if 1:
+    z = ''
+    pat = 1
+    pat() # E: "int" not callable 
+pat()
+pat = ''
+pat()  # E: "str" not callable 
+while 1:
+    pass
+pat() # E: "str" not callable 
+[out]
