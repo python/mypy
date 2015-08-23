@@ -346,9 +346,9 @@ def generate_html_index(output_dir: str) -> None:
             style = 'class="red"'
         elif percent >= 5:
             style = 'class="yellow"'
-        append('<tr %s><td><a href="%s">%s</a><td>%.1f%% imprecise<td>%d LOC' % (
+        append('<tr %s><td><a href="%s">%s</a><td>%.1f%% imprecise<td>%d LOC\n' % (
             style, target_path, source_path, percent, num_lines))
-    append('</table>')
+    append('</table>\n')
     append('</body></html>')
     with open(path, 'w') as file:
         file.writelines(output)
