@@ -624,6 +624,10 @@ class TypeTranslator(TypeVisitor[Type]):
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
         return variables
 
+    def visit_overloaded(self, type: Overloaded) -> Type:
+        items = [t.accept(self) for t in type.items()]  # type: ignore
+        return Overloaded(items=cast(List[CallableType], items))
+
 
 class TypeStrVisitor(TypeVisitor[str]):
     """Visitor for pretty-printing types into strings.
