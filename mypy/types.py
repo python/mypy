@@ -824,6 +824,9 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)
 
+    def visit_overloaded(self, t: Overloaded) -> bool:
+        return self.query_types(cast(List[Type], t.items()))
+
     def query_types(self, types: List[Type]) -> bool:
         """Perform a query for a list of types.
 
