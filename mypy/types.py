@@ -492,15 +492,21 @@ class TypeVisitor(Generic[T]):
     The parameter T is the return type of the visit methods.
     """
 
+    def _notimplemented_helper(self) -> NotImplementedError:
+        return NotImplementedError("Method visit_type_list not implemented in "
+                                   + "'{}'\n".format(type(self).__name__)
+                                   + "This is a known bug, track development in "
+                                   + "'https://github.com/JukkaL/mypy/issues/730'")
+
     @abstractmethod
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
 
     def visit_type_list(self, t: TypeList) -> T:
-        pass
+        raise self._notimplemented_helper()
 
     def visit_error_type(self, t: ErrorType) -> T:
-        pass
+        raise self._notimplemented_helper()
 
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
@@ -515,7 +521,7 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_erased_type(self, t: ErasedType) -> T:
-        pass
+        raise self._notimplemented_helper()
 
     @abstractmethod
     def visit_type_var(self, t: TypeVarType) -> T:
@@ -530,21 +536,21 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_overloaded(self, t: Overloaded) -> T:
-        pass
+        raise self._notimplemented_helper()
 
     @abstractmethod
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
     def visit_star_type(self, t: StarType) -> T:
-        pass
+        raise self._notimplemented_helper()
 
     @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
         pass
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        pass
+        raise self._notimplemented_helper()
 
 
 class TypeTranslator(TypeVisitor[Type]):
