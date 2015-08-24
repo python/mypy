@@ -333,3 +333,6 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_type_var(self, t: TypeVarType) -> None:
         pass
+
+    def visit_star_type(self, t: StarType) -> None:
+        pass
