@@ -152,7 +152,7 @@ class datetime:
     resolution = ...  # type: timedelta
 
     def __init__(self, year: int, month: int = None, day: int = None, hour: int = None,
-                 minute: int = None, second: int = None, microseconds: int = None,
+                 minute: int = None, second: int = None, microsecond: int = None,
                  tzinfo: tzinfo = None) -> None: ...
 
     @property
