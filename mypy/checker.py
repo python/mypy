@@ -128,7 +128,11 @@ class ConditionalTypeBinder:
 
     def update_from_options(self, frames: List[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
-        as in one of the frames.  Return whether any item changes."""
+        as in one of the frames.  Return whether any item changes.
+
+        If a key is declared as AnyType, only update it if all the
+        options are the same.
+        """
 
         changed = False
         keys = set(key for f in frames for key in f)
@@ -139,9 +143,14 @@ class ConditionalTypeBinder:
             if any(x is None for x in resulting_values):
                 continue
 
-            type = resulting_values[0]
-            for other in resulting_values[1:]:
-                type = join_simple(self.frames[0][key], type, other)
+            if isinstance(self.frames[0].get(key), AnyType):
+                type = resulting_values[0]
+                if not all(is_same_type(type, t) for t in resulting_values[1:]):
+                    type = AnyType()
+            else:
+                type = resulting_values[0]
+                for other in resulting_values[1:]:
+                    type = join_simple(self.frames[0][key], type, other)
             if not is_same_type(type, current_value):
                 self._push(key, type)
                 changed = True
@@ -169,10 +178,14 @@ class ConditionalTypeBinder:
         """Pop a frame.
 
         If canskip, then allow types to skip all the inner frame
-        blocks.
+        blocks.  That is, changes that happened in the inner frames
+        are not necessarily reflected in the outer frame (for example,
+        an if block that may be skipped).
 
         If fallthrough, then allow types to escape from the inner
-        frame to the resulting frame.
+        frame to the resulting frame.  That is, the state of types at
+        the end of the last frame are allowed to fall through into the
+        enclosing frame.
 
         Return whether the newly innermost frame was modified since it
         was last on top, and what it would be if the block had run to
@@ -1432,7 +1445,6 @@ class TypeChecker(NodeVisitor[Type]):
                     self.binder.push(var, type)
                 self.accept(b)
                 _, frame = self.binder.pop_frame()
-                self.binder.allow_jump(len(self.binder.frames) - 1)
                 if not self.breaking_out:
                     broken = False
                     ending_frames.append(meet_frames(clauses_frame, frame))

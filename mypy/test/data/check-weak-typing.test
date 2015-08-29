@@ -182,6 +182,15 @@ def f():
         x + 'a'
     x + 1
     x + 'a'
+def g():
+    x = 1
+    if 1:
+        x = 1
+    else:
+        x = 'a'
+    if 1:
+        return
+    x + 'a'
 [builtins fixtures/ops.py]
 [out]
 main: note: In function "f":
