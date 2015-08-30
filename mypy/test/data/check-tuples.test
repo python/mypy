@@ -91,7 +91,7 @@ from typing import Tuple
 t1 = None # type: Tuple[A, A]
 t2 = None # type: tuple
 
-t1 = t2 # E: Incompatible types in assignment (expression has type "tuple", variable has type "Tuple[A, A]")
+t1 = t2 # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type "Tuple[A, A]")
 t2 = t1
 
 class A: pass

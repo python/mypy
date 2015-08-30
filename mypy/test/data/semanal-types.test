@@ -687,7 +687,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t [__main__.t])
     NameExpr(None [builtins.None])
-    builtins.tuple)
+    builtins.tuple[Any])
   AssignmentStmt:3(
     NameExpr(t1 [__main__.t1])
     NameExpr(None [builtins.None])

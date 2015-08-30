@@ -120,9 +120,9 @@ class MessageBuilder:
             self.errors.report(context.get_line(), msg.strip())
 
     def format(self, typ: Type, verbose: bool = False) -> str:
-        """Convert a type to a relatively short string that is
-        suitable for error messages. Mostly behave like format_simple
-        below, but never return an empty string.
+        """Convert a type to a relatively short string that is suitable for error messages.
+
+        Mostly behave like format_simple below, but never return an empty string.
         """
         s = self.format_simple(typ)
         if s != '':
@@ -164,8 +164,8 @@ class MessageBuilder:
         Examples:
           builtins.int -> 'int'
           Any type -> 'Any'
-          void -> None
-          function type -> "" (empty string)
+          None -> None
+          callable type -> "" (empty string)
         """
         if isinstance(typ, Instance):
             itype = cast(Instance, typ)
@@ -176,6 +176,9 @@ class MessageBuilder:
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
+            elif itype.type.fullname() == 'builtins.tuple':
+                item_type = strip_quotes(self.format(itype.args[0]))
+                return 'Tuple[{}, ...]'.format(item_type)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]

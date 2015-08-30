@@ -1,12 +1,14 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, TypeVar
+from typing import Iterable, TypeVar, Generic
+
+Tco = TypeVar('Tco')
 
 class object:
     def __init__(self): pass
 
 class type: pass
-class tuple: pass
+class tuple(Generic[Tco]): pass
 class function: pass
 
 # We need int for indexing tuples.
