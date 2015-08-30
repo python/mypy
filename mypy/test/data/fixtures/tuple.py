@@ -2,7 +2,7 @@
 
 from typing import Iterable, TypeVar, Generic
 
-Tco = TypeVar('Tco')
+Tco = TypeVar('Tco', covariant=True)
 
 class object:
     def __init__(self): pass
@@ -14,9 +14,12 @@ class function: pass
 
 # We need int for indexing tuples.
 class int: pass
+class bool: pass
 class str: pass # For convenience
 class ellipsis: pass
 
 T = TypeVar('T')
 
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
+
+True = bool()

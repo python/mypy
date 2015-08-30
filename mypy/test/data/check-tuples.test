@@ -670,3 +670,17 @@ n = 5
 x[n]() # E: "str" not callable
 x[3]() # E: "str" not callable
 [builtins fixtures/tuple.py]
+
+[case testSubtypingVariableLengthTuple]
+from typing import Tuple
+class A: pass
+class B(A): pass
+def fa(t: Tuple[A, ...]) -> None: pass
+def fb(t: Tuple[B, ...]) -> None: pass
+ta = () # type: Tuple[A, ...]
+tb = () # type: Tuple[B, ...]
+fa(ta)
+fa(tb)
+fb(tb)
+fb(ta) # E: Argument 1 to "fb" has incompatible type Tuple[A, ...]; expected Tuple[B, ...]
+[builtins fixtures/tuple.py]
