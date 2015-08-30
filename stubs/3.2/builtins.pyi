@@ -1,4 +1,4 @@
-# Stubs for builtins
+# Stubs for builtins (Python 3)
 
 from typing import (
     TypeVar, Iterator, Iterable, overload,
