@@ -657,3 +657,16 @@ main: note: In member "f" of class "A":
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:7: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+
+-- Variable-length tuples (Tuple[t, ...] with literal '...')
+-- ---------------------------------------------------------
+
+
+[case testIndexingVariableLengthTuple]
+from typing import Tuple
+x = () # type: Tuple[str, ...]
+n = 5
+x[n]() # E: "str" not callable
+x[3]() # E: "str" not callable
+[builtins fixtures/tuple.py]
