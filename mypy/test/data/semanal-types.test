@@ -697,6 +697,18 @@ MypyFile:1(
     NameExpr(None [builtins.None])
     Tuple[builtins.int, builtins.object]))
 
+[case testVariableLengthTuple]
+from typing import Tuple
+t = None # type: Tuple[int, ...]
+[builtins fixtures/tuple.py]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple : Tuple])
+  AssignmentStmt:2(
+    NameExpr(t [__main__.t])
+    NameExpr(None [builtins.None])
+    builtins.tuple[builtins.int]))
+
 [case testFunctionTypes]
 from typing import Callable
 f = None # type: Callable[[object, int], str]
