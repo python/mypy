@@ -1043,7 +1043,7 @@ class ExpressionChecker:
                 tt = self.accept(item, ctx.items[i])
             self.check_not_void(tt, e)
             items.append(tt)
-        return TupleType(items, self.named_type('builtins.tuple'))
+        return TupleType(items, self.chk.named_generic_type('builtins.tuple', [AnyType()]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.

@@ -117,7 +117,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args),
-                                 Instance(info, [], t.line),
+                                 Instance(info, [AnyType()], t.line),
                                  t.line)
             else:
                 # Analyze arguments and construct Instance type. The
