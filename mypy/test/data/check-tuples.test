@@ -542,10 +542,10 @@ main:15: error: Incompatible types in assignment (expression has type "Tuple[A, 
 
 a = None # type: A
 
-(a, a) + a  # E: Unsupported left operand type for + (Tuple[Any, ...])
+(a, a) + a  # E: Unsupported left operand type for + (Tuple[A, ...])
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
-(a, a).foo  # E: Tuple[Any, ...] has no attribute "foo"
+(a, a).foo  # E: Tuple[A, ...] has no attribute "foo"
 
 def f(x: 'A') -> None: pass
 
@@ -683,4 +683,21 @@ fa(ta)
 fa(tb)
 fb(tb)
 fb(ta) # E: Argument 1 to "fb" has incompatible type Tuple[A, ...]; expected Tuple[B, ...]
+[builtins fixtures/tuple.py]
+
+[case testSubtypingFixedAndVariableLengthTuples]
+from typing import Tuple
+class A: pass
+class B(A): pass
+def fa(t: Tuple[A, ...]) -> None: pass
+def fb(t: Tuple[B, ...]) -> None: pass
+aa = (A(), A())
+ab = (A(), B())
+bb = (B(), B())
+fa(aa)
+fa(ab)
+fa(bb)
+fb(bb)
+fb(ab) # E: Argument 1 to "fb" has incompatible type "Tuple[A, B]"; expected Tuple[B, ...]
+fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected Tuple[B, ...]
 [builtins fixtures/tuple.py]
