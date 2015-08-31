@@ -60,6 +60,27 @@ The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, .
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
+A tuple type of this kind has exactly a specific number of items (2 in
+the above example). Tuples can also be used as immutable,
+varying-length sequences. You can use the type ``Tuple[T, ...]`` (with
+a literal ``...`` -- it's part of the syntax) for this
+purpose. Example:
+
+.. code-block:: python
+
+    def print_squared(t: Tuple[int, ...]) -> None:
+        for n in t:
+            print(n, n ** 2)
+
+    print_squared(())           # OK
+    print_squared((1, 3, 5))    # OK
+    print_squared([1, 2])       # Error: only a tuple is valid
+
+.. note::
+
+   Usually it's a better idea to use ``Sequence[T]`` instead of ``Tuple[T, ...]``, as
+   ``Sequence`` is also compatible with lists and other non-tuple sequences.
+
 Callable types (and lambdas)
 ****************************
 
@@ -83,7 +104,7 @@ using bidirectional type inference:
 
 .. code-block:: python
 
-   l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
+   l = map(lambda x: x + 1, [1, 2, 3])   # Infer x as int and l as List[int]
 
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
