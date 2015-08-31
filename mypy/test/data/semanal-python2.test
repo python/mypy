@@ -1,6 +1,6 @@
 -- Python 2 semantic analysis test cases.
 
-[case testPrintStatement]
+[case testPrintStatement_python2]
 print int, None
 [out]
 MypyFile:1(
@@ -8,3 +8,15 @@ MypyFile:1(
     NameExpr(int [builtins.int])
     NameExpr(None [builtins.None])
     Newline))
+
+[case testVariableLengthTuple_python2]
+from typing import Tuple, cast
+cast(Tuple[int, ...], ())
+[builtins fixtures/tuple.py]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple : Tuple, cast : cast])
+  ExpressionStmt:2(
+    CastExpr:2(
+      TupleExpr:2()
+      builtins.tuple[builtins.int])))
