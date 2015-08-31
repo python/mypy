@@ -1172,7 +1172,7 @@ class DictExpr(Node):
                for x in items):
             self.literal = LITERAL_YES
             self.literal_hash = ('Dict',) + tuple((x[0].literal_hash, x[1].literal_hash)
-                                                  for x in items)
+                                                  for x in items)  # type: ignore
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
