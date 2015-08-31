@@ -1270,6 +1270,7 @@ class SemanticAnalyzer(NodeVisitor):
         symbols['__init__'] = SymbolTableNode(MDEF, init)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
         info.mro = [info] + info.tuple_type.fallback.type.mro
+        info.bases = [info.tuple_type.fallback]
         return info
 
     def make_namedtuple_init(self, info: TypeInfo, items: List[str],
