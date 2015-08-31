@@ -183,6 +183,10 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
 
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        self.fail("Unexpected '...'", t)
+        return AnyType()
+
     def analyze_callable_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:
             self.fail('Invalid function type', t)

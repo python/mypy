@@ -709,6 +709,11 @@ MypyFile:1(
     NameExpr(None [builtins.None])
     builtins.tuple[builtins.int]))
 
+[case testInvalidTupleType]
+from typing import Tuple
+t = None # type: Tuple[int, str, ...] # E: Unexpected '...'
+[out]
+
 [case testFunctionTypes]
 from typing import Callable
 f = None # type: Callable[[object, int], str]
