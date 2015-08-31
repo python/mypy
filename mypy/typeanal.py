@@ -86,6 +86,11 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
+                if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
+                    # Tuple[T, ...] (uniform, variable-length tuple)
+                    node = self.lookup_fqn_func('builtins.tuple')
+                    info = cast(TypeInfo, node.node)
+                    return Instance(info, [t.args[0].accept(self)], t.line)
                 return TupleType(self.anal_array(t.args),
                                  self.builtin_type('builtins.tuple'))
             elif fullname == 'typing.Union':
@@ -112,7 +117,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args),
-                                 Instance(info, [], t.line),
+                                 Instance(info, [AnyType()], t.line),
                                  t.line)
             else:
                 # Analyze arguments and construct Instance type. The
@@ -177,6 +182,10 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        self.fail("Unexpected '...'", t)
+        return AnyType()
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:

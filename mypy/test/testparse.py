@@ -38,7 +38,7 @@ def test_parser(testcase):
         pyversion = 2
 
     try:
-        n = parse(bytes('\n'.join(testcase.input), 'ascii'), pyversion=pyversion)
+        n = parse(bytes('\n'.join(testcase.input), 'ascii'), pyversion=pyversion, fnam='main')
         a = str(n).split('\n')
     except CompileError as e:
         a = e.messages

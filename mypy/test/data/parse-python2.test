@@ -72,3 +72,7 @@ MypyFile:1(
     IntExpr(1))
   ExpressionStmt:3(
     IntExpr(255)))
+
+[case testEllipsisInExpression_python2]
+x = ... # E: Parse error before ...
+[out]

@@ -151,8 +151,8 @@ class TypeParser:
         return StarType(type, star.line)
 
     def parse_ellipsis_type(self) -> Type:
-        self.expect('...')
-        return EllipsisType()
+        ellipsis = self.expect('...')
+        return EllipsisType(ellipsis.line)
 
     # Helpers
 

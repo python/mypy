@@ -120,9 +120,9 @@ class MessageBuilder:
             self.errors.report(context.get_line(), msg.strip())
 
     def format(self, typ: Type, verbose: bool = False) -> str:
-        """Convert a type to a relatively short string that is
-        suitable for error messages. Mostly behave like format_simple
-        below, but never return an empty string.
+        """Convert a type to a relatively short string that is suitable for error messages.
+
+        Mostly behave like format_simple below, but never return an empty string.
         """
         s = self.format_simple(typ)
         if s != '':
@@ -164,8 +164,8 @@ class MessageBuilder:
         Examples:
           builtins.int -> 'int'
           Any type -> 'Any'
-          void -> None
-          function type -> "" (empty string)
+          None -> None
+          callable type -> "" (empty string)
         """
         if isinstance(typ, Instance):
             itype = cast(Instance, typ)
@@ -176,6 +176,9 @@ class MessageBuilder:
                 # potential for confusion: otherwise, the type name could be
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
+            elif itype.type.fullname() == 'builtins.tuple':
+                item_type = strip_quotes(self.format(itype.args[0]))
+                return 'Tuple[{}, ...]'.format(item_type)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
@@ -198,10 +201,9 @@ class MessageBuilder:
             # This is similar to non-generic instance types.
             return '"{}"'.format((cast(TypeVarType, typ)).name)
         elif isinstance(typ, TupleType):
-            fallback = self.format_simple(typ.fallback)
-            if fallback != '"tuple"':
-                # Prefer the name of the fallback class (if not tuple), as it's more informative.
-                return fallback
+            # Prefer the name of the fallback class (if not tuple), as it's more informative.
+            if typ.fallback.type.fullname() != 'builtins.tuple':
+                return self.format_simple(typ.fallback)
             items = []
             for t in (cast(TupleType, typ)).items:
                 items.append(strip_quotes(self.format(t)))

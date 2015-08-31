@@ -54,3 +54,4 @@ f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[in
 [file _m.py]
 from typing import Union
 U = Union[int, str]
+[builtins fixtures/tuple.py]
