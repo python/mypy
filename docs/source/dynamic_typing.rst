@@ -1,12 +1,15 @@
+.. _dynamic_typing:
+
+
 Dynamically typed code
 ======================
 
-As mentioned earlier, bodies of functions that don't have have an
-explicit return type are dynamically typed (operations are checked at
-runtime). Code outside functions is statically typed by default, and
-types of variables are inferred. This does usually the right thing,
-but you can also make any variable dynamically typed by defining it
-explicitly with the type ``Any``:
+As mentioned earlier, bodies of functions that don't have have any
+explicit types in their function annotation are dynamically typed
+(operations are checked at runtime). Code outside functions is
+statically typed by default, and types of variables are inferred. This
+does usually the right thing, but you can also make any variable
+dynamically typed by defining it explicitly with the type ``Any``:
 
 .. code-block:: python
 
@@ -34,15 +37,19 @@ does not complain:
         open(x).read()
         return x
 
-Values derived from an ``Any`` value also have the value ``Any``
-implicitly. For example, if you get the attribute of an ``Any``
-value or call a ``Any`` value the result is ``Any``:
+Values derived from an ``Any`` value also often have the type ``Any``
+implicitly, as mypy can't infer a more precise result type. For
+example, if you get the attribute of an ``Any`` value or call a
+``Any`` value the result is ``Any``:
 
 .. code-block:: python
 
     def f(x: Any) -> None:
         y = x.foo()  # y has type Any
         y.bar()      # Okay as well!
+
+``Any`` types may propagate through your program, making type checking
+less effective, unless you are careful.
 
 Any vs. object
 --------------

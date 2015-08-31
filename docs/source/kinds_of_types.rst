@@ -27,12 +27,10 @@ compatible with all superclasses. All values are compatible with the
 The Any type
 ************
 
-A value with the ``Any`` type is dynamically typed. Any operations are
-permitted on the value, and the operations are checked at runtime,
-similar to normal Python code. If you do not define a function return
-value or argument types, these default to ``Any``. Also, a function
-without an explicit return type is dynamically typed. The body of a
-dynamically typed function is not checked statically.
+A value with the ``Any`` type is dynamically typed. Mypy doesn't know
+anything about the possible runtime types of such value. Any
+operations are permitted on the value, and the operations are checked
+at runtime, similar to normal Python code without type annotations.
 
 ``Any`` is compatible with every other type, and vice versa. No
 implicit type check is inserted when assigning a value of type ``Any``
@@ -45,9 +43,56 @@ to a variable with a more precise type:
    a = 2     # OK
    s = a     # OK
 
-Declared (and inferred) types are erased at runtime (they are
-basically treated as comments), and thus the above code does not
-generate a runtime error.
+Declared (and inferred) types are *erased* at runtime. They are
+basically treated as comments, and thus the above code does not
+generate a runtime error, even though ``s`` gets an ``int`` value when
+the program is run. Note that the declared type of ``s`` is actually
+``str``!
+
+If you do not define a function return value or argument types, these
+default to ``Any``:
+
+.. code-block:: python
+
+   def show_heading(s) -> None:
+       print('=== ' + s + ' ===')  # No static type checking, as s has type Any
+
+   show_heading(1)  # OK (runtime error only; mypy won't generate an error)
+
+You should give a statically typed function an explicit ``None``
+return type even if it doesn't return a value, as this lets mypy catch
+additional type errors:
+
+.. code-block:: python
+
+   def wait(t: float):  # Implicit Any return value
+       print('Waiting...')
+       time.sleep(t)
+
+   if wait(2) > 1:   # Mypy doesn't catch this error!
+       ...
+
+If we had used an explicit ``None`` return type, mypy would have caught
+the error:
+
+.. code-block:: python
+
+   def wait(t: float) -> None:
+       print('Waiting...')
+       time.sleep(t)
+
+   if wait(2) > 1:   # Error: can't compare None and int
+       ...
+
+The ``Any`` type is discussed in more detail in section :ref:`dynamic_typing`.
+
+.. note::
+
+  A function without any types in the signature is dynamically
+  typed. The body of a dynamically typed function is not checked
+  statically, and local variables have implicit ``Any`` types.
+  This makes it easier to migrate legacy Python code to mypy, as
+  mypy won't complain about dynamically typed functions.
 
 Tuple types
 ***********
