@@ -697,9 +697,9 @@ class SemanticAnalyzer(NodeVisitor):
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
 
-    def named_type(self, qualified_name: str) -> Instance:
+    def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
-        return Instance(cast(TypeInfo, sym.node), [])
+        return Instance(cast(TypeInfo, sym.node), args or [])
 
     def named_type_or_none(self, qualified_name: str) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
@@ -1268,7 +1268,7 @@ class SemanticAnalyzer(NodeVisitor):
         # Add a __init__ method.
         init = self.make_namedtuple_init(info, items, types)
         symbols['__init__'] = SymbolTableNode(MDEF, init)
-        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple'))
+        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
         info.mro = [info] + info.tuple_type.fallback.type.mro
         return info
 
