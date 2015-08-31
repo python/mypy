@@ -1048,3 +1048,17 @@ _program.py: note: In function "p":
 _program.py:6: error: "str" not callable
 _program.py: note: At top level:
 _program.py:8: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[str, bytes]"; expected "Union[str, Tuple[str, ...]]"
+
+[case testMultiplyTupleByInteger]
+n = 4
+t = ('',) * n
+t + 1
+[out]
+_program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")
+
+[case testMultiplyTupleByIntegerReverse]
+n = 4
+t = n * ('',)
+t + 1
+[out]
+_program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")

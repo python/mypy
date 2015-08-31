@@ -1265,6 +1265,8 @@ class ExpressionChecker:
         elif isinstance(typ, UnionType):
             result = all(self.has_member(x, member) for x in typ.items)
             return result
+        elif isinstance(typ, TupleType):
+            return self.has_member(typ.fallback, member)
         else:
             return False
 
