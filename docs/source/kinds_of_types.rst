@@ -135,6 +135,8 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
 
+   from typing import Callable
+
    def twice(i: int, next: Callable[[int], int]) -> int:
        return next(next(i))
 
@@ -142,6 +144,28 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
        return i + 1
 
    print(twice(3, add))   # 5
+
+You can only have positional arguments, and only ones without default
+values, in callable types. These cover the vast majority of uses of
+callable types, but sometimes this isn't quite enough. Mypy recognizes
+a special form ``Callable[..., T]`` (with a literal ``...``) which can
+be used in less typical cases. It is compatible with arbitrary
+callable objects that return a type compatible with ``T``, independend
+of the number, types or kinds of arguments. Mypy lets you call such
+callable values with arbitrary arguments, without any checking -- in
+this respect they are treated similar to a ``(*args: Any, **kwargs:
+Any)`` function signature. Example:
+
+.. code-block:: python
+
+   from typing import Callable
+
+    def arbitrary_call(f: Callable[..., int]) -> int:
+        return f('x') + f(y=2)  # OK
+
+    arbitrary_call(ord)   # No static error, but fails at runtime
+    arbitrary_call(open)  # Error: does not return an int
+    arbitrary_call(1)     # Error: 'int' is not callable
 
 Lambdas are also supported. The lambda argument and return value types
 cannot be given explicitly; they are always inferred based on context
