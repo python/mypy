@@ -76,8 +76,8 @@ class B(A): pass
 
 [case testNestedTupleTypes2]
 from typing import Tuple
-t1 = None # type: (A, (A, A))
-t2 = None # type: B, (B, B)
+t1 = None # type: Tuple[A, Tuple[A, A]]
+t2 = None # type: Tuple[B, Tuple[B, B]]
 
 t2 = t1 # E: Incompatible types in assignment (expression has type "Tuple[A, Tuple[A, A]]", variable has type "Tuple[B, Tuple[B, B]]")
 t1 = t2

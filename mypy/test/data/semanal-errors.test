@@ -159,12 +159,13 @@ main:5: error: Invalid type "__main__.x"
 
 [case testTwoStarsInType]
 import typing
-x = 1 # type: *object, *object
-y = 1 # type: object, (*object, *object)
-z = 1 # type: *object, (object, *object)
+x, x2 = 1 # type: *object, *object
+y, y2 = 1 # type: object, (*object, *object)
+z, z2 = 1 # type: *object, (object, *object)
 [out]
 main:2: error: At most one star type allowed in a tuple
 main:3: error: At most one star type allowed in a tuple
+main:4: error: Star type only allowed for starred expressions
 
 [case testGlobalVarRedefinition]
 import typing

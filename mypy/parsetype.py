@@ -98,7 +98,7 @@ class TypeParser:
                 if self.current_token_str() == ')':
                     break
                 items.append(self.parse_type())
-            type = TupleType(items, None, type.line)
+            type = TupleType(items, None, type.line, implicit=True)
         return type
 
     def parse_type_list(self) -> TypeList:

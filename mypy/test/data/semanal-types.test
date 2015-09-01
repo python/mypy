@@ -1391,3 +1391,9 @@ MypyFile:1(
     NameExpr(S* [__main__.S])
     TypeVarExpr:3(
       Variance(CONTRAVARIANT))))
+
+[case testTupleExpressionAsType]
+def f(x: (int, int)) -> None: pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid tuple literal type

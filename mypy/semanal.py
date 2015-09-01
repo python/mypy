@@ -293,7 +293,7 @@ class SemanticAnalyzer(NodeVisitor):
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
-        elif isinstance(type, EllipsisType):
+        elif isinstance(type, EllipsisType) or isinstance(type, TupleType):
             pass
         else:
             assert False, 'Unsupported type %s' % type
@@ -818,8 +818,20 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             self.visit_block(b)
 
-    def anal_type(self, t: Type) -> Type:
+    def anal_type(self, t: Type, allow_tuple_literal: bool = False) -> Type:
         if t:
+            if allow_tuple_literal:
+                # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
+                # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
+                if isinstance(t, TupleType):
+                    # Unlike TypeAnalyser, also allow implicit tuple types (without Tuple[...]).
+                    star_count = sum(1 for item in t.items if isinstance(item, StarType))
+                    if star_count > 1:
+                        self.fail('At most one star type allowed in a tuple', t)
+                        return None
+                    items = [self.anal_type(item, True)
+                             for item in t.items]
+                    return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
                              self.fail)
@@ -832,7 +844,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
         if s.type:
-            s.type = self.anal_type(s.type)
+            allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
+            s.type = self.anal_type(s.type, allow_tuple_literal)
         else:
             # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and

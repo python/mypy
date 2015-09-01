@@ -376,18 +376,22 @@ class TupleType(Type):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
 
     Instance variables:
-      items -- tuple item types
-      fallback -- the underlying instance type that is used for non-tuple methods
-        (this is currently always builtins.tuple, but it could be different for named
-        tuples, for example)
+        items: tuple item types
+        fallback: the underlying instance type that is used for non-tuple methods
+            (this is currently always builtins.tuple, but it could be different for named
+            tuples, for example)
+        implicit: if True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
     items = None  # type: List[Type]
     fallback = None  # type: Instance
+    implicit = False
 
-    def __init__(self, items: List[Type], fallback: Instance, line: int = -1) -> None:
+    def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
+                 implicit: bool = False) -> None:
         self.items = items
         self.fallback = fallback
+        self.implicit = implicit
         super().__init__(line)
 
     def length(self) -> int:
