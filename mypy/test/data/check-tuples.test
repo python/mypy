@@ -658,6 +658,15 @@ main:6: error: Incompatible types in assignment (expression has type "int", vari
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:7: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
+[case testTupleBaseClass2-skip]
+# This fails (#867)
+from typing import Tuple
+a = None # type: A
+class A(Tuple[int, str]): pass
+x, y = a
+x() # E: "int" not callable
+y() # E: "str" not callable
+
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
 -- ---------------------------------------------------------
