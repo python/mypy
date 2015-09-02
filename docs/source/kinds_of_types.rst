@@ -126,6 +126,12 @@ purpose. Example:
    Usually it's a better idea to use ``Sequence[T]`` instead of ``Tuple[T, ...]``, as
    ``Sequence`` is also compatible with lists and other non-tuple sequences.
 
+.. note::
+
+   ``Tuple[...]`` is not valid as a base class outside stub files. This is a
+   limitation of the ``typing`` module. One way to work around
+   this is to use a named tuple as a base class (see section :ref:`named-tuples`).
+
 Callable types (and lambdas)
 ****************************
 

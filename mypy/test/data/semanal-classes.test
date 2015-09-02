@@ -569,10 +569,15 @@ main:3: error: Invalid base class
 main:4: error: Invalid base class
 
 [case testTupleAsBaseClass]
+import m
+[file m.pyi]
 from typing import Tuple
 class A(Tuple[int, str]): pass
 [out]
 MypyFile:1(
+  Import:1(m : m))
+MypyFile:1(
+  tmp/m.pyi
   ImportFrom:1(typing, [Tuple : Tuple])
   ClassDef:2(
     A

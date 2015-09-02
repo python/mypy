@@ -98,13 +98,13 @@ class _int_info:
                         # base 2**int_info.bits_per_digit
     sizeof_digit = 0    # size in bytes of C type used to represent a digit
 
-version_info = None  # type: _version_info
-class _version_info:
+class _version_info(Tuple[int, int, int, str, int]):
     major = 0
     minor = 0
     micro = 0
     releaselevel = ''
     serial = 0
+version_info = None  # type: _version_info
 
 # ----- sys function stubs -----
 def call_tracing(fn: Any, args: Any) -> object: ...

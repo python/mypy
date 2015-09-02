@@ -153,8 +153,7 @@ class SemanticAnalyzer(NodeVisitor):
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
-    def __init__(self, lib_path: List[str], errors: Errors,
-                 pyversion: int = 3) -> None:
+    def __init__(self, lib_path: List[str], errors: Errors, pyversion: int = 3) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -179,6 +178,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.set_ignored_lines(file_node.ignored_lines)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
+        self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
 
         if 'builtins' in self.modules:
@@ -618,6 +618,9 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                 defn.info.tuple_type = base
                 base = base.fallback
+                if (not self.is_stub_file and not defn.info.is_named_tuple and
+                        base.type.fullname() == 'builtins.tuple'):
+                    self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
             if isinstance(base, Instance) or isinstance(base, TupleType):
                 defn.base_types.append(base)
             elif not isinstance(base, UnboundType):
@@ -1282,6 +1285,7 @@ class SemanticAnalyzer(NodeVisitor):
         init = self.make_namedtuple_init(info, items, types)
         symbols['__init__'] = SymbolTableNode(MDEF, init)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
+        info.is_named_tuple = True
         info.mro = [info] + info.tuple_type.fallback.type.mro
         info.bases = [info.tuple_type.fallback]
         return info
