@@ -684,6 +684,15 @@ y() # Expected: "str" not callable
 [out]
 (should fail)
 
+[case testGenericClassWithTupleBaseClass]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+class Test(Generic[T], Tuple[T]): pass
+x = Test() # type: Test[int]
+[out]
+main:3: error: Tuple[...] not supported as a base class outside a stub file
+main:4: error: Generic tuple types not supported
+
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
 -- ---------------------------------------------------------

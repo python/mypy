@@ -131,6 +131,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 else:
                     # The class has a Tuple[...] base class so it will be
                     # represented as a tuple type.
+                    if t.args:
+                        self.fail('Generic tuple types not supported', t)
+                        return AnyType()
                     return TupleType(self.anal_array(info.tuple_type.items),
                                      fallback=instance,
                                      line=t.line)
