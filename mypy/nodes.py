@@ -1414,12 +1414,12 @@ class TypeInfo(SymbolNode):
     """
 
     _fullname = None  # type: str          # Fully qualified name
-    defn = None  # type: ClassDef             # Corresponding ClassDef
+    defn = None  # type: ClassDef          # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
     mro = None  # type: List[TypeInfo]
-    subtypes = None  # type: Set[TypeInfo]  # Direct subclasses encountered so far
-    names = None  # type: SymbolTable       # Names defined directly in this type
+    subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
+    names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     abstract_attributes = None  # type: List[str]
     is_enum = False
@@ -1441,6 +1441,9 @@ class TypeInfo(SymbolNode):
     # the corresponding Instance is set as the fallback type of the
     # tuple type.
     tuple_type = None  # type: mypy.types.TupleType
+
+    # Is this a named tuple type?
+    is_named_tuple = False
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
