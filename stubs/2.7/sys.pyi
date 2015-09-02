@@ -99,7 +99,7 @@ class _int_info:
     sizeof_digit = 0    # size in bytes of C type used to represent a digit
 
 version_info = None  # type: _version_info
-class _version_info:
+class _version_info(Tuple[int, int, int, str, int]):
     major = 0
     minor = 0
     micro = 0
