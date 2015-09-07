@@ -1,3 +1,5 @@
+# Stubs for gc (Python 2)
+
 from typing import List, Any, Tuple
 
 def enable() -> None: ...

@@ -9,4 +9,3 @@ class md5(object):
 def new(string: str = None) -> md5: ...
 blocksize = 0
 digest_size = 0
-

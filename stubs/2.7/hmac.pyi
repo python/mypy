@@ -1,3 +1,5 @@
+# Stubs for hmac (Python 2)
+
 from typing import Any
 
 class HMAC:

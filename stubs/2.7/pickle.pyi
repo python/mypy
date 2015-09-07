@@ -1,4 +1,4 @@
-# Stubs for pickle
+# Stubs for pickle (Python 2)
 
 from typing import Any, IO
 
