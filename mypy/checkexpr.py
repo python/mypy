@@ -1075,7 +1075,8 @@ class ExpressionChecker:
                 tt = self.accept(item, ctx.items[i])
             self.check_not_void(tt, e)
             items.append(tt)
-        return TupleType(items, self.named_type('builtins.tuple'))
+        fallback_item = join.join_type_list(items)
+        return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
@@ -1301,6 +1302,8 @@ class ExpressionChecker:
         elif isinstance(typ, UnionType):
             result = all(self.has_member(x, member) for x in typ.items)
             return result
+        elif isinstance(typ, TupleType):
+            return self.has_member(typ.fallback, member)
         else:
             return False
 

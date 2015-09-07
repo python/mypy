@@ -86,6 +86,11 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
+                if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
+                    # Tuple[T, ...] (uniform, variable-length tuple)
+                    node = self.lookup_fqn_func('builtins.tuple')
+                    info = cast(TypeInfo, node.node)
+                    return Instance(info, [t.args[0].accept(self)], t.line)
                 return TupleType(self.anal_array(t.args),
                                  self.builtin_type('builtins.tuple'))
             elif fullname == 'typing.Union':
@@ -112,7 +117,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             info = cast(TypeInfo, sym.node)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args),
-                                 Instance(info, [], t.line),
+                                 Instance(info, [AnyType()], t.line),
                                  t.line)
             else:
                 # Analyze arguments and construct Instance type. The
@@ -126,6 +131,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 else:
                     # The class has a Tuple[...] base class so it will be
                     # represented as a tuple type.
+                    if t.args:
+                        self.fail('Generic tuple types not supported', t)
+                        return AnyType()
                     return TupleType(self.anal_array(info.tuple_type.items),
                                      fallback=instance,
                                      line=t.line)
@@ -163,20 +171,25 @@ class TypeAnalyser(TypeVisitor[Type]):
         return res
 
     def visit_tuple_type(self, t: TupleType) -> Type:
+        if t.implicit:
+            self.fail('Invalid tuple literal type', t)
+            return AnyType()
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:
             self.fail('At most one star type allowed in a tuple', t)
             return AnyType()
         fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple')
-        return TupleType(self.anal_array(t.items),
-                         fallback,
-                         t.line)
+        return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        self.fail("Unexpected '...'", t)
+        return AnyType()
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         if len(t.args) != 2:

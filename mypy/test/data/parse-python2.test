@@ -167,3 +167,7 @@ MypyFile:1(
     NameExpr(a)
     NameExpr(x)
     NameExpr(y)))
+
+[case testEllipsisInExpression_python2]
+x = ... # E: Parse error before ...
+[out]

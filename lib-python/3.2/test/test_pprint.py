@@ -121,7 +121,7 @@ class QueryTestCase(unittest.TestCase):
                        self.assertTrue, pprint,
                        -6, -6, complex(-6.,-6.), -1.5, "x", b"x", (3,), [3], {3: 6},
                        (1,2), [3,4], {5: 6},
-                       tuple2((1,2)), tuple3((1,2)), tuple3(range(100)),
+                       tuple2((1,2)), tuple3((1,2)), tuple3(range(100)),  # type: ignore
                        [3,4], list2(cast(Any, [3,4])), list3(cast(Any, [3,4])),
                        list3(cast(Any, range(100))), dict2(cast(Any, {5: 6})),
                        dict3(cast(Any, {5: 6})), # JLe: work around mypy issue #233

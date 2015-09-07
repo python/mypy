@@ -191,7 +191,7 @@ f(
 class A: pass
 class B: pass
 def f(a: A, b: B) -> Tuple[A, B]: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple-simple.py]
 [out]
 CallExpr(3) : Tuple[A, B]
 CallExpr(4) : A

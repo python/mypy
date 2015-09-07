@@ -687,7 +687,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t [__main__.t])
     NameExpr(None [builtins.None])
-    builtins.tuple)
+    builtins.tuple[Any])
   AssignmentStmt:3(
     NameExpr(t1 [__main__.t1])
     NameExpr(None [builtins.None])
@@ -696,6 +696,23 @@ MypyFile:1(
     NameExpr(t2 [__main__.t2])
     NameExpr(None [builtins.None])
     Tuple[builtins.int, builtins.object]))
+
+[case testVariableLengthTuple]
+from typing import Tuple
+t = None # type: Tuple[int, ...]
+[builtins fixtures/tuple.py]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple : Tuple])
+  AssignmentStmt:2(
+    NameExpr(t [__main__.t])
+    NameExpr(None [builtins.None])
+    builtins.tuple[builtins.int]))
+
+[case testInvalidTupleType]
+from typing import Tuple
+t = None # type: Tuple[int, str, ...] # E: Unexpected '...'
+[out]
 
 [case testFunctionTypes]
 from typing import Callable
@@ -1374,3 +1391,9 @@ MypyFile:1(
     NameExpr(S* [__main__.S])
     TypeVarExpr:3(
       Variance(CONTRAVARIANT))))
+
+[case testTupleExpressionAsType]
+def f(x: (int, int)) -> None: pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid tuple literal type

@@ -1166,7 +1166,7 @@ class Parser:
             elif isinstance(current, Keyword) and s == "yield":
                 # The expression yield from and yield to assign
                 expr = self.parse_yield_or_yield_from_expr()
-            elif isinstance(current, EllipsisToken):
+            elif isinstance(current, EllipsisToken) and (self.pyversion >= 3 or self.is_stub_file):
                 expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
@@ -1544,7 +1544,14 @@ class Parser:
 
     def parse_slice_item(self) -> Node:
         if self.current_str() != ':':
-            item = self.parse_expression(precedence[','])
+            if self.current_str() == '...':
+                # Ellipsis is valid here even in Python 2 (but not elsewhere).
+                ellipsis = EllipsisExpr()
+                token = self.skip()
+                ellipsis.set_line(token)
+                return ellipsis
+            else:
+                item = self.parse_expression(precedence[','])
         else:
             item = None
         if self.current_str() == ':':

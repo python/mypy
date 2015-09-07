@@ -131,9 +131,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if (is_named_instance(right, 'builtins.object') or
-                    is_named_instance(right, 'builtins.tuple')):
+            if is_named_instance(right, 'builtins.object'):
                 return True
+            if is_named_instance(right, 'builtins.tuple'):
+                target_item_type = right.args[0]
+                return all(is_subtype(item, target_item_type)
+                           for item in left.items)
             elif (is_named_instance(right, 'typing.Iterable') or
                   is_named_instance(right, 'typing.Sequence') or
                   is_named_instance(right, 'typing.Reversible')):

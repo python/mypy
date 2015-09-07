@@ -1,5 +1,5 @@
 -- Test cases for type checking mypy programs using full stubs and running
--- using CPython. -- Python 2 syntax.
+-- using CPython (Python 2 mode).
 --
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
@@ -114,6 +114,13 @@ def f(m): # type: (Match[str]) -> None
 f(re.match('x*', 'xxy'))
 [out]
 xx
+
+[case testVariableLengthTuple_python2]
+from typing import Tuple, cast
+x = cast(Tuple[int, ...], ())
+print(x)
+[out]
+()
 
 [case testFromFuturePrintFunction_python2]
 from __future__ import print_function

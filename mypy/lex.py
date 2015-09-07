@@ -431,7 +431,9 @@ class Lexer:
         """
         if self.is_at_number():
             self.lex_number()
-        elif self.is_at_ellipsis() and (self.pyversion >= 3 or self.is_stub_file):
+        elif self.is_at_ellipsis():
+            # '...' is valid in Python 2 as a token but it's use is limited to indexing.
+            # Example: Tuple[int, ...] is valid in Python 2.
             self.lex_ellipsis()
         else:
             self.lex_misc()

@@ -27,12 +27,10 @@ compatible with all superclasses. All values are compatible with the
 The Any type
 ************
 
-A value with the ``Any`` type is dynamically typed. Any operations are
-permitted on the value, and the operations are checked at runtime,
-similar to normal Python code. If you do not define a function return
-value or argument types, these default to ``Any``. Also, a function
-without an explicit return type is dynamically typed. The body of a
-dynamically typed function is not checked statically.
+A value with the ``Any`` type is dynamically typed. Mypy doesn't know
+anything about the possible runtime types of such value. Any
+operations are permitted on the value, and the operations are checked
+at runtime, similar to normal Python code without type annotations.
 
 ``Any`` is compatible with every other type, and vice versa. No
 implicit type check is inserted when assigning a value of type ``Any``
@@ -45,9 +43,56 @@ to a variable with a more precise type:
    a = 2     # OK
    s = a     # OK
 
-Declared (and inferred) types are erased at runtime (they are
-basically treated as comments), and thus the above code does not
-generate a runtime error.
+Declared (and inferred) types are *erased* at runtime. They are
+basically treated as comments, and thus the above code does not
+generate a runtime error, even though ``s`` gets an ``int`` value when
+the program is run. Note that the declared type of ``s`` is actually
+``str``!
+
+If you do not define a function return value or argument types, these
+default to ``Any``:
+
+.. code-block:: python
+
+   def show_heading(s) -> None:
+       print('=== ' + s + ' ===')  # No static type checking, as s has type Any
+
+   show_heading(1)  # OK (runtime error only; mypy won't generate an error)
+
+You should give a statically typed function an explicit ``None``
+return type even if it doesn't return a value, as this lets mypy catch
+additional type errors:
+
+.. code-block:: python
+
+   def wait(t: float):  # Implicit Any return value
+       print('Waiting...')
+       time.sleep(t)
+
+   if wait(2) > 1:   # Mypy doesn't catch this error!
+       ...
+
+If we had used an explicit ``None`` return type, mypy would have caught
+the error:
+
+.. code-block:: python
+
+   def wait(t: float) -> None:
+       print('Waiting...')
+       time.sleep(t)
+
+   if wait(2) > 1:   # Error: can't compare None and int
+       ...
+
+The ``Any`` type is discussed in more detail in section :ref:`dynamic_typing`.
+
+.. note::
+
+  A function without any types in the signature is dynamically
+  typed. The body of a dynamically typed function is not checked
+  statically, and local variables have implicit ``Any`` types.
+  This makes it easier to migrate legacy Python code to mypy, as
+  mypy won't complain about dynamically typed functions.
 
 Tuple types
 ***********
@@ -60,6 +105,33 @@ The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, .
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
+A tuple type of this kind has exactly a specific number of items (2 in
+the above example). Tuples can also be used as immutable,
+varying-length sequences. You can use the type ``Tuple[T, ...]`` (with
+a literal ``...`` -- it's part of the syntax) for this
+purpose. Example:
+
+.. code-block:: python
+
+    def print_squared(t: Tuple[int, ...]) -> None:
+        for n in t:
+            print(n, n ** 2)
+
+    print_squared(())           # OK
+    print_squared((1, 3, 5))    # OK
+    print_squared([1, 2])       # Error: only a tuple is valid
+
+.. note::
+
+   Usually it's a better idea to use ``Sequence[T]`` instead of ``Tuple[T, ...]``, as
+   ``Sequence`` is also compatible with lists and other non-tuple sequences.
+
+.. note::
+
+   ``Tuple[...]`` is not valid as a base class outside stub files. This is a
+   limitation of the ``typing`` module. One way to work around
+   this is to use a named tuple as a base class (see section :ref:`named-tuples`).
+
 Callable types (and lambdas)
 ****************************
 
@@ -69,6 +141,8 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
 
+   from typing import Callable
+
    def twice(i: int, next: Callable[[int], int]) -> int:
        return next(next(i))
 
@@ -77,13 +151,35 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
    print(twice(3, add))   # 5
 
+You can only have positional arguments, and only ones without default
+values, in callable types. These cover the vast majority of uses of
+callable types, but sometimes this isn't quite enough. Mypy recognizes
+a special form ``Callable[..., T]`` (with a literal ``...``) which can
+be used in less typical cases. It is compatible with arbitrary
+callable objects that return a type compatible with ``T``, independend
+of the number, types or kinds of arguments. Mypy lets you call such
+callable values with arbitrary arguments, without any checking -- in
+this respect they are treated similar to a ``(*args: Any, **kwargs:
+Any)`` function signature. Example:
+
+.. code-block:: python
+
+   from typing import Callable
+
+    def arbitrary_call(f: Callable[..., int]) -> int:
+        return f('x') + f(y=2)  # OK
+
+    arbitrary_call(ord)   # No static error, but fails at runtime
+    arbitrary_call(open)  # Error: does not return an int
+    arbitrary_call(1)     # Error: 'int' is not callable
+
 Lambdas are also supported. The lambda argument and return value types
 cannot be given explicitly; they are always inferred based on context
 using bidirectional type inference:
 
 .. code-block:: python
 
-   l = map(lambda x: x + 1, [1, 2, 3])   # infer x as int and l as List[int]
+   l = map(lambda x: x + 1, [1, 2, 3])   # Infer x as int and l as List[int]
 
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.

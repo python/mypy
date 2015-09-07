@@ -988,16 +988,13 @@ MypyFile:1(
         NameExpr(z)))))
 
 [case testNotAsBinaryOp]
-x not y
-x not is y
+x not y # E: Parse error before "y"
+x not is y # E: Parse error before is
 [out]
-<input>:1: error: Parse error before "y"
-<input>:2: error: Parse error before is
 
 [case testBinaryNegAsBinaryOp]
-1 ~ 2
+1 ~ 2 # E: Parse error before ~
 [out]
-<input>:1: error: Parse error before ~
 
 [case testDictionaryExpression]
 {}

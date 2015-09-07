@@ -154,8 +154,7 @@ class SemanticAnalyzer(NodeVisitor):
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
-    def __init__(self, lib_path: List[str], errors: Errors,
-                 pyversion: int = 3) -> None:
+    def __init__(self, lib_path: List[str], errors: Errors, pyversion: int = 3) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -180,6 +179,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.set_ignored_lines(file_node.ignored_lines)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
+        self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
 
         if 'builtins' in self.modules:
@@ -294,7 +294,7 @@ class SemanticAnalyzer(NodeVisitor):
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
-        elif isinstance(type, EllipsisType):
+        elif isinstance(type, EllipsisType) or isinstance(type, TupleType):
             pass
         else:
             assert False, 'Unsupported type %s' % type
@@ -619,6 +619,9 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                 defn.info.tuple_type = base
                 base = base.fallback
+                if (not self.is_stub_file and not defn.info.is_named_tuple and
+                        base.type.fullname() == 'builtins.tuple'):
+                    self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
             if isinstance(base, Instance) or isinstance(base, TupleType):
                 defn.base_types.append(base)
             elif not isinstance(base, UnboundType):
@@ -698,9 +701,9 @@ class SemanticAnalyzer(NodeVisitor):
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
 
-    def named_type(self, qualified_name: str) -> Instance:
+    def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
-        return Instance(cast(TypeInfo, sym.node), [])
+        return Instance(cast(TypeInfo, sym.node), args or [])
 
     def named_type_or_none(self, qualified_name: str) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
@@ -819,8 +822,20 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             self.visit_block(b)
 
-    def anal_type(self, t: Type) -> Type:
+    def anal_type(self, t: Type, allow_tuple_literal: bool = False) -> Type:
         if t:
+            if allow_tuple_literal:
+                # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
+                # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
+                if isinstance(t, TupleType):
+                    # Unlike TypeAnalyser, also allow implicit tuple types (without Tuple[...]).
+                    star_count = sum(1 for item in t.items if isinstance(item, StarType))
+                    if star_count > 1:
+                        self.fail('At most one star type allowed in a tuple', t)
+                        return None
+                    items = [self.anal_type(item, True)
+                             for item in t.items]
+                    return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
                              self.fail)
@@ -833,7 +848,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
         if s.type:
-            s.type = self.anal_type(s.type)
+            allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
+            s.type = self.anal_type(s.type, allow_tuple_literal)
         else:
             # For simple assignments, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
@@ -1269,8 +1285,10 @@ class SemanticAnalyzer(NodeVisitor):
         # Add a __init__ method.
         init = self.make_namedtuple_init(info, items, types)
         symbols['__init__'] = SymbolTableNode(MDEF, init)
-        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple'))
+        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
+        info.is_named_tuple = True
         info.mro = [info] + info.tuple_type.fallback.type.mro
+        info.bases = [info.tuple_type.fallback]
         return info
 
     def make_namedtuple_init(self, info: TypeInfo, items: List[str],
