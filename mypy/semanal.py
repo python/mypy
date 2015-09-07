@@ -101,15 +101,24 @@ TYPE_PROMOTIONS = {
 }
 
 # Hard coded type promotions for Python 3.
+#
+# Note that the bytearray -> bytes promotion is a little unsafe
+# as some functions only accept bytes objects. Here convenience
+# trumps safety.
 TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()
 TYPE_PROMOTIONS_PYTHON3.update({
     'builtins.bytearray': 'builtins.bytes',
 })
 
 # Hard coded type promotions for Python 2.
+#
+# These promotions are unsafe, but we are doing them anyway
+# for convenience and also for Python 3 compatibility
+# (bytearray -> str).
 TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'builtins.unicode',
+    'builtins.bytearray': 'builtins.str',
 })
 
 
