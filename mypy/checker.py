@@ -19,7 +19,7 @@ from mypy.nodes import (
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr
+    RefExpr, YieldExpr
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -128,7 +128,11 @@ class ConditionalTypeBinder:
 
     def update_from_options(self, frames: List[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
-        as in one of the frames.  Return whether any item changes."""
+        as in one of the frames.  Return whether any item changes.
+
+        If a key is declared as AnyType, only update it if all the
+        options are the same.
+        """
 
         changed = False
         keys = set(key for f in frames for key in f)
@@ -139,9 +143,14 @@ class ConditionalTypeBinder:
             if any(x is None for x in resulting_values):
                 continue
 
-            type = resulting_values[0]
-            for other in resulting_values[1:]:
-                type = join_simple(self.frames[0][key], type, other)
+            if isinstance(self.frames[0].get(key), AnyType):
+                type = resulting_values[0]
+                if not all(is_same_type(type, t) for t in resulting_values[1:]):
+                    type = AnyType()
+            else:
+                type = resulting_values[0]
+                for other in resulting_values[1:]:
+                    type = join_simple(self.frames[0][key], type, other)
             if not is_same_type(type, current_value):
                 self._push(key, type)
                 changed = True
@@ -169,10 +178,14 @@ class ConditionalTypeBinder:
         """Pop a frame.
 
         If canskip, then allow types to skip all the inner frame
-        blocks.
+        blocks.  That is, changes that happened in the inner frames
+        are not necessarily reflected in the outer frame (for example,
+        an if block that may be skipped).
 
         If fallthrough, then allow types to escape from the inner
-        frame to the resulting frame.
+        frame to the resulting frame.  That is, the state of types at
+        the end of the last frame are allowed to fall through into the
+        enclosing frame.
 
         Return whether the newly innermost frame was modified since it
         was last on top, and what it would be if the block had run to
@@ -180,7 +193,7 @@ class ConditionalTypeBinder:
         """
         result = self.frames.pop()
 
-        options = self.frames_on_escape.get(len(self.frames) - 1, [])
+        options = self.frames_on_escape.pop(len(self.frames) - 1, [])
         if canskip:
             options.append(self.frames[-1])
         if fallthrough:
@@ -196,7 +209,8 @@ class ConditionalTypeBinder:
         else:
             return self.frames[0].get(expr.literal_hash)
 
-    def assign_type(self, expr: Node, type: Type) -> None:
+    def assign_type(self, expr: Node, type: Type,
+                    restrict_any: bool = False) -> None:
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
@@ -214,13 +228,14 @@ class ConditionalTypeBinder:
             # expression has a type error, though -- do other kinds of
             # errors cause this function to get called at invalid
             # times?
-
             return
 
         # If x is Any and y is int, after x = y we do not infer that x is int.
         # This could be changed.
+        # Eric: I'm changing it in weak typing mode, since Any is so common.
 
-        if isinstance(self.most_recent_enclosing_type(expr, type), AnyType):
+        if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
+                and not restrict_any):
             pass
         elif isinstance(type, AnyType):
             self.push(expr, declared_type)
@@ -315,6 +330,8 @@ class TypeChecker(NodeVisitor[Type]):
     function_stack = None  # type: List[FuncItem]
     # Set to True on return/break/raise, False on blocks that can block any of them
     breaking_out = False
+    # Do weak type checking in this file
+    weak_opts = set()        # type: Set[str]
 
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
@@ -340,6 +357,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_context = []
         self.dynamic_funcs = []
         self.function_stack = []
+        self.weak_opts = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -348,6 +366,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.errors.set_ignored_lines(file_node.ignored_lines)
         self.globals = file_node.names
         self.locals = None
+        self.weak_opts = file_node.weak_opts
 
         for d in file_node.defs:
             self.accept(d)
@@ -360,7 +379,7 @@ class TypeChecker(NodeVisitor[Type]):
         typ = node.accept(self)
         self.type_context.pop()
         self.store_type(node, typ)
-        if self.is_dynamic_function():
+        if self.typing_mode_none():
             return AnyType()
         else:
             return typ
@@ -381,10 +400,6 @@ class TypeChecker(NodeVisitor[Type]):
     #
     # Definitions
     #
-
-    def infer_local_variable_type(self, x, y, z):
-        # TODO
-        raise RuntimeError('Not implemented')
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> Type:
         num_abstract = 0
@@ -903,10 +918,16 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_block(self, b: Block) -> Type:
         if b.is_unreachable:
             return None
+        n_frames_added = 0
         for s in b.body:
+            if self.typing_mode_weak() and isinstance(s, AssignmentStmt):
+                self.binder.push_frame()
+                n_frames_added += 1
             self.accept(s)
             if self.breaking_out:
                 break
+        for i in range(n_frames_added):
+            self.binder.pop_frame(False, True)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
         """Type check an assignment statement.
@@ -931,12 +952,12 @@ class TypeChecker(NodeVisitor[Type]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-
             if lvalue_type:
                 rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue, rvalue_type)
+                    self.binder.assign_type(lvalue, rvalue_type,
+                                            self.typing_mode_weak())
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
 
@@ -1170,7 +1191,10 @@ class TypeChecker(NodeVisitor[Type]):
     def infer_variable_type(self, name: Var, lvalue: Node,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
-        if isinstance(init_type, Void):
+        if self.typing_mode_weak():
+            self.set_inferred_type(name, lvalue, AnyType())
+            self.binder.assign_type(lvalue, init_type, True)
+        elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif not self.is_valid_inferred_type(init_type):
@@ -1244,6 +1268,8 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         else:
             rvalue_type = self.accept(rvalue, lvalue_type)
+            if self.typing_mode_weak():
+                return rvalue_type
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                'expression has type', 'variable has type')
             return rvalue_type
@@ -1297,8 +1323,8 @@ class TypeChecker(NodeVisitor[Type]):
                 if (not self.function_stack[-1].is_generator and
                         not self.function_stack[-1].is_coroutine):
                     if (not isinstance(self.return_types[-1], Void) and
-                            not self.is_dynamic_function()):
-                            self.fail(messages.RETURN_VALUE_EXPECTED, s)
+                            self.typing_mode_full()):
+                        self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
     def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
                           str, context: Context) -> Type:
@@ -1407,7 +1433,8 @@ class TypeChecker(NodeVisitor[Type]):
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
-            var, type, elsetype, kind = find_isinstance_check(e, self.type_map)
+            var, type, elsetype, kind = find_isinstance_check(e, self.type_map,
+                                            self.typing_mode_weak())
             if kind == ISINSTANCE_ALWAYS_FALSE:
                 # XXX should issue a warning?
                 pass
@@ -1418,7 +1445,6 @@ class TypeChecker(NodeVisitor[Type]):
                     self.binder.push(var, type)
                 self.accept(b)
                 _, frame = self.binder.pop_frame()
-                self.binder.allow_jump(len(self.binder.frames) - 1)
                 if not self.breaking_out:
                     broken = False
                     ending_frames.append(meet_frames(clauses_frame, frame))
@@ -1503,7 +1529,13 @@ class TypeChecker(NodeVisitor[Type]):
                 if base in typeinfo.mro:
                     # Good!
                     return None
-                # Else fall back to the check below (which will fail).
+                # Else fall back to the checks below (which will fail).
+        if isinstance(typ, TupleType) and self.pyversion == 2:
+            # allow `raise type, value, traceback`
+            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
+            # TODO: Also check tuple item types.
+            if len(cast(TupleType, typ).items) in (2, 3):
+                return None
         self.check_subtype(typ,
                            self.named_type('builtins.BaseException'), s,
                            messages.INVALID_EXCEPTION)
@@ -1673,6 +1705,11 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_print_stmt(self, s: PrintStmt) -> Type:
         for arg in s.args:
             self.accept(arg)
+        if s.target:
+            target_type = self.accept(s.target)
+            if not isinstance(target_type, NoneTyp):
+                # TODO: Also verify the type of 'write'.
+                self.expr_checker.analyze_external_member_access('write', target_type, s.target)
 
     #
     # Expressions
@@ -1805,6 +1842,9 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         return self.expr_checker.visit_conditional_expr(e)
 
+    def visit_yield_expr(self, e: YieldExpr) -> Type:
+        return self.expr_checker.visit_yield_expr(e)
+
     #
     # Helpers
     #
@@ -1878,6 +1918,30 @@ class TypeChecker(NodeVisitor[Type]):
     def store_type(self, node: Node, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
+
+    def typing_mode_none(self) -> bool:
+        if self.is_dynamic_function():
+            return not self.weak_opts
+        elif self.function_stack:
+            return False
+        else:
+            return False
+
+    def typing_mode_weak(self) -> bool:
+        if self.is_dynamic_function():
+            return bool(self.weak_opts)
+        elif self.function_stack:
+            return False
+        else:
+            return 'global' in self.weak_opts
+
+    def typing_mode_full(self) -> bool:
+        if self.is_dynamic_function():
+            return False
+        elif self.function_stack:
+            return True
+        else:
+            return 'global' not in self.weak_opts
 
     def is_dynamic_function(self) -> bool:
         return len(self.dynamic_funcs) > 0 and self.dynamic_funcs[-1]
@@ -1981,7 +2045,8 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 
 
 def find_isinstance_check(node: Node,
-                          type_map: Dict[Node, Type]) -> Tuple[Node, Type, Type, int]:
+                          type_map: Dict[Node, Type],
+                          weak: bool=False) -> Tuple[Node, Type, Type, int]:
     """Check if node is an isinstance(variable, type) check.
 
     If successful, return tuple (variable, target-type, else-type,
@@ -1995,14 +2060,18 @@ def find_isinstance_check(node: Node,
           variable type => the test is always True.
       ISINSTANCE_ALWAYS_FALSE: The target type and the variable type are not
           overlapping => the test is always False.
+
+    If it is an isinstance check, but we don't understand the argument
+    type, then in weak mode it is treated as Any and in non-weak mode
+    it is not treated as an isinstance.
     """
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
+                vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 if type:
-                    vartype = type_map[expr]
                     kind = ISINSTANCE_OVERLAPPING
                     elsetype = vartype
                     if vartype:
@@ -2014,6 +2083,20 @@ def find_isinstance_check(node: Node,
                         else:
                             elsetype = restrict_subtype_away(vartype, type)
                     return expr, type, elsetype, kind
+                else:
+                    # An isinstance check, but we don't understand the type
+                    if weak:
+                        return expr, AnyType(), vartype, ISINSTANCE_OVERLAPPING
+    elif isinstance(node, OpExpr) and node.op == 'and':
+        # XXX We should extend this to support two isinstance checks in the same
+        # expression
+        (var, type, elsetype, kind) = find_isinstance_check(node.left, type_map, weak)
+        if var is None:
+            (var, type, elsetype, kind) = find_isinstance_check(node.left, type_map, weak)
+        if var:
+            if kind == ISINSTANCE_ALWAYS_TRUE:
+                kind = ISINSTANCE_OVERLAPPING
+            return (var, type, AnyType(), kind)
     # Not a supported isinstance check
     return None, AnyType(), AnyType(), -1
 

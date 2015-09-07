@@ -9,6 +9,32 @@ MypyFile:1(
     NameExpr(None [builtins.None])
     Newline))
 
+[case testPrintStatementWithTarget]
+print >>int, None
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(None [builtins.None])
+    Target(
+      NameExpr(int [builtins.int]))
+    Newline))
+
+[case testExecStatement]
+exec None
+exec None in int
+exec None in int, str
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(None [builtins.None]))
+  ExecStmt:2(
+    NameExpr(None [builtins.None])
+    NameExpr(int [builtins.int]))
+  ExecStmt:3(
+    NameExpr(None [builtins.None])
+    NameExpr(int [builtins.int])
+    NameExpr(str [builtins.str])))
+
 [case testVariableLengthTuple_python2]
 from typing import Tuple, cast
 cast(Tuple[int, ...], ())

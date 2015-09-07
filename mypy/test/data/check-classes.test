@@ -554,6 +554,23 @@ class A:
     class B: pass
 A.B = None # E: Cannot assign to a type
 
+[case testAccessingClassAttributeWithTypeInferenceIssue]
+x = C.x # E: Cannot determine type of 'x'
+class C:
+    x = 1
+[builtins fixtures/list.py]
+
+[case testAccessingClassAttributeWithTypeInferenceIssue]
+class C:
+    x = []
+x = C.x
+[builtins fixtures/list.py]
+[out]
+main: note: In class "C":
+main:2: error: Need type annotation for variable
+main: note: At top level:
+main:3: error: Cannot determine type of 'x'
+
 
 -- Nested classes
 -- --------------
@@ -1179,6 +1196,37 @@ n = A()
 a = A()
 a = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 
+[case testForwardReferenceToNestedClass]
+def f(o: 'B.C') -> None:
+    o.f('') # E: Argument 1 to "f" of "C" has incompatible type "str"; expected "int"
+
+class B:
+    class C:
+        def f(self, x: int) -> None: pass
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToNestedClassDeep]
+def f(o: 'B.C.D') -> None:
+    o.f('') # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
+
+class B:
+    class C:
+        class D:
+            def f(self, x: int) -> None: pass
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToNestedClassWithinClass]
+class B:
+    def f(self, o: 'C.D') -> None:
+        o.f('') # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
+
+    class C:
+        class D:
+            def f(self, x: int) -> None: pass
+[out]
+main: note: In member "f" of class "B":
 
 -- TODO
 --   attribute inherited from superclass; assign in __init__

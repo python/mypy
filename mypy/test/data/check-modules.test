@@ -465,3 +465,30 @@ None + 1  # Does not generate error, as this file won't be analyzed.
 import m.a
 [file m/a.py]
 [out]
+
+[case testStarImportOverlapping]
+from m1 import *
+from m2 import *
+j = ''
+[file m1.py]
+x = 1
+[file m2.py]
+x = 1
+
+[case testStarImportOverlappingMismatch]
+from m1 import *
+from m2 import * # E: Name 'x' already defined
+j = ''
+[file m1.py]
+x = ''
+[file m2.py]
+x = 1
+
+[case testStarImportOverridingLocalImports-skip]
+from m1 import *
+from m2 import *
+x = '' # E: TODO (cannot assign str to int)
+[file m1.py]
+x = 1
+[file m2.py]
+x = 1

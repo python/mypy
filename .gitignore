@@ -6,3 +6,4 @@ __pycache__
 /build
 /env
 docs/build/
+*.iml

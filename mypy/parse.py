@@ -6,9 +6,9 @@ representing a source file. Performs only minimal semantic checks.
 
 import re
 
-from typing import List, Tuple, Any, Set, cast, Union
+from typing import List, Tuple, Any, Set, cast, Union, Optional
 
-from mypy import lex
+from mypy import lex, docstring
 from mypy.lex import (
     Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
@@ -26,13 +26,13 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt
 )
 from mypy import nodes
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, CallableType, AnyType, UnboundType
 from mypy.parsetype import (
-    parse_type, parse_types, parse_signature, TypeParseError
+    parse_type, parse_types, parse_signature, TypeParseError, parse_str_as_signature
 )
 
 
@@ -134,14 +134,39 @@ class Parser:
             self.errors.raise_error()
         return file
 
+    def weak_opts(self) -> Set[str]:
+        """Do weak typing if any of the first ten tokens is a comment saying so.
+
+        The comment can be one of:
+        # mypy: weak=global
+        # mypy: weak=local
+        # mypy: weak      <- defaults to local
+        """
+        regexp = re.compile(r'^[\s]*# *mypy: *weak(=?)([^\s]*)', re.M)
+        for t in self.tok[:10]:
+            for s in [t.string, t.pre]:
+                m = regexp.search(s)
+                if m:
+                    opts = set(x for x in m.group(2).split(',') if x)
+                    if not opts:
+                        opts.add('local')
+                    return opts
+        return set()
+
     def parse_file(self) -> MypyFile:
         """Parse a mypy source file."""
         is_bom = self.parse_bom()
         defs = self.parse_defs()
+        weak_opts = self.weak_opts()
         self.expect_type(Eof)
+        # Skip imports that have been ignored (so that we can ignore a C extension module without
+        # stub, for example), except for 'from x import *', because we wouldn't be able to
+        # determine which names should be defined unless we process the module. We can still
+        # ignore errors such as redefinitions when using the latter form.
         imports = [node for node in self.imports
-                   if node.line not in self.ignored_lines]
-        node = MypyFile(defs, imports, is_bom, self.ignored_lines)
+                   if node.line not in self.ignored_lines or isinstance(node, ImportAll)]
+        node = MypyFile(defs, imports, is_bom, self.ignored_lines,
+                        weak_opts=weak_opts)
         return node
 
     # Parse the initial part
@@ -369,7 +394,7 @@ class Parser:
                     self.errors.report(
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(CallableType, comment_type)
-                if is_method:
+                if is_method and len(sig.arg_kinds) < len(kinds):
                     self.check_argument_kinds(kinds,
                                               [nodes.ARG_POS] + sig.arg_kinds,
                                               def_tok.line)
@@ -413,9 +438,8 @@ class Parser:
         """
         for kind, token in [(nodes.ARG_STAR, '*'),
                             (nodes.ARG_STAR2, '**')]:
-            if ((kind in funckinds and
-                 sigkinds[funckinds.index(kind)] != kind) or
-                    (funckinds.count(kind) != sigkinds.count(kind))):
+            if ((funckinds.count(kind) != sigkinds.count(kind)) or
+                    (kind in funckinds and sigkinds.index(kind) != funckinds.index(kind))):
                 self.fail(
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
@@ -656,6 +680,17 @@ class Parser:
             type = self.parse_type_comment(brk, signature=True)
             self.expect_indent()
             stmt_list = []  # type: List[Node]
+            if allow_type:
+                cur = self.current()
+                if type is None and isinstance(cur, StrLit):
+                    ds = docstring.parse_docstring(cast(StrLit, cur).parsed())
+                    if ds and False:  # TODO: Enable when this is working.
+                        try:
+                            type = parse_str_as_signature(ds.as_type_str(), cur.line)
+                        except TypeParseError:
+                            # We don't require docstrings to be actually correct.
+                            # TODO: Report something here.
+                            type = None
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:
@@ -743,6 +778,8 @@ class Parser:
         elif ts == 'print' and (self.pyversion == 2 and
                                 'print_function' not in self.future_options):
             stmt = self.parse_print_stmt()
+        elif ts == 'exec' and self.pyversion == 2:
+            stmt = self.parse_exec_stmt()
         else:
             stmt = self.parse_expression_or_assignment()
         if stmt is not None:
@@ -827,20 +864,16 @@ class Parser:
                 node = YieldStmt(expr)
         return node
 
-    def parse_yield_from_expr(self) -> YieldFromExpr:
+    def parse_yield_or_yield_from_expr(self) -> Union[YieldFromExpr, YieldExpr]:
         self.expect("yield")
-        expr = None  # type: Node
-        node = YieldFromExpr(expr)
+        node = None  # type: Union[YieldFromExpr, YieldExpr]
         if self.current_str() == "from":
             self.expect("from")
-            tok = self.parse_expression()  # Here comes when yield from is assigned to a variable
-            node = YieldFromExpr(tok)
+            expr = self.parse_expression()  # Here comes when yield from is assigned to a variable
+            node = YieldFromExpr(expr)
         else:
-            # TODO
-            # Here comes the yield expression (ex:  x = yield 3 )
-            # tok = self.parse_expression()
-            # node = YieldExpr(tok)  # Doesn't exist now
-            pass
+            expr = self.parse_expression()
+            node = YieldExpr(expr)
         return node
 
     def parse_ellipsis(self) -> EllipsisExpr:
@@ -1000,7 +1033,16 @@ class Parser:
                         self.expect('as')
                         vars.append(self.parse_name_expr())
                     else:
-                        vars.append(None)
+                        if (self.pyversion == 2 and
+                                isinstance(types[-1], TupleExpr) and
+                                len(cast(TupleExpr, types[-1]).items) == 2 and
+                                isinstance(cast(TupleExpr, types[-1]).items[1], NameExpr)):
+                            # Handle "except T, e:".
+                            tuple_expr = cast(TupleExpr, types[-1])
+                            vars.append(cast(NameExpr, tuple_expr.items[1]))
+                            types[-1] = tuple_expr.items[0]
+                        else:
+                            vars.append(None)
                 except ParseError:
                     is_error = True
             else:
@@ -1046,6 +1088,18 @@ class Parser:
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
         args = []  # type: List[Node]
+        target = None  # type: Node
+        if self.current_str() == '>>':
+            self.skip()
+            target = self.parse_expression(precedence[','])
+            if self.current_str() == ',':
+                self.skip()
+                if isinstance(self.current(), Break):
+                    self.parse_error()
+            else:
+                if not isinstance(self.current(), Break):
+                    self.parse_error()
+        comma = False
         while not isinstance(self.current(), Break):
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() == ',':
@@ -1054,7 +1108,20 @@ class Parser:
             else:
                 comma = False
                 break
-        return PrintStmt(args, newline=not comma)
+        return PrintStmt(args, newline=not comma, target=target)
+
+    def parse_exec_stmt(self) -> ExecStmt:
+        self.expect('exec')
+        expr = self.parse_expression(precedence['in'])
+        variables1 = None  # type: Optional[Node]
+        variables2 = None  # type: Optional[Node]
+        if self.current_str() == 'in':
+            self.skip()
+            variables1 = self.parse_expression(precedence[','])
+            if self.current_str() == ',':
+                self.skip()
+                variables2 = self.parse_expression(precedence[','])
+        return ExecStmt(expr, variables1, variables2)
 
     # Parsing expressions
 
@@ -1098,7 +1165,7 @@ class Parser:
                 expr = self.parse_complex_expr()
             elif isinstance(current, Keyword) and s == "yield":
                 # The expression yield from and yield to assign
-                expr = self.parse_yield_from_expr()
+                expr = self.parse_yield_or_yield_from_expr()
             elif isinstance(current, EllipsisToken) and (self.pyversion >= 3 or self.is_stub_file):
                 expr = self.parse_ellipsis()
             else:
@@ -1333,11 +1400,11 @@ class Parser:
 
     def parse_int_expr(self) -> IntExpr:
         tok = self.expect_type(IntLit)
-        string = tok.string
+        string = tok.string.rstrip('lL')  # Strip L prefix (Python 2 long literals)
         if self.octal_int.match(string):
             value = int(string, 8)
         else:
-            value = int(tok.string, 0)
+            value = int(string, 0)
         node = IntExpr(value)
         return node
 
@@ -1760,16 +1827,34 @@ def token_repr(tok: Token) -> str:
 if __name__ == '__main__':
     # Parse a file and dump the AST (or display errors).
     import sys
-    if len(sys.argv) != 2:
-        print('Usage: parse.py FILE')
+
+    def usage():
+        print('Usage: parse.py [--py2] [--quiet] FILE [...]')
         sys.exit(2)
-    fnam = sys.argv[1]
-    s = open(fnam, 'rb').read()
-    errors = Errors()
-    try:
-        tree = parse(s, fnam)
-        print(tree)
-    except CompileError as e:
-        for msg in e.messages:
-            sys.stderr.write('%s\n' % msg)
-        sys.exit(1)
+
+    args = sys.argv[1:]
+    pyversion = 3
+    quiet = False
+    while args and args[0].startswith('--'):
+        if args[0] == '--py2':
+            pyversion = 2
+        elif args[0] == '--quiet':
+            quiet = True
+        else:
+            usage()
+        args = args[1:]
+    if len(args) < 1:
+        usage()
+    status = 0
+    for fnam in args:
+        s = open(fnam, 'rb').read()
+        errors = Errors()
+        try:
+            tree = parse(s, fnam, pyversion=pyversion)
+            if not quiet:
+                print(tree)
+        except CompileError as e:
+            for msg in e.messages:
+                sys.stderr.write('%s\n' % msg)
+            status = 1
+    exit(status)

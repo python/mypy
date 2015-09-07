@@ -230,6 +230,9 @@ class StrConv(NodeVisitor[str]):
     def visit_yield_from_stmt(self, o):
         return self.dump([o.expr], o)
 
+    def visit_yield_expr(self, o):
+        return self.dump([o.expr], o)
+
     def visit_del_stmt(self, o):
         return self.dump([o.expr], o)
 
@@ -259,9 +262,14 @@ class StrConv(NodeVisitor[str]):
 
     def visit_print_stmt(self, o):
         a = o.args[:]
+        if o.target:
+            a.append(('Target', [o.target]))
         if o.newline:
             a.append('Newline')
         return self.dump(a, o)
+
+    def visit_exec_stmt(self, o):
+        return self.dump([o.expr, o.variables1, o.variables2], o)
 
     # Expressions
 

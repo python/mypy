@@ -59,7 +59,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    COVARIANT, CONTRAVARIANT, INVARIANT
+    YieldExpr, ExecStmt, COVARIANT, CONTRAVARIANT, INVARIANT
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -74,6 +74,7 @@ from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.lex import lex
 from mypy.parsetype import parse_type
+from mypy.sametypes import is_same_type
 
 
 T = TypeVar('T')
@@ -1508,6 +1509,15 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_print_stmt(self, s: PrintStmt) -> None:
         for arg in s.args:
             arg.accept(self)
+        if s.target:
+            s.target.accept(self)
+
+    def visit_exec_stmt(self, s: ExecStmt) -> None:
+        s.expr.accept(self)
+        if s.variables1:
+            s.variables1.accept(self)
+        if s.variables2:
+            s.variables2.accept(self)
 
     #
     # Expressions
@@ -1748,6 +1758,9 @@ class SemanticAnalyzer(NodeVisitor):
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
 
+    def visit_yield_expr(self, expr: YieldExpr) -> None:
+        expr.expr.accept(self)
+
     #
     # Helpers
     #
@@ -1788,10 +1801,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.name_not_defined(name, ctx)
                     return None
                 node = table[name]
-                # Only succeed if we are not using a type alias such List -- these must be
-                # be accessed via the typing module.
-                if node.node.name() == name:
-                    return node
+                return node
         # Give up.
         self.name_not_defined(name, ctx)
         self.check_for_obsolete_short_name(name, ctx)
@@ -1813,7 +1823,18 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        n = cast(TypeInfo, n.node).get(parts[i])
+                        result = cast(TypeInfo, n.node).get(parts[i])
+                        if not result:
+                            # Fall back to direct lookup from the class. This can be important
+                            # when we have a forward reference of a nested class that is being
+                            # bound before the outer class has been fully semantically analyzed.
+                            #
+                            # A better approach would be to introduce a new analysis pass or
+                            # to move things around between passes, but this unblocks a common
+                            # use case even though this is a little limited in case there is
+                            # inheritance involved, for example.
+                            result = cast(TypeInfo, n.node).names.get(parts[i])
+                        n = result
                     elif isinstance(n.node, MypyFile):
                         n = cast(MypyFile, n.node).names.get(parts[i], None)
                     if not n:
@@ -1888,11 +1909,14 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.type:
             self.type.names[name] = node
         else:
-            if name in self.globals and (not isinstance(node.node, MypyFile) or
-                                         self.globals[name].node != node.node):
+            existing = self.globals.get(name)
+            if existing and (not isinstance(node.node, MypyFile) or
+                             existing.node != node.node):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
-                self.name_already_defined(name, context)
+                if not (existing.type and node.type and is_same_type(existing.type, node.type)):
+                    # Only report an error if the symbol collision provides a different type.
+                    self.name_already_defined(name, context)
             self.globals[name] = node
 
     def add_var(self, v: Var, ctx: Context) -> None:
@@ -1944,7 +1968,10 @@ class SemanticAnalyzer(NodeVisitor):
 
 
 class FirstPass(NodeVisitor):
-    """First phase of semantic analysis"""
+    """First phase of semantic analysis.
+
+    See docstring of 'analyze' for a description of what this does.
+    """
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
@@ -2025,6 +2052,16 @@ class FirstPass(NodeVisitor):
         d.info = info
         self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
                                                    self.sem.cur_mod_id)
+        self.process_nested_classes(d)
+
+    def process_nested_classes(self, outer_def: ClassDef) -> None:
+        for node in outer_def.defs.body:
+            if isinstance(node, ClassDef):
+                node.info = TypeInfo(SymbolTable(), node)
+                node.info._fullname = node.info.name()
+                symbol = SymbolTableNode(MDEF, node.info)
+                outer_def.info.names[node.name] = symbol
+                self.process_nested_classes(node)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.sem.analyze_lvalue(s.index, add_global=True)

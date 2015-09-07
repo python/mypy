@@ -29,12 +29,15 @@ TODO:
 import glob
 import imp
 import importlib
+import json
 import os.path
+import subprocess
 import sys
 
 from typing import Any
 
 import mypy.parse
+import mypy.errors
 import mypy.traverser
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
@@ -44,10 +47,18 @@ from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate
 from mypy.stubutil import is_c_module, write_header
 
 
-def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, module=None):
-    source = open(path).read()
-    ast = mypy.parse.parse(source)
-    gen = StubGenerator(_all_)
+def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, module=None,
+                  pyversion=3):
+    source = open(path, 'rb').read()
+    try:
+        ast = mypy.parse.parse(source, fnam=path, pyversion=pyversion)
+    except mypy.errors.CompileError as e:
+        # Syntax error!
+        for m in e.messages:
+            sys.stderr.write('%s\n' % m)
+        exit(1)
+
+    gen = StubGenerator(_all_, pyversion=pyversion)
     ast.accept(gen)
     if not target:
         target = os.path.join(output_dir, os.path.basename(path))
@@ -56,33 +67,68 @@ def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, m
         os.makedirs(subdir)
     with open(target, 'w') as file:
         if add_header:
-            write_header(file, module)
+            write_header(file, module, pyversion=pyversion)
         file.write(''.join(gen.output()))
 
 
 def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, sigs={},
-                             class_sigs={}):
-    mod = importlib.import_module(module)
-    imp.reload(mod)
-    if is_c_module(mod):
-        target = module.replace('.', '/') + '.pyi'
-        target = os.path.join(output_dir, target)
-        generate_stub_for_c_module(module_name=module,
-                                   target=target,
-                                   add_header=add_header,
-                                   sigs=sigs,
-                                   class_sigs=class_sigs)
+                             class_sigs={}, pyversion=3):
+    if pyversion == 2:
+        module_path, module_all = load_python2_module_info(module)
     else:
-        target = module.replace('.', '/')
-        if os.path.basename(mod.__file__) == '__init__.py':
-            target += '/__init__.pyi'
-        else:
-            target += '.pyi'
-        target = os.path.join(output_dir, target)
-        generate_stub(mod.__file__, output_dir, getattr(mod, '__all__', None),
-                      target=target, add_header=add_header, module=module)
+        mod = importlib.import_module(module)
+        imp.reload(mod)
+        if is_c_module(mod):
+            target = module.replace('.', '/') + '.pyi'
+            target = os.path.join(output_dir, target)
+            generate_stub_for_c_module(module_name=module,
+                                       target=target,
+                                       add_header=add_header,
+                                       sigs=sigs,
+                                       class_sigs=class_sigs)
+            return
+        module_path = mod.__file__
+        module_all = getattr(mod, '__all__', None)
+    target = module.replace('.', '/')
+    if os.path.basename(module_path) == '__init__.py':
+        target += '/__init__.pyi'
+    else:
+        target += '.pyi'
+    target = os.path.join(output_dir, target)
+    generate_stub(module_path, output_dir, module_all,
+                  target=target, add_header=add_header, module=module, pyversion=pyversion)
     if not quiet:
         print('Created %s' % target)
+
+
+def load_python2_module_info(module):
+    """Return tuple (module path, module __all__) for a Python 2 module.
+
+    The path refers to the .py/.py[co] file. The second tuple item is
+    None if the module doesn't define __all__.
+
+    Exit if the module can't be imported or if it's a C extension module.
+    """
+    # Figure out where the Python 2 implementation file lives.
+    # TODO: This is a horrible hack. Figure out a better way of detecting where
+    #   Python 2 lives.
+    cmd_template = '/usr/bin/python -c "%s"'
+    code = ("import importlib, json; mod = importlib.import_module('%s'); "
+            "print mod.__file__; print json.dumps(getattr(mod, '__all__', None))") % module
+    try:
+        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
+    except subprocess.CalledProcessError:
+        print("Can't import module %s" % module)
+        exit(1)
+    output = output_bytes.decode('ascii').strip().splitlines()
+    module_path = output[0]
+    if not module_path.endswith(('.py', '.pyc', '.pyo')):
+        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
+                         module)
+    if module_path.endswith(('.pyc', '.pyo')):
+        module_path = module_path[:-1]
+    module_all = json.loads(output[1])
+    return module_path, module_all
 
 
 # What was generated previously.
@@ -96,7 +142,7 @@ NOT_IN_ALL = 'NOT_IN_ALL'
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
-    def __init__(self, _all_):
+    def __init__(self, _all_, pyversion):
         self._all_ = _all_
         self._output = []
         self._import_lines = []
@@ -107,6 +153,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._toplevel_names = []
         self._classes = []
         self._base_classes = []
+        self._pyversion = pyversion
 
     def visit_mypy_file(self, o):
         self._classes = find_classes(o)
@@ -420,24 +467,35 @@ def main():
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
     args = sys.argv[1:]
+    sigs = {}
+    class_sigs = {}
+    pyversion = 3
+    while args and args[0].startswith('--'):
+        if args[0] == '--docpath':
+            docpath = args[1]
+            args = args[2:]
+            all_sigs = []  # type: Any
+            all_class_sigs = []  # type: Any
+            for path in glob.glob('%s/*.rst' % docpath):
+                func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
+                all_sigs += func_sigs
+                all_class_sigs += class_sigs
+            sigs = dict(find_unique_signatures(all_sigs))
+            class_sigs = dict(find_unique_signatures(all_class_sigs))
+        elif args[0] == '--py2':
+            pyversion = 2
+        else:
+            raise SystemExit('Unrecognized option %s' % args[0])
+        args = args[1:]
     if not args:
-        raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] module ...')
-    if args[0] == '--docpath':
-        docpath = args[1]
-        args = args[2:]
-        all_sigs = []  # type: Any
-        all_class_sigs = []  # type: Any
-        for path in glob.glob('%s/*.rst' % docpath):
-            func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
-            all_sigs += func_sigs
-            all_class_sigs += class_sigs
-        sigs = dict(find_unique_signatures(all_sigs))
-        class_sigs = dict(find_unique_signatures(all_class_sigs))
-    else:
-        sigs = {}
-        class_sigs = {}
+        usage()
     for module in args:
-        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs)
+        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
+                                 pyversion=pyversion)
+
+
+def usage():
+    raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] [--py2] module ...')
 
 
 if __name__ == '__main__':

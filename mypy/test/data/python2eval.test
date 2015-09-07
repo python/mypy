@@ -191,7 +191,7 @@ f.write(u'foo')
 f.write('bar')
 f.close()
 [out]
-_program.py:3: error: No overload variant of "write" of "BinaryIO" matches argument types
+_program.py:3: error: No overload variant of "write" of "BinaryIO" matches argument types [builtins.unicode]
 
 [case testPrintFunctionWithFileArg_python2]
 from __future__ import print_function
@@ -365,3 +365,18 @@ def f(): # type: () -> Optional[int]
 x = f()
 y = 1
 y = x
+
+[case testUnicodeAndOverloading_python2]
+from m import f
+f(1)
+f('')
+f(u'')
+f(b'')
+[file m.pyi]
+from typing import overload
+@overload
+def f(x: unicode) -> int: pass
+@overload
+def f(x: bytearray) -> int: pass
+[out]
+_program.py:2: error: No overload variant of "f" matches argument types [builtins.int]

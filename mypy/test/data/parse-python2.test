@@ -44,6 +44,42 @@ MypyFile:1(
       IntExpr(5))
     Newline))
 
+[case testPrintWithNoArgs]
+print
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    Newline))
+
+[case testPrintWithTarget]
+print >>foo
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    Target(
+      NameExpr(foo))
+    Newline))
+
+[case testPrintWithTargetAndArgs]
+print >>foo, x
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(x)
+    Target(
+      NameExpr(foo))
+    Newline))
+
+[case testPrintWithTargetAndArgsAndTrailingComma]
+print >>foo, x, y,
+[out]
+MypyFile:1(
+  PrintStmt:1(
+    NameExpr(x)
+    NameExpr(y)
+    Target(
+      NameExpr(foo))))
+
 [case testSimpleWithTrailingComma]
 print 1,
 print 2, 3,
@@ -72,6 +108,65 @@ MypyFile:1(
     IntExpr(1))
   ExpressionStmt:3(
     IntExpr(255)))
+
+[case testLongLiteral]
+0L
+123L
+012L
+0x123l
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    IntExpr(0))
+  ExpressionStmt:2(
+    IntExpr(123))
+  ExpressionStmt:3(
+    IntExpr(10))
+  ExpressionStmt:4(
+    IntExpr(291)))
+
+[case testTryExceptWithComma]
+try:
+    x
+except Exception, e:
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    NameExpr(Exception)
+    NameExpr(e)
+    Block:3(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
+[case testExecStatement]
+exec a
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(a)))
+
+[case testExecStatementWithIn]
+exec a in globals()
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(a)
+    CallExpr:1(
+      NameExpr(globals)
+      Args())))
+
+[case testExecStatementWithInAnd2Expressions]
+exec a in x, y
+[out]
+MypyFile:1(
+  ExecStmt:1(
+    NameExpr(a)
+    NameExpr(x)
+    NameExpr(y)))
 
 [case testEllipsisInExpression_python2]
 x = ... # E: Parse error before ...

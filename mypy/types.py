@@ -446,6 +446,9 @@ class UnionType(Type):
                     all_items.append(typ)
             items = all_items
 
+        if any(isinstance(typ, AnyType) for typ in items):
+            return AnyType()
+
         from mypy.subtypes import is_subtype
         removed = set()  # type: Set[int]
         for i in range(len(items)):

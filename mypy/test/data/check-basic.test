@@ -291,3 +291,10 @@ main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 main:5: error: Incompatible return value type: expected builtins.str, got builtins.int
 main: note: At top level:
 main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testTrailingCommaParsing-skip]
+x = 1
+x in 1,
+if x in 1, :
+    pass
+[out]

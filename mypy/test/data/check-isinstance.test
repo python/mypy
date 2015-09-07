@@ -683,3 +683,28 @@ while 1:
     x = 'a'           # Note: no error because unreachable code
 [builtins fixtures/isinstancelist.py]
 
+
+[case testIsinstanceAnd]
+class A:
+    pass
+
+class B(A):
+    flag = 1
+
+x = B() # type: A
+
+if isinstance(x, B) and 1:
+   x.flag
+[builtins fixtures/isinstancelist.py]
+[case testIsinstanceShortcircuit]
+class A:
+    pass
+
+class B(A):
+    flag = 1
+
+x = B() # type: A
+
+if isinstance(x, B) and x.flag:
+    pass
+[builtins fixtures/isinstancelist.py]

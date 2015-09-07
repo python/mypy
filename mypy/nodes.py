@@ -5,7 +5,7 @@ import re
 from abc import abstractmethod, ABCMeta
 
 from typing import (
-    Any, overload, TypeVar, List, Tuple, cast, Set, Dict, Union
+    Any, overload, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
 )
 
 from mypy.lex import Token
@@ -133,16 +133,20 @@ class MypyFile(SymbolNode):
     ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
+    # Do weak typing globally in the file?
+    weak_opts = None  # type: Set[str]
 
     def __init__(self,
                  defs: List[Node],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
-                 ignored_lines: Set[int] = None) -> None:
+                 ignored_lines: Set[int] = None,
+                 weak_opts: Set[str] = None) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
+        self.weak_opts = weak_opts
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -420,7 +424,7 @@ class Var(SymbolNode):
 class ClassDef(Node):
     """Class definition"""
 
-    name = None  # type: str          # Name of the class without module prefix
+    name = None  # type: str       # Name of the class without module prefix
     fullname = None  # type: str   # Fully qualified name of the class
     defs = None  # type: Block
     type_vars = None  # type: List[mypy.types.TypeVarDef]
@@ -715,13 +719,32 @@ class PrintStmt(Node):
 
     args = None  # type: List[Node]
     newline = False
+    # The file-like target object (given using >>).
+    target = None  # type: Optional[Node]
 
-    def __init__(self, args: List[Node], newline: bool) -> None:
+    def __init__(self, args: List[Node], newline: bool, target: Node = None) -> None:
         self.args = args
         self.newline = newline
+        self.target = target
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_print_stmt(self)
+
+
+class ExecStmt(Node):
+    """Python 2 exec statement"""
+
+    expr = None  # type: Node
+    variables1 = None  # type: Optional[Node]
+    variables2 = None  # type: Optional[Node]
+
+    def __init__(self, expr: Node, variables1: Optional[Node], variables2: Optional[Node]) -> None:
+        self.expr = expr
+        self.variables1 = variables1
+        self.variables2 = variables2
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_exec_stmt(self)
 
 
 # Expressions
@@ -942,6 +965,16 @@ class YieldFromExpr(Node):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_from_expr(self)
+
+
+class YieldExpr(Node):
+    expr = None  # type: Node
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_yield_expr(self)
 
 
 class IndexExpr(Node):
@@ -1409,7 +1442,7 @@ class TempNode(Node):
 class TypeInfo(SymbolNode):
     """Class representing the type structure of a single class.
 
-    The corresponding ClassDef instance represents the parse tree of
+    The corresponding ClassDef instance represents the AST of
     the class.
     """
 
