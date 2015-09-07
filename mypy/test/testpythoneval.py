@@ -25,7 +25,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 # Files which contain test case descriptions.
 python_eval_files = ['pythoneval.test',
-                    'python2eval.test']
+                     'python2eval.test']
 
 python_34_eval_files = ['pythoneval-asyncio.test',
                         'pythoneval-enum.test']

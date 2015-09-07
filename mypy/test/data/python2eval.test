@@ -6,7 +6,6 @@
 
 
 [case testAbs2_python2]
-
 n = None  # type: int
 f = None  # type: float
 n = abs(1)
@@ -14,11 +13,10 @@ abs(1) + 'x'  # Error
 f = abs(1.1)
 abs(1.1) + 'x'  # Error
 [out]
-_program.py:5: error: Unsupported operand types for + ("int" and "str")
-_program.py:7: error: Unsupported operand types for + ("float" and "str")
+_program.py:4: error: Unsupported operand types for + ("int" and "str")
+_program.py:6: error: Unsupported operand types for + ("float" and "str")
 
 [case testUnicode_python2]
-import typing
 x = unicode('xyz', 'latin1')
 print x
 x = u'foo'
@@ -28,7 +26,6 @@ xyz
 u'foo'
 
 [case testXrangeAndRange_python2]
-import typing
 for i in xrange(2):
     print i
 for i in range(3):
@@ -48,7 +45,6 @@ print x.next(), x.next()
 b a
 
 [case testEncodeAndDecode_python2]
-import typing
 print 'a'.encode('latin1')
 print 'b'.decode('latin1')
 print u'c'.encode('latin1')
@@ -60,7 +56,6 @@ c
 d
 
 [case testHasKey_python2]
-import typing
 d = {1: 'x'}
 print d.has_key(1)
 print d.has_key(2)
@@ -69,13 +64,12 @@ True
 False
 
 [case testIntegerDivision_python2]
-import typing
 x = 1 / 2
-x = 2
+x()
 [out]
+_program.py:2: error: "int" not callable
 
 [case testFloatDivision_python2]
-import typing
 x = 1.0 / 2.0
 x = 1.0 / 2
 x = 1 / 2.0
