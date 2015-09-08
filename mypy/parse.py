@@ -1518,7 +1518,7 @@ class Parser:
         name = self.expect_type(Name)
         node = None  # type: Node
         if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
-                and expr.callee.name == 'super'):
+                and cast(NameExpr, expr.callee).name == 'super'):
             # super() expression
             node = SuperExpr(name.string)
         else:
