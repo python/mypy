@@ -220,13 +220,6 @@ class BinaryIO(IO[str]):
     # TODO readinto
     # TODO read1?
     # TODO peek?
-    @overload
-    @abstractmethod
-    def write(self, s: str) -> None: ...
-    @overload
-    @abstractmethod
-    def write(self, s: bytearray) -> int: ...
-
     @abstractmethod
     def __enter__(self) -> BinaryIO: ...
 
