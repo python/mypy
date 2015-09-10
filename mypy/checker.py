@@ -1727,7 +1727,9 @@ class TypeChecker(NodeVisitor[Type]):
         # result = self.expr_checker.visit_yield_from_expr(e)
         result = self.accept(e.expr)
         result_instance = cast(Instance, result)
-        if result_instance.type.fullname() == "asyncio.futures.Future":
+        if isinstance(result_instance, AnyType):
+            result = AnyType()
+        elif result_instance.type.fullname() == "asyncio.futures.Future":
             self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
             result = result_instance.args[0]  # Set the return type as the type inside
         elif is_subtype(result, self.named_type('typing.Iterable')):
