@@ -38,12 +38,15 @@ done
 
 STUBTEST=_test_stubs.py
 echo "import typing" > $STUBTEST
-cd stubs/3.2
-ls *.pyi | sed s/\\.pyi//g | sed "s/^/import /g" >> ../../$STUBTEST
-for m in os os.path; do
-    echo "import $m" >> ../../$STUBTEST
+for subdir in typeshed/builtins/3* typeshed/stdlib/3*; do
+  pushd $subdir > /dev/null
+  import=$(ls *.pyi | sed s/\\.pyi//g | sed "s/^/import /g")
+  popd > /dev/null
+  echo "$import" >> $STUBTEST
 done
-cd ../..
+for m in os os.path; do
+    echo "import $m" >> $STUBTEST
+done
 
 NUMSTUBS=$(( `wc -l $STUBTEST | cut -d' ' -f1` - 1 ))
 

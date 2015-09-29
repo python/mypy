@@ -1,6 +1,0 @@
-class X509:
-    ...
-
-def sign(key: str, data: str, digest: str) -> str: ...
-def verify(certificate: X509, signature: str, data: str, digest: str) -> None:
-    raise Exception()

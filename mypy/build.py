@@ -199,33 +199,28 @@ def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
     if path_env is not None:
         path[:0] = path_env.split(os.pathsep)
 
-    # Add library stubs directory. By convention, they are stored in the
-    # stubs/x.y directory of the mypy installation.
-    version_dir = '3.2'
-    third_party_dir = 'third-party-3.2'
-    if pyversion[0] < 3:
-        version_dir = '2.7'
-        third_party_dir = 'third-party-2.7'
-    path.append(os.path.join(data_dir, 'stubs', version_dir))
-    path.append(os.path.join(data_dir, 'stubs', third_party_dir))
-    path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-    if sys.version_info.major == 3:
-        # Add additional stub directories.
-        versions = ['3.3', '3.4', '3.5', '3.6']
-        for v in versions:
-            stubdir = os.path.join(data_dir, 'stubs', v)
+    auto = os.path.join(data_dir, 'stubs-auto')
+    if os.path.isdir(auto):
+        data_dir = auto
+
+    # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
+    # is that a module added with 3.4 will still be present in Python 3.5.
+    versions = ["%d.%d" % (pyversion[0], minor)
+                for minor in reversed(range(pyversion[1] + 1))]
+    # E.g. for Python 3.5, try 2and3/, then 3/, then 3.5/, then 3.4/, 3.3/, ...
+    for v in ['2and3', str(pyversion[0])] + versions:
+        for lib_type in ['stdlib', 'builtins', 'third-party']:
+            stubdir = os.path.join(data_dir, 'typeshed', lib_type, v)
             if os.path.isdir(stubdir):
                 path.append(stubdir)
-
-            third_party_stubdir = os.path.join(data_dir, 'stubs', 'third-party-' + v)
-            if os.path.isdir(third_party_stubdir):
-                path.append(third_party_stubdir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
 
     # Contents of Python's sys.path go last, to prefer the stubs
+    # TODO: To more closely model what Python actually does, builtins should
+    #       go first, then sys.path, then anything in stdlib and third_party.
     if python_path:
         path.extend(sys.path)
 
