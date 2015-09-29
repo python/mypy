@@ -75,6 +75,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.lex import lex
 from mypy.parsetype import parse_type
 from mypy.sametypes import is_same_type
+from mypy import defaults
 
 
 T = TypeVar('T')
@@ -163,7 +164,8 @@ class SemanticAnalyzer(NodeVisitor):
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
-    def __init__(self, lib_path: List[str], errors: Errors, pyversion: int = 3) -> None:
+    def __init__(self, lib_path: List[str], errors: Errors,
+                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -534,7 +536,7 @@ class SemanticAnalyzer(NodeVisitor):
                     # _promote class decorator (undocumented faeture).
                     promote_target = analyzed.type
         if not promote_target:
-            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.pyversion >= 3
+            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.pyversion[0] >= 3
                           else TYPE_PROMOTIONS_PYTHON2)
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
@@ -2227,7 +2229,8 @@ def remove_imported_names_from_symtable(names: SymbolTable,
         del names[name]
 
 
-def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
+def infer_reachability_of_if_statement(s: IfStmt,
+                                       pyversion: Tuple[int, int]) -> None:
     for i in range(len(s.expr)):
         result = infer_if_condition_value(s.expr[i], pyversion)
         if result == ALWAYS_FALSE:
@@ -2243,7 +2246,7 @@ def infer_reachability_of_if_statement(s: IfStmt, pyversion: int) -> None:
             break
 
 
-def infer_if_condition_value(expr: Node, pyversion: int) -> int:
+def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
@@ -2262,9 +2265,9 @@ def infer_if_condition_value(expr: Node, pyversion: int) -> int:
         name = expr.name
     result = TRUTH_VALUE_UNKNOWN
     if name == 'PY2':
-        result = ALWAYS_TRUE if pyversion == 2 else ALWAYS_FALSE
+        result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
     elif name == 'PY3':
-        result = ALWAYS_TRUE if pyversion == 3 else ALWAYS_FALSE
+        result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
     elif name == 'MYPY':
         result = ALWAYS_TRUE
     if negated:

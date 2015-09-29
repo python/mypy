@@ -6,6 +6,7 @@ import os.path
 
 import typing
 
+from mypy import defaults
 from mypy.myunit import Suite, AssertionFailure, run_test
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases
@@ -33,9 +34,10 @@ def test_parser(testcase):
     The argument contains the description of the test case.
     """
 
-    pyversion = 3
     if testcase.file.endswith('python2.test'):
-        pyversion = 2
+        pyversion = defaults.PYTHON2_VERSION
+    else:
+        pyversion = defaults.PYTHON3_VERSION
 
     try:
         n = parse(bytes('\n'.join(testcase.input), 'ascii'), pyversion=pyversion, fnam='main')
