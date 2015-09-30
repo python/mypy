@@ -28,21 +28,22 @@ types.
 
 stubs = []
 
-for py_version in ['3.4', '3.3', '3.2', '2.7']:
-    base = os.path.join('stubs', py_version)
-    if not os.path.exists(base):
-        os.mkdir(base)
-
-    stub_dirs = ['']
-    for root, dirs, files in os.walk(base):
-        stub_dirs.extend(os.path.relpath(os.path.join(root, stub_dir), base)
-                         for stub_dir in dirs
-                         if stub_dir != '__pycache__')
-    for stub_dir in stub_dirs:
-        target = os.path.join('lib', 'mypy', 'stubs', py_version, stub_dir)
-        files = glob.glob(os.path.join(base, stub_dir, '*.py'))
-        files += glob.glob(os.path.join(base, stub_dir, '*.pyi'))
-        stubs.append((target, files))
+for stub_type in ["builtins", "stdlib", "third_party"]:
+    for py_version in ['2and3', '2.7', '3' '3.2', '3.3', '3.3', '3.4', '3.5']:
+        base = os.path.join('typeshed', stub_type, py_version)
+        if not os.path.exists(base):
+            os.mkdir(base)
+        stub_dirs = ['']
+        for root, dirs, files in os.walk(base):
+            stub_dirs.extend(os.path.relpath(os.path.join(root, stub_dir), base)
+                             for stub_dir in dirs
+                             if stub_dir != '__pycache__')
+        for stub_dir in stub_dirs:
+            target = os.path.join('lib', 'mypy', 'typeshed',
+                                  stub_type, py_version, stub_dir)
+            files = glob.glob(os.path.join(base, stub_dir, '*.py'))
+            files += glob.glob(os.path.join(base, stub_dir, '*.pyi'))
+            stubs.append((target, files))
 
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
