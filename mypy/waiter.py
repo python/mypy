@@ -5,6 +5,9 @@ from subprocess import Popen
 import sys
 
 
+VERBOSE = False
+
+
 class WaiterError(Exception):
     pass
 
@@ -48,7 +51,8 @@ class Waiter:
                 limit = len(sched_getaffinity(0))
         self.limit = limit
         assert limit > 0
-        print('%-8s %d' % ('PARALLEL', limit))
+        if VERBOSE:
+            print('%-8s %d' % ('PARALLEL', limit))
         sys.stdout.flush()
         self.xfail = set(xfail)
 
@@ -63,7 +67,8 @@ class Waiter:
         proc = cmd()
         num = self.next
         self.current[proc.pid] = (num, proc)
-        print('%-8s #%d %s' % ('START', num, name))
+        if VERBOSE:
+            print('%-8s #%d %s' % ('START', num, name))
         sys.stdout.flush()
         self.next += 1
 
@@ -88,7 +93,8 @@ class Waiter:
             msg = 'EXIT %d' % rc
         else:
             msg = 'SIG %d' % -rc
-        print('%-8s #%d %s' % (msg, num, name))
+        if VERBOSE:
+            print('%-8s #%d %s' % (msg, num, name))
         sys.stdout.flush()
 
         if rc != 0:
