@@ -15,7 +15,6 @@ install:
 
 script:
   - python travis.py
-  - ./lint.sh
 
 notifications:
   irc:
