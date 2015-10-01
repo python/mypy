@@ -224,9 +224,12 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
     path.append(os.path.join(data_dir, 'stubs', version_dir))
     path.append(os.path.join(data_dir, 'stubs', third_party_dir))
     path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-    if sys.version_info.major == 3:
+    if major == 3:
         # Add additional stub directories.
         versions = ['3.3', '3.4', '3.5', '3.6']
+        if False:
+            # Ick, we really should figure out how to use this again.
+            versions = ['3.%d' % i for i in range(minor, -1, -1)]
         for v in versions:
             stubdir = os.path.join(data_dir, 'stubs', v)
             if os.path.isdir(stubdir):

@@ -71,7 +71,7 @@ type_aliases = {
 }
 
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
-                            for alias, name in type_aliases.items()) # type: Dict[str, str]
+                            for alias, name in type_aliases.items())  # type: Dict[str, str]
 
 
 class Node(Context):
@@ -1045,7 +1045,7 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-} # type: Dict[str, str]
+}  # type: Dict[str, str]
 
 ops_with_inplace_method = {
     '+', '-', '*', '/', '%', '//', '**', '&', '|', '^', '<<', '>>'}

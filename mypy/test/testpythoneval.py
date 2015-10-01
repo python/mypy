@@ -72,7 +72,8 @@ def test_python_evaluation(testcase):
     # Type check the program.
     # This uses the same PYTHONPATH as the current process.
     process = subprocess.Popen([python3_path,
-                                os.path.join(testcase.old_cwd, 'scripts', 'mypy')] + args + [program],
+                                os.path.join(testcase.old_cwd, 'scripts', 'mypy')]
+                            + args + [program],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
                                cwd=test_temp_dir)

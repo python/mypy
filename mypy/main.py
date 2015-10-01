@@ -66,7 +66,8 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(path: str, module: str, program_text: str, bin_dir: str, options: Options) -> None:
+def type_check_only(path: str, module: str, program_text: str,
+        bin_dir: str, options: Options) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,

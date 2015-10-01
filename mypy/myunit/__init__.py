@@ -39,6 +39,7 @@ def assert_false(b: bool, msg: str = None) -> None:
     if b:
         raise AssertionFailure(msg)
 
+
 def good_repr(obj: object) -> str:
     if isinstance(obj, str):
         if obj.count('\n') > 1:
@@ -49,6 +50,7 @@ def good_repr(obj: object) -> str:
             bits[-1] += "'''"
             return '\n'.join(bits)
     return repr(obj)
+
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
@@ -106,8 +108,8 @@ class TestCase:
         self.func = func
         self.name = name
         self.suite = suite
-        self.old_cwd = None # type: str
-        self.tmpdir = None # type: tempfile.TemporaryDirectory
+        self.old_cwd = None  # type: str
+        self.tmpdir = None  # type: tempfile.TemporaryDirectory
 
     def run(self) -> None:
         if self.func:
@@ -115,7 +117,8 @@ class TestCase:
 
     def set_up(self) -> None:
         self.old_cwd = os.getcwd()
-        self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-', dir=os.path.abspath('tmp-test-dirs'))
+        self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
+                dir=os.path.abspath('tmp-test-dirs'))
         os.chdir(self.tmpdir.name)
         os.mkdir('tmp')
         if self.suite:
@@ -176,6 +179,7 @@ def add_suites_from_module(suites: List[Suite], mod_name: str) -> None:
         # The codecs tests do since they need to be python2-compatible.
         sys.exit('Test module %s had no test!' % mod_name)
 
+
 class ListSuite(Suite):
     def __init__(self, suites: List[Suite]) -> None:
         for suite in suites:
@@ -188,6 +192,7 @@ class ListSuite(Suite):
             setattr(self, name, suite)
         super().__init__()
 
+
 def main(args: List[str] = None) -> None:
     global patterns, is_verbose, is_quiet
     global APPEND_TESTCASES, UPDATE_TESTCASES
@@ -195,7 +200,7 @@ def main(args: List[str] = None) -> None:
         args = sys.argv[1:]
     is_verbose = False
     is_quiet = False
-    suites = [] # type: List[Suite]
+    suites = []  # type: List[Suite]
     patterns = []
     i = 0
     while i < len(args):
@@ -218,7 +223,8 @@ def main(args: List[str] = None) -> None:
         elif not a.startswith('-'):
             patterns.append(a)
         else:
-            sys.exit('Usage: python -m mypy.myunit [-v] [-q] [-u | -i] -m test.module [-m test.module ...] [filter ...]')
+            sys.exit('Usage: python -m mypy.myunit [-v] [-q] [-u | -i]'
+                    + ' -m test.module [-m test.module ...] [filter ...]')
         i += 1
     if len(patterns) == 0:
         patterns.append('*')
