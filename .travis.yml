@@ -13,3 +13,9 @@ install:
   - python setup.py install
 
 script: bash travis.sh
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net##mypy"
+    use_notice: true
