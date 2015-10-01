@@ -24,10 +24,10 @@ TYPE_IMPRECISE = 2
 TYPE_ANY = 3
 
 precision_names = [
-        'empty',
-        'precise',
-        'imprecise',
-        'any',
+    'empty',
+    'precise',
+    'imprecise',
+    'any',
 ]
 
 

@@ -12,15 +12,15 @@ from mypy.nodes import MypyFile, Node
 from mypy import stats
 
 
-reporter_classes = {} # type: Dict[str, Callable[[Reports, str], AbstractReporter]]
+reporter_classes = {}  # type: Dict[str, Callable[[Reports, str], AbstractReporter]]
 
 
 class Reports:
     def __init__(self, main_file: str, data_dir: str, report_dirs: Dict[str, str]) -> None:
         self.main_file = main_file
         self.data_dir = data_dir
-        self.reporters = [] # type: List[AbstractReporter]
-        self.named_reporters = {} # type: Dict[str, AbstractReporter]
+        self.reporters = []  # type: List[AbstractReporter]
+        self.named_reporters = {}  # type: Dict[str, AbstractReporter]
 
         for report_type, report_dir in sorted(report_dirs.items()):
             self.add_report(report_type, report_dir)
@@ -57,6 +57,7 @@ class AbstractReporter(metaclass=ABCMeta):
     def on_finish(self) -> None:
         pass
 
+
 class OldHtmlReporter(AbstractReporter):
     """Old HTML reporter.
 
@@ -71,6 +72,7 @@ class OldHtmlReporter(AbstractReporter):
         stats.generate_html_index(self.output_dir)
 reporter_classes['old-html'] = OldHtmlReporter
 
+
 class FileInfo:
     def __init__(self, name: str, module: str) -> None:
         self.name = name
@@ -82,6 +84,7 @@ class FileInfo:
 
     def attrib(self) -> Dict[str, str]:
         return {name: str(val) for name, val in zip(stats.precision_names, self.counts)}
+
 
 class MemoryXmlReporter(AbstractReporter):
     """Internal reporter that generates XML in memory.
@@ -100,8 +103,8 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None # type: etree._ElementTree
-        self.files = [] # type: List[FileInfo]
+        self.last_xml = None  # type: etree._ElementTree
+        self.files = []  # type: List[FileInfo]
 
     def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
         import lxml.etree as etree
@@ -133,7 +136,8 @@ class MemoryXmlReporter(AbstractReporter):
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         xml_pi = etree.ProcessingInstruction('xml', 'version="1.0" encoding="utf-8"')
-        transform_pi = etree.ProcessingInstruction('xml-stylesheet', 'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
+        transform_pi = etree.ProcessingInstruction('xml-stylesheet',
+                'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
         root.addprevious(xml_pi)
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
@@ -145,7 +149,7 @@ class MemoryXmlReporter(AbstractReporter):
         import lxml.etree as etree
 
         self.last_xml = None
-        index_path = os.path.join(self.output_dir, 'index.xml')
+        # index_path = os.path.join(self.output_dir, 'index.xml')
         output_files = sorted(self.files, key=lambda x: x.module)
 
         root = etree.Element('mypy-report-index', name=self.main_file)
@@ -159,7 +163,8 @@ class MemoryXmlReporter(AbstractReporter):
                              module=file_info.module)
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         xml_pi = etree.ProcessingInstruction('xml', 'version="1.0" encoding="utf-8"')
-        transform_pi = etree.ProcessingInstruction('xml-stylesheet', 'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
+        transform_pi = etree.ProcessingInstruction('xml-stylesheet',
+                'type="text/xsl" href="%s"' % cgi.escape(xslt_path, True))
         root.addprevious(xml_pi)
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
@@ -167,6 +172,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = doc
 
 reporter_classes['memory-xml'] = MemoryXmlReporter
+
 
 class AbstractXmlReporter(AbstractReporter):
     """Internal abstract class for reporters that work via XML."""
@@ -177,6 +183,7 @@ class AbstractXmlReporter(AbstractReporter):
         memory_reporter = reports.add_report('memory-xml', '<memory>')
         # The dependency will be called first.
         self.memory_xml = cast(MemoryXmlReporter, memory_reporter)
+
 
 class XmlReporter(AbstractXmlReporter):
     """Public reporter that exports XML.
@@ -210,6 +217,7 @@ class XmlReporter(AbstractXmlReporter):
         print('Generated XML report:', os.path.abspath(out_path))
 
 reporter_classes['xml'] = XmlReporter
+
 
 class XsltHtmlReporter(AbstractXmlReporter):
     """Public reporter that exports HTML via XSLT.
@@ -250,6 +258,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
         print('Generated HTML report (via XSLT):', os.path.abspath(out_path))
 
 reporter_classes['xslt-html'] = XsltHtmlReporter
+
 
 class XsltTxtReporter(AbstractXmlReporter):
     """Public reporter that exports TXT via XSLT.

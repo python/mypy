@@ -23,7 +23,7 @@ class Options:
         self.build_flags = []  # type: List[str]
         self.pyversion = 3
         self.custom_typing_module = None  # type: str
-        self.report_dirs = {} # type: Dict[str, str]
+        self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
 
 
@@ -152,19 +152,21 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
 
 # Don't generate this from mypy.reports, not all are meant to be public.
 REPORTS = [
-        'html',
-        'old-html',
-        'xslt-html',
-        'xml',
-        'txt',
-        'xslt-txt',
+    'html',
+    'old-html',
+    'xslt-html',
+    'xml',
+    'txt',
+    'xslt-txt',
 ]
+
 
 def is_report(arg: str) -> bool:
     if arg.startswith('--') and arg.endswith('-report'):
         report_type = arg[2:-7]
         return report_type in REPORTS
     return False
+
 
 def usage(msg: str = None) -> None:
     if msg:
