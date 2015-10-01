@@ -31,6 +31,9 @@ import itertools
 import os
 
 
+VERBOSE = False
+
+
 # Ideally, all tests would be `discover`able so that they can be driven
 # (and parallelized) by an external test driver.
 
@@ -58,7 +61,8 @@ class Driver:
     def allow(self, name: str) -> bool:
         for f in self.filters:
             if f in name:
-                print('SELECT   #%d %s' % (len(self.waiter.queue), name))
+                if VERBOSE:
+                    print('SELECT   #%d %s' % (len(self.waiter.queue), name))
                 return True
         if False:
             print('OMIT     %s' % name)
