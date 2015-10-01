@@ -26,6 +26,7 @@ features such as type inference, gradual typing, generics and union
 types.
 '''.lstrip()
 
+
 def find_data_files(base, globs):
     """Find all interesting data files, for setup(data_files=)
 

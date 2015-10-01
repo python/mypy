@@ -8,7 +8,7 @@ from mypy.types import (
 import mypy.applytype
 import mypy.constraints
 # Circular import; done in the function instead.
-#import mypy.solve
+# import mypy.solve
 from mypy import messages, sametypes
 from mypy.nodes import CONTRAVARIANT, COVARIANT
 from mypy.maptype import map_instance_to_supertype

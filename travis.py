@@ -8,7 +8,7 @@ if True:
     import sys
     from os.path import join, isdir
 
-    def get_versions(): # type: () -> typing.List[str]
+    def get_versions():  # type: () -> typing.List[str]
         major = sys.version_info[0]
         minor = sys.version_info[1]
         if major == 2:
@@ -17,7 +17,7 @@ if True:
             # generates list of python versions to use.
             # For Python2, this is only [2.7].
             # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
-            return ['%d.%d' % (major, minor) for minor in range(minor, -1, -1)]
+            return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
 
     sys.path[0:0] = [v for v in [join('lib-typing', v) for v in get_versions()] if isdir(v)]
     # Now `typing` is available.
@@ -60,7 +60,8 @@ class Driver:
             if f in name:
                 print('SELECT   #%d %s' % (len(self.waiter.queue), name))
                 return True
-        #print('OMIT     %s' % name)
+        if False:
+            print('OMIT     %s' % name)
         return False
 
     def add_mypy(self, name, *args: str, cwd: Optional[str] = None) -> None:
@@ -138,6 +139,7 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
+
 def add_basic(driver: Driver) -> None:
     driver.add_mypy('file travis.py', 'travis.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
@@ -145,17 +147,20 @@ def add_basic(driver: Driver) -> None:
     driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
     driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
 
+
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
     return [join(root, f)
             for root, dirs, files in os.walk(base)
             for f in files
             if f.startswith(prefix) and f.endswith(suffix)]
 
+
 def file_to_module(file: str) -> str:
     rv = os.path.splitext(file)[0].replace(os.sep, '.')
     if rv.endswith('.__init__'):
         rv = rv[:-len('.__init__')]
     return rv
+
 
 def add_imports(driver: Driver) -> None:
     # Make sure each module can be imported originally.
@@ -169,6 +174,7 @@ def add_imports(driver: Driver) -> None:
         if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
 
+
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
         mod = file_to_module(f)
@@ -178,6 +184,7 @@ def add_myunit(driver: Driver) -> None:
             driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
             continue
         driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod)
+
 
 def add_stubs(driver: Driver) -> None:
     # Only test each module once, for the latest Python version supported.
@@ -190,27 +197,36 @@ def add_stubs(driver: Driver) -> None:
                 module = file_to_module(f[len(stubdir) + 1:])
                 if module not in seen:
                     seen.add(module)
-                    driver.add_mypy_string('stub (%s) module %s' % (pfx + version, module), 'import typing, %s' % module)
+                    driver.add_mypy_string(
+                        'stub (%s) module %s' % (pfx + version, module),
+                        'import typing, %s' % module)
 
 
 def add_libpython(driver: Driver) -> None:
-    seen = set() # type: Set[str]
+    seen = set()  # type: Set[str]
     for version in driver.versions:
         libpython_dir = join(driver.cwd, 'lib-python', version)
         for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
-            module = file_to_module(f[len(libpython_dir)+1:])
+            module = file_to_module(f[len(libpython_dir) + 1:])
             if module not in seen:
                 seen.add(module)
-                driver.add_mypy_mod('libpython (%s) module %s' % (version, module), module, cwd=libpython_dir)
+                driver.add_mypy_mod(
+                    'libpython (%s) module %s' % (version, module),
+                    module,
+                    cwd=libpython_dir)
+
 
 def add_samples(driver: Driver) -> None:
     for f in find_files('samples', suffix='.py'):
         if 'codec' in f:
             cwd, bf = os.path.dirname(f), os.path.basename(f)
             bf = bf[:-len('.py')]
-            driver.add_mypy_string('codec file %s' % f, 'import mypy.codec.register, %s' % bf, cwd=cwd)
+            driver.add_mypy_string('codec file %s' % f,
+                    'import mypy.codec.register, %s' % bf,
+                    cwd=cwd)
         else:
             driver.add_mypy('file %s' % f, f)
+
 
 def main() -> None:
     # empty string is a substring of all names
@@ -222,8 +238,10 @@ def main() -> None:
     driver = Driver(filters, xfail=[
         'check stub (third-party-3.2) module requests.packages.urllib3.connection',
         'check stub (third-party-3.2) module requests.packages.urllib3.packages',
-        'check stub (third-party-3.2) module requests.packages.urllib3.packages.ssl_match_hostname',
-        'check stub (third-party-3.2) module requests.packages.urllib3.packages.ssl_match_hostname._implementation',
+        'check stub (third-party-3.2) module '
+        + 'requests.packages.urllib3.packages.ssl_match_hostname',
+        'check stub (third-party-3.2) module '
+        + 'requests.packages.urllib3.packages.ssl_match_hostname._implementation',
     ])
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])

@@ -7,7 +7,7 @@ import sys
 from typing import Tuple
 
 from mypy import build
-import mypy.myunit # for mutable globals (ick!)
+import mypy.myunit  # for mutable globals (ick!)
 from mypy.myunit import Suite
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases

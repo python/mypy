@@ -8,9 +8,11 @@ import sys
 class WaiterError(Exception):
     pass
 
+
 class LazySubprocess:
 
-    def __init__(self, name: str, args: List[str], *, cwd: Optional[str] = None, env: Optional[Dict[str, str]] = None) -> None:
+    def __init__(self, name: str, args: List[str], *, cwd: Optional[str] = None,
+            env: Optional[Dict[str, str]] = None) -> None:
         self.name = name
         self.args = args
         self.cwd = cwd
@@ -32,9 +34,9 @@ class Waiter:
         print('error')
     """
     def __init__(self, limit: int = 0, xfail: List[str] = []) -> None:
-        self.queue = [] # type: List[LazySubprocess]
+        self.queue = []  # type: List[LazySubprocess]
         self.next = 0
-        self.current = {} # type: Dict[int, Tuple[int, Popen]]
+        self.current = {}  # type: Dict[int, Tuple[int, Popen]]
         if limit == 0:
             try:
                 sched_getaffinity = os.sched_getaffinity
@@ -110,7 +112,7 @@ class Waiter:
     def run(self) -> None:
         print('SUMMARY  %d tasks selected' % len(self.queue))
         sys.stdout.flush()
-        failures = [] # type: List[str]
+        failures = []  # type: List[str]
         while self.current or self.next < len(self.queue):
             while len(self.current) < self.limit and self.next < len(self.queue):
                 self._start1()
