@@ -214,7 +214,8 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
     if pyversion == 2:
         major, minor = 2, 7
     else:
-        major, minor = sys.version_info[:2]
+        # See bug #886
+        major, minor = sys.version_info[0], sys.version_info[1]
     version_dir = '3.2'
     third_party_dir = 'third-party-3.2'
     if pyversion < 3:

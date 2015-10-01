@@ -6,7 +6,7 @@ import tempfile
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, Union
+from typing import List, Tuple, Any, Callable, Union, cast
 
 
 # TODO remove global state
@@ -170,7 +170,7 @@ def add_suites_from_module(suites: List[Suite], mod_name: str) -> None:
     for suite in mod.__dict__.values():
         if isinstance(suite, type) and issubclass(suite, Suite) and suite is not Suite:
             got_suite = True
-            suites.append(suite())
+            suites.append(cast(Callable[[], Suite], suite)())
     if not got_suite:
         # Sanity check in case e.g. it uses unittest instead of a myunit.
         # The codecs tests do since they need to be python2-compatible.
