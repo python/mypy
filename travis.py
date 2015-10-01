@@ -143,10 +143,23 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
+    def add_flake8(self, name: str, file: str, cwd: Optional[str] = None) -> None:
+        name = 'lint %s' % name
+        if not self.allow(name):
+            return
+        largs = ['flake8', file]
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
 
 def add_basic(driver: Driver) -> None:
+    if False:
+        driver.add_mypy('file setup.py', 'setup.py')
+    driver.add_flake8('file setup.py', 'setup.py')
     driver.add_mypy('file travis.py', 'travis.py')
+    driver.add_flake8('file travis.py', 'travis.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
+    driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy_mod('entry mod mypy', 'mypy')
     driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
     driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
@@ -177,6 +190,7 @@ def add_imports(driver: Driver) -> None:
         driver.add_mypy_string('import %s' % mod, 'import %s' % mod)
         if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
+        driver.add_flake8('module %s' % mod, f)
 
 
 def add_myunit(driver: Driver) -> None:
