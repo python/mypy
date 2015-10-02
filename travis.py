@@ -31,17 +31,17 @@ import itertools
 import os
 
 
-VERBOSE = False
-
-
 # Ideally, all tests would be `discover`able so that they can be driven
 # (and parallelized) by an external test driver.
 
 class Driver:
 
-    def __init__(self, filters: List[str], xfail: List[str]) -> None:
-        self.filters = filters
-        self.waiter = Waiter(xfail=xfail)
+    def __init__(self, whitelist: List[str], blacklist: List[str],
+            verbosity: int, xfail: List[str]) -> None:
+        self.whitelist = whitelist
+        self.blacklist = blacklist
+        self.verbosity = verbosity
+        self.waiter = Waiter(verbosity=verbosity, xfail=xfail)
         self.versions = get_versions()
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
@@ -59,12 +59,12 @@ class Driver:
         self.env[name] = new_val
 
     def allow(self, name: str) -> bool:
-        for f in self.filters:
-            if f in name:
-                if VERBOSE:
+        if any(f in name for f in self.whitelist):
+            if not any(f in name for f in self.blacklist):
+                if self.verbosity >= 2:
                     print('SELECT   #%d %s' % (len(self.waiter.queue), name))
                 return True
-        if False:
+        if self.verbosity >= 3:
             print('OMIT     %s' % name)
         return False
 
@@ -247,13 +247,36 @@ def add_samples(driver: Driver) -> None:
 
 
 def main() -> None:
-    # empty string is a substring of all names
-    filters = sys.argv[1:] or ['']
-    for a in filters:
-        if a.startswith('-'):
-            sys.exit('Usage: %s [filters ...]' % sys.argv[0])
+    verbosity = 0
+    whitelist = []  # type: List[str]
+    blacklist = []  # type: List[str]
 
-    driver = Driver(filters, xfail=[
+    allow_opts = True
+    curlist = whitelist
+    for a in sys.argv[1:]:
+        if allow_opts and a.startswith('-'):
+            if curlist is blacklist:
+                break
+            if a == '--':
+                allow_opts = False
+            elif a == '-v':
+                verbosity += 1
+            elif a == '-q':
+                verbosity -= 1
+            elif a == '-x':
+                curlist = blacklist
+            else:
+                sys.exit('Usage: %s [-v | -q | [-x] filter] ... [-- filters ...]' % sys.argv[0])
+        else:
+            curlist.append(a)
+            curlist = whitelist
+    if curlist is blacklist:
+        sys.exit('-x must be followed by a filter')
+    # empty string is a substring of all names
+    if not whitelist:
+        whitelist.append('')
+
+    driver = Driver(whitelist=whitelist, blacklist=blacklist, verbosity=verbosity, xfail=[
         'check stub (third-party-3.2) module requests.packages.urllib3.connection',
         'check stub (third-party-3.2) module requests.packages.urllib3.packages',
         'check stub (third-party-3.2) module '

@@ -14,7 +14,7 @@ install:
   - python setup.py install
 
 script:
-  - python travis.py
+  - python travis.py -v
 
 notifications:
   irc:
