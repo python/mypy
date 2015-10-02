@@ -511,8 +511,8 @@ class TypeChecker(NodeVisitor[Type]):
             for i in range(len(typ.arg_types)):
                 arg_type = typ.arg_types[i]
                 if typ.arg_kinds[i] == nodes.ARG_STAR:
-                    # TODO: This should actually be Tuple[t, ...] once it's supported.
-                    arg_type = self.named_generic_type('typing.Sequence',
+                    # builtins.tuple[T] is typing.Tuple[T, ...]
+                    arg_type = self.named_generic_type('builtins.tuple',
                                                        [arg_type])
                 elif typ.arg_kinds[i] == nodes.ARG_STAR2:
                     arg_type = self.named_generic_type('builtins.dict',

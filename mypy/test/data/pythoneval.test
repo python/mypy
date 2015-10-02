@@ -972,7 +972,7 @@ def f(*x: int) -> None:
 f(1)
 [out]
 _program.py: note: In function "f":
-_program.py:3: error: Sequence[int] has no attribute "append"
+_program.py:3: error: Tuple[int, ...] has no attribute "append"
 
 [case testExit]
 print('a')
