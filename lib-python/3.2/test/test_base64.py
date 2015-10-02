@@ -229,8 +229,8 @@ class BaseXYTestCase(unittest.TestCase):
 
 
 class TestMain(unittest.TestCase):
-    def get_output(self, *args: str, **options: Any) -> Any:
-        args = [sys.executable, '-m', 'base64'] + list(args)
+    def get_output(self, *args_tuple: str, **options: Any) -> Any:
+        args = [sys.executable, '-m', 'base64'] + list(args_tuple)
         return subprocess.check_output(args, **options)
 
     def test_encode_decode(self) -> None:
