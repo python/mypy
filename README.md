@@ -117,28 +117,44 @@ Running tests and linting
 
 First install any additional dependencies needed for testing:
 
-    $ pip install -r test-requirements.txt
+    $ pip3 install -r test-requirements.txt
 
-To run tests, run the script `tests.py` in the mypy repository:
+To run all tests, run the script `runtests.py` in the mypy repository:
 
-    $ python3 tests.py
+    $ ./runtests.py
 
-You can also run tests without having to run `setup.py` first by
-setting up the Python module search path suitably:
+Note that some tests will be disabled for older python versions.
 
-    $ export PYTHONPATH=PREFIX/mypy:PREFIX/mypy/lib-typing/3.2
-    $ python3 tests.py
+You can run a subset of test suites by passing postive or negative filters:
 
-Replace `PREFIX` with the path where you have the repository cloned.
+    $ ./runtests.py lex parse -x lint -x stub
 
-You can also run the type checker for manual testing now without
-installing anything by running `scripts/mypy`:
+If you want to run individual unit tests, you can run myunit directly, or
+pass inferior arguments via -a:
 
-    $ python3 PREFIX/mypy/scripts/mypy PROGRAM
+    $ scripts/myunit -m mypy.test.testlex -v '*backslash*'
+    $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
+
+You can also run the type checker for manual testing without
+installing anything by setting up the Python module search path suitably:
+
+    $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
+    $ python<version> -m mypy PROGRAM.py
+
+You can add the entry scripts to PATH for a single python3 version:
+
+    $ export PATH=$PWD/scripts
+    $ mypy PROGRAM.py
+
+You can check a module or string instead of a file:
+
+    $ mypy PROGRAM.py
+    $ mypy -m MODULE
+    $ mypy -c 'import MODULE'
 
 To run the linter:
 
-    $ ./lint.sh
+    $ ./runtests.py lint
 
 
 Development status

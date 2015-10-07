@@ -1,4 +1,4 @@
-# This is a separate module from mypy.myunit so it doesn't exist twice.
+#!/usr/bin/env python3
 """Myunit test runner command line tool.
 
 Usually used as a slave by runtests.py, but can be used directly.

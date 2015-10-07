@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import os
+import pipes
 from subprocess import Popen
 import sys
 
@@ -107,6 +108,10 @@ class Waiter:
         self.current[proc.pid] = (num, proc)
         if self.verbosity >= 1:
             print('%-8s #%d %s' % ('START', num, name))
+            if self.verbosity >= 2:
+                print('%-8s #%d %s' % ('CWD', num, cmd.cwd or '.'))
+                cmd_str = ' '.join(pipes.quote(a) for a in cmd.args)
+                print('%-8s #%d %s' % ('COMMAND', num, cmd_str))
             sys.stdout.flush()
         elif self.verbosity >= 0:
             self._note.start(num)

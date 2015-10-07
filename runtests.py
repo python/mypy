@@ -37,9 +37,10 @@ import os
 class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
-            verbosity: int, xfail: List[str]) -> None:
+            arglist: List[str], verbosity: int, xfail: List[str]) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
+        self.arglist = arglist
         self.verbosity = verbosity
         self.waiter = Waiter(verbosity=verbosity, xfail=xfail)
         self.versions = get_versions()
@@ -160,6 +161,8 @@ def add_basic(driver: Driver) -> None:
     driver.add_flake8('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
     driver.add_flake8('legacy entry script', 'scripts/mypy')
+    driver.add_mypy('legacy myunit script', 'scripts/myunit')
+    driver.add_flake8('legacy myunit script', 'scripts/myunit')
     driver.add_mypy_mod('entry mod mypy', 'mypy')
     driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
     driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
@@ -201,7 +204,7 @@ def add_myunit(driver: Driver) -> None:
             driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
             driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
             continue
-        driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod)
+        driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -246,52 +249,89 @@ def add_samples(driver: Driver) -> None:
             driver.add_mypy('file %s' % f, f)
 
 
+def usage(status: int) -> None:
+    print('Usage: %s [-h | -v | -q | [-x] filter | -a argument] ... [-- filter ...]' % sys.argv[0])
+    print('  -h, --help             show this help')
+    print('  -v, --verbose          increase driver verbosity')
+    print('  -q, --quiet            decrease driver verbosity')
+    print('  -a, --argument         pass an argument to myunit tasks')
+    print('  --                     treat all remaning arguments as positional')
+    print('  filter                 only include tasks matching filter')
+    print('  -x, --exclude filter   exclude tasks matching filter')
+    sys.exit(status)
+
+
+def sanity() -> None:
+    paths = os.getenv('PYTHONPATH')
+    if paths is None:
+        return
+    failed = False
+    for p in paths.split(os.pathsep):
+        if not os.path.isabs(p):
+            print('Relative PYTHONPATH entry %r' % p)
+            failed = True
+    if failed:
+        print('Please use absolute so that chdir() tests can work.')
+        print('Cowardly refusing to continue.')
+        sys.exit(1)
+
+
 def main() -> None:
+    sanity()
+
     verbosity = 0
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
+    arglist = []  # type: List[str]
 
     allow_opts = True
     curlist = whitelist
     for a in sys.argv[1:]:
-        if allow_opts and a.startswith('-'):
-            if curlist is blacklist:
+        if curlist is not arglist and allow_opts and a.startswith('-'):
+            if curlist is not whitelist:
                 break
             if a == '--':
                 allow_opts = False
-            elif a == '-v':
+            elif a == '-v' or a == '--verbose':
                 verbosity += 1
-            elif a == '-q':
+            elif a == '-q' or a == '--quiet':
                 verbosity -= 1
-            elif a == '-x':
+            elif a == '-x' or a == '--exclude':
                 curlist = blacklist
+            elif a == '-a' or a == '--argument':
+                curlist = arglist
+            elif a == '-h' or a == '--help':
+                usage(0)
             else:
-                sys.exit('Usage: %s [-v | -q | [-x] filter] ... [-- filters ...]' % sys.argv[0])
+                usage(1)
         else:
             curlist.append(a)
             curlist = whitelist
     if curlist is blacklist:
         sys.exit('-x must be followed by a filter')
+    if curlist is arglist:
+        sys.exit('-a must be followed by an argument')
     # empty string is a substring of all names
     if not whitelist:
         whitelist.append('')
 
-    driver = Driver(whitelist=whitelist, blacklist=blacklist, verbosity=verbosity, xfail=[
-        'check stub (third-party-3.2) module requests.packages.urllib3.connection',
-        'check stub (third-party-3.2) module requests.packages.urllib3.packages',
-        'check stub (third-party-3.2) module '
-        + 'requests.packages.urllib3.packages.ssl_match_hostname',
-        'check stub (third-party-3.2) module '
-        + 'requests.packages.urllib3.packages.ssl_match_hostname._implementation',
-    ])
+    driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
+            verbosity=verbosity, xfail=[
+                'check stub (third-party-3.2) module requests.packages.urllib3.connection',
+                'check stub (third-party-3.2) module requests.packages.urllib3.packages',
+                'check stub (third-party-3.2) module '
+                + 'requests.packages.urllib3.packages.ssl_match_hostname',
+                'check stub (third-party-3.2) module '
+                + 'requests.packages.urllib3.packages.ssl_match_hostname._implementation',
+            ])
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
     add_basic(driver)
-    add_imports(driver)
     add_myunit(driver)
+    add_imports(driver)
     add_stubs(driver)
     add_libpython(driver)
     add_samples(driver)
