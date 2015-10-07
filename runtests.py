@@ -156,8 +156,8 @@ def add_basic(driver: Driver) -> None:
     if False:
         driver.add_mypy('file setup.py', 'setup.py')
     driver.add_flake8('file setup.py', 'setup.py')
-    driver.add_mypy('file travis.py', 'travis.py')
-    driver.add_flake8('file travis.py', 'travis.py')
+    driver.add_mypy('file runtests.py', 'runtests.py')
+    driver.add_flake8('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
     driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy_mod('entry mod mypy', 'mypy')

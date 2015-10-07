@@ -14,7 +14,7 @@ install:
   - python setup.py install
 
 script:
-  - python travis.py -v
+  - python runtests.py -v
 
 notifications:
   irc:
