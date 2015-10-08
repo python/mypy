@@ -224,6 +224,9 @@ class FunctionLike(Type):
     fallback = None  # type: Instance
 
 
+_dummy = object()  # type: Any
+
+
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
@@ -283,6 +286,31 @@ class CallableType(FunctionLike):
         self.is_ellipsis_args = is_ellipsis_args
         super().__init__(line)
 
+    def copy_modified(self,
+                      arg_types: List[Type] = _dummy,
+                      arg_kinds: List[int] = _dummy,
+                      arg_names: List[str] = _dummy,
+                      ret_type: Type = _dummy,
+                      fallback: Instance = _dummy,
+                      name: str = _dummy,
+                      variables: List[TypeVarDef] = _dummy,
+                      bound_vars: List[Tuple[int, Type]] = _dummy,
+                      line: int = _dummy,
+                      is_ellipsis_args: bool = _dummy) -> 'CallableType':
+        return CallableType(
+            arg_types=arg_types if arg_types is not _dummy else self.arg_types,
+            arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
+            arg_names=arg_names if arg_names is not _dummy else self.arg_names,
+            ret_type=ret_type if ret_type is not _dummy else self.ret_type,
+            fallback=fallback if fallback is not _dummy else self.fallback,
+            name=name if name is not _dummy else self.name,
+            variables=variables if variables is not _dummy else self.variables,
+            bound_vars=bound_vars if bound_vars is not _dummy else self.bound_vars,
+            line=line if line is not _dummy else self.line,
+            is_ellipsis_args=(
+                is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
+        )
+
     def is_type_obj(self) -> bool:
         return self.fallback.type.fullname() == 'builtins.type'
 
@@ -301,15 +329,7 @@ class CallableType(FunctionLike):
         ret = self.ret_type
         if isinstance(ret, Void):
             ret = ret.with_source(name)
-        return CallableType(self.arg_types,
-                        self.arg_kinds,
-                        self.arg_names,
-                        ret,
-                        self.fallback,
-                        name,
-                        self.variables,
-                        self.bound_vars,
-                        self.line)
+        return self.copy_modified(ret_type=ret, name=name)
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -595,16 +615,10 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        return CallableType(self.translate_types(t.arg_types),
-                        t.arg_kinds,
-                        t.arg_names,
-                        t.ret_type.accept(self),
-                        t.fallback,
-                        t.name,
-                        self.translate_variables(t.variables),
-                        self.translate_bound_vars(t.bound_vars),
-                        t.line,
-                        t.is_ellipsis_args)
+        return t.copy_modified(arg_types=self.translate_types(t.arg_types),
+                               ret_type=t.ret_type.accept(self),
+                               variables=self.translate_variables(t.variables),
+                               bound_vars=self.translate_bound_vars(t.bound_vars))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
@@ -870,13 +884,7 @@ def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
 
     if isinstance(typ, CallableType):
-        return CallableType(typ.arg_types,
-                        typ.arg_kinds,
-                        typ.arg_names,
-                        typ.ret_type,
-                        typ.fallback,
-                        None,
-                        typ.variables)
+        return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
         return Overloaded([cast(CallableType, strip_type(item))
                            for item in typ.items()])
@@ -889,15 +897,7 @@ def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
 
     Assume that the callable is the signature of a method.
     """
-    return CallableType([self_type] + t.arg_types[1:],
-                    t.arg_kinds,
-                    t.arg_names,
-                    t.ret_type,
-                    t.fallback,
-                    t.name,
-                    t.variables,
-                    t.bound_vars,
-                    t.line)
+    return t.copy_modified(arg_types=[self_type] + t.arg_types[1:])
 
 
 def is_named_instance(t: Type, fullname: str) -> bool:

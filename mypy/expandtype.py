@@ -76,16 +76,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return repl
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        return CallableType(self.expand_types(t.arg_types),
-                            t.arg_kinds,
-                            t.arg_names,
-                            t.ret_type.accept(self),
-                            t.fallback,
-                            t.name,
-                            t.variables,
-                            self.expand_bound_vars(t.bound_vars),
-                            t.line,
-                            t.is_ellipsis_args)
+        return t.copy_modified(arg_types=self.expand_types(t.arg_types),
+                               ret_type=t.ret_type.accept(self),
+                               bound_vars=self.expand_bound_vars(t.bound_vars))
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]
@@ -116,14 +109,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 def update_callable_implicit_bounds(
         t: CallableType, arg_types: List[Tuple[int, Type]]) -> CallableType:
     # FIX what if there are existing bounds?
-    return CallableType(t.arg_types,
-                    t.arg_kinds,
-                    t.arg_names,
-                    t.ret_type,
-                    t.fallback,
-                    t.name,
-                    t.variables,
-                    arg_types, t.line)
+    return t.copy_modified(bound_vars=arg_types)
 
 
 def expand_caller_var_args(arg_types: List[Type],
