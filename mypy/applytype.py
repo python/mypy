@@ -53,12 +53,9 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     # The callable may retain some type vars if only some were applied.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
-    return CallableType(arg_types,
-                    callable.arg_kinds,
-                    callable.arg_names,
-                    expand_type(callable.ret_type, id_to_type),
-                    callable.fallback,
-                    callable.name,
-                    remaining_tvars,
-                    callable.bound_vars + bound_vars,
-                    callable.line)
+    return callable.copy_modified(
+        arg_types=arg_types,
+        ret_type=expand_type(callable.ret_type, id_to_type),
+        variables=remaining_tvars,
+        bound_vars=callable.bound_vars + bound_vars,
+    )

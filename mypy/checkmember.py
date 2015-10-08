@@ -250,15 +250,8 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
             arg_types = arg_types[1:]
             arg_kinds = arg_kinds[1:]
             arg_names = arg_names[1:]
-        return CallableType(arg_types,
-                        arg_kinds,
-                        arg_names,
-                        t.ret_type,
-                        t.fallback,
-                        t.name,
-                        vars + t.variables,
-                        t.bound_vars,
-                        t.line)
+        return t.copy_modified(arg_types=arg_types, arg_kinds=arg_kinds, arg_names=arg_names,
+                               variables=vars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod,
                                                               builtin_type))
@@ -303,13 +296,9 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance)
     initvars = init_type.variables
     variables.extend(initvars)
 
-    c = CallableType(init_type.arg_types,
-                 init_type.arg_kinds,
-                 init_type.arg_names,
-                 self_type(info),
-                 type_type,
-                 None,
-                 variables).with_name('"{}"'.format(info.name()))
+    callable_type = init_type.copy_modified(
+        ret_type=self_type(info), fallback=type_type, name=None, variables=variables)
+    c = callable_type.with_name('"{}"'.format(info.name()))
     return convert_class_tvars_to_func_tvars(c, len(initvars))
 
 

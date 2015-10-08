@@ -160,16 +160,11 @@ class TypeAnalyser(TypeVisitor[Type]):
         raise RuntimeError('TypeVarType is already analyzed')
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        res = CallableType(self.anal_array(t.arg_types),
-                       t.arg_kinds,
-                       t.arg_names,
-                       t.ret_type.accept(self),
-                       self.builtin_type('builtins.function'),
-                       t.name,
-                       self.anal_var_defs(t.variables),
-                       self.anal_bound_vars(t.bound_vars), t.line)
-
-        return res
+        return t.copy_modified(arg_types=self.anal_array(t.arg_types),
+                               ret_type=t.ret_type.accept(self),
+                               fallback=self.builtin_type('builtins.function'),
+                               variables=self.anal_var_defs(t.variables),
+                               bound_vars=self.anal_bound_vars(t.bound_vars))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if t.implicit:

@@ -1732,14 +1732,9 @@ def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
 
 
 def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.CallableType':
-    return mypy.types.CallableType(c.arg_types[1:],
-                               c.arg_kinds[1:],
-                               c.arg_names[1:],
-                               c.ret_type,
-                               c.fallback,
-                               c.name,
-                               c.variables,
-                               c.bound_vars)
+    return c.copy_modified(arg_types=c.arg_types[1:],
+                           arg_kinds=c.arg_kinds[1:],
+                           arg_names=c.arg_names[1:])
 
 
 class MroError(Exception):
