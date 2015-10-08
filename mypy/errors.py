@@ -26,6 +26,9 @@ class ErrorInfo:
     # The line number related to this error within file.
     line = 0     # -1 if unknown
 
+    # Either 'error' or 'note'.
+    severity = ''
+
     # The error message.
     message = ''
 
@@ -33,12 +36,14 @@ class ErrorInfo:
     blocker = True
 
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
-                 function_or_member: str, line: int, message: str, blocker: bool) -> None:
+                 function_or_member: str, line: int, severity: str, message: str,
+                 blocker: bool) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
         self.function_or_member = function_or_member
         self.line = line
+        self.severity = severity
         self.message = message
         self.blocker = blocker
 
@@ -132,7 +137,8 @@ class Errors:
         """Replace the entire import context with a new value."""
         self.import_ctx = ctx[:]
 
-    def report(self, line: int, message: str, blocker: bool = True) -> None:
+    def report(self, line: int, message: str, blocker: bool = True,
+               severity: str = 'error', file: str = None) -> None:
         """Report message at the given line using the current error context."""
         if line in self.ignored_lines:
             # Annotation requests us to ignore all errors on this line.
@@ -140,8 +146,10 @@ class Errors:
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
-        info = ErrorInfo(self.import_context(), self.file, type,
-                         self.function_or_member[-1], line, message,
+        if file is None:
+            file = self.file
+        info = ErrorInfo(self.import_context(), file, type,
+                         self.function_or_member[-1], line, severity, message,
                          blocker)
         self.error_info.append(info)
 
@@ -245,7 +253,7 @@ class Errors:
                     result.append((e.file, -1, 'note',
                                    'In class "{}":'.format(e.type)))
 
-            result.append((e.file, e.line, 'error', e.message))
+            result.append((e.file, e.line, e.severity, e.message))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
