@@ -986,6 +986,9 @@ class ExpressionChecker:
             # Special case for tuples. They support indexing only by integer
             # literals.  (Except in weak type checking mode.)
             index = e.index
+            if isinstance(index, SliceExpr):
+                return self.visit_tuple_slice_helper(left_type, index)
+
             ok = False
             if isinstance(index, IntExpr):
                 n = index.value
@@ -1009,6 +1012,20 @@ class ExpressionChecker:
             result, method_type = self.check_op('__getitem__', left_type, e.index, e)
             e.method_type = method_type
             return result
+
+    def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr):
+        begin = 0
+        end = len(left_type.items)
+        stride = 1
+        if slic.begin_index:
+            begin = slic.begin_index.value
+        if slic.end_index:
+            end = slic.end_index.value
+        if slic.stride:
+            stride = slic.stride.value
+
+        return TupleType(left_type.items[begin:end:stride], left_type.fallback,
+                    left_type.line, left_type.implicit)
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
