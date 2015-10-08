@@ -1018,11 +1018,23 @@ class ExpressionChecker:
         end = len(left_type.items)
         stride = 1
         if slic.begin_index:
-            begin = slic.begin_index.value
+            if isinstance(slic.begin_index, IntExpr):
+                begin = slic.begin_index.value
+            else:
+                self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.begin_index)
+                return AnyType()
         if slic.end_index:
-            end = slic.end_index.value
+            if isinstance(slic.end_index, IntExpr):
+                end = slic.end_index.value
+            else:
+                self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.end_index)
+                return AnyType()
         if slic.stride:
-            stride = slic.stride.value
+            if isinstance(slic.stride, IntExpr):
+                stride = slic.stride.value
+            else:
+                self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.stride)
+                return AnyType()
 
         return TupleType(left_type.items[begin:end:stride], left_type.fallback,
                     left_type.line, left_type.implicit)

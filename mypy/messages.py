@@ -41,7 +41,8 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpol
 INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
     'Type of getter incompatible with setter'
-TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must an integer literal'
+TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
+TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
 TYPE_CONSTANT_EXPECTED = 'Type "Constant" or initializer expected'
 INCOMPATIBLE_PAIR_ITEM_TYPE = 'Incompatible Pair item type'

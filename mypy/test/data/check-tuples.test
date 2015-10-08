@@ -163,7 +163,8 @@ b = t1[0] # E: Incompatible types in assignment (expression has type "A", variab
 t1[2]     # E: Tuple index out of range
 t1[3]     # E: Tuple index out of range
 t2[1]     # E: Tuple index out of range
-t1[n]     # E: Tuple index must an integer literal
+t1[n]     # E: Tuple index must be an integer literal
+t3[n:]    # E: Tuple slice must be an integer literal
 b = t1[(0)] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = t1[0]
