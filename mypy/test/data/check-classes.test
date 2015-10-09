@@ -1228,6 +1228,12 @@ class B:
 [out]
 main: note: In member "f" of class "B":
 
+[case testClassVsInstanceDisambiguation]
+class A: pass
+def f(x: A) -> None: pass
+f(A) # E: Argument 1 to "f" has incompatible type "A" (type object); expected "A"
+[out]
+
 -- TODO
 --   attribute inherited from superclass; assign in __init__
 --   refer to attribute before type has been inferred (the initialization in
