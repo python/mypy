@@ -5,7 +5,7 @@
 
 from typing import (
     Mapping, MutableMapping, Dict, List, Any, Tuple, Iterator, overload, Union, AnyStr,
-    Optional, Generic
+    Optional, Generic, Set
 )
 from builtins import OSError as error
 import os.path as path
@@ -336,3 +336,11 @@ def confstr(name: str) -> str: ...  # Unix only
 def getloadavg() -> Tuple[float, float, float]: ...  # Unix only
 def sysconf(name: str) -> int: ...  # Unix only
 def urandom(n: int) -> bytes: ...
+
+def sched_getaffinity(id: int) -> Set[int]: ...
+class waitresult:
+    si_pid = 0
+def waitid(idtype: int, id: int, options: int) -> waitresult: ...
+P_ALL = 0
+WEXITED = 0
+WNOWAIT = 0

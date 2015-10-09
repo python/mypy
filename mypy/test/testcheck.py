@@ -7,7 +7,8 @@ import sys
 from typing import Tuple
 
 from mypy import build
-from mypy.myunit import Suite, run_test
+import mypy.myunit  # for mutable globals (ick!)
+from mypy.myunit import Suite
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import (
@@ -16,9 +17,6 @@ from mypy.test.helpers import (
 from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
 
-
-APPEND_TESTCASES = '.new' if '-u' in sys.argv else ''
-UPDATE_TESTCASES = '-i' in sys.argv or '-u' in sys.argv
 
 # List of files that contain test case descriptions.
 files = [
@@ -80,8 +78,8 @@ class TypeCheckSuite(Suite):
         except CompileError as e:
             a = normalize_error_messages(e.messages)
 
-        if testcase.output != a and UPDATE_TESTCASES:
-            update_testcase_output(testcase, a, APPEND_TESTCASES)
+        if testcase.output != a and mypy.myunit.UPDATE_TESTCASES:
+            update_testcase_output(testcase, a, mypy.myunit.APPEND_TESTCASES)
 
         assert_string_arrays_equal(
             testcase.output, a,
@@ -110,8 +108,3 @@ class TypeCheckSuite(Suite):
             return m.group(1), path, program_text
         else:
             return '__main__', 'main', program_text
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(TypeCheckSuite(), sys.argv[1:])

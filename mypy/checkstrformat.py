@@ -10,7 +10,9 @@ from mypy.types import (
 from mypy.nodes import (
     Node, StrExpr, TupleExpr, DictExpr, Context
 )
-import mypy.checker
+if False:
+    # break import cycle only needed for mypy
+    import mypy.checker
 from mypy import messages
 from mypy.messages import MessageBuilder
 

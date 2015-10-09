@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+
+if False:
+    import typing
+
+if True:
+    # When this is run as a script, `typing` is not available yet.
+    import sys
+    from os.path import join, isdir
+
+    def get_versions():  # type: () -> typing.List[str]
+        major = sys.version_info[0]
+        minor = sys.version_info[1]
+        if major == 2:
+            return ['2.7']
+        else:
+            # generates list of python versions to use.
+            # For Python2, this is only [2.7].
+            # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
+            return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
+
+    sys.path[0:0] = [v for v in [join('lib-typing', v) for v in get_versions()] if isdir(v)]
+    # Now `typing` is available.
+
+
+from typing import Dict, List, Optional, Set
+
+from mypy.waiter import Waiter, LazySubprocess
+
+import itertools
+import os
+
+
+# Ideally, all tests would be `discover`able so that they can be driven
+# (and parallelized) by an external test driver.
+
+class Driver:
+
+    def __init__(self, whitelist: List[str], blacklist: List[str],
+            verbosity: int, xfail: List[str]) -> None:
+        self.whitelist = whitelist
+        self.blacklist = blacklist
+        self.verbosity = verbosity
+        self.waiter = Waiter(verbosity=verbosity, xfail=xfail)
+        self.versions = get_versions()
+        self.cwd = os.getcwd()
+        self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
+        self.env = dict(os.environ)
+
+    def prepend_path(self, name: str, paths: List[str]) -> None:
+        old_val = self.env.get(name)
+        paths = [p for p in paths if isdir(p)]
+        if not paths:
+            return
+        if old_val is not None:
+            new_val = ':'.join(itertools.chain(paths, [old_val]))
+        else:
+            new_val = ':'.join(paths)
+        self.env[name] = new_val
+
+    def allow(self, name: str) -> bool:
+        if any(f in name for f in self.whitelist):
+            if not any(f in name for f in self.blacklist):
+                if self.verbosity >= 2:
+                    print('SELECT   #%d %s' % (len(self.waiter.queue), name))
+                return True
+        if self.verbosity >= 3:
+            print('OMIT     %s' % name)
+        return False
+
+    def add_mypy(self, name, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'check %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = [sys.executable, self.mypy]
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'run %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = [sys.executable]
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_both(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy(name, *args, cwd=cwd)
+        self.add_python(name, *args, cwd=cwd)
+
+    def add_mypy_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'check %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = [sys.executable, self.mypy, '-m']
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'run %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = [sys.executable, '-m']
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_both_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy_mod(name, *args, cwd=cwd)
+        self.add_python_mod(name, *args, cwd=cwd)
+
+    def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'check %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = [sys.executable, self.mypy, '-c']
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_python_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'run %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = [sys.executable, '-c']
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_both_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy_string(name, *args, cwd=cwd)
+        self.add_python_string(name, *args, cwd=cwd)
+
+    def add_python2(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        name = 'run2 %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        largs[0:0] = ['python2']
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+    def add_flake8(self, name: str, file: str, cwd: Optional[str] = None) -> None:
+        name = 'lint %s' % name
+        if not self.allow(name):
+            return
+        largs = ['flake8', file]
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
+
+def add_basic(driver: Driver) -> None:
+    if False:
+        driver.add_mypy('file setup.py', 'setup.py')
+    driver.add_flake8('file setup.py', 'setup.py')
+    driver.add_mypy('file travis.py', 'travis.py')
+    driver.add_flake8('file travis.py', 'travis.py')
+    driver.add_mypy('legacy entry script', 'scripts/mypy')
+    driver.add_flake8('legacy entry script', 'scripts/mypy')
+    driver.add_mypy_mod('entry mod mypy', 'mypy')
+    driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
+    driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
+
+
+def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
+    return [join(root, f)
+            for root, dirs, files in os.walk(base)
+            for f in files
+            if f.startswith(prefix) and f.endswith(suffix)]
+
+
+def file_to_module(file: str) -> str:
+    rv = os.path.splitext(file)[0].replace(os.sep, '.')
+    if rv.endswith('.__init__'):
+        rv = rv[:-len('.__init__')]
+    return rv
+
+
+def add_imports(driver: Driver) -> None:
+    # Make sure each module can be imported originally.
+    # There is currently a bug in mypy where a module can pass typecheck
+    # because of *implicit* imports from other modules.
+    for f in find_files('mypy', suffix='.py'):
+        mod = file_to_module(f)
+        if '.test.data.' in mod:
+            continue
+        driver.add_mypy_string('import %s' % mod, 'import %s' % mod)
+        if not mod.endswith('.__main__'):
+            driver.add_python_string('import %s' % mod, 'import %s' % mod)
+        driver.add_flake8('module %s' % mod, f)
+
+
+def add_myunit(driver: Driver) -> None:
+    for f in find_files('mypy', prefix='test', suffix='.py'):
+        mod = file_to_module(f)
+        if '.codec.test.' in mod:
+            # myunit is Python3 only.
+            driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
+            driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
+            continue
+        driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod)
+
+
+def add_stubs(driver: Driver) -> None:
+    # Only test each module once, for the latest Python version supported.
+    # The third-party stub modules will only be used if it is not in the version.
+    seen = set()  # type: Set[str]
+    for version in driver.versions:
+        for pfx in ['', 'third-party-']:
+            stubdir = join('stubs', pfx + version)
+            for f in find_files(stubdir, suffix='.pyi'):
+                module = file_to_module(f[len(stubdir) + 1:])
+                if module not in seen:
+                    seen.add(module)
+                    driver.add_mypy_string(
+                        'stub (%s) module %s' % (pfx + version, module),
+                        'import typing, %s' % module)
+
+
+def add_libpython(driver: Driver) -> None:
+    seen = set()  # type: Set[str]
+    for version in driver.versions:
+        libpython_dir = join(driver.cwd, 'lib-python', version)
+        for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
+            module = file_to_module(f[len(libpython_dir) + 1:])
+            if module not in seen:
+                seen.add(module)
+                driver.add_mypy_mod(
+                    'libpython (%s) module %s' % (version, module),
+                    module,
+                    cwd=libpython_dir)
+
+
+def add_samples(driver: Driver) -> None:
+    for f in find_files('samples', suffix='.py'):
+        if 'codec' in f:
+            cwd, bf = os.path.dirname(f), os.path.basename(f)
+            bf = bf[:-len('.py')]
+            driver.add_mypy_string('codec file %s' % f,
+                    'import mypy.codec.register, %s' % bf,
+                    cwd=cwd)
+        else:
+            driver.add_mypy('file %s' % f, f)
+
+
+def main() -> None:
+    verbosity = 0
+    whitelist = []  # type: List[str]
+    blacklist = []  # type: List[str]
+
+    allow_opts = True
+    curlist = whitelist
+    for a in sys.argv[1:]:
+        if allow_opts and a.startswith('-'):
+            if curlist is blacklist:
+                break
+            if a == '--':
+                allow_opts = False
+            elif a == '-v':
+                verbosity += 1
+            elif a == '-q':
+                verbosity -= 1
+            elif a == '-x':
+                curlist = blacklist
+            else:
+                sys.exit('Usage: %s [-v | -q | [-x] filter] ... [-- filters ...]' % sys.argv[0])
+        else:
+            curlist.append(a)
+            curlist = whitelist
+    if curlist is blacklist:
+        sys.exit('-x must be followed by a filter')
+    # empty string is a substring of all names
+    if not whitelist:
+        whitelist.append('')
+
+    driver = Driver(whitelist=whitelist, blacklist=blacklist, verbosity=verbosity, xfail=[
+        'check stub (third-party-3.2) module requests.packages.urllib3.connection',
+        'check stub (third-party-3.2) module requests.packages.urllib3.packages',
+        'check stub (third-party-3.2) module '
+        + 'requests.packages.urllib3.packages.ssl_match_hostname',
+        'check stub (third-party-3.2) module '
+        + 'requests.packages.urllib3.packages.ssl_match_hostname._implementation',
+    ])
+    driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
+    driver.prepend_path('MYPYPATH', [driver.cwd])
+    driver.prepend_path('PYTHONPATH', [driver.cwd])
+    driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
+
+    add_basic(driver)
+    add_imports(driver)
+    add_myunit(driver)
+    add_stubs(driver)
+    add_libpython(driver)
+    add_samples(driver)
+
+    driver.waiter.run()
+
+if __name__ == '__main__':
+    main()

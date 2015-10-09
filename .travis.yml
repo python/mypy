@@ -13,4 +13,11 @@ install:
   - pip install -r test-requirements.txt
   - python setup.py install
 
-script: bash travis.sh
+script:
+  - python travis.py -v
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net##mypy"
+    use_notice: true
