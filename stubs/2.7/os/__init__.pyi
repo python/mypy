@@ -179,6 +179,6 @@ extsep = ... # type: str
 pathsep = ... # type: str
 defpath = ... # type: str
 linesep = ... # type: str
-devnll = ... # type: str
+devnull = ... # type: str
 
 def urandom(n: int) -> str: ...
