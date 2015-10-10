@@ -2097,8 +2097,21 @@ def find_isinstance_check(node: Node,
             if kind == ISINSTANCE_ALWAYS_TRUE:
                 kind = ISINSTANCE_OVERLAPPING
             return (var, type, AnyType(), kind)
+    elif isinstance(node, UnaryExpr) and node.op == 'not':
+        (var, type, elsetype, kind) = find_isinstance_check(node.expr, type_map, weak)
+        return (var, elsetype, type, invert_isinstance_kind(kind))
+
     # Not a supported isinstance check
     return None, AnyType(), AnyType(), -1
+
+
+def invert_isinstance_kind(kind: int) -> int:
+    if kind == ISINSTANCE_ALWAYS_TRUE:
+        return ISINSTANCE_ALWAYS_FALSE
+    elif kind == ISINSTANCE_ALWAYS_FALSE:
+        return ISINSTANCE_ALWAYS_TRUE
+    else:
+        return kind
 
 
 def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:

@@ -1275,8 +1275,25 @@ class ExpressionChecker:
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
         self.check_not_void(cond_type, e)
-        if_type = self.accept(e.if_expr)
-        else_type = self.accept(e.else_expr, context=if_type)
+
+        # Gain type information from isinstance if it is there
+        # but only for the current expression
+        variable, inst_if_type, inst_else_type, kind = mypy.checker.find_isinstance_check(
+            e.cond,
+            self.chk.type_map,
+            self.chk.typing_mode_weak())
+        if variable:
+            self.chk.binder.push_frame()
+            self.chk.binder.push(variable, inst_if_type)
+            if_type = self.accept(e.if_expr)
+            self.chk.binder.pop_frame()
+            self.chk.binder.push_frame()
+            self.chk.binder.push(variable, inst_else_type)
+            else_type = self.accept(e.else_expr, context=if_type)
+            self.chk.binder.pop_frame()
+        else:
+            if_type = self.accept(e.if_expr)
+            else_type = self.accept(e.else_expr, context=if_type)
         return join.join_types(if_type, else_type)
 
     #
