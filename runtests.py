@@ -152,6 +152,10 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
+    def list_tasks(self):
+        for id, task in enumerate(self.waiter.queue):
+            print('{id}:{task}'.format(id=id, task=task.name))
+
 
 def add_basic(driver: Driver) -> None:
     if False:
@@ -262,6 +266,7 @@ def usage(status: int) -> None:
     print('  --                     treat all remaning arguments as positional')
     print('  filter                 only include tasks matching filter')
     print('  -x, --exclude filter   exclude tasks matching filter')
+    print('  -l, --list             list included tasks and exit')
     sys.exit(status)
 
 
@@ -287,6 +292,7 @@ def main() -> None:
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
+    list_only = False
 
     allow_opts = True
     curlist = whitelist
@@ -304,6 +310,8 @@ def main() -> None:
                 curlist = blacklist
             elif a == '-a' or a == '--argument':
                 curlist = arglist
+            elif a == '-l' or a == '--list':
+                list_only = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -333,7 +341,11 @@ def main() -> None:
     add_libpython(driver)
     add_samples(driver)
 
-    driver.waiter.run()
+    if not list_only:
+        driver.waiter.run()
+    else:
+        driver.list_tasks()
+
 
 if __name__ == '__main__':
     main()

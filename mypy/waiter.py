@@ -89,9 +89,6 @@ class Waiter:
                 limit = len(sched_getaffinity(0))
         self.limit = limit
         assert limit > 0
-        if self.verbosity >= -1:
-            print('%-8s %d' % ('PARALLEL', limit))
-            sys.stdout.flush()
         self.xfail = set(xfail)
         self._note = None  # type: Noter
 
@@ -169,6 +166,9 @@ class Waiter:
             return []
 
     def run(self) -> None:
+        if self.verbosity >= -1:
+            print('%-8s %d' % ('PARALLEL', self.limit))
+            sys.stdout.flush()
         if self.verbosity == 0:
             self._note = Noter(len(self.queue))
         print('SUMMARY  %d tasks selected' % len(self.queue))
