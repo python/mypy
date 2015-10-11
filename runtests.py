@@ -320,14 +320,7 @@ def main() -> None:
         whitelist.append('')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, xfail=[
-                'check stub (third-party-3.2) module requests.packages.urllib3.connection',
-                'check stub (third-party-3.2) module requests.packages.urllib3.packages',
-                'check stub (third-party-3.2) module '
-                + 'requests.packages.urllib3.packages.ssl_match_hostname',
-                'check stub (third-party-3.2) module '
-                + 'requests.packages.urllib3.packages.ssl_match_hostname._implementation',
-            ])
+            verbosity=verbosity, xfail=[])
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])

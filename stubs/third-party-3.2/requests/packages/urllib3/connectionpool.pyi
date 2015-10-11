@@ -6,9 +6,14 @@ from typing import Any
 from . import exceptions
 from .packages import ssl_match_hostname
 from . import packages
-from . import connection
+from .connection import (
+    HTTPException as HTTPException,
+    BaseSSLError as BaseSSLError,
+    ConnectionError as ConnectionError,
+)
 from . import request
 from . import response
+from . import connection
 from .util import connection as _connection
 from .util import retry
 from .util import timeout
@@ -31,9 +36,6 @@ DummyConnection = connection.DummyConnection
 HTTPConnection = connection.HTTPConnection
 HTTPSConnection = connection.HTTPSConnection
 VerifiedHTTPSConnection = connection.VerifiedHTTPSConnection
-HTTPException = connection.HTTPException
-BaseSSLError = connection.BaseSSLError
-ConnectionError = connection.ConnectionError
 RequestMethods = request.RequestMethods
 HTTPResponse = response.HTTPResponse
 is_connection_dropped = _connection.is_connection_dropped
