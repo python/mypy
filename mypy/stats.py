@@ -18,9 +18,17 @@ from mypy.nodes import (
 )
 
 
-TYPE_PRECISE = 0
-TYPE_IMPRECISE = 1
-TYPE_ANY = 2
+TYPE_EMPTY = 0
+TYPE_PRECISE = 1
+TYPE_IMPRECISE = 2
+TYPE_ANY = 3
+
+precision_names = [
+    'empty',
+    'precise',
+    'imprecise',
+    'any',
+]
 
 
 class StatisticsVisitor(TraverserVisitor):
@@ -355,7 +363,7 @@ def generate_html_index(output_dir: str) -> None:
     append('</body></html>')
     with open(path, 'w') as file:
         file.writelines(output)
-    print('Generated HTML report: %s' % os.path.abspath(path))
+    print('Generated HTML report (old): %s' % os.path.abspath(path))
 
 
 def ensure_dir_exists(dir: str) -> None:

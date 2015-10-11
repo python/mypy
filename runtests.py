@@ -69,7 +69,7 @@ class Driver:
             print('OMIT     %s' % name)
         return False
 
-    def add_mypy(self, name, *args: str, cwd: Optional[str] = None) -> None:
+    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'check %s' % name
         if not self.allow(name):
             return
@@ -152,7 +152,7 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def list_tasks(self):
+    def list_tasks(self) -> None:
         for id, task in enumerate(self.waiter.queue):
             print('{id}:{task}'.format(id=id, task=task.name))
 
