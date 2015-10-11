@@ -194,7 +194,6 @@ class IPv6Interface(IPv6Address):
 class IPv6Network(_BaseV6, _BaseNetwork):
     network_address = ... # type: Any
     netmask = ... # type: Any
-    hosts = ... # type: Any
     def __init__(self, address, strict=True): ...
     def hosts(self): ...
     @property
