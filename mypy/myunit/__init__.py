@@ -9,6 +9,30 @@ import traceback
 from typing import List, Tuple, Any, Callable, Union, cast
 
 
+"""
+Public interfaces to this module:
+    - python -m mypy.myunit and scripts/myunit.
+    - TestCase can be subclassed:
+        - TestCase.set_up can be overridden.
+        - TestCase.tear_down can be overridden.
+        - TestCase.run can be overridden.
+    - Suite can be subclassed:
+        - Suite.cases can be overridden.
+        - Suite.test* functions will be collected otherwise.
+        - Suite.set_up can be overridden.
+    - SkipTestCaseException can be raised within a test to cause a skip.
+    - AssertionFailure can be raised with a message that will be printed.
+    - UPDATE_TESTCASES and APPEND_TESTCASES are mutable globals.
+    - assert_equal can be used to fail.
+    - assert_true can be used to fail.
+    - assert_false can be used to fail.
+
+All other APIs are private, in particular:
+    - Suite being able to contain other Suite is not public.
+    - All the details of how tests are actually collected and run.
+"""
+
+
 # TODO remove global state
 is_verbose = False
 is_quiet = False
@@ -133,11 +157,13 @@ class TestCase:
         self.tmpdir = None
 
 
+TestUnion = Union[TestCase, Tuple[str, 'Suite']]
+
+
 class Suite:
     def __init__(self) -> None:
         self.prefix = typename(type(self)) + '.'
-        # Each test case is either a TestCase object or (str, function).
-        self._test_cases = []  # type: List[Any]
+        self._test_cases = []  # type: List[TestUnion]
         self.init()
 
     def set_up(self) -> None:
@@ -153,14 +179,13 @@ class Suite:
                 if isinstance(t, Suite):
                     self.add_test((m + '.', t))
                 else:
-                    self.add_test(TestCase(m, self, getattr(self, m)))
+                    assert callable(t), '%s.%s is %s' % (type(self).__name__, m, type(t).__name__)
+                    self.add_test(TestCase(m, self, t))
 
-    def add_test(self, test: Union[TestCase,
-                                   Tuple[str, Callable[[], None]],
-                                   Tuple[str, 'Suite']]) -> None:
+    def add_test(self, test: TestUnion) -> None:
         self._test_cases.append(test)
 
-    def cases(self) -> List[Any]:
+    def cases(self) -> List[TestUnion]:
         return self._test_cases[:]
 
     def skip(self) -> None:
@@ -250,9 +275,9 @@ def main(args: List[str] = None) -> None:
         sys.exit(1)
 
 
-def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
+def run_test_recursive(test: Union[Suite, TestUnion],
+                       num_total: int, num_fail: int, num_skip: int,
                        prefix: str, depth: int) -> Tuple[int, int, int]:
-    """The first argument may be TestCase, Suite or (str, Suite)."""
     if isinstance(test, TestCase):
         name = prefix + test.name
         for pattern in patterns:
@@ -269,12 +294,11 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
     else:
         suite = None  # type: Suite
         suite_prefix = ''
-        if isinstance(test, list) or isinstance(test, tuple):
-            suite = test[1]
-            suite_prefix = test[0]
+        if isinstance(test, tuple):
+            suite_prefix, suite = cast(Tuple[str, Suite], test)
         else:
-            suite = test
-            suite_prefix = test.prefix
+            suite = cast(Suite, test)
+            suite_prefix = suite.prefix
 
         for stest in suite.cases():
             new_prefix = prefix
@@ -285,7 +309,7 @@ def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
     return num_total, num_fail, num_skip
 
 
-def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
+def run_single_test(name: str, test: TestCase) -> Tuple[bool, bool]:
     if is_verbose:
         sys.stderr.write(name)
         sys.stderr.flush()

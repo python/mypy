@@ -94,11 +94,11 @@ class StubgenUtilSuite(Suite):
 
 
 class StubgenPythonSuite(Suite):
-    test_data_files = ['stubgen.test']
+    data_files = ['stubgen.test']
 
     def cases(self):
         c = []
-        for path in self.test_data_files:
+        for path in self.data_files:
             c += parse_test_cases(os.path.join(config.test_data_prefix, path), test_stubgen)
         return c
 
