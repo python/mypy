@@ -1,6 +1,7 @@
 # Stubs for inspect
 
 from typing import Any, Tuple, List, Callable
+from types import FrameType
 
 _object = object
 
@@ -29,3 +30,5 @@ class ArgSpec(tuple):
     defaults = ...  # type: tuple
 
 def getargspec(func: object) -> ArgSpec: ...
+
+def stack() -> List[Tuple[FrameType, str, int, str, List[str], int]]: ...
