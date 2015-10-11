@@ -203,8 +203,12 @@ def add_myunit(driver: Driver) -> None:
             # myunit is Python3 only.
             driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
             driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
-            continue
-        driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+        elif mod == 'mypy.test.testpythoneval':
+            # Run Python evaluation integration tests separetely since they are much slower
+            # than proper unit tests.
+            driver.add_python_mod('eval-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+        else:
+            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
 
 
 def add_stubs(driver: Driver) -> None:
