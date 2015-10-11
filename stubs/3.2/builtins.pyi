@@ -3,8 +3,8 @@
 from typing import (
     TypeVar, Iterator, Iterable, overload,
     Sequence, MutableSequence, Mapping, MutableMapping, Tuple, List, Any, Dict, Callable, Generic,
-    Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsAbs,
-    SupportsRound, IO, Union, ItemsView, KeysView, ValuesView, ByteString
+    Set, AbstractSet, MutableSet, Sized, Reversible, SupportsInt, SupportsFloat, SupportsBytes,
+    SupportsAbs, SupportsRound, IO, Union, ItemsView, KeysView, ValuesView, ByteString
 )
 from abc import abstractmethod, ABCMeta
 
@@ -255,6 +255,8 @@ class bytes(ByteString):
     def __init__(self, length: int) -> None: ...
     @overload
     def __init__(self) -> None: ...
+    @overload
+    def __init__(self, o: SupportsBytes) -> None: ...
     def capitalize(self) -> bytes: ...
     def center(self, width: int, fillchar: bytes = None) -> bytes: ...
     def count(self, x: bytes) -> int: ...
