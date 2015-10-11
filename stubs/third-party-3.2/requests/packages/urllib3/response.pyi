@@ -7,7 +7,7 @@ import io
 from . import _collections
 from . import exceptions
 #from .packages import six
-from . import connection
+from .connection import HTTPException as HTTPException, BaseSSLError as BaseSSLError
 from .util import response
 
 HTTPHeaderDict = _collections.HTTPHeaderDict
@@ -16,8 +16,6 @@ DecodeError = exceptions.DecodeError
 ReadTimeoutError = exceptions.ReadTimeoutError
 binary_type = bytes # six.binary_type
 PY3 = True # six.PY3
-HTTPException = connection.HTTPException
-BaseSSLError = connection.BaseSSLError
 is_fp_closed = response.is_fp_closed
 
 class DeflateDecoder:

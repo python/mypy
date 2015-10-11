@@ -6,7 +6,7 @@ import re
 import typing
 
 from mypy import build
-from mypy.myunit import Suite, run_test
+from mypy.myunit import Suite
 from mypy.test import config
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal
@@ -105,8 +105,3 @@ def ignore_node(node):
         return True
 
     return False
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(TypeExportSuite(), sys.argv[1:])

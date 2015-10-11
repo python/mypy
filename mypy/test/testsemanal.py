@@ -5,7 +5,7 @@ import os.path
 from typing import Dict, List
 
 from mypy import build
-from mypy.myunit import Suite, run_test
+from mypy.myunit import Suite
 from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -213,17 +213,3 @@ class TypeInfoMap(Dict[str, TypeInfo]):
                 a.append('  {} : {}'.format(x, ti))
         a[-1] += ')'
         return '\n'.join(a)
-
-
-class CombinedSemAnalSuite(Suite):
-    def __init__(self):
-        self.test_semanal = SemAnalSuite()
-        self.test_semanal_errors = SemAnalErrorSuite()
-        self.test_semanal_symtable = SemAnalSymtableSuite()
-        self.test_semanal_typeinfos = SemAnalTypeInfoSuite()
-        super().__init__()
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(CombinedSemAnalSuite(), sys.argv[1:])

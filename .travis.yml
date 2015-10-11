@@ -13,7 +13,8 @@ install:
   - pip install -r test-requirements.txt
   - python setup.py install
 
-script: bash travis.sh
+script:
+  - python runtests.py -v
 
 notifications:
   irc:

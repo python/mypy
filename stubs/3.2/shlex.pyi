@@ -7,6 +7,9 @@ from typing import List, Tuple, Any, TextIO
 def split(s: str, comments: bool = False,
           posix: bool = True) -> List[str]: ...
 
+# Added in 3.3, use (undocumented) pipes.quote in previous versions.
+def quote(s: str) -> str: ...
+
 class shlex:
     commenters = ''
     wordchars = ''

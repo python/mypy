@@ -56,6 +56,14 @@ class SupportsFloat(metaclass=ABCMeta):
     @abstractmethod
     def __float__(self) -> float: ...
 
+class SupportsComplex(metaclass=ABCMeta):
+    @abstractmethod
+    def __complex__(self) -> complex: pass
+
+class SupportsBytes(metaclass=ABCMeta):
+    @abstractmethod
+    def __bytes__(self) -> bytes: pass
+
 class SupportsAbs(Generic[_T]):
     @abstractmethod
     def __abs__(self) -> _T: ...

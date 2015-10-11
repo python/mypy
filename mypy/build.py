@@ -28,6 +28,10 @@ from mypy import parse
 from mypy import stats
 
 
+# We need to know the location of this file to load data, but
+# until Python 3.4, __file__ is relative.
+__file__ = os.path.realpath(__file__)
+
 debug = False
 
 
@@ -39,6 +43,7 @@ TYPE_CHECK = 1          # Type check
 # Build flags
 VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
 MODULE = 'module'                # Build module as a script
+PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 
 # State ids. These describe the states a source file / module can be in a
@@ -83,6 +88,7 @@ class BuildResult:
 def build(program_path: str,
           target: int,
           module: str = None,
+          argument: str = None,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
@@ -123,7 +129,7 @@ def build(program_path: str,
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
-        lib_path.insert(0, os.path.join('mypy', 'test', 'data', 'lib-stub'))
+        lib_path.insert(0, os.path.join(os.path.dirname(__file__), 'test', 'data', 'lib-stub'))
     elif program_path:
         # Include directory of the program file in the module search path.
         lib_path.insert(
@@ -147,9 +153,11 @@ def build(program_path: str,
                            custom_typing_module=custom_typing_module,
                            html_report_dir=html_report_dir)
 
-    program_path = program_path or lookup_program(module, lib_path)
     if program_text is None:
+        program_path = program_path or lookup_program(module, lib_path)
         program_text = read_program(program_path)
+    else:
+        program_path = program_path or '<string>'
 
     # Construct information that describes the initial file. __main__ is the
     # implicit module id and the import context is empty initially ([]).
@@ -164,16 +172,17 @@ def build(program_path: str,
 
 
 def default_data_dir(bin_dir: str) -> str:
+    # TODO fix this logic
     if not bin_dir:
-        # Default to current directory.
-        return ''
+        # Default to directory containing this file's parent.
+        return os.path.dirname(os.path.dirname(__file__))
     base = os.path.basename(bin_dir)
     dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'scripts'
+    if (sys.platform == 'win32' and base.lower() == 'mypy'
             and not os.path.isdir(os.path.join(dir, 'stubs'))):
         # Installed, on Windows.
         return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'scripts':
+    elif base == 'mypy':
         # Assume that we have a repo check out or unpacked source tarball.
         return os.path.dirname(bin_dir)
     elif base == 'bin':
@@ -199,7 +208,14 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
         path[:0] = path_env.split(os.pathsep)
 
     # Add library stubs directory. By convention, they are stored in the
-    # stubs/x.y directory of the mypy installation.
+    # stubs/x.y directory of the mypy installation. Additionally, stubs
+    # for earlier versions in the same major version will be added, and
+    # as a last resort, third-party stubs will be added.
+    if pyversion == 2:
+        major, minor = 2, 7
+    else:
+        # See bug #886
+        major, minor = sys.version_info[0], sys.version_info[1]
     version_dir = '3.2'
     third_party_dir = 'third-party-3.2'
     if pyversion < 3:
@@ -208,9 +224,12 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
     path.append(os.path.join(data_dir, 'stubs', version_dir))
     path.append(os.path.join(data_dir, 'stubs', third_party_dir))
     path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-    if sys.version_info.major == 3:
+    if major == 3:
         # Add additional stub directories.
         versions = ['3.3', '3.4', '3.5', '3.6']
+        if False:
+            # Ick, we really should figure out how to use this again.
+            versions = ['3.%d' % i for i in range(minor, -1, -1)]
         for v in versions:
             stubdir = os.path.join(data_dir, 'stubs', v)
             if os.path.isdir(stubdir):
@@ -444,7 +463,7 @@ class BuildManager:
         for state in self.states:
             if state.id == module:
                 return state
-        raise RuntimeError('%s not found' % str)
+        raise RuntimeError('%s not found' % module)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[str, int]]:
@@ -459,7 +478,7 @@ class BuildManager:
             rel = imp.relative
             if rel == 0:
                 return imp.id
-            if os.path.basename(file.path) == '__init__.py':
+            if os.path.basename(file.path).startswith('__init__.'):
                 rel -= 1
             if rel != 0:
                 file_id = ".".join(file_id.split(".")[:-rel])
