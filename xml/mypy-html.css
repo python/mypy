@@ -1,35 +1,104 @@
-/* I don't know CSS but this is at least better than before. */
+/* CSS for type check coverage reports */
 
 /*
     Used by both summary and file.
 */
-body { font-family: courier; }
+body {
+    font-family: "Helvetica Neue", sans-serif;
+}
 
 /*
     Used only by summary.
 */
-table.summary { border-collapse: collapse; }
-table.summary, tr.summary, th.summary, td.summary { border: 1px solid black; }
-th.summary, td.summary: { padding: 0.4em; }
 
-.summary-quality-0 { background-color: #efe; }
-.summary-quality-1 { background-color: #ff5; }
-.summary-quality-2 { background-color: #faa; }
+h1 {
+    text-align: center;
+    font-size: 135%;
+    margin: 20px;
+}
 
-.summary-filename { text-align: left; }
-.summary-precision { text-align: right; }
-.summary-lines { text-align: right; }
+table.summary {
+    border-collapse: collapse;
+    margin-left: 7%;
+    margin-right: 7%;
+    width: 85%;
+}
+
+table caption {
+    margin: 1em;
+}
+
+table.summary, tr.summary, th.summary, td.summary {
+    border: 1px solid #aaa;
+}
+
+th.summary, td.summary {
+    padding: 0.4em;
+}
+
+td.summary a {
+    text-decoration: none;
+}
+
+.summary-quality-0 {
+    background-color: #dfd;
+}
+
+.summary-quality-1 {
+    background-color: #ffa;
+}
+
+.summary-quality-2 {
+    background-color: #faa;
+}
+
+td.summary-filename, th.summary-filename {
+    text-align: left;
+}
+
+td.summary-filename {
+    width: 50%;
+}
+
+.summary-precision {
+    text-align: center;
+}
+
+.summary-lines {
+    text-align: center;
+}
 
 /*
     Used only by file.
 */
-.table-lines { text-align: right; }
-.table-code { }
 
-span.lineno { text-align: right; }
-a:link.lineno, a:visited.lineno { color: #999; text-decoration: none; }
-a:hover.lineno, a:active.lineno { color: #000; text-decoration: underline; }
+td.table-lines {
+    text-align: right;
+    padding-right: 0.5em;
+}
 
-.line-empty, .line-precise { background-color: #efe; }
-.line-imprecise { background-color: #ff5; }
-.line-any { background-color: #faa; }
+td.table-code { }
+
+span.lineno {
+    text-align: right;
+}
+
+a:link.lineno, a:visited.lineno {
+    color: #999; text-decoration: none;
+}
+
+a:hover.lineno, a:active.lineno {
+    color: #000; text-decoration: underline;
+}
+
+.line-empty, .line-precise {
+    background-color: #dfd;
+}
+
+.line-imprecise {
+    background-color: #ffa;
+}
+
+.line-any {
+    background-color: #faa;
+}
