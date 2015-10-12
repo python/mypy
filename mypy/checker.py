@@ -2052,7 +2052,7 @@ def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
                           weak: bool=False) \
         -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
-    """Find any isinstance checks (within a chain of ands)".
+    """Find any isinstance checks (within a chain of ands).
 
     Return value is a map of variables to their types if the condition
     is true and a map of variables to their types if the condition is false.
@@ -2096,7 +2096,10 @@ def find_isinstance_check(node: Node,
             weak,
         )
         if left_if_vars:
-            left_if_vars.update(right_if_vars)
+            if right_if_vars is not None:
+                left_if_vars.update(right_if_vars)
+            else:
+                left_if_vars = None
         else:
             left_if_vars = right_if_vars
 

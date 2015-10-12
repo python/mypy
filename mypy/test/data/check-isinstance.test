@@ -721,6 +721,7 @@ x.flag if isinstance(x, B) else 0
 0 if not isinstance(x, B) else x.flag
 0 if isinstance(x, B) else x.flag # E: "A" has no attribute "flag"
 [builtins fixtures/isinstancelist.py]
+
 [case testIsinstanceMultiAnd]
 class A:
     pass
@@ -737,4 +738,23 @@ y = C() # type: A
 if isinstance(x, B) and isinstance(y, C):
     x.flag += 1
     y.glaf += 1
+    x() # E: "B" not callable
+    y() # E: "C" not callable
+[builtins fixtures/isinstancelist.py]
+
+[case testIsinstanceMultiAndSpecialCase]
+class A:
+    pass
+
+class B(A):
+    flag = 1
+
+class C(A):
+    glaf = 1
+
+x = B() # type: A
+y = C() # type: A
+
+if isinstance(x, B) and isinstance(y, int):
+    1() # type checking skipped
 [builtins fixtures/isinstancelist.py]
