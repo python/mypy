@@ -911,17 +911,21 @@ class ExpressionChecker:
         left_type = self.accept(e.left, ctx)
 
         if e.op == 'and':
-            var, type, elsetype, kind = \
-                mypy.checker.find_isinstance_check(e, self.chk.type_map,
+            # else_map unused
+            if_map, else_map = \
+                mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         else:
-            var = None
-        if var:
-            self.chk.binder.push_frame()
-            self.chk.binder.push(var, type)
+            if_map = None
+
+        self.chk.binder.push_frame()
+        if if_map:
+            for var, type in if_map.items():
+                self.chk.binder.push(var, type)
+
         right_type = self.accept(e.right, left_type)
-        if var:
-            self.chk.binder.pop_frame()
+
+        self.chk.binder.pop_frame()
 
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
@@ -1278,22 +1282,30 @@ class ExpressionChecker:
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
-        variable, inst_if_type, inst_else_type, kind = mypy.checker.find_isinstance_check(
+        if_map, else_map = mypy.checker.find_isinstance_check(
             e.cond,
             self.chk.type_map,
             self.chk.typing_mode_weak())
-        if variable:
-            self.chk.binder.push_frame()
-            self.chk.binder.push(variable, inst_if_type)
-            if_type = self.accept(e.if_expr)
-            self.chk.binder.pop_frame()
-            self.chk.binder.push_frame()
-            self.chk.binder.push(variable, inst_else_type)
-            else_type = self.accept(e.else_expr, context=if_type)
-            self.chk.binder.pop_frame()
-        else:
-            if_type = self.accept(e.if_expr)
-            else_type = self.accept(e.else_expr, context=if_type)
+
+        self.chk.binder.push_frame()
+
+        if if_map:
+            for var, type in if_map.items():
+                self.chk.binder.push(var, type)
+
+        if_type = self.accept(e.if_expr)
+
+        self.chk.binder.pop_frame()
+        self.chk.binder.push_frame()
+
+        if else_map:
+            for var, type in else_map.items():
+                self.chk.binder.push(var, type)
+
+        else_type = self.accept(e.else_expr, context=if_type)
+
+        self.chk.binder.pop_frame()
+
         return join.join_types(if_type, else_type)
 
     #
