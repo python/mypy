@@ -1,9 +1,12 @@
+import importlib
+import os
 import sys
 import re
+import tempfile
 import time
 import traceback
 
-from typing import List, Tuple, Any, Callable, Union
+from typing import List, Tuple, Any, Callable, Union, cast
 
 
 # TODO remove global state
@@ -11,6 +14,8 @@ is_verbose = False
 is_quiet = False
 patterns = []  # type: List[str]
 times = []  # type: List[Tuple[float, str]]
+APPEND_TESTCASES = ''
+UPDATE_TESTCASES = False
 
 
 class AssertionFailure(Exception):
@@ -35,14 +40,26 @@ def assert_false(b: bool, msg: str = None) -> None:
         raise AssertionFailure(msg)
 
 
+def good_repr(obj: object) -> str:
+    if isinstance(obj, str):
+        if obj.count('\n') > 1:
+            bits = ["'''\\"]
+            for line in obj.split('\n'):
+                # force repr to use ' not ", then cut it off
+                bits.append(repr('"' + line)[2:-1])
+            bits[-1] += "'''"
+            return '\n'.join(bits)
+    return repr(obj)
+
+
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
-        raise AssertionFailure(fmt.format(repr(a), repr(b)))
+        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
 
 
 def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
     if a == b:
-        raise AssertionFailure(fmt.format(repr(a), repr(b)))
+        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
 
 
 def assert_raises(typ: type, *rest: Any) -> None:
@@ -91,18 +108,29 @@ class TestCase:
         self.func = func
         self.name = name
         self.suite = suite
+        self.old_cwd = None  # type: str
+        self.tmpdir = None  # type: tempfile.TemporaryDirectory
 
     def run(self) -> None:
         if self.func:
             self.func()
 
     def set_up(self) -> None:
+        self.old_cwd = os.getcwd()
+        self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-',
+                dir=os.path.abspath('tmp-test-dirs'))
+        os.chdir(self.tmpdir.name)
+        os.mkdir('tmp')
         if self.suite:
             self.suite.set_up()
 
     def tear_down(self) -> None:
         if self.suite:
             self.suite.tear_down()
+        os.chdir(self.old_cwd)
+        self.tmpdir.cleanup()
+        self.old_cwd = None
+        self.tmpdir = None
 
 
 class Suite:
@@ -139,12 +167,40 @@ class Suite:
         raise SkipTestCaseException()
 
 
-def run_test(t: Suite, args: List[str] = None) -> None:
+def add_suites_from_module(suites: List[Suite], mod_name: str) -> None:
+    mod = importlib.import_module(mod_name)
+    got_suite = False
+    for suite in mod.__dict__.values():
+        if isinstance(suite, type) and issubclass(suite, Suite) and suite is not Suite:
+            got_suite = True
+            suites.append(cast(Callable[[], Suite], suite)())
+    if not got_suite:
+        # Sanity check in case e.g. it uses unittest instead of a myunit.
+        # The codecs tests do since they need to be python2-compatible.
+        sys.exit('Test module %s had no test!' % mod_name)
+
+
+class ListSuite(Suite):
+    def __init__(self, suites: List[Suite]) -> None:
+        for suite in suites:
+            mod_name = type(suite).__module__.replace('.', '_')
+            mod_name = mod_name.replace('mypy_', '')
+            mod_name = mod_name.replace('test_', '')
+            mod_name = mod_name.strip('_').replace('__', '_')
+            type_name = type(suite).__name__
+            name = 'test_%s_%s' % (mod_name, type_name)
+            setattr(self, name, suite)
+        super().__init__()
+
+
+def main(args: List[str] = None) -> None:
     global patterns, is_verbose, is_quiet
+    global APPEND_TESTCASES, UPDATE_TESTCASES
     if not args:
-        args = []
+        args = sys.argv[1:]
     is_verbose = False
     is_quiet = False
+    suites = []  # type: List[Suite]
     patterns = []
     i = 0
     while i < len(args):
@@ -153,17 +209,29 @@ def run_test(t: Suite, args: List[str] = None) -> None:
             is_verbose = True
         elif a == '-q':
             is_quiet = True
-        # Used for updating tests, but breaks clean code usage.
-        elif a in ('-u', '-i'):
-            pass
-        elif len(a) > 0 and a[0] != '-':
+        elif a == '-u':
+            APPEND_TESTCASES = '.new'
+            UPDATE_TESTCASES = True
+        elif a == '-i':
+            APPEND_TESTCASES = ''
+            UPDATE_TESTCASES = True
+        elif a == '-m':
+            i += 1
+            if i == len(args):
+                sys.exit('-m requires an argument')
+            add_suites_from_module(suites, args[i])
+        elif not a.startswith('-'):
             patterns.append(a)
         else:
-            raise ValueError('Invalid arguments')
+            sys.exit('Usage: python -m mypy.myunit [-v] [-q] [-u | -i]'
+                    + ' -m test.module [-m test.module ...] [filter ...]')
         i += 1
     if len(patterns) == 0:
         patterns.append('*')
+    if not suites:
+        sys.exit('At least one -m argument is required')
 
+    t = ListSuite(suites)
     num_total, num_fail, num_skip = run_test_recursive(t, 0, 0, 0, '', 0)
 
     skip_msg = ''

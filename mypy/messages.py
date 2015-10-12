@@ -41,7 +41,8 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpol
 INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
 GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
     'Type of getter incompatible with setter'
-TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must an integer literal'
+TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
+TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
 TYPE_CONSTANT_EXPECTED = 'Type "Constant" or initializer expected'
 INCOMPATIBLE_PAIR_ITEM_TYPE = 'Incompatible Pair item type'
@@ -65,6 +66,8 @@ INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
 GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
     "Generic type not valid as an expression any more (use '# type:' comment instead)"
+RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
+FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
 
 
 class MessageBuilder:
@@ -416,8 +419,14 @@ class MessageBuilder:
                 expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
+            arg_type_str = self.format(arg_type)
+            expected_type_str = self.format(expected_type)
+            # If type names turn out ambiguous, attempt to disambiguate.
+            if arg_type_str == expected_type_str:
+                arg_type_str = self.format(arg_type, verbose=True)
+                expected_type_str = self.format(expected_type, verbose=True)
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                n, target, self.format(arg_type), self.format(expected_type))
+                n, target, arg_type_str, expected_type_str)
         self.fail(msg, context)
 
     def invalid_index_type(self, index_type: Type, base_str: str,

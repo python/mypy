@@ -4,6 +4,7 @@ python:
   - "3.2"
   - "3.3"
   - "3.4"
+  - "3.5"
   # Pypy build is disaabled because it doubles the travis build time, and it rarely fails
   # unless one one of the other builds fails.
   # - "pypy3"
@@ -12,4 +13,11 @@ install:
   - pip install -r test-requirements.txt
   - python setup.py install
 
-script: bash travis.sh
+script:
+  - python runtests.py -v
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net##mypy"
+    use_notice: true

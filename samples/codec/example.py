@@ -2,8 +2,9 @@
 
 # very simple script to test type annotations
 
+from typing import Tuple
 
-def f(x: int, y: str='abc') -> [int,
+def f(x: int, y: str='abc') -> Tuple[int,
                                 str]:
     return x, y
 

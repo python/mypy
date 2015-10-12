@@ -7,7 +7,7 @@ import os.path
 import typing
 
 from mypy import defaults
-from mypy.myunit import Suite, AssertionFailure, run_test
+from mypy.myunit import Suite, AssertionFailure
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases
 from mypy.test import config
@@ -74,15 +74,3 @@ def test_parse_error(testcase):
             testcase.output, e.messages,
             'Invalid compiler output ({}, line {})'.format(testcase.file,
                                                            testcase.line))
-
-
-class CombinedParserSuite(Suite):
-    def __init__(self):
-        self.test_parse = ParserSuite()
-        self.test_parse_errors = ParseErrorSuite()
-        super().__init__()
-
-
-if __name__ == '__main__':
-    import sys
-    run_test(CombinedParserSuite(), sys.argv[1:])

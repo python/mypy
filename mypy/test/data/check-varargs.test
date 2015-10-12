@@ -6,20 +6,31 @@
 
 
 [case testVarArgsWithinFunction]
-from typing import Sequence
+from typing import Tuple
 def f( *b: 'B') -> None:
-    ab = None # type: Sequence[B]
-    ac = None # type: Sequence[C]
-    b = ac # E: Incompatible types in assignment (expression has type Sequence[C], variable has type Sequence[B])
-    ac = b # E: Incompatible types in assignment (expression has type Sequence[B], variable has type Sequence[C])
+    ab = None # type: Tuple[B, ...]
+    ac = None # type: Tuple[C, ...]
+    b = ac # E: Incompatible types in assignment (expression has type Tuple[C, ...], variable has type Tuple[B, ...])
+    ac = b # E: Incompatible types in assignment (expression has type Tuple[B, ...], variable has type Tuple[C, ...])
     b = ab
     ab = b
 
 class B: pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/tuple.py]
 [out]
 main: note: In function "f":
+
+
+[case testVarArgsAreTuple]
+from typing import Tuple, Sequence
+def want_tuple(types: Tuple[type, ...]): pass
+def want_sequence(types: Sequence[type]): pass
+def test(*t: type) -> None:
+    want_tuple(t)
+    want_sequence(t)
+[builtins fixtures/tuple.py]
+[out]
 
 
 -- Calling varargs function

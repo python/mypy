@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Mypy type checker command line tool."""
 
 from mypy.main import main

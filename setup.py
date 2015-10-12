@@ -26,24 +26,33 @@ features such as type inference, gradual typing, generics and union
 types.
 '''.lstrip()
 
-stubs = []
 
-for stub_type in ["builtins", "stdlib", "third_party"]:
-    for py_version in ['2and3', '2.7', '3' '3.2', '3.3', '3.3', '3.4', '3.5']:
-        base = os.path.join('typeshed', stub_type, py_version)
-        if not os.path.exists(base):
-            os.mkdir(base)
-        stub_dirs = ['']
-        for root, dirs, files in os.walk(base):
-            stub_dirs.extend(os.path.relpath(os.path.join(root, stub_dir), base)
-                             for stub_dir in dirs
-                             if stub_dir != '__pycache__')
-        for stub_dir in stub_dirs:
-            target = os.path.join('lib', 'mypy', 'typeshed',
-                                  stub_type, py_version, stub_dir)
-            files = glob.glob(os.path.join(base, stub_dir, '*.py'))
-            files += glob.glob(os.path.join(base, stub_dir, '*.pyi'))
-            stubs.append((target, files))
+def find_data_files(base, globs):
+    """Find all interesting data files, for setup(data_files=)
+
+    Arguments:
+      root:  The directory to search in.
+      globs: A list of glob patterns to accept files.
+    """
+
+    rv_dirs = [root for root, dirs, files in os.walk(base)]
+    rv = []
+    for rv_dir in rv_dirs:
+        files = []
+        for pat in globs:
+            files += glob.glob(os.path.join(rv_dir, pat))
+        if not files:
+            continue
+        target = os.path.join('lib', 'mypy', rv_dir)
+        rv.append((target, files))
+
+    return rv
+
+data_files = []
+
+data_files += find_data_files('stubs', ['*.py', '*.pyi'])
+
+data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
 
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
@@ -70,6 +79,6 @@ setup(name='mypy-lang',
       py_modules=['typing'],
       packages=['mypy'],
       scripts=['scripts/mypy'],
-      data_files=stubs,
+      data_files=data_files,
       classifiers=classifiers,
       )

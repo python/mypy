@@ -2,7 +2,9 @@
 
 import itertools
 
-from typing import Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union
+from typing import (
+    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional
+)
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -19,13 +21,14 @@ from mypy.nodes import (
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr
+    RefExpr, YieldExpr, CONTRAVARIANT, COVARIANT
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type, UnionType
+    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
+    UnionType, TypeVarType,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -45,11 +48,6 @@ from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, is_overlapping_types
 
-
-# Kinds of isinstance checks.
-ISINSTANCE_OVERLAPPING = 0
-ISINSTANCE_ALWAYS_TRUE = 1
-ISINSTANCE_ALWAYS_FALSE = 2
 
 T = TypeVar('T')
 
@@ -505,15 +503,28 @@ class TypeChecker(NodeVisitor[Type]):
             elif name == '__getattr__':
                 self.check_getattr_method(typ, defn)
 
+            # Refuse contravariant return type variable
+            if isinstance(typ.ret_type, TypeVarType):
+                if typ.ret_type.variance == CONTRAVARIANT:
+                    self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
+                         typ.ret_type)
+
             # Push return type.
             self.return_types.append(typ.ret_type)
 
             # Store argument types.
             for i in range(len(typ.arg_types)):
                 arg_type = typ.arg_types[i]
+
+                # Refuse covariant parameter type variables
+                if isinstance(arg_type, TypeVarType):
+                    if arg_type.variance == COVARIANT:
+                        self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
+                                  arg_type)
+
                 if typ.arg_kinds[i] == nodes.ARG_STAR:
-                    # TODO: This should actually be Tuple[t, ...] once it's supported.
-                    arg_type = self.named_generic_type('typing.Sequence',
+                    # builtins.tuple[T] is typing.Tuple[T, ...]
+                    arg_type = self.named_generic_type('builtins.tuple',
                                                        [arg_type])
                 elif typ.arg_kinds[i] == nodes.ARG_STAR2:
                     arg_type = self.named_generic_type('builtins.dict',
@@ -1434,16 +1445,21 @@ class TypeChecker(NodeVisitor[Type]):
         for e, b in zip(s.expr, s.body):
             t = self.accept(e)
             self.check_not_void(t, e)
-            var, type, elsetype, kind = find_isinstance_check(e, self.type_map,
-                                            self.typing_mode_weak())
-            if kind == ISINSTANCE_ALWAYS_FALSE:
+            if_map, else_map = find_isinstance_check(
+                e, self.type_map,
+                self.typing_mode_weak()
+            )
+            if if_map is None:
+                # The condition is always false
                 # XXX should issue a warning?
                 pass
             else:
                 # Only type check body if the if condition can be true.
                 self.binder.push_frame()
-                if var:
-                    self.binder.push(var, type)
+                if if_map:
+                    for var, type in if_map.items():
+                        self.binder.push(var, type)
+
                 self.accept(b)
                 _, frame = self.binder.pop_frame()
                 if not self.breaking_out:
@@ -1452,9 +1468,10 @@ class TypeChecker(NodeVisitor[Type]):
 
                 self.breaking_out = False
 
-                if var:
-                    self.binder.push(var, elsetype)
-            if kind == ISINSTANCE_ALWAYS_TRUE:
+                if else_map:
+                    for var, type in else_map.items():
+                        self.binder.push(var, type)
+            if else_map is None:
                 # The condition is always true => remaining elif/else blocks
                 # can never be reached.
 
@@ -2047,24 +2064,17 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
 
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
-                          weak: bool=False) -> Tuple[Node, Type, Type, int]:
-    """Check if node is an isinstance(variable, type) check.
+                          weak: bool=False) \
+        -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+    """Find any isinstance checks (within a chain of ands).
 
-    If successful, return tuple (variable, target-type, else-type,
-    kind); otherwise, return (None, AnyType, AnyType, -1).
+    Return value is a map of variables to their types if the condition
+    is true and a map of variables to their types if the condition is false.
 
-    When successful, the kind takes one of these values:
+    If either of the values in the tuple is None, then that particular
+    branch can never occur.
 
-      ISINSTANCE_OVERLAPPING: The type of variable and the target type are
-          partially overlapping => the test result can be True or False.
-      ISINSTANCE_ALWAYS_TRUE: The target type at least as general as the
-          variable type => the test is always True.
-      ISINSTANCE_ALWAYS_FALSE: The target type and the variable type are not
-          overlapping => the test is always False.
-
-    If it is an isinstance check, but we don't understand the argument
-    type, then in weak mode it is treated as Any and in non-weak mode
-    it is not treated as an isinstance.
+    Guaranteed to not return None, None. (But may return {}, {})
     """
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
@@ -2073,33 +2083,48 @@ def find_isinstance_check(node: Node,
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 if type:
-                    kind = ISINSTANCE_OVERLAPPING
                     elsetype = vartype
                     if vartype:
                         if is_proper_subtype(vartype, type):
-                            kind = ISINSTANCE_ALWAYS_TRUE
                             elsetype = None
+                            return {expr: type}, None
                         elif not is_overlapping_types(vartype, type):
-                            kind = ISINSTANCE_ALWAYS_FALSE
+                            return None, {expr: elsetype}
                         else:
                             elsetype = restrict_subtype_away(vartype, type)
-                    return expr, type, elsetype, kind
+                    return {expr: type}, {expr: elsetype}
                 else:
                     # An isinstance check, but we don't understand the type
                     if weak:
-                        return expr, AnyType(), vartype, ISINSTANCE_OVERLAPPING
+                        return {expr: AnyType()}, {expr: vartype}
     elif isinstance(node, OpExpr) and node.op == 'and':
-        # XXX We should extend this to support two isinstance checks in the same
-        # expression
-        (var, type, elsetype, kind) = find_isinstance_check(node.left, type_map, weak)
-        if var is None:
-            (var, type, elsetype, kind) = find_isinstance_check(node.left, type_map, weak)
-        if var:
-            if kind == ISINSTANCE_ALWAYS_TRUE:
-                kind = ISINSTANCE_OVERLAPPING
-            return (var, type, AnyType(), kind)
+        left_if_vars, right_else_vars = find_isinstance_check(
+            node.left,
+            type_map,
+            weak,
+        )
+
+        right_if_vars, right_else_vars = find_isinstance_check(
+            node.right,
+            type_map,
+            weak,
+        )
+        if left_if_vars:
+            if right_if_vars is not None:
+                left_if_vars.update(right_if_vars)
+            else:
+                left_if_vars = None
+        else:
+            left_if_vars = right_if_vars
+
+        # Make no claim about the types in else
+        return left_if_vars, {}
+    elif isinstance(node, UnaryExpr) and node.op == 'not':
+        left, right = find_isinstance_check(node.expr, type_map, weak)
+        return right, left
+
     # Not a supported isinstance check
-    return None, AnyType(), AnyType(), -1
+    return {}, {}
 
 
 def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:

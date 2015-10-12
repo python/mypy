@@ -77,9 +77,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
-                values = cast(TypeVarExpr, sym.node).values
-                return TypeVarType(t.name, sym.tvar_id, values,
+                tvar_expr = cast(TypeVarExpr, sym.node)
+                return TypeVarType(t.name, sym.tvar_id, tvar_expr.values,
                                    self.builtin_type('builtins.object'),
+                                   tvar_expr.variance,
                                    t.line)
             elif fullname == 'builtins.None':
                 return Void()

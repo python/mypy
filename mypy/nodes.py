@@ -20,7 +20,9 @@ class Context(metaclass=ABCMeta):
     def get_line(self) -> int: pass
 
 
-import mypy.types
+if False:
+    # break import cycle only needed for mypy
+    import mypy.types
 
 
 T = TypeVar('T')
@@ -69,7 +71,7 @@ type_aliases = {
 }
 
 reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
-                            for alias, name in type_aliases.items())
+                            for alias, name in type_aliases.items())  # type: Dict[str, str]
 
 
 class Node(Context):
@@ -163,7 +165,7 @@ class MypyFile(SymbolNode):
 
     def is_package_init_file(self) -> bool:
         return not (self.path is None) and len(self.path) != 0 \
-            and os.path.basename(self.path) == '__init__.py'
+            and os.path.basename(self.path).startswith('__init__.')
 
 
 class ImportBase(Node):
@@ -1043,7 +1045,7 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-}
+}  # type: Dict[str, str]
 
 ops_with_inplace_method = {
     '+', '-', '*', '/', '%', '//', '**', '&', '|', '^', '<<', '>>'}
