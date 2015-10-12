@@ -17,7 +17,8 @@ import sys
 
 import typing
 
-from mypy.myunit import Suite, SkipTestCaseException
+from mypy.myunit.errors import SkipTestCaseException
+from mypy.myunit.suite import Suite
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal

@@ -2,7 +2,8 @@
 
 import typing
 
-from mypy.myunit import Suite, assert_equal, assert_true
+from mypy.myunit.assertions import *
+from mypy.myunit.suite import Suite
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
 from mypy.types import AnyType, TupleType

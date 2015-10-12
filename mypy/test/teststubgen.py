@@ -9,7 +9,9 @@ import time
 
 import typing
 
-from mypy.myunit import Suite, AssertionFailure, assert_equal
+from mypy.myunit.assertions import *
+from mypy.myunit.errors import AssertionFailure
+from mypy.myunit.suite import Suite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases
 from mypy.test import config
@@ -94,11 +96,11 @@ class StubgenUtilSuite(Suite):
 
 
 class StubgenPythonSuite(Suite):
-    test_data_files = ['stubgen.test']
+    data_files = ['stubgen.test']
 
     def cases(self):
         c = []
-        for path in self.test_data_files:
+        for path in self.data_files:
             c += parse_test_cases(os.path.join(config.test_data_prefix, path), test_stubgen)
         return c
 

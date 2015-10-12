@@ -8,7 +8,8 @@ import shutil
 
 from typing import Callable, List, Tuple
 
-from mypy.myunit import TestCase, SkipTestCaseException
+from mypy.myunit.errors import SkipTestCaseException
+from mypy.myunit.suite import TestCase
 
 
 def parse_test_cases(
