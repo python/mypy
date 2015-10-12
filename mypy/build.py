@@ -27,6 +27,7 @@ from mypy.errors import Errors, CompileError
 from mypy import parse
 from mypy import stats
 from mypy.report import Reports
+from mypy import defaults
 
 
 # We need to know the location of this file to load data, but
@@ -95,7 +96,7 @@ def build(program_path: str,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
-          pyversion: int = 3,
+          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
           custom_typing_module: str = None,
           report_dirs: Dict[str, str] = {},
           flags: List[str] = None,
@@ -117,7 +118,7 @@ def build(program_path: str,
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
-      pyversion: Python version (2 for 2.x or 3 for 3.x)
+      pyversion: Python version (major, minor)
       custom_typing_module: if not None, use this module id as an alias for typing
       flags: list of build options (e.g. COMPILE_ONLY)
     """
@@ -200,7 +201,7 @@ def default_data_dir(bin_dir: str) -> str:
         raise RuntimeError("Broken installation: can't determine base dir")
 
 
-def default_lib_path(data_dir: str, target: int, pyversion: int,
+def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
         python_path: bool) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
@@ -222,7 +223,7 @@ def default_lib_path(data_dir: str, target: int, pyversion: int,
         major, minor = sys.version_info[0], sys.version_info[1]
     version_dir = '3.2'
     third_party_dir = 'third-party-3.2'
-    if pyversion < 3:
+    if pyversion[0] < 3:
         version_dir = '2.7'
         third_party_dir = 'third-party-2.7'
     path.append(os.path.join(data_dir, 'stubs', version_dir))
@@ -291,7 +292,7 @@ class BuildManager:
                        Semantic analyzer, pass 3
       type_checker:    Type checker
       errors:          Used for reporting all errors
-      pyversion:       Python version (2 or 3)
+      pyversion:       Python version (major, minor)
       flags:           Build options
       states:          States of all individual files that are being
                        processed. Each file in a build is always represented
@@ -309,7 +310,7 @@ class BuildManager:
     def __init__(self, data_dir: str,
                  lib_path: List[str],
                  target: int,
-                 pyversion: int,
+                 pyversion: Tuple[int, int],
                  flags: List[str],
                  ignore_prefix: str,
                  custom_typing_module: str,

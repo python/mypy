@@ -39,6 +39,7 @@ from typing import Any
 import mypy.parse
 import mypy.errors
 import mypy.traverser
+from mypy import defaults
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, ARG_STAR, ARG_STAR2, ARG_NAMED
@@ -48,7 +49,7 @@ from mypy.stubutil import is_c_module, write_header
 
 
 def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, module=None,
-                  pyversion=3):
+                  pyversion=defaults.PYTHON3_VERSION):
     source = open(path, 'rb').read()
     try:
         ast = mypy.parse.parse(source, fnam=path, pyversion=pyversion)
@@ -72,8 +73,8 @@ def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, m
 
 
 def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, sigs={},
-                             class_sigs={}, pyversion=3):
-    if pyversion == 2:
+                             class_sigs={}, pyversion=defaults.PYTHON3_VERSION):
+    if pyversion[0] == 2:
         module_path, module_all = load_python2_module_info(module)
     else:
         mod = importlib.import_module(module)
@@ -469,7 +470,7 @@ def main():
     args = sys.argv[1:]
     sigs = {}
     class_sigs = {}
-    pyversion = 3
+    pyversion = defaults.PYTHON3_VERSION
     while args and args[0].startswith('--'):
         if args[0] == '--docpath':
             docpath = args[1]
@@ -483,7 +484,7 @@ def main():
             sigs = dict(find_unique_signatures(all_sigs))
             class_sigs = dict(find_unique_signatures(all_class_sigs))
         elif args[0] == '--py2':
-            pyversion = 2
+            pyversion = defaults.PYTHON2_VERSION
         else:
             raise SystemExit('Unrecognized option %s' % args[0])
         args = args[1:]
