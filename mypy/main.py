@@ -103,9 +103,9 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
         elif args[0] == '--python-version':
             version_components = args[1].split(".")[0:2]
             if len(version_components) != 2:
-                fail("Invalid python version: {} (Format: 'x.y')".format(
-                    args[1]))
-            if not all(item.isdigit for item in version_components):
+                fail("Invalid python version {} (expected format: 'x.y')".format(
+                    repr(args[1])))
+            if not all(item.isdigit() for item in version_components):
                 fail("Found non-digit in python version: {}".format(
                     args[1]))
             options.pyversion = (int(version_components[0]), int(version_components[1]))
