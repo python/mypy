@@ -183,7 +183,7 @@ def usage(msg: str = None) -> None:
     if msg:
         sys.stderr.write('%s\n' % msg)
         sys.stderr.write("""\
-usage: mypy [option ...] [-m mod | file]
+usage: mypy [option ...] [-c cmd | -m mod | file]
 Try 'mypy -h' for more information.
 """)
     else:
@@ -195,7 +195,7 @@ Optional arguments:
   --<fmt>-report dir generate a <fmt> report of type precision under dir/
                      <fmt> may be one of: %s
   -m mod             type check module
-  -c string          type check string
+  -c string          type check program passed in as string
   --verbose          more verbose messages
   --use-python-path  search for modules in sys.path of running Python
   --version          show the current version information
