@@ -219,15 +219,16 @@ def add_stubs(driver: Driver) -> None:
     # Only test each module once, for the latest Python version supported.
     # The third-party stub modules will only be used if it is not in the version.
     seen = set()  # type: Set[str]
-    for version in driver.versions:
-        for pfx in ['', 'third-party-']:
-            stubdir = join('stubs', pfx + version)
+    # TODO: This should also test Python 2, and pass pyversion accordingly.
+    for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
+        for stub_type in ['builtins', 'stdlib', 'third_party']:
+            stubdir = join('typeshed', stub_type, version)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f[len(stubdir) + 1:])
                 if module not in seen:
                     seen.add(module)
                     driver.add_mypy_string(
-                        'stub (%s) module %s' % (pfx + version, module),
+                        'stub (%s) module %s' % (stubdir, module),
                         'import typing, %s' % module)
 
 
