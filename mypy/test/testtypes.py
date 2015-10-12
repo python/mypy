@@ -16,7 +16,7 @@ from mypy.types import (
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
-from mypy.typefixture import TypeFixture, InterfaceTypeFixture
+from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class TypesSuite(Suite):
