@@ -11,6 +11,7 @@ import typing
 from typing import Dict, List, Tuple
 
 from mypy import build
+from mypy import defaults
 from mypy.errors import CompileError
 
 from mypy.version import __version__
@@ -21,7 +22,7 @@ class Options:
         # Set default options.
         self.target = build.TYPE_CHECK
         self.build_flags = []  # type: List[str]
-        self.pyversion = 3
+        self.pyversion = defaults.PYTHON3_VERSION
         self.custom_typing_module = None  # type: str
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
@@ -97,8 +98,18 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
             args = args[1:]
         elif args[0] == '--py2':
             # Use Python 2 mode.
-            options.pyversion = 2
+            options.pyversion = defaults.PYTHON2_VERSION
             args = args[1:]
+        elif args[0] == '--python-version':
+            version = args[1].split(".")[0:2]
+            if len(version) != 2:
+                fail("Invalid python version: {} (Format: 'x.y')".format(
+                    args[1]))
+            if not all(item.isdigit for item in version):
+                fail("Found non-digit in python version: {}".format(
+                    args[1]))
+            options.pyversion = tuple(int(v) for v in version)
+            args = args[2:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
             return None, args[1], None, options
@@ -143,8 +154,8 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     if args[1:]:
         usage('Extra argument: {}'.format(args[1]))
 
-    if options.python_path and options.pyversion == 2:
-        usage('--py2 specified, '
+    if options.python_path and options.pyversion[0] == 2:
+        usage('Python version 2 (or --py2) specified, '
               'but --use-python-path will search in sys.path of Python 3')
 
     return args[0], None, None, options
