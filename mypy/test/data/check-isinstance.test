@@ -740,6 +740,9 @@ if isinstance(x, B) and isinstance(y, C):
     y.glaf += 1
     x() # E: "B" not callable
     y() # E: "C" not callable
+else:
+    x() # E: "A" not callable
+    y() # E: "A" not callable
 [builtins fixtures/isinstancelist.py]
 
 [case testIsinstanceMultiAndSpecialCase]
