@@ -19,13 +19,14 @@ from mypy.nodes import (
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr
+    RefExpr, YieldExpr, CONTRAVARIANT, COVARIANT
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type, UnionType
+    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
+    UnionType, TypeVarType,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -505,12 +506,25 @@ class TypeChecker(NodeVisitor[Type]):
             elif name == '__getattr__':
                 self.check_getattr_method(typ, defn)
 
+            # Refuse contravariant return type variable
+            if isinstance(typ.ret_type, TypeVarType):
+                if typ.ret_type.variance == CONTRAVARIANT:
+                    self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
+                         typ.ret_type)
+
             # Push return type.
             self.return_types.append(typ.ret_type)
 
             # Store argument types.
             for i in range(len(typ.arg_types)):
                 arg_type = typ.arg_types[i]
+
+                # Refuse covariant parameter type variables
+                if isinstance(arg_type, TypeVarType):
+                    if arg_type.variance == COVARIANT:
+                        self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
+                                  arg_type)
+
                 if typ.arg_kinds[i] == nodes.ARG_STAR:
                     # builtins.tuple[T] is typing.Tuple[T, ...]
                     arg_type = self.named_generic_type('builtins.tuple',
