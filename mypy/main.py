@@ -101,14 +101,14 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
             options.pyversion = defaults.PYTHON2_VERSION
             args = args[1:]
         elif args[0] == '--python-version':
-            version = args[1].split(".")[0:2]
-            if len(version) != 2:
+            version_components = args[1].split(".")[0:2]
+            if len(version_components) != 2:
                 fail("Invalid python version: {} (Format: 'x.y')".format(
                     args[1]))
-            if not all(item.isdigit for item in version):
+            if not all(item.isdigit for item in version_components):
                 fail("Found non-digit in python version: {}".format(
                     args[1]))
-            options.pyversion = tuple(int(v) for v in version)
+            options.pyversion = (int(version_components[0]), int(version_components[1]))
             args = args[2:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
