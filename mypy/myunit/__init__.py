@@ -9,30 +9,6 @@ import traceback
 from typing import List, Tuple, Any, Callable, Union, cast
 
 
-"""
-Public interfaces to this module:
-    - python -m mypy.myunit and scripts/myunit.
-    - TestCase can be subclassed:
-        - TestCase.set_up can be overridden.
-        - TestCase.tear_down can be overridden.
-        - TestCase.run can be overridden.
-    - Suite can be subclassed:
-        - Suite.cases can be overridden.
-        - Suite.test* functions will be collected otherwise.
-        - Suite.set_up can be overridden.
-    - SkipTestCaseException can be raised within a test to cause a skip.
-    - AssertionFailure can be raised with a message that will be printed.
-    - UPDATE_TESTCASES and APPEND_TESTCASES are mutable globals.
-    - assert_equal can be used to fail.
-    - assert_true can be used to fail.
-    - assert_false can be used to fail.
-
-All other APIs are private, in particular:
-    - Suite being able to contain other Suite is not public.
-    - All the details of how tests are actually collected and run.
-"""
-
-
 # TODO remove global state
 is_verbose = False
 is_quiet = False
