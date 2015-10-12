@@ -4,6 +4,6 @@
 Usually used as a slave by runtests.py, but can be used directly.
 """
 
-from mypy.myunit import main
+from mypy.myunit.main import main
 
 main()

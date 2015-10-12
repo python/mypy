@@ -9,7 +9,9 @@ import time
 
 import typing
 
-from mypy.myunit import Suite, AssertionFailure, assert_equal
+from mypy.myunit.assertions import *
+from mypy.myunit.errors import AssertionFailure
+from mypy.myunit.suite import Suite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases
 from mypy.test import config

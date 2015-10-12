@@ -1,6 +1,7 @@
 """Test cases for finding type annotations in docstrings."""
 
-from mypy.myunit import Suite, assert_equal
+from mypy.myunit.assertions import *
+from mypy.myunit.suite import Suite
 from mypy.docstring import parse_docstring, scrubtype
 
 

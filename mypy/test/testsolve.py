@@ -2,7 +2,8 @@
 
 import typing
 
-from mypy.myunit import Suite, assert_equal
+from mypy.myunit.assertions import *
+from mypy.myunit.suite import Suite
 from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
 from mypy.solve import solve_constraints
 from mypy.test.typefixture import TypeFixture

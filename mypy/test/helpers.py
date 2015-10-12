@@ -5,7 +5,7 @@ import os
 from typing import List, Dict, Tuple
 
 from mypy import defaults
-from mypy.myunit import AssertionFailure
+from mypy.myunit.errors import AssertionFailure
 from mypy.test import config
 
 

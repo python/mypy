@@ -6,7 +6,7 @@ import re
 import typing
 
 from mypy import build
-from mypy.myunit import Suite
+from mypy.myunit.suite import Suite
 from mypy.test import config
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal

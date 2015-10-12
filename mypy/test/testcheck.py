@@ -7,8 +7,8 @@ import sys
 from typing import Tuple
 
 from mypy import build
-import mypy.myunit  # for mutable globals (ick!)
-from mypy.myunit import Suite
+from mypy.myunit import ick  # for mutable globals (ick!)
+from mypy.myunit.suite import Suite
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import (
@@ -78,8 +78,8 @@ class TypeCheckSuite(Suite):
         except CompileError as e:
             a = normalize_error_messages(e.messages)
 
-        if testcase.output != a and mypy.myunit.UPDATE_TESTCASES:
-            update_testcase_output(testcase, a, mypy.myunit.APPEND_TESTCASES)
+        if testcase.output != a and ick.UPDATE_TESTCASES:
+            update_testcase_output(testcase, a, ick.APPEND_TESTCASES)
 
         assert_string_arrays_equal(
             testcase.output, a,

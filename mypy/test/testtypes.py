@@ -2,9 +2,8 @@
 
 from typing import List
 
-from mypy.myunit import (
-    Suite, assert_equal, assert_true, assert_false
-)
+from mypy.myunit.assertions import *
+from mypy.myunit.suite import Suite
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types

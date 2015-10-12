@@ -2,7 +2,8 @@
 
 import typing
 
-from mypy.myunit import Suite, assert_equal
+from mypy.myunit.assertions import *
+from mypy.myunit.suite import Suite
 from mypy.lex import lex
 
 
