@@ -205,8 +205,8 @@ def add_myunit(driver: Driver) -> None:
         mod = file_to_module(f)
         if '.codec.test.' in mod:
             # myunit is Python3 only.
-            driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
-            driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
+            driver.add_python_mod('unittest %s' % mod, 'unittest', '-q', mod)
+            driver.add_python2('unittest %s' % mod, '-m', 'unittest', '-q', mod)
         elif mod == 'mypy.test.testpythoneval':
             # Run Python evaluation integration tests separetely since they are much slower
             # than proper unit tests.
@@ -326,6 +326,8 @@ def main() -> None:
     # empty string is a substring of all names
     if not whitelist:
         whitelist.append('')
+    if not arglist:
+        arglist.append('-q')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
             verbosity=verbosity, xfail=[])
