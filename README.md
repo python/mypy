@@ -47,7 +47,7 @@ versions (2.x and 3.x) installed on the same system without problems.
 
 In Ubuntu, Mint and Debian you can install Python 3 like this:
 
-    $ sudo apt-get install python3
+    $ sudo apt-get install python3 python3-pip
 
 For other Linux flavors, OS X and Windows, packages are available at
 
@@ -59,12 +59,56 @@ Quick start
 
 Mypy can be installed using pip:
 
-    $ pip install mypy-lang
-
-Depending on your configuration, you may have to use `pip3`
-instead:
-
     $ pip3 install mypy-lang
+
+*Note that the package name is `mypy-lang`, not `mypy`.*
+
+Now, if Python on your system is configured properly (else see
+"Troubleshooting" below), you can type-check a program like this:
+
+    $ mypy PROGRAM
+
+You can always use a Python interpreter to run your statically typed
+programs, even if they have type errors:
+
+    $ python3 PROGRAM
+
+
+Web site and documentation
+--------------------------
+
+Documentation and additional information is available at the web site:
+
+  http://www.mypy-lang.org/
+
+
+Troubleshooting
+---------------
+
+Depending on your configuration, you may have to run `pip` like
+this:
+
+    $ python3 -m pip install mypy-lang
+
+If the `mypy` command isn't found after installation: After either
+`pip3 install` or `setup.py install`, the `mypy` script and
+dependencies, including the `typing` module, will be installed to
+system-dependent locations.  Sometimes the script directory will not
+be in `PATH`, and you have to add the target directory to `PATH`
+manually or create a symbolic link to the script.  In particular, on
+Mac OS X, the script may be installed under `/Library/Frameworks`:
+
+    /Library/Frameworks/Python.framework/Versions/<version>/bin
+
+In Windows, the script is generally installed in
+`\PythonNN\Scripts`. So, type check a program like this (replace
+`\Python34` with your Python installation path):
+
+    C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
+
+
+Quick start for contributing to mypy
+------------------------------------
 
 If you want to contribute, first clone the mypy git repository:
 
@@ -79,37 +123,12 @@ the above as root. For example, in Ubuntu and Mac OS X:
 
     $ sudo python3 setup.py install
 
-This installs the `mypy` script and dependencies, including the
-`typing` module, to system-dependent locations.  Sometimes the script
-directory will not be in `PATH`, and you have to add the target
-directory to `PATH` manually or create a symbolic link to the script.
-In particular, on Mac OS X, the script may be installed under
-`/Library/Frameworks`:
+Now you can use the `mypy` program just as above.  In case of trouble
+see "Troubleshooting" above.
 
-    /Library/Frameworks/Python.framework/Versions/<version>/bin
+The mypy wiki contains some useful information for contributors:
 
-Now, on a Unix-like system, you can type check a program like this:
-
-    $ mypy PROGRAM
-
-In Windows, the script is generally installed in
-`\PythonNN\Scripts`. So, type check a program like this (replace
-`\Python34` with your Python installation path):
-
-    C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
-
-You can always use a Python interpreter to run your statically typed
-programs, even if they have type errors:
-
-    $ python3 PROGRAM
-
-
-Web site and documentation
---------------------------
-
-Documentation and additional information is available at the web site:
-
-  http://www.mypy-lang.org/
+  http://www.mypy-lang.org/wiki/DeveloperGuides
 
 
 Running tests and linting
@@ -131,7 +150,8 @@ run unit tests only, which run pretty quickly:
 
     $ ./runtests.py unit-test
 
-You can run a subset of test suites by passing postive or negative filters:
+You can run a subset of test suites by passing positive or negative
+filters:
 
     $ ./runtests.py lex parse -x lint -x stub
 
@@ -166,13 +186,13 @@ To run the linter:
 Development status
 ------------------
 
-Mypy is work in progress and is not yet production quality (though
-mypy development is already done using mypy!).
+Mypy is work in progress and is not yet production quality, though
+mypy development has been done using mypy for a while!
 
 Here are some of the more significant Python features not supported
 right now (but all of these will improve):
 
- - Python 2.x support not usable yet
+ - Python 2.x support needs polish and documentation
  - properties with setters not supported
  - limited metaclass support
  - only a subset of Python standard library modules are supported, and some
@@ -180,7 +200,7 @@ right now (but all of these will improve):
  - 3rd party module support is limited
 
 The current development focus is to have a good coverage of Python
-features and the standard library (initially 3.x, and later 2.7).
+features and the standard library (both 3.x and 2.7).
 
 
 Issue tracker
