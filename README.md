@@ -61,10 +61,19 @@ Mypy can be installed using pip:
 
     $ pip install mypy-lang
 
-Depending on your configuration, you may have to use `pip3`
-instead:
+Now, if Python on your system is configured properly (else see
+"Troubleshooting" below), you can type-check a program like this:
 
-    $ pip3 install mypy-lang
+    $ mypy PROGRAM
+
+You can always use a Python interpreter to run your statically typed
+programs, even if they have type errors:
+
+    $ python3 PROGRAM
+
+
+Quick start for contributing to mypy
+------------------------------------
 
 If you want to contribute, first clone the mypy git repository:
 
@@ -79,29 +88,33 @@ the above as root. For example, in Ubuntu and Mac OS X:
 
     $ sudo python3 setup.py install
 
-This installs the `mypy` script and dependencies, including the
-`typing` module, to system-dependent locations.  Sometimes the script
-directory will not be in `PATH`, and you have to add the target
-directory to `PATH` manually or create a symbolic link to the script.
-In particular, on Mac OS X, the script may be installed under
-`/Library/Frameworks`:
+Now you can use the `mypy` program just as above.  In case of trouble
+see "Troubleshooting" below.
+
+
+Troubleshooting
+---------------
+
+Depending on your configuration, `pip` may correspond to Python 2 and
+you may have to use `pip3` instead for installation:
+
+    $ pip3 install mypy-lang
+
+If the `mypy` command isn't found after installation: After either
+`pip install` or `setup.py install`, the `mypy` script and
+dependencies, including the `typing` module, will be installed to
+system-dependent locations.  Sometimes the script directory will not
+be in `PATH`, and you have to add the target directory to `PATH`
+manually or create a symbolic link to the script.  In particular, on
+Mac OS X, the script may be installed under `/Library/Frameworks`:
 
     /Library/Frameworks/Python.framework/Versions/<version>/bin
-
-Now, on a Unix-like system, you can type check a program like this:
-
-    $ mypy PROGRAM
 
 In Windows, the script is generally installed in
 `\PythonNN\Scripts`. So, type check a program like this (replace
 `\Python34` with your Python installation path):
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
-
-You can always use a Python interpreter to run your statically typed
-programs, even if they have type errors:
-
-    $ python3 PROGRAM
 
 
 Web site and documentation
