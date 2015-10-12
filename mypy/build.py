@@ -222,7 +222,7 @@ def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
                 for minor in reversed(range(pyversion[1] + 1))]
     # E.g. for Python 3.5, try 2and3/, then 3/, then 3.5/, then 3.4/, 3.3/, ...
     for v in ['2and3', str(pyversion[0])] + versions:
-        for lib_type in ['stdlib', 'builtins', 'third-party']:
+        for lib_type in ['stdlib', 'builtins', 'third_party']:
             stubdir = os.path.join(data_dir, 'typeshed', lib_type, v)
             if os.path.isdir(stubdir):
                 path.append(stubdir)
