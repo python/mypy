@@ -78,9 +78,9 @@ def is_c_module(module):
     return '__file__' not in module.__dict__ or module.__dict__['__file__'].endswith('.so')
 
 
-def write_header(file, module_name, pyversion=3):
+def write_header(file, module_name, pyversion=(3, 5)):
     if module_name:
-        if pyversion >= 3:
+        if pyversion[0] >= 3:
             version = '%d.%d' % (sys.version_info.major,
                                  sys.version_info.minor)
         else:

@@ -2,8 +2,9 @@ import sys
 import re
 import os
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
+from mypy import defaults
 from mypy.myunit import AssertionFailure
 from mypy.test import config
 
@@ -260,15 +261,15 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
     return max(0, num_eq - 4)
 
 
-def testfile_pyversion(path: str) -> int:
+def testfile_pyversion(path: str) -> Tuple[int, int]:
     if path.endswith('python2.test'):
-        return 2
+        return defaults.PYTHON2_VERSION
     else:
-        return 3
+        return defaults.PYTHON3_VERSION
 
 
-def testcase_pyversion(path: str, testcase_name: str) -> int:
+def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
     if testcase_name.endswith('python2'):
-        return 2
+        return defaults.PYTHON2_VERSION
     else:
         return testfile_pyversion(path)

@@ -30,6 +30,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
+from mypy import defaults
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype,
@@ -302,8 +303,8 @@ class TypeChecker(NodeVisitor[Type]):
     Type check mypy source files that have been semantically analyzed.
     """
 
-    # Target Python major version
-    pyversion = 3
+    # Target Python version
+    pyversion = defaults.PYTHON3_VERSION
     # Are we type checking a stub?
     is_stub = False
     # Error message reporter
@@ -338,7 +339,7 @@ class TypeChecker(NodeVisitor[Type]):
     modules = None  # type: Dict[str, MypyFile]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
-                 pyversion: int = 3) -> None:
+                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -1530,7 +1531,7 @@ class TypeChecker(NodeVisitor[Type]):
                     # Good!
                     return None
                 # Else fall back to the checks below (which will fail).
-        if isinstance(typ, TupleType) and self.pyversion == 2:
+        if isinstance(typ, TupleType) and self.pyversion[0] == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
@@ -1642,7 +1643,7 @@ class TypeChecker(NodeVisitor[Type]):
             method = echk.analyze_external_member_access('__iter__', iterable,
                                                          expr)
             iterator = echk.check_call(method, [], [], expr)[0]
-            if self.pyversion >= 3:
+            if self.pyversion[0] >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
