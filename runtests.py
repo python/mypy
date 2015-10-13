@@ -377,7 +377,7 @@ def main() -> None:
     ]:
         before = len(driver.waiter.queue)
         adder(driver)
-        if whitelist == ['']:
+        if whitelist == [''] and blacklist == []:
             assert len(driver.waiter.queue) != before, 'no tasks in %s' % adder.__name__
 
     if not list_only:
