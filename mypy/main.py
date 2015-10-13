@@ -123,7 +123,7 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
             args = args[2:]
         elif args[0] == '-f' or args[0] == '--dirty-stubs':
             options.dirty_stubs = True
-            args = args[2:]
+            args = args[1:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
             return None, args[1], None, options

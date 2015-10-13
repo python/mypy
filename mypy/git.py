@@ -21,37 +21,33 @@ def have_git() -> bool:
         return False
 
 
-def run_in_dir(dir, command) -> bytes:
-    """Convenience function: Run a command in a directory."""
-    return subprocess.check_output("cd " + pipes.quote(dir) + "; " + command,
-                                   shell=True)
-
-
 def get_submodules(dir: str):
     """Return a list of all git top-level submodules in a given directory."""
     # It would be nicer to do
     # "git submodule foreach 'echo MODULE $name $path $sha1 $toplevel'"
     # but that wouldn't work on Windows.
-    output = run_in_dir(dir, "git submodule status")
+    output = subprocess.check_output(["git", "submodule", "status"], cwd=dir)
     for line in output.splitlines():
         status = line[0]
-        sha5, name, *_ = line[1:].split(b" ")
-        yield (status, sha5, name.decode(sys.getfilesystemencoding()))
+        revision, name, *_ = line[1:].split(b" ")
+        yield (status, revision, name.decode(sys.getfilesystemencoding()))
 
 
 def git_revision(dir: str) -> bytes:
     """Get the SHA-1 of the HEAD of a git repository."""
-    return run_in_dir(dir, "git rev-parse HEAD").strip()
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=dir).strip()
 
 
 def is_dirty(dir: str) -> bool:
     """Check whether a git repository has uncommitted changes."""
-    return run_in_dir(dir, "git status -uno --porcelain").strip() != b""
+    output = subprocess.check_output(["git", "status", "-uno", "--porcelain"], cwd=dir)
+    return output.strip() != b""
 
 
 def has_extra_files(dir: str) -> bool:
     """Check whether a git repository has untracked files."""
-    return run_in_dir(dir, "git clean --dry-run -d").strip() != b""
+    output = subprocess.check_output(["git", "clean", "--dry-run", "-d"], cwd=dir)
+    return output.strip() != b""
 
 
 def warn_no_git_executable() -> None:
@@ -62,11 +58,17 @@ def warn_no_git_executable() -> None:
 def warn_dirty(dir) -> None:
     print("Warning: git module '{}' has uncommitted changes.".format(dir),
           file=sys.stderr)
+    print("Got to the directory", file=sys.stderr)
+    print("  {}".format(dir), file=sys.stderr)
+    print("and commit or reset your changes", file=sys.stderr)
 
 
 def warn_extra_files(dir) -> None:
     print("Warning: git module '{}' has untracked files.".format(dir),
           file=sys.stderr)
+    print("Got to the directory", file=sys.stderr)
+    print("  {}".format(dir), file=sys.stderr)
+    print("and add & commit your new files.", file=sys.stderr)
 
 
 def error_submodule_not_initialized(name: str, dir: str) -> None:
@@ -81,6 +83,8 @@ def error_submodule_not_updated(name: str, dir: str) -> None:
     print("Please run:", file=sys.stderr)
     print("  cd {}".format(pipes.quote(dir)), file=sys.stderr)
     print("  git submodule update {}".format(name), file=sys.stderr)
+    print("(If you got this message because you updated {}".format(name), file=sys.stderr)
+    print(" then run \"git add {}\" to silence this check)")
 
 
 def verify_git_integrity_or_abort(datadir: str) -> None:
