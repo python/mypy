@@ -65,8 +65,8 @@ package_data = {
     ],
     'mypy.test': [
         'data/*.test',
-        'data/fixtures/*.py',
-        'data/lib-stub/*.py',
+        'data/fixtures/*.pyi',
+        'data/lib-stub/*.pyi',
     ],
 }
 

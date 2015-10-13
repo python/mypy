@@ -47,9 +47,11 @@ def parse_test_cases(
                                   '\n'.join(p[i].data)))
                 elif p[i].id == 'builtins':
                     # Use a custom source file for the std module.
+                    if p[i].arg.endswith('.py'):
+                        p[i].arg += 'i'
                     mpath = os.path.join(os.path.dirname(path), p[i].arg)
                     f = open(mpath)
-                    files.append((os.path.join(base_path, 'builtins.py'),
+                    files.append((os.path.join(base_path, 'builtins.pyi'),
                                   f.read()))
                     f.close()
                 else:
