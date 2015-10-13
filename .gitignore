@@ -1,16 +1,19 @@
-build/
-__pycache__
+# Backup and compiled files
+__pycache__/
 *.pyc
 *~
+
+# Unclassified
 @*
 /env
 docs/build/
 *.iml
 /out/
 
-/build
-/dist
-
+# Used by setup.py and tox
+/build/
+/dist/
+/elsewhere/
 /.tox/
 /MANIFEST
 /lib-typing/3.2/mypy_lang.egg-info/
