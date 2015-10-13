@@ -82,7 +82,7 @@ class Dialect:
     def add_future(self, future: str) -> 'Dialect':
         if future in self.base_future_set:
             return self
-        return Dialect(self.base_version, self.base_future_list + [future])
+        return Dialect(self.base_version, list(self.base_future_list) + [future])
 
 
 class Implementation:
