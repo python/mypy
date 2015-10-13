@@ -6,7 +6,16 @@ if False:
 if True:
     # When this is run as a script, `typing` is not available yet.
     import sys
-    from os.path import join, isdir
+    from os.path import (
+        basename,
+        dirname,
+        isabs,
+        isdir,
+        join,
+        realpath,
+        relpath,
+        splitext,
+    )
 
     def get_versions():  # type: () -> typing.List[str]
         major = sys.version_info[0]
@@ -31,6 +40,10 @@ import itertools
 import os
 
 
+# Allow this to be symlinked to support running an installed version.
+SOURCE_DIR = dirname(realpath(__file__))
+
+
 # Ideally, all tests would be `discover`able so that they can be driven
 # (and parallelized) by an external test driver.
 
@@ -45,7 +58,6 @@ class Driver:
         self.waiter = Waiter(verbosity=verbosity, xfail=xfail)
         self.versions = get_versions()
         self.cwd = os.getcwd()
-        self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
 
     def prepend_path(self, name: str, paths: List[str]) -> None:
@@ -74,7 +86,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy]
+        largs[0:0] = ['mypy', '--use-python-path']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -96,7 +108,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-m']
+        largs[0:0] = ['mypy', '--use-python-path', '-m']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -118,7 +130,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-c']
+        largs[0:0] = ['mypy', '--use-python-path', '-c']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -144,6 +156,19 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
+    def add_myunit(self, name: str, *args: str, cwd: Optional[str] = None,
+            script: bool = True) -> None:
+        name = 'run %s' % name
+        if not self.allow(name):
+            return
+        largs = list(args)
+        if script:
+            largs[0:0] = ['myunit']
+        else:
+            largs[0:0] = [sys.executable, '-m' 'mypy.myunit']
+        env = self.env
+        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+
     def add_flake8(self, name: str, file: str, cwd: Optional[str] = None) -> None:
         name = 'lint %s' % name
         if not self.allow(name):
@@ -159,28 +184,30 @@ class Driver:
 
 def add_basic(driver: Driver) -> None:
     if False:
-        driver.add_mypy('file setup.py', 'setup.py')
-    driver.add_flake8('file setup.py', 'setup.py')
-    driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_flake8('file runtests.py', 'runtests.py')
-    driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_flake8('legacy entry script', 'scripts/mypy')
-    driver.add_mypy('legacy myunit script', 'scripts/myunit')
-    driver.add_flake8('legacy myunit script', 'scripts/myunit')
+        driver.add_mypy('file setup.py', join(SOURCE_DIR, 'setup.py'))
+    driver.add_flake8('file setup.py', join(SOURCE_DIR, 'setup.py'))
+    driver.add_mypy('file runtests.py', join(SOURCE_DIR, 'runtests.py'))
+    driver.add_flake8('file runtests.py', join(SOURCE_DIR, 'runtests.py'))
+    driver.add_mypy('legacy entry script', join(SOURCE_DIR, 'scripts/mypy'))
+    driver.add_flake8('legacy entry script', join(SOURCE_DIR, 'scripts/mypy'))
+    driver.add_mypy('legacy myunit script', join(SOURCE_DIR, 'scripts/myunit'))
+    driver.add_flake8('legacy myunit script', join(SOURCE_DIR, 'scripts/myunit'))
     driver.add_mypy_mod('entry mod mypy', 'mypy')
     driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
     driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
+    base = join(SOURCE_DIR, base)
     return [join(root, f)
             for root, dirs, files in os.walk(base)
             for f in files
             if f.startswith(prefix) and f.endswith(suffix)]
 
 
-def file_to_module(file: str) -> str:
-    rv = os.path.splitext(file)[0].replace(os.sep, '.')
+def file_to_module(file: str, ignore: str = '') -> str:
+    file = relpath(file, join(SOURCE_DIR, ignore))
+    rv = splitext(file)[0].replace(os.sep, '.')
     if rv.endswith('.__init__'):
         rv = rv[:-len('.__init__')]
     return rv
@@ -210,9 +237,12 @@ def add_myunit(driver: Driver) -> None:
         elif mod == 'mypy.test.testpythoneval':
             # Run Python evaluation integration tests separetely since they are much slower
             # than proper unit tests.
-            driver.add_python_mod('eval-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+
+            # testpythoneval requires lib-typing/2.7 to be available. Ick!
+            driver.add_myunit('eval-test %s' % mod, '-m', mod, *driver.arglist,
+                cwd=SOURCE_DIR, script=False)
         else:
-            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+            driver.add_myunit('unit-test %s' % mod, '-m', mod, *driver.arglist)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -223,7 +253,7 @@ def add_stubs(driver: Driver) -> None:
         for pfx in ['', 'third-party-']:
             stubdir = join('stubs', pfx + version)
             for f in find_files(stubdir, suffix='.pyi'):
-                module = file_to_module(f[len(stubdir) + 1:])
+                module = file_to_module(f, stubdir)
                 if module not in seen:
                     seen.add(module)
                     driver.add_mypy_string(
@@ -234,21 +264,21 @@ def add_stubs(driver: Driver) -> None:
 def add_libpython(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
-        libpython_dir = join(driver.cwd, 'lib-python', version)
+        libpython_dir = join('lib-python', version)
         for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
-            module = file_to_module(f[len(libpython_dir) + 1:])
+            module = file_to_module(f, libpython_dir)
             if module not in seen:
                 seen.add(module)
                 driver.add_mypy_mod(
                     'libpython (%s) module %s' % (version, module),
                     module,
-                    cwd=libpython_dir)
+                    cwd=join(SOURCE_DIR, libpython_dir))
 
 
 def add_samples(driver: Driver) -> None:
     for f in find_files('samples', suffix='.py'):
         if 'codec' in f:
-            cwd, bf = os.path.dirname(f), os.path.basename(f)
+            cwd, bf = dirname(f), basename(f)
             bf = bf[:-len('.py')]
             driver.add_mypy_string('codec file %s' % f,
                     'import mypy.codec.register, %s' % bf,
@@ -276,7 +306,7 @@ def sanity() -> None:
         return
     failed = False
     for p in paths.split(os.pathsep):
-        if not os.path.isabs(p):
+        if not isabs(p):
             print('Relative PYTHONPATH entry %r' % p)
             failed = True
     if failed:
@@ -328,7 +358,9 @@ def main() -> None:
         whitelist.append('')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, xfail=[])
+            verbosity=verbosity, xfail=[
+                'run2 unittest mypy.codec.test.test_function_translation',
+            ])
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])

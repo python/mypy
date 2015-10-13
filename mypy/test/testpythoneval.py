@@ -17,6 +17,7 @@ import sys
 
 import typing
 
+from mypy.build import is_installed
 from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
@@ -72,7 +73,7 @@ def test_python_evaluation(testcase):
     # Type check the program.
     # This uses the same PYTHONPATH as the current process.
     process = subprocess.Popen([python3_path,
-                                os.path.join(testcase.old_cwd, 'scripts', 'mypy')]
+                                '-m', 'mypy']
                             + args + [program],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
@@ -83,11 +84,14 @@ def test_python_evaluation(testcase):
     if not process.wait():
         # Set up module path for the execution.
         # This needs the typing module but *not* the mypy module.
-        vers_dir = '2.7' if py2 else '3.2'
-        typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
-        assert os.path.isdir(typing_path)
-        env = os.environ.copy()
-        env['PYTHONPATH'] = typing_path
+        if is_installed():
+            env = None
+        else:
+            vers_dir = '2.7' if py2 else '3.2'
+            typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
+            assert os.path.isdir(typing_path)
+            env = os.environ.copy()
+            env['PYTHONPATH'] = typing_path
         process = subprocess.Popen([interpreter, program],
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
@@ -110,6 +114,10 @@ def try_find_python2_interpreter():
                                        stderr=subprocess.STDOUT)
             stdout, stderr = process.communicate()
             if b'Python 2.7' in stdout:
+                if is_installed():
+                    print('WARNING: python2 interpreter found, but'
+                        ' typing is not installed for python2')
+                    return None
                 return interpreter
         except OSError:
             pass
