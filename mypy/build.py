@@ -95,7 +95,6 @@ def build(program_path: str,
           argument: str = None,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
-          bin_dir: str = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
           custom_typing_module: str = None,
           report_dirs: Dict[str, str] = {},
@@ -116,8 +115,6 @@ def build(program_path: str,
       program_text: the main source file contents; if omitted, read from file
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
-      bin_dir: directory containing the mypy script, used for finding data
-        directories; if omitted, use '.' as the data directory
       pyversion: Python version (major, minor)
       custom_typing_module: if not None, use this module id as an alias for typing
       flags: list of build options (e.g. COMPILE_ONLY)
@@ -125,7 +122,7 @@ def build(program_path: str,
     flags = flags or []
     module = module or '__main__'
 
-    data_dir = default_data_dir(bin_dir)
+    data_dir = default_data_dir()
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir, target, pyversion, python_path)
@@ -176,26 +173,19 @@ def build(program_path: str,
     return result
 
 
-def default_data_dir(bin_dir: str) -> str:
-    # TODO fix this logic
-    if not bin_dir:
-        # Default to directory containing this file's parent.
-        return os.path.dirname(os.path.dirname(__file__))
-    base = os.path.basename(bin_dir)
-    dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'mypy'
-            and not os.path.isdir(os.path.join(dir, 'stubs'))):
-        # Installed, on Windows.
-        return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'mypy':
-        # Assume that we have a repo check out or unpacked source tarball.
-        return os.path.dirname(bin_dir)
-    elif base == 'bin':
-        # Installed to somewhere (can be under /usr/local or anywhere).
-        return os.path.join(dir, 'lib', 'mypy')
-    elif base == 'python3':
-        # Assume we installed python3 with brew on os x
-        return os.path.join(os.path.dirname(dir), 'lib', 'mypy')
+def is_installed() -> bool:
+    return 'site-packages' in __file__ or 'dist-packages' in __file__
+
+
+def default_data_dir() -> str:
+    if is_installed():
+        # we are installed
+        rv = os.path.join(sys.prefix, 'lib', 'mypy')
+    else:
+        # we are from from a source checkout
+        rv = os.path.dirname(os.path.dirname(__file__))
+    if os.path.isdir(os.path.join(rv, 'stubs')):
+        return rv
     else:
         # Don't know where to find the data files!
         raise RuntimeError("Broken installation: can't determine base dir")

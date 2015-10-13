@@ -66,6 +66,22 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
+# TODO recurse automatically?
+# If we switch to setuptools, use find_packages?
+packages = [
+    'mypy', 'mypy.test',
+    'mypy.myunit',
+    'mypy.codec', 'mypy.codec.test',
+]
+
+package_data = {
+    'mypy.test': [
+        'data/*.test',
+        'data/fixtures/*.py',
+        'data/lib-stub/*.py',
+    ],
+}
+
 setup(name='mypy-lang',
       version=version,
       description=description,
@@ -77,8 +93,9 @@ setup(name='mypy-lang',
       platforms=['POSIX'],
       package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
       py_modules=['typing'],
-      packages=['mypy'],
-      scripts=['scripts/mypy'],
+      packages=packages,
+      scripts=['scripts/mypy', 'scripts/myunit'],
       data_files=data_files,
+      package_data=package_data,
       classifiers=classifiers,
       )

@@ -11,9 +11,13 @@ python:
 
 install:
   - pip install -r test-requirements.txt
-  - python setup.py install
 
 script:
+  - python setup.py install
+  - mkdir elsewhere
+  - cd elsewhere
+  - mkdir tmp-test-dirs
+  - ln -s ../runtests.py
   - python runtests.py -v
 
 notifications:

@@ -21,8 +21,6 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
     Display any differences in a human-readable form.
     """
 
-    actual = clean_up(actual)
-
     if actual != expected:
         num_skip_start = num_skipped_prefix_lines(expected, actual)
         num_skip_end = num_skipped_suffix_lines(expected, actual)
@@ -171,7 +169,6 @@ def assert_string_arrays_equal_wildcards(expected: List[str],
                                          msg: str) -> None:
     # Like above, but let a line with only '...' in expected match any number
     # of lines in actual.
-    actual = clean_up(actual)
 
     while actual != [] and actual[-1] == '':
         actual = actual[:-1]
@@ -179,25 +176,6 @@ def assert_string_arrays_equal_wildcards(expected: List[str],
     # Expand "..." wildcards away.
     expected = match_array(expected, actual)
     assert_string_arrays_equal(expected, actual, msg)
-
-
-def clean_up(a):
-    """Remove common directory prefix from all strings in a.
-
-    This uses a naive string replace; it seems to work well enough. Also
-    remove trailing carriage returns.
-    """
-    res = []
-    for s in a:
-        prefix = config.PREFIX + os.sep
-        ss = s
-        for p in prefix, prefix.replace(os.sep, '/'):
-            if p != '/' and p != '//' and p != '\\' and p != '\\\\':
-                ss = ss.replace(p, '')
-        # Ignore spaces at end of line.
-        ss = re.sub(' +$', '', ss)
-        res.append(re.sub('\\r$', '', ss))
-    return res
 
 
 def match_array(pattern: List[str], target: List[str]) -> List[str]:

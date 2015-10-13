@@ -29,32 +29,16 @@ class Options:
 
 
 def main() -> None:
-    bin_dir = find_bin_directory()
     path, module, program_text, options = process_options(sys.argv[1:])
     try:
         if options.target == build.TYPE_CHECK:
-            type_check_only(path, module, program_text, bin_dir, options)
+            type_check_only(path, module, program_text, options)
         else:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
         for m in e.messages:
             sys.stderr.write(m + '\n')
         sys.exit(1)
-
-
-def find_bin_directory() -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    script = __file__
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script):
-            script = readlinkabs(script)
-        else:
-            break
-    return os.path.dirname(script)
 
 
 def readlinkabs(link: str) -> str:
@@ -68,12 +52,11 @@ def readlinkabs(link: str) -> str:
 
 
 def type_check_only(path: str, module: str, program_text: str,
-        bin_dir: str, options: Options) -> None:
+        options: Options) -> None:
     # Type check the program and dependencies and translate to Python.
     build.build(path,
                 module=module,
                 program_text=program_text,
-                bin_dir=bin_dir,
                 target=build.TYPE_CHECK,
                 pyversion=options.pyversion,
                 custom_typing_module=options.custom_typing_module,
