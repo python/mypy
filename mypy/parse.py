@@ -442,6 +442,8 @@ class Parser:
 
             node = FuncDef(name, arg_vars, kinds, init, body, typ)
             node.set_line(def_tok)
+            if typ is not None:
+                typ.definition = node
             return node
         finally:
             self.errors.pop_function()

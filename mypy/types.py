@@ -4,7 +4,7 @@ from abc import abstractmethod
 from typing import Any, TypeVar, List, Tuple, cast, Generic, Set
 
 import mypy.nodes
-from mypy.nodes import INVARIANT
+from mypy.nodes import INVARIANT, SymbolNode
 
 
 T = TypeVar('T')
@@ -237,6 +237,7 @@ class CallableType(FunctionLike):
     is_var_arg = False              # Is it a varargs function?
     ret_type = None  # type:Type    # Return value type
     name = ''                       # Name (may be None; for error messages)
+    definition = None  # type: SymbolNode # For error messages.  May be None.
     # Type variables for a generic function
     variables = None  # type: List[TypeVarDef]
 
@@ -264,6 +265,7 @@ class CallableType(FunctionLike):
                  ret_type: Type,
                  fallback: Instance,
                  name: str = None,
+                 definition: SymbolNode = None,
                  variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1,
@@ -281,6 +283,7 @@ class CallableType(FunctionLike):
         self.fallback = fallback
         assert not name or '<bound method' not in name
         self.name = name
+        self.definition = definition
         self.variables = variables
         self.bound_vars = bound_vars
         self.is_ellipsis_args = is_ellipsis_args
@@ -293,6 +296,7 @@ class CallableType(FunctionLike):
                       ret_type: Type = _dummy,
                       fallback: Instance = _dummy,
                       name: str = _dummy,
+                      definition: SymbolNode = _dummy,
                       variables: List[TypeVarDef] = _dummy,
                       bound_vars: List[Tuple[int, Type]] = _dummy,
                       line: int = _dummy,
@@ -304,6 +308,7 @@ class CallableType(FunctionLike):
             ret_type=ret_type if ret_type is not _dummy else self.ret_type,
             fallback=fallback if fallback is not _dummy else self.fallback,
             name=name if name is not _dummy else self.name,
+            definition=definition if definition is not _dummy else self.definition,
             variables=variables if variables is not _dummy else self.variables,
             bound_vars=bound_vars if bound_vars is not _dummy else self.bound_vars,
             line=line if line is not _dummy else self.line,
