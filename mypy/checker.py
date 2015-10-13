@@ -33,7 +33,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
-from mypy import defaults
+from mypy.syntax.dialect import Dialect, default_dialect
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype,
@@ -302,7 +302,7 @@ class TypeChecker(NodeVisitor[Type]):
     """
 
     # Target Python version
-    pyversion = defaults.PYTHON3_VERSION
+    dialect = None  # type: Dialect
     # Are we type checking a stub?
     is_stub = False
     # Error message reporter
@@ -337,7 +337,7 @@ class TypeChecker(NodeVisitor[Type]):
     modules = None  # type: Dict[str, MypyFile]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                 dialect: Dialect = default_dialect()) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -346,7 +346,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.expr_checker
         self.errors = errors
         self.modules = modules
-        self.pyversion = pyversion
+        self.dialect = dialect
         self.msg = MessageBuilder(errors)
         self.type_map = {}
         self.binder = ConditionalTypeBinder()
@@ -1548,7 +1548,7 @@ class TypeChecker(NodeVisitor[Type]):
                     # Good!
                     return None
                 # Else fall back to the checks below (which will fail).
-        if isinstance(typ, TupleType) and self.pyversion[0] == 2:
+        if isinstance(typ, TupleType) and self.dialect.major == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
@@ -1660,7 +1660,7 @@ class TypeChecker(NodeVisitor[Type]):
             method = echk.analyze_external_member_access('__iter__', iterable,
                                                          expr)
             iterator = echk.check_call(method, [], [], expr)[0]
-            if self.pyversion[0] >= 3:
+            if self.dialect.major >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'

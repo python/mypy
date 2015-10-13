@@ -11,7 +11,7 @@ import typing
 from typing import Dict, List, Tuple
 
 from mypy import build
-from mypy import defaults
+from mypy.syntax.dialect import Implementation, default_implementation
 from mypy.errors import CompileError
 
 from mypy.version import __version__
@@ -22,7 +22,7 @@ class Options:
         # Set default options.
         self.target = build.TYPE_CHECK
         self.build_flags = []  # type: List[str]
-        self.pyversion = defaults.PYTHON3_VERSION
+        self.implementation = None  # type: Implementation
         self.custom_typing_module = None  # type: str
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
@@ -58,7 +58,7 @@ def type_check_only(path: str, module: str, program_text: str,
                 module=module,
                 program_text=program_text,
                 target=build.TYPE_CHECK,
-                pyversion=options.pyversion,
+                implementation=options.implementation,
                 custom_typing_module=options.custom_typing_module,
                 report_dirs=options.report_dirs,
                 flags=options.build_flags,
@@ -75,23 +75,21 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     options = Options()
     help = False
     ver = False
+    python_executable = None  # type: str
+    force_py2 = False
+
     while args and args[0].startswith('-'):
         if args[0] == '--verbose':
             options.build_flags.append(build.VERBOSE)
             args = args[1:]
         elif args[0] == '--py2':
             # Use Python 2 mode.
-            options.pyversion = defaults.PYTHON2_VERSION
+            force_py2 = True
             args = args[1:]
-        elif args[0] == '--python-version':
-            version_components = args[1].split(".")[0:2]
-            if len(version_components) != 2:
-                fail("Invalid python version {} (expected format: 'x.y')".format(
-                    repr(args[1])))
-            if not all(item.isdigit() for item in version_components):
-                fail("Found non-digit in python version: {}".format(
-                    args[1]))
-            options.pyversion = (int(version_components[0]), int(version_components[1]))
+        elif args[0] == '--python-executable':
+            if len(args) < 2:
+                fail('argument required')
+            python_executable = args[1]
             args = args[2:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
@@ -137,9 +135,12 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     if args[1:]:
         usage('Extra argument: {}'.format(args[1]))
 
-    if options.python_path and options.pyversion[0] == 2:
-        usage('Python version 2 (or --py2) specified, '
-              'but --use-python-path will search in sys.path of Python 3')
+    if python_executable is not None:
+        options.implementation = Implementation(python_executable)
+        if force_py2 and options.implementation.base_dialect.major != 2:
+            usage('given --python-executable is not --py2')
+    else:
+        options.implementation = default_implementation(force_py2=force_py2)
 
     return args[0], None, None, options
 
@@ -182,9 +183,12 @@ Optional arguments:
   --verbose          more verbose messages
   --use-python-path  search for modules in sys.path of running Python
   --version          show the current version information
+  --python-executable    emulate this python interpreter
+  --py2              deprecated, automatically find a python2 interpreter
 
 Environment variables:
   MYPYPATH     additional module search path
+  MYPY_PYTHON  interpreter to emulate
 """ % ', '.join(REPORTS))
     sys.exit(2)
 

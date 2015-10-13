@@ -27,7 +27,7 @@ from mypy.errors import Errors, CompileError
 from mypy import parse
 from mypy import stats
 from mypy.report import Reports
-from mypy import defaults
+from mypy.syntax.dialect import Dialect, Implementation, default_implementation
 
 
 # We need to know the location of this file to load data, but
@@ -95,7 +95,7 @@ def build(program_path: str,
           argument: str = None,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+          implementation: Implementation = None,
           custom_typing_module: str = None,
           report_dirs: Dict[str, str] = {},
           flags: List[str] = None,
@@ -115,17 +115,18 @@ def build(program_path: str,
       program_text: the main source file contents; if omitted, read from file
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
-      pyversion: Python version (major, minor)
+      implementation: Python version
       custom_typing_module: if not None, use this module id as an alias for typing
       flags: list of build options (e.g. COMPILE_ONLY)
     """
     flags = flags or []
     module = module or '__main__'
+    implementation = implementation or default_implementation()
 
     data_dir = default_data_dir()
 
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, target, pyversion, python_path)
+    lib_path = default_lib_path(data_dir, target, implementation, python_path)
 
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -157,7 +158,7 @@ def build(program_path: str,
     #
     # Ignore current directory prefix in error messages.
     manager = BuildManager(data_dir, lib_path, target,
-                           pyversion=pyversion, flags=flags,
+                           dialect=implementation.base_dialect, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
                            reports=reports)
@@ -181,7 +182,7 @@ def default_data_dir() -> str:
     return os.path.join(os.path.dirname(__file__), 'data')
 
 
-def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
+def default_lib_path(data_dir: str, target: int, implementation: Implementation,
         python_path: bool) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
@@ -196,14 +197,12 @@ def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
     # stubs/x.y directory of the mypy installation. Additionally, stubs
     # for earlier versions in the same major version will be added, and
     # as a last resort, third-party stubs will be added.
-    if pyversion == 2:
-        major, minor = 2, 7
+    major = implementation.base_dialect.major
+    minor = implementation.base_dialect.minor
+    if major == 3:
+        version_dir = '3.2'
+        third_party_dir = 'third-party-3.2'
     else:
-        # See bug #886
-        major, minor = sys.version_info[0], sys.version_info[1]
-    version_dir = '3.2'
-    third_party_dir = 'third-party-3.2'
-    if pyversion[0] < 3:
         version_dir = '2.7'
         third_party_dir = 'third-party-2.7'
     path.append(os.path.join(data_dir, 'stubs', version_dir))
@@ -224,13 +223,9 @@ def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
             if os.path.isdir(third_party_stubdir):
                 path.append(third_party_stubdir)
 
-    # Add fallback path that can be used if we have a broken installation.
-    if sys.platform != 'win32':
-        path.append('/usr/local/lib/mypy')
-
     # Contents of Python's sys.path go last, to prefer the stubs
     if python_path:
-        path.extend(sys.path)
+        path.extend(implementation.python_path)
 
     return path
 
@@ -272,7 +267,7 @@ class BuildManager:
                        Semantic analyzer, pass 3
       type_checker:    Type checker
       errors:          Used for reporting all errors
-      pyversion:       Python version (major, minor)
+      dialect:         Python version
       flags:           Build options
       states:          States of all individual files that are being
                        processed. Each file in a build is always represented
@@ -290,7 +285,7 @@ class BuildManager:
     def __init__(self, data_dir: str,
                  lib_path: List[str],
                  target: int,
-                 pyversion: Tuple[int, int],
+                 dialect: Dialect,
                  flags: List[str],
                  ignore_prefix: str,
                  custom_typing_module: str,
@@ -300,16 +295,16 @@ class BuildManager:
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = lib_path
         self.target = target
-        self.pyversion = pyversion
+        self.dialect = dialect
         self.flags = flags
         self.custom_typing_module = custom_typing_module
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
-                                                  pyversion=pyversion)
+                                                  dialect=dialect)
         self.semantic_analyzer_pass3 = ThirdPass(self.errors)
         self.type_checker = TypeChecker(self.errors,
                                         self.semantic_analyzer.modules,
-                                        self.pyversion)
+                                        dialect)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
@@ -720,7 +715,7 @@ class UnprocessedFile(State):
         """
         num_errs = self.errors().num_messages()
         tree = parse.parse(source_text, fnam, self.errors(),
-                           pyversion=self.manager.pyversion,
+                           dialect=self.manager.dialect,
                            custom_typing_module=self.manager.custom_typing_module)
         tree._fullname = self.id
         if self.errors().num_messages() != num_errs:

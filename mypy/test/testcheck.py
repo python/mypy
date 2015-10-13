@@ -12,7 +12,7 @@ from mypy.myunit import Suite
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import (
-    assert_string_arrays_equal, testcase_pyversion, update_testcase_output
+    assert_string_arrays_equal, testcase_python_implementation, update_testcase_output
 )
 from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
@@ -64,7 +64,7 @@ class TypeCheckSuite(Suite):
 
     def run_test(self, testcase):
         a = []
-        pyversion = testcase_pyversion(testcase.file, testcase.name)
+        implementation = testcase_python_implementation(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
         try:
@@ -72,7 +72,7 @@ class TypeCheckSuite(Suite):
                         target=build.TYPE_CHECK,
                         module=module_name,
                         program_text=program_text,
-                        pyversion=pyversion,
+                        implementation=implementation,
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:

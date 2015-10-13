@@ -727,7 +727,7 @@ class ExpressionChecker:
 
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check '...'."""
-        if self.chk.pyversion[0] >= 3:
+        if self.chk.dialect.major >= 3:
             return self.named_type('builtins.ellipsis')
         else:
             # '...' is not valid in normal Python 2 code, but it can
@@ -821,7 +821,7 @@ class ExpressionChecker:
         return result
 
     def get_operator_method(self, op: str) -> str:
-        if op == '/' and self.chk.pyversion[0] == 2:
+        if op == '/' and self.chk.dialect.major == 2:
             # TODO also check for "from __future__ import division"
             return '__div__'
         else:
@@ -893,7 +893,7 @@ class ExpressionChecker:
                                            self.msg)
 
     def get_reverse_op_method(self, method: str) -> str:
-        if method == '__div__' and self.chk.pyversion[0] == 2:
+        if method == '__div__' and self.chk.dialect.major == 2:
             return '__rdiv__'
         else:
             return nodes.reverse_op_methods[method]

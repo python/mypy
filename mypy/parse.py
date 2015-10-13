@@ -28,7 +28,7 @@ from mypy.nodes import (
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt
 )
-from mypy import defaults
+from mypy.syntax.dialect import Dialect, default_dialect
 from mypy import nodes
 from mypy.errors import Errors, CompileError
 from mypy.types import Void, Type, CallableType, AnyType, UnboundType
@@ -68,17 +68,19 @@ none = Token('')  # Empty token
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+          dialect: Dialect = default_dialect(),
           custom_typing_module: str = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
 
-    The pyversion (major, minor) argument determines the Python syntax variant.
+    The dialect argument determines the Python syntax variant.
     """
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
-    parser = Parser(fnam, errors, pyversion, custom_typing_module, is_stub_file=is_stub_file)
+    if is_stub_file:
+        dialect = dialect.add_future('mypy-stub')
+    parser = Parser(fnam, errors, dialect, custom_typing_module)
     tree = parser.parse(source)
     tree.path = fnam
     tree.is_stub = is_stub_file
@@ -109,12 +111,11 @@ class Parser:
     # Lines to ignore (using # type: ignore).
     ignored_lines = None  # type: Set[int]
 
-    def __init__(self, fnam: str, errors: Errors, pyversion: Tuple[int, int],
-                 custom_typing_module: str = None, is_stub_file: bool = False) -> None:
+    def __init__(self, fnam: str, errors: Errors, dialect: Dialect,
+                 custom_typing_module: str = None) -> None:
         self.raise_on_error = errors is None
-        self.pyversion = pyversion
+        self.dialect = dialect
         self.custom_typing_module = custom_typing_module
-        self.is_stub_file = is_stub_file
         if errors is not None:
             self.errors = errors
         else:
@@ -125,8 +126,7 @@ class Parser:
             self.errors.set_file('<input>')
 
     def parse(self, s: Union[str, bytes]) -> MypyFile:
-        self.tok, self.ignored_lines = lex.lex(s, pyversion=self.pyversion,
-                                               is_stub_file=self.is_stub_file)
+        self.tok, self.ignored_lines = lex.lex(s, dialect=self.dialect)
         self.ind = 0
         self.imports = []
         self.future_options = []
@@ -762,7 +762,7 @@ class Parser:
             is_simple = False
         elif ts == 'global':
             stmt = self.parse_global_decl()
-        elif ts == 'nonlocal' and self.pyversion[0] >= 3:
+        elif ts == 'nonlocal' and self.dialect.major >= 3:
             stmt = self.parse_nonlocal_decl()
         elif ts == 'assert':
             stmt = self.parse_assert_stmt()
@@ -776,10 +776,10 @@ class Parser:
         elif ts == '@':
             stmt = self.parse_decorated_function_or_class()
             is_simple = False
-        elif ts == 'print' and (self.pyversion[0] == 2 and
+        elif ts == 'print' and (self.dialect.major == 2 and
                                 'print_function' not in self.future_options):
             stmt = self.parse_print_stmt()
-        elif ts == 'exec' and self.pyversion[0] == 2:
+        elif ts == 'exec' and self.dialect.major == 2:
             stmt = self.parse_exec_stmt()
         else:
             stmt = self.parse_expression_or_assignment()
@@ -1034,7 +1034,7 @@ class Parser:
                         self.expect('as')
                         vars.append(self.parse_name_expr())
                     else:
-                        if (self.pyversion[0] == 2 and
+                        if (self.dialect.major == 2 and
                                 isinstance(types[-1], TupleExpr) and
                                 len(cast(TupleExpr, types[-1]).items) == 2 and
                                 isinstance(cast(TupleExpr, types[-1]).items[1], NameExpr)):
@@ -1167,8 +1167,7 @@ class Parser:
             elif isinstance(current, Keyword) and s == "yield":
                 # The expression yield from and yield to assign
                 expr = self.parse_yield_or_yield_from_expr()
-            elif isinstance(current, EllipsisToken) and (self.pyversion[0] >= 3
-                                                         or self.is_stub_file):
+            elif isinstance(current, EllipsisToken) and self.dialect.ellipsis:
                 expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
@@ -1419,7 +1418,7 @@ class Parser:
             tok.append(t)
             value += t.parsed()
         node = None  # type: Node
-        if self.pyversion[0] == 2 and 'unicode_literals' in self.future_options:
+        if self.dialect.major == 2 and 'unicode_literals' in self.future_options:
             node = UnicodeExpr(value)
         else:
             node = StrExpr(value)
@@ -1432,7 +1431,7 @@ class Parser:
         while isinstance(self.current(), BytesLit):
             t = cast(BytesLit, self.skip())
             value += t.parsed()
-        if self.pyversion[0] >= 3:
+        if self.dialect.major >= 3:
             node = BytesExpr(value)  # type: Node
         else:
             node = StrExpr(value)
@@ -1445,7 +1444,7 @@ class Parser:
         while isinstance(self.current(), UnicodeLit):
             t = cast(UnicodeLit, self.skip())
             value += t.parsed()
-        if self.pyversion[0] >= 3:
+        if self.dialect.major >= 3:
             # Python 3.3 supports u'...' as an alias of '...'.
             node = StrExpr(value)  # type: Node
         else:
@@ -1835,11 +1834,11 @@ if __name__ == '__main__':
         sys.exit(2)
 
     args = sys.argv[1:]
-    pyversion = defaults.PYTHON3_VERSION
+    dialect = default_dialect()
     quiet = False
     while args and args[0].startswith('--'):
         if args[0] == '--py2':
-            pyversion = defaults.PYTHON2_VERSION
+            dialect = Dialect('2.7.0')
         elif args[0] == '--quiet':
             quiet = True
         else:
@@ -1852,7 +1851,7 @@ if __name__ == '__main__':
         s = open(fnam, 'rb').read()
         errors = Errors()
         try:
-            tree = parse(s, fnam, pyversion=pyversion)
+            tree = parse(s, fnam, dialect=dialect)
             if not quiet:
                 print(tree)
         except CompileError as e:

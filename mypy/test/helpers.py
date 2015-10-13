@@ -4,7 +4,7 @@ import os
 
 from typing import List, Dict, Tuple
 
-from mypy import defaults
+from mypy.syntax.dialect import Implementation, default_implementation
 from mypy.myunit import AssertionFailure
 from mypy.test import config
 
@@ -239,15 +239,21 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
     return max(0, num_eq - 4)
 
 
-def testfile_pyversion(path: str) -> Tuple[int, int]:
+DEFAULT_IMPLEMENTATION_PYTHON2 = default_implementation(force_py2=True)
+DEFAULT_IMPLEMENTATION_PYTHON3 = default_implementation()
+assert DEFAULT_IMPLEMENTATION_PYTHON2.base_dialect.major == 2
+assert DEFAULT_IMPLEMENTATION_PYTHON3.base_dialect.major == 3
+
+
+def testfile_python_implementation(path: str) -> Implementation:
     if path.endswith('python2.test'):
-        return defaults.PYTHON2_VERSION
+        return DEFAULT_IMPLEMENTATION_PYTHON2
     else:
-        return defaults.PYTHON3_VERSION
+        return DEFAULT_IMPLEMENTATION_PYTHON3
 
 
-def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
+def testcase_python_implementation(path: str, testcase_name: str) -> Implementation:
     if testcase_name.endswith('python2'):
-        return defaults.PYTHON2_VERSION
+        return DEFAULT_IMPLEMENTATION_PYTHON2
     else:
-        return testfile_pyversion(path)
+        return testfile_python_implementation(path)

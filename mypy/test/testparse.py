@@ -6,7 +6,7 @@ import os.path
 
 import typing
 
-from mypy import defaults
+from mypy.syntax.dialect import Dialect, default_dialect
 from mypy.myunit import Suite, AssertionFailure
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases
@@ -35,12 +35,12 @@ def test_parser(testcase):
     """
 
     if testcase.file.endswith('python2.test'):
-        pyversion = defaults.PYTHON2_VERSION
+        dialect = Dialect('2.7.0')
     else:
-        pyversion = defaults.PYTHON3_VERSION
+        dialect = default_dialect()
 
     try:
-        n = parse(bytes('\n'.join(testcase.input), 'ascii'), pyversion=pyversion, fnam='main')
+        n = parse(bytes('\n'.join(testcase.input), 'ascii'), dialect=dialect, fnam='main')
         a = str(n).split('\n')
     except CompileError as e:
         a = e.messages

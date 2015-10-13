@@ -75,7 +75,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.lex import lex
 from mypy.parsetype import parse_type
 from mypy.sametypes import is_same_type
-from mypy import defaults
+from mypy.syntax.dialect import Dialect, default_dialect
 
 
 T = TypeVar('T')
@@ -165,7 +165,7 @@ class SemanticAnalyzer(NodeVisitor):
     errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self, lib_path: List[str], errors: Errors,
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                 dialect: Dialect = default_dialect()) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -183,7 +183,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
-        self.pyversion = pyversion
+        self.dialect = dialect
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -536,7 +536,7 @@ class SemanticAnalyzer(NodeVisitor):
                     # _promote class decorator (undocumented faeture).
                     promote_target = analyzed.type
         if not promote_target:
-            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.pyversion[0] >= 3
+            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.dialect.major >= 3
                           else TYPE_PROMOTIONS_PYTHON2)
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
@@ -1456,7 +1456,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'continue' outside loop", s)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
+        infer_reachability_of_if_statement(s, dialect=self.dialect)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
@@ -1986,7 +1986,7 @@ class FirstPass(NodeVisitor):
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
-        self.pyversion = sem.pyversion
+        self.dialect = sem.dialect
 
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.
@@ -2087,7 +2087,7 @@ class FirstPass(NodeVisitor):
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
+        infer_reachability_of_if_statement(s, dialect=self.dialect)
         for node in s.body:
             node.accept(self)
         if s.else_body:
@@ -2230,9 +2230,9 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 
 def infer_reachability_of_if_statement(s: IfStmt,
-                                       pyversion: Tuple[int, int]) -> None:
+                                       dialect: Dialect) -> None:
     for i in range(len(s.expr)):
-        result = infer_if_condition_value(s.expr[i], pyversion)
+        result = infer_if_condition_value(s.expr[i], dialect)
         if result == ALWAYS_FALSE:
             # The condition is always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
@@ -2246,7 +2246,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
+def infer_if_condition_value(expr: Node, dialect: Dialect) -> int:
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
@@ -2265,9 +2265,9 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
         name = expr.name
     result = TRUTH_VALUE_UNKNOWN
     if name == 'PY2':
-        result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
+        result = ALWAYS_TRUE if dialect.major == 2 else ALWAYS_FALSE
     elif name == 'PY3':
-        result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
+        result = ALWAYS_TRUE if dialect.major == 3 else ALWAYS_FALSE
     elif name == 'MYPY':
         result = ALWAYS_TRUE
     if negated:

@@ -8,8 +8,8 @@ This module can be run as a script (lex.py FILE).
 
 import re
 
+from mypy.syntax.dialect import Dialect, default_dialect
 from mypy.util import short_type
-from mypy import defaults
 from typing import List, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
 
@@ -159,14 +159,13 @@ INVALID_DEDENT = 5
 
 
 def lex(string: Union[str, bytes], first_line: int = 1,
-        pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-        is_stub_file: bool = False) -> Tuple[List[Token], Set[int]]:
+        dialect: Dialect = default_dialect()) -> Tuple[List[Token], Set[int]]:
     """Analyze string, and return an array of token objects and the lines to ignore.
 
     The last token is always Eof. The intention is to ignore any
     semantic and type check errors on the ignored lines.
     """
-    l = Lexer(pyversion, is_stub_file=is_stub_file)
+    l = Lexer(dialect)
     l.lex(string, first_line)
     return l.tok, l.ignored_lines
 
@@ -293,19 +292,17 @@ class Lexer:
     # newlines within parentheses/brackets.
     open_brackets = None  # type: List[str]
 
-    pyversion = defaults.PYTHON3_VERSION
+    dialect = None  # type: Dialect
 
     # Ignore errors on these lines (defined using '# type: ignore').
     ignored_lines = None  # type: Set[int]
 
-    def __init__(self, pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 is_stub_file: bool = False) -> None:
+    def __init__(self, dialect: Dialect = default_dialect()) -> None:
         self.map = [self.unknown_character] * 256
         self.tok = []
         self.indents = [0]
         self.open_brackets = []
-        self.pyversion = pyversion
-        self.is_stub_file = is_stub_file
+        self.dialect = dialect
         self.ignored_lines = set()
         # Fill in the map from valid character codes to relevant lexer methods.
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
@@ -325,12 +322,12 @@ class Lexer:
                             ('-+*/<>%&|^~=!,@', self.lex_misc)]:
             for c in seq:
                 self.map[ord(c)] = method
-        if pyversion[0] == 2:
+        if dialect.major == 2:
             self.keywords = keywords_common | keywords2
             # Decimal/hex/octal/binary literal or integer complex literal
             self.number_exp1 = re.compile('(0[xXoObB][0-9a-fA-F]+|[0-9]+)[lL]?')
 
-        if pyversion[0] == 3:
+        if dialect.major == 3:
             self.keywords = keywords_common | keywords3
             self.number_exp1 = re.compile('0[xXoObB][0-9a-fA-F]+|[0-9]+')
 
@@ -397,7 +394,7 @@ class Lexer:
             line = 2 if result.group(1) else 1
             return result.group(3).decode('ascii'), line
         else:
-            default_encoding = 'utf8' if self.pyversion[0] >= 3 else 'ascii'
+            default_encoding = 'utf8' if self.dialect.major >= 3 else 'ascii'
             return default_encoding, -1
 
     def report_unicode_decode_error(self, exc: UnicodeDecodeError, text: bytes) -> None:
@@ -487,7 +484,7 @@ class Lexer:
             self.add_token(LexError(' ' * maxlen, NUMERIC_LITERAL_ERROR))
         elif len(s1) == maxlen:
             # Integer literal.
-            if self.pyversion[0] >= 3 and self.octal_int.match(s1):
+            if self.dialect.major >= 3 and self.octal_int.match(s1):
                 # Python 2 style octal literal such as 0377 not supported in Python 3.
                 self.add_token(LexError(s1, NUMERIC_LITERAL_ERROR))
             else:

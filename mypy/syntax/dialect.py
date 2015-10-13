@@ -19,6 +19,7 @@ from typing import (
 )
 
 import os
+import platform
 import subprocess
 import sys
 
@@ -66,6 +67,7 @@ class Dialect:
         `version` is like `'2.7.0'`, e.g. `platform.python_version()`.
         `future_list` is like `['X', 'Y', 'Z']` in `from __future__ import X, Y, Z`.
         """
+        version = version.rstrip('+')
         self.major, self.minor, self.patchlevel = [int(x) for x in version.split('.')]
         future_set = check_futures(version, future_list)
         self.base_version = version
@@ -74,7 +76,14 @@ class Dialect:
 
         self.possible_futures = {k for (k, v) in available_futures.items() if v <= version}
 
+        # Lexer
+        self.ellipsis = version >= '3.0' or 'mypy-stub' in future_set
+
+        # Parser
+
+
         # Additional members will be set as needed by the lexer, parser, etc.
+
 
     def __repr__(self) -> str:
         return 'Dialect(%r, %r)' % (self.base_version, self.base_future_list)
@@ -97,7 +106,7 @@ class Implementation:
 
         self.executable = executable
         self.base_dialect = Dialect(version, ['variant-' + impl])
-        self.stub_dialect = self.base_dialect.add_future('mypy-codec')
+        self.stub_dialect = self.base_dialect.add_future('mypy-stub')
         self.python_path = path
         # TODO self.stub_path = []
 
@@ -120,8 +129,14 @@ def default_implementation(*, force_py2: bool = False) -> Implementation:
         try:
             impl = Implementation(python)
         except (OSError, subprocess.CalledProcessError):
-            pass
+            continue
         if force_py2 and impl.base_dialect.major != 2:
             continue
         return impl
     sys.exit('No suitable python executable found')
+
+
+def default_dialect() -> Dialect:
+    version = platform.python_version()
+    impl = platform.python_implementation()
+    return Dialect(version, ['variant-' + impl])

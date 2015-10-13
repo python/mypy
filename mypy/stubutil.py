@@ -1,6 +1,8 @@
 import re
 import sys
 
+from mypy.syntax.dialect import default_dialect
+
 
 def parse_signature(sig):
     m = re.match(r'([.a-zA-Z0-9_]+)\(([^)]*)\)', sig)
@@ -78,13 +80,9 @@ def is_c_module(module):
     return '__file__' not in module.__dict__ or module.__dict__['__file__'].endswith('.so')
 
 
-def write_header(file, module_name, pyversion=(3, 5)):
+def write_header(file, module_name, dialect=default_dialect()):
     if module_name:
-        if pyversion[0] >= 3:
-            version = '%d.%d' % (sys.version_info.major,
-                                 sys.version_info.minor)
-        else:
-            version = '2'
+        version = '%d.%d' % (dialect.major, dialect.minor)
         file.write('# Stubs for %s (Python %s)\n' % (module_name, version))
     file.write(
         '#\n'

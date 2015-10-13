@@ -39,7 +39,7 @@ from typing import Any
 import mypy.parse
 import mypy.errors
 import mypy.traverser
-from mypy import defaults
+from mypy.syntax.dialect import Dialect, default_dialect, default_implementation
 from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, ARG_STAR, ARG_STAR2, ARG_NAMED
@@ -49,17 +49,17 @@ from mypy.stubutil import is_c_module, write_header
 
 
 def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, module=None,
-                  pyversion=defaults.PYTHON3_VERSION):
+                  dialect=default_dialect()):
     source = open(path, 'rb').read()
     try:
-        ast = mypy.parse.parse(source, fnam=path, pyversion=pyversion)
+        ast = mypy.parse.parse(source, fnam=path, dialect=dialect)
     except mypy.errors.CompileError as e:
         # Syntax error!
         for m in e.messages:
             sys.stderr.write('%s\n' % m)
         exit(1)
 
-    gen = StubGenerator(_all_, pyversion=pyversion)
+    gen = StubGenerator(_all_, dialect=dialect)
     ast.accept(gen)
     if not target:
         target = os.path.join(output_dir, os.path.basename(path))
@@ -68,13 +68,13 @@ def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, m
         os.makedirs(subdir)
     with open(target, 'w') as file:
         if add_header:
-            write_header(file, module, pyversion=pyversion)
+            write_header(file, module, dialect=dialect)
         file.write(''.join(gen.output()))
 
 
 def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, sigs={},
-                             class_sigs={}, pyversion=defaults.PYTHON3_VERSION):
-    if pyversion[0] == 2:
+                             class_sigs={}, dialect=default_dialect()):
+    if dialect.major == 2:
         module_path, module_all = load_python2_module_info(module)
     else:
         mod = importlib.import_module(module)
@@ -97,7 +97,7 @@ def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, 
         target += '.pyi'
     target = os.path.join(output_dir, target)
     generate_stub(module_path, output_dir, module_all,
-                  target=target, add_header=add_header, module=module, pyversion=pyversion)
+                  target=target, add_header=add_header, module=module, dialect=dialect)
     if not quiet:
         print('Created %s' % target)
 
@@ -143,7 +143,7 @@ NOT_IN_ALL = 'NOT_IN_ALL'
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
-    def __init__(self, _all_, pyversion):
+    def __init__(self, _all_, dialect=default_dialect()):
         self._all_ = _all_
         self._output = []
         self._import_lines = []
@@ -154,7 +154,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._toplevel_names = []
         self._classes = []
         self._base_classes = []
-        self._pyversion = pyversion
+        self._dialect = dialect
 
     def visit_mypy_file(self, o):
         self._classes = find_classes(o)
@@ -470,7 +470,7 @@ def main():
     args = sys.argv[1:]
     sigs = {}
     class_sigs = {}
-    pyversion = defaults.PYTHON3_VERSION
+    dialect = default_implementation().base_dialect
     while args and args[0].startswith('--'):
         if args[0] == '--docpath':
             docpath = args[1]
@@ -484,7 +484,7 @@ def main():
             sigs = dict(find_unique_signatures(all_sigs))
             class_sigs = dict(find_unique_signatures(all_class_sigs))
         elif args[0] == '--py2':
-            pyversion = defaults.PYTHON2_VERSION
+            dialect = default_implementation(force_py2=True).base_dialect
         else:
             raise SystemExit('Unrecognized option %s' % args[0])
         args = args[1:]
@@ -492,7 +492,7 @@ def main():
         usage()
     for module in args:
         generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
-                                 pyversion=pyversion)
+                                 dialect=dialect)
 
 
 def usage():
