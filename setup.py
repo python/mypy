@@ -41,10 +41,24 @@ classifiers = [
 
 packages = find_packages(exclude=['pinfer'])
 
+
+def find_data_dirs(base, globs, cut):
+    """Find all interesting data files, for setup(data_files=)
+
+    Arguments:
+      root:  The directory to search in.
+      globs: A list of glob patterns to accept files.
+    """
+
+    rv_dirs = [os.path.relpath(root, cut) for root, dirs, files in os.walk(base)]
+    rv = []
+    for rv_dir in rv_dirs:
+        for pat in globs:
+            rv.append(os.path.join(rv_dir, pat))
+    return rv
+
 package_data = {
-    'mypy': [
-        'data/**/*.py',
-        'data/**/*.pyi',
+    'mypy': find_data_dirs('mypy/data', ['*.pyi'], 'mypy') + [
         'xml/*.xsd',
         'xml/*.xslt',
         'xml/*.css',
