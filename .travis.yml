@@ -1,27 +1,27 @@
 sudo: false
 language: python
-python:
-  - "3.2"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  # Pypy build is disaabled because it doubles the travis build time, and it rarely fails
-  # unless one one of the other builds fails.
-  # - "pypy3"
 
 install:
-  - pip install -r test-requirements.txt
+  - pip install tox
 
 script:
-  - python setup.py install
-  - mkdir elsewhere
-  - cd elsewhere
-  - mkdir tmp-test-dirs
-  - ln -s ../runtests.py
-  - python runtests.py -v
+  - tox -e $py
 
 notifications:
   irc:
     channels:
       - "chat.freenode.net##mypy"
     use_notice: true
+
+matrix:
+  include:
+    - python: "3.2"
+      env: py=py32
+    - python: "3.3"
+      env: py=py33
+    - python: "3.4"
+      env: py=py34
+    - python: "3.5"
+      env: py=py35
+    - python: "pypy3"
+      env: py=pypy3
