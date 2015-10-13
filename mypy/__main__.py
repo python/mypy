@@ -2,4 +2,4 @@
 
 from mypy.main import main
 
-main()
+main(None)

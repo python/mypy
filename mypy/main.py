@@ -34,7 +34,10 @@ def main(script_path: str) -> None:
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
     """
-    bin_dir = find_bin_directory(script_path)
+    if script_path:
+        bin_dir = find_bin_directory(script_path)
+    else:
+        bin_dir = None
     path, module, program_text, options = process_options(sys.argv[1:])
     try:
         if options.target == build.TYPE_CHECK:
