@@ -5,7 +5,7 @@ install:
   - pip install tox
 
 script:
-  - tox -e $py
+  - tox
 
 notifications:
   irc:
@@ -16,12 +16,12 @@ notifications:
 matrix:
   include:
     - python: "3.2"
-      env: py=py32
+      env: TOXENV=py32
     - python: "3.3"
-      env: py=py33
+      env: TOXENV=py33
     - python: "3.4"
-      env: py=py34
+      env: TOXENV=py34
     - python: "3.5"
-      env: py=py35
+      env: TOXENV=py35
     - python: "pypy3"
-      env: py=pypy3
+      env: TOXENV=pypy3
