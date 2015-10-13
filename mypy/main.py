@@ -55,7 +55,7 @@ def find_bin_directory(script_path: str) -> str:
     # Follow up to 5 symbolic links (cap to avoid cycles).
     for i in range(5):
         if os.path.islink(script_path):
-            script = readlinkabs(script_path)
+            script_path = readlinkabs(script_path)
         else:
             break
     return os.path.dirname(script_path)
