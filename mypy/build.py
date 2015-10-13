@@ -187,8 +187,12 @@ def default_data_dir() -> str:
     if os.path.isdir(os.path.join(rv, 'stubs')):
         return rv
     else:
-        # Don't know where to find the data files!
-        raise RuntimeError("Broken installation: can't determine base dir")
+        print('Panic! Unable to locate data directory.')
+        print('Info:')
+        print('  __file__ = %s' % __file__)
+        print('  is_installed() = %s' % is_installed())
+        print('  data_dir = %s' % rv)
+        sys.exit(1)
 
 
 def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
