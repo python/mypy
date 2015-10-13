@@ -5,7 +5,7 @@ import os
 import os.path
 import sys
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 from mypy.version import __version__
 
 if sys.version_info < (3, 2, 0):
@@ -66,13 +66,8 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-# TODO recurse automatically?
-# If we switch to setuptools, use find_packages?
-packages = [
-    'mypy', 'mypy.test',
-    'mypy.myunit',
-    'mypy.codec', 'mypy.codec.test',
-]
+packages = find_packages(exclude=['pinfer'])
+print(packages)
 
 package_data = {
     'mypy.test': [
