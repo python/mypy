@@ -8,3 +8,7 @@ __pycache__
 docs/build/
 *.iml
 /out/
+
+/.tox/
+/MANIFEST
+/lib-typing/3.2/mypy_lang.egg-info/
