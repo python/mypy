@@ -251,7 +251,7 @@ def add_stubs(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
         for pfx in ['', 'third-party-']:
-            stubdir = join('stubs', pfx + version)
+            stubdir = join('mypy/data/stubs', pfx + version)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f, stubdir)
                 if module not in seen:
@@ -284,7 +284,8 @@ def add_samples(driver: Driver) -> None:
                     'import mypy.codec.register, %s' % bf,
                     cwd=cwd)
         else:
-            driver.add_mypy('file %s' % f, f)
+            f = relpath(f, SOURCE_DIR)
+            driver.add_mypy('file %s' % f, f, cwd=SOURCE_DIR)
 
 
 def usage(status: int) -> None:
@@ -366,12 +367,18 @@ def main() -> None:
     driver.prepend_path('PYTHONPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
-    add_basic(driver)
-    add_myunit(driver)
-    add_imports(driver)
-    add_stubs(driver)
-    add_libpython(driver)
-    add_samples(driver)
+    for adder in [
+            add_basic,
+            add_myunit,
+            add_imports,
+            add_stubs,
+            add_libpython,
+            add_samples,
+    ]:
+        before = len(driver.waiter.queue)
+        adder(driver)
+        if whitelist == ['']:
+            assert len(driver.waiter.queue) != before, 'no tasks in %s' % adder.__name__
 
     if not list_only:
         driver.waiter.run()
