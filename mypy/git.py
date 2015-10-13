@@ -28,15 +28,21 @@ def get_submodules(dir: str):
     # but that wouldn't work on Windows.
     output = subprocess.check_output(["git", "submodule", "status"], cwd=dir)
     for line in output.splitlines():
-        status = line[0]
-        revision, name, *_ = line[1:].split(b" ")
-        yield (status, revision, name.decode(sys.getfilesystemencoding()))
+        unused_status = line[0]
+        unused_revision, name, *_ = line[1:].split(b" ")
+        yield name.decode(sys.getfilesystemencoding())
 
 
 def git_revision(dir: str) -> bytes:
     """Get the SHA-1 of the HEAD of a git repository."""
     return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=dir).strip()
 
+
+def submodule_revision(dir: str, submodule: str) -> bytes:
+    """Get the SHA-1 a submodule is supposed to have."""
+    output = subprocess.check_output(["git", "ls-files", "-s", submodule], cwd=dir).strip()
+    # E.g.: "160000 e4a7edb949e0b920b16f61aeeb19fc3d328f3012 0       typeshed"
+    return output.split()[1]
 
 def is_dirty(dir: str) -> bool:
     """Check whether a git repository has uncommitted changes."""
@@ -84,7 +90,7 @@ def error_submodule_not_updated(name: str, dir: str) -> None:
     print("  cd {}".format(pipes.quote(dir)), file=sys.stderr)
     print("  git submodule update {}".format(name), file=sys.stderr)
     print("(If you got this message because you updated {}".format(name), file=sys.stderr)
-    print(" then run \"git add {}\" to silence this check)")
+    print(" then run \"git add {}\" to silence this check)".format(name), file=sys.stderr)
 
 
 def verify_git_integrity_or_abort(datadir: str) -> None:
@@ -99,12 +105,12 @@ def verify_git_integrity_or_abort(datadir: str) -> None:
     if not have_git():
         warn_no_git_executable()
         return
-    for _, revision, submodule in get_submodules(datadir):
+    for submodule in get_submodules(datadir):
         submodule_path = os.path.join(datadir, submodule)
         if not is_git_repo(submodule_path):
             error_submodule_not_initialized(submodule, datadir)
             sys.exit(1)
-        elif revision != git_revision(submodule_path):
+        elif submodule_revision(datadir, submodule) != git_revision(submodule_path):
             error_submodule_not_updated(submodule, datadir)
             sys.exit(1)
         elif is_dirty(submodule_path):
