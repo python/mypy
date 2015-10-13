@@ -77,7 +77,7 @@ class B: pass
 
 [case testInvalidKeywordArgument]
 import typing
-def f(a: 'A') -> None: pass
+def f(a: 'A') -> None: pass # N: "f" defined here
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
@@ -236,7 +236,7 @@ class A: pass
 
 [case testKeywordArgumentAndCommentSignature]
 import typing
-def f(x): # type: (int) -> str
+def f(x): # type: (int) -> str # N: "f" defined here
     pass
 f(x='') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(x=0)
