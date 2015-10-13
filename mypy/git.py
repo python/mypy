@@ -8,14 +8,14 @@ import sys
 
 
 def is_git_repo(dir: str) -> bool:
-    """Is the passed directory version controlled with git?"""
+    """Is the given directory version-controlled with git?"""
     return os.path.exists(os.path.join(dir, ".git"))
 
 
 def have_git() -> bool:
     """Can we run the git executable?"""
     try:
-        subprocess.check_output(["git", "config", "-l"])
+        subprocess.check_output(["git", "--help"])
         return True
     except subprocess.CalledProcessError:
         return False
@@ -27,9 +27,12 @@ def get_submodules(dir: str):
     # "git submodule foreach 'echo MODULE $name $path $sha1 $toplevel'"
     # but that wouldn't work on Windows.
     output = subprocess.check_output(["git", "submodule", "status"], cwd=dir)
+    # "<status><sha1> name desc"
+    # status='-': not initialized
+    # status='+': changed
+    # status='u': merge conflicts
     for line in output.splitlines():
-        unused_status = line[0]
-        unused_revision, name, *_ = line[1:].split(b" ")
+        name = line.split(b" ")[1]
         yield name.decode(sys.getfilesystemencoding())
 
 
@@ -43,6 +46,7 @@ def submodule_revision(dir: str, submodule: str) -> bytes:
     output = subprocess.check_output(["git", "ls-files", "-s", submodule], cwd=dir).strip()
     # E.g.: "160000 e4a7edb949e0b920b16f61aeeb19fc3d328f3012 0       typeshed"
     return output.split()[1]
+
 
 def is_dirty(dir: str) -> bool:
     """Check whether a git repository has uncommitted changes."""
@@ -64,7 +68,7 @@ def warn_no_git_executable() -> None:
 def warn_dirty(dir) -> None:
     print("Warning: git module '{}' has uncommitted changes.".format(dir),
           file=sys.stderr)
-    print("Got to the directory", file=sys.stderr)
+    print("Go to the directory", file=sys.stderr)
     print("  {}".format(dir), file=sys.stderr)
     print("and commit or reset your changes", file=sys.stderr)
 
@@ -72,7 +76,7 @@ def warn_dirty(dir) -> None:
 def warn_extra_files(dir) -> None:
     print("Warning: git module '{}' has untracked files.".format(dir),
           file=sys.stderr)
-    print("Got to the directory", file=sys.stderr)
+    print("Go to the directory", file=sys.stderr)
     print("  {}".format(dir), file=sys.stderr)
     print("and add & commit your new files.", file=sys.stderr)
 
