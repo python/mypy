@@ -7,10 +7,13 @@ import sys
 
 from distutils.core import setup
 from mypy.version import __version__
+from mypy import git
 
 if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
     exit(1)
+
+git.verify_git_integrity_or_abort(".")
 
 version = __version__
 description = 'Optional static typing for Python'
