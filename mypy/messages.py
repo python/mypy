@@ -6,14 +6,14 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Any, Sequence, Iterable
+from typing import cast, List, Dict, Any, Sequence, Iterable
 
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike
 )
-from mypy.nodes import TypeInfo, Context, op_methods, FuncDef, reverse_type_aliases
+from mypy.nodes import TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -85,14 +85,17 @@ class MessageBuilder:
     # import context.
     errors = None  # type: Errors
 
+    modules = None  # type: Dict[str, MypyFile]
+
     # Number of times errors have been disabled.
     disable_count = 0
 
     # Hack to deduplicate error messages from union types
     disable_type_names = 0
 
-    def __init__(self, errors: Errors) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
+        self.modules = modules
         self.disable_count = 0
         self.disable_type_names = 0
 
@@ -101,8 +104,9 @@ class MessageBuilder:
     #
 
     def copy(self) -> 'MessageBuilder':
-        new = MessageBuilder(self.errors.copy())
+        new = MessageBuilder(self.errors.copy(), self.modules)
         new.disable_count = self.disable_count
+        new.disable_type_names = self.disable_type_names
         return new
 
     def add_errors(self, messages: 'MessageBuilder') -> None:
@@ -118,10 +122,18 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def fail(self, msg: str, context: Context) -> None:
-        """Report an error message (unless disabled)."""
+    def report(self, msg: str, context: Context, severity: str, file: str = None) -> None:
+        """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
-            self.errors.report(context.get_line(), msg.strip())
+            self.errors.report(context.get_line(), msg.strip(), severity=severity, file=file)
+
+    def fail(self, msg: str, context: Context, file: str = None) -> None:
+        """Report an error message (unless disabled)."""
+        self.report(msg, context, 'error', file=file)
+
+    def note(self, msg: str, context: Context, file: str = None) -> None:
+        """Report an error message (unless disabled)."""
+        self.report(msg, context, 'note', file=file)
 
     def format(self, typ: Type, verbose: bool = False) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -470,6 +482,12 @@ class MessageBuilder:
         if callee.name:
             msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
+        if callee.definition:
+            fullname = callee.definition.fullname()
+            if fullname is not None and '.' in fullname:
+                module_name = fullname.rsplit('.', 1)[0]
+                path = self.modules[module_name].path
+                self.note('{} defined here'.format(callee.name), callee.definition, file=path)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
@@ -781,8 +799,8 @@ def callable_name(type: CallableType) -> str:
 
 
 def temp_message_builder() -> MessageBuilder:
-    """Return a message builder usable for collecting errors locally."""
-    return MessageBuilder(Errors())
+    """Return a message builder usable for throwaway errors (which may not format properly)."""
+    return MessageBuilder(Errors(), {})
 
 
 # For hard-coding suggested missing member alternatives.
