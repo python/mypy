@@ -3,11 +3,13 @@ __pycache__
 *.pyc
 *~
 @*
-/build
 /env
 docs/build/
 *.iml
 /out/
+
+/build
+/dist
 
 /.tox/
 /MANIFEST

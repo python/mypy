@@ -178,21 +178,7 @@ def is_installed() -> bool:
 
 
 def default_data_dir() -> str:
-    if is_installed():
-        # we are installed
-        rv = os.path.join(sys.prefix, 'lib', 'mypy')
-    else:
-        # we are from from a source checkout
-        rv = os.path.dirname(os.path.dirname(__file__))
-    if os.path.isdir(os.path.join(rv, 'stubs')):
-        return rv
-    else:
-        print('Panic! Unable to locate data directory.')
-        print('Info:')
-        print('  __file__ = %s' % __file__)
-        print('  is_installed() = %s' % is_installed())
-        print('  data_dir = %s' % rv)
-        sys.exit(1)
+    return os.path.join(os.path.dirname(__file__), 'data')
 
 
 def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
