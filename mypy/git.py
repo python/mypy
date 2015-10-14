@@ -81,19 +81,27 @@ def warn_extra_files(dir) -> None:
     print("and add & commit your new files.", file=sys.stderr)
 
 
+def chdir_prefix(dir) -> str:
+    """Return the command to change to the target directory, plus '&&'."""
+    if os.path.relpath(dir) != ".":
+        return "cd " + pipes.quote(dir) + " && "
+    else:
+        return ""
+
+
 def error_submodule_not_initialized(name: str, dir: str) -> None:
     print("Submodule '{}' not initialized.".format(name), file=sys.stderr)
     print("Please run:", file=sys.stderr)
-    print("  cd {}".format(pipes.quote(dir)), file=sys.stderr)
-    print("  git submodule init {}".format(name), file=sys.stderr)
+    print("  {}git submodule update --init {}".format(
+        chdir_prefix(dir), name), file=sys.stderr)
 
 
 def error_submodule_not_updated(name: str, dir: str) -> None:
     print("Submodule '{}' not updated.".format(name), file=sys.stderr)
     print("Please run:", file=sys.stderr)
-    print("  cd {}".format(pipes.quote(dir)), file=sys.stderr)
-    print("  git submodule update {}".format(name), file=sys.stderr)
-    print("(If you got this message because you updated {}".format(name), file=sys.stderr)
+    print("  {}git submodule update {}".format(
+        chdir_prefix(dir), name), file=sys.stderr)
+    print("(If you got this message because you updated {} yourself".format(name), file=sys.stderr)
     print(" then run \"git add {}\" to silence this check)".format(name), file=sys.stderr)
 
 
