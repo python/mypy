@@ -294,6 +294,7 @@ def expand_errors(input, output, fnam):
     """
 
     for i in range(len(input)):
-        m = re.search('# E: (.*)$', input[i])
+        m = re.search('# ([EN]): (.*)$', input[i])
         if m:
-            output.append('{}:{}: error: {}'.format(fnam, i + 1, m.group(1)))
+            severity = 'error' if m.group(1) == 'E' else 'note'
+            output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group(2)))
