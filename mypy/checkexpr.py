@@ -1146,7 +1146,7 @@ class ExpressionChecker:
         if not inferred_type:
             # No useful type context.
             ret_type = e.expr().accept(self.chk)
-            if not e.args:
+            if not e.arguments:
                 # Form 'lambda: e'; just use the inferred return type.
                 return CallableType([], [], [], ret_type, self.named_type('builtins.function'))
             else:
@@ -1179,7 +1179,9 @@ class ExpressionChecker:
 
         callable_ctx = cast(CallableType, ctx)
 
-        if callable_ctx.arg_kinds != e.arg_kinds:
+        arg_kinds = [arg.kind for arg in e.arguments]
+
+        if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
             return None
