@@ -19,7 +19,7 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt
+    YieldExpr, ExecStmt, Argument
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
@@ -67,12 +67,38 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_import_all(self, node: ImportAll) -> Node:
         return ImportAll(node.id, node.relative)
 
+    def copy_argument(self, argument: Argument) -> Argument:
+        init_stmt = None  # type: AssignmentStmt
+
+        if argument.initialization_statement:
+            init_lvalue = cast(
+                NameExpr,
+                self.node(argument.initialization_statement.lvalues[0]),
+            )
+            init_lvalue.set_line(argument.line)
+            init_stmt = AssignmentStmt(
+                [init_lvalue],
+                self.node(argument.initialization_statement.rvalue),
+                self.optional_type(argument.initialization_statement.type),
+            )
+
+        arg = Argument(
+            self.visit_var(argument.variable),
+            argument.type_annotation,
+            argument.initializer,
+            argument.kind,
+            init_stmt,
+        )
+
+        # Refresh lines of the inner things
+        arg.set_line(argument.line)
+
+        return arg
+
     def visit_func_def(self, node: FuncDef) -> FuncDef:
         # Note that a FuncDef must be transformed to a FuncDef.
         new = FuncDef(node.name(),
-                      [self.visit_var(var) for var in node.args],
-                      node.arg_kinds[:],
-                      [None] * len(node.init),
+                      [self.copy_argument(arg) for arg in node.arguments],
                       self.block(node.body),
                       cast(FunctionLike, self.optional_type(node.type)))
 
@@ -89,9 +115,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_func_expr(self, node: FuncExpr) -> Node:
-        new = FuncExpr([self.visit_var(var) for var in node.args],
-                       node.arg_kinds[:],
-                       [None] * len(node.init),
+        new = FuncExpr([self.copy_argument(arg) for arg in node.arguments],
                        self.block(node.body),
                        cast(FunctionLike, self.optional_type(node.type)))
         self.copy_function_attributes(new, node)
@@ -105,7 +129,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_implicit = original.is_implicit
         new.is_overload = original.is_overload
         new.is_generator = original.is_generator
-        new.init = self.duplicate_inits(original.init)
 
     def duplicate_inits(self,
                         inits: List[AssignmentStmt]) -> List[AssignmentStmt]:

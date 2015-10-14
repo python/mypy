@@ -530,12 +530,13 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = self.named_generic_type('builtins.dict',
                                                        [self.str_type(),
                                                         arg_type])
-                item.args[i].type = arg_type
+                item.arguments[i].variable.type = arg_type
 
             # Type check initialization expressions.
-            for j in range(len(item.init)):
-                if item.init[j]:
-                    self.accept(item.init[j])
+            for arg in item.arguments:
+                init = arg.initialization_statement
+                if init:
+                    self.accept(init)
 
             # Clear out the default assignments from the binder
             self.binder.pop_frame()
