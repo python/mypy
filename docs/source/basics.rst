@@ -141,7 +141,7 @@ For example, consider this code:
 
 Without a library stub, the type checker has no way of inferring the
 type of ``x`` and checking that the argument to ``chr`` has a valid
-type. Mypy contains the `typeshed http://github.com/python/typeshed`_ project,
+type. Mypy contains the `typeshed <http://github.com/python/typeshed>`_ project,
 which contains library stubs for Python builtins that contains a definition
 like this for ``chr``:
 
@@ -172,7 +172,7 @@ use 3rd party open source libraries in your program.
 
 You can also override the stubs mypy uses for standard libary modules, in case
 you need to make local modifications. (Note that if you want to submit your
-changes, please submit a pull request to `typeshed http://github.com/python/typeshed`_
+changes, please submit a pull request to `typeshed <http://github.com/python/typeshed>`_
 first, and then update the submodule in mypy using a commit that only touches
 the typeshed submodule and nothing else)
 
