@@ -53,7 +53,7 @@ def find_data_files(base, globs):
 
 data_files = []
 
-data_files += find_data_files('typeshed', ['*.py', '*.pyi'])
+data_files += find_data_files('stubs', ['*.py', '*.pyi'])
 
 data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
 
