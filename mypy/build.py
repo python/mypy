@@ -187,7 +187,7 @@ def default_data_dir(bin_dir: str) -> str:
             and not os.path.isdir(os.path.join(dir, 'stubs'))):
         # Installed, on Windows.
         return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'mypy':
+    elif base == 'scripts':
         # Assume that we have a repo check out or unpacked source tarball.
         return os.path.dirname(bin_dir)
     elif base == 'bin':

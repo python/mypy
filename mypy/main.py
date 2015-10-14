@@ -28,8 +28,16 @@ class Options:
         self.python_path = False
 
 
-def main() -> None:
-    bin_dir = find_bin_directory()
+def main(script_path: str) -> None:
+    """Main entry point to the type checker.
+
+    Args:
+        script_path: Path to the 'mypy' script (used for finding data files).
+    """
+    if script_path:
+        bin_dir = find_bin_directory(script_path)
+    else:
+        bin_dir = None
     path, module, program_text, options = process_options(sys.argv[1:])
     try:
         if options.target == build.TYPE_CHECK:
@@ -42,19 +50,18 @@ def main() -> None:
         sys.exit(1)
 
 
-def find_bin_directory() -> str:
+def find_bin_directory(script_path: str) -> str:
     """Find the directory that contains this script.
 
     This is used by build to find stubs and other data files.
     """
-    script = __file__
     # Follow up to 5 symbolic links (cap to avoid cycles).
     for i in range(5):
-        if os.path.islink(script):
-            script = readlinkabs(script)
+        if os.path.islink(script_path):
+            script_path = readlinkabs(script_path)
         else:
             break
-    return os.path.dirname(script)
+    return os.path.dirname(script_path)
 
 
 def readlinkabs(link: str) -> str:
