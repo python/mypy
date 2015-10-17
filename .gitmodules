@@ -1,0 +1,3 @@
+[submodule "typeshed"]
+	path = typeshed
+	url = http://github.com/python/typeshed

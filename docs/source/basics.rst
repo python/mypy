@@ -124,8 +124,8 @@ explains how to download and install mypy.
 
 .. _library-stubs:
 
-Library stubs
-*************
+Typeshed
+********
 
 In order to type check code that uses library modules such as those
 included in the Python standard library, you need to have library
@@ -141,8 +141,9 @@ For example, consider this code:
 
 Without a library stub, the type checker has no way of inferring the
 type of ``x`` and checking that the argument to ``chr`` has a valid
-type. Mypy comes with a library stub for Python builtins that contains
-a definition like this for ``chr``:
+type. Mypy contains the `typeshed <http://github.com/python/typeshed>`_ project,
+which contains library stubs for Python builtins that contains a definition
+like this for ``chr``:
 
 .. code-block:: python
 
@@ -167,9 +168,13 @@ for module ``csv``, and use a subdirectory with ``__init__.pyi`` for packages.
 If there is both a ``.py`` and a ``.pyi`` file for a module, the ``.pyi`` file
 takes precedence. This way you can easily add annotations for a module even if
 you don't want to modify the source code. This can be useful, for example, if you
-use 3rd party open source libraries in your program. You can also override the stubs
-mypy uses for standard libary modules, in case you need to make local
-modifications.
+use 3rd party open source libraries in your program.
+
+You can also override the stubs mypy uses for standard libary modules, in case
+you need to make local modifications. (Note that if you want to submit your
+changes, please submit a pull request to `typeshed <http://github.com/python/typeshed>`_
+first, and then update the submodule in mypy using a commit that only touches
+the typeshed submodule and nothing else)
 
 That's it! Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,

@@ -112,7 +112,7 @@ Quick start for contributing to mypy
 
 If you want to contribute, first clone the mypy git repository:
 
-    $ git clone https://github.com/JukkaL/mypy.git
+    $ git clone --recurse-submodules https://github.com/JukkaL/mypy.git
 
 Run the supplied `setup.py` script to install mypy:
 
@@ -130,6 +130,19 @@ The mypy wiki contains some useful information for contributors:
 
   http://www.mypy-lang.org/wiki/DeveloperGuides
 
+Working with the git version of mypy
+------------------------------------
+
+mypy contains a submodule, "typeshed". See http://github.com/python/typeshed.
+This submodule contains types for the Python standard library.
+
+Due to the way git submodules work, you'll have to do
+```
+  git submodule update typeshed
+```
+whenever you change branches, merge, rebase, or pull.
+
+(It's possible to automate this: Search Google for "git hook update submodule")
 
 Running tests and linting
 -------------------------
