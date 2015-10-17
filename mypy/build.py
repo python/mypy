@@ -901,6 +901,23 @@ def find_module(id: str, lib_path: List[str]) -> str:
     return None
 
 
+def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
+    module_path = find_module(module, lib_path)
+    result = [BuildSource(None, module, None)]
+    if module_path.endswith(('__init__.py', '__init__.pyi')):
+        for item in os.listdir(os.path.dirname(module_path)):
+            abs_path = os.path.join(os.path.dirname(module_path), item)
+            if os.path.isdir(abs_path) and \
+                    (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
+                    os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
+                result += find_modules_recursive(module + '.' + item, lib_path)
+            elif item != '__init__.py' and item != '__init__.pyi' and \
+                    item.endswith(('.py', '.pyi')):
+                result += find_modules_recursive(
+                    module + '.' + item.split('.')[0], lib_path)
+    return result
+
+
 def verify_module(id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
