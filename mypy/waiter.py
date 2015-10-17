@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Tuple
 
 import os
 import pipes
-from subprocess import Popen
+from subprocess import Popen, PIPE, STDOUT
 import sys
 
 
@@ -20,7 +20,7 @@ class LazySubprocess:
         self.env = env
 
     def __call__(self) -> Popen:
-        return Popen(self.args, cwd=self.cwd, env=self.env)
+        return Popen(self.args, cwd=self.cwd, env=self.env, stdout=PIPE, stderr=STDOUT)
 
 
 class Noter:
@@ -159,6 +159,13 @@ class Waiter:
                 fail_type = None
             else:
                 fail_type = 'UPASS'
+
+        if fail_type is not None or self.verbosity >= 1:
+            if self.verbosity <= 0:
+                sys.stdout.write('\n')
+            sys.stdout.write('\n%-8s #%d %s\n\n' % (fail_type or 'PASS', num, name))
+            sys.stdout.buffer.write(proc.stdout.read() + b'\n')
+            sys.stdout.flush()
 
         if fail_type is not None:
             return ['%8s %s' % (fail_type, name)]
