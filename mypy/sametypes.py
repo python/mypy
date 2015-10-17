@@ -2,7 +2,7 @@ from typing import List, cast
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList
+    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded
 )
 
 
@@ -89,5 +89,12 @@ class SameTypeVisitor(TypeVisitor[bool]):
         # XXX This is a test for syntactic equality, not equivalence
         if isinstance(self.right, UnionType):
             return is_same_types(left.items, cast(UnionType, self.right).items)
+        else:
+            return False
+
+    def visit_overloaded(self, left: Overloaded) -> bool:
+        if isinstance(self.right, Overloaded):
+            return is_same_types(cast(List[Type], left.items()),
+                                 cast(List[Type], cast(Overloaded, self.right).items()))
         else:
             return False
