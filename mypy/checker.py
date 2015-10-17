@@ -1744,10 +1744,16 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
         # result = self.expr_checker.visit_yield_from_expr(e)
         result = self.accept(e.expr)
-        result_instance = cast(Instance, result)
-        if result_instance.type.fullname() == "asyncio.futures.Future":
+
+        # If the yield-from isn't typechecked (ie, its Any), don't typecheck
+        if isinstance(result, AnyType):
+            return AnyType()
+
+        if not isinstance(result, Instance):
+            self.msg.yield_from_invalid_operand_type(e.expr.accept(self), e)
+        elif result.type.fullname() == "asyncio.futures.Future":
             self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
-            result = result_instance.args[0]  # Set the return type as the type inside
+            result = result.args[0]  # Set the return type as the type inside
         elif is_subtype(result, self.named_type('typing.Iterable')):
             # TODO
             # Check return type Iterator[Some]
