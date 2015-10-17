@@ -1,7 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Any, TypeVar, List, Tuple, cast, Generic, Set
+from typing import Any, TypeVar, List, Tuple, cast, Generic, Set, Sequence
 
 import mypy.nodes
 from mypy.nodes import INVARIANT
@@ -631,9 +631,15 @@ class TypeTranslator(TypeVisitor[Type]):
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
         return variables
 
-    def visit_overloaded(self, type: Overloaded) -> Type:
-        items = [t.accept(self) for t in type.items()]  # type: ignore
-        return Overloaded(items=cast(List[CallableType], items))
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        items = []  # type: List[CallableType]
+        for item in t.items():
+            new = item.accept(self)
+            if isinstance(new, CallableType):
+                items.append(new)
+            else:
+                raise RuntimeError('CallableType expectected, but got {}'.format(type(new)))
+        return Overloaded(items=items)
 
 
 class TypeStrVisitor(TypeVisitor[str]):
@@ -832,9 +838,9 @@ class TypeQuery(TypeVisitor[bool]):
         return self.query_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> bool:
-        return self.query_types(cast(List[Type], t.items()))
+        return self.query_types(t.items())
 
-    def query_types(self, types: List[Type]) -> bool:
+    def query_types(self, types: Sequence[Type]) -> bool:
         """Perform a query for a list of types.
 
         Use the strategy constant to combine the results.

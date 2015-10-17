@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import List, cast, Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
@@ -17,7 +17,7 @@ def is_same_type(left: Type, right: Type) -> bool:
         return left.accept(SameTypeVisitor(right))
 
 
-def is_same_types(a1: List[Type], a2: List[Type]) -> bool:
+def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:
     if len(a1) != len(a2):
         return False
     for i in range(len(a1)):
@@ -94,7 +94,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(cast(List[Type], left.items()),
-                                 cast(List[Type], cast(Overloaded, self.right).items()))
+            return is_same_types(left.items(), self.right.items())
         else:
             return False
