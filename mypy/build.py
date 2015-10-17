@@ -16,7 +16,7 @@ import subprocess
 import sys
 from os.path import dirname, basename
 
-from typing import Dict, List, Tuple, cast, Set, Union
+from typing import Dict, List, Tuple, cast, Set, Union, Optional
 
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
@@ -89,11 +89,30 @@ class BuildResult:
         self.types = types
 
 
-def build(program_path: str,
+class BuildSource:
+    def __init__(self, path: Optional[str], module: Optional[str],
+            text: Optional[str]) -> None:
+        self.path = path
+        self.module = module or '__main__'
+        self.text = text
+
+    def load(self, lib_path) -> Union[str, bytes]:
+        """Load the module if needed. This also has the side effect
+        of calculating the effective path for modules."""
+        if self.text is not None:
+            return self.text
+
+        self.path = self.path or lookup_program(self.module, lib_path)
+        return read_program(self.path)
+
+    @property
+    def effective_path(self) -> str:
+        """Return the effective path (ie, <string> if its from in memory)"""
+        return self.path or '<string>'
+
+
+def build(sources: List[BuildSource],
           target: int,
-          module: str = None,
-          argument: str = None,
-          program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
           bin_dir: str = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
@@ -109,11 +128,8 @@ def build(program_path: str,
     Return BuildResult if successful; otherwise raise CompileError.
 
     Args:
-      program_path: the path to the main source file (if module argument is
-        given, this can be None => will be looked up)
       target: select passes to perform (a build target constant, e.g. C)
-      module: name of the initial module; __main__ by default
-      program_text: the main source file contents; if omitted, read from file
+      sources: list of sources to build
       alt_lib_dir: an additional directory for looking up library modules
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
@@ -123,23 +139,27 @@ def build(program_path: str,
       flags: list of build options (e.g. COMPILE_ONLY)
     """
     flags = flags or []
-    module = module or '__main__'
 
     data_dir = default_data_dir(bin_dir)
 
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, target, pyversion, python_path)
+    lib_path = default_lib_path(data_dir, pyversion, python_path)
 
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).
         lib_path.insert(0, os.path.join(os.path.dirname(__file__), 'test', 'data', 'lib-stub'))
-    elif program_path:
-        # Include directory of the program file in the module search path.
-        lib_path.insert(
-            0, remove_cwd_prefix_from_path(dirname(program_path)))
     else:
-        # Building/running a module.
+        for source in sources:
+            if source.path:
+                # Include directory of the program file in the module search path.
+                lib_path.insert(
+                    0, remove_cwd_prefix_from_path(dirname(source.path)))
+
+        # Do this even if running as a file, for sanity (mainly because with
+        # multiple builds, there could be a mix of files/modules, so its easier
+        # to just define the semantics that we always add the current director
+        # to the lib_path
         lib_path.insert(0, os.getcwd())
 
     # If provided, insert the caller-supplied extra module path to the
@@ -147,13 +167,9 @@ def build(program_path: str,
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    if program_text is None:
-        program_path = program_path or lookup_program(module, lib_path)
-        program_text = read_program(program_path)
-    else:
-        program_path = program_path or '<string>'
-
-    reports = Reports(program_path, data_dir, report_dirs)
+    # TODO Reports is global to a build manager but only supports a single "main file"
+    # Fix this.
+    reports = Reports(sources[0].effective_path, data_dir, report_dirs)
 
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
@@ -165,13 +181,19 @@ def build(program_path: str,
                            custom_typing_module=custom_typing_module,
                            reports=reports)
 
-    # Construct information that describes the initial file. __main__ is the
+    # Construct information that describes the initial files. __main__ is the
     # implicit module id and the import context is empty initially ([]).
-    info = StateInfo(program_path, module, [], manager)
-    # Perform the build by sending the file as new file (UnprocessedFile is the
+    initial_states = []  # type: List[UnprocessedFile]
+    for source in sources:
+        content = source.load(lib_path)
+        info = StateInfo(source.effective_path, source.module, [], manager)
+        initial_state = UnprocessedFile(info, content)
+        initial_states += [initial_state]
+
+    # Perform the build by sending the files as new file (UnprocessedFile is the
     # initial state of all files) to the manager. The manager will process the
     # file and all dependant modules recursively.
-    result = manager.process(UnprocessedFile(info, program_text))
+    result = manager.process(initial_states)
     reports.finish()
     return result
 
@@ -201,7 +223,7 @@ def default_data_dir(bin_dir: str) -> str:
         raise RuntimeError("Broken installation: can't determine base dir")
 
 
-def default_lib_path(data_dir: str, target: int, pyversion: Tuple[int, int],
+def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
         python_path: bool) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
@@ -335,7 +357,7 @@ class BuildManager:
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
 
-    def process(self, initial_state: 'UnprocessedFile') -> BuildResult:
+    def process(self, initial_states: List['UnprocessedFile']) -> BuildResult:
         """Perform a build.
 
         The argument is a state that represents the main program
@@ -343,8 +365,11 @@ class BuildManager:
         manager object.  The return values are identical to the return
         values of the build function.
         """
-        self.states.append(initial_state)
-        self.module_files[initial_state.id] = initial_state.path
+        self.states += initial_states
+        for initial_state in initial_states:
+            self.module_files[initial_state.id] = initial_state.path
+        for initial_state in initial_states:
+            initial_state.load_dependencies()
 
         # Process states in a loop until all files (states) have been
         # semantically analyzed or type checked (depending on target).
@@ -645,8 +670,8 @@ class UnprocessedFile(State):
     def __init__(self, info: StateInfo, program_text: Union[str, bytes]) -> None:
         super().__init__(info)
         self.program_text = program_text
-        trace('waiting {}'.format(info.path))
 
+    def load_dependencies(self):
         # Add surrounding package(s) as dependencies.
         for p in super_packages(self.id):
             if not self.import_module(p):
@@ -727,8 +752,10 @@ class UnprocessedFile(State):
         if text is not None:
             info = StateInfo(path, id, self.errors().import_context(),
                              self.manager)
-            self.manager.states.append(UnprocessedFile(info, text))
+            new_file = UnprocessedFile(info, text)
+            self.manager.states.append(new_file)
             self.manager.module_files[id] = path
+            new_file.load_dependencies()
             return True
         else:
             return False
@@ -887,6 +914,23 @@ def find_module(id: str, lib_path: List[str]) -> str:
             if os.path.isfile(path) and verify_module(id, path):
                 return path
     return None
+
+
+def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
+    module_path = find_module(module, lib_path)
+    result = [BuildSource(None, module, None)]
+    if module_path.endswith(('__init__.py', '__init__.pyi')):
+        for item in os.listdir(os.path.dirname(module_path)):
+            abs_path = os.path.join(os.path.dirname(module_path), item)
+            if os.path.isdir(abs_path) and \
+                    (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
+                    os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
+                result += find_modules_recursive(module + '.' + item, lib_path)
+            elif item != '__init__.py' and item != '__init__.pyi' and \
+                    item.endswith(('.py', '.pyi')):
+                result += find_modules_recursive(
+                    module + '.' + item.split('.')[0], lib_path)
+    return result
 
 
 def verify_module(id: str, path: str) -> bool:

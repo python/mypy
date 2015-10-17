@@ -8,6 +8,7 @@ from typing import Tuple
 
 from mypy import build
 import mypy.myunit  # for mutable globals (ick!)
+from mypy.build import BuildSource
 from mypy.myunit import Suite
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
@@ -67,11 +68,10 @@ class TypeCheckSuite(Suite):
         pyversion = testcase_pyversion(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
+        source = BuildSource(program_name, module_name, program_text)
         try:
-            build.build(program_name,
-                        target=build.TYPE_CHECK,
-                        module=module_name,
-                        program_text=program_text,
+            build.build(target=build.TYPE_CHECK,
+                        sources=[source],
                         pyversion=pyversion,
                         flags=[build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
