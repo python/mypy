@@ -163,8 +163,8 @@ class Waiter:
         if fail_type is not None or self.verbosity >= 1:
             if self.verbosity <= 0:
                 sys.stdout.write('\n')
-            sys.stdout.write('%-8s #%d %s\n' % (fail_type or 'PASS', num, name))
-            sys.stdout.buffer.write(proc.stdout.read())
+            sys.stdout.write('\n%-8s #%d %s\n\n' % (fail_type or 'PASS', num, name))
+            sys.stdout.buffer.write(proc.stdout.read() + b'\n')
             sys.stdout.flush()
 
         if fail_type is not None:
