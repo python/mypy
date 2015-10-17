@@ -725,6 +725,12 @@ def g() -> Iterator[str]:
     yield "g2 more spam"
 [out]
 
+[case testYieldFromAny]
+from typing import Iterator
+def f(a):
+    b = yield from a
+    return b
+[out]
 
 -- With statement
 -- --------------
