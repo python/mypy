@@ -31,7 +31,10 @@ def get_submodules(dir: str):
     # status='-': not initialized
     # status='+': changed
     # status='u': merge conflicts
+    # status=' ': up-to-date
     for line in output.splitlines():
+        # Skip the status indicator, as it could be a space can confuse the split.
+        line = line[1:]
         name = line.split(b" ")[1]
         yield name.decode(sys.getfilesystemencoding())
 
