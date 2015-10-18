@@ -783,8 +783,7 @@ from m.x import nonexistent
 main:1: note: In module imported here:
 tmp/m/x.py:1: error: Module has no attribute 'nonexistent'
 
-
-[case testImportAsInStubs]
+[case testFromImportAsInStub]
 from m import *
 x
 y  # E: Name 'y' is not defined
@@ -796,7 +795,7 @@ x = 1
 y = 2
 [out]
 
-[case testImportAsInNonStub]
+[case testFromImportAsInNonStub]
 from m_ import *
 x
 y
@@ -813,3 +812,31 @@ MypyFile:1(
     NameExpr(x [m2_.x]))
   ExpressionStmt:3(
     NameExpr(y [m2_.y])))
+
+[case testImportAsInStub]
+from m import *
+m2
+m3  # E: Name 'm3' is not defined
+[file m.pyi]
+import m2 as m2
+import m3
+[file m2.py]
+[file m3.py]
+[out]
+
+[case testImportAsInNonStub]
+from m_ import *
+m2_
+m3_
+[file m_.py]
+import m2_ as m2_
+import m3_
+[file m2_.py]
+[file m3_.py]
+[out]
+MypyFile:1(
+  ImportAll:1(m_)
+  ExpressionStmt:2(
+    NameExpr(m2_))
+  ExpressionStmt:3(
+    NameExpr(m3_)))
