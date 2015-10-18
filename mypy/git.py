@@ -114,7 +114,7 @@ def verify_git_integrity_or_abort(datadir: str) -> None:
     Potentially output warnings/errors (to stderr), and exit with status 1
     if we detected a severe problem.
     """
-
+    datadir = datadir or '.'
     if not is_git_repo(datadir):
         return
     if not have_git():
