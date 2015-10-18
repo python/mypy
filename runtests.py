@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Mypy test runner."""
 
 if False:
     import typing
@@ -260,15 +261,25 @@ def add_samples(driver: Driver) -> None:
 
 
 def usage(status: int) -> None:
-    print('Usage: %s [-h | -v | -q | [-x] filter | -a argument] ... [-- filter ...]' % sys.argv[0])
+    print('Usage: %s [-h | -v | -q | [-x] FILTER | -a ARG] ... [-- FILTER ...]' % sys.argv[0])
+    print()
+    print('Run mypy tests. If given no arguments, run all tests.')
+    print()
+    print('Examples:')
+    print('  %s unit-test  (run unit tests only)' % sys.argv[0])
+    print('  %s unit-test -a "*tuple*"' % sys.argv[0])
+    print('       (run all unit tests with "tuple" in test name)')
+    print()
+    print('Options:')
     print('  -h, --help             show this help')
     print('  -v, --verbose          increase driver verbosity')
     print('  -q, --quiet            decrease driver verbosity')
-    print('  -a, --argument         pass an argument to myunit tasks')
+    print('  -a, --argument ARG     pass an argument to myunit tasks')
+    print('                         (-v: verbose; glob pattern: filter by test name)')
+    print('  -l, --list             list included tasks (after filtering) and exit')
+    print('  FILTER                 include tasks matching FILTER')
+    print('  -x, --exclude FILTER   exclude tasks matching FILTER')
     print('  --                     treat all remaning arguments as positional')
-    print('  filter                 only include tasks matching filter')
-    print('  -x, --exclude filter   exclude tasks matching filter')
-    print('  -l, --list             list included tasks and exit')
     sys.exit(status)
 
 
