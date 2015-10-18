@@ -335,21 +335,21 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self._all_:
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
-                     if name in self._all_ and name == alias]
+                     if name in self._all_ and alias is None]
             self.import_and_export_names(o.id, o.relative, names)
         else:
             # Include import from targets that import from a submodule of a package.
             if o.relative:
                 names = [name for name, alias in o.names
-                         if name == alias]
+                         if alias is None]
                 self.import_and_export_names(o.id, o.relative, names)
         # Import names used as base classes.
         names = [(name, alias) for name, alias in o.names
-                 if alias in self._base_classes]
+                 if alias or name in self._base_classes]
         if names:
             imp_names = []
             for name, alias in names:
-                if alias != name:
+                if alias is not None and alias != name:
                     imp_names.append('%s as %s' % (name, alias))
                 else:
                     imp_names.append(name)

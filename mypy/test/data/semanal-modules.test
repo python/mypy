@@ -44,7 +44,7 @@ x = y
 y = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [y : y])
+  ImportFrom:1(m, [y])
   AssignmentStmt:2(
     NameExpr(x* [__main__.x])
     NameExpr(y [m.y])))
@@ -61,7 +61,7 @@ x = None # type: c
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [c : c])
+  ImportFrom:1(m, [c])
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
@@ -111,7 +111,7 @@ x, y
 x = y = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(_m, [x : x, y : y])
+  ImportFrom:1(_m, [x, y])
   ExpressionStmt:2(
     TupleExpr:2(
       NameExpr(x [_m.x])
@@ -137,13 +137,13 @@ from _n import x
 x = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [x : x])
+  ImportFrom:1(m, [x])
   AssignmentStmt:2(
     NameExpr(y* [__main__.y])
     NameExpr(x [_n.x])))
 MypyFile:1(
   tmp/m.py
-  ImportFrom:1(_n, [x : x]))
+  ImportFrom:1(_n, [x]))
 
 [case testAccessImportedName2]
 import _m
@@ -170,7 +170,7 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(_m, [c : c])
+  ImportFrom:1(_m, [c])
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
@@ -200,7 +200,7 @@ import _n
 x = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(_m, [_n : _n])
+  ImportFrom:1(_m, [_n])
   ExpressionStmt:2(
     MemberExpr:2(
       NameExpr(_n)
@@ -232,7 +232,7 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(_m, [c : c])
+  ImportFrom:1(_m, [c])
   AssignmentStmt:2(
     NameExpr(a [__main__.a])
     NameExpr(None [builtins.None])
@@ -353,7 +353,7 @@ x
 x = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(m._n, [x : x])
+  ImportFrom:1(m._n, [x])
   ExpressionStmt:2(
     NameExpr(x [m._n.x])))
 
@@ -393,7 +393,7 @@ x = None # type: c
 class c: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(m._n, [c : c])
+  ImportFrom:1(m._n, [c])
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
@@ -407,7 +407,7 @@ _n.x
 x = 1
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [_n : _n])
+  ImportFrom:1(m, [_n])
   ExpressionStmt:2(
     MemberExpr:2(
       NameExpr(_n [m._n])
@@ -565,7 +565,7 @@ y = 1
 MypyFile:1(
   ClassDef:1(
     A
-    ImportFrom:2(_x, [y : y])
+    ImportFrom:2(_x, [y])
     AssignmentStmt:3(
       NameExpr(z* [m])
       NameExpr(y [_x.y]))))
@@ -633,7 +633,7 @@ MypyFile:1(
       y [m.z.y])))
 MypyFile:1(
   tmp/m/x.py
-  ImportFrom:1(., [z : z]))
+  ImportFrom:1(., [z]))
 MypyFile:1(
   tmp/m/z.py
   AssignmentStmt:1(
@@ -669,7 +669,7 @@ MypyFile:1(
       y [m.z.y])))
 MypyFile:1(
   tmp/m/t/b.py
-  ImportFrom:1(.., [x : x, z : z]))
+  ImportFrom:1(.., [x, z]))
 MypyFile:1(
   tmp/m/x.py
   AssignmentStmt:1(
@@ -782,3 +782,34 @@ from m.x import nonexistent
 [out]
 main:1: note: In module imported here:
 tmp/m/x.py:1: error: Module has no attribute 'nonexistent'
+
+
+[case testImportAsInStubs]
+from m import *
+x
+y  # E: Name 'y' is not defined
+[file m.pyi]
+from m2 import x as x
+from m2 import y
+[file m2.py]
+x = 1
+y = 2
+[out]
+
+[case testImportAsInNonStub]
+from m_ import *
+x
+y
+[file m_.py]
+from m2_ import x as x
+from m2_ import y
+[file m2_.py]
+x = 1
+y = 2
+[out]
+MypyFile:1(
+  ImportAll:1(m_)
+  ExpressionStmt:2(
+    NameExpr(x [m2_.x]))
+  ExpressionStmt:3(
+    NameExpr(y [m2_.y])))

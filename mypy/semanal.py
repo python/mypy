@@ -161,6 +161,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
+    is_stub_file = False   # Are we analyzing a stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
@@ -759,10 +760,13 @@ class SemanticAnalyzer(NodeVisitor):
                     node = self.normalize_type_alias(node, i)
                     if not node:
                         return
+                    module_public = not self.is_stub_file or as_id is not None
                     symbol = SymbolTableNode(node.kind, node.node,
                                              self.cur_mod_id,
-                                             node.type_override)
-                    self.add_symbol(as_id, symbol, i)
+                                             node.type_override,
+                                             module_public=module_public)
+                    imported_id = as_id or id
+                    self.add_symbol(imported_id, symbol, i)
                 else:
                     message = "Module has no attribute '{}'".format(id)
                     extra = self.undefined_name_extra_info('{}.{}'.format(i_id, id))
@@ -771,7 +775,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail(message, i)
         else:
             for id, as_id in i.names:
-                self.add_unknown_symbol(as_id, i)
+                self.add_unknown_symbol(as_id or id, i)
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
@@ -803,7 +807,7 @@ class SemanticAnalyzer(NodeVisitor):
             m = self.modules[i_id]
             for name, node in m.names.items():
                 node = self.normalize_type_alias(node, i)
-                if not name.startswith('_'):
+                if not name.startswith('_') and node.module_public:
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id), i)
         else:

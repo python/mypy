@@ -1053,16 +1053,16 @@ from m import x
 from m.n import x, y, z
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [x : x])
-  ImportFrom:2(m.n, [x : x, y : y, z : z]))
+  ImportFrom:1(m, [x])
+  ImportFrom:2(m.n, [x, y, z]))
 
 [case testImportFromAs]
 from m import x as y
-from x import y, z as a, c
+from x import y, z as a, c as c
 [out]
 MypyFile:1(
   ImportFrom:1(m, [x : y])
-  ImportFrom:2(x, [y : y, z : a, c : c]))
+  ImportFrom:2(x, [y, z : a, c : c]))
 
 [case testImportStar]
 from x import *
@@ -1084,14 +1084,14 @@ MypyFile:1(
   FuncDef:3(
     f
     Block:3(
-      ImportFrom:4(x, [y : y])
+      ImportFrom:4(x, [y])
       ImportAll:5(z))))
 
 [case testImportWithExtraComma]
 from x import (y, z,)
 [out]
 MypyFile:1(
-  ImportFrom:1(x, [y : y, z : z]))
+  ImportFrom:1(x, [y, z]))
 
 [case testDefaultArgs]
 def f(x=1):
@@ -1700,8 +1700,8 @@ from x import (y,
                z)
 [out]
 MypyFile:1(
-  ImportFrom:1(x, [y : y])
-  ImportFrom:2(x, [y : y, z : z]))
+  ImportFrom:1(x, [y])
+  ImportFrom:2(x, [y, z]))
 
 [case testContinueStmt]
 while 1:
@@ -3171,13 +3171,13 @@ MypyFile:1(
 from ... import x
 [out]
 MypyFile:1(
-  ImportFrom:1(..., [x : x]))
+  ImportFrom:1(..., [x]))
 
 [case testRelativeImportWithEllipsis2]
 from .... import x
 [out]
 MypyFile:1(
-  ImportFrom:1(...., [x : x]))
+  ImportFrom:1(...., [x]))
 
 [case testParseExtendedSlicing]
 a[:, :]
@@ -3317,7 +3317,7 @@ from m import ( # type: ignore
 )
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [x : x, y : y])
+  ImportFrom:1(m, [x, y])
   IgnoredLines(1))
 
 [case testYieldExpression]

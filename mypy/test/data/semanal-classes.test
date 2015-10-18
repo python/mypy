@@ -188,7 +188,7 @@ class A:
   def f(self, x: 'A') -> None: self
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [overload : overload])
+  ImportFrom:1(typing, [overload])
   ClassDef:2(
     A
     OverloadedFuncDef:3(
@@ -524,7 +524,7 @@ from typing import builtinclass
 class A: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [builtinclass : builtinclass])
+  ImportFrom:1(typing, [builtinclass])
   ClassDef:2(
     A
     Builtinclass
@@ -578,7 +578,7 @@ MypyFile:1(
   Import:1(m : m))
 MypyFile:1(
   tmp/m.pyi
-  ImportFrom:1(typing, [Tuple : Tuple])
+  ImportFrom:1(typing, [Tuple])
   ClassDef:2(
     A
     TupleType(

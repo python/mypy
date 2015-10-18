@@ -6,7 +6,7 @@ N = namedtuple('N', ['a'])
 def f() -> N: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(collections, [namedtuple : namedtuple])
+  ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any]))
@@ -22,7 +22,7 @@ N = namedtuple('N', ['a', 'xyz'])
 def f() -> N: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(collections, [namedtuple : namedtuple])
+  ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any, Any]))
@@ -38,7 +38,7 @@ N = namedtuple('N', ' a  xyz ')
 def f() -> N: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(collections, [namedtuple : namedtuple])
+  ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any, Any]))
@@ -54,7 +54,7 @@ N = NamedTuple('N', [('a', int),
                      ('b', str)])
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [NamedTuple : NamedTuple])
+  ImportFrom:1(typing, [NamedTuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
@@ -65,7 +65,7 @@ N = namedtuple('N', ['x'])
 class A(N): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(collections, [namedtuple : namedtuple])
+  ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any]))
@@ -82,7 +82,7 @@ from collections import namedtuple
 class A(namedtuple('N', ['x'])): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(collections, [namedtuple : namedtuple])
+  ImportFrom:1(collections, [namedtuple])
   ClassDef:2(
     A
     TupleType(
@@ -96,7 +96,7 @@ from typing import NamedTuple
 class A(NamedTuple('N', [('x', int)])): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [NamedTuple : NamedTuple])
+  ImportFrom:1(typing, [NamedTuple])
   ClassDef:2(
     A
     TupleType(
