@@ -9,8 +9,8 @@ class A(metaclass=ABCMeta):
   def f(self) -> 'A': return self
 [out]
 MypyFile:1(
-  ImportFrom:1(abc, [abstractmethod : abstractmethod, ABCMeta : ABCMeta])
-  Import:2(typing : typing)
+  ImportFrom:1(abc, [abstractmethod, ABCMeta])
+  Import:2(typing)
   ClassDef:4(
     A
     Metaclass(ABCMeta)
@@ -45,8 +45,8 @@ class B(metaclass=ABCMeta): pass
 class C(A, B): pass
 [out]
 MypyFile:1(
-  ImportFrom:1(abc, [abstractmethod : abstractmethod, ABCMeta : ABCMeta])
-  Import:2(typing : typing)
+  ImportFrom:1(abc, [abstractmethod, ABCMeta])
+  Import:2(typing)
   ClassDef:4(
     A
     Metaclass(ABCMeta)
@@ -71,8 +71,8 @@ class A(Generic[T]):
   def f(self) -> 'A[T]': pass
 [out]
 MypyFile:1(
-  ImportFrom:1(abc, [abstractmethod : abstractmethod])
-  ImportFrom:2(typing, [Generic : Generic, TypeVar : TypeVar])
+  ImportFrom:1(abc, [abstractmethod])
+  ImportFrom:2(typing, [Generic, TypeVar])
   AssignmentStmt:3(
     NameExpr(T* [__main__.T])
     TypeVarExpr:3())
@@ -101,9 +101,9 @@ class A(metaclass=ABCMeta):
   def g(self) -> 'A': pass
 [out]
 MypyFile:1(
-  Import:1(abc : abc)
-  ImportFrom:2(abc, [ABCMeta : ABCMeta])
-  Import:3(typing : typing)
+  Import:1(abc)
+  ImportFrom:2(abc, [ABCMeta])
+  Import:3(typing)
   ClassDef:5(
     A
     Metaclass(ABCMeta)

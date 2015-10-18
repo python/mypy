@@ -84,13 +84,19 @@ class StrConv(NodeVisitor[str]):
     def visit_import(self, o):
         a = []
         for id, as_id in o.ids:
-            a.append('{} : {}'.format(id, as_id))
+            if as_id is not None:
+                a.append('{} : {}'.format(id, as_id))
+            else:
+                a.append(id)
         return 'Import:{}({})'.format(o.line, ', '.join(a))
 
     def visit_import_from(self, o):
         a = []
         for name, as_name in o.names:
-            a.append('{} : {}'.format(name, as_name))
+            if as_name is not None:
+                a.append('{} : {}'.format(name, as_name))
+            else:
+                a.append(name)
         return 'ImportFrom:{}({}, [{}])'.format(o.line, "." * o.relative + o.id, ', '.join(a))
 
     def visit_import_all(self, o):

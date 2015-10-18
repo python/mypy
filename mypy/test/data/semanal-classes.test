@@ -188,7 +188,7 @@ class A:
   def f(self, x: 'A') -> None: self
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [overload : overload])
+  ImportFrom:1(typing, [overload])
   ClassDef:2(
     A
     OverloadedFuncDef:3(
@@ -398,7 +398,7 @@ import abc
 class A(metaclass=abc.ABCMeta): pass
 [out]
 MypyFile:1(
-  Import:1(abc : abc)
+  Import:1(abc)
   ClassDef:2(
     A
     Metaclass(abc.ABCMeta)
@@ -491,7 +491,7 @@ class A:
 [builtins fixtures/property.py]
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ClassDef:2(
     A
     Decorator:3(
@@ -511,7 +511,7 @@ import typing
 class A: pass
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ClassDef:2(
     A
     Decorators(
@@ -524,7 +524,7 @@ from typing import builtinclass
 class A: pass
 [out]
 MypyFile:1(
-  ImportFrom:1(typing, [builtinclass : builtinclass])
+  ImportFrom:1(typing, [builtinclass])
   ClassDef:2(
     A
     Builtinclass
@@ -539,7 +539,7 @@ class A:
     def f(self, x : int = X) -> None: pass
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ClassDef:2(
     A
     AssignmentStmt:3(
@@ -575,10 +575,10 @@ from typing import Tuple
 class A(Tuple[int, str]): pass
 [out]
 MypyFile:1(
-  Import:1(m : m))
+  Import:1(m))
 MypyFile:1(
   tmp/m.pyi
-  ImportFrom:1(typing, [Tuple : Tuple])
+  ImportFrom:1(typing, [Tuple])
   ClassDef:2(
     A
     TupleType(

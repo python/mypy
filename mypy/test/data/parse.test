@@ -1026,8 +1026,8 @@ import x
 import y.z.foo, __foo__.bar
 [out]
 MypyFile:1(
-  Import:1(x : x)
-  Import:2(y.z.foo : y.z.foo, __foo__.bar : __foo__.bar))
+  Import:1(x)
+  Import:2(y.z.foo, __foo__.bar))
 
 [case testVariableTypeWithQualifiedName]
 x = None # type: x.y
@@ -1053,16 +1053,16 @@ from m import x
 from m.n import x, y, z
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [x : x])
-  ImportFrom:2(m.n, [x : x, y : y, z : z]))
+  ImportFrom:1(m, [x])
+  ImportFrom:2(m.n, [x, y, z]))
 
 [case testImportFromAs]
 from m import x as y
-from x import y, z as a, c
+from x import y, z as a, c as c
 [out]
 MypyFile:1(
   ImportFrom:1(m, [x : y])
-  ImportFrom:2(x, [y : y, z : a, c : c]))
+  ImportFrom:2(x, [y, z : a, c : c]))
 
 [case testImportStar]
 from x import *
@@ -1080,18 +1080,18 @@ def f():
 MypyFile:1(
   ExpressionStmt:1(
     IntExpr(1))
-  Import:2(x : x)
+  Import:2(x)
   FuncDef:3(
     f
     Block:3(
-      ImportFrom:4(x, [y : y])
+      ImportFrom:4(x, [y])
       ImportAll:5(z))))
 
 [case testImportWithExtraComma]
 from x import (y, z,)
 [out]
 MypyFile:1(
-  ImportFrom:1(x, [y : y, z : z]))
+  ImportFrom:1(x, [y, z]))
 
 [case testDefaultArgs]
 def f(x=1):
@@ -1700,8 +1700,8 @@ from x import (y,
                z)
 [out]
 MypyFile:1(
-  ImportFrom:1(x, [y : y])
-  ImportFrom:2(x, [y : y, z : z]))
+  ImportFrom:1(x, [y])
+  ImportFrom:2(x, [y, z]))
 
 [case testContinueStmt]
 while 1:
@@ -2142,11 +2142,11 @@ MypyFile:1(
 
 [case testImportAs]
 import x as y
-import x, z as y, a.b as c
+import x, z as y, a.b as c, d as d
 [out]
 MypyFile:1(
   Import:1(x : y)
-  Import:2(x : x, z : y, a.b : c))
+  Import:2(x, z : y, a.b : c, d : d))
 
 [case testForAndElse]
 for x in y:
@@ -3171,13 +3171,13 @@ MypyFile:1(
 from ... import x
 [out]
 MypyFile:1(
-  ImportFrom:1(..., [x : x]))
+  ImportFrom:1(..., [x]))
 
 [case testRelativeImportWithEllipsis2]
 from .... import x
 [out]
 MypyFile:1(
-  ImportFrom:1(...., [x : x]))
+  ImportFrom:1(...., [x]))
 
 [case testParseExtendedSlicing]
 a[:, :]
@@ -3242,7 +3242,7 @@ MypyFile:1(
 import x # type: ignore
 [out]
 MypyFile:1(
-  Import:1(x : x)
+  Import:1(x)
   IgnoredLines(1))
 
 [case testIgnore2Lines]
@@ -3317,7 +3317,7 @@ from m import ( # type: ignore
 )
 [out]
 MypyFile:1(
-  ImportFrom:1(m, [x : x, y : y])
+  ImportFrom:1(m, [x, y])
   IgnoredLines(1))
 
 [case testYieldExpression]

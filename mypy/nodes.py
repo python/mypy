@@ -176,9 +176,9 @@ class ImportBase(Node):
 class Import(ImportBase):
     """import m [as n]"""
 
-    ids = None  # type: List[Tuple[str, str]]     # (module id, as id)
+    ids = None  # type: List[Tuple[str, Optional[str]]]     # (module id, as id)
 
-    def __init__(self, ids: List[Tuple[str, str]]) -> None:
+    def __init__(self, ids: List[Tuple[str, Optional[str]]]) -> None:
         self.ids = ids
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -186,11 +186,11 @@ class Import(ImportBase):
 
 
 class ImportFrom(ImportBase):
-    """from m import x, ..."""
+    """from m import x [as y], ..."""
 
-    names = None  # type: List[Tuple[str, str]]  # Tuples (name, as name)
+    names = None  # type: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
 
-    def __init__(self, id: str, relative: int, names: List[Tuple[str, str]]) -> None:
+    def __init__(self, id: str, relative: int, names: List[Tuple[str, Optional[str]]]) -> None:
         self.id = id
         self.names = names
         self.relative = relative
@@ -1629,14 +1629,19 @@ class SymbolTableNode:
     mod_id = ''
     # If this not None, override the type of the 'node' attribute.
     type_override = None  # type: mypy.types.Type
+    # If False, this name won't be imported via 'from <module> import *'.
+    # This has no effect on names within classes.
+    module_public = True
 
     def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,
-                 typ: 'mypy.types.Type' = None, tvar_id: int = 0) -> None:
+                 typ: 'mypy.types.Type' = None, tvar_id: int = 0,
+                 module_public: bool = True) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
         self.tvar_id = tvar_id
+        self.module_public = module_public
 
     @property
     def fullname(self) -> str:

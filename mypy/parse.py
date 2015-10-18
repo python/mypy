@@ -203,7 +203,7 @@ class Parser:
             id = self.parse_qualified_name()
             if id == self.custom_typing_module:
                 id = 'typing'
-            as_id = id
+            as_id = None  # type: Optional[str]
             if self.current_str() == 'as':
                 self.expect('as')
                 name_tok = self.expect_type(Name)
@@ -227,7 +227,7 @@ class Parser:
 
         # Parse qualified name to actually import from.
         if self.current_str() == "import":
-            # Empty/defualt values.
+            # Empty/default values.
             name = ""
         else:
             name = self.parse_qualified_name()
@@ -274,7 +274,7 @@ class Parser:
             self.future_options.extend(target[0] for target in targets)
         return node
 
-    def parse_import_name(self) -> Tuple[str, str]:
+    def parse_import_name(self) -> Tuple[str, Optional[str]]:
         tok = self.expect_type(Name)
         name = tok.string
         if self.current_str() == 'as':
@@ -282,7 +282,7 @@ class Parser:
             as_name = self.expect_type(Name)
             return name, as_name.string
         else:
-            return name, name
+            return name, None
 
     def parse_qualified_name(self) -> str:
         """Parse a name with an optional module qualifier.
