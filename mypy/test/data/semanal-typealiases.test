@@ -30,7 +30,7 @@ def f() -> typing.List[int]: pass
 [builtins fixtures/list.py]
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   FuncDef:2(
     f
     def () -> builtins.list[builtins.int]
@@ -56,7 +56,7 @@ typing.List[typing.List[int]]
 [builtins fixtures/list.py]
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ExpressionStmt:2(
     TypeApplication:2(
       MemberExpr:2(
@@ -72,7 +72,7 @@ A2 = A
 def f(x: A2) -> A: pass
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ClassDef:2(
     A
     PassStmt:2())
@@ -97,8 +97,8 @@ import typing
 class A: pass
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
-  Import:2(_m : _m)
+  Import:1(typing)
+  Import:2(_m)
   AssignmentStmt:3(
     NameExpr(A2* [__main__.A2])
     MemberExpr:3(
@@ -155,7 +155,7 @@ U = typing.Union[int, str]
 def f(x: U) -> None: pass
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   AssignmentStmt:2(
     NameExpr(U* [__main__.U])
     TypeAliasExpr(Union[builtins.int, builtins.str]))
@@ -260,7 +260,7 @@ class A: pass
 U = Union[int, A]
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ImportFrom:2(_m, [U])
   FuncDef:3(
     f
@@ -280,8 +280,8 @@ class A: pass
 U = Union[int, A]
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
-  Import:2(_m : _m)
+  Import:1(typing)
+  Import:2(_m)
   FuncDef:3(
     f
     Args(
@@ -299,7 +299,7 @@ import typing
 A = int
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   ImportFrom:2(_m, [A])
   FuncDef:3(
     f
@@ -318,8 +318,8 @@ import typing
 A = int
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
-  Import:2(_m : _m)
+  Import:1(typing)
+  Import:2(_m)
   FuncDef:3(
     f
     Args(
@@ -349,7 +349,7 @@ A = typing.Any
 a = 1 # type: A
 [out]
 MypyFile:1(
-  Import:1(typing : typing)
+  Import:1(typing)
   AssignmentStmt:2(
     NameExpr(A* [__main__.A])
     MemberExpr:2(

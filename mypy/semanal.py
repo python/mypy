@@ -737,7 +737,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_import(self, i: Import) -> None:
         for id, as_id in i.ids:
-            if as_id != id:
+            if as_id is not None and as_id != id:
                 self.add_module_symbol(id, as_id, i)
             else:
                 base = id.split('.')[0]

@@ -203,7 +203,7 @@ class Parser:
             id = self.parse_qualified_name()
             if id == self.custom_typing_module:
                 id = 'typing'
-            as_id = id
+            as_id = None  # type: Optional[str]
             if self.current_str() == 'as':
                 self.expect('as')
                 name_tok = self.expect_type(Name)

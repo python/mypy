@@ -10,7 +10,7 @@ class A(metaclass=ABCMeta):
 [out]
 MypyFile:1(
   ImportFrom:1(abc, [abstractmethod, ABCMeta])
-  Import:2(typing : typing)
+  Import:2(typing)
   ClassDef:4(
     A
     Metaclass(ABCMeta)
@@ -46,7 +46,7 @@ class C(A, B): pass
 [out]
 MypyFile:1(
   ImportFrom:1(abc, [abstractmethod, ABCMeta])
-  Import:2(typing : typing)
+  Import:2(typing)
   ClassDef:4(
     A
     Metaclass(ABCMeta)
@@ -101,9 +101,9 @@ class A(metaclass=ABCMeta):
   def g(self) -> 'A': pass
 [out]
 MypyFile:1(
-  Import:1(abc : abc)
+  Import:1(abc)
   ImportFrom:2(abc, [ABCMeta])
-  Import:3(typing : typing)
+  Import:3(typing)
   ClassDef:5(
     A
     Metaclass(ABCMeta)

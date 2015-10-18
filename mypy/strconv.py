@@ -84,7 +84,10 @@ class StrConv(NodeVisitor[str]):
     def visit_import(self, o):
         a = []
         for id, as_id in o.ids:
-            a.append('{} : {}'.format(id, as_id))
+            if as_id is not None:
+                a.append('{} : {}'.format(id, as_id))
+            else:
+                a.append(id)
         return 'Import:{}({})'.format(o.line, ', '.join(a))
 
     def visit_import_from(self, o):

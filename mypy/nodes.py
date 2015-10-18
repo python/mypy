@@ -176,9 +176,9 @@ class ImportBase(Node):
 class Import(ImportBase):
     """import m [as n]"""
 
-    ids = None  # type: List[Tuple[str, str]]     # (module id, as id)
+    ids = None  # type: List[Tuple[str, Optional[str]]]     # (module id, as id)
 
-    def __init__(self, ids: List[Tuple[str, str]]) -> None:
+    def __init__(self, ids: List[Tuple[str, Optional[str]]]) -> None:
         self.ids = ids
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

@@ -8,7 +8,7 @@ x.y
 y = 1
 [out]
 MypyFile:1(
-  Import:1(x : x)
+  Import:1(x)
   ExpressionStmt:2(
     MemberExpr:2(
       NameExpr(x)
@@ -26,7 +26,7 @@ x = None # type: m.c
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(m : m)
+  Import:1(m)
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
@@ -81,7 +81,7 @@ x = 1
 y = 2
 [out]
 MypyFile:1(
-  Import:1(_m : _m, _n : _n)
+  Import:1(_m, _n)
   ExpressionStmt:2(
     TupleExpr:2(
       MemberExpr:2(
@@ -154,7 +154,7 @@ from _n import x
 x = 1
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   AssignmentStmt:2(
     NameExpr(y* [__main__.y])
     MemberExpr:2(
@@ -185,7 +185,7 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
@@ -215,7 +215,7 @@ import _n
 x = 1
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   ExpressionStmt:2(
     MemberExpr:2(
       MemberExpr:2(
@@ -247,7 +247,7 @@ from _n import c
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   AssignmentStmt:2(
     NameExpr(a [__main__.a])
     NameExpr(None [builtins.None])
@@ -313,7 +313,7 @@ _m.x
 x = 1
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   ExpressionStmt:2(
     MemberExpr:2(
       NameExpr(_m)
@@ -328,7 +328,7 @@ y = 1
 x = 1
 [out]
 MypyFile:1(
-  Import:1(m.n : m.n)
+  Import:1(m.n)
   ExpressionStmt:2(
     TupleExpr:2(
       MemberExpr:2(
@@ -379,7 +379,7 @@ x = None # type: m._n.c
 class c: pass
 [out]
 MypyFile:1(
-  Import:1(m._n : m._n)
+  Import:1(m._n)
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     NameExpr(None [builtins.None])
@@ -426,7 +426,7 @@ b = 1
 x = 1
 [out]
 MypyFile:1(
-  Import:1(m.n.k : m.n.k)
+  Import:1(m.n.k)
   ExpressionStmt:2(
     MemberExpr:2(
       MemberExpr:2(
@@ -461,7 +461,7 @@ from m._k import x
 x = 1
 [out]
 MypyFile:1(
-  Import:1(m._n : m._n)
+  Import:1(m._n)
   AssignmentStmt:2(
     NameExpr(y* [__main__.y])
     MemberExpr:2(
@@ -494,7 +494,7 @@ _m.x = (
 x = None
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   AssignmentStmt:2(
     MemberExpr:2(
       NameExpr(_m)
@@ -510,7 +510,7 @@ _m.x[None] = None
 x = None
 [out]
 MypyFile:1(
-  Import:1(_m : _m)
+  Import:1(_m)
   AssignmentStmt:2(
     IndexExpr:2(
       MemberExpr:2(
@@ -531,7 +531,7 @@ MypyFile:1(
     If(
       IntExpr(1))
     Then(
-      Import:2(_x : _x)
+      Import:2(_x)
       ExpressionStmt:3(
         MemberExpr:3(
           NameExpr(_x)
@@ -549,7 +549,7 @@ MypyFile:1(
     f
     def ()
     Block:1(
-      Import:2(_x : _x)
+      Import:2(_x)
       ExpressionStmt:3(
         MemberExpr:3(
           NameExpr(_x)
@@ -580,7 +580,7 @@ y = 1
 MypyFile:1(
   ClassDef:1(
     A
-    Import:2(_x : _x)
+    Import:2(_x)
     AssignmentStmt:3(
       NameExpr(z* [m])
       MemberExpr:3(
@@ -600,8 +600,8 @@ MypyFile:1(
     f
     def ()
     Block:1(
-      Import:2(x : x)
-      Import:3(x : x)
+      Import:2(x)
+      Import:3(x)
       ExpressionStmt:4(
         MemberExpr:4(
           NameExpr(x)
@@ -622,7 +622,7 @@ from . import z
 y = 1
 [out]
 MypyFile:1(
-  Import:1(m.x : m.x)
+  Import:1(m.x)
   ExpressionStmt:2(
     MemberExpr:2(
       MemberExpr:2(
@@ -738,7 +738,7 @@ from .b import *
 from .. import xy as y
 [out]
 MypyFile:1(
-  Import:1(m.t : m.t)
+  Import:1(m.t)
   ExpressionStmt:2(
     MemberExpr:2(
       NameExpr(m)
