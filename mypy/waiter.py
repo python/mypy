@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 import os
 import pipes
+import re
 from subprocess import Popen, PIPE, STDOUT
 import sys
 
@@ -173,8 +174,11 @@ class Waiter:
             else:
                 fail_type = 'UPASS'
 
+        # Get task output. Assume it's ascii to avoid unicode headaches (and portability issues).
+        output = proc.stdout.read().decode('ascii')
+        num_tests, num_tests_failed = parse_test_stats_from_output(output, fail_type)
+
         if fail_type is not None or self.verbosity >= 1:
-            output = proc.stdout.read()
             self._report_task_failure(fail_type, num, name, output)
 
         if fail_type is not None:
@@ -182,14 +186,14 @@ class Waiter:
         else:
             failed_tasks = []
 
-        return failed_tasks, 1, len(failed_tasks)
+        return failed_tasks, num_tests, num_tests_failed
 
     def _report_task_failure(self, fail_type: Optional[str], num: int, name: str,
-                             output: bytes) -> None:
+                             output: str) -> None:
         if self.verbosity <= 0:
             sys.stdout.write('\n')
         sys.stdout.write('\n%-8s #%d %s\n\n' % (fail_type or 'PASS', num, name))
-        sys.stdout.buffer.write(output + b'\n')
+        sys.stdout.write(output + '\n')
         sys.stdout.flush()
 
     def run(self) -> None:
@@ -231,3 +235,24 @@ class Waiter:
                 len(self.queue), total_tests))
             print('*** OK ***')
             sys.stdout.flush()
+
+
+def parse_test_stats_from_output(output: str, fail_type: Optional[str]) -> Tuple[int, int]:
+    """Parse tasks output and determine test counts.
+
+    Return tuple (number of tests, number of test failures). Default
+    to the entire task representing a single test as a fallback.
+    """
+    m = re.search('^([0-9]+)/([0-9]+) test cases failed(, ([0-9]+) skipped)?.$', output,
+                  re.MULTILINE)
+    if m:
+        return int(m.group(2)), int(m.group(1))
+    m = re.search('^([0-9]+) test cases run(, ([0-9]+) skipped)?, all passed.$', output,
+                  re.MULTILINE)
+    if m:
+        return int(m.group(1)), 0
+    # Couldn't find test counts, so fall back to single test per tasks.
+    if fail_type is not None:
+        return 1, 1
+    else:
+        return 1, 0
