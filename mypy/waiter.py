@@ -1,7 +1,13 @@
+"""Parallel subprocess task runner.
+
+This is used for running mypy tests.
+"""
+
 from typing import Dict, List, Optional, Tuple
 
 import os
 import pipes
+import re
 from subprocess import Popen, PIPE, STDOUT
 import sys
 
@@ -28,10 +34,14 @@ class Noter:
 
     Only used when verbosity == 0.
     """
+
     def __init__(self, total: int) -> None:
+        # Total number of tasks.
         self.total = total
         self.running = set()  # type: Set[int]
+        # Passed tasks.
         self.passes = 0
+        # Failed tasks.
         self.fails = 0
 
     def start(self, job: int) -> None:
@@ -114,7 +124,11 @@ class Waiter:
             self._note.start(num)
         self.next += 1
 
-    def _wait1(self) -> List[str]:
+    def _wait_single(self) -> Tuple[List[str], int, int]:
+        """Wait for a single task to finish.
+
+        Return tuple (list of failed tasks, number test cases, number of failed tests).
+        """
         pid, status = os.waitpid(-1, 0)
         num, proc = self.current.pop(pid)
 
@@ -160,17 +174,27 @@ class Waiter:
             else:
                 fail_type = 'UPASS'
 
+        # Get task output. Assume it's ascii to avoid unicode headaches (and portability issues).
+        output = proc.stdout.read().decode('ascii')
+        num_tests, num_tests_failed = parse_test_stats_from_output(output, fail_type)
+
         if fail_type is not None or self.verbosity >= 1:
-            if self.verbosity <= 0:
-                sys.stdout.write('\n')
-            sys.stdout.write('\n%-8s #%d %s\n\n' % (fail_type or 'PASS', num, name))
-            sys.stdout.buffer.write(proc.stdout.read() + b'\n')
-            sys.stdout.flush()
+            self._report_task_failure(fail_type, num, name, output)
 
         if fail_type is not None:
-            return ['%8s %s' % (fail_type, name)]
+            failed_tasks = ['%8s %s' % (fail_type, name)]
         else:
-            return []
+            failed_tasks = []
+
+        return failed_tasks, num_tests, num_tests_failed
+
+    def _report_task_failure(self, fail_type: Optional[str], num: int, name: str,
+                             output: str) -> None:
+        if self.verbosity <= 0:
+            sys.stdout.write('\n')
+        sys.stdout.write('\n%-8s #%d %s\n\n' % (fail_type or 'PASS', num, name))
+        sys.stdout.write(output + '\n')
+        sys.stdout.flush()
 
     def run(self) -> None:
         if self.verbosity >= -1:
@@ -180,21 +204,55 @@ class Waiter:
             self._note = Noter(len(self.queue))
         print('SUMMARY  %d tasks selected' % len(self.queue))
         sys.stdout.flush()
-        failures = []  # type: List[str]
+        # Failed tasks.
+        all_failures = []  # type: List[str]
+        # Number of test cases. Some tasks can involve multiple test cases.
+        total_tests = 0
+        # Number of failed test cases.
+        total_failed_tests = 0
         while self.current or self.next < len(self.queue):
             while len(self.current) < self.limit and self.next < len(self.queue):
                 self._start1()
-            failures += self._wait1()
+            fails, tests, test_fails = self._wait_single()
+            all_failures += fails
+            total_tests += tests
+            total_failed_tests += test_fails
         if self.verbosity == 0:
             self._note.clear()
-        if failures:
-            print('SUMMARY  %d/%d tasks failed' % (len(failures), len(self.queue)))
-            for f in failures:
+        if all_failures:
+            summary = 'SUMMARY  %d/%d tasks and %d/%d tests failed' % (
+                len(all_failures), len(self.queue), total_failed_tests, total_tests)
+            print(summary)
+            for f in all_failures:
                 print(f)
-            print('SUMMARY  %d/%d tasks failed' % (len(failures), len(self.queue)))
+            print(summary)
+            print('*** FAILURE ***')
             sys.stdout.flush()
-            if any('XFAIL' not in f for f in failures):
+            if any('XFAIL' not in f for f in all_failures):
                 sys.exit(1)
         else:
-            print('SUMMARY  all %d tasks passed' % len(self.queue))
+            print('SUMMARY  all %d tasks and %d tests passed' % (
+                len(self.queue), total_tests))
+            print('*** OK ***')
             sys.stdout.flush()
+
+
+def parse_test_stats_from_output(output: str, fail_type: Optional[str]) -> Tuple[int, int]:
+    """Parse tasks output and determine test counts.
+
+    Return tuple (number of tests, number of test failures). Default
+    to the entire task representing a single test as a fallback.
+    """
+    m = re.search('^([0-9]+)/([0-9]+) test cases failed(, ([0-9]+) skipped)?.$', output,
+                  re.MULTILINE)
+    if m:
+        return int(m.group(2)), int(m.group(1))
+    m = re.search('^([0-9]+) test cases run(, ([0-9]+) skipped)?, all passed.$', output,
+                  re.MULTILINE)
+    if m:
+        return int(m.group(1)), 0
+    # Couldn't find test counts, so fall back to single test per tasks.
+    if fail_type is not None:
+        return 1, 1
+    else:
+        return 1, 0
