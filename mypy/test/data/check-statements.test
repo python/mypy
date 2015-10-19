@@ -6,7 +6,6 @@
 import typing
 def f() -> 'A':
     return A()
-    return B()
 def g() -> 'B':
     return A()
 class A:
@@ -14,10 +13,8 @@ class A:
 class B:
     pass
 [out]
-main: note: In function "f":
-main:4: error: Incompatible return value type: expected __main__.A, got __main__.B
 main: note: In function "g":
-main:6: error: Incompatible return value type: expected __main__.B, got __main__.A
+main:5: error: Incompatible return value type: expected __main__.B, got __main__.A
 
 [case testReturnSubtype]
 import typing
