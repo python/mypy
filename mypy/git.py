@@ -19,6 +19,8 @@ def have_git() -> bool:
         return True
     except subprocess.CalledProcessError:
         return False
+    except FileNotFoundError:
+        return False
 
 
 def get_submodules(dir: str):
