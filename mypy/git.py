@@ -19,7 +19,7 @@ def have_git() -> bool:
         return True
     except subprocess.CalledProcessError:
         return False
-    except FileNotFoundError:
+    except OSError:
         return False
 
 
