@@ -1737,9 +1737,7 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_name_expr(e)
 
     def visit_call_expr(self, e: CallExpr) -> Type:
-        result = self.expr_checker.visit_call_expr(e)
-        self.breaking_out = False
-        return result
+        return self.expr_checker.visit_call_expr(e)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
         # result = self.expr_checker.visit_yield_from_expr(e)
