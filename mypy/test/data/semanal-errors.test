@@ -843,12 +843,6 @@ class A: pass
 A = None # E: Invalid assignment target
 [out]
 
-[case testInvalidQualifiedName]
-from typing import Any
-x = 0 # type: Any
-z = 0 # type: x.y    # E: Invalid type "__main__.x"
-[out]
-
 [case testInvalidCastTargetSyntax]
 from typing import cast, TypeVar, Generic
 t = TypeVar('t')

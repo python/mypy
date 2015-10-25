@@ -113,6 +113,12 @@ class TypeAnalyser(TypeVisitor[Type]):
                 name = sym.fullname
                 if name is None:
                     name = sym.node.name()
+                if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
+                    # Something with an Any type -- make it an alias for Any in a type
+                    # context. This is slightly problematic as it allows using the type 'Any'
+                    # as a base class -- however, this will fail soon at runtime so the problem
+                    # is pretty minor.
+                    return AnyType()
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = cast(TypeInfo, sym.node)

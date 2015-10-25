@@ -1397,3 +1397,19 @@ def f(x: (int, int)) -> None: pass
 [out]
 main: note: In function "f":
 main:1: error: Invalid tuple literal type
+
+[case tesQualifiedTypeNameBasedOnAny]
+from typing import Any
+x = 0 # type: Any
+z = 0 # type: x.y
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    IntExpr(0)
+    Any)
+  AssignmentStmt:3(
+    NameExpr(z [__main__.z])
+    IntExpr(0)
+    Any))
