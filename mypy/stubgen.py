@@ -43,7 +43,7 @@ from mypy import defaults
 from mypy.nodes import (
     Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, ARG_STAR, ARG_STAR2, ARG_NAMED
+    IfStmt, ImportAll, ImportFrom, Import, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
@@ -371,6 +371,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add_import_line('from %s import %s\n' % (full_module_name, imported_names))
             for name in names:
                 self.record_name(name)
+
+    def visit_import(self, o: Import) -> None:
+        for id, as_id in o.ids:
+            if as_id is None:
+                target_name = id.split('.')[0]
+            else:
+                target_name = as_id
+            if self._all_ and target_name in self._all_ and (as_id is not None or
+                                                             '.' not in id):
+                self.add_import_line('import %s as %s\n' % (id, target_name))
+                self.record_name(target_name)
 
     def get_init(self, lvalue: str) -> str:
         """Return initializer for a variable.
