@@ -661,6 +661,8 @@ class SemanticAnalyzer(NodeVisitor):
             # the MRO. Fix MRO if needed.
             if defn.info.mro[-1].fullname() != 'builtins.object':
                 defn.info.mro.append(self.object_type().type)
+        # The property of falling back to Any is inherited.
+        defn.info.fallback_to_any = any(base.fallback_to_any for base in defn.info.mro)
 
     def expr_to_analyzed_type(self, expr: Node) -> Type:
         if isinstance(expr, CallExpr):

@@ -105,3 +105,25 @@ c.f(1) # E: Too many arguments for "f" of "C"
 c.g(1)
 c.x = 1
 [out]
+
+[case testIgnoredModuleDefinesBaseClassWithInheritance1]
+from m import B # type: ignore
+
+class C: pass
+class D(C, B):
+    def f(self) -> None:
+        self.f(1) # E: Too many arguments for "f" of "D"
+        self.g(1)
+[out]
+main: note: In member "f" of class "D":
+
+[case testIgnoredModuleDefinesBaseClassWithInheritance2]
+from m import B # type: ignore
+
+class C(B): pass
+class D(C):
+    def f(self) -> None:
+        self.f(1) # E: Too many arguments for "f" of "D"
+        self.g(1)
+[out]
+main: note: In member "f" of class "D":
