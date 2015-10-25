@@ -615,3 +615,22 @@ MypyFile:1(
       builtins.int)
     PassStmt:3())
   IgnoredLines(1))
+
+[case testBaseClassWithExplicitAnyType]
+from typing import Any
+A = 1 # type: Any
+class B(A):
+   pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  AssignmentStmt:2(
+    NameExpr(A [__main__.A])
+    IntExpr(1)
+    Any)
+  ClassDef:3(
+    B
+    FallbackToAny
+    BaseType(
+      builtins.object)
+    PassStmt:4()))
