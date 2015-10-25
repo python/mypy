@@ -83,3 +83,25 @@ y = ''
 [file m2.py]
 x = ''
 z = 1
+
+[case testIgnoredModuleDefinesBaseClass1]
+from m import B # type: ignore
+
+class C(B):
+    def f(self) -> None:
+        self.f(1) # E: Too many arguments for "f" of "C"
+        self.g(1)
+[out]
+main: note: In member "f" of class "C":
+
+[case testIgnoredModuleDefinesBaseClass2]
+import m # type: ignore
+
+class C(m.B):
+    def f(self) -> None: ...
+
+c = C()
+c.f(1) # E: Too many arguments for "f" of "C"
+c.g(1)
+c.x = 1
+[out]

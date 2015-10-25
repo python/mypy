@@ -51,7 +51,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_mypy_file(self, node: MypyFile) -> Node:
         # NOTE: The 'names' and 'imports' instance variables will be empty!
-        new = MypyFile(self.nodes(node.defs), [], node.is_bom)
+        new = MypyFile(self.nodes(node.defs), [], node.is_bom,
+                       ignored_lines=set(node.ignored_lines))
         new._name = node._name
         new._fullname = node._fullname
         new.path = node.path

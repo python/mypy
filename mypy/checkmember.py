@@ -131,6 +131,9 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                 if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
 
+    if itype.type.fallback_to_any:
+        return AnyType()
+
     # Could not find the member.
     if is_super:
         msg.undefined_in_superclass(name, node)
