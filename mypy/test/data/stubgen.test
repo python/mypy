@@ -325,12 +325,44 @@ __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
 from typing import Any
-import re
+from re import match as match, sub as sub
 
-match = re.match
-sub = re.sub
+x = ... # type: Anyx
+
+[case testExportModule_import]
+import re
+__all__ = ['re', 'x']
+x = 1
+y = 2
+[out]
+from typing import Any
+import re as re
 
 x = ... # type: Any
+
+[case testExportModuleAs_import]
+import re as rex
+__all__ = ['rex', 'x']
+x = 1
+y = 2
+[out]
+from typing import Any
+import re as rex
+
+x = ... # type: Any
+
+[case testExportModuleInPackage_import]
+import urllib.parse as p
+__all__ = ['p']
+[out]
+import urllib.parse as p
+
+[case testExportModuleInPackageUnsupported_import]
+import urllib.parse
+__all__ = ['urllib']
+[out]
+# Names in __all__ with no definition:
+#   urllib
 
 [case testRelativeImportAll]
 from .x import *
@@ -492,16 +524,12 @@ class A:
 [case testExportViaRelativeImport]
 from .api import get
 [out]
-from . import api
-
-get = api.get
+from .api import get as get
 
 [case testExportViaRelativePackageImport]
 from .packages.urllib3.contrib import parse
 [out]
-from .packages.urllib3 import contrib
-
-parse = contrib.parse
+from .packages.urllib3.contrib import parse as parse
 
 [case testNoExportViaRelativeImport]
 from . import get

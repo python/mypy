@@ -43,7 +43,7 @@ from mypy import defaults
 from mypy.nodes import (
     Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, ARG_STAR, ARG_STAR2, ARG_NAMED
+    IfStmt, ImportAll, ImportFrom, Import, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
@@ -143,7 +143,6 @@ FUNC = 'FUNC'
 CLASS = 'CLASS'
 EMPTY_CLASS = 'EMPTY_CLASS'
 VAR = 'VAR'
-IMPORT_ALIAS = 'IMPORT_ALIAS'
 NOT_IN_ALL = 'NOT_IN_ALL'
 
 
@@ -167,7 +166,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if isinstance(node, ClassDef):
                 self._base_classes.extend(self.get_base_types(node))
         super().visit_mypy_file(o)
-        undefined_names = [name for name in self._all_ or [] if name not in self._toplevel_names]
+        undefined_names = [name for name in self._all_ or []
+                           if name not in self._toplevel_names]
         if undefined_names:
             if self._state != EMPTY:
                 self.add('\n')
@@ -364,23 +364,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 '.' * o.relative, o.id, ', '.join(imp_names)))
 
     def import_and_export_names(self, module_id: str, relative: int, names: Iterable[str]) -> None:
+        """Import names from a module and export them (via from ... import x as x)."""
         if names and module_id:
-            if relative:
-                if '.' not in module_id:
-                    self.add_import_line('from %s import %s\n' % ('.' * relative, module_id))
-                else:
-                    self.add_import_line(
-                        'from %s%s import %s\n' % ('.' * relative,
-                                                   '.'.join(module_id.split('.')[:-1]),
-                                                   module_id.split('.')[-1]))
-            else:
-                self.add_import_line('import %s\n' % module_id)
-            if self._state not in (EMPTY, IMPORT_ALIAS):
-                self.add('\n')
+            full_module_name = '%s%s' % ('.' * relative, module_id)
+            imported_names = ', '.join(['%s as %s' % (name, name) for name in names])
+            self.add_import_line('from %s import %s\n' % (full_module_name, imported_names))
             for name in names:
-                self.add('%s = %s.%s\n' % (name, module_id.split('.')[-1], name))
                 self.record_name(name)
-            self._state = IMPORT_ALIAS
+
+    def visit_import(self, o: Import) -> None:
+        for id, as_id in o.ids:
+            if as_id is None:
+                target_name = id.split('.')[0]
+            else:
+                target_name = as_id
+            if self._all_ and target_name in self._all_ and (as_id is not None or
+                                                             '.' not in id):
+                self.add_import_line('import %s as %s\n' % (id, target_name))
+                self.record_name(target_name)
 
     def get_init(self, lvalue: str) -> str:
         """Return initializer for a variable.
@@ -446,6 +447,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self._indent == ''
 
     def record_name(self, name: str) -> None:
+        """Mark a name as defined.
+
+        This only does anything if at the top level of a module.
+        """
         if self.is_top_level():
             self._toplevel_names.append(name)
 
