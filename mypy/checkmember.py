@@ -211,6 +211,8 @@ def analyze_class_attribute_access(itype: Instance,
                                    msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
     if not node:
+        if itype.type.fallback_to_any:
+            return AnyType()
         return None
 
     is_decorated = isinstance(node.node, Decorator)

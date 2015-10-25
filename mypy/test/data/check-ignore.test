@@ -106,6 +106,19 @@ c.g(1)
 c.x = 1
 [out]
 
+[case testIgnoredModuleDefinesBaseClassAndClassAttribute]
+import m # type: ignore
+
+class C(m.B):
+    @staticmethod
+    def f() -> None: pass
+
+C.f(1) # E: Too many arguments for "f" of "C"
+C.g(1)
+C.x = 1
+[builtins fixtures/staticmethod.py]
+[out]
+
 [case testIgnoredModuleDefinesBaseClassWithInheritance1]
 from m import B # type: ignore
 
