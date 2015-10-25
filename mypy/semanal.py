@@ -636,6 +636,10 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
             if isinstance(base, Instance) or isinstance(base, TupleType):
                 defn.base_types.append(base)
+            elif isinstance(base, AnyType):
+                # We don't know anything about the base class. Make any unknown attributes
+                # have type 'Any'.
+                defn.info.fallback_to_any = True
             elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
             if isinstance(base, Instance):
@@ -657,6 +661,8 @@ class SemanticAnalyzer(NodeVisitor):
             # the MRO. Fix MRO if needed.
             if defn.info.mro[-1].fullname() != 'builtins.object':
                 defn.info.mro.append(self.object_type().type)
+        # The property of falling back to Any is inherited.
+        defn.info.fallback_to_any = any(base.fallback_to_any for base in defn.info.mro)
 
     def expr_to_analyzed_type(self, expr: Node) -> Type:
         if isinstance(expr, CallExpr):
@@ -1844,7 +1850,7 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        result = cast(TypeInfo, n.node).get(parts[i])
+                        result = n.node.get(parts[i])
                         if not result:
                             # Fall back to direct lookup from the class. This can be important
                             # when we have a forward reference of a nested class that is being
@@ -1854,10 +1860,11 @@ class SemanticAnalyzer(NodeVisitor):
                             # to move things around between passes, but this unblocks a common
                             # use case even though this is a little limited in case there is
                             # inheritance involved, for example.
-                            result = cast(TypeInfo, n.node).names.get(parts[i])
+                            result = n.node.names.get(parts[i])
                         n = result
                     elif isinstance(n.node, MypyFile):
-                        n = cast(MypyFile, n.node).names.get(parts[i], None)
+                        n = n.node.names.get(parts[i], None)
+                    # TODO: What if node is Var or FuncDef?
                     if not n:
                         self.name_not_defined(name, ctx)
                         break

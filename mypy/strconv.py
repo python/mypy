@@ -145,6 +145,8 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, 'Promote({})'.format(o.info._promote))
         if o.info and o.info.tuple_type:
             a.insert(1, ('TupleType', [o.info.tuple_type]))
+        if o.info and o.info.fallback_to_any:
+            a.insert(1, 'FallbackToAny')
         return self.dump(a, o)
 
     def visit_var(self, o):

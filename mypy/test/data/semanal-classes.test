@@ -565,7 +565,6 @@ class B(Any): pass
 class C(Callable[[], int]): pass
 [out]
 main:2: error: Invalid base class
-main:3: error: Invalid base class
 main:4: error: Invalid base class
 
 [case testTupleAsBaseClass]
@@ -586,3 +585,52 @@ MypyFile:1(
     BaseType(
       builtins.tuple)
     PassStmt:2()))
+
+[case testBaseClassFromIgnoredModule]
+import m # type: ignore
+class B(m.A):
+   pass
+[out]
+MypyFile:1(
+  Import:1(m)
+  ClassDef:2(
+    B
+    FallbackToAny
+    BaseType(
+      builtins.object)
+    PassStmt:3())
+  IgnoredLines(1))
+
+[case testBaseClassFromIgnoredModuleUsingImportFrom]
+from m import A # type: ignore
+class B(A, int):
+   pass
+[out]
+MypyFile:1(
+  ImportFrom:1(m, [A])
+  ClassDef:2(
+    B
+    FallbackToAny
+    BaseType(
+      builtins.int)
+    PassStmt:3())
+  IgnoredLines(1))
+
+[case testBaseClassWithExplicitAnyType]
+from typing import Any
+A = 1 # type: Any
+class B(A):
+   pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  AssignmentStmt:2(
+    NameExpr(A [__main__.A])
+    IntExpr(1)
+    Any)
+  ClassDef:3(
+    B
+    FallbackToAny
+    BaseType(
+      builtins.object)
+    PassStmt:4()))
