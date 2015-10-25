@@ -325,10 +325,7 @@ __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
 from typing import Any
-import re
-
-match = re.match
-sub = re.sub
+from re import match as match, sub as sub
 
 x = ... # type: Any
 
@@ -492,16 +489,12 @@ class A:
 [case testExportViaRelativeImport]
 from .api import get
 [out]
-from . import api
-
-get = api.get
+from .api import get as get
 
 [case testExportViaRelativePackageImport]
 from .packages.urllib3.contrib import parse
 [out]
-from .packages.urllib3 import contrib
-
-parse = contrib.parse
+from .packages.urllib3.contrib import parse as parse
 
 [case testNoExportViaRelativeImport]
 from . import get
