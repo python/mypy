@@ -327,7 +327,7 @@ x = 1
 from typing import Any
 from re import match as match, sub as sub
 
-x = ... # type: Anyx
+x = ... # type: Any
 
 [case testExportModule_import]
 import re
