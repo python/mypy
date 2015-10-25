@@ -77,17 +77,15 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue,
                                      is_super, builtin_type, msg)
-    elif (isinstance(typ, FunctionLike) and
-          cast(FunctionLike, typ).is_type_obj()):
+    elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
-        sig = cast(FunctionLike, typ)
-        itype = cast(Instance, sig.items()[0].ret_type)
+        itype = cast(Instance, typ.items()[0].ret_type)
         result = analyze_class_attribute_access(itype, name, node, is_lvalue, builtin_type, msg)
         if result:
             return result
         # Look up from the 'type' type.
-        return analyze_member_access(name, sig.fallback, node, is_lvalue, is_super,
+        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                      builtin_type, msg, report_type=report_type)
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
