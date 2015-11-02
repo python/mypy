@@ -448,6 +448,7 @@ main:3: error: Two starred expressions in assignment
 main:4: error: Two starred expressions in assignment
 
 [case testTwoStarExpressionsInForStmt]
+z = 1
 for a, *b, *c in z:
     pass
 for *a, (*b, c) in z:
@@ -457,9 +458,9 @@ for a, (*b, *c) in z:
 for [*a, *b] in z:
     pass
 [out]
-main:1: error: Two starred expressions in assignment
-main:5: error: Two starred expressions in assignment
-main:7: error: Two starred expressions in assignment
+main:2: error: Two starred expressions in assignment
+main:6: error: Two starred expressions in assignment
+main:8: error: Two starred expressions in assignment
 
 [case testTwoStarExpressionsInGeneratorExpr]
 (a for a, *b, *c in [])

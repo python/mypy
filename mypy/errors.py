@@ -33,7 +33,7 @@ class ErrorInfo:
     message = ''
 
     # If True, we should halt build after the file that generated this error.
-    blocker = True
+    blocker = False
 
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
                  function_or_member: str, line: int, severity: str, message: str,
@@ -137,7 +137,7 @@ class Errors:
         """Replace the entire import context with a new value."""
         self.import_ctx = ctx[:]
 
-    def report(self, line: int, message: str, blocker: bool = True,
+    def report(self, line: int, message: str, blocker: bool = False,
                severity: str = 'error', file: str = None) -> None:
         """Report message at the given line using the current error context."""
         if line in self.ignored_lines:

@@ -30,7 +30,7 @@ b()
 [case testIgnoreImportAllError]
 from xyz_m import * # type: ignore
 x   # E: Name 'x' is not defined
-1()
+1() # E: "int" not callable
 
 [case testIgnoreAssignmentTypeError]
 x = 1
