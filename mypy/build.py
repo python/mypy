@@ -205,7 +205,7 @@ def default_data_dir(bin_dir: str) -> str:
         return os.path.dirname(os.path.dirname(__file__))
     base = os.path.basename(bin_dir)
     dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'mypy'
+    if (sys.platform == 'win32' and base.lower() == 'scripts'
             and not os.path.isdir(os.path.join(dir, 'stubs'))):
         # Installed, on Windows.
         return os.path.join(dir, 'Lib', 'mypy')
