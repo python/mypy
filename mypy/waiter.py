@@ -25,7 +25,7 @@ class LazySubprocess:
         self.cwd = cwd
         self.env = env
 
-    def __call__(self) -> Popen:
+    def run(self) -> Popen:
         return Popen(self.args, cwd=self.cwd, env=self.env, stdout=PIPE, stderr=STDOUT)
 
 
@@ -110,7 +110,7 @@ class Waiter:
     def _start1(self) -> None:
         cmd = self.queue[self.next]
         name = cmd.name
-        proc = cmd()
+        proc = cmd.run()
         num = self.next
         self.current[proc.pid] = (num, proc)
         if self.verbosity >= 1:
