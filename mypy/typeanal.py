@@ -158,6 +158,7 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def visit_type_list(self, t: TypeList) -> Type:
         self.fail('Invalid type', t)
+        return AnyType()
 
     def visit_instance(self, t: Instance) -> Type:
         return t
