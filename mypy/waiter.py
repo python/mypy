@@ -10,6 +10,7 @@ import pipes
 import re
 from subprocess import Popen, PIPE, STDOUT
 import sys
+import tempfile
 
 
 class WaiterError(Exception):
@@ -17,16 +18,50 @@ class WaiterError(Exception):
 
 
 class LazySubprocess:
+    """Wrapper around a subprocess that runs a test task."""
 
-    def __init__(self, name: str, args: List[str], *, cwd: Optional[str] = None,
-            env: Optional[Dict[str, str]] = None) -> None:
+    def __init__(self, name: str, args: List[str], *, cwd: str = None,
+                 env: Dict[str, str] = None) -> None:
         self.name = name
         self.args = args
         self.cwd = cwd
         self.env = env
 
-    def run(self) -> Popen:
-        return Popen(self.args, cwd=self.cwd, env=self.env, stdout=PIPE, stderr=STDOUT)
+    def start(self) -> None:
+        self.outfile = tempfile.NamedTemporaryFile()
+        self.process = Popen(self.args, cwd=self.cwd, env=self.env,
+                             stdout=self.outfile, stderr=STDOUT)
+        self.pid = self.process.pid
+
+    def handle_exit_status(self, status: int) -> None:
+        """Update process exit status received via an external os.waitpid() call."""
+        # Inlined subprocess._handle_exitstatus, it's not a public API.
+        # TODO(jukka): I'm not quite sure why this is implemented like this.
+        process = self.process
+        assert process.returncode is None
+        if os.WIFSIGNALED(status):
+            process.returncode = -os.WTERMSIG(status)
+        elif os.WIFEXITED(status):
+            process.returncode = os.WEXITSTATUS(status)
+        else:
+            # Should never happen
+            raise RuntimeError("Unknown child exit status!")
+        assert process.returncode is not None
+
+    def wait(self) -> int:
+        return self.process.wait()
+
+    def status(self) -> Optional[int]:
+        return self.process.returncode
+
+    def read_output(self) -> str:
+        with open(self.outfile.name, 'rb') as file:
+            # Assume it's ascii to avoid unicode headaches (and portability issues).
+            return file.read().decode('ascii')
+
+    def cleanup(self) -> None:
+        self.outfile.close()
+        assert not os.path.exists(self.outfile.name)
 
 
 class Noter:
@@ -86,8 +121,9 @@ class Waiter:
     def __init__(self, limit: int = 0, *, verbosity: int = 0, xfail: List[str] = []) -> None:
         self.verbosity = verbosity
         self.queue = []  # type: List[LazySubprocess]
+        # Index of next task to run in the queue.
         self.next = 0
-        self.current = {}  # type: Dict[int, Tuple[int, Popen]]
+        self.current = {}  # type: Dict[int, Tuple[int, LazySubprocess]]
         if limit == 0:
             try:
                 sched_getaffinity = os.sched_getaffinity
@@ -107,12 +143,12 @@ class Waiter:
         self.queue.append(cmd)
         return rv
 
-    def _start1(self) -> None:
-        cmd = self.queue[self.next]
-        name = cmd.name
-        proc = cmd.run()
+    def _start_next(self) -> None:
         num = self.next
-        self.current[proc.pid] = (num, proc)
+        cmd = self.queue[num]
+        name = cmd.name
+        cmd.start()
+        self.current[cmd.pid] = (num, cmd)
         if self.verbosity >= 1:
             print('%-8s #%d %s' % ('START', num, name))
             if self.verbosity >= 2:
@@ -124,27 +160,18 @@ class Waiter:
             self._note.start(num)
         self.next += 1
 
-    def _wait_single(self) -> Tuple[List[str], int, int]:
+    def _wait_next(self) -> Tuple[List[str], int, int]:
         """Wait for a single task to finish.
 
         Return tuple (list of failed tasks, number test cases, number of failed tests).
         """
         pid, status = os.waitpid(-1, 0)
-        num, proc = self.current.pop(pid)
+        num, cmd = self.current.pop(pid)
 
-        # Inlined subprocess._handle_exitstatus, it's not a public API.
-        assert proc.returncode is None
-        if os.WIFSIGNALED(status):
-            proc.returncode = -os.WTERMSIG(status)
-        elif os.WIFEXITED(status):
-            proc.returncode = os.WEXITSTATUS(status)
-        else:
-            # Should never happen
-            raise RuntimeError("Unknown child exit status!")
-        assert proc.returncode is not None
+        cmd.handle_exit_status(status)
 
-        name = self.queue[num].name
-        rc = proc.wait()
+        name = cmd.name
+        rc = cmd.wait()
         if rc >= 0:
             msg = 'EXIT %d' % rc
         else:
@@ -174,8 +201,9 @@ class Waiter:
             else:
                 fail_type = 'UPASS'
 
-        # Get task output. Assume it's ascii to avoid unicode headaches (and portability issues).
-        output = proc.stdout.read().decode('ascii')
+        # Get task output.
+        output = cmd.read_output()
+        cmd.cleanup()
         num_tests, num_tests_failed = parse_test_stats_from_output(output, fail_type)
 
         if fail_type is not None or self.verbosity >= 1:
@@ -212,8 +240,8 @@ class Waiter:
         total_failed_tests = 0
         while self.current or self.next < len(self.queue):
             while len(self.current) < self.limit and self.next < len(self.queue):
-                self._start1()
-            fails, tests, test_fails = self._wait_single()
+                self._start_next()
+            fails, tests, test_fails = self._wait_next()
             all_failures += fails
             total_tests += tests
             total_failed_tests += test_fails
