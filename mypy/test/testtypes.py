@@ -84,13 +84,13 @@ class TypesSuite(Suite):
 
     def test_generic_function_type(self):
         c = CallableType([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
-                     self.y, self.function, None,
-                     [TypeVarDef('X', -1, None, self.fx.o)])
+                     self.y, self.function, name=None,
+                     variables=[TypeVarDef('X', -1, None, self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
         v = [TypeVarDef('Y', -1, None, self.fx.o),
              TypeVarDef('X', -2, None, self.fx.o)]
-        c2 = CallableType([], [], [], Void(None), self.function, None, v)
+        c2 = CallableType([], [], [], Void(None), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
 
@@ -268,8 +268,8 @@ class TypeOpsSuite(Suite):
                             [None] * (len(a) - 1),
                             a[-1],
                             self.fx.function,
-                            None,
-                            tv)
+                            name=None,
+                            variables=tv)
 
 
 class JoinSuite(Suite):

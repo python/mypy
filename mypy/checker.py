@@ -347,7 +347,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.errors = errors
         self.modules = modules
         self.pyversion = pyversion
-        self.msg = MessageBuilder(errors)
+        self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
         self.binder = ConditionalTypeBinder()
         self.binder.push_frame()

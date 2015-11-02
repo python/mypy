@@ -1083,8 +1083,8 @@ class ExpressionChecker:
             [None],
             self.chk.named_generic_type(fullname, [tv]),
             self.named_type('builtins.function'),
-            tag,
-            [TypeVarDef('T', -1, None, self.chk.object_type())])
+            name=tag,
+            variables=[TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -1124,9 +1124,9 @@ class ExpressionChecker:
             [None],
             self.chk.named_generic_type('builtins.dict', [tv1, tv2]),
             self.named_type('builtins.function'),
-            '<list>',
-            [TypeVarDef('KT', -1, None, self.chk.object_type()),
-             TypeVarDef('VT', -2, None, self.chk.object_type())])
+            name='<list>',
+            variables=[TypeVarDef('KT', -1, None, self.chk.object_type()),
+                       TypeVarDef('VT', -2, None, self.chk.object_type())])
         # Synthesize function arguments.
         args = []  # type: List[Node]
         for key, value in e.items:
@@ -1238,8 +1238,8 @@ class ExpressionChecker:
             [None],
             self.chk.named_generic_type(type_name, [tv]),
             self.chk.named_type('builtins.function'),
-            id_for_messages,
-            [TypeVarDef('T', -1, None, self.chk.object_type())])
+            name=id_for_messages,
+            variables=[TypeVarDef('T', -1, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
@@ -1257,9 +1257,9 @@ class ExpressionChecker:
             [None, None],
             self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
             self.chk.named_type('builtins.function'),
-            '<dictionary-comprehension>',
-            [TypeVarDef('KT', -1, None, self.chk.object_type()),
-             TypeVarDef('VT', -2, None, self.chk.object_type())])
+            name='<dictionary-comprehension>',
+            variables=[TypeVarDef('KT', -1, None, self.chk.object_type()),
+                       TypeVarDef('VT', -2, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 
@@ -1467,15 +1467,7 @@ def is_duplicate_mapping(mapping: List[int], actual_kinds: List[int]) -> bool:
 
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:
     """Return a copy of a callable type with a different return type."""
-    return CallableType(c.arg_types,
-                    c.arg_kinds,
-                    c.arg_names,
-                    new_ret_type,
-                    c.fallback,
-                    c.name,
-                    c.variables,
-                    c.bound_vars,
-                    c.line)
+    return c.copy_modified(ret_type=new_ret_type)
 
 
 class ArgInferSecondPassQuery(types.TypeQuery):

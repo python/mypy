@@ -285,14 +285,10 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         fallback = t.fallback
     else:
         fallback = s.fallback
-    return CallableType(arg_types,
-                    t.arg_kinds,
-                    t.arg_names,
-                    join_types(t.ret_type, s.ret_type),
-                    fallback,
-                    None,
-                    t.variables)
-    return s
+    return t.copy_modified(arg_types=arg_types,
+                           ret_type=join_types(t.ret_type, s.ret_type),
+                           fallback=fallback,
+                           name=None)
 
 
 def object_from_instance(instance: Instance) -> Instance:
