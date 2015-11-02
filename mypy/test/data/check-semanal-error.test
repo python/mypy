@@ -1,0 +1,43 @@
+-- Type checking after an error during semantic analysis
+-- -----------------------------------------------------
+--
+-- This tests both the semantic analyzer (that it does not generate
+-- corrupt state on error) and the type checker (that it can deal with
+-- whatever state the semantic analyzer sets up).
+
+-- TODO:
+--  - invalid type in annotation
+--  - invalid function comment type annotation
+--  - invalid multiple assignment type annotation
+--  - using a type variable as a value
+--  - using special names defined in typing as values
+
+[case testMissingModuleImport1]
+import m # E: No module named 'm'
+m.foo()
+m.x = m.y
+1() # E: "int" not callable
+
+[case testMissingModuleImport2]
+from m import x # E: No module named 'm'
+x.foo()
+x.a = x.b
+1() # E: "int" not callable
+
+[case testMissingModuleImport3]
+from m import * # E: No module named 'm'
+x # E: Name 'x' is not defined
+1() # E: "int" not callable
+
+[case testInvalidBaseClass1]
+class A(X): # E: Name 'X' is not defined
+    x = 1
+A().foo(1) # E: "A" has no attribute "foo"
+A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testInvalidBaseClass2]
+X = 1
+class A(X): # E: Invalid type "__main__.X"
+    x = 1
+A().foo(1) # E: "A" has no attribute "foo"
+A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")

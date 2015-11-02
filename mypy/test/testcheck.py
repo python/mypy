@@ -52,6 +52,7 @@ files = [
     'check-type-aliases.test',
     'check-ignore.test',
     'check-type-promotion.test',
+    'check-semanal-error.test',
 ]
 
 
