@@ -840,3 +840,13 @@ MypyFile:1(
     NameExpr(m2_))
   ExpressionStmt:3(
     NameExpr(m3_)))
+
+[case testErrorsInMultipleModules]
+import m
+x
+[file m.py]
+y
+[out]
+main:1: note: In module imported here:
+tmp/m.py:1: error: Name 'y' is not defined
+main:2: error: Name 'x' is not defined
