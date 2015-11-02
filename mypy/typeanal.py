@@ -330,6 +330,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         for item in t.items:
             item.accept(self)
 
+    def visit_star_type(self, t: StarType) -> None:
+        t.type.accept(self)
+
     # Other kinds of type are trivial, since they are atomic (or invalid).
 
     def visit_unbound_type(self, t: UnboundType) -> None:
@@ -348,7 +351,4 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.fail('Invalid type', t)
 
     def visit_type_var(self, t: TypeVarType) -> None:
-        pass
-
-    def visit_star_type(self, t: StarType) -> None:
         pass

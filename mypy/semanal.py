@@ -859,7 +859,8 @@ class SemanticAnalyzer(NodeVisitor):
                     star_count = sum(1 for item in t.items if isinstance(item, StarType))
                     if star_count > 1:
                         self.fail('At most one star type allowed in a tuple', t)
-                        return None
+                        return TupleType([AnyType() for _ in t.items],
+                                         self.builtin_type('builtins.tuple'), t.line)
                     items = [self.anal_type(item, True)
                              for item in t.items]
                     return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
