@@ -985,9 +985,9 @@ class YieldFromExpr(Node):
 
 
 class YieldExpr(Node):
-    expr = None  # type: Node
+    expr = None  # type: Optional[Node]
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Optional[Node]) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

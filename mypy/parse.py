@@ -864,8 +864,11 @@ class Parser:
             expr = self.parse_expression()  # Here comes when yield from is assigned to a variable
             node = YieldFromExpr(expr)
         else:
-            expr = self.parse_expression()
-            node = YieldExpr(expr)
+            if self.current_str() == ')':
+                node = YieldExpr(None)
+            else:
+                expr = self.parse_expression()
+                node = YieldExpr(expr)
         return node
 
     def parse_ellipsis(self) -> EllipsisExpr:

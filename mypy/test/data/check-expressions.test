@@ -1311,3 +1311,10 @@ def f(x: int) -> None:
 [out]
 main: note: In function "f":
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testYieldExpressionWithNone]
+from typing import Iterator
+def f(x: int) -> Iterator[None]:
+    (yield)
+[builtins fixtures/for.py]
+[out]

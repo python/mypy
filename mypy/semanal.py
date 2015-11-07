@@ -1794,7 +1794,8 @@ class SemanticAnalyzer(NodeVisitor):
         expr.type = self.anal_type(expr.type)
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
-        expr.expr.accept(self)
+        if expr.expr:
+            expr.expr.accept(self)
 
     #
     # Helpers

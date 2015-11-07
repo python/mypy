@@ -1137,7 +1137,8 @@ class ExpressionChecker:
 
     def visit_yield_expr(self, e: YieldExpr) -> Type:
         # TODO: Implement proper type checking of yield expressions.
-        self.accept(e.expr)
+        if e.expr:
+            self.accept(e.expr)
         return AnyType()
 
     def visit_func_expr(self, e: FuncExpr) -> Type:

@@ -148,7 +148,8 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
         o.expr.accept(self)
 
     def visit_yield_expr(self, o: YieldExpr) -> T:
-        o.expr.accept(self)
+        if o.expr:
+            o.expr.accept(self)
 
     def visit_call_expr(self, o: CallExpr) -> T:
         for a in o.args:

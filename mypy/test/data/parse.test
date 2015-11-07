@@ -3360,3 +3360,14 @@ MypyFile:1()
 # coding: iso-latin-1
 [out]
 MypyFile:1()
+
+[case testYieldExpressionInParens]
+def f():
+    (yield)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Block:1(
+      ExpressionStmt:2(
+        YieldExpr:2()))))
