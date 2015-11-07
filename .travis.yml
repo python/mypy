@@ -19,5 +19,5 @@ script:
 notifications:
   irc:
     channels:
-      - "chat.freenode.net##mypy"
+      - "chat.freenode.net#python-mypy"
     use_notice: true
