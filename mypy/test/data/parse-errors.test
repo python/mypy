@@ -451,3 +451,8 @@ file:2: error: Unknown encoding 'uft8'
 [out]
 file:1: error: Invalid numeric literal
 file:2: error: Invalid numeric literal
+
+[case testPython2LegacyInequalityInPython3]
+1 <> 2
+[out]
+file:1: error: Parse error before >
