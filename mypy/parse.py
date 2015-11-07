@@ -1419,14 +1419,18 @@ class Parser:
 
     def parse_str_expr(self) -> Node:
         # XXX \uxxxx literals
-        tok = [self.expect_type(StrLit)]
-        value = (cast(StrLit, tok[0])).parsed()
-        while isinstance(self.current(), StrLit):
-            t = cast(StrLit, self.skip())
-            tok.append(t)
-            value += t.parsed()
+        token = self.expect_type(StrLit)
+        value = cast(StrLit, token).parsed()
+        is_unicode = False
+        while isinstance(self.current(), (StrLit, UnicodeLit)):
+            token = self.skip()
+            if isinstance(token, StrLit):
+                value += token.parsed()
+            elif isinstance(token, UnicodeLit):
+                value += token.parsed()
+                is_unicode = True
         node = None  # type: Node
-        if self.pyversion[0] == 2 and 'unicode_literals' in self.future_options:
+        if is_unicode or (self.pyversion[0] == 2 and 'unicode_literals' in self.future_options):
             node = UnicodeExpr(value)
         else:
             node = StrExpr(value)
@@ -1447,11 +1451,11 @@ class Parser:
 
     def parse_unicode_literal(self) -> Node:
         # XXX \uxxxx literals
-        tok = [self.expect_type(UnicodeLit)]
-        value = (cast(UnicodeLit, tok[0])).parsed()
-        while isinstance(self.current(), UnicodeLit):
-            t = cast(UnicodeLit, self.skip())
-            value += t.parsed()
+        token = self.expect_type(UnicodeLit)
+        value = cast(UnicodeLit, token).parsed()
+        while isinstance(self.current(), (UnicodeLit, StrLit)):
+            token = cast(Union[UnicodeLit, StrLit], self.skip())
+            value += token.parsed()
         if self.pyversion[0] >= 3:
             # Python 3.3 supports u'...' as an alias of '...'.
             node = StrExpr(value)  # type: Node

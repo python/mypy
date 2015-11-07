@@ -171,3 +171,13 @@ MypyFile:1(
 [case testEllipsisInExpression_python2]
 x = ... # E: Parse error before ...
 [out]
+
+[case testStrLiteralConcatenationWithMixedLiteralTypes]
+u'foo' 'bar'
+'bar' u'foo'
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    UnicodeExpr(foobar))
+  ExpressionStmt:2(
+    UnicodeExpr(barfoo)))
