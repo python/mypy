@@ -126,7 +126,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
             return [BuildSource(None, args[1], None)], options
-        elif args[0] == '-p' and args[1:]:
+        elif args[0] == '--package' and args[1:]:
             options.build_flags.append(build.MODULE)
             return build.find_modules_recursive(args[1], [os.getcwd()]), options
         elif args[0] == '-c' and args[1:]:
