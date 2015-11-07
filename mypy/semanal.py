@@ -1506,8 +1506,14 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_del_stmt(self, s: DelStmt) -> None:
         s.expr.accept(self)
-        if not isinstance(s.expr, (IndexExpr, NameExpr, MemberExpr)):
+        if not self.is_valid_del_target(s.expr):
             self.fail('Invalid delete target', s)
+
+    def is_valid_del_target(self, s: Node) -> bool:
+        if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
+            return True
+        elif isinstance(s, TupleExpr):
+            return all(self.is_valid_del_target(item) for item in s.items)
 
     def visit_global_decl(self, g: GlobalDecl) -> None:
         for name in g.names:

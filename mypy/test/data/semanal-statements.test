@@ -501,7 +501,7 @@ MypyFile:1(
   DelStmt:2(
     NameExpr(x [__main__.x])))
 
-[case testLocalName]
+[case testDelLocalName]
 def f(x):
     del x
 [out]
@@ -513,6 +513,31 @@ MypyFile:1(
     Block:1(
       DelStmt:2(
         NameExpr(x [l])))))
+
+[case testDelMultipleThings]
+def f(x, y):
+    del x, y[0]
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Block:1(
+      DelStmt:2(
+        TupleExpr:2(
+          NameExpr(x [l])
+          IndexExpr:2(
+            NameExpr(y [l])
+            IntExpr(0)))))))
+
+[case testDelMultipleThingsInvalid]
+def f(x, y):
+    del x, y + 1
+[out]
+main: note: In function "f":
+main:2: error: Invalid delete target
 
 [case testTry]
 class c: pass

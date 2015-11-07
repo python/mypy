@@ -558,7 +558,6 @@ except E as e:
 
 
 [case testDelStmtWithIndex]
-
 a, b = None, None # type: (A, B)
 del b[a]
 del b[b] # E: Argument 1 to "__delitem__" of "B" has incompatible type "B"; expected "A"
@@ -569,7 +568,6 @@ class B:
 class A: pass
 
 [case testDelStmtWithAttribute]
-import typing
 class A:
     def f(self): pass
     x = 0
@@ -577,6 +575,12 @@ a = A()
 del a.f
 del a.x
 del a.z # E: "A" has no attribute "z"
+
+[case testDelStatementWithTuple]
+class A:
+    x = 0
+a = A()
+del a.x, a.y # E: "A" has no attribute "y"
 
 
 -- Yield statement
