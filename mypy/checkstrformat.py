@@ -72,7 +72,7 @@ class StringFormatterChecker:
         key_regex = r'(\((\w*)\))?'  # (optional) parenthesised sequence of characters
         flags_regex = r'([#0\-+ ]*)'  # (optional) sequence of flags
         width_regex = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
-        precision_regex = r'(?:\.(\*|[0-9]+))?'  # (optional) . followed by * of numbers
+        precision_regex = r'(?:\.(\*|[0-9]+)?)?'  # (optional) . followed by * of numbers
         length_mod_regex = r'[hlL]?'  # (optional) length modifier (unused)
         type_regex = r'(.)?'  # conversion type
         regex = ('%' + key_regex + flags_regex + width_regex +

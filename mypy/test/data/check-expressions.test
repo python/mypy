@@ -1015,6 +1015,16 @@ di = None # type: Dict[int, int]
 '%(a)#1.1ld' % {'a': 1}
 [builtins fixtures/dict.py]
 
+[case testStringInterpolationFloatPrecision]
+'%.f' % 1.2
+'%.3f' % 1.2
+'%.f' % 'x'
+'%.3f' % 'x'
+[builtins fixtures/primitives.py]
+[out]
+main:3: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+main:4: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+
 
 -- Lambdas
 -- -------
