@@ -1224,7 +1224,7 @@ MypyFile:1(
         NameExpr(z)))))
 
 [case testComplexListComprehension]
-x=[(x, y) for y, z in 1, 2]
+x=[(x, y) for y, z in (1, 2)]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
