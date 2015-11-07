@@ -39,16 +39,17 @@ class StrConv(NodeVisitor[str]):
         args = []
         init = []
         extra = []
-        for i, kind in enumerate(o.arg_kinds):
+        for i, arg in enumerate(o.arguments):
+            kind = arg.kind
             if kind == mypy.nodes.ARG_POS:
-                args.append(o.args[i])
+                args.append(o.arguments[i].variable)
             elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED):
-                args.append(o.args[i])
-                init.append(o.init[i])
+                args.append(o.arguments[i].variable)
+                init.append(o.arguments[i].initialization_statement)
             elif kind == mypy.nodes.ARG_STAR:
-                extra.append(('VarArg', [o.args[i]]))
+                extra.append(('VarArg', [o.arguments[i].variable]))
             elif kind == mypy.nodes.ARG_STAR2:
-                extra.append(('DictVarArg', [o.args[i]]))
+                extra.append(('DictVarArg', [o.arguments[i].variable]))
         a = []
         if args:
             a.append(('Args', args))
@@ -107,7 +108,7 @@ class StrConv(NodeVisitor[str]):
     def visit_func_def(self, o):
         a = self.func_helper(o)
         a.insert(0, o.name())
-        if mypy.nodes.ARG_NAMED in o.arg_kinds:
+        if mypy.nodes.ARG_NAMED in [arg.kind for arg in o.arguments]:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         if o.is_abstract:
             a.insert(-1, 'Abstract')

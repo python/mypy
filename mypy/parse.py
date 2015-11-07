@@ -26,7 +26,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument
 )
 from mypy import defaults
 from mypy import nodes
@@ -83,20 +83,6 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     tree.path = fnam
     tree.is_stub = is_stub_file
     return tree
-
-
-class Argument:
-    """Ideally this would be in nodes and be an actual node. However,
-    since its not yet used by FuncItem, etc, it makes sense to keep
-    it here so that it avoids confusion. It should be easily relocatable
-    in the future.
-    """
-    def __init__(self, variable: Var, type: Optional[Type],
-            initializer: Optional[Node], kind: int) -> None:
-        self.variable = variable
-        self.type = type
-        self.initializer = initializer
-        self.kind = kind
 
 
 class Parser:
@@ -401,10 +387,8 @@ class Parser:
         try:
             (name, args, typ, is_error) = self.parse_function_header(no_type_checks)
 
-            init = [arg.initializer for arg in args]
-            kinds = [arg.kind for arg in args]
+            arg_kinds = [arg.kind for arg in args]
             arg_names = [arg.variable.name() for arg in args]
-            arg_vars = [arg.variable for arg in args]
 
             body, comment_type = self.parse_block(allow_type=True)
             if comment_type:
@@ -413,24 +397,24 @@ class Parser:
                     self.errors.report(
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(CallableType, comment_type)
-                if is_method and len(sig.arg_kinds) < len(kinds):
-                    self.check_argument_kinds(kinds,
+                if is_method and len(sig.arg_kinds) < len(arg_kinds):
+                    self.check_argument_kinds(arg_kinds,
                                               [nodes.ARG_POS] + sig.arg_kinds,
                                               def_tok.line)
                     # Add implicit 'self' argument to signature.
                     first_arg = [AnyType()]  # type: List[Type]
                     typ = CallableType(
                         first_arg + sig.arg_types,
-                        kinds,
+                        arg_kinds,
                         arg_names,
                         sig.ret_type,
                         None)
                 else:
-                    self.check_argument_kinds(kinds, sig.arg_kinds,
+                    self.check_argument_kinds(arg_kinds, sig.arg_kinds,
                                               def_tok.line)
                     typ = CallableType(
                         sig.arg_types,
-                        kinds,
+                        arg_kinds,
                         arg_names,
                         sig.ret_type,
                         None)
@@ -440,7 +424,7 @@ class Parser:
             if is_error:
                 return None
 
-            node = FuncDef(name, arg_vars, kinds, init, body, typ)
+            node = FuncDef(name, args, body, typ)
             node.set_line(def_tok)
             if typ is not None:
                 typ.definition = node
@@ -524,7 +508,7 @@ class Parser:
 
     def build_func_annotation(self, ret_type: Type, args: List[Argument],
             line: int, is_default_ret: bool = False) -> CallableType:
-        arg_types = [arg.type for arg in args]
+        arg_types = [arg.type_annotation for arg in args]
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
                 or arg_types != [None] * len(arg_types)):
@@ -651,7 +635,7 @@ class Parser:
     def construct_function_type(self, args: List[Argument], ret_type: Type,
                                 line: int) -> CallableType:
         # Complete the type annotation by replacing omitted types with 'Any'.
-        arg_types = [arg.type for arg in args]
+        arg_types = [arg.type_annotation for arg in args]
         for i in range(len(arg_types)):
             if arg_types[i] is None:
                 arg_types[i] = AnyType()
@@ -1653,12 +1637,7 @@ class Parser:
         body = Block([ReturnStmt(expr).set_line(lambda_tok)])
         body.set_line(colon)
 
-        arg_vars = [arg.variable for arg in args]
-        arg_kinds = [arg.kind for arg in args]
-        arg_initializers = [arg.initializer for arg in args]
-
-        node = FuncExpr(arg_vars, arg_kinds, arg_initializers, body, typ)
-        return node
+        return FuncExpr(args, body, typ)
 
     # Helper methods
 

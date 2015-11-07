@@ -254,12 +254,49 @@ class OverloadedFuncDef(FuncBase):
         return visitor.visit_overloaded_func_def(self)
 
 
-class FuncItem(FuncBase):
-    args = None  # type: List[Var]  # Argument names
-    arg_kinds = None  # type: List[int]  # Kinds of arguments (ARG_*)
+class Argument(Node):
+    """A single argument in a FuncItem.
+    """
+    def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
+            initializer: Optional[Node], kind: int,
+            initialization_statement: Optional['AssignmentStmt'] = None) -> None:
+        self.variable = variable
 
-    # Initialization expessions for fixed args; None if no initializer
-    init = None  # type: List[AssignmentStmt]
+        self.type_annotation = type_annotation
+        self.initializer = initializer
+
+        self.initialization_statement = initialization_statement
+        if not self.initialization_statement:
+            self.initialization_statement = self._initialization_statement()
+
+        self.kind = kind
+
+    def _initialization_statement(self) -> Optional['AssignmentStmt']:
+        """Convert the initializer into an assignment statement.
+        """
+        if not self.initializer:
+            return None
+
+        rvalue = self.initializer
+        lvalue = NameExpr(self.variable.name())
+        assign = AssignmentStmt([lvalue], rvalue)
+        return assign
+
+    def set_line(self, target: Union[Token, int]) -> Node:
+        super().set_line(target)
+
+        if self.initializer:
+            self.initializer.set_line(self.line)
+
+        self.variable.set_line(self.line)
+
+        if self.initialization_statement:
+            self.initialization_statement.set_line(self.line)
+            self.initialization_statement.lvalues[0].set_line(self.line)
+
+
+class FuncItem(FuncBase):
+    arguments = []  # type: List[Argument]
     # Minimum number of arguments
     min_args = 0
     # Maximum number of positional arguments, -1 if no explicit limit (*args not included)
@@ -275,48 +312,28 @@ class FuncItem(FuncBase):
     # Variants of function with type variables with values expanded
     expanded = None  # type: List[FuncItem]
 
-    def __init__(self, args: List['Var'], arg_kinds: List[int],
-                 init: List[Node], body: 'Block',
+    def __init__(self, arguments: List[Argument], body: 'Block',
                  typ: 'mypy.types.FunctionLike' = None) -> None:
-        self.args = args
-        self.arg_kinds = arg_kinds
+        self.arguments = arguments
+        arg_kinds = [arg.kind for arg in self.arguments]
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
         self.expanded = []
 
-        i2 = []  # type: List[AssignmentStmt]
         self.min_args = 0
-        for i in range(len(init)):
-            if init[i] is not None:
-                rvalue = init[i]
-                lvalue = NameExpr(args[i].name()).set_line(rvalue.line)
-                assign = AssignmentStmt([lvalue], rvalue)
-                assign.set_line(rvalue.line)
-                i2.append(assign)
-            else:
-                i2.append(None)
-                if i < self.max_fixed_argc():
-                    self.min_args = i + 1
-        self.init = i2
+        for i in range(len(self.arguments)):
+            if self.arguments[i] is None and i < self.max_fixed_argc():
+                self.min_args = i + 1
 
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
     def set_line(self, target: Union[Token, int]) -> Node:
         super().set_line(target)
-        for n in self.args:
-            n.line = self.line
+        for arg in self.arguments:
+            arg.set_line(self.line)
         return self
-
-    def init_expressions(self) -> List[Node]:
-        res = []  # type: List[Node]
-        for i in self.init:
-            if i is not None:
-                res.append(i.rvalue)
-            else:
-                res.append(None)
-        return res
 
     def is_dynamic(self):
         return self.type is None
@@ -337,12 +354,10 @@ class FuncDef(FuncItem):
 
     def __init__(self,
                  name: str,              # Function name
-                 args: List['Var'],      # Argument names
-                 arg_kinds: List[int],   # Arguments kinds (nodes.ARG_*)
-                 init: List[Node],       # Initializers (each may be None)
+                 arguments: List[Argument],
                  body: 'Block',
                  typ: 'mypy.types.FunctionLike' = None) -> None:
-        super().__init__(args, arg_kinds, init, body, typ)
+        super().__init__(arguments, body, typ)
         self._name = name
 
     def name(self) -> str:
@@ -1715,14 +1730,17 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         if name:
             name = '"{}"'.format(name)
         names = []  # type: List[str]
-        for arg in fdef.args:
-            names.append(arg.name())
-        return mypy.types.CallableType([mypy.types.AnyType()] * len(fdef.args),
-                                   fdef.arg_kinds,
-                                   names,
-                                   mypy.types.AnyType(),
-                                   fallback,
-                                   name)
+        for arg in fdef.arguments:
+            names.append(arg.variable.name())
+
+        return mypy.types.CallableType(
+            [mypy.types.AnyType()] * len(fdef.arguments),
+            [arg.kind for arg in fdef.arguments],
+            names,
+            mypy.types.AnyType(),
+            fallback,
+            name,
+        )
 
 
 def method_type_with_fallback(func: FuncBase,
