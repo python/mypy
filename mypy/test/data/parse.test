@@ -3345,3 +3345,18 @@ MypyFile:1(
       IntExpr(1))
     Block:1(
       PassStmt:1())))
+
+[case testIsoLatinUnixEncoding]
+# coding: iso-latin-1-unix
+[out]
+MypyFile:1()
+
+[case testLatinUnixEncoding]
+# coding: latin-1-unix
+[out]
+MypyFile:1()
+
+[case testLatinUnixEncoding]
+# coding: iso-latin-1
+[out]
+MypyFile:1()
