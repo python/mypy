@@ -38,11 +38,14 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
             s.accept(self)
 
     def visit_func(self, o: FuncItem) -> T:
-        for i in o.init:
-            if i is not None:
-                i.accept(self)
-        for v in o.args:
-            self.visit_var(v)
+        for arg in o.arguments:
+            init = arg.initialization_statement
+            if init is not None:
+                init.accept(self)
+
+        for arg in o.arguments:
+            self.visit_var(arg.variable)
+
         o.body.accept(self)
 
     def visit_func_def(self, o: FuncDef) -> T:

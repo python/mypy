@@ -191,9 +191,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add("%sdef %s(" % (self._indent, o.name()))
         self.record_name(o.name())
         args = []
-        for i, (arg, kind) in enumerate(zip(o.args, o.arg_kinds)):
+        for i, arg_ in enumerate(o.arguments):
+            arg = arg_.variable
+            kind = arg_.kind
             name = arg.name()
-            init = o.init[i]
+            init = arg_.initialization_statement
             if init:
                 if kind == ARG_NAMED and '*' not in args:
                     args.append('*')

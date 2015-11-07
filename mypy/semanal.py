@@ -59,7 +59,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, COVARIANT, CONTRAVARIANT, INVARIANT
+    YieldExpr, ExecStmt, Argument, COVARIANT, CONTRAVARIANT, INVARIANT
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -232,7 +232,7 @@ class SemanticAnalyzer(NodeVisitor):
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             if not defn.is_static:
-                if not defn.args:
+                if not defn.arguments:
                     self.fail('Method must have at least one argument', defn)
                 elif defn.type:
                     sig = cast(FunctionLike, defn.type)
@@ -371,22 +371,23 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(defn, FuncDef):
                 defn.info = self.type
                 defn.type = set_callable_name(defn.type, defn)
-        for init in defn.init:
-            if init:
-                init.rvalue.accept(self)
+        for arg in defn.arguments:
+            if arg.initializer:
+                arg.initializer.accept(self)
         self.function_stack.append(defn)
         self.enter()
-        for v in defn.args:
-            self.add_local(v, defn)
-        for init_ in defn.init:
-            if init_:
-                init_.lvalues[0].accept(self)
+        for arg in defn.arguments:
+            self.add_local(arg.variable, defn)
+        for arg in defn.arguments:
+            if arg.initialization_statement:
+                lvalue = arg.initialization_statement.lvalues[0]
+                lvalue.accept(self)
 
         # The first argument of a non-static, non-class method is like 'self'
         # (though the name could be different), having the enclosing class's
         # instance type.
-        if is_method and not defn.is_static and not defn.is_class and defn.args:
-            defn.args[0].is_self = True
+        if is_method and not defn.is_static and not defn.is_class and defn.arguments:
+            defn.arguments[0].variable.is_self = True
 
         defn.body.accept(self)
         disable_typevars(tvarnodes)
@@ -424,9 +425,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def check_function_signature(self, fdef: FuncItem) -> None:
         sig = cast(CallableType, fdef.type)
-        if len(sig.arg_types) < len(fdef.args):
+        if len(sig.arg_types) < len(fdef.arguments):
             self.fail('Type signature has too few arguments', fdef)
-        elif len(sig.arg_types) > len(fdef.args):
+        elif len(sig.arg_types) > len(fdef.arguments):
             self.fail('Type signature has too many arguments', fdef)
 
     def visit_class_def(self, defn: ClassDef) -> None:
@@ -1319,14 +1320,15 @@ class SemanticAnalyzer(NodeVisitor):
         info.bases = [info.tuple_type.fallback]
         return info
 
+    def make_argument(self, name: str, type: Type) -> Argument:
+        return Argument(Var(name), type, None, ARG_POS)
+
     def make_namedtuple_init(self, info: TypeInfo, items: List[str],
                              types: List[Type]) -> FuncDef:
-        args = [Var(item) for item in items]
-        for arg, type in zip(args, types):
-            arg.type = type
+        args = [self.make_argument(item, type) for item, type in zip(items, types)]
         # TODO: Make sure that the self argument name is not visible?
-        args = [Var('__self')] + args
-        arg_kinds = [ARG_POS] * (len(items) + 1)
+        args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
+        arg_kinds = [arg.kind for arg in args]
         signature = CallableType([cast(Type, None)] + types,
                                  arg_kinds,
                                  ['__self'] + items,
@@ -1334,8 +1336,7 @@ class SemanticAnalyzer(NodeVisitor):
                                  self.named_type('__builtins__.function'),
                                  name=info.name())
         return FuncDef('__init__',
-                       args, arg_kinds,
-                       [None] * (len(items) + 1),
+                       args,
                        Block([]),
                        typ=signature)
 
@@ -1377,7 +1378,7 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.func.is_property = True
                 dec.var.is_property = True
                 self.check_decorated_function_is_method('property', dec)
-                if len(dec.func.args) > 1:
+                if len(dec.func.arguments) > 1:
                     self.fail('Too many arguments', dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType()
