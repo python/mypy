@@ -456,3 +456,8 @@ file:2: error: Invalid numeric literal
 1 <> 2
 [out]
 file:1: error: Parse error before >
+
+[case testLambdaInListComprehensionInPython3]
+([ 0 for x in 1, 2 if 3 ])
+[out]
+file:1: error: Parse error before ,

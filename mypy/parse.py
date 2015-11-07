@@ -1300,7 +1300,10 @@ class Parser:
             index = self.parse_for_index_variables()
             indices.append(index)
             self.expect('in')
-            sequence = self.parse_expression_list()
+            if self.pyversion[0] >= 3:
+                sequence = self.parse_expression(precedence['<if>'])
+            else:
+                sequence = self.parse_expression_list()
             sequences.append(sequence)
             while self.current_str() == 'if':
                 self.skip()

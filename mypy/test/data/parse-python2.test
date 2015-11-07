@@ -191,3 +191,17 @@ MypyFile:1(
       !=
       IntExpr(1)
       IntExpr(2))))
+
+[case testLambdaInListComprehensionInPython2]
+([ 0 for x in 1, 2 if 3 ])
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ListComprehension:1(
+      GeneratorExpr:1(
+        IntExpr(0)
+        NameExpr(x)
+        TupleExpr:1(
+          IntExpr(1)
+          IntExpr(2))
+        IntExpr(3)))))
