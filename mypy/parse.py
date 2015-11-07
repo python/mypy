@@ -1375,7 +1375,7 @@ class Parser:
         items = [expr]
         while True:
             self.expect(',')
-            if (self.current_str() in [')', ']', '='] or
+            if (self.current_str() in [')', ']', '=', ':'] or
                     isinstance(self.current(), Break)):
                 break
             items.append(self.parse_expression(prec, star_expr_allowed=True))

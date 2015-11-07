@@ -3334,3 +3334,14 @@ MypyFile:1(
           CallExpr:2(
             NameExpr(f)
             Args()))))))
+
+[case testForWithSingleItemTuple]
+for x in 1,: pass
+[out]
+MypyFile:1(
+  ForStmt:1(
+    NameExpr(x)
+    TupleExpr:1(
+      IntExpr(1))
+    Block:1(
+      PassStmt:1())))
