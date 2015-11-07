@@ -181,3 +181,13 @@ MypyFile:1(
     UnicodeExpr(foobar))
   ExpressionStmt:2(
     UnicodeExpr(barfoo)))
+
+[case testLegacyInequality]
+1 <> 2
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    ComparisonExpr:1(
+      !=
+      IntExpr(1)
+      IntExpr(2))))

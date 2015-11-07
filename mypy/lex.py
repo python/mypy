@@ -194,7 +194,7 @@ str_prefixes = set(['r', 'b', 'br', 'u', 'ur'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
-             re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>')]
+             re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>|<>')]
 
 # List of regular expressions that match punctuator tokens
 punctuators = [re.compile('[=,()@]|(->)'),
@@ -797,6 +797,12 @@ class Lexer:
             # '='.
             self.add_token(LexError(self.s[self.i], INVALID_CHARACTER))
         else:
+            if s == '<>':
+                if self.pyversion[0] == 2:
+                    s = '!='
+                else:
+                    self.add_token(Op('<'))
+                    s = '>'
             self.add_token(t(s))
 
     def unknown_character(self) -> None:
