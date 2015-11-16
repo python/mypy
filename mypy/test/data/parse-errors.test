@@ -467,3 +467,8 @@ def f(x, (y, z)): pass
 [out]
 file: note: In function "f":
 file:1: error: Tuples in argument lists only supported in Python 2 mode
+
+[case testBackquoteInPython3]
+`1 + 2`
+[out]
+file:1: error: Unrecognized character `

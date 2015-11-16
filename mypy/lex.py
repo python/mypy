@@ -197,7 +197,7 @@ operators = [re.compile('[-+*/<>.%&|^~]'),
              re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>|<>')]
 
 # List of regular expressions that match punctuator tokens
-punctuators = [re.compile('[=,()@]|(->)'),
+punctuators = [re.compile('[=,()@`]|(->)'),
                re.compile('\\['),
                re.compile(']'),
                re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
@@ -308,6 +308,7 @@ class Lexer:
         self.is_stub_file = is_stub_file
         self.ignored_lines = set()
         # Fill in the map from valid character codes to relevant lexer methods.
+        extra_misc = '' if pyversion[0] >= 3 else '`'
         for seq, method in [('ABCDEFGHIJKLMNOPQRSTUVWXYZ', self.lex_name),
                             ('abcdefghijklmnopqrstuvwxyz_', self.lex_name),
                             ('0123456789', self.lex_number),
@@ -322,7 +323,7 @@ class Lexer:
                             ('\\', self.lex_backslash),
                             ('([{', self.lex_open_bracket),
                             (')]}', self.lex_close_bracket),
-                            ('-+*/<>%&|^~=!,@', self.lex_misc)]:
+                            ('-+*/<>%&|^~=!,@' + extra_misc, self.lex_misc)]:
             for c in seq:
                 self.map[ord(c)] = method
         if pyversion[0] == 2:

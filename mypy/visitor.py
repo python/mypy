@@ -216,6 +216,9 @@ class NodeVisitor(Generic[T]):
     def visit_conditional_expr(self, o: 'mypy.nodes.ConditionalExpr') -> T:
         pass
 
+    def visit_backquote_expr(self, o: 'mypy.nodes.BackquoteExpr') -> T:
+        pass
+
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
         pass
 

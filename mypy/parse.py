@@ -26,7 +26,8 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
+    BackquoteExpr
 )
 from mypy import defaults
 from mypy import nodes
@@ -1250,6 +1251,8 @@ class Parser:
             expr = self.parse_dict_or_set_expr()
         elif s == '*' and star_expr_allowed:
             expr = self.parse_star_expr()
+        elif s == '`' and self.pyversion[0] == 2:
+            expr = self.parse_backquote_expr()
         else:
             if isinstance(current, Name):
                 # Name expression.
@@ -1496,6 +1499,12 @@ class Parser:
             if self.current_str() != ',': break
         node = TupleExpr(items)
         return node
+
+    def parse_backquote_expr(self) -> BackquoteExpr:
+        self.expect('`')
+        expr = self.parse_expression()
+        self.expect('`')
+        return BackquoteExpr(expr)
 
     def parse_name_expr(self) -> NameExpr:
         tok = self.expect_type(Name)
