@@ -21,7 +21,7 @@ from mypy.nodes import (
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr, CONTRAVARIANT, COVARIANT
+    RefExpr, YieldExpr, BackquoteExpr, CONTRAVARIANT, COVARIANT
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -1864,6 +1864,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         return self.expr_checker.visit_conditional_expr(e)
+
+    def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
+        return self.expr_checker.visit_backquote_expr(e)
 
     def visit_yield_expr(self, e: YieldExpr) -> Type:
         return self.expr_checker.visit_yield_expr(e)

@@ -14,7 +14,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
-    TypeAliasExpr, YieldExpr
+    TypeAliasExpr, YieldExpr, BackquoteExpr
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type
@@ -1310,6 +1310,10 @@ class ExpressionChecker:
         self.chk.binder.pop_frame()
 
         return join.join_types(if_type, else_type)
+
+    def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
+        self.accept(e.expr)
+        return self.named_type('builtins.str')
 
     #
     # Helpers
