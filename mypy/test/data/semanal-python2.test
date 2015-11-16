@@ -66,3 +66,11 @@ MypyFile:1(
       AssignmentStmt:2(
         NameExpr(x [l])
         NameExpr(y [l])))))
+
+[case testBackquoteExpr_python2]
+`object`
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    BackquoteExpr:1(
+      NameExpr(object [builtins.object]))))
