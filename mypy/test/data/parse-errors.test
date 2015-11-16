@@ -461,3 +461,9 @@ file:1: error: Parse error before >
 ([ 0 for x in 1, 2 if 3 ])
 [out]
 file:1: error: Parse error before ,
+
+[case testTupleArgListInPython3]
+def f(x, (y, z)): pass
+[out]
+file: note: In function "f":
+file:1: error: Tuples in argument lists only supported in Python 2 mode
