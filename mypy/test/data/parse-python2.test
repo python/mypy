@@ -283,3 +283,22 @@ MypyFile:1(
           NameExpr(__tuple_arg_1))
         ReturnStmt:1(
           NameExpr(z))))))
+
+[case testInvalidExprInTupleArgListInPython2_1]
+def f(x, ()): pass
+[out]
+main: note: In function "f":
+main: error: Empty tuple not valid as an argument
+
+[case testInvalidExprInTupleArgListInPython2_2]
+def f(x, (x, x[1])): pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid item in tuple argument
+
+[case testListLiteralAsTupleArgListInPython2]
+def f(x, [x]): pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before [
+main:1: error: Parse error before end of line

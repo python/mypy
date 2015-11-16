@@ -620,6 +620,7 @@ class Parser:
         if self.pyversion[0] >= 3:
             self.fail('Tuples in argument lists only supported in Python 2 mode', line)
         paren_arg = self.parse_parentheses()
+        self.verify_tuple_arg(paren_arg)
         # TODO: Check that it's valid (tuples and name expressions).
         # Generate a new argument name that is very unlikely to clash with anything.
         arg_name = '__tuple_arg_{}'.format(index + 1)
@@ -635,6 +636,15 @@ class Parser:
             kind = nodes.ARG_OPT
         var = Var(arg_name)
         return Argument(var, None, initializer, kind), decompose
+
+    def verify_tuple_arg(self, paren_arg: Node) -> None:
+        if isinstance(paren_arg, TupleExpr):
+            if not paren_arg.items:
+                self.fail('Empty tuple not valid as an argument', paren_arg.line)
+            for item in paren_arg.items:
+                self.verify_tuple_arg(item)
+        elif not isinstance(paren_arg, NameExpr):
+            self.fail('Invalid item in tuple argument', paren_arg.line)
 
     def parse_normal_arg(self, require_named: bool,
             allow_signature: bool,
