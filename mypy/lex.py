@@ -190,7 +190,7 @@ keywords3 = set(['nonlocal'])
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-str_prefixes = set(['r', 'b', 'br', 'rb', 'u', 'ur', 'R', 'U'])
+str_prefixes = set(['r', 'b', 'br', 'rb', 'u', 'ur', 'R', 'B', 'U'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
@@ -257,14 +257,14 @@ def escape_repl(m: Match[str], prefix: str) -> str:
         return chr(int(seq[1:], 16))
     elif seq.startswith('u'):
         # Unicode sequence \uNNNN.
-        if 'b' not in prefix:
+        if 'b' not in prefix and 'B' not in prefix:
             return chr(int(seq[1:], 16))
         else:
             return '\\' + seq
     else:
         # Octal sequence.
         ord = int(seq, 8)
-        if 'b' in prefix:
+        if 'b' in prefix and 'B' in prefix:
             # Make sure code is no larger than 255 for bytes literals.
             ord = ord % 256
         return chr(ord)
@@ -609,7 +609,7 @@ class Lexer:
                 if s.endswith('\n') or s.endswith('\r'):
                     self.lex_multiline_string_literal(re2, s)
                 else:
-                    if 'b' in prefix:
+                    if 'b' in prefix or 'B' in prefix:
                         self.add_token(BytesLit(s))
                     elif 'u' in prefix or 'U' in prefix:
                         self.add_token(UnicodeLit(s))
@@ -638,7 +638,7 @@ class Lexer:
             self.line += 1
             self.i += len(s)
         lit = None  # type: Token
-        if 'b' in prefix:
+        if 'b' in prefix or 'B' in prefix:
             lit = BytesLit(ss + m.group(0))
         elif 'u' in prefix or 'U' in prefix:
             lit = UnicodeLit(ss + m.group(0))

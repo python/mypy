@@ -272,6 +272,9 @@ class LexerSuite(Suite):
 
         self.assert_lex("b'''" + '\n' + " x'''", "BytesLit(b'''\\n x''') ...")
 
+    def test_bytes_with_capital_b(self):
+        self.assert_lex("B'foo'", "BytesLit(B'foo') ...")
+
     def test_raw_bytes(self):
         self.assert_lex("br'x\\x\\''", "BytesLit(br'x\\x\\'') ...")
         self.assert_lex('br"x\\y\\""', 'BytesLit(br"x\\y\\"") ...')
