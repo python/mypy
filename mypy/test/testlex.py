@@ -221,6 +221,9 @@ class LexerSuite(Suite):
         self.assert_lex('u"""foo\n"""',
                         r'UnicodeLit(u"""foo\n""") ...')
 
+    def test_unicode_literal_capital_u(self):
+        self.assert_lex("U'foo'", "UnicodeLit(U'foo') ...")
+
     def test_semicolons(self):
         self.assert_lex('a;b', 'Name(a) Break(;) Name(b) ...')
         self.assert_lex('a;', 'Name(a) Break(;) Eof()')

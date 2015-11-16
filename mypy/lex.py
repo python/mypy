@@ -190,7 +190,7 @@ keywords3 = set(['nonlocal'])
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-str_prefixes = set(['r', 'b', 'br', 'u', 'ur'])
+str_prefixes = set(['r', 'b', 'br', 'u', 'ur', 'U'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
@@ -520,7 +520,7 @@ class Lexer:
             self.add_token(Keyword(s))
         elif s in alpha_operators:
             self.add_token(Op(s))
-        elif s in str_prefixes and self.match(re.compile('[a-z]+[\'"]')) != '':
+        elif s in str_prefixes and self.match(re.compile('[a-zA-Z]+[\'"]')) != '':
             self.lex_prefixed_str(s)
         else:
             self.add_token(Name(s))
@@ -529,13 +529,13 @@ class Lexer:
 
     # Initial part of a single-quoted literal, e.g. b'foo' or b'foo\\\n
     str_exp_single = re.compile(
-        r"[a-z]*'([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
+        r"[a-zA-Z]*'([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
     # Non-initial part of a multiline single-quoted literal, e.g. foo'
     str_exp_single_multi = re.compile(
         r"([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
     # Initial part of a single-quoted raw literal, e.g. r'foo' or r'foo\\\n
     str_exp_raw_single = re.compile(
-        r"[a-z]*'([^'\r\n\\]|\\'|\\[^\n\r])*('|\\(\n|\r\n?))")
+        r"[a-zA-Z]*'([^'\r\n\\]|\\'|\\[^\n\r])*('|\\(\n|\r\n?))")
     # Non-initial part of a raw multiline single-quoted literal, e.g. foo'
     str_exp_raw_single_multi = re.compile(
         r"([^'\r\n]|'')*('|\\(\n|\r\n?))")
@@ -571,7 +571,7 @@ class Lexer:
 
     def lex_prefixed_str(self, prefix: str) -> None:
         """Analyse a string literal with a prefix, such as r'...'."""
-        s = self.match(re.compile('[a-z]+[\'"]'))
+        s = self.match(re.compile('[a-zA-Z]+[\'"]'))
         if s.endswith("'"):
             re1 = self.str_exp_single
             re2 = self.str_exp_single_multi
@@ -605,13 +605,14 @@ class Lexer:
         else:
             # Single or double quoted string literal.
             s = self.match(regex)
+            print(repr(s))
             if s != '':
                 if s.endswith('\n') or s.endswith('\r'):
                     self.lex_multiline_string_literal(re2, s)
                 else:
                     if 'b' in prefix:
                         self.add_token(BytesLit(s))
-                    elif 'u' in prefix:
+                    elif 'u' in prefix or 'U' in prefix:
                         self.add_token(UnicodeLit(s))
                     else:
                         self.add_token(StrLit(s))
@@ -640,7 +641,7 @@ class Lexer:
         lit = None  # type: Token
         if 'b' in prefix:
             lit = BytesLit(ss + m.group(0))
-        elif 'u' in prefix:
+        elif 'u' in prefix or 'U' in prefix:
             lit = UnicodeLit(ss + m.group(0))
         else:
             lit = StrLit(ss + m.group(0))
