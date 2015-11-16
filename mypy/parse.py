@@ -627,9 +627,13 @@ class Parser:
         rvalue.set_line(line)
         decompose = AssignmentStmt([paren_arg], rvalue)
         decompose.set_line(line)
-        initializer = None  # type: Optional[Node]
-        var = Var(arg_name)
         kind = nodes.ARG_POS
+        initializer = None  # type: Optional[Node]
+        if self.current_str() == '=':
+            self.expect('=')
+            initializer = self.parse_expression(precedence[','])
+            kind = nodes.ARG_OPT
+        var = Var(arg_name)
         return Argument(var, None, initializer, kind), decompose
 
     def parse_normal_arg(self, require_named: bool,

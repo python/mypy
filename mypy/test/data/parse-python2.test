@@ -245,6 +245,28 @@ MypyFile:1(
         NameExpr(__tuple_arg_2))
       PassStmt:1())))
 
+[case testTupleArgListWithInitializerInPython2]
+def f((y, z) = (1, 2)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(__tuple_arg_1))
+    Init(
+      AssignmentStmt:1(
+        NameExpr(__tuple_arg_1)
+        TupleExpr:1(
+          IntExpr(1)
+          IntExpr(2))))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(y)
+          NameExpr(z))
+        NameExpr(__tuple_arg_1))
+      PassStmt:1())))
+
 [case testLambdaTupleArgListInPython2]
 lambda (x, y): z
 [out]
