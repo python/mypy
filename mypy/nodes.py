@@ -255,8 +255,8 @@ class OverloadedFuncDef(FuncBase):
 
 
 class Argument(Node):
-    """A single argument in a FuncItem.
-    """
+    """A single argument in a FuncItem."""
+
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
             initializer: Optional[Node], kind: int,
             initialization_statement: Optional['AssignmentStmt'] = None) -> None:
