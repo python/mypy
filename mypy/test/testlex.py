@@ -245,6 +245,9 @@ class LexerSuite(Suite):
 
         self.assert_lex("r'''" + '\n' + "x'''", "StrLit(r'''\\nx''') ...")
 
+    def test_raw_string_with_capital_r(self):
+        self.assert_lex("R'foo'", "StrLit(R'foo') ...")
+
     def test_escapes_in_triple_quoted_literals(self):
         self.assert_lex(r"'''\''''",
                         r"StrLit('''\'''') ...")

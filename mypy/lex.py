@@ -190,7 +190,7 @@ keywords3 = set(['nonlocal'])
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-str_prefixes = set(['r', 'b', 'br', 'u', 'ur', 'U'])
+str_prefixes = set(['r', 'b', 'br', 'u', 'ur', 'R', 'U'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
@@ -236,7 +236,7 @@ def _parse_str_literal(string: str) -> str:
     s = string[len(prefix):]
     if s.startswith("'''") or s.startswith('"""'):
         return s[3:-3]
-    elif 'r' in prefix:
+    elif 'r' in prefix or 'R' in prefix:
         return s[1:-1].replace('\\' + s[0], s[0])
     else:
         return escape_re.sub(lambda m: escape_repl(m, prefix), s[1:-1])
@@ -575,7 +575,7 @@ class Lexer:
         if s.endswith("'"):
             re1 = self.str_exp_single
             re2 = self.str_exp_single_multi
-            if 'r' in prefix:
+            if 'r' in prefix or 'R' in prefix:
                 re1 = self.str_exp_raw_single
                 re2 = self.str_exp_raw_single_multi
             self.lex_str(re1, re2, self.str_exp_single3,
@@ -583,7 +583,7 @@ class Lexer:
         else:
             re1 = self.str_exp_double
             re2 = self.str_exp_double_multi
-            if 'r' in prefix:
+            if 'r' in prefix or 'R' in prefix:
                 re1 = self.str_exp_raw_double
                 re2 = self.str_exp_raw_double_multi
             self.lex_str(re1, re2, self.str_exp_double3,
