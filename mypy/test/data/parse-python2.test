@@ -296,9 +296,21 @@ def f(x, (x, x[1])): pass
 main: note: In function "f":
 main:1: error: Invalid item in tuple argument
 
-[case testListLiteralAsTupleArgListInPython2]
+[case testListLiteralAsTupleArgInPython2]
 def f(x, [x]): pass
 [out]
 main: note: In function "f":
 main:1: error: Parse error before [
 main:1: error: Parse error before end of line
+
+[case testTupleArgAfterStarArgInPython2]
+def f(*a, (b, c)): pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid argument list
+
+[case testTupleArgAfterStarStarArgInPython2]
+def f(*a, (b, c)): pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid argument list
