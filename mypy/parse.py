@@ -391,10 +391,9 @@ class Parser:
             arg_names = [arg.variable.name() for arg in args]
 
             body, comment_type = self.parse_block(allow_type=True)
-            if extra_stmts:
-                # Insert extra assignment statements to the beginning of the body, used
-                # decompose tuple arguments.
-                body.body[:0] = extra_stmts
+            # Potentially insert extra assignment statements to the beginning of the
+            # body, used to decompose Python 2 tuple arguments.
+            body.body[:0] = extra_stmts
             if comment_type:
                 # The function has a # type: ... signature.
                 if typ:
@@ -461,24 +460,14 @@ class Parser:
                                                        List[AssignmentStmt]]:
         """Parse function header (a name followed by arguments)
 
-        Returns a 5-tuple with the following items:
+        Return a 5-tuple with the following items:
           name
           arguments
           signature (annotation)
           error flag (True if error)
           extra statements needed to decompose arguments (usually empty)
 
-        The final argument is only used for Python 2 argument lists with
-        tuples; they contain destructuring assignment statements used to
-        decompose tuple arguments. For example, consider a header like this:
-
-        . def f((x, y))
-
-        The actual (sole) argument will be __tuple_arg_1 (a generated
-        name), whereas the extra statement list will contain a single
-        assignment statement corresponding to this assignment:
-
-        . x, y = __tuple_arg_1
+        See parse_arg_list for an explanation of the final tuple item.
         """
         name = ''
 
@@ -488,7 +477,7 @@ class Parser:
 
             self.errors.push_function(name)
 
-            args, typ = self.parse_args(no_type_checks)
+            args, typ, extra_stmts = self.parse_args(no_type_checks)
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1  # Kludge: go back to the Break token
@@ -497,15 +486,19 @@ class Parser:
                 self.ind -= 1
             return (name, [], None, True, [])
 
-        return (name, args, typ, False, [])
+        return (name, args, typ, False, extra_stmts)
 
     def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Argument],
-                                                              CallableType]:
-        """Parse a function signature (...) [-> t]."""
+                                                              CallableType,
+                                                              List[AssignmentStmt]]:
+        """Parse a function signature (...) [-> t].
+
+        See parse_arg_list for an explanation of the final tuple item.
+        """
         lparen = self.expect('(')
 
         # Parse the argument list (everything within '(' and ')').
-        args = self.parse_arg_list(no_type_checks=no_type_checks)
+        args, extra_stmts = self.parse_arg_list(no_type_checks=no_type_checks)
 
         self.expect(')')
 
@@ -525,7 +518,7 @@ class Parser:
         annotation = self.build_func_annotation(
             ret_type, args, lparen.line)
 
-        return args, annotation
+        return args, annotation, extra_stmts
 
     def build_func_annotation(self, ret_type: Type, args: List[Argument],
             line: int, is_default_ret: bool = False) -> CallableType:
@@ -539,10 +532,26 @@ class Parser:
             return None
 
     def parse_arg_list(self, allow_signature: bool = True,
-            no_type_checks: bool=False) -> List[Argument]:
+            no_type_checks: bool=False) -> Tuple[List[Argument],
+                                                 List[AssignmentStmt]]:
         """Parse function definition argument list.
 
-        This includes everything between '(' and ')').
+        This includes everything between '(' and ')'.
+
+        Return tuple (arguments,
+                      extra statements for decomposing arguments).
+
+        The final argument is only used for Python 2 argument lists with
+        tuples; they contain destructuring assignment statements used to
+        decompose tuple arguments. For example, consider a header like this:
+
+          def f((x, y))
+
+        The actual (sole) argument will be __tuple_arg_1 (a generated
+        name), whereas the extra statement list will contain a single
+        assignment statement corresponding to this assignment:
+
+          x, y = __tuple_arg_1
         """
         args = []  # type: List[Argument]
 
@@ -579,7 +588,7 @@ class Parser:
 
                 self.expect(',')
 
-        return args
+        return args, []
 
     def parse_asterisk_arg(self,
             allow_signature: bool,
@@ -1648,7 +1657,7 @@ class Parser:
     def parse_lambda_expr(self) -> FuncExpr:
         lambda_tok = self.expect('lambda')
 
-        args = self.parse_arg_list(allow_signature=False)
+        args, extra_stmts = self.parse_arg_list(allow_signature=False)
 
         # Use 'object' as the placeholder return type; it will be inferred
         # later. We can't use 'Any' since it could make type inference results
@@ -1661,7 +1670,11 @@ class Parser:
 
         expr = self.parse_expression(precedence[','])
 
-        body = Block([ReturnStmt(expr).set_line(lambda_tok)])
+        nodes = [ReturnStmt(expr).set_line(lambda_tok)]
+        # Potentially insert extra assignment statements to the beginning of the
+        # body, used to decompose Python 2 tuple arguments.
+        nodes[:0] = extra_stmts
+        body = Block(nodes)
         body.set_line(colon)
 
         return FuncExpr(args, body, typ)
