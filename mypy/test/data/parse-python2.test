@@ -214,13 +214,35 @@ MypyFile:1(
     f
     Args(
       Var(x)
-      Var(__tuple_arg_1))
+      Var(__tuple_arg_2))
     Block:1(
       AssignmentStmt:1(
         TupleExpr:1(
           NameExpr(y)
           NameExpr(z))
+        NameExpr(__tuple_arg_2))
+      PassStmt:1())))
+
+[case testTupleArgListWithTwoTupleArgsInPython2]
+def f((x, y), (z, zz)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(__tuple_arg_1)
+      Var(__tuple_arg_2))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(x)
+          NameExpr(y))
         NameExpr(__tuple_arg_1))
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(z)
+          NameExpr(zz))
+        NameExpr(__tuple_arg_2))
       PassStmt:1())))
 
 [case testLambdaTupleArgListInPython2]

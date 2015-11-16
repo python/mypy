@@ -578,7 +578,7 @@ class Parser:
                     args.append(arg)
                     require_named = True
                 elif self.current_str() == '(':
-                    arg, extra_stmt = self.parse_tuple_arg()
+                    arg, extra_stmt = self.parse_tuple_arg(len(args))
                     args.append(arg)
                     extra_stmts.append(extra_stmt)
                 else:
@@ -615,18 +615,20 @@ class Parser:
 
         return Argument(variable, type, None, kind)
 
-    def parse_tuple_arg(self) -> Tuple[Argument, AssignmentStmt]:
+    def parse_tuple_arg(self, index: int) -> Tuple[Argument, AssignmentStmt]:
         line = self.current().line
         if self.pyversion[0] >= 3:
             self.fail('Tuples in argument lists only supported in Python 2 mode', line)
         paren_arg = self.parse_parentheses()
         # TODO: Check that it's valid (tuples and name expressions).
-        rvalue = NameExpr('__tuple_arg_1')
+        # Generate a new argument name that is very unlikely to clash with anything.
+        arg_name = '__tuple_arg_{}'.format(index + 1)
+        rvalue = NameExpr(arg_name)
         rvalue.set_line(line)
         decompose = AssignmentStmt([paren_arg], rvalue)
         decompose.set_line(line)
         initializer = None  # type: Optional[Node]
-        var = Var('__tuple_arg_1')
+        var = Var(arg_name)
         kind = nodes.ARG_POS
         return Argument(var, None, initializer, kind), decompose
 
