@@ -46,3 +46,23 @@ MypyFile:1(
     CastExpr:2(
       TupleExpr:2()
       builtins.tuple[builtins.int])))
+
+[case testTupleArgList_python2]
+def f(x, (y, z)):
+    x = y
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(__tuple_arg_2))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(y* [l])
+          NameExpr(z* [l]))
+        NameExpr(__tuple_arg_2 [l]))
+      AssignmentStmt:2(
+        NameExpr(x [l])
+        NameExpr(y [l])))))
