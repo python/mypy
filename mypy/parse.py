@@ -617,13 +617,16 @@ class Parser:
 
     def parse_tuple_arg(self, index: int) -> Tuple[Argument, AssignmentStmt]:
         line = self.current().line
+        # Generate a new argument name that is very unlikely to clash with anything.
+        arg_name = '__tuple_arg_{}'.format(index + 1)
         if self.pyversion[0] >= 3:
             self.fail('Tuples in argument lists only supported in Python 2 mode', line)
         paren_arg = self.parse_parentheses()
         self.verify_tuple_arg(paren_arg)
-        # TODO: Check that it's valid (tuples and name expressions).
-        # Generate a new argument name that is very unlikely to clash with anything.
-        arg_name = '__tuple_arg_{}'.format(index + 1)
+        if isinstance(paren_arg, NameExpr):
+            # This isn't a tuple. Revert to a normal argument. We'll still get a no-op
+            # assignment below but that's benign.
+            arg_name = paren_arg.name
         rvalue = NameExpr(arg_name)
         rvalue.set_line(line)
         decompose = AssignmentStmt([paren_arg], rvalue)

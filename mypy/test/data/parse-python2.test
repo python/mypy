@@ -314,3 +314,18 @@ def f(*a, (b, c)): pass
 [out]
 main: note: In function "f":
 main:1: error: Invalid argument list
+
+[case testParenthesizedArgumentInPython2]
+def f(x, (y)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Block:1(
+      AssignmentStmt:1(
+        NameExpr(y)
+        NameExpr(y))
+      PassStmt:1())))
