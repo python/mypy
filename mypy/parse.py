@@ -546,7 +546,7 @@ class Parser:
         tuples; they contain destructuring assignment statements used to
         decompose tuple arguments. For example, consider a header like this:
 
-          def f((x, y))
+        . def f((x, y))
 
         The actual (sole) argument will be __tuple_arg_1 (a generated
         name), whereas the extra statement list will contain a single
@@ -556,6 +556,9 @@ class Parser:
         """
         args = []  # type: List[Argument]
         extra_stmts = []  # type: List[AssignmentStmt]
+        # This is for checking duplicate argument names.
+        arg_names = []  # type: List[str]
+        has_tuple_arg = False
 
         require_named = False
         bare_asterisk_before = -1
@@ -578,9 +581,11 @@ class Parser:
                     args.append(arg)
                     require_named = True
                 elif self.current_str() == '(':
-                    arg, extra_stmt = self.parse_tuple_arg(len(args))
+                    arg, extra_stmt, names = self.parse_tuple_arg(len(args))
                     args.append(arg)
                     extra_stmts.append(extra_stmt)
+                    arg_names.extend(names)
+                    has_tuple_arg = True
                 else:
                     arg, require_named = self.parse_normal_arg(
                         require_named,
@@ -588,13 +593,27 @@ class Parser:
                         no_type_checks,
                     )
                     args.append(arg)
+                    arg_names.append(arg.variable.name())
 
                 if self.current().string != ',':
                     break
 
                 self.expect(',')
 
+        # Non-tuple argument dupes will be checked elsewhere. Avoid
+        # generating duplicate errors.
+        if has_tuple_arg:
+            self.check_duplicate_argument_names(arg_names)
+
         return args, extra_stmts
+
+    def check_duplicate_argument_names(self, names: List[str]) -> None:
+        found = set()  # type: Set[str]
+        for name in names:
+            if name in found:
+                self.fail('Duplicate argument name "{}"'.format(name),
+                          self.current().line)
+            found.add(name)
 
     def parse_asterisk_arg(self,
             allow_signature: bool,
@@ -615,7 +634,16 @@ class Parser:
 
         return Argument(variable, type, None, kind)
 
-    def parse_tuple_arg(self, index: int) -> Tuple[Argument, AssignmentStmt]:
+    def parse_tuple_arg(self, index: int) -> Tuple[Argument, AssignmentStmt, List[str]]:
+        """Parse a single Python 2 tuple argument.
+
+        Example: def f(x, (y, z)): ...
+
+        The tuple arguments gets transformed into an assignment in the
+        function body (the second return value).
+
+        Return tuple (argument, decomposing assignment, list of names defined).
+        """
         line = self.current().line
         # Generate a new argument name that is very unlikely to clash with anything.
         arg_name = '__tuple_arg_{}'.format(index + 1)
@@ -638,7 +666,8 @@ class Parser:
             initializer = self.parse_expression(precedence[','])
             kind = nodes.ARG_OPT
         var = Var(arg_name)
-        return Argument(var, None, initializer, kind), decompose
+        arg_names = self.find_tuple_arg_argument_names(paren_arg)
+        return Argument(var, None, initializer, kind), decompose, arg_names
 
     def verify_tuple_arg(self, paren_arg: Node) -> None:
         if isinstance(paren_arg, TupleExpr):
@@ -648,6 +677,15 @@ class Parser:
                 self.verify_tuple_arg(item)
         elif not isinstance(paren_arg, NameExpr):
             self.fail('Invalid item in tuple argument', paren_arg.line)
+
+    def find_tuple_arg_argument_names(self, node: Node) -> List[str]:
+        result = []  # type: List[str]
+        if isinstance(node, TupleExpr):
+            for item in node.items:
+                result.extend(self.find_tuple_arg_argument_names(item))
+        elif isinstance(node, NameExpr):
+            result.append(node.name)
+        return result
 
     def parse_normal_arg(self, require_named: bool,
             allow_signature: bool,

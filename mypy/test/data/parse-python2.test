@@ -291,7 +291,7 @@ main: note: In function "f":
 main: error: Empty tuple not valid as an argument
 
 [case testInvalidExprInTupleArgListInPython2_2]
-def f(x, (x, x[1])): pass
+def f(x, (y, x[1])): pass
 [out]
 main: note: In function "f":
 main:1: error: Invalid item in tuple argument
@@ -329,3 +329,14 @@ MypyFile:1(
         NameExpr(y)
         NameExpr(y))
       PassStmt:1())))
+
+[case testDuplicateNameInTupleArgList_python2]
+def f(a, (a, b)):
+    pass
+def g((x, (x, y))):
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Duplicate argument name "a"
+main: note: In function "g":
+main:3: error: Duplicate argument name "x"
