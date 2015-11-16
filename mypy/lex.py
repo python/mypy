@@ -605,7 +605,6 @@ class Lexer:
         else:
             # Single or double quoted string literal.
             s = self.match(regex)
-            print(repr(s))
             if s != '':
                 if s.endswith('\n') or s.endswith('\r'):
                     self.lex_multiline_string_literal(re2, s)
