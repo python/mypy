@@ -385,12 +385,16 @@ class Parser:
         is_method = self.is_class_body
         self.is_class_body = False
         try:
-            (name, args, typ, is_error) = self.parse_function_header(no_type_checks)
+            (name, args, typ, is_error, extra_stmts) = self.parse_function_header(no_type_checks)
 
             arg_kinds = [arg.kind for arg in args]
             arg_names = [arg.variable.name() for arg in args]
 
             body, comment_type = self.parse_block(allow_type=True)
+            if extra_stmts:
+                # Insert extra assignment statements to the beginning of the body, used
+                # decompose tuple arguments.
+                body.body[:0] = extra_stmts
             if comment_type:
                 # The function has a # type: ... signature.
                 if typ:
@@ -449,15 +453,32 @@ class Parser:
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
 
-    def parse_function_header(self, no_type_checks: bool=False) -> Tuple[str, List[Argument],
-                                                                         CallableType, bool]:
+    def parse_function_header(
+            self, no_type_checks: bool=False) -> Tuple[str,
+                                                       List[Argument],
+                                                       CallableType,
+                                                       bool,
+                                                       List[AssignmentStmt]]:
         """Parse function header (a name followed by arguments)
 
-        Returns a 4-tuple with the following items:
+        Returns a 5-tuple with the following items:
           name
           arguments
           signature (annotation)
           error flag (True if error)
+          extra statements needed to decompose arguments (usually empty)
+
+        The final argument is only used for Python 2 argument lists with
+        tuples; they contain destructuring assignment statements used to
+        decompose tuple arguments. For example, consider a header like this:
+
+        . def f((x, y))
+
+        The actual (sole) argument will be __tuple_arg_1 (a generated
+        name), whereas the extra statement list will contain a single
+        assignment statement corresponding to this assignment:
+
+        . x, y = __tuple_arg_1
         """
         name = ''
 
@@ -474,9 +495,9 @@ class Parser:
             # Resynchronise parsing by going back over :, if present.
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
-            return (name, [], None, True)
+            return (name, [], None, True, [])
 
-        return (name, args, typ, False)
+        return (name, args, typ, False, [])
 
     def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Argument],
                                                               CallableType]:
