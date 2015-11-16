@@ -190,7 +190,7 @@ keywords3 = set(['nonlocal'])
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-str_prefixes = set(['r', 'b', 'br', 'u', 'ur', 'R', 'U'])
+str_prefixes = set(['r', 'b', 'br', 'rb', 'u', 'ur', 'R', 'U'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),

@@ -278,6 +278,9 @@ class LexerSuite(Suite):
 
         self.assert_lex('br"""' + '\n' + 'x"""', 'BytesLit(br"""\\nx""") ...')
 
+    def test_raw_bytes_alternative(self):
+        self.assert_lex("rb'x\\x\\''", "BytesLit(rb'x\\x\\'') ...")
+
     def test_backslash(self):
         self.assert_lex('a\\' + '\n' + ' b', 'Name(a) Name(\\\\n b) ...')
         self.assert_lex(
