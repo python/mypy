@@ -205,3 +205,37 @@ MypyFile:1(
           IntExpr(1)
           IntExpr(2))
         IntExpr(3)))))
+
+[case testTupleArgListInPython2]
+def f(x, (y, z)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(__tuple_arg_1))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(y)
+          NameExpr(z))
+        NameExpr(__tuple_arg_1))
+      PassStmt:1())))
+
+[case testLambdaTupleArgListInPython2]
+lambda (x, y): z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(__tuple_arg_1))
+      Block:1(
+        AssignmentStmt:1(
+          TupleExpr:1(
+            NameExpr(x)
+            NameExpr(y))
+          NameExpr(__tuple_arg_1))
+        ReturnStmt:1(
+          NameExpr(z))))))

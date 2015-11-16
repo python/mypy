@@ -536,7 +536,8 @@ class Parser:
                                                  List[AssignmentStmt]]:
         """Parse function definition argument list.
 
-        This includes everything between '(' and ')'.
+        This includes everything between '(' and ')' (but not the
+        parentheses).
 
         Return tuple (arguments,
                       extra statements for decomposing arguments).
@@ -554,6 +555,7 @@ class Parser:
           x, y = __tuple_arg_1
         """
         args = []  # type: List[Argument]
+        extra_stmts = []  # type: List[AssignmentStmt]
 
         require_named = False
         bare_asterisk_before = -1
@@ -575,6 +577,10 @@ class Parser:
                     )
                     args.append(arg)
                     require_named = True
+                elif self.current_str() == '(':
+                    arg, extra_stmt = self.parse_tuple_arg()
+                    args.append(arg)
+                    extra_stmts.append(extra_stmt)
                 else:
                     arg, require_named = self.parse_normal_arg(
                         require_named,
@@ -588,7 +594,7 @@ class Parser:
 
                 self.expect(',')
 
-        return args, []
+        return args, extra_stmts
 
     def parse_asterisk_arg(self,
             allow_signature: bool,
@@ -608,6 +614,21 @@ class Parser:
             type = self.parse_arg_type(allow_signature)
 
         return Argument(variable, type, None, kind)
+
+    def parse_tuple_arg(self) -> Tuple[Argument, AssignmentStmt]:
+        line = self.current().line
+        if self.pyversion[0] >= 3:
+            self.fail('Tuples in argument lists only supported in Python 2 mode', line)
+        paren_arg = self.parse_parentheses()
+        # TODO: Check that it's valid (tuples and name expressions).
+        rvalue = NameExpr('__tuple_arg_1')
+        rvalue.set_line(line)
+        decompose = AssignmentStmt([paren_arg], rvalue)
+        decompose.set_line(line)
+        initializer = None  # type: Optional[Node]
+        var = Var('__tuple_arg_1')
+        kind = nodes.ARG_POS
+        return Argument(var, None, initializer, kind), decompose
 
     def parse_normal_arg(self, require_named: bool,
             allow_signature: bool,
