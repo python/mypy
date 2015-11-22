@@ -296,6 +296,15 @@ main: note: In class "B":
 main:6: error: Return type of "f" incompatible with supertype "A"
 main:7: error: Return type of "g" incompatible with supertype "A"
 
+[case testOverride__new__WithDifferentSignature]
+class A:
+    def __new__(cls, x: int) -> str:
+        return ''
+
+class B(A):
+    def __new__(cls) -> int:
+        return 1
+
 
 -- Constructors
 -- ------------

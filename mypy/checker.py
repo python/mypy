@@ -761,8 +761,8 @@ class TypeChecker(NodeVisitor[Type]):
         """Check if method definition is compatible with a base class."""
         if base:
             name = defn.name()
-            if name != '__init__':
-                # Check method override (__init__ is special).
+            if name not in ('__init__', '__new__'):
+                # Check method override (__init__ and __new__ are special).
                 self.check_method_override_for_base_with_name(defn, name, base)
                 if name in nodes.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
