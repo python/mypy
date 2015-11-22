@@ -127,3 +127,6 @@ main:5: error: "str" not callable
 main:6: error: "int" not callable
 main: note: At top level:
 main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, Tuple[str, int]]"
+
+[case testBackquoteExpr]
+`1`.x # E: "str" has no attribute "x"

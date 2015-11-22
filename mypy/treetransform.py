@@ -19,7 +19,7 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument
+    YieldExpr, ExecStmt, Argument, BackquoteExpr
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
@@ -444,6 +444,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return ConditionalExpr(self.node(node.cond),
                                self.node(node.if_expr),
                                self.node(node.else_expr))
+
+    def visit_backquote_expr(self, node: BackquoteExpr) -> Node:
+        return BackquoteExpr(self.node(node.expr))
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> Node:
         return TypeVarExpr(node.name(), node.fullname(),

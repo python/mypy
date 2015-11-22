@@ -1337,6 +1337,18 @@ class ConditionalExpr(Node):
         return visitor.visit_conditional_expr(self)
 
 
+class BackquoteExpr(Node):
+    """Python 2 expression `...`."""
+
+    expr = None  # type: Node
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_backquote_expr(self)
+
+
 class TypeApplication(Node):
     """Type application expr[type, ...]"""
 

@@ -447,3 +447,6 @@ class StrConv(NodeVisitor[str]):
         if not a[1]:
             a[1] = '<empty>'
         return self.dump(a, o)
+
+    def visit_backquote_expr(self, o):
+        return self.dump([o.expr], o)

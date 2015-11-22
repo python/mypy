@@ -340,3 +340,24 @@ main: note: In function "f":
 main:1: error: Duplicate argument name "a"
 main: note: In function "g":
 main:3: error: Duplicate argument name "x"
+
+[case testBackquotesInPython2]
+`1 + 2`
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    BackquoteExpr:1(
+      OpExpr:1(
+        +
+        IntExpr(1)
+        IntExpr(2)))))
+
+[case testBackquoteSpecialCasesInPython2]
+`1, 2`
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    BackquoteExpr:1(
+      TupleExpr:1(
+        IntExpr(1)
+        IntExpr(2)))))

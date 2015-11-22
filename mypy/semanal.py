@@ -59,7 +59,8 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, COVARIANT, CONTRAVARIANT, INVARIANT
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, COVARIANT, CONTRAVARIANT,
+    INVARIANT
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1789,6 +1790,9 @@ class SemanticAnalyzer(NodeVisitor):
         expr.if_expr.accept(self)
         expr.cond.accept(self)
         expr.else_expr.accept(self)
+
+    def visit_backquote_expr(self, expr: BackquoteExpr) -> None:
+        expr.expr.accept(self)
 
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
