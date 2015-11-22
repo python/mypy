@@ -650,6 +650,11 @@ class State:
         self.errors().set_file(path)
         self.errors().report(line, msg, blocker=blocker)
 
+    def module_not_found(self, path: str, line: int, id: str) -> None:
+        self.errors().set_file(path)
+        self.errors().report(line, "Cannot find module named '{}'".format(id))
+        self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note')
+
 
 class UnprocessedFile(State):
     def __init__(self, info: StateInfo, program_text: Union[str, bytes]) -> None:
@@ -660,9 +665,10 @@ class UnprocessedFile(State):
         # Add surrounding package(s) as dependencies.
         for p in super_packages(self.id):
             if not self.import_module(p):
-                # Could not find a module. Typically the reason is a misspelled
-                # module name, or the module has not been installed.
-                self.fail(self.path, 1, "No module named '{}'".format(p))
+                # Could not find a module. Typically the reason is a
+                # misspelled module name, missing stub, module not in
+                # search path or the module has not been installed.
+                self.module_not_found(self.path, 1, p)
             self.dependencies.append(p)
 
     def process(self) -> None:
@@ -712,8 +718,7 @@ class UnprocessedFile(State):
                 else:
                     if (line not in tree.ignored_lines and
                             'import' not in tree.weak_opts):
-                        self.fail(self.path, line, "No module named '{}'".format(id),
-                                  blocker=False)
+                        self.module_not_found(self.path, line, id)
                 self.manager.missing_modules.add(id)
 
         # Initialize module symbol table, which was populated by the semantic

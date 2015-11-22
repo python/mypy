@@ -2,7 +2,7 @@
 -- blocks classified as unreachable (they are not type checked or semantically
 -- analyzed).
 --
--- For example, we skip blocks that won't be executed on the active
+-- For example, we skip blocks that will not be executed on the active
 -- Python version.
 
 [case testConditionalTypeAliasPY3]
@@ -75,8 +75,11 @@ MYPY = 0
 if not MYPY:
     import xyz753
 else:
-    import pow123 # E: No module named 'pow123'
+    import pow123 # E
 [builtins fixtures/bool.py]
+[out]
+main:6: error: Cannot find module named 'pow123'
+main:6: note: (Perhaps setting MYPYPATH would help)
 
 [case testMypyConditional]
 import typing
