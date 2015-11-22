@@ -176,7 +176,7 @@ MypyFile:1(
   ExpressionStmt:1(
     StrExpr(\u0000\u0001\u007fS4))
   ExpressionStmt:2(
-    BytesExpr(\u0001>)))
+    BytesExpr(\u0001\u013e)))
 
 [case testUnicodeLiteralInPython3]
 u'foo'
