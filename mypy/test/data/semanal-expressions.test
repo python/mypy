@@ -379,3 +379,17 @@ MypyFile:1(
         NameExpr(None [builtins.None]))
       NameExpr(int [builtins.int])
       NameExpr(str [builtins.str]))))
+
+[case testDictWithKeywordArgs]
+dict(a=1, b=str())
+[builtins fixtures/dict.py]
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    DictExpr:1(
+      StrExpr(a)
+      IntExpr(1)
+      StrExpr(b)
+      CallExpr:1(
+        NameExpr(str [builtins.str])
+        Args()))))

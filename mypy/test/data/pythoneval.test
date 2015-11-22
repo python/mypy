@@ -1063,3 +1063,14 @@ t = n * ('',)
 t + 1
 [out]
 _program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")
+
+[case testDictWithKeywordArgs]
+from typing import Dict, Any
+d1 = dict(a=1, b=2) # type: Dict[str, int]
+d2 = dict(a=1, b='') # type: Dict[str, int] # E
+d3 = dict(a=1, b=1)
+d3.xyz # E
+d4 = dict(a=1, b='') # type: Dict[str, Any]
+[out]
+_program.py:3: error: Incompatible types in assignment (expression has type Dict[str, object], variable has type Dict[str, int])
+_program.py:5: error: Dict[str, int] has no attribute "xyz"

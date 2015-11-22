@@ -88,7 +88,7 @@ class Node(Context):
             return repr(self)
         return ans
 
-    def set_line(self, target: Union[Token, int]) -> 'Node':
+    def set_line(self, target: Union[Token, 'Node', int]) -> 'Node':
         if isinstance(target, int):
             self.line = target
         else:
@@ -282,7 +282,7 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Token, int]) -> Node:
+    def set_line(self, target: Union[Token, Node, int]) -> Node:
         super().set_line(target)
 
         if self.initializer:
@@ -329,7 +329,7 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Token, int]) -> Node:
+    def set_line(self, target: Union[Token, Node, int]) -> Node:
         super().set_line(target)
         for arg in self.arguments:
             arg.set_line(self.line)

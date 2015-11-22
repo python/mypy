@@ -1647,10 +1647,27 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'builtins.dict'):
+            expr.analyzed = self.translate_dict_call(expr)
         else:
             # Normal call expression.
             for a in expr.args:
                 a.accept(self)
+
+    def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
+        """Translate 'dict(x=y, ...)' to {'x': y, ...}.
+
+        For other variants of dict(...), return None.
+        """
+        if not call.args:
+            return None
+        if not all(kind == ARG_NAMED for kind in call.arg_kinds):
+            return None
+        expr = DictExpr([(StrExpr(key), value)
+                         for key, value in zip(call.arg_names, call.args)])
+        expr.set_line(call)
+        expr.accept(self)
+        return expr
 
     def check_fixed_args(self, expr: CallExpr, numargs: int,
                          name: str) -> bool:
