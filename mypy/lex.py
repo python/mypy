@@ -190,7 +190,7 @@ keywords3 = set(['nonlocal'])
 alpha_operators = set(['in', 'is', 'not', 'and', 'or'])
 
 # String literal prefixes
-str_prefixes = set(['r', 'b', 'br', 'u', 'ur'])
+str_prefixes = set(['r', 'b', 'br', 'rb', 'u', 'ur', 'R', 'B', 'U'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
@@ -236,7 +236,7 @@ def _parse_str_literal(string: str) -> str:
     s = string[len(prefix):]
     if s.startswith("'''") or s.startswith('"""'):
         return s[3:-3]
-    elif 'r' in prefix:
+    elif 'r' in prefix or 'R' in prefix:
         return s[1:-1].replace('\\' + s[0], s[0])
     else:
         return escape_re.sub(lambda m: escape_repl(m, prefix), s[1:-1])
@@ -257,14 +257,14 @@ def escape_repl(m: Match[str], prefix: str) -> str:
         return chr(int(seq[1:], 16))
     elif seq.startswith('u'):
         # Unicode sequence \uNNNN.
-        if 'b' not in prefix:
+        if 'b' not in prefix and 'B' not in prefix:
             return chr(int(seq[1:], 16))
         else:
             return '\\' + seq
     else:
         # Octal sequence.
         ord = int(seq, 8)
-        if 'b' in prefix:
+        if 'b' in prefix and 'B' in prefix:
             # Make sure code is no larger than 255 for bytes literals.
             ord = ord % 256
         return chr(ord)
@@ -520,7 +520,7 @@ class Lexer:
             self.add_token(Keyword(s))
         elif s in alpha_operators:
             self.add_token(Op(s))
-        elif s in str_prefixes and self.match(re.compile('[a-z]+[\'"]')) != '':
+        elif s in str_prefixes and self.match(re.compile('[a-zA-Z]+[\'"]')) != '':
             self.lex_prefixed_str(s)
         else:
             self.add_token(Name(s))
@@ -529,13 +529,13 @@ class Lexer:
 
     # Initial part of a single-quoted literal, e.g. b'foo' or b'foo\\\n
     str_exp_single = re.compile(
-        r"[a-z]*'([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
+        r"[a-zA-Z]*'([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
     # Non-initial part of a multiline single-quoted literal, e.g. foo'
     str_exp_single_multi = re.compile(
         r"([^'\\\r\n]|\\[^\r\n])*('|\\(\n|\r\n?))")
     # Initial part of a single-quoted raw literal, e.g. r'foo' or r'foo\\\n
     str_exp_raw_single = re.compile(
-        r"[a-z]*'([^'\r\n\\]|\\'|\\[^\n\r])*('|\\(\n|\r\n?))")
+        r"[a-zA-Z]*'([^'\r\n\\]|\\'|\\[^\n\r])*('|\\(\n|\r\n?))")
     # Non-initial part of a raw multiline single-quoted literal, e.g. foo'
     str_exp_raw_single_multi = re.compile(
         r"([^'\r\n]|'')*('|\\(\n|\r\n?))")
@@ -571,11 +571,11 @@ class Lexer:
 
     def lex_prefixed_str(self, prefix: str) -> None:
         """Analyse a string literal with a prefix, such as r'...'."""
-        s = self.match(re.compile('[a-z]+[\'"]'))
+        s = self.match(re.compile('[a-zA-Z]+[\'"]'))
         if s.endswith("'"):
             re1 = self.str_exp_single
             re2 = self.str_exp_single_multi
-            if 'r' in prefix:
+            if 'r' in prefix or 'R' in prefix:
                 re1 = self.str_exp_raw_single
                 re2 = self.str_exp_raw_single_multi
             self.lex_str(re1, re2, self.str_exp_single3,
@@ -583,7 +583,7 @@ class Lexer:
         else:
             re1 = self.str_exp_double
             re2 = self.str_exp_double_multi
-            if 'r' in prefix:
+            if 'r' in prefix or 'R' in prefix:
                 re1 = self.str_exp_raw_double
                 re2 = self.str_exp_raw_double_multi
             self.lex_str(re1, re2, self.str_exp_double3,
@@ -609,9 +609,9 @@ class Lexer:
                 if s.endswith('\n') or s.endswith('\r'):
                     self.lex_multiline_string_literal(re2, s)
                 else:
-                    if 'b' in prefix:
+                    if 'b' in prefix or 'B' in prefix:
                         self.add_token(BytesLit(s))
-                    elif 'u' in prefix:
+                    elif 'u' in prefix or 'U' in prefix:
                         self.add_token(UnicodeLit(s))
                     else:
                         self.add_token(StrLit(s))
@@ -638,9 +638,9 @@ class Lexer:
             self.line += 1
             self.i += len(s)
         lit = None  # type: Token
-        if 'b' in prefix:
+        if 'b' in prefix or 'B' in prefix:
             lit = BytesLit(ss + m.group(0))
-        elif 'u' in prefix:
+        elif 'u' in prefix or 'U' in prefix:
             lit = UnicodeLit(ss + m.group(0))
         else:
             lit = StrLit(ss + m.group(0))

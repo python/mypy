@@ -221,6 +221,9 @@ class LexerSuite(Suite):
         self.assert_lex('u"""foo\n"""',
                         r'UnicodeLit(u"""foo\n""") ...')
 
+    def test_unicode_literal_capital_u(self):
+        self.assert_lex("U'foo'", "UnicodeLit(U'foo') ...")
+
     def test_semicolons(self):
         self.assert_lex('a;b', 'Name(a) Break(;) Name(b) ...')
         self.assert_lex('a;', 'Name(a) Break(;) Eof()')
@@ -241,6 +244,9 @@ class LexerSuite(Suite):
         self.assert_lex('r"\\\\" ""', 'StrLit(r"\\\\") StrLit( "") ...')
 
         self.assert_lex("r'''" + '\n' + "x'''", "StrLit(r'''\\nx''') ...")
+
+    def test_raw_string_with_capital_r(self):
+        self.assert_lex("R'foo'", "StrLit(R'foo') ...")
 
     def test_escapes_in_triple_quoted_literals(self):
         self.assert_lex(r"'''\''''",
@@ -266,11 +272,17 @@ class LexerSuite(Suite):
 
         self.assert_lex("b'''" + '\n' + " x'''", "BytesLit(b'''\\n x''') ...")
 
+    def test_bytes_with_capital_b(self):
+        self.assert_lex("B'foo'", "BytesLit(B'foo') ...")
+
     def test_raw_bytes(self):
         self.assert_lex("br'x\\x\\''", "BytesLit(br'x\\x\\'') ...")
         self.assert_lex('br"x\\y\\""', 'BytesLit(br"x\\y\\"") ...')
 
         self.assert_lex('br"""' + '\n' + 'x"""', 'BytesLit(br"""\\nx""") ...')
+
+    def test_raw_bytes_alternative(self):
+        self.assert_lex("rb'x\\x\\''", "BytesLit(rb'x\\x\\'') ...")
 
     def test_backslash(self):
         self.assert_lex('a\\' + '\n' + ' b', 'Name(a) Name(\\\\n b) ...')
