@@ -60,7 +60,6 @@ except BaseException, e:
     e() # E: "BaseException" not callable
 [builtins fixtures/exception.py]
 
-
 [case testAlternateNameSuggestions]
 class Foo(object):
     def say_hello(self):
@@ -86,3 +85,45 @@ f = Foo()
 f.say_hallo() # E: "Foo" has no attribute "say_hallo"; maybe "say_hullo", "say_hello", or "say_hell"?
 f.go_array() # E: "Foo" has no attribute "go_array"; maybe "go_away"?
 f.add() # E: "Foo" has no attribute "add"; maybe "append", "extend", or "_add"?
+
+[case testTupleArgListDynamicallyTyped]
+def f(x, (y, z)):
+    x = y + z
+f(1, 1)
+f(1, (1, 2))
+
+[case testTupleArgListAnnotated]
+from typing import Tuple
+def f(x, (y, z)): # type: (object, Tuple[int, str]) -> None
+    x() # E
+    y() # E
+    z() # E
+f(object(), (1, ''))
+f(1, 1) # E
+[builtins fixtures/tuple.py]
+[out]
+main: note: In function "f":
+main:3: error: "object" not callable
+main:4: error: "int" not callable
+main:5: error: "str" not callable
+main: note: At top level:
+main:7: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, str]"
+
+[case testNestedTupleArgListAnnotated]
+from typing import Tuple
+def f(x, (y, (a, b))): # type: (object, Tuple[int, Tuple[str, int]]) -> None
+    x() # E
+    y() # E
+    a() # E
+    b() # E
+f(object(), (1, ('', 2)))
+f(1, 1) # E
+[builtins fixtures/tuple.py]
+[out]
+main: note: In function "f":
+main:3: error: "object" not callable
+main:4: error: "int" not callable
+main:5: error: "str" not callable
+main:6: error: "int" not callable
+main: note: At top level:
+main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, Tuple[str, int]]"

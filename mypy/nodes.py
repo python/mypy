@@ -255,8 +255,8 @@ class OverloadedFuncDef(FuncBase):
 
 
 class Argument(Node):
-    """A single argument in a FuncItem.
-    """
+    """A single argument in a FuncItem."""
+
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
             initializer: Optional[Node], kind: int,
             initialization_statement: Optional['AssignmentStmt'] = None) -> None:
@@ -530,7 +530,6 @@ class ExpressionStmt(Node):
 
 class AssignmentStmt(Node):
     """Assignment statement
-
     The same node class is used for single assignment, multiple assignment
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
     that define new names, and assignments with explicit types (# type).

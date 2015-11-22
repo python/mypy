@@ -205,3 +205,138 @@ MypyFile:1(
           IntExpr(1)
           IntExpr(2))
         IntExpr(3)))))
+
+[case testTupleArgListInPython2]
+def f(x, (y, z)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(__tuple_arg_2))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(y)
+          NameExpr(z))
+        NameExpr(__tuple_arg_2))
+      PassStmt:1())))
+
+[case testTupleArgListWithTwoTupleArgsInPython2]
+def f((x, y), (z, zz)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(__tuple_arg_1)
+      Var(__tuple_arg_2))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(x)
+          NameExpr(y))
+        NameExpr(__tuple_arg_1))
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(z)
+          NameExpr(zz))
+        NameExpr(__tuple_arg_2))
+      PassStmt:1())))
+
+[case testTupleArgListWithInitializerInPython2]
+def f((y, z) = (1, 2)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(__tuple_arg_1))
+    Init(
+      AssignmentStmt:1(
+        NameExpr(__tuple_arg_1)
+        TupleExpr:1(
+          IntExpr(1)
+          IntExpr(2))))
+    Block:1(
+      AssignmentStmt:1(
+        TupleExpr:1(
+          NameExpr(y)
+          NameExpr(z))
+        NameExpr(__tuple_arg_1))
+      PassStmt:1())))
+
+[case testLambdaTupleArgListInPython2]
+lambda (x, y): z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(__tuple_arg_1))
+      Block:1(
+        AssignmentStmt:1(
+          TupleExpr:1(
+            NameExpr(x)
+            NameExpr(y))
+          NameExpr(__tuple_arg_1))
+        ReturnStmt:1(
+          NameExpr(z))))))
+
+[case testInvalidExprInTupleArgListInPython2_1]
+def f(x, ()): pass
+[out]
+main: note: In function "f":
+main: error: Empty tuple not valid as an argument
+
+[case testInvalidExprInTupleArgListInPython2_2]
+def f(x, (y, x[1])): pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid item in tuple argument
+
+[case testListLiteralAsTupleArgInPython2]
+def f(x, [x]): pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before [
+main:1: error: Parse error before end of line
+
+[case testTupleArgAfterStarArgInPython2]
+def f(*a, (b, c)): pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid argument list
+
+[case testTupleArgAfterStarStarArgInPython2]
+def f(*a, (b, c)): pass
+[out]
+main: note: In function "f":
+main:1: error: Invalid argument list
+
+[case testParenthesizedArgumentInPython2]
+def f(x, (y)): pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    Block:1(
+      AssignmentStmt:1(
+        NameExpr(y)
+        NameExpr(y))
+      PassStmt:1())))
+
+[case testDuplicateNameInTupleArgList_python2]
+def f(a, (a, b)):
+    pass
+def g((x, (x, y))):
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Duplicate argument name "a"
+main: note: In function "g":
+main:3: error: Duplicate argument name "x"

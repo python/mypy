@@ -385,12 +385,15 @@ class Parser:
         is_method = self.is_class_body
         self.is_class_body = False
         try:
-            (name, args, typ, is_error) = self.parse_function_header(no_type_checks)
+            (name, args, typ, is_error, extra_stmts) = self.parse_function_header(no_type_checks)
 
             arg_kinds = [arg.kind for arg in args]
             arg_names = [arg.variable.name() for arg in args]
 
             body, comment_type = self.parse_block(allow_type=True)
+            # Potentially insert extra assignment statements to the beginning of the
+            # body, used to decompose Python 2 tuple arguments.
+            body.body[:0] = extra_stmts
             if comment_type:
                 # The function has a # type: ... signature.
                 if typ:
@@ -449,15 +452,22 @@ class Parser:
                     "Inconsistent use of '{}' in function "
                     "signature".format(token), line)
 
-    def parse_function_header(self, no_type_checks: bool=False) -> Tuple[str, List[Argument],
-                                                                         CallableType, bool]:
+    def parse_function_header(
+            self, no_type_checks: bool=False) -> Tuple[str,
+                                                       List[Argument],
+                                                       CallableType,
+                                                       bool,
+                                                       List[AssignmentStmt]]:
         """Parse function header (a name followed by arguments)
 
-        Returns a 4-tuple with the following items:
+        Return a 5-tuple with the following items:
           name
           arguments
           signature (annotation)
           error flag (True if error)
+          extra statements needed to decompose arguments (usually empty)
+
+        See parse_arg_list for an explanation of the final tuple item.
         """
         name = ''
 
@@ -467,24 +477,28 @@ class Parser:
 
             self.errors.push_function(name)
 
-            args, typ = self.parse_args(no_type_checks)
+            args, typ, extra_stmts = self.parse_args(no_type_checks)
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1  # Kludge: go back to the Break token
             # Resynchronise parsing by going back over :, if present.
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
-            return (name, [], None, True)
+            return (name, [], None, True, [])
 
-        return (name, args, typ, False)
+        return (name, args, typ, False, extra_stmts)
 
     def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Argument],
-                                                              CallableType]:
-        """Parse a function signature (...) [-> t]."""
+                                                              CallableType,
+                                                              List[AssignmentStmt]]:
+        """Parse a function signature (...) [-> t].
+
+        See parse_arg_list for an explanation of the final tuple item.
+        """
         lparen = self.expect('(')
 
         # Parse the argument list (everything within '(' and ')').
-        args = self.parse_arg_list(no_type_checks=no_type_checks)
+        args, extra_stmts = self.parse_arg_list(no_type_checks=no_type_checks)
 
         self.expect(')')
 
@@ -504,7 +518,7 @@ class Parser:
         annotation = self.build_func_annotation(
             ret_type, args, lparen.line)
 
-        return args, annotation
+        return args, annotation, extra_stmts
 
     def build_func_annotation(self, ret_type: Type, args: List[Argument],
             line: int, is_default_ret: bool = False) -> CallableType:
@@ -518,12 +532,33 @@ class Parser:
             return None
 
     def parse_arg_list(self, allow_signature: bool = True,
-            no_type_checks: bool=False) -> List[Argument]:
+            no_type_checks: bool=False) -> Tuple[List[Argument],
+                                                 List[AssignmentStmt]]:
         """Parse function definition argument list.
 
-        This includes everything between '(' and ')').
+        This includes everything between '(' and ')' (but not the
+        parentheses).
+
+        Return tuple (arguments,
+                      extra statements for decomposing arguments).
+
+        The final argument is only used for Python 2 argument lists with
+        tuples; they contain destructuring assignment statements used to
+        decompose tuple arguments. For example, consider a header like this:
+
+        . def f((x, y))
+
+        The actual (sole) argument will be __tuple_arg_1 (a generated
+        name), whereas the extra statement list will contain a single
+        assignment statement corresponding to this assignment:
+
+          x, y = __tuple_arg_1
         """
         args = []  # type: List[Argument]
+        extra_stmts = []  # type: List[AssignmentStmt]
+        # This is for checking duplicate argument names.
+        arg_names = []  # type: List[str]
+        has_tuple_arg = False
 
         require_named = False
         bare_asterisk_before = -1
@@ -545,6 +580,12 @@ class Parser:
                     )
                     args.append(arg)
                     require_named = True
+                elif self.current_str() == '(':
+                    arg, extra_stmt, names = self.parse_tuple_arg(len(args))
+                    args.append(arg)
+                    extra_stmts.append(extra_stmt)
+                    arg_names.extend(names)
+                    has_tuple_arg = True
                 else:
                     arg, require_named = self.parse_normal_arg(
                         require_named,
@@ -552,13 +593,27 @@ class Parser:
                         no_type_checks,
                     )
                     args.append(arg)
+                    arg_names.append(arg.variable.name())
 
                 if self.current().string != ',':
                     break
 
                 self.expect(',')
 
-        return args
+        # Non-tuple argument dupes will be checked elsewhere. Avoid
+        # generating duplicate errors.
+        if has_tuple_arg:
+            self.check_duplicate_argument_names(arg_names)
+
+        return args, extra_stmts
+
+    def check_duplicate_argument_names(self, names: List[str]) -> None:
+        found = set()  # type: Set[str]
+        for name in names:
+            if name in found:
+                self.fail('Duplicate argument name "{}"'.format(name),
+                          self.current().line)
+            found.add(name)
 
     def parse_asterisk_arg(self,
             allow_signature: bool,
@@ -578,6 +633,59 @@ class Parser:
             type = self.parse_arg_type(allow_signature)
 
         return Argument(variable, type, None, kind)
+
+    def parse_tuple_arg(self, index: int) -> Tuple[Argument, AssignmentStmt, List[str]]:
+        """Parse a single Python 2 tuple argument.
+
+        Example: def f(x, (y, z)): ...
+
+        The tuple arguments gets transformed into an assignment in the
+        function body (the second return value).
+
+        Return tuple (argument, decomposing assignment, list of names defined).
+        """
+        line = self.current().line
+        # Generate a new argument name that is very unlikely to clash with anything.
+        arg_name = '__tuple_arg_{}'.format(index + 1)
+        if self.pyversion[0] >= 3:
+            self.fail('Tuples in argument lists only supported in Python 2 mode', line)
+        paren_arg = self.parse_parentheses()
+        self.verify_tuple_arg(paren_arg)
+        if isinstance(paren_arg, NameExpr):
+            # This isn't a tuple. Revert to a normal argument. We'll still get a no-op
+            # assignment below but that's benign.
+            arg_name = paren_arg.name
+        rvalue = NameExpr(arg_name)
+        rvalue.set_line(line)
+        decompose = AssignmentStmt([paren_arg], rvalue)
+        decompose.set_line(line)
+        kind = nodes.ARG_POS
+        initializer = None  # type: Optional[Node]
+        if self.current_str() == '=':
+            self.expect('=')
+            initializer = self.parse_expression(precedence[','])
+            kind = nodes.ARG_OPT
+        var = Var(arg_name)
+        arg_names = self.find_tuple_arg_argument_names(paren_arg)
+        return Argument(var, None, initializer, kind), decompose, arg_names
+
+    def verify_tuple_arg(self, paren_arg: Node) -> None:
+        if isinstance(paren_arg, TupleExpr):
+            if not paren_arg.items:
+                self.fail('Empty tuple not valid as an argument', paren_arg.line)
+            for item in paren_arg.items:
+                self.verify_tuple_arg(item)
+        elif not isinstance(paren_arg, NameExpr):
+            self.fail('Invalid item in tuple argument', paren_arg.line)
+
+    def find_tuple_arg_argument_names(self, node: Node) -> List[str]:
+        result = []  # type: List[str]
+        if isinstance(node, TupleExpr):
+            for item in node.items:
+                result.extend(self.find_tuple_arg_argument_names(item))
+        elif isinstance(node, NameExpr):
+            result.append(node.name)
+        return result
 
     def parse_normal_arg(self, require_named: bool,
             allow_signature: bool,
@@ -1627,7 +1735,7 @@ class Parser:
     def parse_lambda_expr(self) -> FuncExpr:
         lambda_tok = self.expect('lambda')
 
-        args = self.parse_arg_list(allow_signature=False)
+        args, extra_stmts = self.parse_arg_list(allow_signature=False)
 
         # Use 'object' as the placeholder return type; it will be inferred
         # later. We can't use 'Any' since it could make type inference results
@@ -1640,7 +1748,11 @@ class Parser:
 
         expr = self.parse_expression(precedence[','])
 
-        body = Block([ReturnStmt(expr).set_line(lambda_tok)])
+        nodes = [ReturnStmt(expr).set_line(lambda_tok)]
+        # Potentially insert extra assignment statements to the beginning of the
+        # body, used to decompose Python 2 tuple arguments.
+        nodes[:0] = extra_stmts
+        body = Block(nodes)
         body.set_line(colon)
 
         return FuncExpr(args, body, typ)
