@@ -230,19 +230,22 @@ main:2: error: Module has no attribute 'y'
 import typing
 import m
 [out]
-main:2: error: No module named 'm'
+main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH would help)
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
-main:2: error: No module named 'm'
+main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH would help)
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
-main:2: error: No module named 'm'
+main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH would help)
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -251,7 +254,8 @@ import m
 from .x import y
 [out]
 main:2: note: In module imported here:
-tmp/m/__init__.py:1: error: No module named 'm.x'
+tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
+tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH would help)
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -261,7 +265,8 @@ import m.a
 from .x import y
 [out]
 main:2: note: In module imported here:
-tmp/m/a.py:1: error: No module named 'm.x'
+tmp/m/a.py:1: error: Cannot find module named 'm.x'
+tmp/m/a.py:1: note: (Perhaps setting MYPYPATH would help)
 
 [case testModuleNotImported]
 import typing
@@ -311,15 +316,17 @@ main:4: error: Name 'n' is not defined
 import typing
 import m.n
 [out]
-main:2: error: No module named 'm.n'
+main:2: error: Cannot find module named 'm.n'
+main:2: note: (Perhaps setting MYPYPATH would help)
 
 [case testMissingPackage]
 import typing
 from m.n import x
 from a.b import *
 [out]
-main:2: error: No module named 'm.n'
-main:3: error: No module named 'a.b'
+main:2: error: Cannot find module named 'm.n'
+main:2: note: (Perhaps setting MYPYPATH would help)
+main:3: error: Cannot find module named 'a.b'
 
 [case testErrorInImportedModule]
 import m
@@ -350,7 +357,8 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: No module named 'm.n'
+main:2: error: Cannot find module named 'm.n'
+main:2: note: (Perhaps setting MYPYPATH would help)
 
 [case testBreakOutsideLoop]
 break
@@ -1382,3 +1390,23 @@ x = 1
 [file m/m2.pyi]
 y = 1
 [out]
+
+[case testMissingStubForThirdPartyModule]
+import nosexcover
+[out]
+main:1: error: No library stub file for module 'nosexcover'
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testMissingStubForStdLibModule]
+import tabnanny
+[out]
+main:1: error: No library stub file for standard library module 'tabnanny'
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testMissingStubForTwoModules]
+import tabnanny
+import tkinter
+[out]
+main:1: error: No library stub file for standard library module 'tabnanny'
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+main:2: error: No library stub file for standard library module 'tkinter'

@@ -13,21 +13,34 @@
 --  - using special names defined in typing as values
 
 [case testMissingModuleImport1]
-import m # E: No module named 'm'
+import m # E
 m.foo()
 m.x = m.y
-1() # E: "int" not callable
+1() # E
+[out]
+main:1: error: Cannot find module named 'm'
+main:1: note: (Perhaps setting MYPYPATH would help)
+main:4: error: "int" not callable
 
 [case testMissingModuleImport2]
-from m import x # E: No module named 'm'
+from m import x # E
 x.foo()
 x.a = x.b
-1() # E: "int" not callable
+1() # E
+[out]
+main:1: error: Cannot find module named 'm'
+main:1: note: (Perhaps setting MYPYPATH would help)
+main:4: error: "int" not callable
 
 [case testMissingModuleImport3]
-from m import * # E: No module named 'm'
-x # E: Name 'x' is not defined
-1() # E: "int" not callable
+from m import * # E
+x # E
+1() # E
+[out]
+main:1: error: Cannot find module named 'm'
+main:1: note: (Perhaps setting MYPYPATH would help)
+main:2: error: Name 'x' is not defined
+main:3: error: "int" not callable
 
 [case testInvalidBaseClass1]
 class A(X): # E: Name 'X' is not defined

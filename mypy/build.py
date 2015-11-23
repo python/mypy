@@ -28,6 +28,7 @@ from mypy import parse
 from mypy import stats
 from mypy.report import Reports
 from mypy import defaults
+from mypy import moduleinfo
 
 
 # We need to know the location of this file to load data, but
@@ -650,6 +651,22 @@ class State:
         self.errors().set_file(path)
         self.errors().report(line, msg, blocker=blocker)
 
+    def module_not_found(self, path: str, line: int, id: str) -> None:
+        self.errors().set_file(path)
+        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
+        if ((self.manager.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
+              (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+            self.errors().report(
+                line, "No library stub file for standard library module '{}'".format(id))
+            self.errors().report(line, stub_msg, severity='note', only_once=True)
+        elif moduleinfo.is_third_party_module(id):
+            self.errors().report(line, "No library stub file for module '{}'".format(id))
+            self.errors().report(line, stub_msg, severity='note', only_once=True)
+        else:
+            self.errors().report(line, "Cannot find module named '{}'".format(id))
+            self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
+                                 only_once=True)
+
 
 class UnprocessedFile(State):
     def __init__(self, info: StateInfo, program_text: Union[str, bytes]) -> None:
@@ -660,9 +677,10 @@ class UnprocessedFile(State):
         # Add surrounding package(s) as dependencies.
         for p in super_packages(self.id):
             if not self.import_module(p):
-                # Could not find a module. Typically the reason is a misspelled
-                # module name, or the module has not been installed.
-                self.fail(self.path, 1, "No module named '{}'".format(p))
+                # Could not find a module. Typically the reason is a
+                # misspelled module name, missing stub, module not in
+                # search path or the module has not been installed.
+                self.module_not_found(self.path, 1, p)
             self.dependencies.append(p)
 
     def process(self) -> None:
@@ -712,8 +730,7 @@ class UnprocessedFile(State):
                 else:
                     if (line not in tree.ignored_lines and
                             'import' not in tree.weak_opts):
-                        self.fail(self.path, line, "No module named '{}'".format(id),
-                                  blocker=False)
+                        self.module_not_found(self.path, line, id)
                 self.manager.missing_modules.add(id)
 
         # Initialize module symbol table, which was populated by the semantic
