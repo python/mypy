@@ -28,6 +28,7 @@ from mypy import parse
 from mypy import stats
 from mypy.report import Reports
 from mypy import defaults
+from mypy import moduleinfo
 
 
 # We need to know the location of this file to load data, but
@@ -652,8 +653,18 @@ class State:
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
         self.errors().set_file(path)
-        self.errors().report(line, "Cannot find module named '{}'".format(id))
-        self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note')
+        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
+        if ((self.manager.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
+              (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+            self.errors().report(
+                line, "No library stub file for standard library module '{}'".format(id))
+            self.errors().report(line, stub_msg, severity='note')
+        elif moduleinfo.is_third_party_module(id):
+            self.errors().report(line, "No library stub file for module '{}'".format(id))
+            self.errors().report(line, stub_msg, severity='note')
+        else:
+            self.errors().report(line, "Cannot find module named '{}'".format(id))
+            self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note')
 
 
 class UnprocessedFile(State):

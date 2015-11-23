@@ -1391,3 +1391,15 @@ x = 1
 [file m/m2.pyi]
 y = 1
 [out]
+
+[case testMissingStubForThirdPartyModule]
+import nosexcover
+[out]
+main:1: error: No library stub file for module 'nosexcover'
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testMissingStubForStdLibModule]
+import tabnanny
+[out]
+main:1: error: No library stub file for standard library module 'tabnanny'
+main:1: note: (Stub files are from https://github.com/python/typeshed)
