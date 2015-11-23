@@ -269,17 +269,24 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
 def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) -> Type:
     """Return the type of a type object.
 
-    For a generic type G with type variables T and S the type is of form
+    For a generic type G with type variables T and S the type is generally of form
 
-      def [T, S](...) -> G[T, S],
+      Callable[..., G[T, S]]
 
-    where ... are argument types for the __init__ method (without the self argument).
+    where ... are argument types for the __init__/__new__ method (without the self
+    argument). Also, the fallback type will be 'type' instead of 'function'.
     """
     init_method = info.get_method('__init__')
     if not init_method:
         # Must be an invalid class definition.
         return AnyType()
     else:
+        if init_method.info.fullname() == 'builtins.object':
+            # No non-default __init__ -> look at __new__ instead.
+            new_method = info.get_method('__new__')
+            if new_method.info.fullname() != 'builtins.object':
+                # Found one! Get signature from __new__.
+                return type_object_type_from_new(new_method, info, builtin_type)
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
         init_type = method_type_with_fallback(init_method, builtin_type('builtins.function'))
@@ -338,3 +345,10 @@ class TvarTranslator(TypeTranslator):
             else:
                 items.append(v)
         return items
+
+
+def type_object_type_from_new(new_method: FuncBase, info: TypeInfo,
+                              builtin_type: Callable[[str], Type]) -> Type:
+    """Return a type object type based on __new__."""
+    new_type = method_type_with_fallback(new_method, builtin_type('builtins.type'))
+    return class_callable(new_type, info, builtin_type('builtins.type'))

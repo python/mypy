@@ -1193,6 +1193,34 @@ class A:
 class B: pass
 
 
+-- __new__
+-- --------
+
+
+[case testConstructInstanceWith__new__]
+class C:
+    def __new__(cls, foo: int = None) -> 'C':
+        obj = object.__new__(cls)
+        return obj
+
+x = C(foo=12)
+x.a # E: "C" has no attribute "a"
+C(foo='') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+[builtins fixtures/__new__.py]
+
+[case testConstructInstanceWithDynamicallyTyped__new__]
+class C:
+    def __new__(cls, foo):
+        obj = object.__new__(cls)
+        return obj
+
+x = C(foo=12)
+x = C(foo='x')
+x.a # E: "C" has no attribute "a"
+C(bar='') # E: Unexpected keyword argument "bar" for "C"
+[builtins fixtures/__new__.py]
+
+
 -- Special cases
 -- -------------
 
