@@ -658,13 +658,14 @@ class State:
               (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
             self.errors().report(
                 line, "No library stub file for standard library module '{}'".format(id))
-            self.errors().report(line, stub_msg, severity='note')
+            self.errors().report(line, stub_msg, severity='note', only_once=True)
         elif moduleinfo.is_third_party_module(id):
             self.errors().report(line, "No library stub file for module '{}'".format(id))
-            self.errors().report(line, stub_msg, severity='note')
+            self.errors().report(line, stub_msg, severity='note', only_once=True)
         else:
             self.errors().report(line, "Cannot find module named '{}'".format(id))
-            self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note')
+            self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
+                                 only_once=True)
 
 
 class UnprocessedFile(State):

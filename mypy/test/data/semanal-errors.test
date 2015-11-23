@@ -327,7 +327,6 @@ from a.b import *
 main:2: error: Cannot find module named 'm.n'
 main:2: note: (Perhaps setting MYPYPATH would help)
 main:3: error: Cannot find module named 'a.b'
-main:3: note: (Perhaps setting MYPYPATH would help)
 
 [case testErrorInImportedModule]
 import m
@@ -1403,3 +1402,11 @@ import tabnanny
 [out]
 main:1: error: No library stub file for standard library module 'tabnanny'
 main:1: note: (Stub files are from https://github.com/python/typeshed)
+
+[case testMissingStubForTwoModules]
+import tabnanny
+import tkinter
+[out]
+main:1: error: No library stub file for standard library module 'tabnanny'
+main:1: note: (Stub files are from https://github.com/python/typeshed)
+main:2: error: No library stub file for standard library module 'tkinter'

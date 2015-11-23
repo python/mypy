@@ -76,12 +76,16 @@ class Errors:
     # Ignore errors on these lines.
     ignored_lines = None  # type: Set[int]
 
+    # Collection of reported only_once messages.
+    only_once_messages = None  # type: Set[str]
+
     def __init__(self) -> None:
         self.error_info = []
         self.import_ctx = []
         self.type_name = [None]
         self.function_or_member = [None]
         self.ignored_lines = set()
+        self.only_once_messages = set()
 
     def copy(self) -> 'Errors':
         new = Errors()
@@ -138,11 +142,24 @@ class Errors:
         self.import_ctx = ctx[:]
 
     def report(self, line: int, message: str, blocker: bool = False,
-               severity: str = 'error', file: str = None) -> None:
-        """Report message at the given line using the current error context."""
+               severity: str = 'error', file: str = None, only_once: bool = False) -> None:
+        """Report message at the given line using the current error context.
+
+        Args:
+            line: line number of error
+            message: message to report
+            blocker: if True, don't continue analysis after this error
+            severity: 'error', 'note' or 'warning'
+            file: if non-None, override current file as context
+            only_once: if True, only report this exact message once per build
+        """
         if line in self.ignored_lines:
             # Annotation requests us to ignore all errors on this line.
             return
+        if only_once:
+            if message in self.only_once_messages:
+                return
+            self.only_once_messages.add(message)
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
