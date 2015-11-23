@@ -8,7 +8,7 @@ This module can be run as a script (lex.py FILE).
 
 import re
 
-from mypy.util import short_type
+from mypy.util import short_type, find_python_encoding
 from mypy import defaults
 from typing import List, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
@@ -345,7 +345,7 @@ class Lexer:
                 self.enc = 'utf8'
                 bom = True
             else:
-                self.enc, enc_line = self.find_encoding(text)
+                self.enc, enc_line = find_python_encoding(text, self.pyversion)
                 bom = False
             try:
                 decoded_text = text.decode(self.enc)
@@ -391,19 +391,6 @@ class Lexer:
         self.lex_indent()
 
         self.add_token(Eof(''))
-
-    def find_encoding(self, text: bytes) -> Tuple[str, int]:
-        result = re.match(br'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)', text)
-        if result:
-            line = 2 if result.group(1) else 1
-            encoding = result.group(3).decode('ascii')
-            # Handle some aliases that Python is happy to accept and that are used in the wild.
-            if encoding.startswith(('iso-latin-1-', 'latin-1-')) or encoding == 'iso-latin-1':
-                encoding = 'latin-1'
-            return encoding, line
-        else:
-            default_encoding = 'utf8' if self.pyversion[0] >= 3 else 'ascii'
-            return default_encoding, -1
 
     def report_unicode_decode_error(self, exc: UnicodeDecodeError, text: bytes) -> None:
         lines = text.splitlines()

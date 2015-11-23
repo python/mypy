@@ -14,6 +14,7 @@ import os.path
 import shlex
 import subprocess
 import sys
+import re
 from os.path import dirname, basename
 
 from typing import Dict, List, Tuple, cast, Set, Union, Optional
@@ -29,6 +30,7 @@ from mypy import stats
 from mypy.report import Reports
 from mypy import defaults
 from mypy import moduleinfo
+from mypy import util
 
 
 # We need to know the location of this file to load data, but
@@ -97,14 +99,14 @@ class BuildSource:
         self.module = module or '__main__'
         self.text = text
 
-    def load(self, lib_path) -> Union[str, bytes]:
+    def load(self, lib_path, pyversion: Tuple[int, int]) -> str:
         """Load the module if needed. This also has the side effect
         of calculating the effective path for modules."""
         if self.text is not None:
             return self.text
 
         self.path = self.path or lookup_program(self.module, lib_path)
-        return read_program(self.path)
+        return read_program(self.path, pyversion)
 
     @property
     def effective_path(self) -> str:
@@ -189,7 +191,7 @@ def build(sources: List[BuildSource],
     # implicit module id and the import context is empty initially ([]).
     initial_states = []  # type: List[UnprocessedFile]
     for source in sources:
-        content = source.load(lib_path)
+        content = source.load(lib_path, pyversion)
         info = StateInfo(source.effective_path, source.module, [], manager)
         initial_state = UnprocessedFile(info, content)
         initial_states += [initial_state]
@@ -278,10 +280,9 @@ def lookup_program(module: str, lib_path: List[str]) -> str:
             "mypy: can't find module '{}'".format(module)])
 
 
-def read_program(path: str) -> bytes:
+def read_program(path: str, pyversion: Tuple[int, int]) -> str:
     try:
-        with open(path, 'rb') as file:
-            text = file.read()
+        text = read_with_python_encoding(path, pyversion)
     except IOError as ioerr:
         raise CompileError([
             "mypy: can't read file '{}': {}".format(path, ioerr.strerror)])
@@ -681,7 +682,7 @@ class State:
 
 
 class UnprocessedFile(State):
-    def __init__(self, info: StateInfo, program_text: Union[str, bytes]) -> None:
+    def __init__(self, info: StateInfo, program_text: str) -> None:
         super().__init__(info)
         self.program_text = program_text
 
@@ -771,7 +772,8 @@ class UnprocessedFile(State):
             file_id = '__builtin__'
         else:
             file_id = id
-        path, text = read_module_source_from_file(file_id, self.manager.lib_path)
+        path, text = read_module_source_from_file(file_id, self.manager.lib_path,
+                                                  self.manager.pyversion)
         if text is not None:
             info = StateInfo(path, id, self.errors().import_context(),
                              self.manager)
@@ -900,7 +902,9 @@ def trace(s):
 
 
 def read_module_source_from_file(id: str,
-                                 lib_path: List[str]) -> Tuple[str, str]:
+                                 lib_path: List[str],
+                                 pyversion: Tuple[int, int]
+                                 ) -> Tuple[Optional[str], Optional[str]]:
     """Find and read the source file of a module.
 
     Return a pair (path, file contents). Return (None, None) if the module
@@ -912,13 +916,8 @@ def read_module_source_from_file(id: str,
     """
     path = find_module(id, lib_path)
     if path is not None:
-        text = ''
         try:
-            f = open(path)
-            try:
-                text = f.read()
-            finally:
-                f.close()
+            text = read_with_python_encoding(path, pyversion)
         except IOError:
             return None, None
         return path, text
@@ -985,3 +984,28 @@ def make_parent_dirs(path: str) -> None:
         os.makedirs(parent)
     except OSError:
         pass
+
+
+def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
+    """Read the Python file with while obeying PEP-263 encoding detection"""
+    source_bytearray = bytearray()
+    encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
+
+    with open(path, 'rb') as f:
+        # read first two lines and check if PEP-263 coding is present
+        source_bytearray.extend(f.readline())
+        source_bytearray.extend(f.readline())
+
+        # check for BOM UTF-8 encoding and strip it out if present
+        if source_bytearray.startswith(b'\xef\xbb\xbf'):
+            encoding = 'utf8'
+            source_bytearray = source_bytearray[3:]
+        else:
+            _encoding, _ = util.find_python_encoding(source_bytearray, pyversion)
+            # check that the coding isn't mypy. We skip it since
+            # registering may not have happened yet
+            if _encoding != 'mypy':
+                encoding = _encoding
+
+        source_bytearray.extend(f.read())
+        return source_bytearray.decode(encoding)
