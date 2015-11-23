@@ -16,6 +16,8 @@ from typing import List, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 class Token:
     """Base class for all tokens."""
 
+    line = 0
+
     def __init__(self, string: str, pre: str = '') -> None:
         """Initialize a token.
 
