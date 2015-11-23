@@ -655,7 +655,7 @@ class State:
         self.errors().set_file(path)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
         if ((self.manager.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
-              (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+                (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
             self.errors().report(
                 line, "No library stub file for standard library module '{}'".format(id))
             self.errors().report(line, stub_msg, severity='note', only_once=True)
