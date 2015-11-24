@@ -169,7 +169,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
-                for i in range(len(instance.args)):
+                for i in range(min(len(mapped.args), len(instance.args))):
                     # The constraints for generic type parameters are
                     # invariant. Include the default constraint and its
                     # negation to achieve the effect.
