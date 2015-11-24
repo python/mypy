@@ -203,6 +203,10 @@ def default_data_dir(bin_dir: str) -> str:
     # TODO fix this logic
     if not bin_dir:
         # Default to directory containing this file's parent.
+        grandparent_dir = os.path.dirname(os.path.dirname(__file__))
+        # Running from within an egg, likely from setuptools.
+        if grandparent_dir.endswith('.egg'):
+            return os.path.join(grandparent_dir, 'lib', 'mypy')
         return os.path.dirname(os.path.dirname(__file__))
     base = os.path.basename(bin_dir)
     dir = os.path.dirname(bin_dir)
