@@ -1,5 +1,7 @@
 import os
 import os.path
+import sys
+import traceback
 
 from typing import Tuple, List, TypeVar, Sequence, Any, Callable, Set
 
@@ -343,3 +345,17 @@ def remove_path_prefix(path: str, prefix: str) -> str:
         return path[len(prefix):]
     else:
         return path
+
+
+def report_internal_error(err: Exception, file: str, line: int) -> None:
+    """Display stack trace and file location for an internal error + exit."""
+    tb = traceback.extract_stack()[:-2]
+    tb2 = traceback.extract_tb(sys.exc_info()[2])
+    print('Traceback (most recent call last):')
+    for s in traceback.format_list(tb + tb2):
+        print(s.rstrip('\n'))
+    print('{}: {}'.format(type(err).__name__, err))
+    print('\n*** INTERNAL ERROR ***')
+    print('\n{}:{}: error: Internal error --'.format(file, line),
+          'please report a bug at https://github.com/JukkaL/mypy/issues')
+    exit(1)

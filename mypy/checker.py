@@ -6,7 +6,7 @@ from typing import (
     Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional
 )
 
-from mypy.errors import Errors
+from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Node, MypyFile, LDEF, Var,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
@@ -375,7 +375,10 @@ class TypeChecker(NodeVisitor[Type]):
     def accept(self, node: Node, type_context: Type = None) -> Type:
         """Type check a node in the given type context."""
         self.type_context.append(type_context)
-        typ = node.accept(self)
+        try:
+            typ = node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.errors.file, node.line)
         self.type_context.pop()
         self.store_type(node, typ)
         if self.typing_mode_none():
