@@ -237,7 +237,11 @@ def analyze_class_attribute_access(itype: Instance,
     if isinstance(node.node, TypeInfo):
         return type_object_type(cast(TypeInfo, node.node), builtin_type)
 
-    return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
+    if is_decorated:
+        # TODO: Return type of decorated function. This is quick hack to work around #998.
+        return AnyType()
+    else:
+        return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
 
 def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
