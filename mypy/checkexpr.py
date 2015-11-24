@@ -1198,6 +1198,10 @@ class ExpressionChecker:
         """Type check a super expression."""
         if e.info and e.info.bases:
             # TODO fix multiple inheritance etc
+            if len(e.info.mro) < 2:
+                self.chk.fail('Internal error: unexpected mro for {}: {}'.format(
+                    e.info.name(), e.info.mro), e)
+                return AnyType()
             return analyze_member_access(e.name, self_type(e.info), e,
                                          is_lvalue, True,
                                          self.named_type, self.msg,
