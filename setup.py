@@ -5,7 +5,7 @@ import os
 import os.path
 import sys
 
-from distutils.core import setup
+from setuptools import setup
 from mypy.version import __version__
 from mypy import git
 
@@ -69,6 +69,13 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
+entry_points = {
+    'distutils.commands': [
+        'mypy = mypy.main:MyPyCommand'
+    ]
+}
+
+
 setup(name='mypy-lang',
       version=version,
       description=description,
@@ -84,4 +91,5 @@ setup(name='mypy-lang',
       scripts=['scripts/mypy'],
       data_files=data_files,
       classifiers=classifiers,
+      entry_points=entry_points,
       )

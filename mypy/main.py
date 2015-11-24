@@ -2,10 +2,13 @@
 
 import os
 import os.path
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+
+import setuptools as setuptools  # type: ignore
 
 import typing
 from typing import Dict, List, Tuple
@@ -29,6 +32,45 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
         self.dirty_stubs = False
+
+
+class MyPyCommand(setuptools.Command):
+    """The :class:`MyPyCommand` class is used by setuptools to perform
+    type checks on registered modules.
+    """
+
+    description = "Validate PEP 0484 Types with mypy"
+    user_options = [
+        ('mypy-args=', None, 'Arguments to pass through to mypy')
+    ]  # type: List[tuple]
+
+    def initialize_options(self):
+        self.mypy_args = ''
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            mypy_options = []
+            for package in sorted(set(self.distribution.packages)):
+                mypy_options.append('--package')
+                mypy_options.append(package)
+            mypy_options.extend(shlex.split(self.mypy_args))
+            sources, options = process_options(mypy_options)
+            # If the user has requested to use the python_path during analysis,
+            # fetch all required eggs (This will also add them to sys.path).
+            # This will ensure mypy behaves as if the package were installed
+            # globally without having to globally install it to modify
+            # PYTHONPATH
+            if options.python_path and self.distribution.install_requires:
+                self.distribution.fetch_build_eggs(
+                    self.distribution.install_requires)
+            type_check_only(sources, None, options)
+        except CompileError as e:
+            for m in e.messages:
+                sys.stderr.write(m + '\n')
+            sys.exit(1)
 
 
 def main(script_path: str) -> None:
