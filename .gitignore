@@ -1,6 +1,6 @@
 build/
 __pycache__
-*.pyc
+*.py[cod]
 *~
 @*
 /build
@@ -8,3 +8,11 @@ __pycache__
 docs/build/
 *.iml
 /out/
+.venv/
+
+# Packages
+*.egg
+*.egg-info
+
+#IDEs
+.idea
