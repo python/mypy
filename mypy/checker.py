@@ -914,15 +914,21 @@ class TypeChecker(NodeVisitor[Type]):
         second_type = second.type
         if second_type is None and isinstance(second.node, FuncDef):
             second_type = self.function_type(cast(FuncDef, second.node))
-        # TODO: What if first_type or second_type is None? What if some classes are generic?
+        # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
             first_sig = method_type(cast(FunctionLike, first_type))
             second_sig = method_type(cast(FunctionLike, second_type))
             ok = is_subtype(first_sig, second_sig)
-        else:
+        elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
+        else:
+            if first_type is None:
+                self.msg.cannot_determine_type_in_base(name, base1.name(), ctx)
+            if second_type is None:
+                self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
+            ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
                                                          ctx)

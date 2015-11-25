@@ -679,6 +679,9 @@ class MessageBuilder:
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context)
 
+    def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
+        self.fail("Cannot determine type of '%s' in base class '%s'" % (name, base), context)
+
     def invalid_method_type(self, sig: CallableType, context: Context) -> None:
         self.fail('Invalid method type', context)
 
