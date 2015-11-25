@@ -1410,3 +1410,13 @@ import tkinter
 main:1: error: No library stub file for standard library module 'tabnanny'
 main:1: note: (Stub files are from https://github.com/python/typeshed)
 main:2: error: No library stub file for standard library module 'tkinter'
+
+[case testListComprehensionSpecialScoping]
+class A:
+    x = 1
+    y = 1
+    z = 1
+    [x for i in z if y]
+[out]
+main:5: error: Name 'y' is not defined
+main:5: error: Name 'x' is not defined

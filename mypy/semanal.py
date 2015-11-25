@@ -1780,25 +1780,40 @@ class SemanticAnalyzer(NodeVisitor):
         expr.key.accept(self)
         expr.value.accept(self)
         self.leave()
+        self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
         self.enter()
         self.analyze_comp_for(expr)
         expr.left_expr.accept(self)
         self.leave()
+        self.analyze_comp_for_2(expr)
 
     def analyze_comp_for(self, expr: Union[GeneratorExpr,
                                            DictionaryComprehension]) -> None:
-        """Analyses the 'comp_for' part of comprehensions.
-        That is the part after 'for' in (x for x in l if p)
+        """Analyses the 'comp_for' part of comprehensions (part 1).
+
+        That is the part after 'for' in (x for x in l if p). This analyzes
+        variables and conditions which are analyzed in a local scope.
         """
-        for index, sequence, conditions in zip(expr.indices, expr.sequences,
-                                               expr.condlists):
-            sequence.accept(self)
+        for i, (index, sequence, conditions) in enumerate(zip(expr.indices,
+                                                              expr.sequences,
+                                                              expr.condlists)):
+            if i > 0:
+                sequence.accept(self)
             # Bind index variables.
             self.analyze_lvalue(index)
             for cond in conditions:
                 cond.accept(self)
+
+    def analyze_comp_for_2(self, expr: Union[GeneratorExpr,
+                                             DictionaryComprehension]) -> None:
+        """Analyses the 'comp_for' part of comprehensions (part 2).
+
+        That is the part after 'for' in (x for x in l if p). This analyzes
+        the 'l' part which is analyzed in the surrounding scope.
+        """
+        expr.sequences[0].accept(self)
 
     def visit_func_expr(self, expr: FuncExpr) -> None:
         self.analyze_function(expr)

@@ -1104,6 +1104,17 @@ o = [x for x in a] # type: List[object]
 class A: pass
 [builtins fixtures/for.py]
 
+[case testSimpleListComprehensionInClassBody]
+from typing import List
+class A:
+    a = None # type: List[A]
+    a = [x for x in a]
+    b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type List[A]
+class B: pass
+[builtins fixtures/for.py]
+[out]
+main: note: In class "A":
+
 
 -- Set comprehension
 -- -----------------
