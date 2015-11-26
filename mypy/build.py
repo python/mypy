@@ -920,6 +920,8 @@ def find_module(id: str, lib_path: List[str]) -> str:
 
 def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
     module_path = find_module(module, lib_path)
+    if not module_path:
+        return []
     result = [BuildSource(None, module, None)]
     if module_path.endswith(('__init__.py', '__init__.pyi')):
         for item in os.listdir(os.path.dirname(module_path)):
