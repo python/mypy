@@ -128,7 +128,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             return [BuildSource(None, args[1], None)], options
         elif args[0] == '--package' and args[1:]:
             options.build_flags.append(build.MODULE)
-            targets = build.find_modules_recursive(args[1], [os.getcwd()])
+            lib_path = [os.getcwd()] + build.mypy_path()
+            targets = build.find_modules_recursive(args[1], lib_path)
             if not targets:
                 fail("Can't find package '{}'".format(args[1]))
             return targets, options

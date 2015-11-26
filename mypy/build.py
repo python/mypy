@@ -224,6 +224,13 @@ def default_data_dir(bin_dir: str) -> str:
         raise RuntimeError("Broken installation: can't determine base dir")
 
 
+def mypy_path() -> List[str]:
+    path_env = os.getenv('MYPYPATH')
+    if not path_env:
+        return []
+    return path_env.split(os.pathsep)
+
+
 def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
         python_path: bool) -> List[str]:
     """Return default standard library search paths."""
@@ -231,9 +238,7 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
     path = []  # type: List[str]
 
     # Add MYPYPATH environment variable to library path, if defined.
-    path_env = os.getenv('MYPYPATH')
-    if path_env is not None:
-        path[:0] = path_env.split(os.pathsep)
+    path.extend(mypy_path())
 
     auto = os.path.join(data_dir, 'stubs-auto')
     if os.path.isdir(auto):
