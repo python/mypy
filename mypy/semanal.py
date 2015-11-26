@@ -1357,6 +1357,7 @@ class SemanticAnalyzer(NodeVisitor):
         removed = []  # type: List[int]
         no_type_check = False
         for i, d in enumerate(dec.decorators):
+            # A bunch of decorators are special cased here.
             if refers_to_fullname(d, 'abc.abstractmethod'):
                 removed.append(i)
                 dec.func.is_abstract = True
@@ -1395,14 +1396,10 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.var.is_initialized_in_class = True
                 self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
                                 dec)
-        if dec.decorators and dec.var.is_property:
-            self.fail('Decorated property not supported', dec)
         if not no_type_check:
             dec.func.accept(self)
-        if not dec.decorators and not dec.var.is_property:
-            # No non-special decorators left. We can trivially infer the type
-            # of the function here.
-            dec.var.type = dec.func.type
+        if dec.decorators and dec.var.is_property:
+            self.fail('Decorated property not supported', dec)
 
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
@@ -2162,10 +2159,12 @@ class FirstPass(NodeVisitor):
 class ThirdPass(TraverserVisitor[None]):
     """The third and final pass of semantic analysis.
 
-    Check type argument counts and values of generic types.
+    Check type argument counts and values of generic types, and perform some
+    straightforward type inference.
     """
 
-    def __init__(self, errors: Errors) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], errors: Errors) -> None:
+        self.modules = modules
         self.errors = errors
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
@@ -2183,6 +2182,37 @@ class ThirdPass(TraverserVisitor[None]):
             self.analyze(type)
         super().visit_class_def(tdef)
 
+    def visit_decorator(self, dec: Decorator) -> None:
+        """Try to infer the type of the decorated function.
+
+        This helps us resolve forward references to decorated
+        functions during type checking.
+        """
+        super().visit_decorator(dec)
+        if dec.var.is_property:
+            if dec.func.type is None:
+                dec.var.type = AnyType()
+            elif isinstance(dec.func.type, CallableType):
+                dec.var.type = dec.func.type.ret_type
+            return
+        decorator_preserves_type = True
+        for expr in dec.decorators:
+            preserve_type = False
+            if isinstance(expr, RefExpr) and isinstance(expr.node, FuncDef):
+                if is_identity_signature(expr.node.type):
+                    preserve_type = True
+            if not preserve_type:
+                decorator_preserves_type = False
+                break
+        if decorator_preserves_type:
+            # No non-special decorators left. We can trivially infer the type
+            # of the function here.
+            dec.var.type = function_type(dec.func, self.builtin_type('function'))
+        if dec.decorators and returns_any_if_called(dec.decorators[0]):
+            # The outermost decorator will return Any so we know the type of the
+            # decorated function.
+            dec.var.type = AnyType()
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
         super().visit_assignment_stmt(s)
@@ -2196,6 +2226,8 @@ class ThirdPass(TraverserVisitor[None]):
             self.analyze(type)
         super().visit_type_application(e)
 
+    # Helpers
+
     def analyze(self, type: Type) -> None:
         if type:
             analyzer = TypeAnalyserPass3(self.fail)
@@ -2203,6 +2235,12 @@ class ThirdPass(TraverserVisitor[None]):
 
     def fail(self, msg: str, ctx: Context) -> None:
         self.errors.report(ctx.get_line(), msg)
+
+    def builtin_type(self, name: str, args: List[Type] = None) -> Instance:
+        names = self.modules['builtins']
+        sym = names.names[name]
+        assert isinstance(sym.node, TypeInfo)
+        return Instance(cast(TypeInfo, sym.node), args or [])
 
 
 def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
@@ -2356,3 +2394,34 @@ class MarkImportsUnreachableVisitor(TraverserVisitor):
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_unreachable = True
+
+
+def is_identity_signature(sig: Type) -> bool:
+    """Is type a callable of form T -> T (where T is a type variable)?"""
+    if isinstance(sig, CallableType) and sig.arg_kinds == [ARG_POS]:
+        if isinstance(sig.arg_types[0], TypeVarType) and isinstance(sig.ret_type, TypeVarType):
+            return sig.arg_types[0].id == sig.ret_type.id
+    return False
+
+
+def returns_any_if_called(expr: Node) -> bool:
+    """Return True if we can predict that expr will return Any if called.
+
+    This only uses information available during semantic analysis so this
+    will sometimes return False because of insufficient information (as
+    type inference hasn't run yet).
+    """
+    if isinstance(expr, RefExpr):
+        if isinstance(expr.node, FuncDef):
+            typ = expr.node.type
+            if typ is None:
+                # No signature -> default to Any.
+                return True
+            # Explicit Any return?
+            return isinstance(typ, CallableType) and isinstance(typ.ret_type, AnyType)
+        elif isinstance(expr.node, Var):
+            typ = expr.node.type
+            return typ is None or isinstance(typ, AnyType)
+    elif isinstance(expr, CallExpr):
+        return returns_any_if_called(expr.callee)
+    return False

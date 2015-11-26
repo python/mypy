@@ -339,10 +339,9 @@ class BuildManager:
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
-        self.semantic_analyzer_pass3 = ThirdPass(self.errors)
-        self.type_checker = TypeChecker(self.errors,
-                                        self.semantic_analyzer.modules,
-                                        self.pyversion)
+        modules = self.semantic_analyzer.modules
+        self.semantic_analyzer_pass3 = ThirdPass(modules, self.errors)
+        self.type_checker = TypeChecker(self.errors, modules, self.pyversion)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]

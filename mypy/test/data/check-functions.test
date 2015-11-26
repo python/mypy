@@ -559,7 +559,6 @@ def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
 @dec2
 def f(x, y): pass
 
-
 [case testNoTypeCheckDecoratorOnMethod1]
 from typing import no_type_check
 
@@ -604,6 +603,214 @@ import typing
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     x = y
+
+
+-- Forward references to decorated functions
+-- -----------------------------------------
+
+
+[case testForwardReferenceToDynamicallyTypedDecorator]
+def f(self) -> None:
+    g()
+    g(1)
+
+def dec(f):
+    return f
+
+@dec
+def g():
+    pass
+
+[case testForwardReferenceToDecoratorWithAnyReturn]
+from typing import Any
+
+def f(self) -> None:
+    g()
+    g(1)
+
+def dec(f) -> Any:
+    return f
+
+@dec
+def g():
+    pass
+
+[case testForwardReferenceToDecoratorWithIdentityMapping]
+from typing import TypeVar
+
+def f(self) -> None:
+    g()
+    g(1) # E: Too many arguments for "g"
+    h(1).x # E: "str" has no attribute "x"
+    h('') # E: Argument 1 to "h" has incompatible type "str"; expected "int"
+
+T = TypeVar('T')
+def dec(f: T) -> T:
+    return f
+
+@dec
+def g(): pass
+@dec
+def h(x: int) -> str: pass
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToDynamicallyTypedDecoratedMethod]
+def f(self) -> None:
+    A().f(1).y
+    A().f()
+
+class A:
+    @dec
+    def f(self, x): pass
+
+def dec(f): return f
+[builtins fixtures/staticmethod.py]
+
+[case testForwardReferenceToStaticallyTypedDecoratedMethod]
+from typing import TypeVar
+
+def f(self) -> None:
+    A().f(1).y # E: "str" has no attribute "y"
+    A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+class A:
+    @dec
+    def f(self, a: int) -> str: return ''
+
+T = TypeVar('T')
+def dec(f: T) -> T: return f
+[builtins fixtures/staticmethod.py]
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToDynamicallyTypedProperty]
+def f(self) -> None:
+    A().x.y
+
+class A:
+    @property
+    def x(self): pass
+[builtins fixtures/property.py]
+
+[case testForwardReferenceToStaticallyTypedProperty]
+def f(self) -> None:
+    A().x.y # E: "int" has no attribute "y"
+
+class A:
+    @property
+    def x(self) -> int: return 1
+[builtins fixtures/property.py]
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToDynamicallyTypedStaticMethod]
+def f(self) -> None:
+    A.x(1).y
+    A.x() # E: Too few arguments for "x"
+
+class A:
+    @staticmethod
+    def x(x): pass
+[builtins fixtures/staticmethod.py]
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToStaticallyTypedStaticMethod]
+def f(self) -> None:
+    A.x(1).y # E: "str" has no attribute "y"
+    A.x('') # E: Argument 1 to "x" of "A" has incompatible type "str"; expected "int"
+
+class A:
+    @staticmethod
+    def x(a: int) -> str: return ''
+[builtins fixtures/staticmethod.py]
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToDynamicallyTypedClassMethod]
+def f(self) -> None:
+    A.x(1).y
+    A.x() # E: Too few arguments for "x"
+
+class A:
+    @classmethod
+    def x(cls, a): pass
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToStaticallyTypedClassMethod]
+def f(self) -> None:
+    A.x(1).y # E: "str" has no attribute "y"
+    A.x('') # E: Argument 1 to "x" of "A" has incompatible type "str"; expected "int"
+
+class A:
+    @classmethod
+    def x(cls, x: int) -> str: return ''
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToDecoratedFunctionUsingMemberExpr]
+import m
+
+def f(self) -> None:
+    g(1).x # E: "str" has no attribute "x"
+
+@m.dec
+def g(x: int) -> str: pass
+[file m.py]
+from typing import TypeVar
+T = TypeVar('T')
+def dec(f: T) -> T:
+    return f
+[out]
+main: note: In function "f":
+
+[case testForwardReferenceToFunctionWithMultipleDecorators]
+def f(self) -> None:
+    g()
+    g(1)
+
+def dec(f):
+    return f
+
+@dec
+@dec2
+def g():
+    pass
+
+def dec2(f):
+    return f
+
+[case testForwardReferenceToDynamicallyTypedDecoratedStaticMethod]
+def f(self) -> None:
+    A().f(1).y
+    A().f()
+    A().g(1).y
+    A().g()
+
+class A:
+    @dec
+    @staticmethod
+    def f(self, x): pass
+    @staticmethod
+    @dec
+    def g(self, x): pass
+
+def dec(f): return f
+[builtins fixtures/staticmethod.py]
+
+[case testForwardRefereceToDecoratedFunctionWithCallExpressionDecorator]
+def f(self) -> None:
+    g()
+    g(1)
+
+@dec(1)
+def g(): pass
+
+def dec(f): pass
 
 
 -- Conditional function definition
@@ -874,7 +1081,7 @@ def f(x, y):
     v = realtypes(x, y) # E: Argument 2 to "realtypes" has incompatible type "object"; expected "int"
     return v # E: Incompatible return value type: expected builtins.int, got builtins.str
 [out]
-main: note: In function "f": 
+main: note: In function "f":
 
 [case testCallDocstringFunction-skip]
 from typing import List
