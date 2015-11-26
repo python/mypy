@@ -1650,11 +1650,18 @@ class TypeInfo(SymbolNode):
 
 
 class SymbolTableNode:
-    # LDEF/GDEF/MDEF/UNBOUND_TVAR/TVAR/...
+    # Kind of node. Possible values:
+    #  - LDEF: local definition (of any kind)
+    #  - GDEF: global (module-level) definition
+    #  - MDEF: class member definition
+    #  - UNBOUND_TVAR: TypeVar(...) definition, not bound
+    #  - TVAR: type variable in a bound scope (generic function / generic clas)
+    #  - MODULE_REF: reference to a module
+    #  - TYPE_ALIAS: type alias
     kind = None  # type: int
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
-    node = None  # type: SymbolNode
+    node = None  # type: Optional[SymbolNode]
     # Type variable id (for bound type variables only)
     tvar_id = 0
     # Module id (e.g. "foo.bar") or None
