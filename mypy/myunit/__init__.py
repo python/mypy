@@ -84,7 +84,9 @@ def assert_raises(typ: type, *rest: Any) -> None:
     # Perform call and verify the exception.
     try:
         f(*args)
-    except Exception as e:
+    except BaseException as e:
+        if isinstance(e, KeyboardInterrupt):
+            raise
         assert_type(typ, e)
         if msg:
             assert_equal(e.args[0], msg, 'Invalid message {}, expected {}')
@@ -295,7 +297,9 @@ def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
     exc_traceback = None  # type: Any
     try:
         test.run()
-    except Exception:
+    except BaseException as e:
+        if isinstance(e, KeyboardInterrupt):
+            raise
         exc_type, exc_value, exc_traceback = sys.exc_info()
     test.tear_down()  # FIX: check exceptions
     times.append((time.time() - time0, name))
