@@ -522,6 +522,16 @@ except:
 def f(x): pass
 def g(x, y): pass
 
+[case testImportedVariableViaImport]
+try:
+    from m import x
+except:
+    from n import x # E: Incompatible import of "x" (imported name has type "str", local name has type "int")
+[file m.py]
+x = 1
+[file n.py]
+x = ''
+
 
 -- Test cases that simulate 'mypy -m modname'
 --
