@@ -3,24 +3,24 @@
 
 from abc import abstractmethod
 
-cast = object()
-overload = object()
-Any = object()
-Union = object()
-Optional = object()
-TypeVar = object()
-Generic = object()
-Tuple = object()
-Callable = object()
-builtinclass = object()
-_promote = object()
-NamedTuple = object()
-no_type_check = object()
+cast = 0
+overload = 0
+Any = 0
+Union = 0
+Optional = 0
+TypeVar = 0
+Generic = 0
+Tuple = 0
+Callable = 0
+builtinclass = 0
+_promote = 0
+NamedTuple = 0
+no_type_check = 0
 
 # Type aliases.
-List = object()
-Dict = object()
-Set = object()
+List = 0
+Dict = 0
+Set = 0
 
 T = TypeVar('T')
 

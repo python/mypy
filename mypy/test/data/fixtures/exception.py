@@ -5,6 +5,7 @@ class object:
 class type: pass
 class tuple: pass
 class function: pass
+class int: pass
 class str: pass
 
 class BaseException: pass

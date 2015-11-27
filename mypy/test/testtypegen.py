@@ -46,7 +46,7 @@ class TypeExportSuite(Suite):
 
             # Ignore NameExpr nodes of variables with explicit (trivial) types
             # to simplify output.
-            searcher = VariableDefinitionNodeSearcher()
+            searcher = SkippedNodeSearcher()
             for file in result.files.values():
                 file.accept(searcher)
             ignored = searcher.nodes
@@ -77,15 +77,30 @@ class TypeExportSuite(Suite):
                                                                testcase.line))
 
 
-class VariableDefinitionNodeSearcher(TraverserVisitor):
+class SkippedNodeSearcher(TraverserVisitor):
     def __init__(self):
         self.nodes = set()
+
+    def visit_mypy_file(self, f):
+        self.is_typing = f.fullname() == 'typing'
+        super().visit_mypy_file(f)
 
     def visit_assignment_stmt(self, s):
         if s.type or ignore_node(s.rvalue):
             for lvalue in s.lvalues:
                 if isinstance(lvalue, NameExpr):
                     self.nodes.add(lvalue)
+        super().visit_assignment_stmt(s)
+
+    def visit_name_expr(self, n):
+        self.skip_if_typing(n)
+
+    def visit_int_expr(self, n):
+        self.skip_if_typing(n)
+
+    def skip_if_typing(self, n):
+        if self.is_typing:
+            self.nodes.add(n)
 
 
 def ignore_node(node):
