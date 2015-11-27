@@ -512,7 +512,7 @@ except:
 x = ''
 y = ''
 
-[case testOverrideImportedFunctionViaImport]
+[case testRedefineImportedFunctionViaImport]
 try:
     from m import f, g
 except:
@@ -531,6 +531,17 @@ except:
 x = 1
 [file n.py]
 x = ''
+
+[case testRedefineFunctionViaImport]
+def f(x): pass
+def g(x): pass
+try:
+    from m import f, g # E: Incompatible import of "g" (imported name has type Callable[[Any, Any], Any], local name has type Callable[[Any], Any])
+except:
+    pass
+[file m.py]
+def f(x): pass
+def g(x, y): pass
 
 
 -- Test cases that simulate 'mypy -m modname'

@@ -829,7 +829,7 @@ class SemanticAnalyzer(NodeVisitor):
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
         if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
-                isinstance(existing_symbol.node, Var)):
+                isinstance(existing_symbol.node, (Var, FuncDef))):
             # This is a valid import over an existing definition in the file. Construct a dummy
             # assignment that we'll use to type check the import.
             lvalue = NameExpr(imported_id)
