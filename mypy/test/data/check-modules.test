@@ -516,8 +516,8 @@ y = ''
 try:
     from m import f, g
 except:
-    def f(x): pass # E: Name 'f' already defined
-    def g(x): pass # E: Name 'g' already defined
+    def f(x): pass
+    def g(x): pass # E: All conditional function variants must have identical signatures
 [file m.py]
 def f(x): pass
 def g(x, y): pass

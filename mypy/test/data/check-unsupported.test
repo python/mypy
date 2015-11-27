@@ -6,9 +6,9 @@
 def d(x): pass
 @d
 def f(): pass
-def f(x): pass
+def f(x): pass # E
 def g(): pass
-@d
+@d # E
 def g(x): pass
 [out]
 main:5: error: Name 'f' already defined

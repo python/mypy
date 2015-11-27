@@ -238,6 +238,19 @@ class SemanticAnalyzer(NodeVisitor):
             # Nested function
             if not defn.is_decorated and not defn.is_overload:
                 self.add_local(defn, defn)
+        else:
+            # Top-level function
+            if not defn.is_decorated and not defn.is_overload:
+                symbol = self.globals.get(defn.name())
+                if isinstance(symbol.node, FuncDef) and symbol.node != defn:
+                    # This is redefinition. Conditional redefinition is okay.
+                    original_def = symbol.node
+                    if self.is_conditional_func(original_def, defn):
+                        # Conditional function definition -- multiple defs are ok.
+                        defn.original_def = cast(FuncDef, original_def)
+                    else:
+                        # Report error.
+                        self.check_no_global(defn.name(), defn, True)
 
         self.errors.push_function(defn.name())
         self.analyze_function(defn)
@@ -2153,7 +2166,12 @@ class FirstPass(NodeVisitor):
         func._fullname = sem.qualified_name(func.name())
         if func.name() in sem.globals:
             # Already defined in this module.
-            original_def = sem.globals[func.name()].node
+            original_sym = sem.globals[func.name()]
+            if original_sym.kind == UNBOUND_IMPORTED:
+                # Ah this is an imported name. We can't resolve them now, so we'll postpone
+                # this until the main phase of semantic analysis.
+                return
+            original_def = original_sym.node
             if sem.is_conditional_func(original_def, func):
                 # Conditional function definition -- multiple defs are ok.
                 func.original_def = cast(FuncDef, original_def)
