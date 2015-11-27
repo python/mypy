@@ -236,12 +236,13 @@ class FuncBase(SymbolNode):
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
     is_property = False
+    _fullname = None  # type: str       # Name with module prefix
 
     @abstractmethod
     def name(self) -> str: pass
 
     def fullname(self) -> str:
-        return self.name()
+        return self._fullname
 
     def is_method(self) -> bool:
         return bool(self.info)
@@ -255,7 +256,6 @@ class OverloadedFuncDef(FuncBase):
     """
 
     items = None  # type: List[Decorator]
-    _fullname = None  # type: str
 
     def __init__(self, items: List['Decorator']) -> None:
         self.items = items
@@ -263,9 +263,6 @@ class OverloadedFuncDef(FuncBase):
 
     def name(self) -> str:
         return self.items[1].func.name()
-
-    def fullname(self) -> str:
-        return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -362,7 +359,6 @@ class FuncDef(FuncItem):
     This is a non-lambda function defined using 'def'.
     """
 
-    _fullname = None  # type: str       # Name with module prefix
     is_decorated = False
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
@@ -379,9 +375,6 @@ class FuncDef(FuncItem):
 
     def name(self) -> str:
         return self._name
-
-    def fullname(self) -> str:
-        return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_def(self)

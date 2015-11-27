@@ -218,10 +218,10 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.push_function(defn.name())
         self.update_function_type_variables(defn)
         self.errors.pop_function()
+        defn.is_conditional = self.block_depth[-1] > 0
 
         if self.is_class_scope():
             # Method definition
-            defn.is_conditional = self.block_depth[-1] > 0
             defn.info = self.type
             if not defn.is_decorated:
                 if not defn.is_overload:
@@ -244,16 +244,22 @@ class SemanticAnalyzer(NodeVisitor):
 
         if self.is_func_scope() and (not defn.is_decorated and
                                      not defn.is_overload):
-            self.add_local_func(defn, defn)
-            defn._fullname = defn.name()
+            self.add_local(defn, defn)
 
         self.errors.push_function(defn.name())
         self.analyze_function(defn)
         self.errors.pop_function()
 
-    def is_conditional_func(self, n: Node, defn: FuncDef) -> bool:
-        return (isinstance(n, FuncDef) and cast(FuncDef, n).is_conditional and
-                defn.is_conditional)
+    def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
+        """Does 'new' conditionally redefine 'previous'?
+
+        We reject straight redefinitions of functions, as they are usuallly
+        a programming error. For example:
+
+        . def f(): ...
+        . def f(): ...  # Error: 'f' redefined
+        """
+        return isinstance(previous, FuncDef) and previous.is_conditional and new.is_conditional
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
@@ -341,7 +347,7 @@ class SemanticAnalyzer(NodeVisitor):
                                                            typ=defn.type)
             defn.info = self.type
         elif self.is_func_scope():
-            self.add_local_func(defn, defn)
+            self.add_local(defn, defn)
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a propery defined using multiple methods (e.g., using @x.setter).
@@ -2033,17 +2039,12 @@ class SemanticAnalyzer(NodeVisitor):
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
             v._fullname = self.qualified_name(v.name())
 
-    def add_local(self, v: Var, ctx: Context) -> None:
-        if v.name() in self.locals[-1]:
-            self.name_already_defined(v.name(), ctx)
-        v._fullname = v.name()
-        self.locals[-1][v.name()] = SymbolTableNode(LDEF, v)
-
-    def add_local_func(self, defn: FuncBase, ctx: Context) -> None:
-        # TODO combine with above
-        if defn.name() in self.locals[-1]:
-            self.name_already_defined(defn.name(), ctx)
-        self.locals[-1][defn.name()] = SymbolTableNode(LDEF, defn)
+    def add_local(self, node: Union[Var, FuncBase], ctx: Context) -> None:
+        name = node.name()
+        if name in self.locals[-1]:
+            self.name_already_defined(name, ctx)
+        node._fullname = name
+        self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
     def check_no_global(self, n: str, ctx: Context,
                         is_func: bool = False) -> None:
@@ -2140,18 +2141,20 @@ class FirstPass(NodeVisitor):
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
-    def visit_func_def(self, d: FuncDef) -> None:
+    def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
-        d.is_conditional = sem.block_depth[-1] > 0
-        if d.name() in sem.globals:
-            n = sem.globals[d.name()].node
-            if sem.is_conditional_func(n, d):
+        func.is_conditional = sem.block_depth[-1] > 0
+        if func.name() in sem.globals:
+            # Already defined in this module.
+            original_def = sem.globals[func.name()].node
+            if sem.is_conditional_func(original_def, func):
                 # Conditional function definition -- multiple defs are ok.
-                d.original_def = cast(FuncDef, n)
+                func.original_def = cast(FuncDef, original_def)
             else:
-                sem.check_no_global(d.name(), d, True)
-        d._fullname = sem.qualified_name(d.name())
-        sem.globals[d.name()] = SymbolTableNode(GDEF, d, sem.cur_mod_id)
+                # Report error.
+                sem.check_no_global(func.name(), func, True)
+        func._fullname = sem.qualified_name(func.name())
+        sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
 
     def visit_overloaded_func_def(self, d: OverloadedFuncDef) -> None:
         self.sem.check_no_global(d.name(), d)
