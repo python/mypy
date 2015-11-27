@@ -218,37 +218,43 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.push_function(defn.name())
         self.update_function_type_variables(defn)
         self.errors.pop_function()
+
         defn.is_conditional = self.block_depth[-1] > 0
 
         if self.is_class_scope():
             # Method definition
             defn.info = self.type
-            if not defn.is_decorated:
-                if not defn.is_overload:
-                    if defn.name() in self.type.names:
-                        n = self.type.names[defn.name()].node
-                        if self.is_conditional_func(n, defn):
-                            defn.original_def = cast(FuncDef, n)
-                        else:
-                            self.name_already_defined(defn.name(), defn)
-                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            if not defn.is_static:
-                if not defn.arguments:
-                    self.fail('Method must have at least one argument', defn)
-                elif defn.type:
-                    sig = cast(FunctionLike, defn.type)
-                    # TODO: A classmethod's first argument should be more
-                    #       precisely typed than Any.
-                    leading_type = AnyType() if defn.is_class else self_type(self.type)
-                    defn.type = replace_implicit_first_type(sig, leading_type)
-
-        if self.is_func_scope() and (not defn.is_decorated and
-                                     not defn.is_overload):
-            self.add_local(defn, defn)
+            if not defn.is_decorated and not defn.is_overload:
+                if defn.name() in self.type.names:
+                    # Redefinition. Conditional redefinition is okay.
+                    n = self.type.names[defn.name()].node
+                    if self.is_conditional_func(n, defn):
+                        defn.original_def = cast(FuncDef, n)
+                    else:
+                        self.name_already_defined(defn.name(), defn)
+                self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+            self.prepare_method_signature(defn)
+        elif self.is_func_scope():
+            # Nested function
+            if not defn.is_decorated and not defn.is_overload:
+                self.add_local(defn, defn)
 
         self.errors.push_function(defn.name())
         self.analyze_function(defn)
         self.errors.pop_function()
+
+    def prepare_method_signature(self, func: FuncDef) -> None:
+        """Check basic signature validity and tweak annotation of self/cls argument."""
+        # Only non-static methods are special.
+        if not func.is_static:
+            if not func.arguments:
+                self.fail('Method must have at least one argument', func)
+            elif func.type:
+                sig = cast(FunctionLike, func.type)
+                # TODO: A classmethod's first argument should be more
+                #       precisely typed than Any.
+                leading_type = AnyType() if func.is_class else self_type(self.type)
+                func.type = replace_implicit_first_type(sig, leading_type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?
