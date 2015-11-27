@@ -265,7 +265,7 @@ class SemanticAnalyzer(NodeVisitor):
         . def f(): ...
         . def f(): ...  # Error: 'f' redefined
         """
-        return isinstance(previous, FuncDef) and previous.is_conditional and new.is_conditional
+        return isinstance(previous, FuncDef) and new.is_conditional
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
@@ -2150,6 +2150,7 @@ class FirstPass(NodeVisitor):
     def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
         func.is_conditional = sem.block_depth[-1] > 0
+        func._fullname = sem.qualified_name(func.name())
         if func.name() in sem.globals:
             # Already defined in this module.
             original_def = sem.globals[func.name()].node
@@ -2159,8 +2160,8 @@ class FirstPass(NodeVisitor):
             else:
                 # Report error.
                 sem.check_no_global(func.name(), func, True)
-        func._fullname = sem.qualified_name(func.name())
-        sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
+        else:
+            sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
         self.sem.check_no_global(func.name(), func)
