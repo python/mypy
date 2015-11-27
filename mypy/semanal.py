@@ -789,14 +789,14 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             self.add_unknown_symbol(as_id, context)
 
-    def visit_import_from(self, i: ImportFrom) -> None:
-        i_id = self.correct_relative_import(i)
-        if i_id in self.modules:
-            m = self.modules[i_id]
-            for id, as_id in i.names:
-                node = m.names.get(id, None)
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        import_id = self.correct_relative_import(imp)
+        if import_id in self.modules:
+            module = self.modules[import_id]
+            for id, as_id in imp.names:
+                node = module.names.get(id)
                 if node and node.kind != UNBOUND_IMPORTED:
-                    node = self.normalize_type_alias(node, i)
+                    node = self.normalize_type_alias(node, imp)
                     if not node:
                         return
                     imported_id = as_id or id
@@ -804,7 +804,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
                         if self.process_import_over_existing_name(
-                                imported_id, existing_symbol, node, i):
+                                imported_id, existing_symbol, node, imp):
                             continue
                     # 'from m import x as x' exports x in a stub file.
                     module_public = not self.is_stub_file or as_id is not None
@@ -812,17 +812,17 @@ class SemanticAnalyzer(NodeVisitor):
                                              self.cur_mod_id,
                                              node.type_override,
                                              module_public=module_public)
-                    self.add_symbol(imported_id, symbol, i)
+                    self.add_symbol(imported_id, symbol, imp)
                 else:
                     message = "Module has no attribute '{}'".format(id)
-                    extra = self.undefined_name_extra_info('{}.{}'.format(i_id, id))
+                    extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                     if extra:
                         message += " {}".format(extra)
-                    self.fail(message, i)
+                    self.fail(message, imp)
         else:
             # Missing module.
-            for id, as_id in i.names:
-                self.add_unknown_symbol(as_id or id, i)
+            for id, as_id in imp.names:
+                self.add_unknown_symbol(as_id or id, imp)
 
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,
