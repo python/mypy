@@ -850,3 +850,31 @@ y
 main:1: note: In module imported here:
 tmp/m.py:1: error: Name 'y' is not defined
 main:2: error: Name 'x' is not defined
+
+[case testImportTwice]
+import typing
+from x import a, a # ok (we could give a warning, but this is valid)
+def f() -> None:
+    from x import a
+    from x import a # ok
+import x
+import x # ok, since we may import multiple submodules of a package
+[file x.py]
+a = 1
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ImportFrom:2(x, [a, a])
+  FuncDef:3(
+    f
+    def ()
+    Block:3(
+      ImportFrom:4(x, [a])
+      ImportFrom:5(x, [a])))
+  Import:6(x)
+  Import:7(x))
+MypyFile:1(
+  tmp/x.py
+  AssignmentStmt:1(
+    NameExpr(a* [x.a])
+    IntExpr(1)))

@@ -59,8 +59,8 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, COVARIANT, CONTRAVARIANT,
-    INVARIANT
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
+    INVARIANT, UNBOUND_IMPORTED
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -770,16 +770,23 @@ class SemanticAnalyzer(NodeVisitor):
             m = self.modules[i_id]
             for id, as_id in i.names:
                 node = m.names.get(id, None)
-                if node:
+                if node and node.kind != UNBOUND_IMPORTED:
                     node = self.normalize_type_alias(node, i)
                     if not node:
                         return
+                    imported_id = as_id or id
+                    existing_symbol = self.globals.get(imported_id)
+                    if existing_symbol:
+                        # Import can redefine a variable. They get special treatment.
+                        if self.process_import_over_existing_name(
+                                imported_id, existing_symbol, node, i):
+                            continue
+                    # 'from m import x as x' exports x in a stub file.
                     module_public = not self.is_stub_file or as_id is not None
                     symbol = SymbolTableNode(node.kind, node.node,
                                              self.cur_mod_id,
                                              node.type_override,
                                              module_public=module_public)
-                    imported_id = as_id or id
                     self.add_symbol(imported_id, symbol, i)
                 else:
                     message = "Module has no attribute '{}'".format(id)
@@ -788,8 +795,30 @@ class SemanticAnalyzer(NodeVisitor):
                         message += " {}".format(extra)
                     self.fail(message, i)
         else:
+            # Missing module.
             for id, as_id in i.names:
                 self.add_unknown_symbol(as_id or id, i)
+
+    def process_import_over_existing_name(self,
+                                          imported_id: str, existing_symbol: SymbolTableNode,
+                                          module_symbol: SymbolTableNode,
+                                          import_node: ImportBase) -> bool:
+        if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
+                isinstance(existing_symbol.node, Var)):
+            # This is a valid import over an existing definition in the file. Construct a dummy
+            # assignment that we'll use to type check the import.
+            lvalue = NameExpr(imported_id)
+            lvalue.kind = existing_symbol.kind
+            lvalue.node = existing_symbol.node
+            rvalue = NameExpr(imported_id)
+            rvalue.kind = module_symbol.kind
+            rvalue.node = module_symbol.node
+            assignment = AssignmentStmt([lvalue], rvalue)
+            for node in assignment, lvalue, rvalue:
+                node.set_line(import_node)
+            import_node.assignments.append(assignment)
+            return True
+        return False
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
@@ -822,6 +851,12 @@ class SemanticAnalyzer(NodeVisitor):
             for name, node in m.names.items():
                 node = self.normalize_type_alias(node, i)
                 if not name.startswith('_') and node.module_public:
+                    existing_symbol = self.globals.get(name)
+                    if existing_symbol:
+                        # Import can redefine a variable. They get special treatment.
+                        if self.process_import_over_existing_name(
+                                name, existing_symbol, node, i):
+                            continue
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
                                                           self.cur_mod_id), i)
         else:
@@ -933,6 +968,8 @@ class SemanticAnalyzer(NodeVisitor):
         """
 
         if isinstance(lval, NameExpr):
+            # Top-level definitions within some statements (at least while) are
+            # not handled in the first pass, so they have to be added now.
             nested_global = (not self.is_func_scope() and
                              self.block_depth[-1] > 0 and
                              not self.type)
@@ -1881,7 +1918,7 @@ class SemanticAnalyzer(NodeVisitor):
                    for obsolete_name in obsolete_name_mapping
                    if obsolete_name.rsplit('.', 1)[-1] == name]
         if len(matches) == 1:
-            self.fail("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
+            self.note("(Did you mean '{}'?)".format(obsolete_name_mapping[matches[0]]), ctx)
 
     def lookup_qualified(self, name: str, ctx: Context) -> SymbolTableNode:
         if '.' not in name:
@@ -1981,7 +2018,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             existing = self.globals.get(name)
             if existing and (not isinstance(node.node, MypyFile) or
-                             existing.node != node.node):
+                             existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
                 if not (existing.type and node.type and is_same_type(existing.type, node.type)):
@@ -2030,6 +2067,9 @@ class SemanticAnalyzer(NodeVisitor):
     def fail(self, msg: str, ctx: Context) -> None:
         self.errors.report(ctx.get_line(), msg)
 
+    def note(self, msg: str, ctx: Context) -> None:
+        self.errors.report(ctx.get_line(), msg, severity='note')
+
     def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
         if fullname in obsolete_name_mapping:
             return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
@@ -2040,7 +2080,7 @@ class SemanticAnalyzer(NodeVisitor):
 class FirstPass(NodeVisitor):
     """First phase of semantic analysis.
 
-    See docstring of 'analyze' for a description of what this does.
+    See docstring of 'analyze()' below for a description of what this does.
     """
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
@@ -2050,11 +2090,17 @@ class FirstPass(NodeVisitor):
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.
 
-        Resolve the full names of definitions not nested within functions and
-        construct type info structures, but do not resolve inter-definition
+        Populate module global table.  Resolve the full names of
+        definitions not nested within functions and construct type
+        info structures, but do not resolve inter-definition
         references such as base classes.
 
         Also add implicit definitions such as __name__.
+
+        In this phase we don't resolve imports. For 'from ... import',
+        we generate dummy symbol table nodes for the imported names,
+        and these will get resolved in later phases of semantic
+        analysis.
         """
         sem = self.sem
         sem.cur_mod_id = mod_id
@@ -2092,8 +2138,7 @@ class FirstPass(NodeVisitor):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
-            self.sem.analyze_lvalue(lval, add_global=True,
-                                    explicit_type=s.type is not None)
+            self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
     def visit_func_def(self, d: FuncDef) -> None:
         sem = self.sem
@@ -2133,13 +2178,19 @@ class FirstPass(NodeVisitor):
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
 
+    def visit_import_from(self, node: ImportFrom) -> None:
+        for name, as_name in node.names:
+            imported_name = as_name or name
+            if imported_name not in self.sem.globals:
+                self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+
     def visit_for_stmt(self, s: ForStmt) -> None:
-        self.sem.analyze_lvalue(s.index, add_global=True)
+        self.analyze_lvalue(s.index)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for n in s.target:
             if n:
-                self.sem.analyze_lvalue(n, add_global=True)
+                self.analyze_lvalue(n)
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
@@ -2154,6 +2205,9 @@ class FirstPass(NodeVisitor):
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.sem.analyze_try_stmt(s, self, add_global=True)
+
+    def analyze_lvalue(self, lvalue: Node, explicit_type: bool = False) -> None:
+        self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)
 
 
 class ThirdPass(TraverserVisitor[None]):

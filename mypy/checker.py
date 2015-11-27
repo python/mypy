@@ -21,7 +21,8 @@ from mypy.nodes import (
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr, BackquoteExpr, CONTRAVARIANT, COVARIANT
+    RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
+    CONTRAVARIANT, COVARIANT
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -933,6 +934,25 @@ class TypeChecker(NodeVisitor[Type]):
             self.msg.base_class_definitions_incompatible(name, base1, base2,
                                                          ctx)
 
+    def visit_import_from(self, node: ImportFrom) -> Type:
+        self.check_import(node)
+
+    def visit_import_all(self, node: ImportAll) -> Type:
+        self.check_import(node)
+
+    def check_import(self, node: ImportBase) -> Type:
+        for assign in node.assignments:
+            lvalue = assign.lvalues[0]
+            lvalue_type, _, __ = self.check_lvalue(lvalue)
+            if lvalue_type is None:
+                # TODO: This is broken.
+                lvalue_type = AnyType()
+            message = '{} "{}"'.format(messages.INCOMPATIBLE_IMPORT_OF,
+                                       cast(NameExpr, assign.rvalue).name)
+            self.check_simple_assignment(lvalue_type, assign.rvalue, node,
+                                         msg=message, lvalue_name='local name',
+                                         rvalue_name='imported name')
+
     #
     # Statements
     #
@@ -1040,9 +1060,7 @@ class TypeChecker(NodeVisitor[Type]):
                                context: Context,
                                infer_lvalue_type: bool = True,
                                msg: str = None) -> None:
-        """Check the assignment of one rvalue to a number of lvalues
-        for example from a ListExpr or TupleExpr.
-        """
+        """Check the assignment of one rvalue to a number of lvalues."""
 
         if not msg:
             msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
@@ -1284,7 +1302,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
                                 context: Node,
-                                msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT) -> Type:
+                                msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                lvalue_name: str = 'variable',
+                                rvalue_name: str = 'expression') -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
             return AnyType()
@@ -1293,7 +1313,8 @@ class TypeChecker(NodeVisitor[Type]):
             if self.typing_mode_weak():
                 return rvalue_type
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                               'expression has type', 'variable has type')
+                               '{} has type'.format(rvalue_name),
+                               '{} has type'.format(lvalue_name))
             return rvalue_type
 
     def check_indexed_assignment(self, lvalue: IndexExpr,

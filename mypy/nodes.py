@@ -43,6 +43,10 @@ MODULE_REF = 3  # type: int
 UNBOUND_TVAR = 4  # type: int
 BOUND_TVAR = 5  # type: int
 TYPE_ALIAS = 6  # type: int
+# Placeholder for a name imported via 'from ... import'. Second phase of
+# semantic will replace this the actual imported reference. This is
+# needed so that we can detect whether a name has been imported during
+UNBOUND_IMPORTED = 7  # type: int
 
 
 LITERAL_YES = 2
@@ -171,6 +175,16 @@ class MypyFile(SymbolNode):
 class ImportBase(Node):
     """Base class for all import statements."""
     is_unreachable = False
+    # If an import replaces existing definitions, we construct dummy assignment
+    # statements that assign the imported names to the names in the current scope,
+    # for type checking purposes. Example:
+    #
+    #     x = 1
+    #     from m import x   <-- add assignment representing "x = m.x"
+    assignments = None  # type: List[AssignmentStmt]
+
+    def __init__(self) -> None:
+        self.assignments = []
 
 
 class Import(ImportBase):
@@ -179,6 +193,7 @@ class Import(ImportBase):
     ids = None  # type: List[Tuple[str, Optional[str]]]     # (module id, as id)
 
     def __init__(self, ids: List[Tuple[str, Optional[str]]]) -> None:
+        super().__init__()
         self.ids = ids
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -191,6 +206,7 @@ class ImportFrom(ImportBase):
     names = None  # type: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
 
     def __init__(self, id: str, relative: int, names: List[Tuple[str, Optional[str]]]) -> None:
+        super().__init__()
         self.id = id
         self.names = names
         self.relative = relative
@@ -203,6 +219,7 @@ class ImportAll(ImportBase):
     """from m import *"""
 
     def __init__(self, id: str, relative: int) -> None:
+        super().__init__()
         self.id = id
         self.relative = relative
 
@@ -1658,6 +1675,7 @@ class SymbolTableNode:
     #  - TVAR: type variable in a bound scope (generic function / generic clas)
     #  - MODULE_REF: reference to a module
     #  - TYPE_ALIAS: type alias
+    #  - UNBOUND_IMPORTED: temporary kind for imported names
     kind = None  # type: int
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
