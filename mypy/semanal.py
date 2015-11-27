@@ -2156,21 +2156,21 @@ class FirstPass(NodeVisitor):
         func._fullname = sem.qualified_name(func.name())
         sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
 
-    def visit_overloaded_func_def(self, d: OverloadedFuncDef) -> None:
-        self.sem.check_no_global(d.name(), d)
-        d._fullname = self.sem.qualified_name(d.name())
-        self.sem.globals[d.name()] = SymbolTableNode(GDEF, d,
-                                                     self.sem.cur_mod_id)
+    def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
+        self.sem.check_no_global(func.name(), func)
+        func._fullname = self.sem.qualified_name(func.name())
+        self.sem.globals[func.name()] = SymbolTableNode(GDEF, func,
+                                                        self.sem.cur_mod_id)
 
-    def visit_class_def(self, d: ClassDef) -> None:
-        self.sem.check_no_global(d.name, d)
-        d.fullname = self.sem.qualified_name(d.name)
-        info = TypeInfo(SymbolTable(), d)
-        info.set_line(d.line)
-        d.info = info
-        self.sem.globals[d.name] = SymbolTableNode(GDEF, info,
-                                                   self.sem.cur_mod_id)
-        self.process_nested_classes(d)
+    def visit_class_def(self, cdef: ClassDef) -> None:
+        self.sem.check_no_global(cdef.name, cdef)
+        cdef.fullname = self.sem.qualified_name(cdef.name)
+        info = TypeInfo(SymbolTable(), cdef)
+        info.set_line(cdef.line)
+        cdef.info = info
+        self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info,
+                                                      self.sem.cur_mod_id)
+        self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
         for node in outer_def.defs.body:
