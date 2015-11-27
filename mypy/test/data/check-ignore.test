@@ -76,7 +76,7 @@ from m2 import * # type: ignore
 # We should still import things that don't conflict.
 y() # E: "str" not callable
 z() # E: "int" not callable
-x() # E: "str" not callable
+x() # E: "int" not callable
 [file m1.py]
 x = 1
 y = ''

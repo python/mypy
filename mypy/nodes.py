@@ -43,6 +43,10 @@ MODULE_REF = 3  # type: int
 UNBOUND_TVAR = 4  # type: int
 BOUND_TVAR = 5  # type: int
 TYPE_ALIAS = 6  # type: int
+# Placeholder for a name imported via 'from ... import'. Second phase of
+# semantic will replace this the actual imported reference. This is
+# needed so that we can detect whether a name has been imported during
+UNBOUND_IMPORTED = 7  # type: int
 
 
 LITERAL_YES = 2
@@ -171,6 +175,16 @@ class MypyFile(SymbolNode):
 class ImportBase(Node):
     """Base class for all import statements."""
     is_unreachable = False
+    # If an import replaces existing definitions, we construct dummy assignment
+    # statements that assign the imported names to the names in the current scope,
+    # for type checking purposes. Example:
+    #
+    #     x = 1
+    #     from m import x   <-- add assignment representing "x = m.x"
+    assignments = None  # type: List[AssignmentStmt]
+
+    def __init__(self) -> None:
+        self.assignments = []
 
 
 class Import(ImportBase):
@@ -179,6 +193,7 @@ class Import(ImportBase):
     ids = None  # type: List[Tuple[str, Optional[str]]]     # (module id, as id)
 
     def __init__(self, ids: List[Tuple[str, Optional[str]]]) -> None:
+        super().__init__()
         self.ids = ids
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -191,6 +206,7 @@ class ImportFrom(ImportBase):
     names = None  # type: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
 
     def __init__(self, id: str, relative: int, names: List[Tuple[str, Optional[str]]]) -> None:
+        super().__init__()
         self.id = id
         self.names = names
         self.relative = relative
@@ -203,6 +219,7 @@ class ImportAll(ImportBase):
     """from m import *"""
 
     def __init__(self, id: str, relative: int) -> None:
+        super().__init__()
         self.id = id
         self.relative = relative
 
@@ -219,12 +236,13 @@ class FuncBase(SymbolNode):
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
     is_property = False
+    _fullname = None  # type: str       # Name with module prefix
 
     @abstractmethod
     def name(self) -> str: pass
 
     def fullname(self) -> str:
-        return self.name()
+        return self._fullname
 
     def is_method(self) -> bool:
         return bool(self.info)
@@ -238,7 +256,6 @@ class OverloadedFuncDef(FuncBase):
     """
 
     items = None  # type: List[Decorator]
-    _fullname = None  # type: str
 
     def __init__(self, items: List['Decorator']) -> None:
         self.items = items
@@ -246,9 +263,6 @@ class OverloadedFuncDef(FuncBase):
 
     def name(self) -> str:
         return self.items[1].func.name()
-
-    def fullname(self) -> str:
-        return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -345,7 +359,6 @@ class FuncDef(FuncItem):
     This is a non-lambda function defined using 'def'.
     """
 
-    _fullname = None  # type: str       # Name with module prefix
     is_decorated = False
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
@@ -362,9 +375,6 @@ class FuncDef(FuncItem):
 
     def name(self) -> str:
         return self._name
-
-    def fullname(self) -> str:
-        return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_def(self)
@@ -1650,11 +1660,19 @@ class TypeInfo(SymbolNode):
 
 
 class SymbolTableNode:
-    # LDEF/GDEF/MDEF/UNBOUND_TVAR/TVAR/...
+    # Kind of node. Possible values:
+    #  - LDEF: local definition (of any kind)
+    #  - GDEF: global (module-level) definition
+    #  - MDEF: class member definition
+    #  - UNBOUND_TVAR: TypeVar(...) definition, not bound
+    #  - TVAR: type variable in a bound scope (generic function / generic clas)
+    #  - MODULE_REF: reference to a module
+    #  - TYPE_ALIAS: type alias
+    #  - UNBOUND_IMPORTED: temporary kind for imported names
     kind = None  # type: int
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
-    node = None  # type: SymbolNode
+    node = None  # type: Optional[SymbolNode]
     # Type variable id (for bound type variables only)
     tvar_id = 0
     # Module id (e.g. "foo.bar") or None

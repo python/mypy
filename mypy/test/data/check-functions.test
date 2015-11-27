@@ -888,6 +888,22 @@ if x:
 else:
     def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
 
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+from typing import Any
+def f(x: str) -> None: pass
+x = None # type: Any
+if x:
+    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
+
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+from typing import Any
+def f(x: int) -> None: pass # N: "f" defined here
+x = None # type: Any
+if x:
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
+f(x=1) # The first definition takes precedence.
+f(y=1) # E: Unexpected keyword argument "y" for "f"
+
 
 -- Conditional method definition
 -- -----------------------------

@@ -732,21 +732,6 @@ y # E: Name 'y' is not defined
 y = 1
 [out]
 
-[case testImportTwice]
-import typing
-from x import a, a
-def f() -> None:
-    from x import a
-    from x import a
-import x
-import x # ok, since we may import multiple submodules of a package
-[file x.py]
-a = 1
-[out]
-main:2: error: Name 'a' already defined
-main: note: In function "f":
-main:5: error: Name 'a' already defined
-
 [case testScopeOfNestedClass]
 import typing
 def f():
@@ -822,15 +807,8 @@ def f(): pass
 [out]
 
 [case testAssignToFuncDefViaImport]
-from m import f # E: Name 'f' already defined
-f = None
-[file m.py]
-def f(): pass
-[out]
-
-[case testAssignToFuncDefViaImport2]
-from m import * # E: Name 'f' already defined
-f = None
+from m import f
+f = None # E: Invalid assignment target
 [file m.py]
 def f(): pass
 [out]
@@ -1321,7 +1299,7 @@ main:4: error: Name '_m.Function' is not defined
 x = None # type: Function[[], None]
 [out]
 main:1: error: Name 'Function' is not defined
-main:1: error: (Did you mean 'typing.Callable'?)
+main:1: note: (Did you mean 'typing.Callable'?)
 
 [case testInvalidWithTarget]
 def f(): pass
@@ -1333,15 +1311,13 @@ from typing import typevar
 t = typevar('t')
 [out]
 main:1: error: Module has no attribute 'typevar' (it's now called 'typing.TypeVar')
-main:2: error: Name 'typevar' is not defined
-main:2: error: (Did you mean 'typing.TypeVar'?)
 --' (this fixes syntax highlighting)
 
 [case testUseObsoleteNameForTypeVar2]
 t = typevar('t')
 [out]
 main:1: error: Name 'typevar' is not defined
-main:1: error: (Did you mean 'typing.TypeVar'?)
+main:1: note: (Did you mean 'typing.TypeVar'?)
 
 [case testUseObsoleteNameForTypeVar3]
 import typing
