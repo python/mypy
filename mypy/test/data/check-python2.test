@@ -139,3 +139,8 @@ main:1: error: Cannot find module named 'asyncio'
 main:1: note: (Perhaps setting MYPYPATH would help)
 main:2: error: No library stub file for standard library module 'Bastion'
 main:2: note: (Stub files are from https://github.com/python/typeshed)
+
+--[case testImportFromPython2Builtin]
+--from __builtin__ import object as o
+--class A(o):
+--    pass
