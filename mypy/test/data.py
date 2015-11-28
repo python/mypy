@@ -45,12 +45,16 @@ def parse_test_cases(
                     # Record an extra file needed for the test case.
                     files.append((os.path.join(base_path, p[i].arg),
                                   '\n'.join(p[i].data)))
-                elif p[i].id == 'builtins':
+                elif p[i].id in ('builtins', 'builtins_py2'):
                     # Use a custom source file for the std module.
                     mpath = os.path.join(os.path.dirname(path), p[i].arg)
                     f = open(mpath)
-                    files.append((os.path.join(base_path, 'builtins.py'),
-                                  f.read()))
+                    if p[i].id == 'builtins':
+                        fnam = 'builtins.py'
+                    else:
+                        # Python 2
+                        fnam = '__builtin__.py'
+                    files.append((os.path.join(base_path, fnam), f.read()))
                     f.close()
                 else:
                     raise ValueError(

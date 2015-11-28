@@ -3,4 +3,5 @@ class object:
 class module: pass
 class type: pass
 class function: pass
+class int: pass
 class str: pass

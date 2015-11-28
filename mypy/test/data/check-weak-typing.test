@@ -106,6 +106,7 @@ def f():
     x, y = g()   # E: 'builtins.int' object is not iterable
 def g() -> int:
     return 0
+[builtins fixtures/for.py]
 [out]
 main: note: In function "f":
 
@@ -226,11 +227,11 @@ if 1:
 if 1:
     z = ''
     pat = 1
-    pat() # E: "int" not callable 
+    pat() # E: "int" not callable
 pat()
 pat = ''
-pat()  # E: "str" not callable 
+pat()  # E: "str" not callable
 while 1:
     pass
-pat() # E: "str" not callable 
+pat() # E: "str" not callable
 [out]
