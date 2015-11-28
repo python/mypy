@@ -2143,7 +2143,7 @@ class FirstPass(NodeVisitor):
 
         # Add implicit definition of 'None' to builtins, as we cannot define a
         # variable with a None type explicitly.
-        if mod_id == 'builtins':
+        if mod_id in ('builtins', '__builtin__'):
             v = Var('None', NoneTyp())
             v._fullname = self.sem.qualified_name('None')
             self.sem.globals['None'] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)

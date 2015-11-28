@@ -188,8 +188,7 @@ class Parser:
         ids = []  # type: List[Tuple[str, str]]
         while True:
             id = self.parse_qualified_name()
-            if id == self.custom_typing_module:
-                id = 'typing'
+            id = self.translate_module_id(id)
             as_id = None  # type: Optional[str]
             if self.current_str() == 'as':
                 self.expect('as')
@@ -202,6 +201,15 @@ class Parser:
         node = Import(ids)
         self.imports.append(node)
         return node
+
+    def translate_module_id(self, id: str) -> str:
+        if id == self.custom_typing_module:
+            return 'typing'
+        elif id == '__builtin__' and self.pyversion[0] == 2:
+            # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
+            #   is named __builtin__.py (there is another layer of translation elsewhere).
+            return 'builtins'
+        return id
 
     def parse_import_from(self) -> Node:
         self.expect('from')
@@ -219,8 +227,7 @@ class Parser:
         else:
             name = self.parse_qualified_name()
 
-        if name == self.custom_typing_module:
-            name = 'typing'
+        name = self.translate_module_id(name)
 
         # Parse import list
         self.expect('import')

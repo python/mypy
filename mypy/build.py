@@ -751,10 +751,19 @@ class UnprocessedFile(State):
         manager, or do nothing if the module already has a state object.
         """
         if self.manager.has_module(id):
-            # Do nothing:f already being compiled.
+            # Do nothing: already being compiled.
             return True
 
-        path, text = read_module_source_from_file(id, self.manager.lib_path)
+        if id == 'builtins' and self.manager.pyversion[0] == 2:
+            # The __builtin__ module is called internally by mypy 'builtins' in Python 2 mode
+            # (similar to Python 3), but the stub file is __builtin__.pyi. The reason is that
+            # a lot of code hard codes 'builtins.x' and this it's easier to work it around like
+            # this. It also means that the implementation can mostly ignore the difference and
+            # just assume 'builtins' everywhere, which simplifies code.
+            file_id = '__builtin__'
+        else:
+            file_id = id
+        path, text = read_module_source_from_file(file_id, self.manager.lib_path)
         if text is not None:
             info = StateInfo(path, id, self.errors().import_context(),
                              self.manager)

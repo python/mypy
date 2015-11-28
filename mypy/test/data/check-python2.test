@@ -7,7 +7,7 @@ u = unicode()
 s = ''
 s = u'foo' # E: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 s = b'foo'
-[builtins fixtures/python2.py]
+[builtins_py2 fixtures/python2.py]
 
 [case testPrintStatement]
 print ''() # E: "str" not callable
@@ -35,7 +35,7 @@ def f(x: unicode) -> None: pass
 f('')
 f(u'')
 f(b'')
-[builtins fixtures/python2.py]
+[builtins_py2 fixtures/python2.py]
 
 [case testStaticMethodWithCommentSignature]
 class A:
@@ -44,21 +44,21 @@ class A:
         return ''
 A.f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-[builtins fixtures/staticmethod.py]
+[builtins_py2 fixtures/staticmethod.py]
 
 [case testRaiseTuple]
 import typing
 raise BaseException, "a"
 raise BaseException, "a", None
 raise BaseException, "a", None, None # E: Exception must be derived from BaseException
-[builtins fixtures/exception.py]
+[builtins_py2 fixtures/exception.py]
 
 [case testTryExceptWithTuple]
 try:
     None
 except BaseException, e:
     e() # E: "BaseException" not callable
-[builtins fixtures/exception.py]
+[builtins_py2 fixtures/exception.py]
 
 [case testAlternateNameSuggestions]
 class Foo(object):
@@ -100,7 +100,7 @@ def f(x, (y, z)): # type: (object, Tuple[int, str]) -> None
     z() # E
 f(object(), (1, ''))
 f(1, 1) # E
-[builtins fixtures/tuple.py]
+[builtins_py2 fixtures/tuple.py]
 [out]
 main: note: In function "f":
 main:3: error: "object" not callable
@@ -140,7 +140,6 @@ main:1: note: (Perhaps setting MYPYPATH would help)
 main:2: error: No library stub file for standard library module 'Bastion'
 main:2: note: (Stub files are from https://github.com/python/typeshed)
 
---[case testImportFromPython2Builtin]
---from __builtin__ import object as o
---class A(o):
---    pass
+[case testImportFromPython2Builtin]
+from __builtin__ import int as i
+x = 1 # type: i
