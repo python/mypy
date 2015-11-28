@@ -188,13 +188,15 @@ class Parser:
         ids = []  # type: List[Tuple[str, str]]
         while True:
             id = self.parse_qualified_name()
-            id = self.translate_module_id(id)
+            translated = self.translate_module_id(id)
             as_id = None  # type: Optional[str]
             if self.current_str() == 'as':
                 self.expect('as')
                 name_tok = self.expect_type(Name)
                 as_id = name_tok.string
-            ids.append((id, as_id))
+            elif translated != id:
+                as_id = id
+            ids.append((translated, as_id))
             if self.current_str() != ',':
                 break
             self.expect(',')
@@ -203,6 +205,10 @@ class Parser:
         return node
 
     def translate_module_id(self, id: str) -> str:
+        """Return the actual, internal module id for a source text id.
+
+        For example, translate '__builtin__' in Python 2 to 'builtins'.
+        """
         if id == self.custom_typing_module:
             return 'typing'
         elif id == '__builtin__' and self.pyversion[0] == 2:
