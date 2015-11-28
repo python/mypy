@@ -154,3 +154,8 @@ y = '' # type: __builtin__.int  # E: Incompatible types in assignment (expressio
 import __builtin__ as bi
 x = 1 # type: bi.int
 y = '' # type: bi.int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testImportFromPython2BuiltinOverridingDefault]
+from __builtin__ import int
+x = 1 # type: int
+y = '' # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
