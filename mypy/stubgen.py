@@ -3,14 +3,14 @@
 Basic usage:
 
   $ mkdir out
-  $ python3 -m mypy.stubgen urllib.parse
+  $ scripts/stubgen urllib.parse
 
   => Generate out/urllib/parse.pyi.
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
 
-  $ python3 -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+  $ scripts/stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
 
   => Generate out/curses.py.
 
@@ -524,7 +524,7 @@ def main():
 
 
 def usage():
-    raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] [--py2] module ...')
+    raise SystemExit('usage: stubgen [--docpath path] [--py2] module ...')
 
 
 if __name__ == '__main__':
