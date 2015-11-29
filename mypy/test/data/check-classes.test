@@ -1220,6 +1220,28 @@ x.a # E: "C" has no attribute "a"
 C(bar='') # E: Unexpected keyword argument "bar" for "C"
 [builtins fixtures/__new__.py]
 
+[case testClassWith__new__AndCompatibilityWithType]
+class C:
+    def __new__(cls, foo: int = None) -> 'C':
+        obj = object.__new__(cls)
+        return obj
+def f(x: type) -> None: pass
+def g(x: int) -> None: pass
+f(C)
+g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
+[builtins fixtures/__new__.py]
+
+[case testClassWith__new__AndCompatibilityWithType2]
+class C:
+    def __new__(cls, foo):
+        obj = object.__new__(cls)
+        return obj
+def f(x: type) -> None: pass
+def g(x: int) -> None: pass
+f(C)
+g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
+[builtins fixtures/__new__.py]
+
 
 -- Special cases
 -- -------------
