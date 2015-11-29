@@ -1255,6 +1255,23 @@ c.set('')
 c.set(1) # E: Argument 1 to "set" of "C" has incompatible type "int"; expected "str"
 [builtins fixtures/__new__.py]
 
+[case testOverloaded__new__]
+from typing import overload
+class C:
+    @overload
+    def __new__(cls, foo: int) -> 'C':
+        obj = object.__new__(cls)
+        return obj
+    @overload
+    def __new__(cls, x: str, y: str) -> 'C':
+        obj = object.__new__(cls)
+        return obj
+c = C(1)
+c.a # E: "C" has no attribute "a"
+C('', '')
+C('') # E: No overload variant of "C" matches argument types [builtins.str]
+[builtins fixtures/__new__.py]
+
 
 -- Special cases
 -- -------------
