@@ -3,7 +3,7 @@
 Basic usage:
 
   $ mkdir out
-  $ scripts/stubgen urllib.parse
+  $ stubgen urllib.parse
 
   => Generate out/urllib/parse.pyi.
 
@@ -34,7 +34,7 @@ import os.path
 import subprocess
 import sys
 
-from typing import Any, List, Dict, Tuple, Iterable, Optional
+from typing import Any, List, Dict, Tuple, Iterable, Optional, NamedTuple, Set
 
 import mypy.parse
 import mypy.errors
@@ -43,7 +43,7 @@ from mypy import defaults
 from mypy.nodes import (
     Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, ARG_STAR, ARG_STAR2, ARG_NAMED
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
@@ -156,7 +156,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._vars = [[]]  # type: List[List[str]]
         self._state = EMPTY
         self._toplevel_names = []  # type: List[str]
-        self._classes = []  # type: List[str]
+        self._classes = set()  # type: Set[str]
         self._base_classes = []  # type: List[str]
         self._pyversion = pyversion
 
@@ -175,7 +175,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             for name in sorted(undefined_names):
                 self.add('#   %s\n' % name)
 
-    def visit_func_def(self, o):
+    def visit_func_def(self, o: FuncDef) -> None:
         if self.is_private_name(o.name()):
             return
         if self.is_not_in_all(o.name()):
@@ -190,29 +190,29 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     self.add(init_code)
         self.add("%sdef %s(" % (self._indent, o.name()))
         self.record_name(o.name())
-        args = []
+        args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
-            arg = arg_.variable
+            var = arg_.variable
             kind = arg_.kind
-            name = arg.name()
-            init = arg_.initialization_statement
-            if init:
+            name = var.name()
+            init_stmt = arg_.initialization_statement
+            if init_stmt:
                 if kind == ARG_NAMED and '*' not in args:
                     args.append('*')
                 arg = '%s=' % name
-                init = init.rvalue
-                if isinstance(init, IntExpr):
-                    arg += str(init.value)
-                elif isinstance(init, StrExpr):
+                rvalue = init_stmt.rvalue
+                if isinstance(rvalue, IntExpr):
+                    arg += str(rvalue.value)
+                elif isinstance(rvalue, StrExpr):
                     arg += "''"
-                elif isinstance(init, BytesExpr):
+                elif isinstance(rvalue, BytesExpr):
                     arg += "b''"
-                elif isinstance(init, FloatExpr):
+                elif isinstance(rvalue, FloatExpr):
                     arg += "0.0"
-                elif isinstance(init, UnaryExpr):
-                    arg += '-%s' % init.expr.value
-                elif isinstance(init, NameExpr) and init.name in ('None', 'True', 'False'):
-                    arg += init.name
+                elif isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
+                    arg += '-%s' % rvalue.expr.value
+                elif isinstance(rvalue, NameExpr) and rvalue.name in ('None', 'True', 'False'):
+                    arg += rvalue.name
                 else:
                     arg += '...'
             elif kind == ARG_STAR:
@@ -457,11 +457,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._toplevel_names.append(name)
 
 
-def find_self_initializers(fdef):
-    results = []
+def find_self_initializers(fdef: FuncBase) -> List[str]:
+    results = []  # type: List[str]
 
     class SelfTraverser(mypy.traverser.TraverserVisitor):
-        def visit_assignment_stmt(self, o):
+        def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
             lvalue = o.lvalues[0]
             if (isinstance(lvalue, MemberExpr) and
                     isinstance(lvalue.expr, NameExpr) and
@@ -472,18 +472,18 @@ def find_self_initializers(fdef):
     return results
 
 
-def find_classes(cdef):
-    results = set()
+def find_classes(node: Node) -> Set[str]:
+    results = set()  # type: Set[str]
 
     class ClassTraverser(mypy.traverser.TraverserVisitor):
-        def visit_class_def(self, o):
+        def visit_class_def(self, o: ClassDef) -> None:
             results.add(o.name)
 
-    cdef.accept(ClassTraverser())
+    node.accept(ClassTraverser())
     return results
 
 
-def get_qualified_name(o):
+def get_qualified_name(o: Node) -> str:
     if isinstance(o, NameExpr):
         return o.name
     elif isinstance(o, MemberExpr):
@@ -492,12 +492,12 @@ def get_qualified_name(o):
         return '<ERROR>'
 
 
-def main():
+def main() -> None:
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
     args = sys.argv[1:]
-    sigs = {}
-    class_sigs = {}
+    sigs = {}  # type: Any
+    class_sigs = {}  # type: Any
     pyversion = defaults.PYTHON3_VERSION
     while args and args[0].startswith('--'):
         if args[0] == '--docpath':
@@ -523,7 +523,7 @@ def main():
                                  pyversion=pyversion)
 
 
-def usage():
+def usage() -> None:
     raise SystemExit('usage: stubgen [--docpath path] [--py2] module ...')
 
 
