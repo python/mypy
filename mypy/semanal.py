@@ -1398,10 +1398,12 @@ class SemanticAnalyzer(NodeVisitor):
                                  NoneTyp(),
                                  self.named_type('__builtins__.function'),
                                  name=info.name())
-        return FuncDef('__init__',
+        func = FuncDef('__init__',
                        args,
                        Block([]),
                        typ=signature)
+        func.info = info
+        return func
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = []  # type: List[Type]
