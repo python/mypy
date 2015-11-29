@@ -7,6 +7,10 @@ Basic usage:
 
   => Generate out/urllib/parse.pyi.
 
+For Python 2 mode, use --py2:
+
+  $ stubgen --py2 textwrap
+
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
 
