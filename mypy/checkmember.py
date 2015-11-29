@@ -284,7 +284,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         if init_method.info.fullname() == 'builtins.object':
             # No non-default __init__ -> look at __new__ instead.
             new_method = info.get_method('__new__')
-            if new_method.info.fullname() != 'builtins.object':
+            if new_method and new_method.info.fullname() != 'builtins.object':
                 # Found one! Get signature from __new__.
                 return type_object_type_from_new(new_method, info, builtin_type)
         # Construct callable type based on signature of __init__. Adjust
