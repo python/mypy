@@ -1242,6 +1242,19 @@ f(C)
 g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
 [builtins fixtures/__new__.py]
 
+[case testGenericClassWith__new__]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]):
+    def __new__(cls, foo: T) -> 'C[T]':
+        obj = object.__new__(cls)
+        return obj
+    def set(self, x: T) -> None: pass
+c = C('')
+c.set('')
+c.set(1) # E: Argument 1 to "set" of "C" has incompatible type "int"; expected "str"
+[builtins fixtures/__new__.py]
+
 
 -- Special cases
 -- -------------
