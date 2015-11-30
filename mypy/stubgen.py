@@ -64,31 +64,6 @@ Options = NamedTuple('Options', [('pyversion', str),
                                  ('modules', List[str])])
 
 
-def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
-                  target: str = None, add_header: bool = False, module: str = None,
-                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
-    source = open(path, 'rb').read()
-    try:
-        ast = mypy.parse.parse(source, fnam=path, pyversion=pyversion)
-    except mypy.errors.CompileError as e:
-        # Syntax error!
-        for m in e.messages:
-            sys.stderr.write('%s\n' % m)
-        exit(1)
-
-    gen = StubGenerator(_all_, pyversion=pyversion)
-    ast.accept(gen)
-    if not target:
-        target = os.path.join(output_dir, os.path.basename(path))
-    subdir = os.path.dirname(target)
-    if subdir and not os.path.isdir(subdir):
-        os.makedirs(subdir)
-    with open(target, 'w') as file:
-        if add_header:
-            write_header(file, module, pyversion=pyversion)
-        file.write(''.join(gen.output()))
-
-
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
@@ -178,6 +153,31 @@ def load_python2_module_info(module: str) -> Tuple[str, Optional[List[str]]]:
         module_path = module_path[:-1]
     module_all = json.loads(output[1])
     return module_path, module_all
+
+
+def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
+                  target: str = None, add_header: bool = False, module: str = None,
+                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+    source = open(path, 'rb').read()
+    try:
+        ast = mypy.parse.parse(source, fnam=path, pyversion=pyversion)
+    except mypy.errors.CompileError as e:
+        # Syntax error!
+        for m in e.messages:
+            sys.stderr.write('%s\n' % m)
+        exit(1)
+
+    gen = StubGenerator(_all_, pyversion=pyversion)
+    ast.accept(gen)
+    if not target:
+        target = os.path.join(output_dir, os.path.basename(path))
+    subdir = os.path.dirname(target)
+    if subdir and not os.path.isdir(subdir):
+        os.makedirs(subdir)
+    with open(target, 'w') as file:
+        if add_header:
+            write_header(file, module, pyversion=pyversion)
+        file.write(''.join(gen.output()))
 
 
 # What was generated previously in the stub file. We keep track of these to generate
