@@ -18,7 +18,7 @@ documentation for extra information. For this, use the --docpath option:
 
   => Generate out/curses.py.
 
-Use "stubgen -h" for more options.
+Use "stubgen -h" for more help.
 
 Note: You should verify the generated stubs manually.
 
@@ -43,6 +43,7 @@ import textwrap
 
 from typing import Any, List, Dict, Tuple, Iterable, Optional, NamedTuple, Set
 
+import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
@@ -59,6 +60,7 @@ from mypy.stubutil import is_c_module, write_header
 Options = NamedTuple('Options', [('pyversion', str),
                                  ('no_import', bool),
                                  ('doc_dir', str),
+                                 ('search_path', List[str]),
                                  ('modules', List[str])])
 
 
@@ -91,33 +93,61 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
                              pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                             no_import: bool = False) -> None:
-    if pyversion[0] == 2:
-        module_path, module_all = load_python2_module_info(module)
-    else:
-        mod = importlib.import_module(module)
-        imp.reload(mod)
-        if is_c_module(mod):
-            target = module.replace('.', '/') + '.pyi'
-            target = os.path.join(output_dir, target)
-            generate_stub_for_c_module(module_name=module,
-                                       target=target,
-                                       add_header=add_header,
-                                       sigs=sigs,
-                                       class_sigs=class_sigs)
-            return
-        module_path = mod.__file__
-        module_all = getattr(mod, '__all__', None)
+                             no_import: bool = False,
+                             search_path: List[str] = []) -> None:
     target = module.replace('.', '/')
-    if os.path.basename(module_path) == '__init__.py':
-        target += '/__init__.pyi'
+    result = find_module_path_and_all(module=module,
+                                      pyversion=pyversion,
+                                      no_import=no_import,
+                                      search_path=search_path)
+    if not result:
+        # C module
+        target = os.path.join(output_dir, target + '.pyi')
+        generate_stub_for_c_module(module_name=module,
+                                   target=target,
+                                   add_header=add_header,
+                                   sigs=sigs,
+                                   class_sigs=class_sigs)
     else:
-        target += '.pyi'
-    target = os.path.join(output_dir, target)
-    generate_stub(module_path, output_dir, module_all,
-                  target=target, add_header=add_header, module=module, pyversion=pyversion)
+        # Python module
+        module_path, module_all = result
+        if os.path.basename(module_path) == '__init__.py':
+            target += '/__init__.pyi'
+        else:
+            target += '.pyi'
+        target = os.path.join(output_dir, target)
+        generate_stub(module_path, output_dir, module_all,
+                      target=target, add_header=add_header, module=module, pyversion=pyversion)
     if not quiet:
         print('Created %s' % target)
+
+
+def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
+                             no_import: bool,
+                             search_path: List[str]) -> Optional[Tuple[str, Optional[List[str]]]]:
+    """Find module and determine __all__.
+
+    Return None if the module is a C module. Return (module_path, __all__) if
+    Python module. Raise an exception or exit if failed.
+    """
+    if not no_import:
+        if pyversion[0] == 2:
+            module_path, module_all = load_python2_module_info(module)
+        else:
+            mod = importlib.import_module(module)
+            imp.reload(mod)
+            if is_c_module(mod):
+                return None
+            module_path = mod.__file__
+            module_all = getattr(mod, '__all__', None)
+    else:
+        # Find module by going through search path.
+        module_path = mypy.build.find_module(module, ['.'] + search_path)
+        if not module_path:
+            raise SystemExit(
+                "Can't find module '{}' (consider using --search-path)".format(module))
+        module_all = None
+    return module_path, module_all
 
 
 def load_python2_module_info(module: str) -> Tuple[str, Optional[List[str]]]:
@@ -523,7 +553,8 @@ def main() -> None:
         class_sigs = dict(find_unique_signatures(all_class_sigs))
     for module in options.modules:
         generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
-                                 pyversion=options.pyversion)
+                                 pyversion=options.pyversion, no_import=options.no_import,
+                                 search_path=options.search_path)
 
 
 def parse_options() -> Options:
@@ -531,9 +562,15 @@ def parse_options() -> Options:
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
     doc_dir = ''
+    search_path = []  # type: List[str]
     while args and args[0].startswith('-'):
         if args[0] == '--doc-dir':
             doc_dir = args[1]
+            args = args[1:]
+        if args[0] == '--search-path':
+            if not args[1]:
+                usage()
+            search_path = args[1].split(':')
             args = args[1:]
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
@@ -549,29 +586,32 @@ def parse_options() -> Options:
     return Options(pyversion=pyversion,
                    no_import=no_import,
                    doc_dir=doc_dir,
+                   search_path=search_path,
                    modules=args)
 
 
 def usage() -> None:
     usage = textwrap.dedent("""\
-        usage: stubgen [--py2] [--no-import] [--doc-dir PATH] MODULE ...
+        usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
+                       [--search-path PATH] MODULE ...
 
         Generate draft stubs for modules.
 
         Stubs are generated in directry ./out, to avoid overriding files with
-        manual changes.  It it assumed to exist.
+        manual changes.  This directory is assumed to exist.
 
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
           --no-import     don't import the modules, just parse and analyze them
-                          (doesn't work with C extension modules)
+                          (doesn't work with C extension modules and doesn't
+                          respect __all__)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
                           better stubs in some cases; consider setting this to
                           DIR/Python-X.Y.Z/Doc/library)
+          --search-path PATH
+                          specify module search directories, separated by ':'
+                          (currently only used if --no-import is given)
           -h, --help      print this help message and exit
-
-        Environment variables:
-          MYPYPATH        module search directories, separated by ':'
     """.rstrip())
 
     raise SystemExit(usage)
