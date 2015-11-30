@@ -57,7 +57,7 @@ from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate
 from mypy.stubutil import is_c_module, write_header
 
 
-Options = NamedTuple('Options', [('pyversion', str),
+Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
                                  ('doc_dir', str),
                                  ('search_path', List[str]),
