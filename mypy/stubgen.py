@@ -24,6 +24,9 @@ Note: You should verify the generated stubs manually.
 
 TODO:
 
+ - support stubs for C modules in Python 2 mode
+ - support non-default Python interpreters in Python 3 mode
+ - if using --no-import, look for __all__ in the AST
  - infer some return types, such as no return statement with value -> None
  - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
  - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
