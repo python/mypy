@@ -56,6 +56,12 @@ from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate
 from mypy.stubutil import is_c_module, write_header
 
 
+Options = NamedTuple('Options', [('pyversion', str),
+                                 ('no_import', bool),
+                                 ('doc_dir', str),
+                                 ('modules', List[str])])
+
+
 def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
@@ -84,7 +90,8 @@ def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
-                             pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                             pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                             no_import: bool = False) -> None:
     if pyversion[0] == 2:
         module_path, module_all = load_python2_module_info(module)
     else:
@@ -502,24 +509,36 @@ def get_qualified_name(o: Node) -> str:
 def main() -> None:
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
-    args = sys.argv[1:]
+    options = parse_options()
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
+    if options.doc_dir:
+        all_sigs = []  # type: Any
+        all_class_sigs = []  # type: Any
+        for path in glob.glob('%s/*.rst' % options.doc_dir):
+            func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
+            all_sigs += func_sigs
+            all_class_sigs += class_sigs
+        sigs = dict(find_unique_signatures(all_sigs))
+        class_sigs = dict(find_unique_signatures(all_class_sigs))
+    for module in options.modules:
+        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
+                                 pyversion=options.pyversion)
+
+
+def parse_options() -> Options:
+    args = sys.argv[1:]
     pyversion = defaults.PYTHON3_VERSION
+    no_import = False
+    doc_dir = ''
     while args and args[0].startswith('-'):
-        if args[0] == '--docpath':
-            docpath = args[1]
-            args = args[2:]
-            all_sigs = []  # type: Any
-            all_class_sigs = []  # type: Any
-            for path in glob.glob('%s/*.rst' % docpath):
-                func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
-                all_sigs += func_sigs
-                all_class_sigs += class_sigs
-            sigs = dict(find_unique_signatures(all_sigs))
-            class_sigs = dict(find_unique_signatures(all_class_sigs))
+        if args[0] == '--doc-dir':
+            doc_dir = args[1]
+            args = args[1:]
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
+        elif args[0] == '--no-import':
+            no_import = True
         elif args[0] in ('-h', '--help'):
             usage()
         else:
@@ -527,22 +546,31 @@ def main() -> None:
         args = args[1:]
     if not args:
         usage()
-    for module in args:
-        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
-                                 pyversion=pyversion)
+    return Options(pyversion=pyversion,
+                   no_import=no_import,
+                   doc_dir=doc_dir,
+                   modules=args)
 
 
 def usage() -> None:
     usage = textwrap.dedent("""\
-        usage: stubgen [--py2] [--docpath path] module ...
+        usage: stubgen [--py2] [--no-import] [--doc-dir PATH] MODULE ...
 
         Generate draft stubs for modules.
 
+        Stubs are generated in directry ./out, to avoid overriding files with
+        manual changes.  It it assumed to exist.
+
         Options:
-          -h, --help      print this help message and exit
-          --docpath path  use .rst documentation in this directory (may result
-                          in better stubs in some cases)
           --py2           run in Python 2 mode (default: Python 3 mode)
+          --no-import     don't import the modules, just parse and analyze them
+                          (doesn't work with C extension modules)
+          --doc-dir PATH  use .rst documentation in PATH (this may result in
+                          better stubs in some cases)
+          -h, --help      print this help message and exit
+
+        Environment variables:
+          MYPYPATH        module search directories, separated by ':'
     """.rstrip())
 
     raise SystemExit(usage)
