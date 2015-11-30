@@ -3,21 +3,30 @@
 Basic usage:
 
   $ mkdir out
-  $ python3 -m mypy.stubgen urllib.parse
+  $ stubgen urllib.parse
 
   => Generate out/urllib/parse.pyi.
+
+For Python 2 mode, use --py2:
+
+  $ stubgen --py2 textwrap
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
 
-  $ python3 -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
+  $ scripts/stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
 
   => Generate out/curses.py.
+
+Use "stubgen -h" for more help.
 
 Note: You should verify the generated stubs manually.
 
 TODO:
 
+ - support stubs for C modules in Python 2 mode
+ - support non-default Python interpreters in Python 3 mode
+ - if using --no-import, look for __all__ in the AST
  - infer some return types, such as no return statement with value -> None
  - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
  - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
@@ -33,9 +42,11 @@ import json
 import os.path
 import subprocess
 import sys
+import textwrap
 
-from typing import Any, List, Dict, Tuple, Iterable, Optional
+from typing import Any, List, Dict, Tuple, Iterable, Optional, NamedTuple, Set
 
+import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
@@ -43,10 +54,111 @@ from mypy import defaults
 from mypy.nodes import (
     Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, ARG_STAR, ARG_STAR2, ARG_NAMED
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
+
+
+Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
+                                 ('no_import', bool),
+                                 ('doc_dir', str),
+                                 ('search_path', List[str]),
+                                 ('interpreter', str),
+                                 ('modules', List[str])])
+
+
+def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
+                             add_header: bool = False, sigs: Dict[str, str] = {},
+                             class_sigs: Dict[str, str] = {},
+                             pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                             no_import: bool = False,
+                             search_path: List[str] = [],
+                             interpreter: str = sys.executable) -> None:
+    target = module.replace('.', '/')
+    result = find_module_path_and_all(module=module,
+                                      pyversion=pyversion,
+                                      no_import=no_import,
+                                      search_path=search_path,
+                                      interpreter=interpreter)
+    if not result:
+        # C module
+        target = os.path.join(output_dir, target + '.pyi')
+        generate_stub_for_c_module(module_name=module,
+                                   target=target,
+                                   add_header=add_header,
+                                   sigs=sigs,
+                                   class_sigs=class_sigs)
+    else:
+        # Python module
+        module_path, module_all = result
+        if os.path.basename(module_path) == '__init__.py':
+            target += '/__init__.pyi'
+        else:
+            target += '.pyi'
+        target = os.path.join(output_dir, target)
+        generate_stub(module_path, output_dir, module_all,
+                      target=target, add_header=add_header, module=module, pyversion=pyversion)
+    if not quiet:
+        print('Created %s' % target)
+
+
+def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
+                             no_import: bool,
+                             search_path: List[str],
+                             interpreter: str) -> Optional[Tuple[str,
+                                                                 Optional[List[str]]]]:
+    """Find module and determine __all__.
+
+    Return None if the module is a C module. Return (module_path, __all__) if
+    Python module. Raise an exception or exit if failed.
+    """
+    if not no_import:
+        if pyversion[0] == 2:
+            module_path, module_all = load_python_module_info(module, interpreter)
+        else:
+            # TODO: Support custom interpreters.
+            mod = importlib.import_module(module)
+            imp.reload(mod)
+            if is_c_module(mod):
+                return None
+            module_path = mod.__file__
+            module_all = getattr(mod, '__all__', None)
+    else:
+        # Find module by going through search path.
+        module_path = mypy.build.find_module(module, ['.'] + search_path)
+        if not module_path:
+            raise SystemExit(
+                "Can't find module '{}' (consider using --search-path)".format(module))
+        module_all = None
+    return module_path, module_all
+
+
+def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
+    """Return tuple (module path, module __all__) for a Python 2 module.
+
+    The path refers to the .py/.py[co] file. The second tuple item is
+    None if the module doesn't define __all__.
+
+    Exit if the module can't be imported or if it's a C extension module.
+    """
+    cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
+    code = ("import importlib, json; mod = importlib.import_module('%s'); "
+            "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
+    try:
+        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
+    except subprocess.CalledProcessError:
+        print("Can't import module %s" % module)
+        exit(1)
+    output = output_bytes.decode('ascii').strip().splitlines()
+    module_path = output[0]
+    if not module_path.endswith(('.py', '.pyc', '.pyo')):
+        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
+                         module)
+    if module_path.endswith(('.pyc', '.pyo')):
+        module_path = module_path[:-1]
+    module_all = json.loads(output[1])
+    return module_path, module_all
 
 
 def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
@@ -74,68 +186,6 @@ def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
         file.write(''.join(gen.output()))
 
 
-def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
-                             add_header: bool = False, sigs: Dict[str, str] = {},
-                             class_sigs: Dict[str, str] = {},
-                             pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
-    if pyversion[0] == 2:
-        module_path, module_all = load_python2_module_info(module)
-    else:
-        mod = importlib.import_module(module)
-        imp.reload(mod)
-        if is_c_module(mod):
-            target = module.replace('.', '/') + '.pyi'
-            target = os.path.join(output_dir, target)
-            generate_stub_for_c_module(module_name=module,
-                                       target=target,
-                                       add_header=add_header,
-                                       sigs=sigs,
-                                       class_sigs=class_sigs)
-            return
-        module_path = mod.__file__
-        module_all = getattr(mod, '__all__', None)
-    target = module.replace('.', '/')
-    if os.path.basename(module_path) == '__init__.py':
-        target += '/__init__.pyi'
-    else:
-        target += '.pyi'
-    target = os.path.join(output_dir, target)
-    generate_stub(module_path, output_dir, module_all,
-                  target=target, add_header=add_header, module=module, pyversion=pyversion)
-    if not quiet:
-        print('Created %s' % target)
-
-
-def load_python2_module_info(module: str) -> Tuple[str, Optional[List[str]]]:
-    """Return tuple (module path, module __all__) for a Python 2 module.
-
-    The path refers to the .py/.py[co] file. The second tuple item is
-    None if the module doesn't define __all__.
-
-    Exit if the module can't be imported or if it's a C extension module.
-    """
-    # Figure out where the Python 2 implementation file lives.
-    # TODO: This is a horrible hack. Figure out a better way of detecting where
-    #   Python 2 lives.
-    cmd_template = '/usr/bin/python -c "%s"'
-    code = ("import importlib, json; mod = importlib.import_module('%s'); "
-            "print mod.__file__; print json.dumps(getattr(mod, '__all__', None))") % module
-    try:
-        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
-    except subprocess.CalledProcessError:
-        print("Can't import module %s" % module)
-        exit(1)
-    output = output_bytes.decode('ascii').strip().splitlines()
-    module_path = output[0]
-    if not module_path.endswith(('.py', '.pyc', '.pyo')):
-        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
-                         module)
-    if module_path.endswith(('.pyc', '.pyo')):
-        module_path = module_path[:-1]
-    module_all = json.loads(output[1])
-    return module_path, module_all
-
-
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
 EMPTY = 'EMPTY'
@@ -156,7 +206,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._vars = [[]]  # type: List[List[str]]
         self._state = EMPTY
         self._toplevel_names = []  # type: List[str]
-        self._classes = []  # type: List[str]
+        self._classes = set()  # type: Set[str]
         self._base_classes = []  # type: List[str]
         self._pyversion = pyversion
 
@@ -175,7 +225,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             for name in sorted(undefined_names):
                 self.add('#   %s\n' % name)
 
-    def visit_func_def(self, o):
+    def visit_func_def(self, o: FuncDef) -> None:
         if self.is_private_name(o.name()):
             return
         if self.is_not_in_all(o.name()):
@@ -190,29 +240,29 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     self.add(init_code)
         self.add("%sdef %s(" % (self._indent, o.name()))
         self.record_name(o.name())
-        args = []
+        args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
-            arg = arg_.variable
+            var = arg_.variable
             kind = arg_.kind
-            name = arg.name()
-            init = arg_.initialization_statement
-            if init:
+            name = var.name()
+            init_stmt = arg_.initialization_statement
+            if init_stmt:
                 if kind == ARG_NAMED and '*' not in args:
                     args.append('*')
                 arg = '%s=' % name
-                init = init.rvalue
-                if isinstance(init, IntExpr):
-                    arg += str(init.value)
-                elif isinstance(init, StrExpr):
+                rvalue = init_stmt.rvalue
+                if isinstance(rvalue, IntExpr):
+                    arg += str(rvalue.value)
+                elif isinstance(rvalue, StrExpr):
                     arg += "''"
-                elif isinstance(init, BytesExpr):
+                elif isinstance(rvalue, BytesExpr):
                     arg += "b''"
-                elif isinstance(init, FloatExpr):
+                elif isinstance(rvalue, FloatExpr):
                     arg += "0.0"
-                elif isinstance(init, UnaryExpr):
-                    arg += '-%s' % init.expr.value
-                elif isinstance(init, NameExpr) and init.name in ('None', 'True', 'False'):
-                    arg += init.name
+                elif isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
+                    arg += '-%s' % rvalue.expr.value
+                elif isinstance(rvalue, NameExpr) and rvalue.name in ('None', 'True', 'False'):
+                    arg += rvalue.name
                 else:
                     arg += '...'
             elif kind == ARG_STAR:
@@ -457,11 +507,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._toplevel_names.append(name)
 
 
-def find_self_initializers(fdef):
-    results = []
+def find_self_initializers(fdef: FuncBase) -> List[str]:
+    results = []  # type: List[str]
 
     class SelfTraverser(mypy.traverser.TraverserVisitor):
-        def visit_assignment_stmt(self, o):
+        def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
             lvalue = o.lvalues[0]
             if (isinstance(lvalue, MemberExpr) and
                     isinstance(lvalue.expr, NameExpr) and
@@ -472,18 +522,18 @@ def find_self_initializers(fdef):
     return results
 
 
-def find_classes(cdef):
-    results = set()
+def find_classes(node: Node) -> Set[str]:
+    results = set()  # type: Set[str]
 
     class ClassTraverser(mypy.traverser.TraverserVisitor):
-        def visit_class_def(self, o):
+        def visit_class_def(self, o: ClassDef) -> None:
             results.add(o.name)
 
-    cdef.accept(ClassTraverser())
+    node.accept(ClassTraverser())
     return results
 
 
-def get_qualified_name(o):
+def get_qualified_name(o: Node) -> str:
     if isinstance(o, NameExpr):
         return o.name
     elif isinstance(o, MemberExpr):
@@ -492,39 +542,111 @@ def get_qualified_name(o):
         return '<ERROR>'
 
 
-def main():
+def main() -> None:
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
+    options = parse_options()
+    sigs = {}  # type: Any
+    class_sigs = {}  # type: Any
+    if options.doc_dir:
+        all_sigs = []  # type: Any
+        all_class_sigs = []  # type: Any
+        for path in glob.glob('%s/*.rst' % options.doc_dir):
+            func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
+            all_sigs += func_sigs
+            all_class_sigs += class_sigs
+        sigs = dict(find_unique_signatures(all_sigs))
+        class_sigs = dict(find_unique_signatures(all_class_sigs))
+    for module in options.modules:
+        generate_stub_for_module(module, 'out',
+                                 add_header=True,
+                                 sigs=sigs,
+                                 class_sigs=class_sigs,
+                                 pyversion=options.pyversion,
+                                 no_import=options.no_import,
+                                 search_path=options.search_path,
+                                 interpreter=options.interpreter)
+
+
+def parse_options() -> Options:
     args = sys.argv[1:]
-    sigs = {}
-    class_sigs = {}
     pyversion = defaults.PYTHON3_VERSION
-    while args and args[0].startswith('--'):
-        if args[0] == '--docpath':
-            docpath = args[1]
-            args = args[2:]
-            all_sigs = []  # type: Any
-            all_class_sigs = []  # type: Any
-            for path in glob.glob('%s/*.rst' % docpath):
-                func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
-                all_sigs += func_sigs
-                all_class_sigs += class_sigs
-            sigs = dict(find_unique_signatures(all_sigs))
-            class_sigs = dict(find_unique_signatures(all_class_sigs))
+    no_import = False
+    doc_dir = ''
+    search_path = []  # type: List[str]
+    interpreter = ''
+    while args and args[0].startswith('-'):
+        if args[0] == '--doc-dir':
+            doc_dir = args[1]
+            args = args[1:]
+        elif args[0] == '--search-path':
+            if not args[1]:
+                usage()
+            search_path = args[1].split(':')
+            args = args[1:]
+        elif args[0] == '-p':
+            interpreter = args[1]
+            args = args[1:]
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
+        elif args[0] == '--no-import':
+            no_import = True
+        elif args[0] in ('-h', '--help'):
+            usage()
         else:
             raise SystemExit('Unrecognized option %s' % args[0])
         args = args[1:]
     if not args:
         usage()
-    for module in args:
-        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
-                                 pyversion=pyversion)
+    if not interpreter:
+        interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
+    return Options(pyversion=pyversion,
+                   no_import=no_import,
+                   doc_dir=doc_dir,
+                   search_path=search_path,
+                   interpreter=interpreter,
+                   modules=args)
 
 
-def usage():
-    raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] [--py2] module ...')
+def default_python2_interpreter() -> str:
+    # TODO: Make this do something reasonable in Windows.
+    for candidate in ('/usr/bin/python2', '/usr/bin/python'):
+        if not os.path.exists(candidate):
+            continue
+        output = subprocess.check_output([candidate, '--version'],
+                                         stderr=subprocess.STDOUT).strip()
+        if b'Python 2' in output:
+            return candidate
+    raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
+
+
+def usage() -> None:
+    usage = textwrap.dedent("""\
+        usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
+                       [--search-path PATH] [-p PATH] MODULE ...
+
+        Generate draft stubs for modules.
+
+        Stubs are generated in directry ./out, to avoid overriding files with
+        manual changes.  This directory is assumed to exist.
+
+        Options:
+          --py2           run in Python 2 mode (default: Python 3 mode)
+          --no-import     don't import the modules, just parse and analyze them
+                          (doesn't work with C extension modules and doesn't
+                          respect __all__)
+          --doc-dir PATH  use .rst documentation in PATH (this may result in
+                          better stubs in some cases; consider setting this to
+                          DIR/Python-X.Y.Z/Doc/library)
+          --search-path PATH
+                          specify module search directories, separated by ':'
+                          (currently only used if --no-import is given)
+          -p PATH         use Python interpreter at PATH (only works for
+                          Python 2 right now)
+          -h, --help      print this help message and exit
+    """.rstrip())
+
+    raise SystemExit(usage)
 
 
 if __name__ == '__main__':

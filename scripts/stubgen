@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""Generator of dynamically typed draft stubs for arbitrary modules.
+
+This is just a wrapper script. Look at mypy/stubgen.py for the actual
+implementation.
+"""
+
+import os
+import os.path
+import sys
+
+file_dir = os.path.dirname(__file__)
+parent_dir = os.path.join(file_dir, os.pardir)
+if os.path.exists(os.path.join(parent_dir, '.git')):
+    # We are running from a git clone.
+    sys.path.insert(0, parent_dir)
+
+import mypy.stubgen
+
+mypy.stubgen.main()

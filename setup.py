@@ -81,7 +81,7 @@ setup(name='mypy-lang',
       package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
       py_modules=['typing'],
       packages=['mypy'],
-      scripts=['scripts/mypy'],
+      scripts=['scripts/mypy', 'scripts/stubgen'],
       data_files=data_files,
       classifiers=classifiers,
       )
