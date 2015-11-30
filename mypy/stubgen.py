@@ -18,6 +18,8 @@ documentation for extra information. For this, use the --docpath option:
 
   => Generate out/curses.py.
 
+Use "stubgen -h" for more options.
+
 Note: You should verify the generated stubs manually.
 
 TODO:
@@ -37,6 +39,7 @@ import json
 import os.path
 import subprocess
 import sys
+import textwrap
 
 from typing import Any, List, Dict, Tuple, Iterable, Optional, NamedTuple, Set
 
@@ -503,7 +506,7 @@ def main() -> None:
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     pyversion = defaults.PYTHON3_VERSION
-    while args and args[0].startswith('--'):
+    while args and args[0].startswith('-'):
         if args[0] == '--docpath':
             docpath = args[1]
             args = args[2:]
@@ -517,6 +520,8 @@ def main() -> None:
             class_sigs = dict(find_unique_signatures(all_class_sigs))
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
+        elif args[0] in ('-h', '--help'):
+            usage()
         else:
             raise SystemExit('Unrecognized option %s' % args[0])
         args = args[1:]
@@ -528,7 +533,19 @@ def main() -> None:
 
 
 def usage() -> None:
-    raise SystemExit('usage: stubgen [--docpath path] [--py2] module ...')
+    usage = textwrap.dedent("""\
+        usage: stubgen [--py2] [--docpath path] module ...
+
+        Generate draft stubs for modules.
+
+        Options:
+          -h, --help      print this help message and exit
+          --docpath path  use .rst documentation in this directory (may result
+                          in better stubs in some cases)
+          --py2           run in Python 2 mode (default: Python 3 mode)
+    """.rstrip())
+
+    raise SystemExit(usage)
 
 
 if __name__ == '__main__':
