@@ -566,7 +566,8 @@ def usage() -> None:
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
-                          better stubs in some cases)
+                          better stubs in some cases; consider setting this to
+                          DIR/Python-X.Y.Z/Doc/library)
           -h, --help      print this help message and exit
 
         Environment variables:
