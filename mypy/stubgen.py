@@ -61,6 +61,7 @@ Options = NamedTuple('Options', [('pyversion', str),
                                  ('no_import', bool),
                                  ('doc_dir', str),
                                  ('search_path', List[str]),
+                                 ('interpreter', str),
                                  ('modules', List[str])])
 
 
@@ -69,12 +70,14 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              class_sigs: Dict[str, str] = {},
                              pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                              no_import: bool = False,
-                             search_path: List[str] = []) -> None:
+                             search_path: List[str] = [],
+                             interpreter: str = sys.executable) -> None:
     target = module.replace('.', '/')
     result = find_module_path_and_all(module=module,
                                       pyversion=pyversion,
                                       no_import=no_import,
-                                      search_path=search_path)
+                                      search_path=search_path,
+                                      interpreter=interpreter)
     if not result:
         # C module
         target = os.path.join(output_dir, target + '.pyi')
@@ -99,7 +102,9 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
 
 def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
                              no_import: bool,
-                             search_path: List[str]) -> Optional[Tuple[str, Optional[List[str]]]]:
+                             search_path: List[str],
+                             interpreter: str) -> Optional[Tuple[str,
+                                                                 Optional[List[str]]]]:
     """Find module and determine __all__.
 
     Return None if the module is a C module. Return (module_path, __all__) if
@@ -107,8 +112,9 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
     """
     if not no_import:
         if pyversion[0] == 2:
-            module_path, module_all = load_python2_module_info(module)
+            module_path, module_all = load_python_module_info(module, interpreter)
         else:
+            # TODO: Support custom interpreters.
             mod = importlib.import_module(module)
             imp.reload(mod)
             if is_c_module(mod):
@@ -125,7 +131,7 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
     return module_path, module_all
 
 
-def load_python2_module_info(module: str) -> Tuple[str, Optional[List[str]]]:
+def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
     """Return tuple (module path, module __all__) for a Python 2 module.
 
     The path refers to the .py/.py[co] file. The second tuple item is
@@ -133,12 +139,9 @@ def load_python2_module_info(module: str) -> Tuple[str, Optional[List[str]]]:
 
     Exit if the module can't be imported or if it's a C extension module.
     """
-    # Figure out where the Python 2 implementation file lives.
-    # TODO: This is a horrible hack. Figure out a better way of detecting where
-    #   Python 2 lives.
-    cmd_template = '/usr/bin/python -c "%s"'
+    cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
     code = ("import importlib, json; mod = importlib.import_module('%s'); "
-            "print mod.__file__; print json.dumps(getattr(mod, '__all__', None))") % module
+            "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError:
@@ -552,9 +555,14 @@ def main() -> None:
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
     for module in options.modules:
-        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
-                                 pyversion=options.pyversion, no_import=options.no_import,
-                                 search_path=options.search_path)
+        generate_stub_for_module(module, 'out',
+                                 add_header=True,
+                                 sigs=sigs,
+                                 class_sigs=class_sigs,
+                                 pyversion=options.pyversion,
+                                 no_import=options.no_import,
+                                 search_path=options.search_path,
+                                 interpreter=options.interpreter)
 
 
 def parse_options() -> Options:
@@ -563,14 +571,18 @@ def parse_options() -> Options:
     no_import = False
     doc_dir = ''
     search_path = []  # type: List[str]
+    interpreter = ''
     while args and args[0].startswith('-'):
         if args[0] == '--doc-dir':
             doc_dir = args[1]
             args = args[1:]
-        if args[0] == '--search-path':
+        elif args[0] == '--search-path':
             if not args[1]:
                 usage()
             search_path = args[1].split(':')
+            args = args[1:]
+        elif args[0] == '-p':
+            interpreter = args[1]
             args = args[1:]
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
@@ -583,17 +595,32 @@ def parse_options() -> Options:
         args = args[1:]
     if not args:
         usage()
+    if not interpreter:
+        interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
     return Options(pyversion=pyversion,
                    no_import=no_import,
                    doc_dir=doc_dir,
                    search_path=search_path,
+                   interpreter=interpreter,
                    modules=args)
+
+
+def default_python2_interpreter() -> str:
+    # TODO: Make this do something reasonable in Windows.
+    for candidate in ('/usr/bin/python2', '/usr/bin/python'):
+        if not os.path.exists(candidate):
+            continue
+        output = subprocess.check_output([candidate, '--version'],
+                                         stderr=subprocess.STDOUT).strip()
+        if b'Python 2' in output:
+            return candidate
+    raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
 
 
 def usage() -> None:
     usage = textwrap.dedent("""\
         usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
-                       [--search-path PATH] MODULE ...
+                       [--search-path PATH] [-p PATH] MODULE ...
 
         Generate draft stubs for modules.
 
@@ -611,6 +638,8 @@ def usage() -> None:
           --search-path PATH
                           specify module search directories, separated by ':'
                           (currently only used if --no-import is given)
+          -p PATH         use Python interpreter at PATH (only works for
+                          Python 2 right now)
           -h, --help      print this help message and exit
     """.rstrip())
 
