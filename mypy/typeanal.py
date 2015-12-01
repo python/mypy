@@ -73,7 +73,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
-                self.fail('Internal error (node is None, kind={})'.format(sym.node.kind))
+                self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType()
             fullname = sym.node.fullname()
             if sym.kind == BOUND_TVAR:
