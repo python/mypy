@@ -64,7 +64,7 @@ from mypy.nodes import (
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
-from mypy.errors import Errors
+from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
@@ -207,7 +207,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         defs = file_node.defs
         for d in defs:
-            d.accept(self)
+            self.accept(d)
 
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
@@ -904,7 +904,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         self.block_depth[-1] += 1
         for s in b.body:
-            s.accept(self)
+            self.accept(s)
         self.block_depth[-1] -= 1
 
     def visit_block_maybe(self, b: Block) -> None:
@@ -2097,6 +2097,12 @@ class SemanticAnalyzer(NodeVisitor):
             return "(it's now called '{}')".format(obsolete_name_mapping[fullname])
         else:
             return None
+
+    def accept(self, node: Node) -> None:
+        try:
+            node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.errors.file, node.line)
 
 
 class FirstPass(NodeVisitor):
