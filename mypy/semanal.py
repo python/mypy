@@ -605,12 +605,12 @@ class SemanticAnalyzer(NodeVisitor):
         for i in reversed(removed):
             del defn.base_type_exprs[i]
 
-    def analyze_typevar_declaration(self, t: Type) -> List[Tuple[str, TypeVarExpr]]:
+    def analyze_typevar_declaration(self, t: Type) -> Optional[List[Tuple[str, TypeVarExpr]]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = cast(UnboundType, t)
         sym = self.lookup_qualified(unbound.name, unbound)
-        if sym is None:
+        if sym is None or sym.node is None:
             return None
         if sym.node.fullname() == 'typing.Generic':
             tvars = []  # type: List[Tuple[str, TypeVarExpr]]
