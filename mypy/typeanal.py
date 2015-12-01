@@ -72,6 +72,9 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         sym = self.lookup(t.name, t)
         if sym is not None:
+            if sym.node is None:
+                self.fail('Internal error (node is None, kind={})'.format(sym.node.kind))
+                return AnyType()
             fullname = sym.node.fullname()
             if sym.kind == BOUND_TVAR:
                 if len(t.args) > 0:
