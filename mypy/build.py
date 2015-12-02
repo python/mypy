@@ -269,7 +269,7 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
 
 
 def lookup_program(module: str, lib_path: List[str]) -> str:
-    # Modules are .py and not .pyi
+    # Modules are .py or .pyi
     path = find_module(module, lib_path)
     if path:
         return path
@@ -544,12 +544,20 @@ class BuildManager:
 def remove_cwd_prefix_from_path(p: str) -> str:
     """Remove current working directory prefix from p, if present.
 
+    Also crawl up until a directory without __init__.py is found.
+
     If the result would be empty, return '.' instead.
     """
     cur = os.getcwd()
     # Add separator to the end of the path, unless one is already present.
     if basename(cur) != '':
         cur += os.sep
+    # Compute root path.
+    while p and os.path.isfile(os.path.join(p, '__init__.py')):
+        dir, base = os.path.split(p)
+        if not base:
+            break
+        p = dir
     # Remove current directory prefix from the path, if present.
     if p.startswith(cur):
         p = p[len(cur):]
