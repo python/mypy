@@ -175,7 +175,45 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         usage('Python version 2 (or --py2) specified, '
               'but --use-python-path will search in sys.path of Python 3')
 
-    return [BuildSource(arg, file_to_mod(arg), None) for arg in args], options
+    targets = []
+    for arg in args:
+        if arg.endswith('.py'):
+            targets.append(BuildSource(arg, file_to_mod(arg), None))
+        elif os.path.isdir(arg):
+            targets.extend(expand_dir(arg))
+        else:
+            targets.append(BuildSource(arg, None, None))
+    return targets, options
+
+
+def expand_dir(arg: str) -> List[BuildSource]:
+    """Convert a directory name to a list of sources to build.
+
+    We crawl up the path until we find a directory without __init__.py.
+    """
+    mod = ''
+    while os.path.exists(os.path.join(arg, '__init__.py')):
+        dir, base = os.path.split(arg)
+        if not base and not dir:
+            break
+        if base:
+            if mod:
+                mod = base + '.' + mod
+            else:
+                mod = base
+        arg = dir
+    if not mod:
+        # It's a directory without an __init__.py.
+        # List all the .py files (but not recursively).
+        targets = []  # type: List[BuildSource]
+        for name in os.listdir(arg):
+            if name.endswith('.py'):
+                path = os.path.join(arg, name)
+                targets.append(BuildSource(path, name[:-3], None))
+        return targets
+
+    lib_path = [arg]
+    return build.find_modules_recursive(mod, lib_path)
 
 
 def file_to_mod(arg: str) -> str:
@@ -183,8 +221,6 @@ def file_to_mod(arg: str) -> str:
 
     We crawl up the path until we find a directory without __init__.py.
     """
-    if not arg.endswith('.py'):
-        return '__main__'  # Special case for entry scripts.
     dir, mod = os.path.split(arg)
     if mod.endswith('.py'):
         mod = mod[:-3]
