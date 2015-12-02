@@ -1,7 +1,6 @@
 """Mypy type checker command line tool."""
 
 import os
-import os.path
 import shutil
 import subprocess
 import sys
@@ -194,7 +193,10 @@ def file_to_mod(arg: str) -> str:
         dir, base = os.path.split(dir)
         if not base:
             break
-        mod = base + '.' + mod
+        if mod == '__init__':
+            mod = base
+        else:
+            mod = base + '.' + mod
     return mod
 
 
