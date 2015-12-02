@@ -99,6 +99,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             module to run as script (or None),
             parsed flags)
     """
+    # TODO: Rewrite using argparse.
     options = Options()
     help = False
     ver = False
@@ -171,14 +172,30 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     if not args:
         usage('Missing target file or module')
 
-    if args[1:]:
-        usage('Extra argument: {}'.format(args[1]))
-
     if options.python_path and options.pyversion[0] == 2:
         usage('Python version 2 (or --py2) specified, '
               'but --use-python-path will search in sys.path of Python 3')
 
-    return [BuildSource(args[0], None, None)], options
+    return [BuildSource(arg, file_to_mod(arg), None) for arg in args], options
+
+
+def file_to_mod(arg: str) -> str:
+    """Convert a .py filename to a module name.
+
+    We crawl up the path until we find a directory without __init__.py.
+    """
+    if not arg.endswith('.py'):
+        return '__main__'  # Special case for entry scripts.
+    dir, mod = os.path.split(arg)
+    if mod.endswith('.py'):
+        mod = mod[:-3]
+    assert '.' not in mod
+    while dir and os.path.isfile(os.path.join(dir, '__init__.py')):
+        dir, base = os.path.split(dir)
+        if not base:
+            break
+        mod = base + '.' + mod
+    return mod
 
 
 # Don't generate this from mypy.reports, not all are meant to be public.
@@ -200,15 +217,16 @@ def is_report(arg: str) -> bool:
 
 
 def usage(msg: str = None) -> None:
+    # TODO: Add other supported options (--package, -f/--dirty-stubs, ...)
     if msg:
         sys.stderr.write('%s\n' % msg)
         sys.stderr.write("""\
-usage: mypy [option ...] [-c cmd | -m mod | file]
+usage: mypy [option ...] [-c cmd | -m mod | file ...]
 Try 'mypy -h' for more information.
 """)
     else:
         sys.stderr.write("""\
-usage: mypy [option ...] [-m mod | file]
+usage: mypy [option ...] [-c cmd | -m mod | file ...]
 
 Optional arguments:
   -h, --help         print this help message and exit
