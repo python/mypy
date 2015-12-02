@@ -163,6 +163,9 @@ def build(sources: List[BuildSource],
         # to the lib_path
         lib_path.insert(0, os.getcwd())
 
+    # Add MYPYPATH environment variable to front of library path, if defined.
+    lib_path[:0] = mypy_path()
+
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
     if alt_lib_path:
@@ -236,9 +239,6 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = []  # type: List[str]
-
-    # Add MYPYPATH environment variable to library path, if defined.
-    path.extend(mypy_path())
 
     auto = os.path.join(data_dir, 'stubs-auto')
     if os.path.isdir(auto):
