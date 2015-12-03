@@ -163,6 +163,9 @@ def build(sources: List[BuildSource],
         # to the lib_path
         lib_path.insert(0, os.getcwd())
 
+    # Add MYPYPATH environment variable to front of library path, if defined.
+    lib_path[:0] = mypy_path()
+
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
     if alt_lib_path:
@@ -237,9 +240,6 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
     # IDEA: Make this more portable.
     path = []  # type: List[str]
 
-    # Add MYPYPATH environment variable to library path, if defined.
-    path.extend(mypy_path())
-
     auto = os.path.join(data_dir, 'stubs-auto')
     if os.path.isdir(auto):
         data_dir = auto
@@ -269,7 +269,7 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
 
 
 def lookup_program(module: str, lib_path: List[str]) -> str:
-    # Modules are .py and not .pyi
+    # Modules are .py or .pyi
     path = find_module(module, lib_path)
     if path:
         return path
@@ -544,12 +544,20 @@ class BuildManager:
 def remove_cwd_prefix_from_path(p: str) -> str:
     """Remove current working directory prefix from p, if present.
 
+    Also crawl up until a directory without __init__.py is found.
+
     If the result would be empty, return '.' instead.
     """
     cur = os.getcwd()
     # Add separator to the end of the path, unless one is already present.
     if basename(cur) != '':
         cur += os.sep
+    # Compute root path.
+    while p and os.path.isfile(os.path.join(p, '__init__.py')):
+        dir, base = os.path.split(p)
+        if not base:
+            break
+        p = dir
     # Remove current directory prefix from the path, if present.
     if p.startswith(cur):
         p = p[len(cur):]
@@ -935,7 +943,7 @@ def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource
     module_path = find_module(module, lib_path)
     if not module_path:
         return []
-    result = [BuildSource(None, module, None)]
+    result = [BuildSource(module_path, module, None)]
     if module_path.endswith(('__init__.py', '__init__.pyi')):
         for item in os.listdir(os.path.dirname(module_path)):
             abs_path = os.path.join(os.path.dirname(module_path), item)

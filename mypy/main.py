@@ -1,22 +1,23 @@
 """Mypy type checker command line tool."""
 
 import os
-import os.path
 import shutil
 import subprocess
 import sys
 import tempfile
 
 import typing
-from typing import Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy import git
-from mypy.build import BuildSource
+from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
 
 from mypy.version import __version__
+
+PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
 class Options:
@@ -99,6 +100,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             module to run as script (or None),
             parsed flags)
     """
+    # TODO: Rewrite using argparse.
     options = Options()
     help = False
     ver = False
@@ -171,14 +173,76 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     if not args:
         usage('Missing target file or module')
 
-    if args[1:]:
-        usage('Extra argument: {}'.format(args[1]))
-
     if options.python_path and options.pyversion[0] == 2:
         usage('Python version 2 (or --py2) specified, '
               'but --use-python-path will search in sys.path of Python 3')
 
-    return [BuildSource(args[0], None, None)], options
+    targets = []
+    for arg in args:
+        if arg.endswith(PY_EXTENSIONS):
+            targets.append(BuildSource(arg, crawl_up(arg)[1], None))
+        elif os.path.isdir(arg):
+            targets.extend(expand_dir(arg))
+        else:
+            targets.append(BuildSource(arg, None, None))
+    return targets, options
+
+
+def expand_dir(arg: str) -> List[BuildSource]:
+    """Convert a directory name to a list of sources to build."""
+    dir, mod = crawl_up(arg)
+    if not mod:
+        # It's a directory without an __init__.py[i].
+        # List all the .py[i] files (but not recursively).
+        targets = []  # type: List[BuildSource]
+        for name in os.listdir(dir):
+            stripped = strip_py(name)
+            if stripped:
+                path = os.path.join(dir, name)
+                targets.append(BuildSource(path, stripped, None))
+        return targets
+
+    else:
+        lib_path = [dir]
+        return build.find_modules_recursive(mod, lib_path)
+
+
+def crawl_up(arg: str) -> Tuple[str, str]:
+    """Given a .py[i] filename, return (root directory, module).
+
+    We crawl up the path until we find a directory without __init__.py[i].
+    """
+    dir, mod = os.path.split(arg)
+    mod = strip_py(mod) or mod
+    assert '.' not in mod
+    while dir and has_init_file(dir):
+        dir, base = os.path.split(dir)
+        if not base:
+            break
+        if mod == '__init__' or not mod:
+            mod = base
+        else:
+            mod = base + '.' + mod
+    return dir, mod
+
+
+def strip_py(arg: str) -> Optional[str]:
+    """Strip a trailing .py or .pyi suffix.
+
+    Return None if no such suffix is found.
+    """
+    for ext in PY_EXTENSIONS:
+        if arg.endswith(ext):
+            return arg[:-len(ext)]
+    return None
+
+
+def has_init_file(dir: str) -> bool:
+    """Return whether a directory contains a file named __init__.py[i]."""
+    for ext in PY_EXTENSIONS:
+        if os.path.isfile(os.path.join(dir, '__init__' + ext)):
+            return True
+    return False
 
 
 # Don't generate this from mypy.reports, not all are meant to be public.
@@ -200,15 +264,16 @@ def is_report(arg: str) -> bool:
 
 
 def usage(msg: str = None) -> None:
+    # TODO: Add other supported options (--package, -f/--dirty-stubs, ...)
     if msg:
         sys.stderr.write('%s\n' % msg)
         sys.stderr.write("""\
-usage: mypy [option ...] [-c cmd | -m mod | file]
+usage: mypy [option ...] [-c cmd | -m mod | file ...]
 Try 'mypy -h' for more information.
 """)
     else:
         sys.stderr.write("""\
-usage: mypy [option ...] [-m mod | file]
+usage: mypy [option ...] [-c cmd | -m mod | file ...]
 
 Optional arguments:
   -h, --help         print this help message and exit
