@@ -7,15 +7,17 @@ import sys
 import tempfile
 
 import typing
-from typing import Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy import git
-from mypy.build import BuildSource
+from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
 
 from mypy.version import __version__
+
+PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
 class Options:
@@ -177,8 +179,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
 
     targets = []
     for arg in args:
-        if arg.endswith('.py'):
-            targets.append(BuildSource(arg, file_to_mod(arg), None))
+        if arg.endswith(PY_EXTENSIONS):
+            targets.append(BuildSource(arg, crawl_up(arg)[1], None))
         elif os.path.isdir(arg):
             targets.extend(expand_dir(arg))
         else:
@@ -187,53 +189,60 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
 
 
 def expand_dir(arg: str) -> List[BuildSource]:
-    """Convert a directory name to a list of sources to build.
-
-    We crawl up the path until we find a directory without __init__.py.
-    """
-    mod = ''
-    while os.path.exists(os.path.join(arg, '__init__.py')):
-        dir, base = os.path.split(arg)
-        if not base and not dir:
-            break
-        if base:
-            if mod:
-                mod = base + '.' + mod
-            else:
-                mod = base
-        arg = dir
+    """Convert a directory name to a list of sources to build."""
+    dir, mod = crawl_up(arg)
     if not mod:
-        # It's a directory without an __init__.py.
-        # List all the .py files (but not recursively).
+        # It's a directory without an __init__.py[i].
+        # List all the .py[i] files (but not recursively).
         targets = []  # type: List[BuildSource]
-        for name in os.listdir(arg):
-            if name.endswith('.py'):
-                path = os.path.join(arg, name)
-                targets.append(BuildSource(path, name[:-3], None))
+        for name in os.listdir(dir):
+            stripped = strip_py(name)
+            if stripped:
+                path = os.path.join(dir, name)
+                targets.append(BuildSource(path, stripped, None))
         return targets
 
-    lib_path = [arg]
-    return build.find_modules_recursive(mod, lib_path)
+    else:
+        lib_path = [dir]
+        return build.find_modules_recursive(mod, lib_path)
 
 
-def file_to_mod(arg: str) -> str:
-    """Convert a .py filename to a module name.
+def crawl_up(arg: str) -> Tuple[str, str]:
+    """Given a .py[i] filename, return (root directory, module).
 
-    We crawl up the path until we find a directory without __init__.py.
+    We crawl up the path until we find a directory without __init__.py[i].
     """
     dir, mod = os.path.split(arg)
-    if mod.endswith('.py'):
-        mod = mod[:-3]
+    mod = strip_py(mod) or mod
     assert '.' not in mod
-    while dir and os.path.isfile(os.path.join(dir, '__init__.py')):
+    while dir and has_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:
             break
-        if mod == '__init__':
+        if mod == '__init__' or not mod:
             mod = base
         else:
             mod = base + '.' + mod
-    return mod
+    return dir, mod
+
+
+def strip_py(arg: str) -> Optional[str]:
+    """Strip a trailing .py or .pyi suffix.
+
+    Return None if no such suffix is found.
+    """
+    for ext in PY_EXTENSIONS:
+        if arg.endswith(ext):
+            return arg[:-len(ext)]
+    return None
+
+
+def has_init_file(dir: str) -> bool:
+    """Return whether a directory contains a file named __init__.py[i]."""
+    for ext in PY_EXTENSIONS:
+        if os.path.isfile(os.path.join(dir, '__init__' + ext)):
+            return True
+    return False
 
 
 # Don't generate this from mypy.reports, not all are meant to be public.
