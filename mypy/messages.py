@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Dict, Any, Sequence, Iterable
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 
 from mypy.errors import Errors
 from mypy.types import (
@@ -136,12 +136,12 @@ class MessageBuilder:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'note', file=file)
 
-    def format(self, typ: Type, verbose: bool = False) -> str:
+    def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
 
         Mostly behave like format_simple below, but never return an empty string.
         """
-        s = self.format_simple(typ)
+        s = self.format_simple(typ, verbosity)
         if s != '':
             # If format_simple returns a non-trivial result, use that.
             return s
@@ -152,7 +152,7 @@ class MessageBuilder:
                 # return type (this always works).
                 itype = cast(Instance, func.items()[0].ret_type)
                 result = self.format(itype)
-                if verbose:
+                if verbosity >= 1:
                     # In some contexts we want to be explicit about the distinction
                     # between type X and the type of type object X.
                     result += ' (type object)'
@@ -172,7 +172,7 @@ class MessageBuilder:
             # Default case; we simply have to return something meaningful here.
             return 'object'
 
-    def format_simple(self, typ: Type) -> str:
+    def format_simple(self, typ: Type, verbosity: int = 0) -> str:
         """Convert simple types to string that is suitable for error messages.
 
         Return "" for complex types. Try to keep the length of the result
@@ -187,7 +187,10 @@ class MessageBuilder:
         if isinstance(typ, Instance):
             itype = cast(Instance, typ)
             # Get the short name of the type.
-            base_str = itype.type.name()
+            if verbosity >= 2:
+                base_str = itype.type.fullname()
+            else:
+                base_str = itype.type.name()
             if itype.args == []:
                 # No type arguments. Place the type name in quotes to avoid
                 # potential for confusion: otherwise, the type name could be
@@ -251,6 +254,19 @@ class MessageBuilder:
             # useful information. No need to mention the type explicitly in a
             # message.
             return ''
+
+    def format_distinctly(self, type1: Type, type2: Type) -> Tuple[str, str]:
+        """Jointly format a pair of types to distinct strings.
+
+        Increase the verbosity of the type strings until they become distinct.
+        """
+        verbosity = 0
+        for verbosity in range(3):
+            str1 = self.format(type1, verbosity=verbosity)
+            str2 = self.format(type2, verbosity=verbosity)
+            if str1 != str2:
+                return (str1, str2)
+        return (str1, str2)
 
     #
     # Specific operations
@@ -432,12 +448,7 @@ class MessageBuilder:
                 expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
-            arg_type_str = self.format(arg_type)
-            expected_type_str = self.format(expected_type)
-            # If type names turn out ambiguous, attempt to disambiguate.
-            if arg_type_str == expected_type_str:
-                arg_type_str = self.format(arg_type, verbose=True)
-                expected_type_str = self.format(expected_type, verbose=True)
+            arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, arg_type_str, expected_type_str)
         self.fail(msg, context)
