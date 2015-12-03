@@ -1598,6 +1598,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.binder.try_frames.remove(len(self.binder.frames) - 2)
         if s.else_body:
             self.accept(s.else_body)
+        self.breaking_out = False
         changed, frame_on_completion = self.binder.pop_frame()
         completed_frames.append(frame_on_completion)
 
@@ -1609,11 +1610,7 @@ class TypeChecker(NodeVisitor[Type]):
                                           self.temp_node(t, s.vars[i]))
             self.binder.push_frame()
             self.accept(s.handlers[i])
-            changed, frame_on_completion = self.binder.pop_frame()
-            completed_frames.append(frame_on_completion)
-        if s.else_body:
-            self.binder.push_frame()
-            self.accept(s.else_body)
+            self.breaking_out = False
             changed, frame_on_completion = self.binder.pop_frame()
             completed_frames.append(frame_on_completion)
 
