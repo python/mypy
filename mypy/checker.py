@@ -1916,11 +1916,12 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.does_not_return_value(subtype, context)
             else:
                 extra_info = []  # type: List[str]
-                if subtype_label is not None:
-                    extra_info.append(subtype_label + ' ' + self.msg.format(subtype, verbose=True))
-                if supertype_label is not None:
-                    extra_info.append(supertype_label + ' ' + self.msg.format(supertype,
-                                                                              verbose=True))
+                if subtype_label is not None or supertype_label is not None:
+                    subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
+                    if subtype_label is not None:
+                        extra_info.append(subtype_label + ' ' + subtype_str)
+                    if supertype_label is not None:
+                        extra_info.append(supertype_label + ' ' + supertype_str)
                 if extra_info:
                     msg += ' (' + ', '.join(extra_info) + ')'
                 self.fail(msg, context)
