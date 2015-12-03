@@ -884,3 +884,42 @@ MypyFile:1(
         NameExpr(o [l])
         Block:6(
           PassStmt:7())))))
+
+[case testWithMultiple]
+def f(a):
+    pass
+def main():
+    with f(0) as a, f(a) as b:
+        x = a, b
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(a))
+    Block:1(
+      PassStmt:2()))
+  FuncDef:3(
+    main
+    Block:3(
+      WithStmt:4(
+        Expr(
+          CallExpr:4(
+            NameExpr(f [__main__.f])
+            Args(
+              IntExpr(0))))
+        Target(
+          NameExpr(a* [l]))
+        Expr(
+          CallExpr:4(
+            NameExpr(f [__main__.f])
+            Args(
+              NameExpr(a [l]))))
+        Target(
+          NameExpr(b* [l]))
+        Block:4(
+          AssignmentStmt:5(
+            NameExpr(x* [l])
+            TupleExpr:5(
+              NameExpr(a [l])
+              NameExpr(b [l]))))))))

@@ -1560,9 +1560,8 @@ class SemanticAnalyzer(NodeVisitor):
             s.finally_body.accept(visitor)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
-        for e in s.expr:
+        for e, n in zip(s.expr, s.target):
             e.accept(self)
-        for n in s.target:
             if n:
                 self.analyze_lvalue(n)
         self.visit_block(s.body)
