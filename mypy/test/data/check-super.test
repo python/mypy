@@ -66,3 +66,19 @@ class B(A):
 [out]
 main: note: In function "g":
 main:6: error: Invalid assignment target
+
+[case testSuperWithMultipleInheritance]
+import typing
+class A:
+  def f(self) -> None: pass
+class B:
+  def g(self, x: int) -> None: pass
+class C(A, B):
+    def f(self) -> None:
+        super().f()
+        super().g(1)
+        super().f(1) # E: Too many arguments for "f" of "A"
+        super().g() # E: Too few arguments for "g" of "B"
+        super().not_there() # E: "not_there" undefined in superclass
+[out]
+main: note: In member "f" of class "C":

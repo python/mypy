@@ -1202,10 +1202,12 @@ class ExpressionChecker:
                 self.chk.fail('Internal error: unexpected mro for {}: {}'.format(
                     e.info.name(), e.info.mro), e)
                 return AnyType()
-            return analyze_member_access(e.name, self_type(e.info), e,
-                                         is_lvalue, True,
-                                         self.named_type, self.msg,
-                                         e.info.mro[1])
+            for base in e.info.mro[1:]:
+                if e.name in base.names or base == e.info.mro[-1]:
+                    return analyze_member_access(e.name, self_type(e.info), e,
+                                                 is_lvalue, True,
+                                                 self.named_type, self.msg,
+                                                 base)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
