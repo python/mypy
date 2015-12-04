@@ -460,6 +460,18 @@ main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
+[case testTryExceptFlow]
+def f() -> None:
+  x = 1
+  try:
+    pass
+  except:
+    raise
+  x + 'a' # E: Unsupported left operand type for + ("int")
+[builtins fixtures/exception.py]
+[out]
+main: note: In function "f":
+
 [case testTryWithElse]
 import typing
 try: pass
