@@ -1543,8 +1543,8 @@ class Popen(object):
                         chunk = input[input_offset : input_offset + _PIPE_BUF]
                         try:
                             input_offset += os.write(fd, chunk)
-                        except OSError as e:
-                            if e.errno == errno.EPIPE:
+                        except OSError as e2:
+                            if e2.errno == errno.EPIPE:
                                 close_unregister_and_remove(fd)
                             else:
                                 raise
