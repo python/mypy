@@ -661,8 +661,10 @@ class SemanticAnalyzer(NodeVisitor):
                 if (not self.is_stub_file and not defn.info.is_named_tuple and
                         base.type.fullname() == 'builtins.tuple'):
                     self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
-            if isinstance(base, Instance) or isinstance(base, TupleType):
+            if isinstance(base, Instance):
                 defn.base_types.append(base)
+            elif isinstance(base, TupleType):
+                assert False, "Internal error: Unexpected TupleType base class"
             elif isinstance(base, AnyType):
                 # We don't know anything about the base class. Make any unknown attributes
                 # have type 'Any'.
@@ -689,7 +691,7 @@ class SemanticAnalyzer(NodeVisitor):
             if defn.info.mro[-1].fullname() != 'builtins.object':
                 defn.info.mro.append(self.object_type().type)
         # The property of falling back to Any is inherited.
-        defn.info.fallback_to_any = any(base.fallback_to_any for base in defn.info.mro)
+        defn.info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in defn.info.mro)
 
     def expr_to_analyzed_type(self, expr: Node) -> Type:
         if isinstance(expr, CallExpr):
