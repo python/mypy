@@ -1074,3 +1074,12 @@ d4 = dict(a=1, b='') # type: Dict[str, Any]
 [out]
 _program.py:3: error: Incompatible types in assignment (expression has type Dict[str, object], variable has type Dict[str, int])
 _program.py:5: error: Dict[str, int] has no attribute "xyz"
+
+[case testSuperAndSetattr]
+class A:
+    def __init__(self) -> None:
+        super().__setattr__('a', 1)
+        super().__setattr__(1, 'a')
+[out]
+_program.py: note: In member "__init__" of class "A":
+_program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
