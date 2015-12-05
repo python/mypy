@@ -544,5 +544,11 @@ from .x import X as X
 
 class A(X): ...
 
+[case testDuplicateDef]
+def syslog(a): pass
+def syslog(a): pass
+[out]
+def syslog(a): ...
+
 -- More features/fixes:
 --   do not export deleted names

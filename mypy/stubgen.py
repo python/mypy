@@ -230,6 +230,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         if self.is_not_in_all(o.name()):
             return
+        if self.is_recorded_name(o.name()):
+            return
         if not self._indent and self._state not in (EMPTY, FUNC):
             self.add('\n')
         if not self.is_top_level():
@@ -508,6 +510,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """
         if self.is_top_level():
             self._toplevel_names.append(name)
+
+    def is_recorded_name(self, name: str) -> bool:
+        """Has this name been recorded previously?"""
+        return self.is_top_level() and name in self._toplevel_names
 
 
 def find_self_initializers(fdef: FuncBase) -> List[str]:
