@@ -230,6 +230,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return
         if self.is_not_in_all(o.name()):
             return
+        if self.is_recorded_name(o.name()):
+            return
         if not self._indent and self._state not in (EMPTY, FUNC):
             self.add('\n')
         if not self.is_top_level():
@@ -391,20 +393,23 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add_import_line('from %s%s import *\n' % ('.' * o.relative, o.id))
 
     def visit_import_from(self, o: ImportFrom) -> None:
+        exported_names = set()  # type: Set[str]
         if self._all_:
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None]
+            exported_names.update(names)
             self.import_and_export_names(o.id, o.relative, names)
         else:
             # Include import from targets that import from a submodule of a package.
             if o.relative:
                 sub_names = [name for name, alias in o.names
                              if alias is None]
+                exported_names.update(sub_names)
                 self.import_and_export_names(o.id, o.relative, sub_names)
         # Import names used as base classes.
         base_names = [(name, alias) for name, alias in o.names
-                      if alias or name in self._base_classes]
+                      if alias or name in self._base_classes and name not in exported_names]
         if base_names:
             imp_names = []  # type: List[str]
             for name, alias in base_names:
@@ -505,6 +510,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """
         if self.is_top_level():
             self._toplevel_names.append(name)
+
+    def is_recorded_name(self, name: str) -> bool:
+        """Has this name been recorded previously?"""
+        return self.is_top_level() and name in self._toplevel_names
 
 
 def find_self_initializers(fdef: FuncBase) -> List[str]:

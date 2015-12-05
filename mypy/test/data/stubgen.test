@@ -535,6 +535,20 @@ from .packages.urllib3.contrib import parse as parse
 from . import get
 [out]
 
+[case testRelativeImportAndBase]
+from .x import X
+class A(X):
+     pass
+[out]
+from .x import X as X
+
+class A(X): ...
+
+[case testDuplicateDef]
+def syslog(a): pass
+def syslog(a): pass
+[out]
+def syslog(a): ...
 
 -- More features/fixes:
 --   do not export deleted names
