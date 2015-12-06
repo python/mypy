@@ -960,16 +960,10 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_block(self, b: Block) -> Type:
         if b.is_unreachable:
             return None
-        n_frames_added = 0
         for s in b.body:
-            if self.typing_mode_weak() and isinstance(s, AssignmentStmt):
-                self.binder.push_frame()
-                n_frames_added += 1
             self.accept(s)
             if self.breaking_out:
                 break
-        for i in range(n_frames_added):
-            self.binder.pop_frame(False, True)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
         """Type check an assignment statement.
