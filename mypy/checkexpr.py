@@ -4,7 +4,8 @@ from typing import cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType
+    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType,
+    PartialType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -72,6 +73,11 @@ class ExpressionChecker:
         if isinstance(node, Var):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
+            if isinstance(result, PartialType):
+                partial_types = self.chk.partial_types[-1]
+                context = partial_types[node]
+                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                result = AnyType()
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
@@ -130,7 +136,6 @@ class ExpressionChecker:
                 item_type = self.accept(e.args[0])
                 var.type = self.chk.named_generic_type('builtins.list', [item_type])
                 del partial_types[var]
-        return
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr) -> Type:
