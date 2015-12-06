@@ -1124,3 +1124,10 @@ a.add(1)
 a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expected "int"
 [builtins fixtures/set.py]
 [out]
+
+[case testInferDictInitializedToEmpty]
+a = {}
+a[1] = ''
+a() # E: Dict[int, str] not callable
+[builtins fixtures/dict.py]
+[out]

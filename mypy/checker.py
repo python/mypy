@@ -1267,8 +1267,10 @@ class TypeChecker(NodeVisitor[Type]):
         if not isinstance(init_type, Instance):
             return False
         fullname = init_type.type.fullname()
-        if ((fullname == 'builtins.list' or fullname == 'builtins.set')
+        if ((fullname == 'builtins.list' or fullname == 'builtins.set' or
+             fullname == 'builtins.dict')
                 and isinstance(init_type.args[0], NoneTyp)
+                and (fullname != 'builtins.dict' or isinstance(init_type.args[1], NoneTyp))
                 and isinstance(lvalue, NameExpr)):
             partial_type = PartialType(init_type.type, name)
             self.set_inferred_type(name, lvalue, partial_type)
@@ -1349,6 +1351,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         The lvalue argument is the base[index] expression.
         """
+        self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = self.accept(lvalue.base)
         method_type = self.expr_checker.analyze_external_member_access(
             '__setitem__', basetype, context)
@@ -1356,6 +1359,23 @@ class TypeChecker(NodeVisitor[Type]):
         self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
                                      [nodes.ARG_POS, nodes.ARG_POS],
                                      context)
+
+    def try_infer_partial_type_from_indexed_assignment(
+            self, lvalue: IndexExpr, rvalue: Node) -> None:
+        partial_types = self.partial_types[-1]
+        if not partial_types:
+            # Fast path leave -- no partial types in the current scope.
+            return
+        if isinstance(lvalue.base, RefExpr):
+            var = lvalue.base.node
+            if var in partial_types:
+                typename = var.type.type.fullname()
+                if typename == 'builtins.dict':
+                    # TODO: Don't infer things twice.
+                    key_type = self.accept(lvalue.index)
+                    value_type = self.accept(rvalue)
+                    var.type = self.named_generic_type('builtins.dict', [key_type, value_type])
+                    del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> Type:
         self.accept(s.expr)
