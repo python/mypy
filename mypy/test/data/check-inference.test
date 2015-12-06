@@ -1117,3 +1117,10 @@ class A:
 [builtins fixtures/list.py]
 [out]
 main: note: In member "f" of class "A":
+
+[case testInferSetInitializedToEmpty]
+a = set()
+a.add(1)
+a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expected "int"
+[builtins fixtures/set.py]
+[out]

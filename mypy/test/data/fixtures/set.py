@@ -16,3 +16,4 @@ class str: pass
 
 class set(Iterable[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: pass
+    def add(self, x: T) -> None: pass

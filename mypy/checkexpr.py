@@ -131,11 +131,16 @@ class ExpressionChecker:
             return
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
             var = e.callee.expr.node
-            if var in partial_types and e.callee.name == 'append' and e.arg_kinds == [ARG_POS]:
-                # We can infer a full type for a partial List type.
-                item_type = self.accept(e.args[0])
-                var.type = self.chk.named_generic_type('builtins.list', [item_type])
-                del partial_types[var]
+            if var in partial_types:
+                typename = var.type.type.fullname()
+                methodname = e.callee.name
+                if (((typename == 'builtins.list' and methodname == 'append') or
+                     (typename == 'builtins.set' and methodname == 'add'))
+                        and e.arg_kinds == [ARG_POS]):
+                    # We can infer a full type for a partial List type.
+                    item_type = self.accept(e.args[0])
+                    var.type = self.chk.named_generic_type(typename, [item_type])
+                    del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr) -> Type:

@@ -1266,7 +1266,9 @@ class TypeChecker(NodeVisitor[Type]):
     def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
         if not isinstance(init_type, Instance):
             return False
-        if (init_type.type.fullname() == 'builtins.list' and isinstance(init_type.args[0], NoneTyp)
+        fullname = init_type.type.fullname()
+        if ((fullname == 'builtins.list' or fullname == 'builtins.set')
+                and isinstance(init_type.args[0], NoneTyp)
                 and isinstance(lvalue, NameExpr)):
             partial_type = PartialType(init_type.type, name)
             self.set_inferred_type(name, lvalue, partial_type)
