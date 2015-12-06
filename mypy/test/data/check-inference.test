@@ -1024,3 +1024,8 @@ a.append(1)
 a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.py]
 [out]
+
+[case testInferListInitializedToEmptyAndNotAnnotated]
+a = []  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+[out]

@@ -332,8 +332,8 @@ class TypeChecker(NodeVisitor[Type]):
     breaking_out = False
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
-    # Stack of collections of variables with partial types.
-    partial_types = None  # type: List[Set[Var]]
+    # Stack of collections of variables with partial types
+    partial_types = None  # type: List[Dict[Var, Context]]
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
@@ -1263,7 +1263,7 @@ class TypeChecker(NodeVisitor[Type]):
         if init_type.type.fullname() == 'builtins.list' and isinstance(init_type.args[0], NoneTyp):
             partial_type = PartialType(init_type.type, name)
             self.set_inferred_type(name, lvalue, partial_type)
-            self.partial_types[-1].add(name)
+            self.partial_types[-1][name] = lvalue
             return True
         return False
 
@@ -2050,10 +2050,12 @@ class TypeChecker(NodeVisitor[Type]):
         self.locals = None
 
     def enter_partial_types(self) -> None:
-        self.partial_types.append(set())
+        self.partial_types.append({})
 
     def leave_partial_types(self) -> None:
-        self.partial_types.pop()
+        partial_types = self.partial_types.pop()
+        for var, context in partial_types.items():
+            self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?

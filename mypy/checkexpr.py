@@ -129,7 +129,7 @@ class ExpressionChecker:
                 # We can infer a full type for a partial List type.
                 item_type = self.accept(e.args[0])
                 var.type = self.chk.named_generic_type('builtins.list', [item_type])
-                partial_types.remove(var)
+                del partial_types[var]
         return
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
