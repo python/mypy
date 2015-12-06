@@ -2079,12 +2079,19 @@ class TypeChecker(NodeVisitor[Type]):
         self.locals = None
 
     def enter_partial_types(self) -> None:
+        """Push a new scope for collecting partial types."""
         self.partial_types.append({})
 
     def leave_partial_types(self) -> None:
+        """Pop partial type scope.
+
+        Also report errors for variables which still have partial
+        types, i.e. we couldn't infer a complete type.
+        """
         partial_types = self.partial_types.pop()
         for var, context in partial_types.items():
             self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            var.type = AnyType()
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?

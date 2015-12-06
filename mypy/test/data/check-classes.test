@@ -569,7 +569,7 @@ class C:
     x = 1
 [builtins fixtures/list.py]
 
-[case testAccessingClassAttributeWithTypeInferenceIssue]
+[case testAccessingClassAttributeWithTypeInferenceIssue2]
 class C:
     x = []
 x = C.x
@@ -577,8 +577,6 @@ x = C.x
 [out]
 main: note: In class "C":
 main:2: error: Need type annotation for variable
-main: note: At top level:
-main:3: error: Cannot determine type of 'x'
 
 
 -- Nested classes
