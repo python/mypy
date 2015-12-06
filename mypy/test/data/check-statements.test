@@ -530,7 +530,21 @@ except E1 as e: pass
 try: pass
 except E1 as e: pass
 try: pass
-except E2 as e: pass # E: Incompatible types in assignment (expression has type "E2", variable has type "E1")
+except E2 as e: pass
+e + 1 # E: Using deleted variable 'e' as an rvalue
+e = E1() # E: Incompatible types in assignment (expression has type "E1", variable has type <Deleted>)
+[builtins fixtures/exception.py]
+
+[case testReuseDefinedTryExceptionVariable]
+import typing
+class E1(BaseException): pass
+class E2(BaseException): pass
+e = 1
+e = 1
+try: pass
+except E1 as e: pass
+e = 1 # E: Incompatible types in assignment (expression has type "int", variable has type <Deleted>)
+e = E1() # E: Incompatible types in assignment (expression has type "E1", variable has type <Deleted>)
 [builtins fixtures/exception.py]
 
 [case testArbitraryExpressionAsExceptionType]

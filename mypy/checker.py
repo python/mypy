@@ -126,6 +126,13 @@ class ConditionalTypeBinder:
     def get(self, expr: Node) -> Type:
         return self._get(expr.literal_hash)
 
+    def cleanse(self, expr: Node) -> None:
+        """Remove all references to a Node from the binder."""
+        key = expr.literal_hash
+        for frame in self.frames:
+            if key in frame:
+                del frame[key]
+
     def update_from_options(self, frames: List[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
         as in one of the frames.  Return whether any item changes.
@@ -1601,13 +1608,31 @@ class TypeChecker(NodeVisitor[Type]):
         completed_frames.append(frame_on_completion)
 
         for i in range(len(s.handlers)):
+            self.binder.push_frame()
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
-                    self.check_assignment(s.vars[i],
-                                          self.temp_node(t, s.vars[i]))
-            self.binder.push_frame()
+                    # To support local variables, we make this a definition line,
+                    # causing assignment to set the variable's type.
+                    s.vars[i].is_def = True
+                    self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
             self.accept(s.handlers[i])
+            if s.vars[i]:
+                # Exception variables are deleted in python 3 but not python 2.
+                # But, since it's bad form in python 2 and the type checking
+                # wouldn't work very well, we delete it anyway.
+
+                # Unfortunately, this doesn't let us detect usage before the
+                # try/except block.
+                if self.pyversion[0] >= 3:
+                    source = s.vars[i].name
+                else:
+                    source = ('(exception variable "{}", which we do not accept '
+                              'outside except: blocks even in python 2)'.format(s.vars[i].name))
+                var = cast(Var, s.vars[i].node)
+                var.type = DeletedType(source=source)
+                self.binder.cleanse(s.vars[i])
+
             self.breaking_out = False
             changed, frame_on_completion = self.binder.pop_frame()
             completed_frames.append(frame_on_completion)
