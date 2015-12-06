@@ -82,3 +82,21 @@ class C(A, B):
         super().not_there() # E: "not_there" undefined in superclass
 [out]
 main: note: In member "f" of class "C":
+
+[case testSuperWithNew]
+class A:
+    def __new__(cls, x: int) -> 'A':
+        return object.__new__(cls)
+
+class B(A):
+    def __new__(cls, x: str) -> 'A':
+        super().__new__(cls, 1)
+        super().__new__(cls, x) # E
+B('')
+B(1) # E
+[builtins fixtures/__new__.py]
+[out]
+main: note: In member "__new__" of class "B":
+main:8: error: Argument 2 to "__new__" of "A" has incompatible type "str"; expected "int"
+main: note: At top level:
+main:10: error: Argument 1 to "B" has incompatible type "int"; expected "str"

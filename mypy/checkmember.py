@@ -54,8 +54,13 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             typ = map_instance_to_supertype(typ, method.info)
-            return expand_type_by_instance(
-                method_type_with_fallback(method, builtin_type('builtins.function')), typ)
+            if name == '__new__':
+                # __new__ is special and behaves like a static method -- don't strip
+                # the first argument.
+                signature = function_type(method, builtin_type('builtins.function'))
+            else:
+                signature = method_type_with_fallback(method, builtin_type('builtins.function'))
+            return expand_type_by_instance(signature, typ)
         else:
             # Not a method.
             return analyze_member_var_access(name, typ, info, node,
