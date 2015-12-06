@@ -2,7 +2,7 @@ from typing import List, cast, Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded
+    TypeVarType, Instance, TypeVisitor, ErasedType, DeletedType, TypeList, Overloaded,
 )
 
 
@@ -56,6 +56,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_erased_type(self, left: ErasedType) -> bool:
         # Should not get here.
         raise RuntimeError()
+
+    def visit_deleted_type(self, left: DeletedType) -> bool:
+        return isinstance(self.right, DeletedType)
 
     def visit_instance(self, left: Instance) -> bool:
         return (isinstance(self.right, Instance) and

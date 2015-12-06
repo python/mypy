@@ -11,7 +11,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
-    Overloaded, FunctionLike
+    Overloaded, FunctionLike, DeletedType,
 )
 from mypy.nodes import TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases
 
@@ -247,6 +247,8 @@ class MessageBuilder:
             return 'None'
         elif isinstance(typ, AnyType):
             return '"Any"'
+        elif isinstance(typ, DeletedType):
+            return '<Deleted>'
         elif typ is None:
             raise RuntimeError('Type is None')
         else:
@@ -519,6 +521,14 @@ class MessageBuilder:
         else:
             self.fail('{} does not return a value'.format(
                 capitalize((cast(Void, void_type)).source)), context)
+
+    def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
+        """Report an error about using an deleted type as an rvalue."""
+        if typ.source is None:
+            s = ""
+        else:
+            s = " '{}'".format(typ.source)
+        self.fail('Using deleted variable{} as an rvalue'.format(s), context)
 
     def no_variant_matches_arguments(self, overload: Overloaded, arg_types: List[Type],
                                      context: Context) -> None:

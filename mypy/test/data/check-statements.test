@@ -595,6 +595,31 @@ a = A()
 del a.x, a.y # E: "A" has no attribute "y"
 
 
+[case testDelStatementWithAssignmentSimple]
+a = 1
+a + 1
+del a
+a + 1 # E: Using deleted variable 'a' as an rvalue
+[builtins fixtures/ops.py]
+
+[case testDelStatementWithAssignmentTuple]
+a = 1
+b = 1
+del (a, b)
+b + 1 # E: Using deleted variable 'b' as an rvalue
+[builtins fixtures/ops.py]
+
+[case testDelStatementWithAssignmentClass]
+class C:
+    a = 1
+
+c = C()
+c.a = 1
+c.a + 1
+del c.a
+c.a + 1
+[builtins fixtures/ops.py]
+
 -- Yield statement
 -- ---------------
 

@@ -29,7 +29,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
-    UnionType, TypeVarType,
+    UnionType, TypeVarType, DeletedType,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -1231,6 +1231,8 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+        elif isinstance(init_type, DeletedType):
+            self.msg.deleted_as_rvalue(init_type, context)
         elif not self.is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for type
             # inference (it's not specific enough).
@@ -1304,6 +1306,8 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         else:
             rvalue_type = self.accept(rvalue, lvalue_type)
+            if isinstance(rvalue_type, DeletedType):
+                self.msg.deleted_as_rvalue(rvalue_type, context)
             if self.typing_mode_weak():
                 return rvalue_type
             self.check_subtype(rvalue_type, lvalue_type, context, msg,
@@ -1704,7 +1708,19 @@ class TypeChecker(NodeVisitor[Type]):
             c.line = s.line
             return c.accept(self)
         else:
+            def flatten(t: Node) -> List[Node]:
+                """Flatten a nested sequence of tuples/lists into one list of nodes."""
+                if isinstance(t, TupleExpr) or isinstance(t, ListExpr):
+                    t = cast(Union[TupleExpr, ListExpr], t)
+                    return [b for a in t.items for b in flatten(a)]
+                else:
+                    return [t]
+
             s.expr.accept(self)
+            for elt in flatten(s.expr):
+                if isinstance(elt, NameExpr):
+                    self.binder.assign_type(elt, DeletedType(source=elt.name),
+                                            self.typing_mode_weak())
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:

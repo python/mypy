@@ -5,7 +5,7 @@ from typing import cast, List
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
-    UnionType, FunctionLike, Overloaded
+    UnionType, DeletedType, FunctionLike, Overloaded
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
@@ -105,6 +105,12 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return ErrorType()
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        if not isinstance(self.s, Void):
+            return self.s
+        else:
+            return self.default(self.s)
+
+    def visit_deleted_type(self, t: DeletedType) -> Type:
         if not isinstance(self.s, Void):
             return self.s
         else:
