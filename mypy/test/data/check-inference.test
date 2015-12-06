@@ -1037,3 +1037,54 @@ a.xyz
 a.append('')
 [builtins fixtures/list.py]
 [out]
+
+[case testInferListInitializedToEmptyInFunction]
+def f() -> None:
+   a = []
+   a.append(1)
+   a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferListInitializedToEmptyAndNotAnnotatedInFunction]
+def f() -> None:
+    a = []  # E: Need type annotation for variable
+
+def g() -> None: pass
+
+a = []
+a.append(1)
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferListInitializedToEmptyAndReadBeforeAppendInFunction]
+def f() -> None:
+    a = []  # E: Need type annotation for variable
+    if a: pass
+    a.xyz
+    a.append('')
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferListInitializedToEmptyInClassBody]
+class A:
+   a = []
+   a.append(1)
+   a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+main: note: In class "A":
+
+[case testInferListInitializedToEmptyAndNotAnnotatedInClassBody]
+class A:
+    a = []  # E: Need type annotation for variable
+
+class B:
+    a = []
+    a.append(1)
+[builtins fixtures/list.py]
+[out]
+main: note: In class "A":

@@ -465,6 +465,8 @@ class TypeChecker(NodeVisitor[Type]):
         if fdef:
             self.errors.push_function(fdef.name())
 
+        self.enter_partial_types()
+
         typ = self.function_type(defn)
         if type_override:
             typ = type_override
@@ -472,6 +474,8 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_func_def(defn, typ, name)
         else:
             raise RuntimeError('Not supported')
+
+        self.leave_partial_types()
 
         if fdef:
             self.errors.pop_function()
@@ -868,12 +872,14 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)
+        self.enter_partial_types()
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.accept(defn.defs)
         self.binder = old_binder
         self.check_multiple_inheritance(typ)
+        self.leave_partial_types()
         self.errors.pop_type()
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
