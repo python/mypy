@@ -1083,3 +1083,15 @@ class A:
 [out]
 _program.py: note: In member "__init__" of class "A":
 _program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
+
+[case testMetaclassAndSuper]
+class A(type):
+    def __new__(cls, name, bases, namespace) -> 'type':
+        return super().__new__(cls, '', (object,), {'x': 7})
+
+class B(metaclass=A):
+    pass
+
+print(getattr(B(), 'x'))
+[out]
+7
