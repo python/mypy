@@ -1088,3 +1088,21 @@ class B:
 [builtins fixtures/list.py]
 [out]
 main: note: In class "A":
+
+[case testInferListInitializedToEmptyInMethod]
+class A:
+    def f(self) -> None:
+        a = []
+        a.append(1)
+        a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+main: note: In member "f" of class "A":
+
+[case testInferListInitializedToEmptyAndNotAnnotatedInMethod]
+class A:
+    def f(self) -> None:
+        a = []  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+[out]
+main: note: In member "f" of class "A":
