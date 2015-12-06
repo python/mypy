@@ -1012,3 +1012,15 @@ a = x1
 a = x2
 a = x3 # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
 [builtins fixtures/list.py]
+
+
+-- Inferring type of variable when initialized to an empty collection
+-- ------------------------------------------------------------------
+
+
+[case testInferListInitializedToEmpty]
+a = []
+a.append(1)
+a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]

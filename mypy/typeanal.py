@@ -4,7 +4,7 @@ from typing import Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
-    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType, EllipsisType
+    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType, PartialType, EllipsisType
 )
 from mypy.nodes import (
     GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, BOUND_TVAR, TypeVarExpr, Var, Node,
@@ -193,6 +193,9 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
 
+    def visit_partial_type(self, t: PartialType) -> Type:
+        assert False, "Internal error: Unexpected partial type"
+
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
         self.fail("Unexpected '...'", t)
         return AnyType()
@@ -354,4 +357,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.fail('Invalid type', t)
 
     def visit_type_var(self, t: TypeVarType) -> None:
+        pass
+
+    def visit_partial_type(self, t: PartialType) -> None:
         pass

@@ -501,6 +501,26 @@ class UnionType(Type):
                    for x in self.items)
 
 
+class PartialType(Type):
+    """Type such as List[?] where type arguments are unknown.
+
+    These are used for inferring types in multiphase initialization such as this:
+
+      x = []       # x gets a partial type List[?], as item type is unknown
+      x.append(1)  # partial type gets replaced with normal type List[int]
+    """
+
+    type = None  # type: mypy.nodes.TypeInfo
+    var = None  # type: mypy.nodes.Var
+
+    def __init__(self, type: 'mypy.nodes.TypeInfo', var: 'mypy.nodes.Var') -> None:
+        self.type = type
+        self.var = var
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_partial_type(self)
+
+
 class EllipsisType(Type):
     """The type ... (ellipsis).
 
@@ -581,6 +601,10 @@ class TypeVisitor(Generic[T]):
     def visit_union_type(self, t: UnionType) -> T:
         pass
 
+    @abstractmethod
+    def visit_partial_type(self, t: PartialType) -> T:
+        pass
+
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         raise self._notimplemented_helper()
 
@@ -617,6 +641,9 @@ class TypeTranslator(TypeVisitor[Type]):
         return Instance(t.type, self.translate_types(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        return t
+
+    def visit_partial_type(self, t: PartialType) -> Type:
         return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
@@ -773,6 +800,9 @@ class TypeStrVisitor(TypeVisitor[str]):
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
 
+    def visit_partial_type(self, t: PartialType) -> str:
+        return '{}[{}]'.format(t.info.name(), ', '.join(['?'] * len(t.info.type_vars)))
+
     def visit_ellipsis_type(self, t):
         return '...'
 
@@ -838,6 +868,9 @@ class TypeQuery(TypeVisitor[bool]):
         return self.default
 
     def visit_type_var(self, t: TypeVarType) -> bool:
+        return self.default
+
+    def visit_partial_type(self, t: PartialType) -> bool:
         return self.default
 
     def visit_instance(self, t: Instance) -> bool:

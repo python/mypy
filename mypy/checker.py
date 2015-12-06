@@ -29,7 +29,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
-    UnionType, TypeVarType,
+    UnionType, TypeVarType, PartialType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -332,7 +332,8 @@ class TypeChecker(NodeVisitor[Type]):
     breaking_out = False
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
-
+    # Stack of collections of variables with partial types.
+    partial_types = None  # type: List[Set[Var]]
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
@@ -358,6 +359,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.dynamic_funcs = []
         self.function_stack = []
         self.weak_opts = set()  # type: Set[str]
+        self.partial_types = []
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -367,10 +369,12 @@ class TypeChecker(NodeVisitor[Type]):
         self.globals = file_node.names
         self.locals = None
         self.weak_opts = file_node.weak_opts
+        self.enter_partial_types()
 
         for d in file_node.defs:
             self.accept(d)
 
+        self.leave_partial_types()
         self.errors.set_ignored_lines(set())
 
     def accept(self, node: Node, type_context: Type = None) -> Type:
@@ -1238,10 +1242,13 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif not self.is_valid_inferred_type(init_type):
-            # We cannot use the type of the initialization expression for type
-            # inference (it's not specific enough).
-            self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+            # We cannot use the type of the initialization expression for full type
+            # inference (it's not specific enough), but we might be able to give
+            # partial type which will be made more specific later. A partial type
+            # gets generated in assignment like 'x = []' where item type is not known.
+            if not self.infer_partial_type(name, lvalue, init_type):
+                self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         else:
             # Infer type of the target.
 
@@ -1249,6 +1256,16 @@ class TypeChecker(NodeVisitor[Type]):
             init_type = strip_type(init_type)
 
             self.set_inferred_type(name, lvalue, init_type)
+
+    def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
+        if not isinstance(init_type, Instance):
+            return False
+        if init_type.type.fullname() == 'builtins.list' and isinstance(init_type.args[0], NoneTyp):
+            partial_type = PartialType(init_type.type, name)
+            self.set_inferred_type(name, lvalue, partial_type)
+            self.partial_types[-1].add(name)
+            return True
+        return False
 
     def set_inferred_type(self, var: Var, lvalue: Node, type: Type) -> None:
         """Store inferred variable type.
@@ -2031,6 +2048,12 @@ class TypeChecker(NodeVisitor[Type]):
 
     def leave(self) -> None:
         self.locals = None
+
+    def enter_partial_types(self) -> None:
+        self.partial_types.append(set())
+
+    def leave_partial_types(self) -> None:
+        self.partial_types.pop()
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?

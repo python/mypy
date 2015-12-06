@@ -3,7 +3,7 @@ from typing import cast, List, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
-    is_named_instance
+    PartialType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -183,6 +183,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_union_type(self, left: UnionType) -> bool:
         return all(is_subtype(item, self.right, self.check_type_parameter)
                    for item in left.items)
+
+    def visit_partial_type(self, left: PartialType) -> bool:
+        # This is indeterminate as we don't really know the complete type yet.
+        raise RuntimeError
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
