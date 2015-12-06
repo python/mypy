@@ -3,7 +3,7 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType
+    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
@@ -170,13 +170,9 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def visit_intersection(self, t):
-        # TODO Obsolete; target overload types instead?
-        # Only support very rudimentary meets between intersection types.
-        if is_same_type(self.s, t):
-            return self.s
-        else:
-            return self.default(self.s)
+    def visit_partial_type(self, t: PartialType) -> Type:
+        # We can't determine the meet of partial types. We should never get here.
+        assert False, 'Internal error'
 
     def meet(self, s, t):
         return meet_types(s, t)

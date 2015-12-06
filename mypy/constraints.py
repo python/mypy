@@ -4,7 +4,7 @@ from typing import List, cast
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
-    Instance, TupleType, UnionType, Overloaded, ErasedType, is_named_instance
+    Instance, TupleType, UnionType, Overloaded, ErasedType, PartialType, is_named_instance
 )
 from mypy.expandtype import expand_caller_var_args
 from mypy.maptype import map_instance_to_supertype
@@ -150,6 +150,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_erased_type(self, template: ErasedType) -> List[Constraint]:
         return []
+
+    # Errors
+
+    def visit_partial_type(self, template: PartialType) -> List[Constraint]:
+        # We can't do anything useful with a partial type here.
+        assert False, "Internal error"
 
     # Non-trivial leaf type
 
