@@ -3,7 +3,7 @@ import typing
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    TypeTranslator, TypeList
+    DeletedType, TypeTranslator, TypeList
 )
 
 
@@ -45,6 +45,9 @@ class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_erased_type(self, t: ErasedType) -> Type:
         # Should not get here.
         raise RuntimeError()
+
+    def visit_deleted_type(self, t: DeletedType) -> Type:
+        return t
 
     def visit_instance(self, t: Instance) -> Type:
         return Instance(t.type, [AnyType()] * len(t.args), t.line)

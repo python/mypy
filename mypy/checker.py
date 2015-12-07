@@ -29,7 +29,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
-    UnionType, TypeVarType,
+    UnionType, TypeVarType, DeletedType,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -125,6 +125,13 @@ class ConditionalTypeBinder:
 
     def get(self, expr: Node) -> Type:
         return self._get(expr.literal_hash)
+
+    def cleanse(self, expr: Node) -> None:
+        """Remove all references to a Node from the binder."""
+        key = expr.literal_hash
+        for frame in self.frames:
+            if key in frame:
+                del frame[key]
 
     def update_from_options(self, frames: List[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
@@ -960,16 +967,10 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_block(self, b: Block) -> Type:
         if b.is_unreachable:
             return None
-        n_frames_added = 0
         for s in b.body:
-            if self.typing_mode_weak() and isinstance(s, AssignmentStmt):
-                self.binder.push_frame()
-                n_frames_added += 1
             self.accept(s)
             if self.breaking_out:
                 break
-        for i in range(n_frames_added):
-            self.binder.pop_frame(False, True)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
         """Type check an assignment statement.
@@ -1237,6 +1238,8 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+        elif isinstance(init_type, DeletedType):
+            self.msg.deleted_as_rvalue(init_type, context)
         elif not self.is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for type
             # inference (it's not specific enough).
@@ -1310,11 +1313,16 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         else:
             rvalue_type = self.accept(rvalue, lvalue_type)
+            if isinstance(rvalue_type, DeletedType):
+                self.msg.deleted_as_rvalue(rvalue_type, context)
             if self.typing_mode_weak():
                 return rvalue_type
-            self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                               '{} has type'.format(rvalue_name),
-                               '{} has type'.format(lvalue_name))
+            if isinstance(lvalue_type, DeletedType):
+                self.msg.deleted_as_lvalue(lvalue_type, context)
+            else:
+                self.check_subtype(rvalue_type, lvalue_type, context, msg,
+                                   '{} has type'.format(rvalue_name),
+                                   '{} has type'.format(lvalue_name))
             return rvalue_type
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
@@ -1603,13 +1611,31 @@ class TypeChecker(NodeVisitor[Type]):
         completed_frames.append(frame_on_completion)
 
         for i in range(len(s.handlers)):
+            self.binder.push_frame()
             if s.types[i]:
                 t = self.exception_type(s.types[i])
                 if s.vars[i]:
-                    self.check_assignment(s.vars[i],
-                                          self.temp_node(t, s.vars[i]))
-            self.binder.push_frame()
+                    # To support local variables, we make this a definition line,
+                    # causing assignment to set the variable's type.
+                    s.vars[i].is_def = True
+                    self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
             self.accept(s.handlers[i])
+            if s.vars[i]:
+                # Exception variables are deleted in python 3 but not python 2.
+                # But, since it's bad form in python 2 and the type checking
+                # wouldn't work very well, we delete it anyway.
+
+                # Unfortunately, this doesn't let us detect usage before the
+                # try/except block.
+                if self.pyversion[0] >= 3:
+                    source = s.vars[i].name
+                else:
+                    source = ('(exception variable "{}", which we do not accept '
+                              'outside except: blocks even in python 2)'.format(s.vars[i].name))
+                var = cast(Var, s.vars[i].node)
+                var.type = DeletedType(source=source)
+                self.binder.cleanse(s.vars[i])
+
             self.breaking_out = False
             changed, frame_on_completion = self.binder.pop_frame()
             completed_frames.append(frame_on_completion)
@@ -1710,7 +1736,19 @@ class TypeChecker(NodeVisitor[Type]):
             c.line = s.line
             return c.accept(self)
         else:
+            def flatten(t: Node) -> List[Node]:
+                """Flatten a nested sequence of tuples/lists into one list of nodes."""
+                if isinstance(t, TupleExpr) or isinstance(t, ListExpr):
+                    t = cast(Union[TupleExpr, ListExpr], t)
+                    return [b for a in t.items for b in flatten(a)]
+                else:
+                    return [t]
+
             s.expr.accept(self)
+            for elt in flatten(s.expr):
+                if isinstance(elt, NameExpr):
+                    self.binder.assign_type(elt, DeletedType(source=elt.name),
+                                            self.typing_mode_weak())
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:

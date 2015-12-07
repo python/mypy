@@ -4,7 +4,7 @@ from typing import Callable, cast, List, Tuple, Dict, Any, Union
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
-    Void, NoneTyp, TypeList, TypeVarDef, TypeVisitor, StarType, EllipsisType
+    Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, StarType, EllipsisType
 )
 from mypy.nodes import (
     GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, BOUND_TVAR, TypeVarExpr, Var, Node,
@@ -157,6 +157,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        return t
+
+    def visit_deleted_type(self, t: DeletedType) -> Type:
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
@@ -348,6 +351,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_none_type(self, t: NoneTyp) -> None:
+        pass
+
+    def visit_deleted_type(self, t: DeletedType) -> None:
         pass
 
     def visit_type_list(self, t: TypeList) -> None:

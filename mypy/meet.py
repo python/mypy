@@ -3,7 +3,7 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType
+    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, DeletedType,
 )
 from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
@@ -115,6 +115,15 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_none_type(self, t: NoneTyp) -> Type:
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             return t
+        else:
+            return ErrorType()
+
+    def visit_deleted_type(self, t: DeletedType) -> Type:
+        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+            if isinstance(self.s, NoneTyp):
+                return self.s
+            else:
+                return t
         else:
             return ErrorType()
 

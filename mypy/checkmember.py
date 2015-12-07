@@ -4,7 +4,7 @@ from typing import cast, Callable, List
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
-    Overloaded, TypeVarType, TypeTranslator, UnionType
+    Overloaded, TypeVarType, TypeTranslator, DeletedType, UnionType,
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, function_type, Decorator, OverloadedFuncDef
@@ -99,6 +99,9 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, TypeVarType):
         return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
                                      builtin_type, msg, report_type=report_type)
+    elif isinstance(typ, DeletedType):
+        msg.deleted_as_rvalue(typ, node)
+        return AnyType()
     return msg.has_no_attr(report_type, name, node)
 
 

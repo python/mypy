@@ -4,7 +4,7 @@ from typing import List, cast
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
-    Instance, TupleType, UnionType, Overloaded, ErasedType, is_named_instance
+    Instance, TupleType, UnionType, Overloaded, ErasedType, DeletedType, is_named_instance
 )
 from mypy.expandtype import expand_caller_var_args
 from mypy.maptype import map_instance_to_supertype
@@ -149,6 +149,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return []
 
     def visit_erased_type(self, template: ErasedType) -> List[Constraint]:
+        return []
+
+    def visit_deleted_type(self, template: DeletedType) -> List[Constraint]:
         return []
 
     # Non-trivial leaf type
