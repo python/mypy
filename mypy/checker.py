@@ -1247,7 +1247,7 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
-        elif not self.is_valid_inferred_type(init_type):
+        elif not is_valid_inferred_type(init_type):
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
             # partial type which will be made more specific later. A partial type
@@ -1302,23 +1302,6 @@ class TypeChecker(NodeVisitor[Type]):
         """
         if context.get_line() in self.errors.ignored_lines:
             self.set_inferred_type(var, lvalue, AnyType())
-
-    def is_valid_inferred_type(self, typ: Type) -> bool:
-        """Is an inferred type invalid?
-
-        Examples include the None type or a type with a None component.
-        """
-        if is_same_type(typ, NoneTyp()):
-            return False
-        elif isinstance(typ, Instance):
-            for arg in typ.args:
-                if not self.is_valid_inferred_type(arg):
-                    return False
-        elif isinstance(typ, TupleType):
-            for item in typ.items:
-                if not self.is_valid_inferred_type(item):
-                    return False
-        return True
 
     def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:
         if expr.literal >= LITERAL_TYPE:
@@ -2350,3 +2333,21 @@ def infer_operator_assignment_method(type: Type, operator: str) -> str:
             if type.type.has_readable_member(inplace):
                 method = inplace
     return method
+
+
+def is_valid_inferred_type(typ: Type) -> bool:
+    """Is an inferred type valid?
+
+    Examples of invalid types include the None type or a type with a None component.
+    """
+    if is_same_type(typ, NoneTyp()):
+        return False
+    elif isinstance(typ, Instance):
+        for arg in typ.args:
+            if not is_valid_inferred_type(arg):
+                return False
+    elif isinstance(typ, TupleType):
+        for item in typ.items:
+            if not is_valid_inferred_type(item):
+                return False
+    return True
