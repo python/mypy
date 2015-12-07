@@ -1185,8 +1185,8 @@ class Parser:
 
     def parse_with_stmt(self) -> WithStmt:
         self.expect('with')
-        exprs = []  # type: List[Node]
-        targets = []  # type: List[Node]
+        exprs = []
+        targets = []
         while True:
             expr = self.parse_expression(precedence[','])
             if self.current_str() == 'as':
@@ -1204,7 +1204,7 @@ class Parser:
 
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
-        args = []  # type: List[Node]
+        args = []
         target = None  # type: Node
         if self.current_str() == '>>':
             self.skip()
@@ -1390,7 +1390,7 @@ class Parser:
 
     def parse_list_expr(self) -> Node:
         """Parse list literal or list comprehension."""
-        items = []  # type: List[Node]
+        items = []
         self.expect('[')
         while self.current_str() != ']' and not self.eol():
             items.append(self.parse_expression(precedence['<for>'], star_expr_allowed=True))
@@ -1415,8 +1415,8 @@ class Parser:
         return gen
 
     def parse_comp_for(self) -> Tuple[List[Node], List[Node], List[List[Node]]]:
-        indices = []  # type: List[Node]
-        sequences = []  # type: List[Node]
+        indices = []
+        sequences = []
         condlists = []  # type: List[List[Node]]
         while self.current_str() == 'for':
             conds = []  # type: List[Node]
