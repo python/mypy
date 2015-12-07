@@ -569,7 +569,7 @@ class Parser:
           x, y = __tuple_arg_1
         """
         args = []  # type: List[Argument]
-        extra_stmts = []  # type: List[AssignmentStmt]
+        extra_stmts = []
         # This is for checking duplicate argument names.
         arg_names = []  # type: List[str]
         has_tuple_arg = False
@@ -774,7 +774,7 @@ class Parser:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
-            nodes = []  # type: List[Node]
+            nodes = []
             while True:
                 ind = self.ind
                 stmt, is_simple = self.parse_statement()
@@ -1032,7 +1032,7 @@ class Parser:
         return node
 
     def parse_identifier_list(self) -> List[str]:
-        names = []  # type: List[str]
+        names = []
         while True:
             n = self.expect_type(Name)
             names.append(n.string)
@@ -1079,7 +1079,7 @@ class Parser:
 
     def parse_for_index_variables(self) -> Node:
         # Parse index variables of a 'for' statement.
-        index_items = []  # type: List[Node]
+        index_items = []
         force_tuple = False
 
         while True:
@@ -1105,7 +1105,7 @@ class Parser:
         is_error = False
 
         self.expect('if')
-        expr = []  # type: List[Node]
+        expr = []
         try:
             expr.append(self.parse_expression())
         except ParseError:
