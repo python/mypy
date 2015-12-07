@@ -1317,9 +1317,12 @@ class TypeChecker(NodeVisitor[Type]):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if self.typing_mode_weak():
                 return rvalue_type
-            self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                               '{} has type'.format(rvalue_name),
-                               '{} has type'.format(lvalue_name))
+            if isinstance(lvalue_type, DeletedType):
+                self.msg.deleted_as_lvalue(lvalue_type, context)
+            else:
+                self.check_subtype(rvalue_type, lvalue_type, context, msg,
+                                   '{} has type'.format(rvalue_name),
+                                   '{} has type'.format(lvalue_name))
             return rvalue_type
 
     def check_indexed_assignment(self, lvalue: IndexExpr,

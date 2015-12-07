@@ -531,8 +531,8 @@ try: pass
 except E1 as e: pass
 try: pass
 except E2 as e: pass
-e + 1 # E: Using deleted variable 'e' as an rvalue
-e = E1() # E: Incompatible types in assignment (expression has type "E1", variable has type <Deleted>)
+e + 1 # E: Trying to read deleted variable 'e'
+e = E1() # E: Assignment to variable 'e' outside except: block
 [builtins fixtures/exception.py]
 
 [case testReuseDefinedTryExceptionVariable]
@@ -543,8 +543,8 @@ e = 1
 e = 1
 try: pass
 except E1 as e: pass
-e = 1 # E: Incompatible types in assignment (expression has type "int", variable has type <Deleted>)
-e = E1() # E: Incompatible types in assignment (expression has type "E1", variable has type <Deleted>)
+e = 1 # E: Assignment to variable 'e' outside except: block
+e = E1() # E: Assignment to variable 'e' outside except: block
 [builtins fixtures/exception.py]
 
 [case testArbitraryExpressionAsExceptionType]
@@ -613,14 +613,14 @@ del a.x, a.y # E: "A" has no attribute "y"
 a = 1
 a + 1
 del a
-a + 1 # E: Using deleted variable 'a' as an rvalue
+a + 1 # E: Trying to read deleted variable 'a'
 [builtins fixtures/ops.py]
 
 [case testDelStatementWithAssignmentTuple]
 a = 1
 b = 1
 del (a, b)
-b + 1 # E: Using deleted variable 'b' as an rvalue
+b + 1 # E: Trying to read deleted variable 'b'
 [builtins fixtures/ops.py]
 
 [case testDelStatementWithAssignmentClass]

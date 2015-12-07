@@ -723,7 +723,10 @@ class TypeStrVisitor(TypeVisitor[str]):
         return "<Erased>"
 
     def visit_deleted_type(self, t):
-        return "<Deleted {}>".format(t.source)
+        if t.source is None:
+            return "<Deleted>"
+        else:
+            return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t):
         s = t.type.fullname()
