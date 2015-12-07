@@ -2,7 +2,8 @@ from typing import Dict, Tuple, List, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
-    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList
+    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
+    PartialType
 )
 
 
@@ -91,6 +92,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.expand_types(t.items), t.line)
+
+    def visit_partial_type(self, t: PartialType) -> Type:
+        return t
 
     def expand_types(self, types: List[Type]) -> List[Type]:
         a = []  # type: List[Type]

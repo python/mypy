@@ -10,7 +10,8 @@ class object:
 
 class type: pass
 
-class dict(Generic[T, S]): pass
+class dict(Generic[T, S]):
+    def __setitem__(self, k: T, v: S) -> None: pass
 class int: pass # for convenience
 class str: pass # for keyword argument key type
 class list(Iterable[T], Generic[T]): # needed by some test cases

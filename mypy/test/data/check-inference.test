@@ -1012,3 +1012,146 @@ a = x1
 a = x2
 a = x3 # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
 [builtins fixtures/list.py]
+
+
+-- Inferring type of variable when initialized to an empty collection
+-- ------------------------------------------------------------------
+
+
+[case testInferListInitializedToEmpty]
+a = []
+a.append(1)
+a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+
+[case testInferListInitializedToEmptyAndNotAnnotated]
+a = []  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+[out]
+
+[case testInferListInitializedToEmptyAndReadBeforeAppend]
+a = []  # E: Need type annotation for variable
+if a: pass
+a.xyz
+a.append('')
+[builtins fixtures/list.py]
+[out]
+
+[case testInferListInitializedToEmptyAndIncompleteTypeInAppend]
+a = [] # E: Need type annotation for variable
+a.append([])
+a()
+[builtins fixtures/list.py]
+[out]
+
+[case testInferListInitializedToEmptyAndMultipleAssignment]
+a, b = [], []
+a.append(1)
+b.append('')
+a() # E: List[int] not callable
+b() # E: List[str] not callable
+[builtins fixtures/list.py]
+[out]
+
+[case testInferListInitializedToEmptyInFunction]
+def f() -> None:
+   a = []
+   a.append(1)
+   a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferListInitializedToEmptyAndNotAnnotatedInFunction]
+def f() -> None:
+    a = []  # E: Need type annotation for variable
+
+def g() -> None: pass
+
+a = []
+a.append(1)
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferListInitializedToEmptyAndReadBeforeAppendInFunction]
+def f() -> None:
+    a = []  # E: Need type annotation for variable
+    if a: pass
+    a.xyz
+    a.append('')
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferListInitializedToEmptyInClassBody]
+class A:
+   a = []
+   a.append(1)
+   a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+main: note: In class "A":
+
+[case testInferListInitializedToEmptyAndNotAnnotatedInClassBody]
+class A:
+    a = []  # E: Need type annotation for variable
+
+class B:
+    a = []
+    a.append(1)
+[builtins fixtures/list.py]
+[out]
+main: note: In class "A":
+
+[case testInferListInitializedToEmptyInMethod]
+class A:
+    def f(self) -> None:
+        a = []
+        a.append(1)
+        a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+[out]
+main: note: In member "f" of class "A":
+
+[case testInferListInitializedToEmptyAndNotAnnotatedInMethod]
+class A:
+    def f(self) -> None:
+        a = []  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+[out]
+main: note: In member "f" of class "A":
+
+[case testInferListInitializedToEmptyInMethodViaAttribute]
+class A:
+    def f(self) -> None:
+        # Attributes aren't supported right now.
+        self.a = [] # E: Need type annotation for variable
+        self.a.append(1) # E: Cannot determine type of 'a'
+        self.a.append('') # E: Cannot determine type of 'a'
+[builtins fixtures/list.py]
+[out]
+main: note: In member "f" of class "A":
+
+[case testInferSetInitializedToEmpty]
+a = set()
+a.add(1)
+a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expected "int"
+[builtins fixtures/set.py]
+[out]
+
+[case testInferDictInitializedToEmpty]
+a = {}
+a[1] = ''
+a() # E: Dict[int, str] not callable
+[builtins fixtures/dict.py]
+[out]
+
+[case testInferdictInitializedToEmptyAndIncompleteTypeInUpdate]
+a = {} # E: Need type annotation for variable
+a[1] = {}
+b = {} # E: Need type annotation for variable
+b[{}] = 1
+[builtins fixtures/dict.py]
+[out]

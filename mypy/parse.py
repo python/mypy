@@ -185,7 +185,7 @@ class Parser:
 
     def parse_import(self) -> Import:
         self.expect('import')
-        ids = []  # type: List[Tuple[str, str]]
+        ids = []
         while True:
             id = self.parse_qualified_name()
             translated = self.translate_module_id(id)
@@ -362,7 +362,7 @@ class Parser:
         return self.parse_qualified_name()
 
     def parse_decorated_function_or_class(self) -> Node:
-        decorators = []  # type: List[Node]
+        decorators = []
         no_type_checks = False
         while self.current_str() == '@':
             self.expect('@')
@@ -569,7 +569,7 @@ class Parser:
           x, y = __tuple_arg_1
         """
         args = []  # type: List[Argument]
-        extra_stmts = []  # type: List[AssignmentStmt]
+        extra_stmts = []
         # This is for checking duplicate argument names.
         arg_names = []  # type: List[str]
         has_tuple_arg = False
@@ -774,7 +774,7 @@ class Parser:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
-            nodes = []  # type: List[Node]
+            nodes = []
             while True:
                 ind = self.ind
                 stmt, is_simple = self.parse_statement()
@@ -1032,7 +1032,7 @@ class Parser:
         return node
 
     def parse_identifier_list(self) -> List[str]:
-        names = []  # type: List[str]
+        names = []
         while True:
             n = self.expect_type(Name)
             names.append(n.string)
@@ -1079,7 +1079,7 @@ class Parser:
 
     def parse_for_index_variables(self) -> Node:
         # Parse index variables of a 'for' statement.
-        index_items = []  # type: List[Node]
+        index_items = []
         force_tuple = False
 
         while True:
@@ -1105,7 +1105,7 @@ class Parser:
         is_error = False
 
         self.expect('if')
-        expr = []  # type: List[Node]
+        expr = []
         try:
             expr.append(self.parse_expression())
         except ParseError:
@@ -1185,8 +1185,8 @@ class Parser:
 
     def parse_with_stmt(self) -> WithStmt:
         self.expect('with')
-        exprs = []  # type: List[Node]
-        targets = []  # type: List[Node]
+        exprs = []
+        targets = []
         while True:
             expr = self.parse_expression(precedence[','])
             if self.current_str() == 'as':
@@ -1204,7 +1204,7 @@ class Parser:
 
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
-        args = []  # type: List[Node]
+        args = []
         target = None  # type: Node
         if self.current_str() == '>>':
             self.skip()
@@ -1390,7 +1390,7 @@ class Parser:
 
     def parse_list_expr(self) -> Node:
         """Parse list literal or list comprehension."""
-        items = []  # type: List[Node]
+        items = []
         self.expect('[')
         while self.current_str() != ']' and not self.eol():
             items.append(self.parse_expression(precedence['<for>'], star_expr_allowed=True))
@@ -1415,8 +1415,8 @@ class Parser:
         return gen
 
     def parse_comp_for(self) -> Tuple[List[Node], List[Node], List[List[Node]]]:
-        indices = []  # type: List[Node]
-        sequences = []  # type: List[Node]
+        indices = []
+        sequences = []
         condlists = []  # type: List[List[Node]]
         while self.current_str() == 'for':
             conds = []  # type: List[Node]

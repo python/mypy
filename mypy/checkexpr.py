@@ -4,7 +4,8 @@ from typing import cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType
+    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType,
+    PartialType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -14,7 +15,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
-    TypeAliasExpr, YieldExpr, BackquoteExpr
+    TypeAliasExpr, YieldExpr, BackquoteExpr, ARG_POS
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type
@@ -72,6 +73,11 @@ class ExpressionChecker:
         if isinstance(node, Var):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
+            if isinstance(result, PartialType):
+                partial_types = self.chk.partial_types[-1]
+                context = partial_types[node]
+                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                result = AnyType()
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
@@ -110,12 +116,34 @@ class ExpressionChecker:
         if e.analyzed:
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed)
+        self.try_infer_partial_type(e)
         self.accept(e.callee)
         # Access callee type directly, since accept may return the Any type
         # even if the type is known (in a dynamically typed function). This
         # way we get a more precise callee in dynamically typed functions.
         callee_type = self.chk.type_map[e.callee]
         return self.check_call_expr_with_callee_type(callee_type, e)
+
+    def try_infer_partial_type(self, e: CallExpr) -> None:
+        partial_types = self.chk.partial_types[-1]
+        if not partial_types:
+            # Fast path leave -- no partial types in the current scope.
+            return
+        if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
+            var = e.callee.expr.node
+            if var in partial_types:
+                var = cast(Var, var)
+                typename = cast(Instance, var.type).type.fullname()
+                methodname = e.callee.name
+                if (((typename == 'builtins.list' and methodname == 'append') or
+                     (typename == 'builtins.set' and methodname == 'add'))
+                        and e.arg_kinds == [ARG_POS]):
+                    # We can infer a full type for a partial List type.
+                    # TODO: Don't infer argument expression twice.
+                    item_type = self.accept(e.args[0])
+                    if mypy.checker.is_valid_inferred_type(item_type):
+                        var.type = self.chk.named_generic_type(typename, [item_type])
+                        del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr) -> Type:

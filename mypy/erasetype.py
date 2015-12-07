@@ -3,7 +3,7 @@ import typing
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    TypeTranslator, TypeList
+    TypeTranslator, TypeList, PartialType
 )
 
 
@@ -43,6 +43,10 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
+        # Should not get here.
+        raise RuntimeError()
+
+    def visit_partial_type(self, t: PartialType) -> Type:
         # Should not get here.
         raise RuntimeError()
 

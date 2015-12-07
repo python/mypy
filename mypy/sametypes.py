@@ -2,7 +2,7 @@ from typing import List, cast, Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded
+    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded, PartialType
 )
 
 
@@ -97,3 +97,8 @@ class SameTypeVisitor(TypeVisitor[bool]):
             return is_same_types(left.items(), self.right.items())
         else:
             return False
+
+    def visit_partial_type(self, left: PartialType) -> bool:
+        # A partial type is not fully defined, so the result is indeterminate. We shouldn't
+        # get here.
+        raise RuntimeError

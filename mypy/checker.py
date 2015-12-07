@@ -29,7 +29,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
-    UnionType, TypeVarType,
+    UnionType, TypeVarType, PartialType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -332,7 +332,8 @@ class TypeChecker(NodeVisitor[Type]):
     breaking_out = False
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
-
+    # Stack of collections of variables with partial types
+    partial_types = None  # type: List[Dict[Var, Context]]
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
@@ -358,6 +359,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.dynamic_funcs = []
         self.function_stack = []
         self.weak_opts = set()  # type: Set[str]
+        self.partial_types = []
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -367,10 +369,12 @@ class TypeChecker(NodeVisitor[Type]):
         self.globals = file_node.names
         self.locals = None
         self.weak_opts = file_node.weak_opts
+        self.enter_partial_types()
 
         for d in file_node.defs:
             self.accept(d)
 
+        self.leave_partial_types()
         self.errors.set_ignored_lines(set())
 
     def accept(self, node: Node, type_context: Type = None) -> Type:
@@ -461,6 +465,8 @@ class TypeChecker(NodeVisitor[Type]):
         if fdef:
             self.errors.push_function(fdef.name())
 
+        self.enter_partial_types()
+
         typ = self.function_type(defn)
         if type_override:
             typ = type_override
@@ -468,6 +474,8 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_func_def(defn, typ, name)
         else:
             raise RuntimeError('Not supported')
+
+        self.leave_partial_types()
 
         if fdef:
             self.errors.pop_function()
@@ -864,12 +872,14 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a class definition."""
         typ = defn.info
         self.errors.push_type(defn.name)
+        self.enter_partial_types()
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         self.binder.push_frame()
         self.accept(defn.defs)
         self.binder = old_binder
         self.check_multiple_inheritance(typ)
+        self.leave_partial_types()
         self.errors.pop_type()
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
@@ -1237,11 +1247,14 @@ class TypeChecker(NodeVisitor[Type]):
         elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
-        elif not self.is_valid_inferred_type(init_type):
-            # We cannot use the type of the initialization expression for type
-            # inference (it's not specific enough).
-            self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-            self.set_inference_error_fallback_type(name, lvalue, init_type, context)
+        elif not is_valid_inferred_type(init_type):
+            # We cannot use the type of the initialization expression for full type
+            # inference (it's not specific enough), but we might be able to give
+            # partial type which will be made more specific later. A partial type
+            # gets generated in assignment like 'x = []' where item type is not known.
+            if not self.infer_partial_type(name, lvalue, init_type):
+                self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         else:
             # Infer type of the target.
 
@@ -1249,6 +1262,21 @@ class TypeChecker(NodeVisitor[Type]):
             init_type = strip_type(init_type)
 
             self.set_inferred_type(name, lvalue, init_type)
+
+    def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
+        if not isinstance(init_type, Instance):
+            return False
+        fullname = init_type.type.fullname()
+        if ((fullname == 'builtins.list' or fullname == 'builtins.set' or
+             fullname == 'builtins.dict')
+                and isinstance(init_type.args[0], NoneTyp)
+                and (fullname != 'builtins.dict' or isinstance(init_type.args[1], NoneTyp))
+                and isinstance(lvalue, NameExpr)):
+            partial_type = PartialType(init_type.type, name)
+            self.set_inferred_type(name, lvalue, partial_type)
+            self.partial_types[-1][name] = lvalue
+            return True
+        return False
 
     def set_inferred_type(self, var: Var, lvalue: Node, type: Type) -> None:
         """Store inferred variable type.
@@ -1274,23 +1302,6 @@ class TypeChecker(NodeVisitor[Type]):
         """
         if context.get_line() in self.errors.ignored_lines:
             self.set_inferred_type(var, lvalue, AnyType())
-
-    def is_valid_inferred_type(self, typ: Type) -> bool:
-        """Is an inferred type invalid?
-
-        Examples include the None type or a type with a None component.
-        """
-        if is_same_type(typ, NoneTyp()):
-            return False
-        elif isinstance(typ, Instance):
-            for arg in typ.args:
-                if not self.is_valid_inferred_type(arg):
-                    return False
-        elif isinstance(typ, TupleType):
-            for item in typ.items:
-                if not self.is_valid_inferred_type(item):
-                    return False
-        return True
 
     def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:
         if expr.literal >= LITERAL_TYPE:
@@ -1323,6 +1334,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         The lvalue argument is the base[index] expression.
         """
+        self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = self.accept(lvalue.base)
         method_type = self.expr_checker.analyze_external_member_access(
             '__setitem__', basetype, context)
@@ -1330,6 +1342,26 @@ class TypeChecker(NodeVisitor[Type]):
         self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
                                      [nodes.ARG_POS, nodes.ARG_POS],
                                      context)
+
+    def try_infer_partial_type_from_indexed_assignment(
+            self, lvalue: IndexExpr, rvalue: Node) -> None:
+        # TODO: Should we share some of this with try_infer_partial_type?
+        partial_types = self.partial_types[-1]
+        if not partial_types:
+            # Fast path leave -- no partial types in the current scope.
+            return
+        if isinstance(lvalue.base, RefExpr):
+            var = lvalue.base.node
+            if var in partial_types:
+                var = cast(Var, var)
+                typename = cast(Instance, var.type).type.fullname()
+                if typename == 'builtins.dict':
+                    # TODO: Don't infer things twice.
+                    key_type = self.accept(lvalue.index)
+                    value_type = self.accept(rvalue)
+                    if is_valid_inferred_type(key_type) and is_valid_inferred_type(value_type):
+                        var.type = self.named_generic_type('builtins.dict', [key_type, value_type])
+                        del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> Type:
         self.accept(s.expr)
@@ -2032,6 +2064,21 @@ class TypeChecker(NodeVisitor[Type]):
     def leave(self) -> None:
         self.locals = None
 
+    def enter_partial_types(self) -> None:
+        """Push a new scope for collecting partial types."""
+        self.partial_types.append({})
+
+    def leave_partial_types(self) -> None:
+        """Pop partial type scope.
+
+        Also report errors for variables which still have partial
+        types, i.e. we couldn't infer a complete type.
+        """
+        partial_types = self.partial_types.pop()
+        for var, context in partial_types.items():
+            self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            var.type = AnyType()
+
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?
 
@@ -2289,3 +2336,21 @@ def infer_operator_assignment_method(type: Type, operator: str) -> str:
             if type.type.has_readable_member(inplace):
                 method = inplace
     return method
+
+
+def is_valid_inferred_type(typ: Type) -> bool:
+    """Is an inferred type valid?
+
+    Examples of invalid types include the None type or a type with a None component.
+    """
+    if is_same_type(typ, NoneTyp()):
+        return False
+    elif isinstance(typ, Instance):
+        for arg in typ.args:
+            if not is_valid_inferred_type(arg):
+                return False
+    elif isinstance(typ, TupleType):
+        for item in typ.items:
+            if not is_valid_inferred_type(item):
+                return False
+    return True
