@@ -1038,6 +1038,13 @@ a.append('')
 [builtins fixtures/list.py]
 [out]
 
+[case testInferListInitializedToEmptyAndIncompleteTypeInAppend]
+a = [] # E: Need type annotation for variable
+a.append([])
+a()
+[builtins fixtures/list.py]
+[out]
+
 [case testInferListInitializedToEmptyInFunction]
 def f() -> None:
    a = []
@@ -1129,5 +1136,13 @@ a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expect
 a = {}
 a[1] = ''
 a() # E: Dict[int, str] not callable
+[builtins fixtures/dict.py]
+[out]
+
+[case testInferdictInitializedToEmptyAndIncompleteTypeInUpdate]
+a = {} # E: Need type annotation for variable
+a[1] = {}
+b = {} # E: Need type annotation for variable
+b[{}] = 1
 [builtins fixtures/dict.py]
 [out]

@@ -140,8 +140,9 @@ class ExpressionChecker:
                     # We can infer a full type for a partial List type.
                     # TODO: Don't infer argument expression twice.
                     item_type = self.accept(e.args[0])
-                    var.type = self.chk.named_generic_type(typename, [item_type])
-                    del partial_types[var]
+                    if mypy.checker.is_valid_inferred_type(item_type):
+                        var.type = self.chk.named_generic_type(typename, [item_type])
+                        del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr) -> Type:
