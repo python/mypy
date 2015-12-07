@@ -801,7 +801,7 @@ class TypeStrVisitor(TypeVisitor[str]):
         return 'Union[{}]'.format(s)
 
     def visit_partial_type(self, t: PartialType) -> str:
-        return '{}[{}]'.format(t.info.name(), ', '.join(['?'] * len(t.info.type_vars)))
+        return '{}[{}]'.format(t.type.name(), ', '.join(['?'] * len(t.type.type_vars)))
 
     def visit_ellipsis_type(self, t):
         return '...'

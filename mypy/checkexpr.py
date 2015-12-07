@@ -132,7 +132,8 @@ class ExpressionChecker:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
             var = e.callee.expr.node
             if var in partial_types:
-                typename = var.type.type.fullname()
+                var = cast(Var, var)
+                typename = cast(Instance, var.type).type.fullname()
                 methodname = e.callee.name
                 if (((typename == 'builtins.list' and methodname == 'append') or
                      (typename == 'builtins.set' and methodname == 'add'))

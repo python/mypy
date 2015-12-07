@@ -1353,7 +1353,8 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(lvalue.base, RefExpr):
             var = lvalue.base.node
             if var in partial_types:
-                typename = var.type.type.fullname()
+                var = cast(Var, var)
+                typename = cast(Instance, var.type).type.fullname()
                 if typename == 'builtins.dict':
                     # TODO: Don't infer things twice.
                     key_type = self.accept(lvalue.index)
