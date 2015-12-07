@@ -185,7 +185,7 @@ class Parser:
 
     def parse_import(self) -> Import:
         self.expect('import')
-        ids = []  # type: List[Tuple[str, str]]
+        ids = []
         while True:
             id = self.parse_qualified_name()
             translated = self.translate_module_id(id)
