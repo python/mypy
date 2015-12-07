@@ -362,7 +362,7 @@ class Parser:
         return self.parse_qualified_name()
 
     def parse_decorated_function_or_class(self) -> Node:
-        decorators = []  # type: List[Node]
+        decorators = []
         no_type_checks = False
         while self.current_str() == '@':
             self.expect('@')
