@@ -119,10 +119,11 @@ class StringFormatterChecker:
             self.msg.too_many_string_formatting_arguments(replacements)
         else:
             if len(checkers) == 1:
-                if isinstance(rhs_type, TupleType) and len(replacements.items) == 1:
-                    replacements = replacements.items[0]
                 check_node, check_type = checkers[0]
-                check_node(replacements)
+                if isinstance(rhs_type, TupleType) and len(rhs_type.items) == 1:
+                    check_type(rhs_type.items[0])
+                else:
+                    check_node(replacements)
             elif isinstance(replacements, TupleExpr):
                 for checks, rep_node in zip(checkers, replacements.items):
                     check_node, check_type = checks
