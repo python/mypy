@@ -900,11 +900,13 @@ a[:None]
 
 
 [case testStringInterpolationType]
-from typing import Any
-i, f, s = None, None, None # type: (int, float, str)
+from typing import Tuple
+i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 '%d' % i
 '%f' % f
 '%s' % s
+'%d' % (f,)
+'%d' % t
 '%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 '%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 [builtins fixtures/primitives.py]
