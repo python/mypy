@@ -906,6 +906,7 @@ i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 '%f' % f
 '%s' % s
 '%d' % (f,)
+'%d' % (s,) # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 '%d' % t
 '%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 '%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
