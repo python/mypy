@@ -1478,10 +1478,16 @@ class TempNode(Node):
 
 
 class TypeInfo(SymbolNode):
-    """Class representing the type structure of a single class.
+    """The type structure of a single class.
 
-    The corresponding ClassDef instance represents the AST of
-    the class.
+    Each TypeInfo corresponds one-to-one to a ClassDef, which
+    represents the AST of the class.
+
+    In type-theory terms, this is a "type constructor", and if the
+    class is generic then it will be a type constructor of higher kind.
+    Where the class is used in an actual type, it's in the form of an
+    Instance, which amounts to a type application of the tycon to
+    the appropriate number of arguments.
     """
 
     _fullname = None  # type: str          # Fully qualified name
