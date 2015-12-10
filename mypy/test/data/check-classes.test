@@ -222,12 +222,14 @@ class B(A):
     def h(self) -> None: pass
 [out]
 
-[case testMethodOverridingWithReturnTypeCoVariance]
+[case testMethodOverridingWithCovariantType]
 import typing
 class A:
   def f(self, x: 'A', y: 'B') -> 'A': pass
+  def g(self, x: 'A', y: 'B') -> 'A': pass
 class B(A):
   def f(self, x: A, y: 'B') -> 'B': pass
+  def g(self, x: A, y: A) -> 'A': pass
 [out]
 
 [case testMethodOverridingWithIncompatibleTypes]
