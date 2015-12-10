@@ -7,10 +7,12 @@ from mypy.types import (
 )
 
 
-def expand_type(typ: Type, map: Dict[int, Type]) -> Type:
-    """Substitute any type variable references in a type with given values."""
+def expand_type(typ: Type, env: Dict[int, Type]) -> Type:
+    """Substitute any type variable references in a type given by a type
+    environment.
+    """
 
-    return typ.accept(ExpandTypeVisitor(map))
+    return typ.accept(ExpandTypeVisitor(env))
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
