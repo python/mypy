@@ -1509,7 +1509,10 @@ class TypeInfo(SymbolNode):
     # Direct base classes.
     bases = None  # type: List[mypy.types.Instance]
 
-    # Duck type compatibility (_promote decorator)
+    # Another type which this type will be treated as a subtype of,
+    # even though it's not a subclass in Python.  The non-standard
+    # `@_promote` decorator introduces this, and there are also
+    # several builtin examples, in particular `int` -> `float`.
     _promote = None  # type: mypy.types.Type
 
     # Representation of a Tuple[...] base class, if the class has any
