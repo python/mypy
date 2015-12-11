@@ -965,7 +965,7 @@ def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource
         # comes before x.py and x.pyi.  But the preference for .pyi
         # over .py is encoded in find_module(); even though we see
         # x.py before x.pyi, find_module() will find x.pyi first.  We
-        # use hits to avoid adding it a second time when we see x.py.
+        # use hits to avoid adding it a second time when we see x.pyi.
         # This also avoids both x.py and x.pyi when x/ was seen first.
         hits = set()  # type: Set[str]
         for item in sorted(os.listdir(os.path.dirname(module_path))):
