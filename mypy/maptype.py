@@ -6,20 +6,21 @@ from mypy.types import Type, Instance, AnyType
 
 
 def map_instance_to_supertype(instance: Instance,
-                              supertype: TypeInfo) -> Instance:
-    """Map an Instance type, including the type arguments, to compatible
-    Instance of a specific supertype.
+                              superclass: TypeInfo) -> Instance:
+    """Produce a supertype of `instance` that is an Instance
+    of `superclass`, mapping type arguments up the chain of bases.
 
-    Assume that supertype is a supertype of instance.type.
+    `superclass` is required to be a superclass of `instance.type`.
     """
-    if instance.type == supertype:
+    if instance.type == superclass:
+        # Fast path: `instance` already belongs to `superclass`.
         return instance
 
-    # Strip type variables away if the supertype has none.
-    if not supertype.type_vars:
-        return Instance(supertype, [])
+    if not superclass.type_vars:
+        # Fast path: `superclass` has no type variables to map to.
+        return Instance(superclass, [])
 
-    return map_instance_to_supertypes(instance, supertype)[0]
+    return map_instance_to_supertypes(instance, superclass)[0]
 
 
 def map_instance_to_direct_supertype(instance: Instance,
