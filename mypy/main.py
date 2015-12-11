@@ -158,6 +158,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         elif args[0] == '--use-python-path':
             options.python_path = True
             args = args[1:]
+        elif args[0] in ('--silent-imports', '--silent'):
+            options.build_flags.append(build.SILENT_IMPORTS)
+            args = args[1:]
         elif args[0] == '--version':
             ver = True
             args = args[1:]
