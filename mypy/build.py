@@ -959,16 +959,29 @@ def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource
         return []
     result = [BuildSource(module_path, module, None)]
     if module_path.endswith(('__init__.py', '__init__.pyi')):
-        for item in os.listdir(os.path.dirname(module_path)):
+        # Subtle: this code prefers the .pyi over the .py if both
+        # exists, and also prefers packages over modules if both x/
+        # and x.py* exist.  How?  We sort the directory items, so x
+        # comes before x.py and x.pyi.  But the preference for .pyi
+        # over .py is encoded in find_module(); even though we see
+        # x.py before x.pyi, find_module() will find x.pyi first.  We
+        # use hits to avoid adding it a second time when we see x.py.
+        # This also avoids both x.py and x.pyi when x/ was seen first.
+        hits = set()  # type: Set[str]
+        for item in sorted(os.listdir(os.path.dirname(module_path))):
             abs_path = os.path.join(os.path.dirname(module_path), item)
             if os.path.isdir(abs_path) and \
                     (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                     os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
+                hits.add(item)
                 result += find_modules_recursive(module + '.' + item, lib_path)
             elif item != '__init__.py' and item != '__init__.pyi' and \
                     item.endswith(('.py', '.pyi')):
-                result += find_modules_recursive(
-                    module + '.' + item.split('.')[0], lib_path)
+                mod = item.split('.')[0]
+                if mod not in hits:
+                    hits.add(mod)
+                    result += find_modules_recursive(
+                        module + '.' + mod, lib_path)
     return result
 
 
