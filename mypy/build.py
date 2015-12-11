@@ -50,6 +50,7 @@ PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
 TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
+SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
 
 # State ids. These describe the states a source file / module can be in a
 # build.
@@ -684,16 +685,23 @@ class UnprocessedFile(State):
     def __init__(self, info: StateInfo, program_text: Union[str, bytes]) -> None:
         super().__init__(info)
         self.program_text = program_text
+        self.silent = SILENT_IMPORTS in self.manager.flags
 
     def load_dependencies(self):
         # Add surrounding package(s) as dependencies.
         for p in super_packages(self.id):
+            if p in self.manager.missing_modules:
+                continue
             if not self.import_module(p):
                 # Could not find a module. Typically the reason is a
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
-                self.module_not_found(self.path, 1, p)
-            self.dependencies.append(p)
+                if self.silent:
+                    self.manager.missing_modules.add(p)
+                else:
+                    self.module_not_found(self.path, 1, p)
+            else:
+                self.dependencies.append(p)
 
     def process(self) -> None:
         """Parse the file, store global names and advance to the next state."""
@@ -709,8 +717,9 @@ class UnprocessedFile(State):
             c = self.id.split('.')
             p = '.'.join(c[:-1])
             sem_anal = self.manager.semantic_analyzer
-            sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
-                MODULE_REF, tree, p)
+            if p in sem_anal.modules:
+                sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
+                    MODULE_REF, tree, p)
 
         if self.id != 'builtins':
             # The builtins module is imported implicitly in every program (it
@@ -741,7 +750,8 @@ class UnprocessedFile(State):
                               blocker=True)
                 else:
                     if (line not in tree.ignored_lines and
-                            'import' not in tree.weak_opts):
+                            'import' not in tree.weak_opts and
+                            not self.silent):
                         self.module_not_found(self.path, line, id)
                 self.manager.missing_modules.add(id)
 
@@ -771,7 +781,7 @@ class UnprocessedFile(State):
             file_id = '__builtin__'
         else:
             file_id = id
-        path, text = read_module_source_from_file(file_id, self.manager.lib_path)
+        path, text = read_module_source_from_file(file_id, self.manager.lib_path, self.silent)
         if text is not None:
             info = StateInfo(path, id, self.errors().import_context(),
                              self.manager)
@@ -900,7 +910,8 @@ def trace(s):
 
 
 def read_module_source_from_file(id: str,
-                                 lib_path: List[str]) -> Tuple[str, str]:
+                                 lib_path: List[str],
+                                 silent: bool) -> Tuple[str, str]:
     """Find and read the source file of a module.
 
     Return a pair (path, file contents). Return (None, None) if the module
@@ -909,9 +920,12 @@ def read_module_source_from_file(id: str,
     Args:
       id:       module name, a string of form 'foo' or 'foo.bar'
       lib_path: library search path
+      silent:   if set, don't import .py files (only .pyi files)
     """
     path = find_module(id, lib_path)
     if path is not None:
+        if silent and not path.endswith('.pyi'):
+            return None, None
         text = ''
         try:
             f = open(path)
