@@ -39,12 +39,13 @@ import os
 class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
-            arglist: List[str], verbosity: int, xfail: List[str]) -> None:
+            arglist: List[str], verbosity: int, parallel_limit: int,
+            xfail: List[str]) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.arglist = arglist
         self.verbosity = verbosity
-        self.waiter = Waiter(verbosity=verbosity, xfail=xfail)
+        self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
         self.versions = get_versions()
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
@@ -274,6 +275,7 @@ def usage(status: int) -> None:
     print('  -h, --help             show this help')
     print('  -v, --verbose          increase driver verbosity')
     print('  -q, --quiet            decrease driver verbosity')
+    print('  -jN                    run N tasks at once (default: one per CPU)')
     print('  -a, --argument ARG     pass an argument to myunit tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
@@ -302,6 +304,7 @@ def main() -> None:
     sanity()
 
     verbosity = 0
+    parallel_limit = 0
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
@@ -320,6 +323,11 @@ def main() -> None:
                 verbosity += 1
             elif a == '-q' or a == '--quiet':
                 verbosity -= 1
+            elif a.startswith('-j'):
+                try:
+                    parallel_limit = int(a[2:])
+                except ValueError:
+                    usage(1)
             elif a == '-x' or a == '--exclude':
                 curlist = blacklist
             elif a == '-a' or a == '--argument':
@@ -344,7 +352,7 @@ def main() -> None:
         whitelist.append('')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, xfail=[])
+            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[])
 
     if not dirty_stubs:
         git.verify_git_integrity_or_abort(driver.cwd)

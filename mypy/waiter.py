@@ -98,9 +98,8 @@ class Noter:
 
     def update(self) -> None:
         pending = self.total - self.passes - self.fails - len(self.running)
-        running = ', '.join('#%d' % r for r in sorted(self.running))
-        args = (self.passes, self.fails, pending, running)
-        msg = 'passed %d, failed %d, pending %d; running {%s}' % args
+        args = (self.passes, self.fails, pending, len(self.running))
+        msg = 'passed %d, failed %d, pending %d; running %d' % args
         self.message(msg)
 
     def clear(self) -> None:
