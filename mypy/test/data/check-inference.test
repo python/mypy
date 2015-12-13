@@ -1155,3 +1155,13 @@ b = {} # E: Need type annotation for variable
 b[{}] = 1
 [builtins fixtures/dict.py]
 [out]
+
+[case testSpecialCaseEmptyListInitialization]
+def foo(blocks: Any):
+    to_process = []
+    to_process = list(blocks)
+[builtins fixtures/list.py]
+main: note: In function "foo":
+main:1: error: Name 'Any' is not defined
+main:2: error: Need type annotation for variable
+main:3: error: No overload variant of "list" matches argument types [Any?]
