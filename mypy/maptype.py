@@ -93,4 +93,4 @@ def instance_to_type_environment(instance: Instance) -> Dict[int, Type]:
 
     """
     # Type variables bound by a class have `id` of 1, 2, etc.
-    return {i+1: instance.args[i] for i in range(len(instance.args))}
+    return {i + 1: instance.args[i] for i in range(len(instance.args))}
