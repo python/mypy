@@ -23,31 +23,6 @@ def map_instance_to_supertype(instance: Instance,
     return map_instance_to_supertypes(instance, superclass)[0]
 
 
-def map_instance_to_direct_supertype(instance: Instance,
-                                     supertype: TypeInfo) -> Instance:
-    typ = instance.type
-
-    for base in typ.bases:
-        if base.type == supertype:
-            map = type_var_map(typ, instance.args)
-            return cast(Instance, expand_type(base, map))
-
-    # Relationship with the supertype not specified explicitly. Use AnyType
-    # type arguments implicitly.
-    # TODO Should this be an error instead?
-    return Instance(supertype, [AnyType()] * len(supertype.type_vars))
-
-
-def type_var_map(typ: TypeInfo, args: List[Type]) -> Dict[int, Type]:
-    if not args:
-        return None
-    else:
-        tvars = {}  # type: Dict[int, Type]
-        for i in range(len(args)):
-            tvars[i + 1] = args[i]
-        return tvars
-
-
 def map_instance_to_supertypes(instance: Instance,
                                supertype: TypeInfo) -> List[Instance]:
     # FIX: Currently we should only have one supertype per interface, so no
@@ -96,8 +71,8 @@ def map_instance_to_direct_supertypes(instance: Instance,
 
     for b in typ.bases:
         if b.type == supertype:
-            map = type_var_map(typ, instance.args)
-            result.append(cast(Instance, expand_type(b, map)))
+            env = instance_to_type_environment(instance)
+            result.append(cast(Instance, expand_type(b, env)))
 
     if result:
         return result
@@ -105,3 +80,17 @@ def map_instance_to_direct_supertypes(instance: Instance,
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
         return [Instance(supertype, [AnyType()] * len(supertype.type_vars))]
+
+
+def instance_to_type_environment(instance: Instance) -> Dict[int, Type]:
+    """Given an Instance, produce the resulting type environment for type
+    variables bound by the Instance's class definition.
+
+    An Instance is a type application of a class (a TypeInfo) to its
+    required number of type arguments.  So this environment consists
+    of the class's type variables mapped to the Instance's actual
+    arguments.  The type variables are mapped by their `id`.
+
+    """
+    # Type variables bound by a class have `id` of 1, 2, etc.
+    return {i + 1: instance.args[i] for i in range(len(instance.args))}
