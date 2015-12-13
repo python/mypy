@@ -205,7 +205,10 @@ class ConditionalTypeBinder:
 
     def get_declaration(self, expr: Any) -> Type:
         if hasattr(expr, 'node') and isinstance(expr.node, Var):
-            return expr.node.type
+            type = expr.node.type
+            if isinstance(type, PartialType):
+                return None
+            return type
         else:
             return self.frames[0].get(expr.literal_hash)
 
