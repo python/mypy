@@ -5,7 +5,7 @@ from typing import cast, List, Tuple, Dict, Callable, Union
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType,
-    PartialType
+    PartialType, DeletedType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -568,6 +568,8 @@ class ExpressionChecker:
         """Check the type of a single argument in a call."""
         if isinstance(caller_type, Void):
             messages.does_not_return_value(caller_type, context)
+        elif isinstance(caller_type, DeletedType):
+            messages.deleted_as_rvalue(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            context)

@@ -530,7 +530,21 @@ except E1 as e: pass
 try: pass
 except E1 as e: pass
 try: pass
-except E2 as e: pass # E: Incompatible types in assignment (expression has type "E2", variable has type "E1")
+except E2 as e: pass
+e + 1 # E: Trying to read deleted variable 'e'
+e = E1() # E: Assignment to variable 'e' outside except: block
+[builtins fixtures/exception.py]
+
+[case testReuseDefinedTryExceptionVariable]
+import typing
+class E1(BaseException): pass
+class E2(BaseException): pass
+e = 1
+e = 1
+try: pass
+except E1 as e: pass
+e = 1 # E: Assignment to variable 'e' outside except: block
+e = E1() # E: Assignment to variable 'e' outside except: block
 [builtins fixtures/exception.py]
 
 [case testArbitraryExpressionAsExceptionType]
@@ -594,6 +608,31 @@ class A:
 a = A()
 del a.x, a.y # E: "A" has no attribute "y"
 
+
+[case testDelStatementWithAssignmentSimple]
+a = 1
+a + 1
+del a
+a + 1 # E: Trying to read deleted variable 'a'
+[builtins fixtures/ops.py]
+
+[case testDelStatementWithAssignmentTuple]
+a = 1
+b = 1
+del (a, b)
+b + 1 # E: Trying to read deleted variable 'b'
+[builtins fixtures/ops.py]
+
+[case testDelStatementWithAssignmentClass]
+class C:
+    a = 1
+
+c = C()
+c.a = 1
+c.a + 1
+del c.a
+c.a + 1
+[builtins fixtures/ops.py]
 
 -- Yield statement
 -- ---------------
