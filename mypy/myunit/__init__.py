@@ -327,11 +327,18 @@ def handle_failure(name, exc_type, exc_value, exc_traceback) -> None:
         msg = ': ' + str(exc_value)
     else:
         msg = ''
-    sys.stderr.write('Traceback (most recent call last):\n')
-    tb = traceback.format_tb(exc_traceback)
-    tb = clean_traceback(tb)
-    for s in tb:
-        sys.stderr.write(s)
+    if not isinstance(exc_value, SystemExit):
+        # We assume that before doing exit() (which raises SystemExit) we've printed
+        # enough context about what happened so that a stack trace is not useful.
+        # In particular, uncaught exceptions during semantic analysis or type checking
+        # call exit() and they already print out a stack trace.
+        sys.stderr.write('Traceback (most recent call last):\n')
+        tb = traceback.format_tb(exc_traceback)
+        tb = clean_traceback(tb)
+        for s in tb:
+            sys.stderr.write(s)
+    else:
+        sys.stderr.write('\n')
     exception = typename(exc_type)
     sys.stderr.write('{}{}\n\n'.format(exception, msg))
     sys.stderr.write('{} failed\n\n'.format(name))
