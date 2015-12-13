@@ -148,7 +148,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                      fallback=instance,
                                      line=t.line)
         else:
-            return t
+            return AnyType()
 
     def visit_any(self, t: AnyType) -> Type:
         return t
