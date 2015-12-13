@@ -65,7 +65,8 @@ node_kinds = {
 
 implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__doc__': '__builtins__.str',
-                         '__file__': '__builtins__.str'}
+                         '__file__': '__builtins__.str',
+                         '__package__': '__builtins__.str'}
 
 
 type_aliases = {

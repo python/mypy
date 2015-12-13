@@ -229,6 +229,11 @@ a = __file__ # type: A  # E: Incompatible types in assignment (expression has ty
 class A: pass
 [builtins fixtures/primitives.py]
 
+[case test__package__]
+import typing
+x = __package__ # type: str
+a = __file__ # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 
 -- Scoping and shadowing
 -- ---------------------
