@@ -28,6 +28,10 @@ class Container(Generic[T]):
     @abstractmethod
     def __contains__(self, arg: T) -> bool: ...
 
+class Sized(Generic[T]):
+    @abstractmethod
+    def __len__(self) -> int: ...
+
 class Iterable(Generic[T]):
     @abstractmethod
     def __iter__(self) -> 'Iterator[T]': pass

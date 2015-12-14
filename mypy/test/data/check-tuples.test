@@ -750,3 +750,8 @@ fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected Tup
 from typing import Container
 a = None  # type: Container[str]
 a = ()
+
+[case testSubtypingTupleIsSized]
+from typing import Sized
+a = None  # type: Sized
+a = ()
