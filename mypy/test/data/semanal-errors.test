@@ -72,6 +72,24 @@ y = 0 # type: A[A]
 main:5: error: "B" expects 1 type argument, but 2 given
 main:6: error: "A" expects no type arguments, but 1 given
 
+[case testInvalidNumberOfGenericArgsWithExplicitArgument]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+class A(object):
+    def __init__(self, a: t) -> None:
+        self.a = a
+x = A(a=1) # type: A[None]
+[out]
+main:6: error: "A" expects no type arguments, but 1 given
+
+[case testInvalidNumberOfGenericArgsInInstantiatedType]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+x = A() # type: X[None, None]
+[out]
+main:4: error: "A" expects 1 type argument, but 2 given
+
 [case testInvalidNumberOfGenericArgsInUndefinedArg]
 
 class A: pass
