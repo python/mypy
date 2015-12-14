@@ -745,3 +745,8 @@ fb(bb)
 fb(ab) # E: Argument 1 to "fb" has incompatible type "Tuple[A, B]"; expected Tuple[B, ...]
 fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected Tuple[B, ...]
 [builtins fixtures/tuple.py]
+
+[case testSubtypingTupleIsContainer]
+from typing import Container
+a = None  # type: Container[str]
+a = ()

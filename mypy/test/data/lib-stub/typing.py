@@ -24,6 +24,10 @@ Set = 0
 
 T = TypeVar('T')
 
+class Container(Generic[T]):
+    @abstractmethod
+    def __contains__(self, arg: T) -> bool: ...
+
 class Iterable(Generic[T]):
     @abstractmethod
     def __iter__(self) -> 'Iterator[T]': pass
