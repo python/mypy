@@ -28,7 +28,7 @@ class Container(Generic[T]):
     @abstractmethod
     def __contains__(self, arg: T) -> bool: ...
 
-class Sized(Generic[T]):
+class Sized:
     @abstractmethod
     def __len__(self) -> int: ...
 
