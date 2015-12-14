@@ -301,6 +301,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 act = 'none'
             self.fail('"{}" expects {}, but {} given'.format(
                 info.name(), s, act), t)
+            # Construct the correct number of type arguments, as
+            # otherwise the type checker may crash as it expects
+            # things to be right.
+            t.args = [AnyType() for _ in info.type_vars]
         elif info.defn.type_vars:
             # Check type argument values.
             for arg, TypeVar in zip(t.args, info.defn.type_vars):
