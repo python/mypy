@@ -163,3 +163,8 @@ l = [A(1)]
 a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
                variable has type "A")
 [builtins fixtures/list.py]
+
+[case testNamedTupleMissingClassAttribute]
+import collections
+MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
+MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"

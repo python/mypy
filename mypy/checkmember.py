@@ -85,13 +85,19 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
-        itype = cast(Instance, typ.items()[0].ret_type)
-        result = analyze_class_attribute_access(itype, name, node, is_lvalue, builtin_type, msg)
-        if result:
-            return result
-        # Look up from the 'type' type.
-        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     builtin_type, msg, report_type=report_type)
+        ret_type = typ.items()[0].ret_type
+        if isinstance(ret_type, TupleType):
+            ret_type = ret_type.fallback
+        if isinstance(ret_type, Instance):
+            result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
+                                                    builtin_type, msg)
+            if result:
+                return result
+            # Look up from the 'type' type.
+            return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                         builtin_type, msg, report_type=report_type)
+        else:
+            assert False, 'Unexpected type {}'.format(repr(ret_type))
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
