@@ -1,9 +1,11 @@
 """Utility functions."""
-
-from typing import TypeVar, List, Any
+import re
+from typing import TypeVar, List, Any, Tuple
 
 
 T = TypeVar('T')
+
+ENCODING_RE = re.compile(br'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)')
 
 
 def short_type(obj: object) -> str:
@@ -59,3 +61,18 @@ def dump_tagged(nodes: List[Any], tag: str) -> str:
     if tag:
         a[-1] += ')'
     return '\n'.join(a)
+
+
+def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
+    """PEP-263 for detecting Python file encoding"""
+    result = ENCODING_RE.match(text)
+    if result:
+        line = 2 if result.group(1) else 1
+        encoding = result.group(3).decode('ascii')
+        # Handle some aliases that Python is happy to accept and that are used in the wild.
+        if encoding.startswith(('iso-latin-1-', 'latin-1-')) or encoding == 'iso-latin-1':
+            encoding = 'latin-1'
+        return encoding, line
+    else:
+        default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
+        return default_encoding, -1
