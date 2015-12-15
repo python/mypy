@@ -142,6 +142,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 target_item_type = right.args[0]
                 return all(is_subtype(item, target_item_type)
                            for item in left.items)
+            elif is_named_instance(right, 'typing.Sized'):
+                return True
             elif (is_named_instance(right, 'typing.Iterable') or
                   is_named_instance(right, 'typing.Container') or
                   is_named_instance(right, 'typing.Sequence') or
