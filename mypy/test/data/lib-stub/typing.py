@@ -26,11 +26,12 @@ T = TypeVar('T')
 
 class Container(Generic[T]):
     @abstractmethod
-    def __contains__(self, arg: T) -> bool: ...
+    # Use int because bool isn't in the default test builtins
+    def __contains__(self, arg: T) -> int: pass
 
 class Sized:
     @abstractmethod
-    def __len__(self) -> int: ...
+    def __len__(self) -> int: pass
 
 class Iterable(Generic[T]):
     @abstractmethod

@@ -6,7 +6,6 @@ class type:
 
 # These are provided here for convenience.
 class int: pass
-class bool(int): pass
 class str: pass
 
 class tuple: pass
