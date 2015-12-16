@@ -124,6 +124,15 @@ class ExpressionChecker:
         callee_type = self.chk.type_map[e.callee]
         return self.check_call_expr_with_callee_type(callee_type, e)
 
+    # Types and methods that can be used to infer partial types.
+    item_args = {'builtins.list': ['append'],
+                 'builtins.set': ['add', 'discard'],
+                 }
+    container_args = {'builtins.list': {'extend': ['builtins.list']},
+                      'builtins.dict': {'update': ['builtins.dict']},
+                      'builtins.set': {'update': ['builtins.set', 'builtins.list']},
+                      }
+
     def try_infer_partial_type(self, e: CallExpr) -> None:
         partial_types = self.chk.partial_types[-1]
         if not partial_types:
@@ -137,44 +146,21 @@ class ExpressionChecker:
                 methodname = e.callee.name
                 # Sometimes we can infer a full type for a partial List, Dict or Set type.
                 # TODO: Don't infer argument expression twice.
-                if (((typename == 'builtins.list' and methodname == 'append') or
-                     (typename == 'builtins.set' and methodname in ('add', 'discard')))
+                if (typename in self.item_args and methodname in self.item_args[typename]
                         and e.arg_kinds == [ARG_POS]):
                     item_type = self.accept(e.args[0])
                     if mypy.checker.is_valid_inferred_type(item_type):
                         var.type = self.chk.named_generic_type(typename, [item_type])
                         del partial_types[var]
-                elif (typename == 'builtins.list' and methodname == 'extend'
+                elif (typename in self.container_args and methodname in self.container_args[typename]
                       and e.arg_kinds == [ARG_POS]):
                     arg_type = self.accept(e.args[0])
                     if isinstance(arg_type, Instance):
                         arg_typename = arg_type.type.fullname()
-                        if arg_typename in ('builtins.list', 'typing.List'):
-                            item_type = arg_type.args[0]
-                            if mypy.checker.is_valid_inferred_type(item_type):
-                                var.type = self.chk.named_generic_type(typename, [item_type])
-                                del partial_types[var]
-                elif (typename == 'builtins.dict' and methodname == 'update'
-                      and e.arg_kinds == [ARG_POS]):
-                    arg_type = self.accept(e.args[0])
-                    if isinstance(arg_type, Instance):
-                        arg_typename = arg_type.type.fullname()
-                        if arg_typename in ('builtins.dict', 'typing.Dict'):
-                            key_type = arg_type.args[0]
-                            value_type = arg_type.args[1]
-                            if (mypy.checker.is_valid_inferred_type(key_type)
-                                    and mypy.checker.is_valid_inferred_type(value_type)):
-                                var.type = self.chk.named_generic_type(typename, [key_type, value_type])
-                                del partial_types[var]
-                elif (typename == 'builtins.set' and methodname == 'update'
-                      and e.arg_kinds == [ARG_POS]):
-                    arg_type = self.accept(e.args[0])
-                    if isinstance(arg_type, Instance):
-                        arg_typename = arg_type.type.fullname()
-                        if arg_typename in ('builtins.set', 'typing.Set'):
-                            item_type = arg_type.args[0]
-                            if mypy.checker.is_valid_inferred_type(item_type):
-                                var.type = self.chk.named_generic_type(typename, [item_type])
+                        if arg_typename in self.container_args[typename][methodname]:
+                            if all(mypy.checker.is_valid_inferred_type(item_type)
+                                   for item_type in arg_type.args):
+                                var.type = self.chk.named_generic_type(typename, list(arg_type.args))
                                 del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
