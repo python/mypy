@@ -1025,6 +1025,13 @@ a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str";
 [builtins fixtures/list.py]
 [out]
 
+[case testInferListInitializedToEmptyUsingUpdate]
+a = []
+a.extend([''])
+a.append(0)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
+[builtins fixtures/list.py]
+[out]
+
 [case testInferListInitializedToEmptyAndNotAnnotated]
 a = []  # E: Need type annotation for variable
 [builtins fixtures/list.py]
@@ -1141,6 +1148,20 @@ a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expect
 [builtins fixtures/set.py]
 [out]
 
+[case testInferSetInitializedToEmptyUsingDiscard]
+a = set()
+a.discard('')
+a.add(0)  # E: Argument 1 to "add" of "set" has incompatible type "int"; expected "str"
+[builtins fixtures/set.py]
+[out]
+
+[case testInferSetInitializedToEmptyUsingUpdate]
+a = set()
+a.update({0})
+a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expected "int"
+[builtins fixtures/set.py]
+[out]
+
 [case testInferDictInitializedToEmpty]
 a = {}
 a[1] = ''
@@ -1148,7 +1169,21 @@ a() # E: Dict[int, str] not callable
 [builtins fixtures/dict.py]
 [out]
 
-[case testInferdictInitializedToEmptyAndIncompleteTypeInUpdate]
+[case testInferDictInitializedToEmptyUsingUpdate]
+a = {}
+a.update({'': 42})
+a() # E: Dict[str, int] not callable
+[builtins fixtures/dict.py]
+[out]
+
+[case testInferDictInitializedToEmptyUsingUpdateError]
+a = {}  # E: Need type annotation for variable
+a.update([1, 2])
+a()
+[builtins fixtures/dict.py]
+[out]
+
+[case testInferDictInitializedToEmptyAndIncompleteTypeInUpdate]
 a = {} # E: Need type annotation for variable
 a[1] = {}
 b = {} # E: Need type annotation for variable

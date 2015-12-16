@@ -135,15 +135,47 @@ class ExpressionChecker:
                 var = cast(Var, var)
                 typename = cast(Instance, var.type).type.fullname()
                 methodname = e.callee.name
+                # Sometimes we can infer a full type for a partial List, Dict or Set type.
+                # TODO: Don't infer argument expression twice.
                 if (((typename == 'builtins.list' and methodname == 'append') or
-                     (typename == 'builtins.set' and methodname == 'add'))
+                     (typename == 'builtins.set' and methodname in ('add', 'discard')))
                         and e.arg_kinds == [ARG_POS]):
-                    # We can infer a full type for a partial List type.
-                    # TODO: Don't infer argument expression twice.
                     item_type = self.accept(e.args[0])
                     if mypy.checker.is_valid_inferred_type(item_type):
                         var.type = self.chk.named_generic_type(typename, [item_type])
                         del partial_types[var]
+                elif (typename == 'builtins.list' and methodname == 'extend'
+                      and e.arg_kinds == [ARG_POS]):
+                    arg_type = self.accept(e.args[0])
+                    if isinstance(arg_type, Instance):
+                        arg_typename = arg_type.type.fullname()
+                        if arg_typename in ('builtins.list', 'typing.List'):
+                            item_type = arg_type.args[0]
+                            if mypy.checker.is_valid_inferred_type(item_type):
+                                var.type = self.chk.named_generic_type(typename, [item_type])
+                                del partial_types[var]
+                elif (typename == 'builtins.dict' and methodname == 'update'
+                      and e.arg_kinds == [ARG_POS]):
+                    arg_type = self.accept(e.args[0])
+                    if isinstance(arg_type, Instance):
+                        arg_typename = arg_type.type.fullname()
+                        if arg_typename in ('builtins.dict', 'typing.Dict'):
+                            key_type = arg_type.args[0]
+                            value_type = arg_type.args[1]
+                            if (mypy.checker.is_valid_inferred_type(key_type)
+                                    and mypy.checker.is_valid_inferred_type(value_type)):
+                                var.type = self.chk.named_generic_type(typename, [key_type, value_type])
+                                del partial_types[var]
+                elif (typename == 'builtins.set' and methodname == 'update'
+                      and e.arg_kinds == [ARG_POS]):
+                    arg_type = self.accept(e.args[0])
+                    if isinstance(arg_type, Instance):
+                        arg_typename = arg_type.type.fullname()
+                        if arg_typename in ('builtins.set', 'typing.Set'):
+                            item_type = arg_type.args[0]
+                            if mypy.checker.is_valid_inferred_type(item_type):
+                                var.type = self.chk.named_generic_type(typename, [item_type])
+                                del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
                                          e: CallExpr) -> Type:
