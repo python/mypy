@@ -72,7 +72,7 @@ def f():
     x = []
     x[0] + 1
     x[0] + 'a'
-    x.add('a') # E: List[Any] has no attribute "add"; maybe "append"?
+    x.add('a') # E: List[Any] has no attribute "add"; maybe "append" or "extend"?
 [builtins fixtures/list.py]
 [out]
 main: note: In function "f":
