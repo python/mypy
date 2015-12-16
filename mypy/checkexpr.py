@@ -152,7 +152,8 @@ class ExpressionChecker:
                     if mypy.checker.is_valid_inferred_type(item_type):
                         var.type = self.chk.named_generic_type(typename, [item_type])
                         del partial_types[var]
-                elif (typename in self.container_args and methodname in self.container_args[typename]
+                elif (typename in self.container_args
+                      and methodname in self.container_args[typename]
                       and e.arg_kinds == [ARG_POS]):
                     arg_type = self.accept(e.args[0])
                     if isinstance(arg_type, Instance):
@@ -160,7 +161,8 @@ class ExpressionChecker:
                         if arg_typename in self.container_args[typename][methodname]:
                             if all(mypy.checker.is_valid_inferred_type(item_type)
                                    for item_type in arg_type.args):
-                                var.type = self.chk.named_generic_type(typename, list(arg_type.args))
+                                var.type = self.chk.named_generic_type(typename,
+                                                                       list(arg_type.args))
                                 del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
