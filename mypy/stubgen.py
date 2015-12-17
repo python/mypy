@@ -552,9 +552,9 @@ def get_qualified_name(o: Node) -> str:
 
 
 def main() -> None:
+    options = parse_options()
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
-    options = parse_options()
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     if options.doc_dir:
