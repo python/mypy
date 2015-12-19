@@ -1263,6 +1263,16 @@ if object():
     x
 [builtins fixtures/list.py]
 
+[case testPartiallyInitializedToNoneAndPartialListAndLeftPartial]
+def f() -> None:
+    x = None
+    if object():
+        # Promote from partial None to partial list.
+        x = []  # E: Need type annotation for variable
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
 [case testPartiallyInitializedToNoneAndThenToIncompleteType]
 from typing import TypeVar,  Dict
 T = TypeVar('T')
@@ -1271,3 +1281,17 @@ x = None  # E: Need type annotation for variable
 if object():
     x = f()
 [builtins fixtures/dict.py]
+
+[case testPartiallyInitializedVariableDoesNotEscapeScope1]
+def f() -> None:
+    x = None  # E: Need type annotation for variable
+x = 1
+[out]
+main: note: In function "f":
+
+[case testPartiallyInitializedVariableDoesNotEscapeScope2]
+x = None  # E: Need type annotation for variable
+def f() -> None:
+    x = None
+    x = 1
+x()  # E: None not callable
