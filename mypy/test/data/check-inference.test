@@ -1245,3 +1245,21 @@ x = None
 if object():
     x = 1
 x() # E: "int" not callable
+
+[case testPartiallyInitializedToNoneAndThenToPartialList]
+x = None
+if object():
+    # Promote from partial None to partial list.
+    x = []
+    x.append(1)
+x.append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.py]
+
+[case testPartiallyInitializedToNoneAndThenToIncompleteType]
+from typing import TypeVar,  Dict
+T = TypeVar('T')
+def f(*x: T) -> Dict[int, T]: pass
+x = None  # E: Need type annotation for variable
+if object():
+    x = f()
+[builtins fixtures/dict.py]
