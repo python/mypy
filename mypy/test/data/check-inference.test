@@ -1239,3 +1239,9 @@ def f() -> None:
     a.x() # E: None has no attribute "x"
 [out]
 main: note: In function "f":
+
+[case testGvarPartiallyInitializedToNone]
+x = None
+if object():
+    x = 1
+x() # E: "int" not callable
