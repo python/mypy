@@ -1295,3 +1295,23 @@ def f() -> None:
     x = None
     x = 1
 x()  # E: None not callable
+
+[case testAttributePartiallyInitializedToNone]
+class A:
+    def f(self) -> None:
+        self.x = None
+        self.x = 1
+        self.x() # E: "int" not callable
+[out]
+main: note: In member "f" of class "A":
+
+[case testAttributePartiallyInitializedToNoneWithMissingAnnotation]
+class A:
+    def f(self) -> None:
+        self.x = None # E: Need type annotation for variable
+
+    def g(self) -> None:
+        self.x = 1
+        self.x()
+[out]
+main: note: In member "f" of class "A":
