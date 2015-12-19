@@ -70,7 +70,7 @@ special type comment after an assignment statement:
 Without the type comment, the type of ``x`` would be just ``int``. We
 use an annotation to give it a more general type ``Union[int, str]``.
 Mypy checks that the type of the initializer is compatible with the
-declared type. This example is not valid, since the initializer is
+declared type. The following example is not valid, since the initializer is
 a floating point number, and this is incompatible with the declared
 type:
 
