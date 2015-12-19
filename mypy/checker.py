@@ -1010,8 +1010,12 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
-                    # We can infer a proper type for a variable with a partial type.
+                    # Try to infer a proper type for a variable with a partial None type.
                     rvalue_type = self.accept(rvalue)
+                    if isinstance(rvalue_type, NoneTyp):
+                        # This doesn't actually provide any additional information -- multiple
+                        # None initializers preserve the partial None type.
+                        return
                     # TODO: What if partial or otherwise bad here... Need to do consider
                     #   all cases.
                     lvalue_type.var.type = rvalue_type

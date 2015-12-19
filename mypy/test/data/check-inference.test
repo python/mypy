@@ -1220,6 +1220,18 @@ def f() -> None:
 [out]
 main: note: In function "f":
 
+[case testLocalVariablePartiallyTwiceInitializedToNone]
+def f() -> None:
+    if object():
+        x = None
+    elif object():
+        x = None
+    else:
+        x = 1
+    x() # E: "int" not callable
+[out]
+main: note: In function "f":
+
 [case testLvarInitializedToNoneWithoutType]
 import typing
 def f() -> None:
