@@ -1255,6 +1255,14 @@ if object():
 x.append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.py]
 
+[case testPartiallyInitializedToNoneAndThenReadPartialList]
+x = None
+if object():
+    # Promote from partial None to partial list.
+    x = []  # E: Need type annotation for variable
+    x
+[builtins fixtures/list.py]
+
 [case testPartiallyInitializedToNoneAndThenToIncompleteType]
 from typing import TypeVar,  Dict
 T = TypeVar('T')
