@@ -32,14 +32,6 @@ main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:7: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
-[case testLvarInitializedToNoneWithoutType]
-import typing
-def f() -> None:
-    a = None # E: Need type annotation for variable
-    a.x()
-[out]
-main: note: In function "f":
-
 [case testLvarInitializedToVoid]
 import typing
 def f() -> None:
@@ -731,7 +723,6 @@ s = s_s() # E: Incompatible types in assignment (expression has type Set[str], v
 
 
 [case testInferenceOfFor1]
-
 a, b = None, None # type: (A, B)
 
 for x in [A()]:
@@ -739,7 +730,7 @@ for x in [A()]:
     a = x
 
 for y in []: # E: Need type annotation for variable
-    a = y # E: Cannot determine type of 'y'
+    a = y
 
 class A: pass
 class B: pass
@@ -1211,5 +1202,28 @@ def f(blocks: object):
     to_process = [] # E: Need type annotation for variable
     to_process = list(blocks) # E: No overload variant of "list" matches argument types [builtins.object]
 [builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+
+-- Inferring types of variables first initialized to None (partial types)
+-- ----------------------------------------------------------------------
+
+
+[case testLocalVariablePartiallyInitializedToNone]
+def f() -> None:
+    if object():
+        x = None
+    else:
+        x = 1
+    x() # E: "int" not callable
+[out]
+main: note: In function "f":
+
+[case testLvarInitializedToNoneWithoutType]
+import typing
+def f() -> None:
+    a = None # E: Need type annotation for variable
+    a.x() # E: None has no attribute "x"
 [out]
 main: note: In function "f":

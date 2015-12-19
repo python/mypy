@@ -67,18 +67,24 @@ class ExpressionChecker:
         result = self.analyze_ref_expr(e)
         return self.chk.narrow_type_from_binder(e, result)
 
-    def analyze_ref_expr(self, e: RefExpr) -> Type:
+    def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result = None  # type: Type
         node = e.node
         if isinstance(node, Var):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
-                partial_types = self.chk.partial_types[-1]
-                if node in partial_types:
-                    context = partial_types[node]
-                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                result = AnyType()
+                if result.type is None:
+                    # 'None' partial type. It has a well-defined type. In an lvalue context
+                    # we want to preserve the knowledge of it being a partial type.
+                    if not lvalue:
+                        result = NoneTyp()
+                else:
+                    partial_types = self.chk.partial_types[-1]
+                    if node in partial_types:
+                        context = partial_types[node]
+                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                    result = AnyType()
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
@@ -143,7 +149,11 @@ class ExpressionChecker:
             var = e.callee.expr.node
             if var in partial_types:
                 var = cast(Var, var)
-                typename = cast(Instance, var.type).type.fullname()
+                partial_type_type = cast(PartialType, var.type).type
+                if partial_type_type is None:
+                    # A partial None type -> can't infer anything.
+                    return
+                typename = partial_type_type.fullname()
                 methodname = e.callee.name
                 # Sometimes we can infer a full type for a partial List, Dict or Set type.
                 # TODO: Don't infer argument expression twice.

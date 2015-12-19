@@ -1,7 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Any, TypeVar, List, Tuple, cast, Generic, Set, Sequence
+from typing import Any, TypeVar, List, Tuple, cast, Generic, Set, Sequence, Optional
 
 import mypy.nodes
 from mypy.nodes import INVARIANT, SymbolNode
@@ -518,18 +518,25 @@ class UnionType(Type):
 
 
 class PartialType(Type):
-    """Type such as List[?] where type arguments are unknown.
+    """Type such as List[?] where type arguments are unknown, or partial None type.
 
     These are used for inferring types in multiphase initialization such as this:
 
       x = []       # x gets a partial type List[?], as item type is unknown
       x.append(1)  # partial type gets replaced with normal type List[int]
+
+    Or with None:
+
+      x = None  # x gets a partial type None
+      if c:
+          x = 1  # Infer actual type int for x
     """
 
-    type = None  # type: mypy.nodes.TypeInfo
+    # None for the 'None' partial type; otherwise a generic class
+    type = None  # type: Optional[mypy.nodes.TypeInfo]
     var = None  # type: mypy.nodes.Var
 
-    def __init__(self, type: 'mypy.nodes.TypeInfo', var: 'mypy.nodes.Var') -> None:
+    def __init__(self, type: Optional['mypy.nodes.TypeInfo'], var: 'mypy.nodes.Var') -> None:
         self.type = type
         self.var = var
 
@@ -830,7 +837,11 @@ class TypeStrVisitor(TypeVisitor[str]):
         return 'Union[{}]'.format(s)
 
     def visit_partial_type(self, t: PartialType) -> str:
-        return '{}[{}]'.format(t.type.name(), ', '.join(['?'] * len(t.type.type_vars)))
+        if t.type is None:
+            return '<partial None>'
+        else:
+            return '<partial {}[{}]>'.format(t.type.name(),
+                                             ', '.join(['?'] * len(t.type.type_vars)))
 
     def visit_ellipsis_type(self, t):
         return '...'
