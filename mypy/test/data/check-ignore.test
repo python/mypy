@@ -140,3 +140,9 @@ class D(C):
         self.g(1)
 [out]
 main: note: In member "f" of class "D":
+
+[case testIgnoreWithFollowingIndentedComment]
+if 1:  # type: ignore
+    # blah
+    pass
+[out]
