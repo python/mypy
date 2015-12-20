@@ -178,6 +178,15 @@ def f(x: B) -> B: pass
 @overload
 def f(x: C) -> C: pass
 
+[case testInferConstraintsUnequalLengths]
+from typing import Any, Callable, List
+def f(fields: List[Callable[[Any], Any]]): pass
+class C: pass
+f([C])  # E: List item 0 has incompatible type
+class D:
+    def __init__(self, a, b): pass
+f([D])  # E: List item 0 has incompatible type
+[builtins fixtures/list.py]
 
 -- Default argument values
 -- -----------------------
