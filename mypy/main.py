@@ -55,7 +55,7 @@ def main(script_path: str) -> None:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
         for m in e.messages:
-            sys.stderr.write(m + '\n')
+            sys.stdout.write(m + '\n')
         sys.exit(1)
 
 
@@ -85,7 +85,7 @@ def readlinkabs(link: str) -> str:
 
 def type_check_only(sources: List[BuildSource],
         bin_dir: str, options: Options) -> None:
-    # Type check the program and dependencies and translate to Python.
+    # Type-check the program and dependencies and translate to Python.
     build.build(sources=sources,
                 target=build.TYPE_CHECK,
                 bin_dir=bin_dir,
@@ -273,31 +273,43 @@ def is_report(arg: str) -> bool:
 
 
 def usage(msg: str = None) -> None:
-    # TODO: Add other supported options (--package, -f/--dirty-stubs, ...)
     if msg:
         sys.stderr.write('%s\n' % msg)
         sys.stderr.write("""\
-usage: mypy [option ...] [-c cmd | -m mod | file ...]
+usage: mypy [option ...] [-c cmd | -m mod | file_or_dir ...]
 Try 'mypy -h' for more information.
 """)
+        sys.exit(2)
     else:
-        sys.stderr.write("""\
-usage: mypy [option ...] [-c cmd | -m mod | file ...]
+        sys.stdout.write("""\
+usage: mypy [option ...] [-c cmd | -m mod | file_or_dir ...]
 
-Optional arguments:
+Options:
   -h, --help         print this help message and exit
+  --version          show the current version information and exit
+  --verbose          more verbose messages
+  --py2              use Python 2 mode
+  --python-version x.y  use Python x.y
+  --silent, --silent-imports  don't follow imports to .py files
+  -f, --dirty-stubs  don't warn if typeshed is out of sync
+  --use-python-path  search for modules in sys.path of running Python
+  --stats            dump stats
+  --inferstats       dump type inference stats
+  --custom-typing mod  use a custom typing module
   --<fmt>-report dir generate a <fmt> report of type precision under dir/
                      <fmt> may be one of: %s
-  -m mod             type check module
-  -c string          type check program passed in as string
-  --verbose          more verbose messages
-  --use-python-path  search for modules in sys.path of running Python
-  --version          show the current version information
+
+How to specify the code to type-check:
+  -m mod             type-check module (may be a dotted name)
+  -c string          type-check program passed in as string
+  --package dir      type-check all files in a directory
+  file ...           type-check given files
+  dir ...            type-check all files in given directories
 
 Environment variables:
   MYPYPATH     additional module search path
 """ % ', '.join(REPORTS))
-    sys.exit(2)
+        sys.exit(0)
 
 
 def version() -> None:
