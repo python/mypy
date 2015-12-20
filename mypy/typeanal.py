@@ -8,7 +8,8 @@ from mypy.types import (
     EllipsisType
 )
 from mypy.nodes import (
-    GDEF, TYPE_ALIAS, TypeInfo, Context, SymbolTableNode, BOUND_TVAR, TypeVarExpr, Var, Node,
+    GDEF, BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
+    TypeInfo, Context, SymbolTableNode, TypeVarExpr, Var, Node,
     IndexExpr, NameExpr, TupleExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
@@ -74,7 +75,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
-                self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
+                # UNBOUND_IMPORTED can happen if an unknown name was imported.
+                if sym.kind != UNBOUND_IMPORTED:
+                    self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType()
             fullname = sym.node.fullname()
             if sym.kind == BOUND_TVAR:
