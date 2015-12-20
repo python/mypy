@@ -347,8 +347,20 @@ def remove_path_prefix(path: str, prefix: str) -> str:
         return path
 
 
+# Corresponds to command-line flag --pdb.
+drop_into_pdb = False
+
+
+def set_drop_into_pdb(flag: bool) -> None:
+    global drop_into_pdb
+    drop_into_pdb = flag
+
+
 def report_internal_error(err: Exception, file: str, line: int) -> None:
     """Display stack trace and file location for an internal error + exit."""
+    if drop_into_pdb:
+        import pdb  # type: ignore
+        pdb.post_mortem(sys.exc_info()[2])
     tb = traceback.extract_stack()[:-2]
     tb2 = traceback.extract_tb(sys.exc_info()[2])
     print('Traceback (most recent call last):')
