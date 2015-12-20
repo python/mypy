@@ -1875,6 +1875,7 @@ class Parser:
         return typ
 
     annotation_prefix_re = re.compile(r'#\s*type:')
+    ignore_prefix_re = re.compile(r'ignore\b')
 
     def parse_type_comment(self, token: Token, signature: bool) -> Type:
         """Parse a '# type: ...' annotation.
@@ -1885,7 +1886,7 @@ class Parser:
         whitespace_or_comments = token.rep().strip()
         if self.annotation_prefix_re.match(whitespace_or_comments):
             type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
-            if type_as_str == 'ignore':
+            if self.ignore_prefix_re.match(type_as_str):
                 # Actually a "# type: ignore" annotation -> not a type.
                 return None
             tokens = lex.lex(type_as_str, token.line)[0]
