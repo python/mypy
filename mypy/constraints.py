@@ -225,11 +225,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             # We can't infer constraints from arguments if the template is Callable[..., T] (with
             # literal '...').
             if not template.is_ellipsis_args:
-                for i in range(len(template.arg_types)):
+                # The lengths should match, but don't crash (it will error elsewhere).
+                for t, a in zip(template.arg_types, cactual.arg_types):
                     # Negate constraints due function argument type contravariance.
-                    res.extend(negate_constraints(infer_constraints(
-                        template.arg_types[i], cactual.arg_types[i],
-                        self.direction)))
+                    res.extend(negate_constraints(infer_constraints(t, a, self.direction)))
             res.extend(infer_constraints(template.ret_type, cactual.ret_type,
                                          self.direction))
             return res
