@@ -60,6 +60,8 @@ node_kinds = {
     MODULE_REF: 'ModuleRef',
     UNBOUND_TVAR: 'UnboundTvar',
     BOUND_TVAR: 'Tvar',
+    TYPE_ALIAS: 'TypeAlias',
+    UNBOUND_IMPORTED: 'UnboundImported',
 }
 
 

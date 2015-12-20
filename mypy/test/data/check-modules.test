@@ -594,3 +594,17 @@ None + 1  # Does not generate error, as this file won't be analyzed.
 import m.a
 [file m/a.py]
 [out]
+
+
+-- Misc
+
+[case testInheritFromBadImport]
+# cmd: mypy -m bar
+[file foo.py]
+pass
+[file bar.py]
+from foo import B
+class C(B):
+    pass
+[out]
+tmp/bar.py:1: error: Module has no attribute 'B'
