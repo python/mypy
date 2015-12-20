@@ -629,6 +629,16 @@ s, s = Nums() # E: Incompatible types in assignment (expression has type "int", 
 [builtins fixtures/for.py]
 [out]
 
+[case testDefaultDictCase]
+# Simplest case similar to defaultdict(list).
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T')
+class Item(Generic[T]):
+    def __init__(self) -> None: ...
+class Container(Generic[T]):
+    def __init__(self, factory: Callable[[], T]) -> None: ...
+Container(Item)
+
 
 -- Variance
 -- --------
