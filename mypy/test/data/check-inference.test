@@ -1191,6 +1191,13 @@ b[{}] = 1
 [builtins fixtures/dict.py]
 [out]
 
+[case testInferDictInitializedToEmptyAndUpdatedFromMethod]
+map = {}  # E: Need type annotation for variable
+def add():
+    map[1] = 2
+[builtins fixtures/dict.py]
+[out]
+
 [case testSpecialCaseEmptyListInitialization]
 def f(blocks: Any): # E: Name 'Any' is not defined
     to_process = [] # E: Need type annotation for variable

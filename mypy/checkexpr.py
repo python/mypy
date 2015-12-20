@@ -75,8 +75,9 @@ class ExpressionChecker:
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
                 partial_types = self.chk.partial_types[-1]
-                context = partial_types[node]
-                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                if node in partial_types:
+                    context = partial_types[node]
+                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                 result = AnyType()
         elif isinstance(node, FuncDef):
             # Reference to a global function.
