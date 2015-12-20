@@ -11,7 +11,7 @@ cast:
 
 .. code-block:: python
 
-   from typing import cast
+   from typing import cast, List
 
    o = [1] # type: object
    x = cast(List[int], o)  # OK
