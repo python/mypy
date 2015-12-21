@@ -765,6 +765,12 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.info.fallback_to_any = True
             elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
+            else:
+                # TODO(gregprice) why is this not an error?  We're ignoring this base class --
+                # seems doomed to produce some kind of wrong result.
+                # print('analyze', 'unbound', base, base_expr)
+                # assert False
+                pass
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
