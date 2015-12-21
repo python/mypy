@@ -652,6 +652,7 @@ class SemanticAnalyzer(NodeVisitor):
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
+                defn.info.mro = []
                 return
             if isinstance(base, TupleType):
                 if defn.info.tuple_type:
@@ -679,12 +680,14 @@ class SemanticAnalyzer(NodeVisitor):
             defn.base_types.insert(0, obj)
         defn.info.bases = defn.base_types
         if not self.verify_base_classes(defn):
+            defn.info.mro = []
             return
         try:
             defn.info.calculate_mro()
         except MroError:
             self.fail("Cannot determine consistent method resolution order "
                       '(MRO) for "%s"' % defn.name, defn)
+            defn.info.mro = []
         else:
             # If there are cyclic imports, we may be missing 'object' in
             # the MRO. Fix MRO if needed.
@@ -1957,17 +1960,20 @@ class SemanticAnalyzer(NodeVisitor):
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        result = n.node.get(parts[i])
-                        if not result:
-                            # Fall back to direct lookup from the class. This can be important
-                            # when we have a forward reference of a nested class that is being
-                            # bound before the outer class has been fully semantically analyzed.
+                        if n.node.mro is None:
+                            # We haven't yet analyzed the class `n.node`.  Fall back to direct
+                            # lookup in the names declared directly under it, without its base
+                            # classes.  This can happen when we have a forward reference to a
+                            # nested class, and the reference is bound before the outer class
+                            # has been fully semantically analyzed.
                             #
                             # A better approach would be to introduce a new analysis pass or
                             # to move things around between passes, but this unblocks a common
                             # use case even though this is a little limited in case there is
-                            # inheritance involved, for example.
+                            # inheritance involved.
                             result = n.node.names.get(parts[i])
+                        else:
+                            result = n.node.get(parts[i])
                         n = result
                     elif isinstance(n.node, MypyFile):
                         n = n.node.names.get(parts[i], None)
