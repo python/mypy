@@ -1539,9 +1539,10 @@ class TypeInfo(SymbolNode):
         self.names = names
         self.defn = defn
         self.subtypes = set()
-        self.mro = []
         self.type_vars = []
         self.bases = []
+        # Leave self.mro uninitialized until we compute it for real,
+        # so we don't accidentally try to use it prematurely.
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
