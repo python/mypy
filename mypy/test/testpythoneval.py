@@ -57,11 +57,11 @@ def test_python_evaluation(testcase):
             # Skip, can't find a Python 2 interpreter.
             raise SkipTestCaseException()
         interpreter = python2_interpreter
-        args = ['--py2']
+        args = ['--py2', '-f']
         py2 = True
     else:
         interpreter = python3_path
-        args = []
+        args = ['-f']
         py2 = False
     # Write the program to a file.
     program = '_program.py'

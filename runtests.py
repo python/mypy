@@ -77,7 +77,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy]
+        largs[0:0] = [sys.executable, self.mypy, '-f']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -99,7 +99,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-m']
+        largs[0:0] = [sys.executable, self.mypy, '-f', '-m']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -121,7 +121,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-c']
+        largs[0:0] = [sys.executable, self.mypy, '-f', '-c']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
