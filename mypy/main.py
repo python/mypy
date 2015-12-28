@@ -13,7 +13,7 @@ from mypy import build
 from mypy import defaults
 from mypy import git
 from mypy.build import BuildSource, PYTHON_EXTENSIONS
-from mypy.errors import CompileError
+from mypy.errors import CompileError, set_drop_into_pdb
 
 from mypy.version import __version__
 
@@ -30,6 +30,7 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
         self.dirty_stubs = False
+        self.pdb = False
 
 
 def main(script_path: str) -> None:
@@ -43,6 +44,8 @@ def main(script_path: str) -> None:
     else:
         bin_dir = None
     sources, options = process_options(sys.argv[1:])
+    if options.pdb:
+        set_drop_into_pdb(True)
     if not options.dirty_stubs:
         git.verify_git_integrity_or_abort(build.default_data_dir(bin_dir))
     try:
@@ -160,6 +163,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             args = args[1:]
         elif args[0] in ('--silent-imports', '--silent'):
             options.build_flags.append(build.SILENT_IMPORTS)
+            args = args[1:]
+        elif args[0] == '--pdb':
+            options.pdb = True
             args = args[1:]
         elif args[0] == '--version':
             ver = True
