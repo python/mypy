@@ -189,7 +189,7 @@ class Parser:
         while True:
             id = self.parse_qualified_name()
             translated = self.translate_module_id(id)
-            as_id = None  # type: Optional[str]
+            as_id = None
             if self.current_str() == 'as':
                 self.expect('as')
                 name_tok = self.expect_type(Name)
@@ -319,7 +319,7 @@ class Parser:
         self.is_class_body = True
 
         self.expect('class')
-        metaclass = None  # type: str
+        metaclass = None
 
         try:
             commas, base_types = [], []  # type: List[Token], List[Node]
@@ -520,7 +520,7 @@ class Parser:
             self.skip()
             if no_type_checks:
                 self.parse_expression()
-                ret_type = None  # type: Type
+                ret_type = None
             else:
                 ret_type = self.parse_type()
         else:
@@ -640,7 +640,7 @@ class Parser:
         else:
             kind = nodes.ARG_STAR2
 
-        type = None  # type: Type
+        type = None
         if no_type_checks:
             self.parse_parameter_annotation()
         else:
@@ -674,7 +674,7 @@ class Parser:
         decompose = AssignmentStmt([paren_arg], rvalue)
         decompose.set_line(line)
         kind = nodes.ARG_POS
-        initializer = None  # type: Optional[Node]
+        initializer = None
         if self.current_str() == '=':
             self.expect('=')
             initializer = self.parse_expression(precedence[','])
@@ -707,7 +707,7 @@ class Parser:
         name = self.expect_type(Name)
         variable = Var(name.string)
 
-        type = None  # type: Type
+        type = None
         if no_type_checks:
             self.parse_parameter_annotation()
         else:
@@ -936,7 +936,7 @@ class Parser:
 
     def parse_return_stmt(self) -> ReturnStmt:
         self.expect('return')
-        expr = None  # type: Node
+        expr = None
         current = self.current()
         if current.string == 'yield':
             self.parse_error()
@@ -947,8 +947,8 @@ class Parser:
 
     def parse_raise_stmt(self) -> RaiseStmt:
         self.expect('raise')
-        expr = None  # type: Node
-        from_expr = None  # type: Node
+        expr = None
+        from_expr = None
         if not isinstance(self.current(), Break):
             expr = self.parse_expression()
             if self.current_str() == 'from':
@@ -965,7 +965,7 @@ class Parser:
 
     def parse_yield_stmt(self) -> Union[YieldStmt, YieldFromStmt]:
         self.expect('yield')
-        expr = None  # type: Node
+        expr = None
         node = YieldStmt(expr)
         if not isinstance(self.current(), Break):
             if self.current_str() == "from":
@@ -1205,7 +1205,7 @@ class Parser:
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
         args = []
-        target = None  # type: Node
+        target = None
         if self.current_str() == '>>':
             self.skip()
             target = self.parse_expression(precedence[','])
@@ -1230,8 +1230,8 @@ class Parser:
     def parse_exec_stmt(self) -> ExecStmt:
         self.expect('exec')
         expr = self.parse_expression(precedence['in'])
-        variables1 = None  # type: Optional[Node]
-        variables2 = None  # type: Optional[Node]
+        variables1 = None
+        variables2 = None
         if self.current_str() == 'in':
             self.skip()
             variables1 = self.parse_expression(precedence[','])
@@ -1419,7 +1419,7 @@ class Parser:
         sequences = []
         condlists = []  # type: List[List[Node]]
         while self.current_str() == 'for':
-            conds = []  # type: List[Node]
+            conds = []
             self.expect('for')
             index = self.parse_for_index_variables()
             indices.append(index)
@@ -1549,9 +1549,8 @@ class Parser:
             elif isinstance(token, UnicodeLit):
                 value += token.parsed()
                 is_unicode = True
-        node = None  # type: Node
         if is_unicode or (self.pyversion[0] == 2 and 'unicode_literals' in self.future_options):
-            node = UnicodeExpr(value)
+            node = UnicodeExpr(value)  # type: Node
         else:
             node = StrExpr(value)
         return node
@@ -1649,11 +1648,10 @@ class Parser:
     def parse_member_expr(self, expr: Any) -> Node:
         self.expect('.')
         name = self.expect_type(Name)
-        node = None  # type: Node
         if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
                 and cast(NameExpr, expr.callee).name == 'super'):
             # super() expression
-            node = SuperExpr(name.string)
+            node = SuperExpr(name.string)  # type: Node
         else:
             node = MemberExpr(expr, name.string)
         return node
@@ -1695,7 +1693,7 @@ class Parser:
                 end_index = self.parse_expression(precedence[','])
             else:
                 end_index = None
-            stride = None  # type: Node
+            stride = None
             if self.current_str() == ':':
                 self.expect(':')
                 if self.current_str() not in (']', ','):
@@ -1714,7 +1712,7 @@ class Parser:
         return node
 
     def parse_comparison_expr(self, left: Node, prec: int) -> ComparisonExpr:
-        operators_str = []  # type: List[str]
+        operators_str = []
         operands = [left]
 
         while True:

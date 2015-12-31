@@ -1009,6 +1009,21 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             if lvalue_type:
+                if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
+                    # Try to infer a proper type for a variable with a partial None type.
+                    rvalue_type = self.accept(rvalue)
+                    if isinstance(rvalue_type, NoneTyp):
+                        # This doesn't actually provide any additional information -- multiple
+                        # None initializers preserve the partial None type.
+                        return
+                    if is_valid_inferred_type(rvalue_type):
+                        lvalue_type.var.type = rvalue_type
+                        partial_types = self.partial_types[-1]
+                        del partial_types[lvalue_type.var]
+                    # Try to infer a partial type. No need to check the return value, as
+                    # an error will be reported elsewhere.
+                    self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                    return
                 rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
@@ -1215,7 +1230,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                                  True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
-            lvalue_type = self.expr_checker.analyze_ref_expr(lvalue)
+            lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             lv = cast(Union[TupleExpr, ListExpr], lvalue)
@@ -1270,19 +1285,23 @@ class TypeChecker(NodeVisitor[Type]):
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
-        if not isinstance(init_type, Instance):
+        if isinstance(init_type, NoneTyp):
+            partial_type = PartialType(None, name)
+        elif isinstance(init_type, Instance):
+            fullname = init_type.type.fullname()
+            if ((fullname == 'builtins.list' or fullname == 'builtins.set' or
+                 fullname == 'builtins.dict')
+                    and isinstance(init_type.args[0], NoneTyp)
+                    and (fullname != 'builtins.dict' or isinstance(init_type.args[1], NoneTyp))
+                    and isinstance(lvalue, NameExpr)):
+                partial_type = PartialType(init_type.type, name)
+            else:
+                return False
+        else:
             return False
-        fullname = init_type.type.fullname()
-        if ((fullname == 'builtins.list' or fullname == 'builtins.set' or
-             fullname == 'builtins.dict')
-                and isinstance(init_type.args[0], NoneTyp)
-                and (fullname != 'builtins.dict' or isinstance(init_type.args[1], NoneTyp))
-                and isinstance(lvalue, NameExpr)):
-            partial_type = PartialType(init_type.type, name)
-            self.set_inferred_type(name, lvalue, partial_type)
-            self.partial_types[-1][name] = lvalue
-            return True
-        return False
+        self.set_inferred_type(name, lvalue, partial_type)
+        self.partial_types[-1][name] = lvalue
+        return True
 
     def set_inferred_type(self, var: Var, lvalue: Node, type: Type) -> None:
         """Store inferred variable type.
