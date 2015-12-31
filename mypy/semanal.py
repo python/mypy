@@ -1112,7 +1112,7 @@ class SemanticAnalyzer(NodeVisitor):
         return isinstance(node, Var) and (cast(Var, node)).is_self
 
     def check_lvalue_validity(self, node: Node, ctx: Context) -> None:
-        if isinstance(node, (FuncDef, TypeInfo, TypeVarExpr)):
+        if isinstance(node, (TypeInfo, TypeVarExpr)):
             self.fail('Invalid assignment target', ctx)
 
     def store_declared_types(self, lvalue: Node, typ: Type) -> None:

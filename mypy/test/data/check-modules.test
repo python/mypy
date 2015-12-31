@@ -144,7 +144,6 @@ _m.f("hola")
 def f(c:str) -> None: pass
 [out]
 
-
 [case testImportWithStubIncompatibleType]
 import _m
 _m.f("hola")
@@ -472,8 +471,9 @@ x = 1
 [out]
 
 
--- Conditional definitions
--- -----------------------
+-- Conditional definitions and function redefinitions via module object
+-- --------------------------------------------------------------------
+
 
 [case testConditionalImportAndAssign]
 try:
@@ -542,6 +542,68 @@ except:
 [file m.py]
 def f(x): pass
 def g(x, y): pass
+
+[case testImportVariableAndAssignNone]
+try:
+    from m import x
+except:
+    x = None
+[file m.py]
+x = 1
+
+[case testImportFunctionAndAssignNone]
+try:
+    from m import f
+except:
+    f = None
+[file m.py]
+def f(): pass
+
+[case testImportFunctionAndAssignFunction]
+def g(x): pass
+try:
+    from m import f
+except:
+    f = g
+[file m.py]
+def f(y): pass
+
+[case testImportFunctionAndAssignIncompatible]
+try:
+    from m import f
+except:
+    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+[file m.py]
+def f(): pass
+
+[case testAssignToFuncDefViaGlobalDecl2]
+import typing
+from m import f
+def g() -> None:
+    global f
+    f = None
+    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+[file m.py]
+def f(): pass
+[out]
+main: note: In function "g":
+
+[case testAssignToFuncDefViaNestedModules]
+import m.n
+m.n.f = None
+m.n.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+[file m/__init__.py]
+[file m/n.py]
+def f(): pass
+[out]
+
+[case testAssignToFuncDefViaModule]
+import m
+m.f = None
+m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
+[file m.py]
+def f(): pass
+[out]
 
 
 -- Test cases that simulate 'mypy -m modname'

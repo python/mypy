@@ -1174,3 +1174,15 @@ class A(Generic[t]):
     def foo(self, x: t) -> None:
         return None
 [builtins fixtures/bool.py]
+
+
+-- Redefining functions
+-- --------------------
+
+
+[case testRedefineFunction]
+def f(x): pass
+def g(x, y): pass
+def h(y): pass
+f = h
+f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])

@@ -786,44 +786,6 @@ class D(str): pass # ok
 class A(A): pass # E: Cycle in inheritance hierarchy
 [out]
 
-[case testAssignToFuncDef]
-def f(): pass
-f = None # E: Invalid assignment target
-[out]
-
-[case testAssignToFuncDefViaModule]
-import m
-m.f = None # E: Invalid assignment target
-[file m.py]
-def f(): pass
-[out]
-
-[case testAssignToFuncDefViaNestedModules]
-import m.n
-m.n.f = None # E: Invalid assignment target
-[file m/__init__.py]
-[file m/n.py]
-def f(): pass
-[out]
-
-[case testAssignToFuncDefViaImport]
-from m import f
-f = None # E: Invalid assignment target
-[file m.py]
-def f(): pass
-[out]
-
-[case testAssignToFuncDefViaGlobalDecl2]
-import typing
-from m import f
-def g() -> None:
-    global f
-    f = None # E: Invalid assignment target
-[file m.py]
-def f(): pass
-[out]
-main: note: In function "g":
-
 [case testAssignToTypeDef]
 import typing
 class A: pass
