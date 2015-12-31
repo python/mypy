@@ -1,11 +1,15 @@
-"""Utility functions."""
+"""Utility functions with no non-trivial dependencies."""
+
 import re
-from typing import TypeVar, List, Any, Tuple
+import subprocess
+from typing import TypeVar, List, Any, Tuple, Optional
 
 
 T = TypeVar('T')
 
 ENCODING_RE = re.compile(br'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)')
+
+default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
 
 
 def short_type(obj: object) -> str:
@@ -76,3 +80,23 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
     else:
         default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
         return default_encoding, -1
+
+
+_python2_interpreter = None  # type: Optional[str]
+
+
+def try_find_python2_interpreter() -> Optional[str]:
+    global _python2_interpreter
+    if _python2_interpreter:
+        return _python2_interpreter
+    for interpreter in default_python2_interpreter:
+        try:
+            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT)
+            stdout, stderr = process.communicate()
+            if b'Python 2.7' in stdout:
+                _python2_interpreter = interpreter
+                return interpreter
+        except OSError:
+            pass
+    return None

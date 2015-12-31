@@ -27,7 +27,7 @@ if True:
 from typing import Dict, List, Optional, Set
 
 from mypy.waiter import Waiter, LazySubprocess
-from mypy import git
+from mypy import git, util
 
 import itertools
 import os
@@ -143,7 +143,9 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = ['python2']
+        python2 = util.try_find_python2_interpreter()
+        assert python2, "Couldn't find a Python 2.7 interpreter"
+        largs[0:0] = [python2]
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 

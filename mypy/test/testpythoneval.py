@@ -21,6 +21,7 @@ from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.util import try_find_python2_interpreter
 
 
 # Files which contain test case descriptions.
@@ -32,8 +33,6 @@ python_34_eval_files = ['pythoneval-asyncio.test',
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
-
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
 
 
 class PythonEvaluationSuite(Suite):
@@ -101,16 +100,3 @@ def test_python_evaluation(testcase):
     assert_string_arrays_equal(testcase.output, out,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
-
-
-def try_find_python2_interpreter():
-    for interpreter in default_python2_interpreter:
-        try:
-            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
-            stdout, stderr = process.communicate()
-            if b'Python 2.7' in stdout:
-                return interpreter
-        except OSError:
-            pass
-    return None
