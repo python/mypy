@@ -292,6 +292,7 @@ Options:
   --python-version x.y  use Python x.y
   --silent, --silent-imports  don't follow imports to .py files
   -f, --dirty-stubs  don't warn if typeshed is out of sync
+  --pdb              invoke pdb on fatal error
   --use-python-path  search for modules in sys.path of running Python
   --stats            dump stats
   --inferstats       dump type inference stats
