@@ -605,6 +605,26 @@ m.f = 1 # E: Incompatible types in assignment (expression has type "int", variab
 def f(): pass
 [out]
 
+[case testConditionalImportAndAssignNoneToModule]
+if object():
+    import m
+else:
+    m = None
+m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+[file m.py]
+def f(x: str) -> None: pass
+[builtins fixtures/module.py]
+[out]
+
+[case testConditionalImportAndAssignInvalidToModule]
+if object():
+    import m
+else:
+    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "module")
+[file m.py]
+[builtins fixtures/module.py]
+[out]
+
 
 -- Test cases that simulate 'mypy -m modname'
 --

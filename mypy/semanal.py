@@ -2222,10 +2222,20 @@ class FirstPass(NodeVisitor):
                 self.process_nested_classes(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
+        # We can't bind module names during the first pass, as the target module might be
+        # unprocessed. However, we add dummy unbound imported names to the symbol table so
+        # that we at least know that the name refers to a module.
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
                 self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+
+    def visit_import(self, node: Import) -> None:
+        # This is similar to visit_import_from -- see the comment there.
+        for id, as_id in node.ids:
+            imported_id = as_id or id
+            if imported_id not in self.sem.globals:
+                self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.analyze_lvalue(s.index)
