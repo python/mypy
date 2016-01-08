@@ -184,7 +184,7 @@ class Instance(Type):
     erased = False      # True if result of type variable substitution
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, erased: Any = False) -> None:
+                 line: int = -1, erased: bool = False) -> None:
         self.type = typ
         self.args = args
         self.erased = erased
