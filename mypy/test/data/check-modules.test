@@ -322,7 +322,6 @@ def xab(): pass
 [out]
 main:1: error: Cannot find module named 'xab'
 main:1: note: (Perhaps setting MYPYPATH would help)
-main:1: error: Name 'xab' already defined
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
