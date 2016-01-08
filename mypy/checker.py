@@ -452,9 +452,27 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
-            if not is_same_type(self.function_type(defn),
-                                self.function_type(defn.original_def)):
-                self.msg.incompatible_conditional_function_def(defn)
+            # Override previous definition.
+            new_type = self.function_type(defn)
+            if isinstance(defn.original_def, FuncDef):
+                # Function definition overrides function definition.
+                if not is_same_type(new_type, self.function_type(defn.original_def)):
+                    self.msg.incompatible_conditional_function_def(defn)
+            else:
+                # Function definition overrides a variable initialized via assignment.
+                orig_type = defn.original_def.type
+                if isinstance(orig_type, PartialType):
+                    # Ah this is a partial type. Give it the type of the function.
+                    # TODO: Check that it's None.
+                    defn.original_def.type = new_type
+                    partial_types = self.partial_types[-1]
+                    del partial_types[defn.original_def]
+                else:
+                    # TODO: Update conditional type binder.
+                    self.check_subtype(orig_type, new_type, defn,
+                                       messages.INCOMPATIBLE_REDEFINITION,
+                                       'original type',
+                                       'redefinition with type')
 
     def check_func_item(self, defn: FuncItem,
                         type_override: CallableType = None,

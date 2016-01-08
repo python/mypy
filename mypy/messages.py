@@ -35,6 +35,7 @@ INVALID_RETURN_TYPE_FOR_YIELD_FROM = \
     'Iterable function return type expected for "yield from"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
+INCOMPATIBLE_REDEFINITION ='Incompatible redefinition'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'

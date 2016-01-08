@@ -278,7 +278,7 @@ class SemanticAnalyzer(NodeVisitor):
         . def f(): ...
         . def f(): ...  # Error: 'f' redefined
         """
-        return isinstance(previous, FuncDef) and new.is_conditional
+        return isinstance(previous, (FuncDef, Var)) and new.is_conditional
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
