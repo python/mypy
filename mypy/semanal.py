@@ -221,6 +221,12 @@ class SemanticAnalyzer(NodeVisitor):
 
         defn.is_conditional = self.block_depth[-1] > 0
 
+        # TODO(jukka): Figure out how to share the various cases. It doesn't
+        #   make sense to have (almost) duplicate code (here and elsewhere) for
+        #   3 cases: module-level, class-level and local names. Maybe implement
+        #   a common stack of namespaces. As the 3 kinds of namespaces have
+        #   different semantics, this wouldn't always work, but it might still
+        #   be a win.
         if self.is_class_scope():
             # Method definition
             defn.info = self.type
@@ -237,7 +243,15 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.is_func_scope():
             # Nested function
             if not defn.is_decorated and not defn.is_overload:
-                self.add_local(defn, defn)
+                if defn.name() in self.locals[-1]:
+                    # Redefinition. Conditional redefinition is okay.
+                    n = self.locals[-1][defn.name()].node
+                    if self.is_conditional_func(n, defn):
+                        defn.original_def = cast(FuncDef, n)
+                    else:
+                        self.name_already_defined(defn.name(), defn)
+                else:
+                    self.add_local(defn, defn)
         else:
             # Top-level function
             if not defn.is_decorated and not defn.is_overload:
@@ -2026,11 +2040,14 @@ class SemanticAnalyzer(NodeVisitor):
         self.locals.append(SymbolTable())
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
+        # -1 since entering block will increment this to 0.
+        self.block_depth.append(-1)
 
     def leave(self) -> None:
         self.locals.pop()
         self.global_decls.pop()
         self.nonlocal_decls.pop()
+        self.block_depth.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None

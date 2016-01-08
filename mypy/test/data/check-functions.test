@@ -866,6 +866,27 @@ main:9: error: Unsupported left operand type for + ("int")
 main: note: At top level:
 main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
+[case testNestedConditionalFunctionDefinitionWithIfElse]
+from typing import Any
+x = None # type: Any
+def top() -> None:
+    if x:
+        def f(x: int) -> None:
+            x = 'x'   # fail
+            x = 1
+    else:
+        def f(x: int) -> None:
+            x + 'x'   # fail
+            x = 1
+    f(1)
+    f('x') # fail
+[out]
+main: note: In function "f":
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:10: error: Unsupported left operand type for + ("int")
+main: note: In function "top":
+main:13: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
 [case testUnconditionalRedefinitionOfConditionalFunction]
 from typing import Any
 x = None # type: Any
@@ -928,6 +949,17 @@ if g():
     def f(): pass
 f()
 f(1) # E: Too many arguments for "f"
+
+[case testRedefineNestedFunctionDefinedAsVariableInitializedToNone]
+def g() -> None:
+    f = None
+    if object():
+        def f(x: int) -> None: pass
+    f() # E: Too few arguments for "f"
+    f(1)
+    f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+[out]
+main: note: In function "g":
 
 [case testRedefineFunctionDefinedAsVariableWithInvalidSignature]
 def g(): pass
