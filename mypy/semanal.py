@@ -2055,8 +2055,11 @@ class SemanticAnalyzer(NodeVisitor):
                              existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
-                if not (existing.type and node.type and is_same_type(existing.type, node.type)):
-                    # Only report an error if the symbol collision provides a different type.
+                ok = False
+                # Only report an error if the symbol collision provides a different type.
+                if existing.type and node.type and is_same_type(existing.type, node.type):
+                    ok = True
+                if not ok:
                     self.name_already_defined(name, context)
             self.globals[name] = node
 
@@ -2236,6 +2239,9 @@ class FirstPass(NodeVisitor):
             imported_id = as_id or id
             if imported_id not in self.sem.globals:
                 self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+            else:
+                # If the previous symbol is a variable, this should take precedence.
+                self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.analyze_lvalue(s.index)
