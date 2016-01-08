@@ -1004,8 +1004,6 @@ class C:
 class D:
     def __radd__(self, x: A) -> object: pass
 [out]
-main: note: In member "__radd__" of class "B":
-main:4: error: "Any" return type expected since argument to __radd__ does not support __add__
 
 [case testReverseOperatorMethoddArgumentType2]
 from typing import Any, Tuple, Callable
@@ -1016,12 +1014,6 @@ class B:
 class C:
     def __radd__(self, x: Any) -> int: pass
 [out]
-main: note: In member "__radd__" of class "A":
-main:3: error: "Any" return type expected since argument to __radd__ does not support __add__
-main: note: In member "__radd__" of class "B":
-main:5: error: "Any" return type expected since argument to __radd__ does not support __add__
-main: note: In member "__radd__" of class "C":
-main:7: error: "Any" return type expected since argument to __radd__ has type "Any"
 
 [case testOverloadedReverseOperatorMethodArgumentType]
 from typing import overload, Any
@@ -1031,8 +1023,6 @@ class A:
     @overload
     def __radd__(self, x: 'A') -> Any: pass
 [out]
-main: note: In member "__radd__" of class "A":
-main:4: error: "Any" return type expected since argument to __radd__ does not support __add__
 
 [case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
 from typing import overload
@@ -1055,8 +1045,6 @@ class B:
     @abstractmethod
     def __gt__(self, x: 'B') -> int: pass
 [out]
-main: note: In member "__lt__" of class "A":
-main:5: error: "Any" return type expected since argument to __lt__ does not support __gt__
 
 [case testOperatorMethodsAndOverloadingSpecialCase]
 from typing import overload
