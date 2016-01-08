@@ -913,6 +913,36 @@ if x:
 f(x=1) # The first definition takes precedence.
 f(y=1) # E: Unexpected keyword argument "y" for "f"
 
+[case testRedefineFunctionDefinedAsVariable]
+def g(): pass
+f = g
+if g():
+    def f(): pass
+f()
+f(1) # E: Too many arguments
+
+[case testRedefineFunctionDefinedAsVariableInitializedToNone]
+def g(): pass
+f = None
+if g():
+    def f(): pass
+f()
+f(1) # E: Too many arguments for "f"
+
+[case testRedefineFunctionDefinedAsVariableWithInvalidSignature]
+def g(): pass
+f = g
+if g():
+    def f(x): pass  # E: Incompatible redefinition (original type Callable[[], Any], redefinition with type Callable[[Any], Any])
+
+[case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
+f = [] # E: Need type annotation for variable
+if object():
+    def f(): pass # E: Incompatible redefinition
+f()
+f(1)
+[builtins fixtures/list.py]
+
 
 -- Conditional method definition
 -- -----------------------------

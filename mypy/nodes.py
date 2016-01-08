@@ -366,7 +366,7 @@ class FuncDef(FuncItem):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_property = False
-    original_def = None  # type: FuncDef  # Original conditional definition
+    original_def = None  # type: Union[FuncDef, Var]  # Original conditional definition
 
     def __init__(self,
                  name: str,              # Function name
