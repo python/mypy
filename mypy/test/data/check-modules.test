@@ -625,6 +625,15 @@ else:
 [builtins fixtures/module.py]
 [out]
 
+[case testImportAndAssignToModule]
+import m
+m = None
+m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+[file m.py]
+def f(x: str) -> None: pass
+[builtins fixtures/module.py]
+[out]
+
 
 -- Test cases that simulate 'mypy -m modname'
 --
