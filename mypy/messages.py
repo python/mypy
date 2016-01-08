@@ -760,20 +760,22 @@ class MessageBuilder:
 
     def invalid_reverse_operator_signature(self, reverse: str, other: str,
                                            context: Context) -> None:
-        self.fail('"Any" return type expected since argument to {} does not '
-                  'support {}'.format(reverse, other), context)
+        self.fail('"Any" return type expected since argument to {} '
+                  'does not support {}'.format(reverse, other), context)
 
     def reverse_operator_method_with_any_arg_must_return_any(
             self, method: str, context: Context) -> None:
-        self.fail('"Any" return type expected since argument to {} has type '
-                  '"Any"'.format(method), context)
+        self.fail('"Any" return type expected since argument to {} '
+                  'has type "Any"'.format(method), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: str, reverse_method: str, forward_class: str,
             forward_method: str, context: Context) -> None:
-        self.fail('Signatures of "{}" of "{}" and "{}" of "{}" are unsafely '
-                  'overlapping'.format(reverse_method, reverse_class,
-                                       forward_method, forward_class), context)
+        self.fail('Signatures of "{}" of "{}" and "{}" of "{}" '
+                  'are unsafely overlapping'.format(
+                      reverse_method, reverse_class,
+                      forward_method, forward_class),
+                  context)
 
     def signatures_incompatible(self, method: str, other_method: str,
                                 context: Context) -> None:
