@@ -935,6 +935,14 @@ f = g
 if g():
     def f(x): pass  # E: Incompatible redefinition (original type Callable[[], Any], redefinition with type Callable[[Any], Any])
 
+[case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
+f = [] # E: Need type annotation for variable
+if object():
+    def f(): pass # E: Incompatible redefinition
+f()
+f(1)
+[builtins fixtures/list.py]
+
 
 -- Conditional method definition
 -- -----------------------------

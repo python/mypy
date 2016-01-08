@@ -462,11 +462,14 @@ class TypeChecker(NodeVisitor[Type]):
                 # Function definition overrides a variable initialized via assignment.
                 orig_type = defn.original_def.type
                 if isinstance(orig_type, PartialType):
-                    # Ah this is a partial type. Give it the type of the function.
-                    # TODO: Check that it's None.
-                    defn.original_def.type = new_type
-                    partial_types = self.partial_types[-1]
-                    del partial_types[defn.original_def]
+                    if orig_type.type is None:
+                        # Ah this is a partial type. Give it the type of the function.
+                        defn.original_def.type = new_type
+                        partial_types = self.partial_types[-1]
+                        del partial_types[defn.original_def]
+                    else:
+                        # Trying to redefine something like partial empty list as function.
+                        self.fail(messages.INCOMPATIBLE_REDEFINITION, defn)
                 else:
                     # TODO: Update conditional type binder.
                     self.check_subtype(orig_type, new_type, defn,
