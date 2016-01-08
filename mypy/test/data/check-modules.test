@@ -322,7 +322,6 @@ def xab(): pass
 [out]
 main:1: error: Cannot find module named 'xab'
 main:1: note: (Perhaps setting MYPYPATH would help)
-main:1: error: Name 'xab' already defined
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -603,6 +602,35 @@ m.f = None
 m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Callable[[], Any])
 [file m.py]
 def f(): pass
+[out]
+
+[case testConditionalImportAndAssignNoneToModule]
+if object():
+    import m
+else:
+    m = None
+m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+[file m.py]
+def f(x: str) -> None: pass
+[builtins fixtures/module.py]
+[out]
+
+[case testConditionalImportAndAssignInvalidToModule]
+if object():
+    import m
+else:
+    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "module")
+[file m.py]
+[builtins fixtures/module.py]
+[out]
+
+[case testImportAndAssignToModule]
+import m
+m = None
+m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+[file m.py]
+def f(x: str) -> None: pass
+[builtins fixtures/module.py]
 [out]
 
 

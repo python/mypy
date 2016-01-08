@@ -2055,8 +2055,11 @@ class SemanticAnalyzer(NodeVisitor):
                              existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
-                if not (existing.type and node.type and is_same_type(existing.type, node.type)):
-                    # Only report an error if the symbol collision provides a different type.
+                ok = False
+                # Only report an error if the symbol collision provides a different type.
+                if existing.type and node.type and is_same_type(existing.type, node.type):
+                    ok = True
+                if not ok:
                     self.name_already_defined(name, context)
             self.globals[name] = node
 
@@ -2222,10 +2225,23 @@ class FirstPass(NodeVisitor):
                 self.process_nested_classes(node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
+        # We can't bind module names during the first pass, as the target module might be
+        # unprocessed. However, we add dummy unbound imported names to the symbol table so
+        # that we at least know that the name refers to a module.
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
                 self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+
+    def visit_import(self, node: Import) -> None:
+        # This is similar to visit_import_from -- see the comment there.
+        for id, as_id in node.ids:
+            imported_id = as_id or id
+            if imported_id not in self.sem.globals:
+                self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+            else:
+                # If the previous symbol is a variable, this should take precedence.
+                self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.analyze_lvalue(s.index)
