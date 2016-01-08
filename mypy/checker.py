@@ -1480,7 +1480,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_stmt(self, s: YieldStmt) -> Type:
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):
-            if return_type.type.fullname() != 'typing.Iterator':
+            if not is_subtype(return_type, self.named_type('typing.Iterable')):
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
             expected_item_type = return_type.args[0]

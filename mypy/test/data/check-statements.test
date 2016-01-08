@@ -665,6 +665,13 @@ import typing
 def f():
     yield f
 
+[case testYieldIteratorSubclass]
+import typing
+T = typing.TypeVar('T')
+class G(typing.Iterator[T], typing.Generic[T]): pass
+def f() -> G[int]:
+    yield 42
+
 [case testWithInvalidInstanceReturnType]
 import typing
 def f() -> int:
