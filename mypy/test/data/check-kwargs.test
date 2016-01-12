@@ -75,6 +75,12 @@ f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
+[case testGivingArgumentAsPositionalAndKeywordArg3]
+def f(a): pass
+
+def g():
+    f(1, a=1)
+
 [case testInvalidKeywordArgument]
 import typing
 def f(a: 'A') -> None: pass # N: "f" defined here
