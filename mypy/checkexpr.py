@@ -541,8 +541,7 @@ class ExpressionChecker:
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED] and is_duplicate_mapping(
                     formal_to_actual[i], actual_kinds):
-                if (self.chk.typing_mode_full() or
-                        isinstance(actual_type, TupleType)):
+                if self.chk.typing_mode_full():
                     self.msg.duplicate_argument_value(callee, i, context)
             elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] != nodes.ARG_NAMED):
