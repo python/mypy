@@ -596,23 +596,9 @@ class TypeChecker(NodeVisitor[Type]):
                                 method: str) -> None:
         """Check a reverse operator method such as __radd__."""
 
-        # If the argument of a reverse operator method such as __radd__
-        # does not define the corresponding non-reverse method such as __add__
-        # the return type of __radd__ may not reliably represent the value of
-        # the corresponding operation even in a fully statically typed program.
-        #
-        # This example illustrates the issue:
-        #
-        #   class A: pass
-        #   class B:
-        #       def __radd__(self, x: A) -> int: # Note that A does not define
-        #           return 1                     # __add__!
-        #   class C(A):
-        #       def __add__(self, x: Any) -> str: return 'x'
-        #   def f(a: A) -> None:
-        #       a + B()  # Result would be 'x', even though static type seems to
-        #                # be int!
-        #   f(C())
+        # This used to check for some very obscure scenario.  It now
+        # just decides whether it's worth calling
+        # check_overlapping_op_methods().
 
         if method in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
@@ -634,22 +620,15 @@ class TypeChecker(NodeVisitor[Type]):
             # Check for the issue described above.
             arg_type = typ.arg_types[1]
             other_method = nodes.normal_from_reverse_op[method]
-            fail = False
             if isinstance(arg_type, Instance):
                 if not arg_type.type.has_readable_member(other_method):
-                    fail = True
+                    return
             elif isinstance(arg_type, AnyType):
-                self.msg.reverse_operator_method_with_any_arg_must_return_any(
-                    method, defn)
                 return
             elif isinstance(arg_type, UnionType):
                 if not arg_type.has_readable_member(other_method):
-                    fail = True
+                    return
             else:
-                fail = True
-            if fail:
-                self.msg.invalid_reverse_operator_signature(
-                    method, other_method, defn)
                 return
 
             typ2 = self.expr_checker.analyze_external_member_access(
