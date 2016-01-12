@@ -75,6 +75,12 @@ f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
+[case testPositionalAndKeywordForSameArg]
+# This used to crash in check_argument_count(). See #1095.
+def f(a: int): pass
+def g(): f(0, a=1)
+[out]
+
 [case testInvalidKeywordArgument]
 import typing
 def f(a: 'A') -> None: pass # N: "f" defined here
