@@ -51,6 +51,10 @@ def find_data_files(base, globs):
 
     return rv
 
+install_requires = [
+    'lxml==3.4.4'
+]
+
 data_files = []
 
 data_files += find_data_files('typeshed', ['*.py', '*.pyi'])
@@ -80,6 +84,7 @@ setup(name='mypy-lang',
       platforms=['POSIX'],
       package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
       py_modules=['typing'],
+      install_requires=install_requires,
       packages=['mypy'],
       scripts=['scripts/mypy', 'scripts/stubgen'],
       data_files=data_files,
