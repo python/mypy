@@ -711,9 +711,8 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_overlapping_op_methods(
                     reverse_type, reverse_name, reverse_class,
                     item, forward_name, forward_base, context)
-        else:
-            # TODO what about this?
-            assert False, 'Forward operator method type is not CallableType'
+        elif not isinstance(forward_type, AnyType):
+            self.msg.forward_operator_not_callable(forward_name, context)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.

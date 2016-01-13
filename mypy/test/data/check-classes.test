@@ -1015,6 +1015,33 @@ class C:
     def __radd__(self, x: Any) -> int: pass
 [out]
 
+[case testReverseOperatorMethodForwardIsAny]
+from typing import Any
+def deco(f: Any) -> Any: return f
+class C:
+    @deco
+    def __add__(self, other: C) -> C: return C()
+    def __radd__(self, other: C) -> C: return C()
+[out]
+
+[case testReverseOperatorMethodForwardIsAny2]
+from typing import Any
+def deco(f: Any) -> Any: return f
+class C:
+    __add__ = None  # type: Any
+    def __radd__(self, other: C) -> C: return C()
+[out]
+
+[case testReverseOperatorMethodForwardIsAny3]
+from typing import Any
+def deco(f: Any) -> Any: return f
+class C:
+    __add__ = 42
+    def __radd__(self, other: C) -> C: return C()
+[out]
+main: note: In member "__radd__" of class "C":
+main:5: error: Forward operator "__add__" is not callable
+
 [case testOverloadedReverseOperatorMethodArgumentType]
 from typing import overload, Any
 class A:
