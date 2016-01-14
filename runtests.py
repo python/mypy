@@ -1,29 +1,7 @@
 #!/usr/bin/env python3
 """Mypy test runner."""
 
-if False:
-    import typing
-
-if True:
-    # When this is run as a script, `typing` is not available yet.
-    import sys
-    from os.path import join, isdir
-
-    def get_versions():  # type: () -> typing.List[str]
-        major = sys.version_info[0]
-        minor = sys.version_info[1]
-        if major == 2:
-            return ['2.7']
-        else:
-            # generates list of python versions to use.
-            # For Python2, this is only [2.7].
-            # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
-            return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
-
-    sys.path[0:0] = [v for v in [join('lib-typing', v) for v in get_versions()] if isdir(v)]
-    # Now `typing` is available.
-
-
+import sys
 from typing import Dict, List, Optional, Set
 
 from mypy.waiter import Waiter, LazySubprocess
@@ -46,14 +24,13 @@ class Driver:
         self.arglist = arglist
         self.verbosity = verbosity
         self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
-        self.versions = get_versions()
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
 
     def prepend_path(self, name: str, paths: List[str]) -> None:
         old_val = self.env.get(name)
-        paths = [p for p in paths if isdir(p)]
+        paths = [p for p in paths if os.path.isdir(p)]
         if not paths:
             return
         if old_val is not None:
@@ -178,7 +155,7 @@ def add_basic(driver: Driver) -> None:
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
-    return [join(root, f)
+    return [os.path.join(root, f)
             for root, dirs, files in os.walk(base)
             for f in files
             if f.startswith(prefix) and f.endswith(suffix)]
@@ -227,7 +204,7 @@ def add_stubs(driver: Driver) -> None:
     # TODO: This should also test Python 2, and pass pyversion accordingly.
     for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
         for stub_type in ['builtins', 'stdlib', 'third_party']:
-            stubdir = join('typeshed', stub_type, version)
+            stubdir = os.path.join('typeshed', stub_type, version)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f[len(stubdir) + 1:])
                 if module not in seen:
@@ -235,20 +212,6 @@ def add_stubs(driver: Driver) -> None:
                     driver.add_mypy_string(
                         'stub (%s) module %s' % (stubdir, module),
                         'import typing, %s' % module)
-
-
-def add_libpython(driver: Driver) -> None:
-    seen = set()  # type: Set[str]
-    for version in driver.versions:
-        libpython_dir = join(driver.cwd, 'lib-python', version)
-        for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
-            module = file_to_module(f[len(libpython_dir) + 1:])
-            if module not in seen:
-                seen.add(module)
-                driver.add_mypy_mod(
-                    'libpython (%s) module %s' % (version, module),
-                    module,
-                    cwd=libpython_dir)
 
 
 def add_samples(driver: Driver) -> None:
@@ -359,16 +322,14 @@ def main() -> None:
     if not dirty_stubs:
         git.verify_git_integrity_or_abort(driver.cwd)
 
-    driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
+    driver.prepend_path('PATH', [os.path.join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])
-    driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
     add_basic(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
-    add_libpython(driver)
     add_samples(driver)
 
     if not list_only:
