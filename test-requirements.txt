@@ -1,1 +1,2 @@
+typing; python_version < '3.5'
 flake8
