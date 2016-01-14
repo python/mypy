@@ -25,8 +25,7 @@ from mypy.util import try_find_python2_interpreter
 
 
 # Files which contain test case descriptions.
-python_eval_files = ['pythoneval.test',
-                     'python2eval.test']
+python_eval_files = ['pythoneval.test']
 
 python_34_eval_files = ['pythoneval-asyncio.test',
                         'pythoneval-enum.test']
@@ -57,11 +56,9 @@ def test_python_evaluation(testcase):
             raise SkipTestCaseException()
         interpreter = python2_interpreter
         args = ['--py2', '-f']
-        py2 = True
     else:
         interpreter = python3_path
         args = ['-f']
-        py2 = False
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
