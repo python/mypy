@@ -80,18 +80,10 @@ def test_python_evaluation(testcase):
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     if not process.wait():
-        # Set up module path for the execution.
-        # This needs the typing module but *not* the mypy module.
-        vers_dir = '2.7' if py2 else '3.2'
-        typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
-        assert os.path.isdir(typing_path)
-        env = os.environ.copy()
-        env['PYTHONPATH'] = typing_path
         process = subprocess.Popen([interpreter, program],
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
-                                   cwd=test_temp_dir,
-                                   env=env)
+                                   cwd=test_temp_dir)
         outb = process.stdout.read()
         # Split output into lines.
         out += [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
