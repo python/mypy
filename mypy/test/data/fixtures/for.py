@@ -1,6 +1,6 @@
 # builtins stub used in for statement test cases
 
-from typing import TypeVar, Generic, Iterable, Iterator
+from typing import TypeVar, Generic, Iterable, Iterator, Generator
 from abc import abstractmethod, ABCMeta
 
 t = TypeVar('t')
