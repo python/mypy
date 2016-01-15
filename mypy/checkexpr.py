@@ -80,8 +80,8 @@ class ExpressionChecker:
                     if not lvalue:
                         result = NoneTyp()
                 else:
-                    partial_types = self.chk.partial_types[-1]
-                    if node in partial_types:
+                    partial_types = self.chk.find_partial_types(node)
+                    if partial_types is not None:
                         context = partial_types[node]
                         self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                     result = AnyType()
@@ -141,14 +141,10 @@ class ExpressionChecker:
                       }
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
-        partial_types = self.chk.partial_types[-1]
-        if not partial_types:
-            # Fast path leave -- no partial types in the current scope.
-            return
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
-            var = e.callee.expr.node
-            if var in partial_types:
-                var = cast(Var, var)
+            var = cast(Var, e.callee.expr.node)
+            partial_types = self.chk.find_partial_types(var)
+            if partial_types is not None:
                 partial_type_type = cast(PartialType, var.type).type
                 if partial_type_type is None:
                     # A partial None type -> can't infer anything.
