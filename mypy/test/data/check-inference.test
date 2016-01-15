@@ -1183,7 +1183,7 @@ b[{}] = 1
 [out]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
-map = {}  # E: Need type annotation for variable
+map = {}
 def add():
     map[1] = 2
 [builtins fixtures/dict.py]
@@ -1315,3 +1315,18 @@ class A:
         self.x()
 [out]
 main: note: In member "f" of class "A":
+
+[case testGlobalInitializedToNoneSetFromFunction]
+a = None
+def f():
+    global a
+    a = 42
+[out]
+
+[case testGlobalInitializedToNoneSetFromMethod]
+a = None
+class C:
+    def m(self):
+        global a
+        a = 42
+[out]
