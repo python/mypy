@@ -30,7 +30,7 @@ BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_YIELD = \
-    'Generator or supertype function return type expected for "yield"'
+    'The return type of a generator function should be "Generator" or a supertype thereof'
 INVALID_RETURN_TYPE_FOR_YIELD_FROM = \
     'Iterable function return type expected for "yield from"'
 INCOMPATIBLE_TYPES = 'Incompatible types'
