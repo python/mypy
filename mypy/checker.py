@@ -1458,10 +1458,18 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_stmt(self, s: YieldStmt) -> Type:
         return_type = self.return_types[-1]
         if isinstance(return_type, Instance):
-            if return_type.type.fullname() != 'typing.Iterator':
+            if not is_subtype(self.named_generic_type('typing.Generator',
+                                                      [AnyType(), AnyType(), AnyType()]),
+                              return_type):
                 self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
                 return None
-            expected_item_type = return_type.args[0]
+            if return_type.args:
+                expected_item_type = return_type.args[0]
+            else:
+                # if the declared supertype of `Generator` has no type
+                # parameters (i.e. is `object`), then the yielded values can't
+                # be accessed so any type is acceptable.
+                expected_item_type = AnyType()
         elif isinstance(return_type, AnyType):
             expected_item_type = AnyType()
         else:

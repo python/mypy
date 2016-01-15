@@ -23,6 +23,8 @@ Dict = 0
 Set = 0
 
 T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
 
 class Container(Generic[T]):
     @abstractmethod
@@ -40,6 +42,16 @@ class Iterable(Generic[T]):
 class Iterator(Iterable[T], Generic[T]):
     @abstractmethod
     def __next__(self) -> T: pass
+
+class Generator(Iterator[T], Generic[T, U, V]):
+    @abstractmethod
+    def send(self, value: U) -> T: pass
+
+    @abstractmethod
+    def throw(self, typ: Any, val: Any=None, tb=None) -> None: pass
+
+    @abstractmethod
+    def close(self) -> None: pass
 
 class Sequence(Generic[T]):
     @abstractmethod
