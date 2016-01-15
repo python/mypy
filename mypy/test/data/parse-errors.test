@@ -472,3 +472,8 @@ file:1: error: Tuples in argument lists only supported in Python 2 mode
 `1 + 2`
 [out]
 file:1: error: Unrecognized character `
+
+[case testSmartQuotes]
+foo = ‘bar’
+[out]
+file:1: error: Unrecognized character
