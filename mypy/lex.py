@@ -284,7 +284,7 @@ class Lexer:
 
     # Table from byte character value to lexer method. E.g. entry at ord('0')
     # contains the method lex_number().
-    map = None  # type: List[Callable[[], None]]
+    map = None  # type: Dict[str, Callable[[], None]]
 
     # Indent levels of currently open blocks, in spaces.
     indents = None  # type: List[int]
@@ -300,7 +300,7 @@ class Lexer:
 
     def __init__(self, pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                  is_stub_file: bool = False) -> None:
-        self.map = [self.unknown_character] * 256
+        self.map = {}
         self.tok = []
         self.indents = [0]
         self.open_brackets = []
@@ -325,7 +325,7 @@ class Lexer:
                             (')]}', self.lex_close_bracket),
                             ('-+*/<>%&|^~=!,@' + extra_misc, self.lex_misc)]:
             for c in seq:
-                self.map[ord(c)] = method
+                self.map[c] = method
         if pyversion[0] == 2:
             self.keywords = keywords_common | keywords2
             # Decimal/hex/octal/binary literal or integer complex literal
@@ -364,17 +364,18 @@ class Lexer:
         # an error.
         self.lex_indent()
 
-        # Make a local copy of map as a simple optimization.
+        # Use some local variables as a simple optimization.
         map = self.map
+        default = self.unknown_character
 
         # Lex the file. Repeatedly call the lexer method for the current char.
         while self.i < len(text):
             # Get the character code of the next character to lex.
-            c = ord(text[self.i])
+            c = text[self.i]
             # Dispatch to the relevant lexer method. This will consume some
             # characters in the text, add a token to self.tok and increment
             # self.i.
-            map[c]()
+            map.get(c, default)()
 
         # Append a break if there is no statement/block terminator at the end
         # of input.
