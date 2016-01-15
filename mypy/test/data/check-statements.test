@@ -676,7 +676,7 @@ def f() -> Any:
 [case testYieldInFunctionReturningFunction]
 from typing import Callable
 def f() -> Callable[[], None]:
-    yield object() # E: The return type of a generator function should be "Generator" or a supertype thereof
+    yield object() # E: The return type of a generator function should be "Generator" or one of its supertypes
 [out]
 main: note: In function "f":
 
@@ -688,7 +688,7 @@ def f():
 [case testWithInvalidInstanceReturnType]
 import typing
 def f() -> int:
-    yield 1 # E: The return type of a generator function should be "Generator" or a supertype thereof
+    yield 1 # E: The return type of a generator function should be "Generator" or one of its supertypes
 [builtins fixtures/for.py]
 [out]
 main: note: In function "f":
