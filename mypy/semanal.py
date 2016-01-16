@@ -689,7 +689,7 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(base, Instance):
                 defn.info.is_enum = base.type.fullname() == 'enum.Enum'
         # Add 'object' as implicit base if there is no other base class.
-        if (not defn.base_types and not defn.info.fallback_to_any and defn.fullname != 'builtins.object'):
+        if (not defn.base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
         defn.info.bases = defn.base_types
@@ -705,7 +705,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             # If there are cyclic imports, we may be missing 'object' in
             # the MRO. Fix MRO if needed.
-            if defn.info.mro[-1].fullname() != 'builtins.object' and not defn.info.fallback_to_any:
+            if defn.info.mro[-1].fullname() != 'builtins.object':
                 defn.info.mro.append(self.object_type().type)
         # The property of falling back to Any is inherited.
         defn.info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in defn.info.mro)
