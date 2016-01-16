@@ -7,7 +7,7 @@ from mypy.types import (
     Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType, DeletedType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
-from mypy.nodes import ARG_POS, function_type, Decorator, OverloadedFuncDef
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, function_type, Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -302,6 +302,16 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
             if new_method and new_method.info.fullname() != 'builtins.object':
                 # Found one! Get signature from __new__.
                 return type_object_type_from_function(new_method, info, fallback)
+            # Both are defined by object.  But if we've got a bogus
+            # base class, we can't know for sure, so check for that.
+            if info.fallback_to_any:
+                # Construct a universal callable as the prototype.
+                sig = CallableType(arg_types=[AnyType(), AnyType()],
+                                   arg_kinds=[ARG_STAR, ARG_STAR2],
+                                   arg_names=["_args", "_kwds"],
+                                   ret_type=AnyType(),
+                                   fallback=builtin_type('builtins.function'))
+                return class_callable(sig, info, fallback)
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
         return type_object_type_from_function(init_method, info, fallback)
