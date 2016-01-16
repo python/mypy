@@ -100,3 +100,11 @@ main: note: In member "__new__" of class "B":
 main:8: error: Argument 2 to "__new__" of "A" has incompatible type "str"; expected "int"
 main: note: At top level:
 main:10: error: Argument 1 to "B" has incompatible type "int"; expected "str"
+
+[case testSuperWithUnknownBase]
+from typing import Any
+B = None  # type: Any
+class C(B):
+    def __init__(self, arg=0):
+        super(C, self).__init__(arg, arg=arg)
+[out]
