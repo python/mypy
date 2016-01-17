@@ -12,14 +12,14 @@ from mypy.nodes import (
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
-    WhileStmt, OperatorAssignmentStmt, YieldStmt, WithStmt, AssertStmt,
+    WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, PassStmt, TypeVarExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
+    YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
     CONTRAVARIANT, COVARIANT
@@ -444,6 +444,56 @@ class TypeChecker(NodeVisitor[Type]):
                     self.msg.overloaded_signatures_overlap(i + 1, j + 2,
                                                            item.func)
 
+
+    def is_generator_return_type(self, typ : Type) -> bool:
+        return is_subtype(self.named_generic_type('typing.Generator',
+                                                  [AnyType(), AnyType(), AnyType()]),
+                          typ);
+
+    def get_generator_yield_type(self, return_type: Type) -> Type:
+        if isinstance(return_type, AnyType):
+            return AnyType()
+        elif not self.is_generator_return_type(return_type):
+            # if the function doesn't have a proper Generator (or superclass)
+            # return type, anything is permissible
+            return AnyType()
+        elif return_type.args:
+            return return_type.args[0]
+        else:
+            # if the declared supertype of `Generator` has no type
+            # parameters (i.e. is `object`), then the yielded values can't
+            # be accessed so any type is acceptable.
+            return AnyType()
+
+    def get_generator_receive_type(self, return_type: Type) -> Type:
+        if isinstance(return_type, AnyType):
+            return AnyType()
+        elif not self.is_generator_return_type(return_type):
+            # if the function doesn't have a proper Generator (or superclass)
+            # return type, anything is permissible
+            return AnyType()
+        elif return_type.type.fullname() == 'typing.Generator':
+            return return_type.args[1]
+        else:
+            # it's a supertype of Generator, so callers won't be able to see
+            # send it values
+            return Void()
+
+    def get_generator_return_type(self, return_type: Type) -> Type:
+        if isinstance(return_type, AnyType):
+            return AnyType()
+        elif not self.is_generator_return_type(return_type):
+            # if the function doesn't have a proper Generator (or superclass)
+            # return type, anything is permissible
+            return AnyType()
+        elif return_type.type.fullname() == 'typing.Generator':
+            return return_type.args[2]
+        else:
+            # it's a supertype of Generator, so callers won't be able to see
+            # the return type
+            return AnyType()
+
+
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
@@ -551,6 +601,16 @@ class TypeChecker(NodeVisitor[Type]):
                 if typ.ret_type.variance == CONTRAVARIANT:
                     self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                          typ.ret_type)
+
+            # check that Generator functions have the appropriate return type
+            if defn.is_generator:
+                if not self.is_generator_return_type(typ.ret_type):
+                    self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+
+                # Python 2 generators aren't allowed to return values
+                if self.pyversion[0] == 2 and typ.ret_type.type.fullname() == 'typing.Generator':
+                    if not (isinstance(typ.ret_type.args[2], Void) or isinstance(typ.ret_type.args[2], AnyType)):
+                        self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
             # Push return type.
             self.return_types.append(typ.ret_type)
@@ -1400,36 +1460,50 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a return statement."""
         self.breaking_out = True
         if self.is_within_function():
+            if self.function_stack[-1].is_generator:
+                return_type = self.get_generator_return_type(self.return_types[-1])
+            else:
+                return_type = self.return_types[-1]
+
             if s.expr:
                 # Return with a value.
-                typ = self.accept(s.expr, self.return_types[-1])
+                typ = self.accept(s.expr, return_type)
                 # Returning a value of type Any is always fine.
-                if not isinstance(typ, AnyType):
-                    if isinstance(self.return_types[-1], Void):
-                        # FuncExpr (lambda) may have a Void return.
-                        # Function returning a value of type None may have a Void return.
-                        if (not isinstance(self.function_stack[-1], FuncExpr) and
-                                not isinstance(typ, NoneTyp)):
-                            self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
-                    else:
-                        if self.function_stack[-1].is_coroutine:
-                            # Something similar will be needed to mix return and yield.
-                            # If the function is a coroutine, wrap the return type in a Future.
-                            typ = self.wrap_generic_type(cast(Instance, typ),
-                                                         cast(Instance, self.return_types[-1]),
-                                                         'asyncio.futures.Future', s)
-                        self.check_subtype(
-                            typ, self.return_types[-1], s,
-                            messages.INCOMPATIBLE_RETURN_VALUE_TYPE
-                            + ": expected {}, got {}".format(self.return_types[-1], typ)
-                        )
+                if isinstance(typ, AnyType):
+                    return
+
+                if isinstance(return_type, Void):
+                    # FuncExpr (lambda) may have a Void return.
+                    # Function returning a value of type None may have a Void return.
+                    if isinstance(self.function_stack[-1], FuncExpr) or isinstance(typ, NoneTyp):
+                        return
+
+                    self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
+                else:
+                    # function has non-void return
+                    if self.function_stack[-1].is_coroutine:
+                        # Something similar will be needed to mix return and yield.
+                        # If the function is a coroutine, wrap the return type in a Future.
+                        typ = self.wrap_generic_type(cast(Instance, typ),
+                                                        cast(Instance, return_type),
+                                                        'asyncio.futures.Future', s)
+                    self.check_subtype(
+                        typ, return_type, s,
+                        messages.INCOMPATIBLE_RETURN_VALUE_TYPE
+                        + ": expected {}, got {}".format(return_type, typ)
+                    )
             else:
-                # Return without a value. It's valid in a generator and coroutine function.
-                if (not self.function_stack[-1].is_generator and
-                        not self.function_stack[-1].is_coroutine):
-                    if (not isinstance(self.return_types[-1], Void) and
-                            self.typing_mode_full()):
-                        self.fail(messages.RETURN_VALUE_EXPECTED, s)
+                # return without a value
+                # empty returns are valid in coroutines
+                if (self.function_stack[-1].is_coroutine):
+                    return
+
+                # empty returns are valid in Generators with Any typed returns
+                if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
+                    return
+
+                if (not isinstance(return_type, Void) and self.typing_mode_full()):
+                    self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
     def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
                           str, context: Context) -> Type:
@@ -1454,89 +1528,6 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 return c
         return c
-
-    def visit_yield_stmt(self, s: YieldStmt) -> Type:
-        return_type = self.return_types[-1]
-        if isinstance(return_type, Instance):
-            if not is_subtype(self.named_generic_type('typing.Generator',
-                                                      [AnyType(), AnyType(), AnyType()]),
-                              return_type):
-                self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
-                return None
-            if return_type.args:
-                expected_item_type = return_type.args[0]
-            else:
-                # if the declared supertype of `Generator` has no type
-                # parameters (i.e. is `object`), then the yielded values can't
-                # be accessed so any type is acceptable.
-                expected_item_type = AnyType()
-        elif isinstance(return_type, AnyType):
-            expected_item_type = AnyType()
-        else:
-            self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD, s)
-            return None
-        if s.expr is None:
-            actual_item_type = Void()  # type: Type
-        else:
-            actual_item_type = self.accept(s.expr, expected_item_type)
-        self.check_subtype(actual_item_type, expected_item_type, s,
-                           messages.INCOMPATIBLE_TYPES_IN_YIELD,
-                           'actual type', 'expected type')
-
-    def visit_yield_from_stmt(self, s: YieldFromStmt) -> Type:
-        return_type = self.return_types[-1]
-        type_func = self.accept(s.expr, return_type)
-        if isinstance(type_func, Instance):
-            if type_func.type.fullname() == 'asyncio.futures.Future':
-                # if is a Future, in stmt don't need to do nothing
-                # because the type Future[Some] jus matters to the main loop
-                # that python executes, in statement we shouldn't get the Future,
-                # is just for async purposes.
-                self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
-            elif is_subtype(type_func, self.named_type('typing.Iterable')):
-                # If it's and Iterable-Like, let's check the types.
-                # Maybe just check if have __iter__? (like in analyze_iterable)
-                self.check_iterable_yield_from(s)
-            else:
-                self.msg.yield_from_invalid_operand_type(type_func, s)
-        elif isinstance(type_func, AnyType):
-            self.check_iterable_yield_from(s)
-        else:
-            self.msg.yield_from_invalid_operand_type(type_func, s)
-
-    def check_iterable_yield_from(self, s: YieldFromStmt) -> Type:
-        """
-            Check that return type is super type of Iterable (Maybe just check if have __iter__?)
-            and compare it with the type of the expression
-        """
-        expected_item_type = self.return_types[-1]
-        if isinstance(expected_item_type, Instance):
-            if not is_subtype(expected_item_type, self.named_type('typing.Iterable')):
-                self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
-                return None
-            elif expected_item_type.args:
-                expected_item_type = map_instance_to_supertype(
-                    expected_item_type,
-                    self.lookup_typeinfo('typing.Iterable'))
-                # Take the item inside the iterator.
-                expected_item_type = expected_item_type.args[0]
-        elif isinstance(expected_item_type, AnyType):
-            expected_item_type = AnyType()
-        else:
-            self.fail(messages.INVALID_RETURN_TYPE_FOR_YIELD_FROM, s)
-            return None
-        if s.expr is None:
-            actual_item_type = Void()  # type: Type
-        else:
-            actual_item_type = self.accept(s.expr, expected_item_type)
-            if hasattr(actual_item_type, 'args') and cast(Instance, actual_item_type).args:
-                actual_item_type = map_instance_to_supertype(
-                    cast(Instance, actual_item_type),
-                    self.lookup_typeinfo('typing.Iterable'))
-                actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
-        self.check_subtype(actual_item_type, expected_item_type, s,
-                           messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
-                           'actual type', 'expected type')
 
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
@@ -1868,27 +1859,53 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_call_expr(e)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
-        # result = self.expr_checker.visit_yield_from_expr(e)
-        result = self.accept(e.expr)
-
-        # If the yield-from isn't typechecked (ie, its Any), don't typecheck
-        if isinstance(result, AnyType):
-            return AnyType()
-
-        if not isinstance(result, Instance):
-            self.msg.yield_from_invalid_operand_type(e.expr.accept(self), e)
-        elif result.type.fullname() == "asyncio.futures.Future":
-            self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
-            result = result.args[0]  # Set the return type as the type inside
-        elif is_subtype(result, self.named_type('typing.Iterable')):
-            # TODO
-            # Check return type Iterator[Some]
-            # Maybe set result like in the Future
-            pass
+        return_type = self.return_types[-1]
+        subexpr_type = self.accept(e.expr, return_type)
+        if isinstance(subexpr_type, Instance):
+            if subexpr_type.type.fullname() == 'asyncio.futures.Future':
+                # if is a Future, in stmt don't need to do nothing
+                # because the type Future[Some] jus matters to the main loop
+                # that python executes, in statement we shouldn't get the Future,
+                # is just for async purposes.
+                self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
+            elif is_subtype(subexpr_type, self.named_type('typing.Iterable')):
+                # If it's and Iterable-Like, let's check the types.
+                # Maybe just check if have __iter__? (like in analyze_iterable)
+                self.check_iterable_yield_from(e)
+            else:
+                self.msg.yield_from_invalid_operand_type(subexpr_type, e)
+        elif isinstance(subexpr_type, AnyType):
+            self.check_iterable_yield_from(e)
         else:
-            # self.msg.yield_from_invalid_operand_type(e.expr, e)
-            self.msg.yield_from_invalid_operand_type(e.expr.accept(self), e)
-        return result
+            self.msg.yield_from_invalid_operand_type(subexpr_type, e)
+
+        if isinstance(subexpr_type, Instance) and subexpr_type.type.fullname() == 'typing.Generator':
+            return self.get_generator_return_type(subexpr_type)
+        else:
+            # non-Generators don't return anything from "yield from" expressions
+            return Void()
+
+    def check_iterable_yield_from(self, e: YieldFromExpr) -> Type:
+        """
+            Check that return type is super type of Iterable (Maybe just check if have __iter__?)
+            and compare it with the type of the expression
+        """
+        return_type = self.return_types[-1]
+        expected_item_type = self.get_generator_yield_type(return_type)
+        if e.expr is None:
+            actual_item_type = Void()  # type: Type
+        else:
+            actual_item_type = self.accept(e.expr, expected_item_type)
+            if hasattr(actual_item_type, 'args') and cast(Instance, actual_item_type).args:
+                actual_item_type = map_instance_to_supertype(
+                    cast(Instance, actual_item_type),
+                    self.lookup_typeinfo('typing.Iterable'))
+                actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
+
+        self.check_subtype(actual_item_type, expected_item_type, e,
+                           messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
+                           'actual type', 'expected type')
+
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
@@ -1996,7 +2013,17 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_backquote_expr(e)
 
     def visit_yield_expr(self, e: YieldExpr) -> Type:
-        return self.expr_checker.visit_yield_expr(e)
+        return_type = self.return_types[-1]
+        expected_item_type = self.get_generator_yield_type(return_type)
+        if e.expr is None:
+            if not isinstance(expected_item_type, Void):
+                self.fail(messages.YIELD_VALUE_EXPECTED, e)
+        else:
+            actual_item_type = self.accept(e.expr, expected_item_type)
+            self.check_subtype(actual_item_type, expected_item_type, e,
+                            messages.INCOMPATIBLE_TYPES_IN_YIELD,
+                            'actual type', 'expected type')
+        return self.get_generator_receive_type(return_type)
 
     #
     # Helpers

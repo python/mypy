@@ -6,11 +6,11 @@ from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, ReturnStmt, AssertStmt, YieldStmt, DelStmt, IfStmt, RaiseStmt,
+    ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
     TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
-    FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromStmt, YieldFromExpr,
+    FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
     YieldExpr
 )
 
@@ -94,14 +94,6 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
             o.expr.accept(self)
 
     def visit_assert_stmt(self, o: AssertStmt) -> T:
-        if o.expr is not None:
-            o.expr.accept(self)
-
-    def visit_yield_stmt(self, o: YieldStmt) -> T:
-        if o.expr is not None:
-            o.expr.accept(self)
-
-    def visit_yield_from_stmt(self, o: YieldFromStmt) -> T:
         if o.expr is not None:
             o.expr.accept(self)
 

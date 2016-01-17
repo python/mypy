@@ -1196,12 +1196,6 @@ class ExpressionChecker:
                                args,
                                [nodes.ARG_POS] * len(args), e)[0]
 
-    def visit_yield_expr(self, e: YieldExpr) -> Type:
-        # TODO: Implement proper type checking of yield expressions.
-        if e.expr:
-            self.accept(e.expr)
-        return AnyType()
-
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""
         inferred_type = self.infer_lambda_type_using_context(e)

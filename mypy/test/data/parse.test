@@ -1338,11 +1338,12 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      YieldStmt:2(
-        OpExpr:2(
-          +
-          NameExpr(x)
-          IntExpr(1))))))
+      ExpressionStmt:2(
+        YieldExpr:2(
+          OpExpr:2(
+            +
+            NameExpr(x)
+            IntExpr(1)))))))
 
 [case testYieldFrom]
 def f():
@@ -1352,10 +1353,11 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      YieldFromStmt:2(
-        CallExpr:2(
-          NameExpr(h)
-          Args())))))
+      ExpressionStmt:2(
+        YieldFromExpr:2(
+          CallExpr:2(
+            NameExpr(h)
+            Args()))))))
 
 [case testYieldFromAssignment]
 def f():
@@ -2074,7 +2076,8 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      YieldStmt:2())))
+      ExpressionStmt:2(
+        YieldExpr:2()))))
 
 [case testConditionalExpression]
 x if y else z

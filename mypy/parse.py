@@ -19,13 +19,13 @@ from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
-    YieldStmt, DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
+    DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, CastExpr,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
-    StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
+    StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
     BackquoteExpr
 )
@@ -879,8 +879,6 @@ class Parser:
             stmt = self.parse_nonlocal_decl()
         elif ts == 'assert':
             stmt = self.parse_assert_stmt()
-        elif ts == 'yield':
-            stmt = self.parse_yield_stmt()
         elif ts == 'del':
             stmt = self.parse_del_stmt()
         elif ts == 'with':
@@ -963,34 +961,21 @@ class Parser:
         node = AssertStmt(expr)
         return node
 
-    def parse_yield_stmt(self) -> Union[YieldStmt, YieldFromStmt]:
-        self.expect('yield')
+    def parse_yield_or_yield_from_expr(self) -> Union[YieldFromExpr, YieldExpr]:
+        self.expect("yield")
         expr = None
-        node = YieldStmt(expr)
+        node = YieldExpr(expr)  # type: Union[YieldFromExpr, YieldExpr]
         if not isinstance(self.current(), Break):
             if self.current_str() == "from":
                 self.expect("from")
-                expr = self.parse_expression()  # Here comes when yield from is not assigned
-                node_from = YieldFromStmt(expr)
-                return node_from  # return here, we've gotted the type
+                expr = self.parse_expression()  # Here comes when yield from is assigned to a variable
+                node = YieldFromExpr(expr)
             else:
-                expr = self.parse_expression()
-                node = YieldStmt(expr)
-        return node
-
-    def parse_yield_or_yield_from_expr(self) -> Union[YieldFromExpr, YieldExpr]:
-        self.expect("yield")
-        node = None  # type: Union[YieldFromExpr, YieldExpr]
-        if self.current_str() == "from":
-            self.expect("from")
-            expr = self.parse_expression()  # Here comes when yield from is assigned to a variable
-            node = YieldFromExpr(expr)
-        else:
-            if self.current_str() == ')':
-                node = YieldExpr(None)
-            else:
-                expr = self.parse_expression()
-                node = YieldExpr(expr)
+                if self.current_str() == ')':
+                    node = YieldExpr(None)
+                else:
+                    expr = self.parse_expression()
+                    node = YieldExpr(expr)
         return node
 
     def parse_ellipsis(self) -> EllipsisExpr:

@@ -634,26 +634,6 @@ class AssertStmt(Node):
         return visitor.visit_assert_stmt(self)
 
 
-class YieldStmt(Node):
-    expr = None  # type: Node
-
-    def __init__(self, expr: Node) -> None:
-        self.expr = expr
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_yield_stmt(self)
-
-
-class YieldFromStmt(Node):
-    expr = None  # type: Node
-
-    def __init__(self, expr: Node) -> None:
-        self.expr = expr
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_yield_from_stmt(self)
-
-
 class DelStmt(Node):
     expr = None  # type: Node
 

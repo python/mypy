@@ -29,10 +29,11 @@ BOOLEAN_EXPECTED_FOR_UNTIL = 'Boolean value expected for until condition'
 BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
-INVALID_RETURN_TYPE_FOR_YIELD = \
+INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator" or one of its supertypes'
-INVALID_RETURN_TYPE_FOR_YIELD_FROM = \
-    'Iterable function return type expected for "yield from"'
+INVALID_GENERATOR_RETURN_ITEM_TYPE = \
+    'The return type of a generator function must be None in its third type parameter in Python 2'
+YIELD_VALUE_EXPECTED = 'Yield value expected'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
