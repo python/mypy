@@ -116,12 +116,12 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Node, type: Type) -> None:
+    def push(self, expr: Node, typ: Type) -> None:
         if not expr.literal:
             return
         key = expr.literal_hash
         self.frames[0][key] = self.get_declaration(expr)
-        self._push(key, type)
+        self._push(key, typ)
 
     def get(self, expr: Node) -> Type:
         return self._get(expr.literal_hash)
