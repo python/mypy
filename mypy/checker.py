@@ -47,7 +47,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
 
 
 T = TypeVar('T')
@@ -116,12 +116,12 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Node, type: Type) -> None:
+    def push(self, expr: Node, typ: Type) -> None:
         if not expr.literal:
             return
         key = expr.literal_hash
         self.frames[0][key] = self.get_declaration(expr)
-        self._push(key, type)
+        self._push(key, typ)
 
     def get(self, expr: Node) -> Type:
         return self._get(expr.literal_hash)
