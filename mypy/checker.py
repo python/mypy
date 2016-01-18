@@ -47,7 +47,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
 
 
 T = TypeVar('T')

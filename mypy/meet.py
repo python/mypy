@@ -37,16 +37,6 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
             return s
 
 
-def meet_simple_away(s: Type, t: Type) -> Type:
-    if isinstance(s, UnionType):
-        return UnionType.make_simplified_union([x for x in s.items
-                                                if not is_subtype(x, t)])
-    elif not isinstance(s, AnyType) and is_subtype(s, t):
-        return Void()
-    else:
-        return s
-
-
 def is_overlapping_types(t: Type, s: Type) -> bool:
     """Can a value of type t be a value of type s, or vice versa?"""
     if isinstance(t, Instance):
