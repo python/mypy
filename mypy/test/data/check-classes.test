@@ -1342,3 +1342,12 @@ f(A) # E: Argument 1 to "f" has incompatible type "A" (type object); expected "A
 --   attribute inherited from superclass; assign in __init__
 --   refer to attribute before type has been inferred (the initialization in
 --   __init__ has not been analyzed)
+
+[case testAnyBaseClassUnconstrainsConstructor]
+from typing import Any
+B = None  # type: Any
+class C(B): pass
+C(0)
+C(arg=0)
+[out]
+

@@ -1261,6 +1261,10 @@ class ExpressionChecker:
                 return AnyType()
             for base in e.info.mro[1:]:
                 if e.name in base.names or base == e.info.mro[-1]:
+                    if e.info.fallback_to_any and base == e.info.mro[-1]:
+                        # There's an undefined base class, and we're
+                        # at the end of the chain.  That's not an error.
+                        return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True,
                                                  self.named_type, self.msg,
