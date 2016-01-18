@@ -968,7 +968,7 @@ class Parser:
         if not isinstance(self.current(), Break):
             if self.current_str() == "from":
                 self.expect("from")
-                expr = self.parse_expression()  # Here comes when yield from is assigned to a variable
+                expr = self.parse_expression()  # when yield from is assigned to a variable
                 node = YieldFromExpr(expr)
             else:
                 if self.current_str() == ')':

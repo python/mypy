@@ -457,6 +457,9 @@ class TypeChecker(NodeVisitor[Type]):
             # if the function doesn't have a proper Generator (or superclass)
             # return type, anything is permissible
             return AnyType()
+        elif not isinstance(return_type, Instance):
+            # same as above, but written as a separate branch so the typechecker can understand
+            return AnyType()
         elif return_type.args:
             return return_type.args[0]
         else:
@@ -472,6 +475,9 @@ class TypeChecker(NodeVisitor[Type]):
             # if the function doesn't have a proper Generator (or superclass)
             # return type, anything is permissible
             return AnyType()
+        elif not isinstance(return_type, Instance):
+            # same as above, but written as a separate branch so the typechecker can understand
+            return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
             return return_type.args[1]
         else:
@@ -485,6 +491,9 @@ class TypeChecker(NodeVisitor[Type]):
         elif not self.is_generator_return_type(return_type):
             # if the function doesn't have a proper Generator (or superclass)
             # return type, anything is permissible
+            return AnyType()
+        elif not isinstance(return_type, Instance):
+            # same as above, but written as a separate branch so the typechecker can understand
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
             return return_type.args[2]
@@ -608,8 +617,11 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
                 # Python 2 generators aren't allowed to return values
-                if self.pyversion[0] == 2 and typ.ret_type.type.fullname() == 'typing.Generator':
-                    if not (isinstance(typ.ret_type.args[2], Void) or isinstance(typ.ret_type.args[2], AnyType)):
+                if (self.pyversion[0] == 2 and
+                        isinstance(typ.ret_type, Instance) and
+                        typ.ret_type.type.fullname() == 'typing.Generator'):
+                    if not (isinstance(typ.ret_type.args[2], Void)
+                            or isinstance(typ.ret_type.args[2], AnyType)):
                         self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
             # Push return type.
@@ -1470,13 +1482,13 @@ class TypeChecker(NodeVisitor[Type]):
                 typ = self.accept(s.expr, return_type)
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
-                    return
+                    return None
 
                 if isinstance(return_type, Void):
                     # FuncExpr (lambda) may have a Void return.
                     # Function returning a value of type None may have a Void return.
                     if isinstance(self.function_stack[-1], FuncExpr) or isinstance(typ, NoneTyp):
-                        return
+                        return None
 
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
@@ -1496,11 +1508,11 @@ class TypeChecker(NodeVisitor[Type]):
                 # return without a value
                 # empty returns are valid in coroutines
                 if (self.function_stack[-1].is_coroutine):
-                    return
+                    return None
 
                 # empty returns are valid in Generators with Any typed returns
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
-                    return
+                    return None
 
                 if (not isinstance(return_type, Void) and self.typing_mode_full()):
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
@@ -1879,7 +1891,8 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.msg.yield_from_invalid_operand_type(subexpr_type, e)
 
-        if isinstance(subexpr_type, Instance) and subexpr_type.type.fullname() == 'typing.Generator':
+        if (isinstance(subexpr_type, Instance) and
+                subexpr_type.type.fullname() == 'typing.Generator'):
             return self.get_generator_return_type(subexpr_type)
         else:
             # non-Generators don't return anything from "yield from" expressions
