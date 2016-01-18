@@ -773,3 +773,23 @@ def foo(): pass
 [builtins fixtures/isinstancelist.py]
 [out]
 main: note: In function "f":
+
+[case testIsinstanceWithOverlappingUnionType]
+from typing import Union
+def f(x: Union[float, int]) -> None:
+    if isinstance(x, float):
+        pass
+    if not isinstance(x, int):
+        f(x)
+[builtins fixtures/isinstance.py]
+
+[case testIsinstanceWithOverlappingUnionType2]
+from typing import Union
+class A: pass
+class B(A): pass
+def f(x: Union[A, B]) -> None:
+    if isinstance(x, A):
+        pass
+    if not isinstance(x, B):
+        f(x)
+[builtins fixtures/isinstance.py]
