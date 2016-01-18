@@ -444,11 +444,10 @@ class TypeChecker(NodeVisitor[Type]):
                     self.msg.overloaded_signatures_overlap(i + 1, j + 2,
                                                            item.func)
 
-
-    def is_generator_return_type(self, typ : Type) -> bool:
+    def is_generator_return_type(self, typ: Type) -> bool:
         return is_subtype(self.named_generic_type('typing.Generator',
                                                   [AnyType(), AnyType(), AnyType()]),
-                          typ);
+                          typ)
 
     def get_generator_yield_type(self, return_type: Type) -> Type:
         if isinstance(return_type, AnyType):
@@ -501,7 +500,6 @@ class TypeChecker(NodeVisitor[Type]):
             # it's a supertype of Generator, so callers won't be able to see
             # the return type
             return AnyType()
-
 
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
@@ -1497,8 +1495,8 @@ class TypeChecker(NodeVisitor[Type]):
                         # Something similar will be needed to mix return and yield.
                         # If the function is a coroutine, wrap the return type in a Future.
                         typ = self.wrap_generic_type(cast(Instance, typ),
-                                                        cast(Instance, return_type),
-                                                        'asyncio.futures.Future', s)
+                                                     cast(Instance, return_type),
+                                                     'asyncio.futures.Future', s)
                     self.check_subtype(
                         typ, return_type, s,
                         messages.INCOMPATIBLE_RETURN_VALUE_TYPE
@@ -1918,7 +1916,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.check_subtype(actual_item_type, expected_item_type, e,
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
                            'actual type', 'expected type')
-
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
