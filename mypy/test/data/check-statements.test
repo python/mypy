@@ -66,6 +66,21 @@ def f() -> Generator[int, None, str]:
 [out]
 main: note: In function "f":
 
+[case testEmptyReturnInNoneTypedGenerator]
+from typing import Generator
+def f() -> Generator[int, None, None]:
+    yield 1
+    return
+[out]
+
+[case testNonEmptyReturnInNoneTypedGenerator]
+from typing import Generator
+def f() -> Generator[int, None, None]:
+    yield 1
+    return 42  # E: No return value expected
+[out]
+main: note: In function "f":
+
 [case testReturnInIterator]
 from typing import Iterator
 def f() -> Iterator[int]:

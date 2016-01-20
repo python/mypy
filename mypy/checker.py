@@ -453,16 +453,16 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type):
-            # if the function doesn't have a proper Generator (or superclass)
-            # return type, anything is permissible
+            # If the function doesn't have a proper Generator (or superclass) return type, anything
+            # is permissible.
             return AnyType()
         elif not isinstance(return_type, Instance):
-            # same as above, but written as a separate branch so the typechecker can understand
+            # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.args:
             return return_type.args[0]
         else:
-            # if the function's declared supertype of Generator has no type
+            # If the function's declared supertype of Generator has no type
             # parameters (i.e. is `object`), then the yielded values can't
             # be accessed so any type is acceptable.
             return AnyType()
@@ -471,35 +471,37 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type):
-            # if the function doesn't have a proper Generator (or superclass)
-            # return type, anything is permissible
+            # If the function doesn't have a proper Generator (or superclass) return type, anything
+            # is permissible.
             return AnyType()
         elif not isinstance(return_type, Instance):
-            # same as above, but written as a separate branch so the typechecker can understand
+            # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is the only type which specifies the type of values it can receive
+            # Generator is the only type which specifies the type of values it can receive.
             return return_type.args[1]
         else:
-            # it's a supertype of Generator, so callers won't be able to see send it values
+            # `return_type` is a supertype of Generator, so callers won't be able to send it
+            # values.
             return Void()
 
     def get_generator_return_type(self, return_type: Type) -> Type:
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type):
-            # if the function doesn't have a proper Generator (or superclass)
-            # return type, anything is permissible
+            # If the function doesn't have a proper Generator (or superclass) return type, anything
+            # is permissible.
             return AnyType()
         elif not isinstance(return_type, Instance):
-            # same as above, but written as a separate branch so the typechecker can understand
+            # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is the only type which specifies the type of values it
-            # returns into `yield from` expressions
+            # Generator is the only type which specifies the type of values it returns into
+            # `yield from` expressions.
             return return_type.args[2]
         else:
-            # it's a supertype of Generator, so callers won't be able to see the return type
+            # `return_type` is supertype of Generator, so callers won't be able to see the return
+            # type when used in a `yield from` expression.
             return AnyType()
 
     def visit_func_def(self, defn: FuncDef) -> Type:
@@ -612,12 +614,12 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                          typ.ret_type)
 
-            # check that Generator functions have the appropriate return type
+            # Check that Generator functions have the appropriate return type.
             if defn.is_generator:
                 if not self.is_generator_return_type(typ.ret_type):
                     self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
-                # Python 2 generators aren't allowed to return values
+                # Python 2 generators aren't allowed to return values.
                 if (self.pyversion[0] == 2 and
                         isinstance(typ.ret_type, Instance) and
                         typ.ret_type.type.fullname() == 'typing.Generator'):
@@ -1484,11 +1486,10 @@ class TypeChecker(NodeVisitor[Type]):
                     return None
 
                 if isinstance(return_type, Void):
-                    # FuncExpr (lambda) may have a Void return.
-                    # Function returning a value of type None may have a Void return.
+                    # Lambdas are allowed to have a Void return.
+                    # Functions returning a value of type None are allowed to have a Void return.
                     if isinstance(self.function_stack[-1], FuncExpr) or isinstance(typ, NoneTyp):
                         return None
-
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
                     self.check_subtype(
@@ -1497,7 +1498,7 @@ class TypeChecker(NodeVisitor[Type]):
                         + ": expected {}, got {}".format(return_type, typ)
                     )
             else:
-                # empty returns are valid in Generators with Any typed returns
+                # Empty returns are valid in Generators with Any typed returns.
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
                     return None
 
@@ -1860,10 +1861,13 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
         return_type = self.return_types[-1]
         subexpr_type = self.accept(e.expr, return_type)
+        iter_type = None  # type: Type
 
-        # check that the expr is an instance of Iterable and get the type of
-        # the iterator produced by __iter__
-        if (isinstance(subexpr_type, Instance) and
+        # Check that the expr is an instance of Iterable and get the type of the iterator produced
+        # by __iter__.
+        if isinstance(subexpr_type, AnyType):
+            iter_type = AnyType()
+        elif (isinstance(subexpr_type, Instance) and
                 is_subtype(subexpr_type, self.named_type('typing.Iterable'))):
             iter_method_type = self.expr_checker.analyze_external_member_access(
                 '__iter__',
@@ -1874,14 +1878,12 @@ class TypeChecker(NodeVisitor[Type]):
                                                              [AnyType(), AnyType(), AnyType()])
             iter_type, _ = self.expr_checker.check_call(iter_method_type, [], [],
                                                         context=generic_generator_type)
-        elif isinstance(subexpr_type, AnyType):
-            iter_type = AnyType()
         else:
             self.msg.yield_from_invalid_operand_type(subexpr_type, e)
             iter_type = AnyType()
 
-        # check that the iterator's item type matches the type yielded by the
-        # Generator function containing this yield from
+        # Check that the iterator's item type matches the type yielded by the Generator function
+        # containing this `yield from` expression.
         expected_item_type = self.get_generator_yield_type(return_type)
         actual_item_type = self.get_generator_yield_type(iter_type)
 
@@ -1889,12 +1891,12 @@ class TypeChecker(NodeVisitor[Type]):
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
                            'actual type', 'expected type')
 
-        # determine the type of the entire yield from expression
+        # Determine the type of the entire yield from expression.
         if (isinstance(iter_type, Instance) and
                 iter_type.type.fullname() == 'typing.Generator'):
             return self.get_generator_return_type(iter_type)
         else:
-            # non-Generators don't return anything from "yield from" expressions
+            # Non-Generators don't return anything from `yield from` expressions.
             return Void()
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
