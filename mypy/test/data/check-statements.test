@@ -51,6 +51,42 @@ def g() -> None:
 [out]
 main: note: In function "g":
 
+[case testReturnInGenerator]
+from typing import Generator
+def f() -> Generator[int, None, str]:
+    yield 1
+    return "foo"
+[out]
+
+[case testEmptyReturnInGenerator]
+from typing import Generator
+def f() -> Generator[int, None, str]:
+    yield 1
+    return  # E: Return value expected
+[out]
+main: note: In function "f":
+
+[case testEmptyReturnInNoneTypedGenerator]
+from typing import Generator
+def f() -> Generator[int, None, None]:
+    yield 1
+    return
+[out]
+
+[case testNonEmptyReturnInNoneTypedGenerator]
+from typing import Generator
+def f() -> Generator[int, None, None]:
+    yield 1
+    return 42  # E: No return value expected
+[out]
+main: note: In function "f":
+
+[case testReturnInIterator]
+from typing import Iterator
+def f() -> Iterator[int]:
+    yield 1
+    return "foo"
+[out]
 
 -- If statement
 -- ------------
@@ -675,8 +711,8 @@ def f() -> Any:
 
 [case testYieldInFunctionReturningFunction]
 from typing import Callable
-def f() -> Callable[[], None]:
-    yield object() # E: The return type of a generator function should be "Generator" or one of its supertypes
+def f() -> Callable[[], None]: # E: The return type of a generator function should be "Generator" or one of its supertypes
+    yield object()
 [out]
 main: note: In function "f":
 
@@ -687,8 +723,8 @@ def f():
 
 [case testWithInvalidInstanceReturnType]
 import typing
-def f() -> int:
-    yield 1 # E: The return type of a generator function should be "Generator" or one of its supertypes
+def f() -> int: # E: The return type of a generator function should be "Generator" or one of its supertypes
+    yield 1
 [builtins fixtures/for.py]
 [out]
 main: note: In function "f":
@@ -714,6 +750,22 @@ from typing import Iterator
 def f() -> Iterator[None]:
     yield
 [builtins fixtures/for.py]
+
+[case testYieldWithNoValueWhenValueRequired]
+from typing import Iterator
+def f() -> Iterator[int]:
+    yield  # E: Yield value expected
+[builtins fixtures/for.py]
+[out]
+main: note: In function "f":
+
+[case testYieldWithExplicitNone]
+from typing import Iterator
+def f() -> Iterator[None]:
+    yield None  # E: Incompatible types in yield (actual type None, expected type None)
+[builtins fixtures/for.py]
+[out]
+main: note: In function "f":
 
 
 -- Yield from statement
@@ -746,8 +798,8 @@ def f() -> Any:
 from typing import Iterator, Callable
 def g() -> Iterator[int]:
     yield 42
-def f() -> Callable[[], None]:
-    yield from g()  # E: Iterable function return type expected for "yield from"
+def f() -> Callable[[], None]:  # E: The return type of a generator function should be "Generator" or one of its supertypes
+    yield from g()
 [out]
 main: note: In function "f":
 
@@ -755,8 +807,8 @@ main: note: In function "f":
 from typing import Iterator
 def g() -> Iterator[int]:
     yield 42
-def f() -> int:
-    yield from g()  # E: Iterable function return type expected for "yield from"
+def f() -> int:  # E: The return type of a generator function should be "Generator" or one of its supertypes
+    yield from g()
 [out]
 main: note: In function "f":
 

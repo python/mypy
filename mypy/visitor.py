@@ -85,12 +85,6 @@ class NodeVisitor(Generic[T]):
     def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> T:
         pass
 
-    def visit_yield_stmt(self, o: 'mypy.nodes.YieldStmt') -> T:
-        pass
-
-    def visit_yield_from_stmt(self, o: 'mypy.nodes.YieldFromStmt') -> T:
-        pass
-
     def visit_del_stmt(self, o: 'mypy.nodes.DelStmt') -> T:
         pass
 

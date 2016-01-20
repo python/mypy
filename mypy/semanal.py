@@ -49,7 +49,7 @@ from mypy.nodes import (
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
-    RaiseStmt, YieldStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
+    RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
+    YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
     INVARIANT, UNBOUND_IMPORTED
@@ -1447,7 +1447,6 @@ class SemanticAnalyzer(NodeVisitor):
                 self.check_decorated_function_is_method('abstractmethod', dec)
             elif refers_to_fullname(d, 'asyncio.tasks.coroutine'):
                 removed.append(i)
-                dec.func.is_coroutine = True
             elif refers_to_fullname(d, 'builtins.staticmethod'):
                 removed.append(i)
                 dec.func.is_static = True
@@ -1503,20 +1502,6 @@ class SemanticAnalyzer(NodeVisitor):
             s.expr.accept(self)
         if s.from_expr:
             s.from_expr.accept(self)
-
-    def visit_yield_stmt(self, s: YieldStmt) -> None:
-        if not self.is_func_scope():
-            self.fail("'yield' outside function", s)
-        else:
-            self.function_stack[-1].is_generator = True
-        if s.expr:
-            s.expr.accept(self)
-
-    def visit_yield_from_stmt(self, s: YieldFromStmt) -> None:
-        if not self.is_func_scope():
-            self.fail("'yield from' outside function", s)
-        if s.expr:
-            s.expr.accept(self)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         if s.expr:
@@ -1681,6 +1666,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
             self.fail("'yield from' outside function", e)
+        else:
+            self.function_stack[-1].is_generator = True
         if e.expr:
             e.expr.accept(self)
 
@@ -1909,6 +1896,10 @@ class SemanticAnalyzer(NodeVisitor):
         expr.type = self.anal_type(expr.type)
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
+        if not self.is_func_scope():
+            self.fail("'yield' outside function", expr)
+        else:
+            self.function_stack[-1].is_generator = True
         if expr.expr:
             expr.expr.accept(self)
 

@@ -9,14 +9,14 @@ from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
-    RaiseStmt, AssertStmt, YieldStmt, DelStmt, BreakStmt, ContinueStmt,
+    RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
     PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
     CastExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, TypeVarExpr, PromoteExpr,
-    ComparisonExpr, TempNode, StarExpr, YieldFromStmt,
+    ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr
@@ -239,12 +239,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_assert_stmt(self, node: AssertStmt) -> Node:
         return AssertStmt(self.node(node.expr))
-
-    def visit_yield_stmt(self, node: YieldStmt) -> Node:
-        return YieldStmt(self.node(node.expr))
-
-    def visit_yield_from_stmt(self, node: YieldFromStmt) -> Node:
-        return YieldFromStmt(self.node(node.expr))
 
     def visit_del_stmt(self, node: DelStmt) -> Node:
         return DelStmt(self.node(node.expr))

@@ -53,6 +53,9 @@ class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
     def close(self) -> None: pass
 
+    @abstractmethod
+    def __iter__(self) -> 'Generator[T, U, V]': pass
+
 class Sequence(Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass

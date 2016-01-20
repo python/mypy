@@ -323,7 +323,6 @@ class FuncItem(FuncBase):
     # Is this an overload variant of function with more than one overload variant?
     is_overload = False
     is_generator = False   # Contains a yield statement?
-    is_coroutine = False   # Contains @coroutine or yield from Future
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     # Variants of function with type variables with values expanded
@@ -632,26 +631,6 @@ class AssertStmt(Node):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
-
-
-class YieldStmt(Node):
-    expr = None  # type: Node
-
-    def __init__(self, expr: Node) -> None:
-        self.expr = expr
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_yield_stmt(self)
-
-
-class YieldFromStmt(Node):
-    expr = None  # type: Node
-
-    def __init__(self, expr: Node) -> None:
-        self.expr = expr
-
-    def accept(self, visitor: NodeVisitor[T]) -> T:
-        return visitor.visit_yield_from_stmt(self)
 
 
 class DelStmt(Node):

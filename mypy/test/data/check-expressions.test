@@ -1322,8 +1322,10 @@ class str: pass
 def f(x: int) -> None:
     x = yield f('')
     x = 1
+[builtins fixtures/for.py]
 [out]
 main: note: In function "f":
+main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testYieldExpressionWithNone]
@@ -1332,6 +1334,33 @@ def f(x: int) -> Iterator[None]:
     (yield)
 [builtins fixtures/for.py]
 [out]
+
+
+-- Yield from expression
+-- ----------------
+
+
+
+[case testYieldFromIteratorHasNoValue]
+from typing import Iterator
+def f() -> Iterator[int]:
+    yield 5
+def g() -> Iterator[int]:
+    a = yield from f()
+[out]
+main: note: In function "g":
+main:5: error: Function does not return a value
+
+[case testYieldFromGeneratorHasValue]
+from typing import Iterator, Generator
+def f() -> Generator[int, None, str]:
+    yield 5
+    return "ham"
+def g() -> Iterator[int]:
+    a = "string"
+    a = yield from f()
+[out]
+
 
 
 -- dict(x=y, ...)
