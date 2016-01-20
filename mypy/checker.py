@@ -1490,13 +1490,6 @@ class TypeChecker(NodeVisitor[Type]):
 
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
-                    # function has non-void return
-                    if self.function_stack[-1].is_coroutine:
-                        # Something similar will be needed to mix return and yield.
-                        # If the function is a coroutine, wrap the return type in a Future.
-                        typ = self.wrap_generic_type(cast(Instance, typ),
-                                                     cast(Instance, return_type),
-                                                     'asyncio.futures.Future', s)
                     self.check_subtype(
                         typ, return_type, s,
                         messages.INCOMPATIBLE_RETURN_VALUE_TYPE
@@ -1871,51 +1864,42 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
         return_type = self.return_types[-1]
         subexpr_type = self.accept(e.expr, return_type)
-        if isinstance(subexpr_type, Instance):
-            if subexpr_type.type.fullname() == 'asyncio.futures.Future':
-                # if is a Future, in stmt don't need to do nothing
-                # because the type Future[Some] jus matters to the main loop
-                # that python executes, in statement we shouldn't get the Future,
-                # is just for async purposes.
-                self.function_stack[-1].is_coroutine = True  # Set the function as coroutine
-            elif is_subtype(subexpr_type, self.named_type('typing.Iterable')):
-                # If it's and Iterable-Like, let's check the types.
-                # Maybe just check if have __iter__? (like in analyze_iterable)
-                self.check_iterable_yield_from(e)
-            else:
-                self.msg.yield_from_invalid_operand_type(subexpr_type, e)
+
+        # check that the expr is an instance of Iterable and get the type of
+        # the iterator produced by __iter__
+        if (isinstance(subexpr_type, Instance) and
+                is_subtype(subexpr_type, self.named_type('typing.Iterable'))):
+            iter_method_type = self.expr_checker.analyze_external_member_access(
+                '__iter__',
+                subexpr_type,
+                AnyType())
+
+            generic_generator_type = self.named_generic_type('typing.Generator',
+                                                             [AnyType(), AnyType(), AnyType()])
+            iter_type, _ = self.expr_checker.check_call(iter_method_type, [], [],
+                                                        context=generic_generator_type)
         elif isinstance(subexpr_type, AnyType):
-            self.check_iterable_yield_from(e)
+            iter_type = AnyType()
         else:
             self.msg.yield_from_invalid_operand_type(subexpr_type, e)
+            iter_type = AnyType()
 
-        if (isinstance(subexpr_type, Instance) and
-                subexpr_type.type.fullname() == 'typing.Generator'):
-            return self.get_generator_return_type(subexpr_type)
-        else:
-            # non-Generators don't return anything from "yield from" expressions
-            return Void()
-
-    def check_iterable_yield_from(self, e: YieldFromExpr) -> Type:
-        """
-            Check that return type is super type of Iterable (Maybe just check if have __iter__?)
-            and compare it with the type of the expression
-        """
-        return_type = self.return_types[-1]
+        # check that the iterator's item type matches the type yielded by the
+        # Generator function containing this yield from
         expected_item_type = self.get_generator_yield_type(return_type)
-        if e.expr is None:
-            actual_item_type = Void()  # type: Type
-        else:
-            actual_item_type = self.accept(e.expr, expected_item_type)
-            if hasattr(actual_item_type, 'args') and cast(Instance, actual_item_type).args:
-                actual_item_type = map_instance_to_supertype(
-                    cast(Instance, actual_item_type),
-                    self.lookup_typeinfo('typing.Iterable'))
-                actual_item_type = actual_item_type.args[0]   # Take the item inside the iterator
+        actual_item_type = self.get_generator_yield_type(iter_type)
 
         self.check_subtype(actual_item_type, expected_item_type, e,
                            messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
                            'actual type', 'expected type')
+
+        # determine the type of the entire yield from expression
+        if (isinstance(iter_type, Instance) and
+                iter_type.type.fullname() == 'typing.Generator'):
+            return self.get_generator_return_type(iter_type)
+        else:
+            # non-Generators don't return anything from "yield from" expressions
+            return Void()
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
