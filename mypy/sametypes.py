@@ -14,7 +14,23 @@ def is_same_type(left: Type, right: Type) -> bool:
         # generated spurious error messages.
         return True
     else:
+        # Simplify types to canonical forms.
+        #
+        # There are multiple possible union types that represent the same type,
+        # such as Union[int, bool, str] and Union[int, str]. Also, some union
+        # types can be simplified to non-union types such as Union[int, bool]
+        # -> int. It would be nice if we always had simplified union types but
+        # this is currently not the case, though it often is.
+        left = simplify_union(left)
+        right = simplify_union(right)
+
         return left.accept(SameTypeVisitor(right))
+
+
+def simplify_union(t: Type) -> Type:
+    if isinstance(t, UnionType):
+        return UnionType.make_simplified_union(t.items)
+    return t
 
 
 def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:

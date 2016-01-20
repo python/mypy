@@ -47,7 +47,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, meet_simple_away, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
 
 
 T = TypeVar('T')
@@ -116,12 +116,12 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Node, type: Type) -> None:
+    def push(self, expr: Node, typ: Type) -> None:
         if not expr.literal:
             return
         key = expr.literal_hash
         self.frames[0][key] = self.get_declaration(expr)
-        self._push(key, type)
+        self._push(key, typ)
 
     def get(self, expr: Node) -> Type:
         return self._get(expr.literal_hash)
@@ -521,9 +521,11 @@ class TypeChecker(NodeVisitor[Type]):
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.
-                        defn.original_def.type = new_type
-                        partial_types = self.partial_types[-1]
-                        del partial_types[defn.original_def]
+                        var = defn.original_def
+                        partial_types = self.find_partial_types(var)
+                        if partial_types is not None:
+                            var.type = new_type
+                            del partial_types[var]
                     else:
                         # Trying to redefine something like partial empty list as function.
                         self.fail(messages.INCOMPATIBLE_REDEFINITION, defn)
@@ -1086,9 +1088,11 @@ class TypeChecker(NodeVisitor[Type]):
                         # None initializers preserve the partial None type.
                         return
                     if is_valid_inferred_type(rvalue_type):
-                        lvalue_type.var.type = rvalue_type
-                        partial_types = self.partial_types[-1]
-                        del partial_types[lvalue_type.var]
+                        var = lvalue_type.var
+                        partial_types = self.find_partial_types(var)
+                        if partial_types is not None:
+                            var.type = rvalue_type
+                            del partial_types[var]
                     # Try to infer a partial type. No need to check the return value, as
                     # an error will be reported elsewhere.
                     self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
@@ -1446,14 +1450,10 @@ class TypeChecker(NodeVisitor[Type]):
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Node) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
-        partial_types = self.partial_types[-1]
-        if not partial_types:
-            # Fast path leave -- no partial types in the current scope.
-            return
         if isinstance(lvalue.base, RefExpr):
-            var = lvalue.base.node
-            if var in partial_types:
-                var = cast(Var, var)
+            var = cast(Var, lvalue.base.node)
+            partial_types = self.find_partial_types(var)
+            if partial_types is not None:
                 typename = cast(Instance, var.type).type.fullname()
                 if typename == 'builtins.dict':
                     # TODO: Don't infer things twice.
@@ -2167,6 +2167,12 @@ class TypeChecker(NodeVisitor[Type]):
         for var, context in partial_types.items():
             self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
             var.type = AnyType()
+
+    def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
+        for partial_types in reversed(self.partial_types):
+            if var in partial_types:
+                return partial_types
+        return None
 
     def is_within_function(self) -> bool:
         """Are we currently type checking within a function?

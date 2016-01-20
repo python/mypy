@@ -64,8 +64,8 @@ class ParseErrorSuite(Suite):
 
 def test_parse_error(testcase):
     try:
-        # Compile temporary file.
-        parse(bytes('\n'.join(testcase.input), 'ascii'), INPUT_FILE_NAME)
+        # Compile temporary file. The test file contains non-ASCII characters.
+        parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME)
         raise AssertionFailure('No errors reported')
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
