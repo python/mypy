@@ -1497,11 +1497,6 @@ class TypeChecker(NodeVisitor[Type]):
                         + ": expected {}, got {}".format(return_type, typ)
                     )
             else:
-                # return without a value
-                # empty returns are valid in coroutines
-                if (self.function_stack[-1].is_coroutine):
-                    return None
-
                 # empty returns are valid in Generators with Any typed returns
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
                     return None

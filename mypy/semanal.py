@@ -1447,7 +1447,6 @@ class SemanticAnalyzer(NodeVisitor):
                 self.check_decorated_function_is_method('abstractmethod', dec)
             elif refers_to_fullname(d, 'asyncio.tasks.coroutine'):
                 removed.append(i)
-                dec.func.is_coroutine = True
             elif refers_to_fullname(d, 'builtins.staticmethod'):
                 removed.append(i)
                 dec.func.is_static = True
