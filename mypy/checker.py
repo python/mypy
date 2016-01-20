@@ -462,7 +462,7 @@ class TypeChecker(NodeVisitor[Type]):
         elif return_type.args:
             return return_type.args[0]
         else:
-            # if the declared supertype of `Generator` has no type
+            # if the function's declared supertype of Generator has no type
             # parameters (i.e. is `object`), then the yielded values can't
             # be accessed so any type is acceptable.
             return AnyType()
@@ -478,10 +478,10 @@ class TypeChecker(NodeVisitor[Type]):
             # same as above, but written as a separate branch so the typechecker can understand
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
+            # Generator is the only type which specifies the type of values it can receive
             return return_type.args[1]
         else:
-            # it's a supertype of Generator, so callers won't be able to see
-            # send it values
+            # it's a supertype of Generator, so callers won't be able to see send it values
             return Void()
 
     def get_generator_return_type(self, return_type: Type) -> Type:
@@ -495,10 +495,11 @@ class TypeChecker(NodeVisitor[Type]):
             # same as above, but written as a separate branch so the typechecker can understand
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
+            # Generator is the only type which specifies the type of values it
+            # returns into `yield from` expressions
             return return_type.args[2]
         else:
-            # it's a supertype of Generator, so callers won't be able to see
-            # the return type
+            # it's a supertype of Generator, so callers won't be able to see the return type
             return AnyType()
 
     def visit_func_def(self, defn: FuncDef) -> Type:
