@@ -425,7 +425,8 @@ class Parser:
                         arg_kinds,
                         arg_names,
                         sig.ret_type,
-                        None)
+                        None,
+                        line=def_tok.line)
                 else:
                     self.check_argument_kinds(arg_kinds, sig.arg_kinds,
                                               def_tok.line)
@@ -434,7 +435,8 @@ class Parser:
                         arg_kinds,
                         arg_names,
                         sig.ret_type,
-                        None)
+                        None,
+                        line=def_tok.line)
 
             # If there was a serious error, we really cannot build a parse tree
             # node.
