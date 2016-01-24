@@ -303,3 +303,12 @@ x in 1,
 if x in 1, :
     pass
 [out]
+
+[case testInitReturnTypeError]
+class C:
+    def __init__(self):
+        # type: () -> int
+        pass
+[out]
+main: note: In member "__init__" of class "C":
+main:2: error: The return type of "__init__" must be None
