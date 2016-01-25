@@ -2008,7 +2008,7 @@ class TypeChecker(NodeVisitor[Type]):
         return_type = self.return_types[-1]
         expected_item_type = self.get_generator_yield_type(return_type)
         if e.expr is None:
-            if not isinstance(expected_item_type, Void):
+            if not isinstance(expected_item_type, Void) and self.typing_mode_full():
                 self.fail(messages.YIELD_VALUE_EXPECTED, e)
         else:
             actual_item_type = self.accept(e.expr, expected_item_type)
