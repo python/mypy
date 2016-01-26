@@ -45,6 +45,9 @@ def is_subtype(left: Type, right: Type,
     elif isinstance(right, UnionType) and not isinstance(left, UnionType):
         return any(is_subtype(left, item, type_parameter_checker)
                    for item in cast(UnionType, right).items)
+    elif isinstance(left, TypeVarType) and isinstance(right, NoneTyp):
+        # This isn't very principled, but makes cases like defaultdict(list) work.
+        return True
     else:
         return left.accept(SubtypeVisitor(right, type_parameter_checker))
 
