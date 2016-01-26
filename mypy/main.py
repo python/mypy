@@ -209,11 +209,16 @@ def expand_dir(arg: str) -> List[BuildSource]:
             if stripped:
                 path = os.path.join(dir, name)
                 targets.append(BuildSource(path, stripped, None))
+        if not targets:
+            fail("There are no .py[i] files in directory '{}'".format(arg))
         return targets
 
     else:
         lib_path = [dir]
-        return build.find_modules_recursive(mod, lib_path)
+        targets = build.find_modules_recursive(mod, lib_path)
+        if not targets:
+            fail("Found no modules in package '{}'".format(arg))
+        return targets
 
 
 def crawl_up(arg: str) -> Tuple[str, str]:
