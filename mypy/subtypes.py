@@ -207,7 +207,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         return False
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        left = unify_generic_callable(left, right)
+        left = unify_generic_callable(left, right, ignore_return=ignore_return)
         if left is None:
             return False
 
@@ -259,7 +259,8 @@ def is_var_arg_callable_subtype_helper(left: CallableType, right: CallableType) 
         return is_subtype(right.arg_types[-1], left.arg_types[-1])
 
 
-def unify_generic_callable(type: CallableType, target: CallableType) -> CallableType:
+def unify_generic_callable(type: CallableType, target: CallableType,
+                           ignore_return: bool) -> CallableType:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -269,6 +270,10 @@ def unify_generic_callable(type: CallableType, target: CallableType) -> Callable
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
             arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)
+        constraints.extend(c)
+    if not ignore_return:
+        c = mypy.constraints.infer_constraints(
+            type.ret_type, target.ret_type, mypy.constraints.SUBTYPE_OF)
         constraints.extend(c)
     type_var_ids = [tvar.id for tvar in type.variables]
     inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
