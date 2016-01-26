@@ -1132,21 +1132,15 @@ class Parser:
             if not isinstance(self.current(), Colon):
                 try:
                     t = self.current()
-                    types.append(self.parse_expression().set_line(t))
+                    types.append(self.parse_expression(precedence[',']).set_line(t))
                     if self.current_str() == 'as':
                         self.expect('as')
                         vars.append(self.parse_name_expr())
+                    elif self.pyversion[0] == 2 and self.current_str() == ',':
+                        self.expect(',')
+                        vars.append(self.parse_name_expr())
                     else:
-                        if (self.pyversion[0] == 2 and
-                                isinstance(types[-1], TupleExpr) and
-                                len(cast(TupleExpr, types[-1]).items) == 2 and
-                                isinstance(cast(TupleExpr, types[-1]).items[1], NameExpr)):
-                            # Handle "except T, e:".
-                            tuple_expr = cast(TupleExpr, types[-1])
-                            vars.append(cast(NameExpr, tuple_expr.items[1]))
-                            types[-1] = tuple_expr.items[0]
-                        else:
-                            vars.append(None)
+                        vars.append(None)
                 except ParseError:
                     is_error = True
             else:
