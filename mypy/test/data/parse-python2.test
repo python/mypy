@@ -142,6 +142,24 @@ MypyFile:1(
       ExpressionStmt:4(
         NameExpr(y)))))
 
+[case testTryExceptWithNestedComma]
+try:
+    x
+except (KeyError, IndexError):
+    y
+[out]
+MypyFile:1(
+  TryStmt:1(
+    Block:1(
+      ExpressionStmt:2(
+        NameExpr(x)))
+    TupleExpr:3(
+      NameExpr(KeyError)
+      NameExpr(IndexError))
+    Block:3(
+      ExpressionStmt:4(
+        NameExpr(y)))))
+
 [case testExecStatement]
 exec a
 [out]
