@@ -12,6 +12,8 @@ from mypy.lex import Token
 import mypy.strconv
 from mypy.visitor import NodeVisitor
 from mypy.util import dump_tagged, short_type
+from mypy.options import Options
+
 
 
 class Context(metaclass=ABCMeta):
@@ -334,7 +336,16 @@ class FuncItem(FuncBase):
         arg_kinds = [arg.kind for arg in self.arguments]
         self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
         self.body = body
-        self.type = typ
+        if typ is not None:
+            self.type = typ
+        elif Options.get_options().implicit_any:
+            from mypy.types import (UnboundType, CallableType)
+            self.type = CallableType([UnboundType('Any', []) for _ in arguments],
+                                     arg_kinds,
+                                     [a.variable.name() for a in arguments],
+                                     UnboundType('Any', []),
+                                     None)
+
         self.expanded = []
 
         self.min_args = 0

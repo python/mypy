@@ -15,22 +15,10 @@ from mypy import git
 from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
 
+from mypy.options import Options
 from mypy.version import __version__
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
-
-
-class Options:
-    def __init__(self) -> None:
-        # Set default options.
-        self.target = build.TYPE_CHECK
-        self.build_flags = []  # type: List[str]
-        self.pyversion = defaults.PYTHON3_VERSION
-        self.custom_typing_module = None  # type: str
-        self.report_dirs = {}  # type: Dict[str, str]
-        self.python_path = False
-        self.dirty_stubs = False
-        self.pdb = False
 
 
 def main(script_path: str) -> None:
@@ -104,7 +92,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             parsed flags)
     """
     # TODO: Rewrite using argparse.
-    options = Options()
+    options = Options.get_options()
     help = False
     ver = False
     while args and args[0].startswith('-'):
@@ -166,6 +154,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             args = args[1:]
         elif args[0] == '--pdb':
             options.pdb = True
+            args = args[1:]
+        elif args[0] == '--implicit-any':
+            options.implicit_any = True
             args = args[1:]
         elif args[0] == '--version':
             ver = True
@@ -292,6 +283,7 @@ Options:
   --python-version x.y  use Python x.y
   --silent, --silent-imports  don't follow imports to .py files
   -f, --dirty-stubs  don't warn if typeshed is out of sync
+  --implicit-any     behave as though all functions were annotated with Any
   --pdb              invoke pdb on fatal error
   --use-python-path  search for modules in sys.path of running Python
   --stats            dump stats
