@@ -477,3 +477,13 @@ file:1: error: Unrecognized character `
 foo = ‘bar’
 [out]
 file:1: error: Unrecognized character
+
+[case testExceptCommaInPython3]
+try:
+    pass
+except KeyError, IndexError:
+    pass
+[out]
+file:3: error: Parse error before ,
+file:3: error: Parse error before :
+file:4: error: Inconsistent indentation
