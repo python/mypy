@@ -707,11 +707,13 @@ class UnprocessedFile(State):
 
     def process(self) -> None:
         """Parse the file, store global names and advance to the next state."""
+        if self.id in self.manager.semantic_analyzer.modules:
+            self.fail(self.path, 1, "Duplicate module named '{}'".format(self.id))
+            return
+
         tree = self.parse(self.program_text, self.path)
 
         # Store the parsed module in the shared module symbol table.
-        assert self.id not in self.manager.semantic_analyzer.modules, (
-            'Module %s processed twice' % self.id)
         self.manager.semantic_analyzer.modules[self.id] = tree
 
         if '.' in self.id:
