@@ -837,7 +837,10 @@ class ExpressionChecker:
                 local_errors.disable_count = 0
                 sub_result, method_type = self.check_op_local('__contains__', right_type,
                                                           left, e, local_errors)
-                if (local_errors.is_errors() and
+                if isinstance(right_type, PartialType):
+                    # We don't really know if this is an error or not, so just shut up.
+                    pass
+                elif (local_errors.is_errors() and
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
                     itertype = self.chk.analyze_iterable_item_type(right)
