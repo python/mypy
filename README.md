@@ -183,7 +183,7 @@ pass inferior arguments via `-a`:
 You can also run the type checker for manual testing without
 installing anything by setting up the Python module search path suitably:
 
-    $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
+    $ export PYTHONPATH=$PWD
     $ python<version> -m mypy PROGRAM.py
 
 You can add the entry scripts to PATH for a single python3 version:
