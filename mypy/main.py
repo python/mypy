@@ -15,10 +15,23 @@ from mypy import git
 from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
 
-from mypy.options import Options
 from mypy.version import __version__
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
+
+
+class Options:
+    def __init__(self) -> None:
+        # Set default options.
+        self.target = build.TYPE_CHECK
+        self.build_flags = []  # type: List[str]
+        self.pyversion = defaults.PYTHON3_VERSION
+        self.custom_typing_module = None  # type: str
+        self.implicit_any = False
+        self.report_dirs = {}  # type: Dict[str, str]
+        self.python_path = False
+        self.dirty_stubs = False
+        self.pdb = False
 
 
 def main(script_path: str) -> None:
@@ -79,6 +92,7 @@ def type_check_only(sources: List[BuildSource],
                 bin_dir=bin_dir,
                 pyversion=options.pyversion,
                 custom_typing_module=options.custom_typing_module,
+                implicit_any=options.implicit_any,
                 report_dirs=options.report_dirs,
                 flags=options.build_flags,
                 python_path=options.python_path)
@@ -92,7 +106,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             parsed flags)
     """
     # TODO: Rewrite using argparse.
-    options = Options.get_options()
+    options = Options()
     help = False
     ver = False
     while args and args[0].startswith('-'):
