@@ -23,7 +23,7 @@ from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.replacetvars import replace_func_type_vars, replace_type_vars
+from mypy.replacetvars import replace_func_type_vars, replace_type_vars, rename_func_type_vars
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -102,6 +102,8 @@ class ExpressionChecker:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType()
+        if isinstance(result, FunctionLike) and result.is_generic():
+            result = rename_func_type_vars(result)  # XXX
         return result
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
@@ -217,11 +219,14 @@ class ExpressionChecker:
                 callee.arg_kinds, callee.arg_names,
                 lambda i: self.accept(args[i]))
 
+            #print([1], callee)
             if callee.is_generic():
                 callee = self.infer_function_type_arguments_using_context(
                     callee, context)
+                #print([2], callee)
                 callee = self.infer_function_type_arguments(
                     callee, args, arg_kinds, formal_to_actual, context)
+                #print([3], callee)
 
             arg_types = self.infer_arg_types_in_context2(
                 callee, args, arg_kinds, formal_to_actual)
@@ -339,6 +344,7 @@ class ExpressionChecker:
         # and they are not potential results; thus we replace them with the
         # special ErasedType type. On the other hand, class type variables are
         # valid results.
+        #print([0], ctx)
         erased_ctx = replace_func_type_vars(ctx, ErasedType())
         ret_type = callable.ret_type
         if isinstance(ret_type, TypeVarType):
@@ -1133,7 +1139,7 @@ class ExpressionChecker:
     def check_list_or_set_expr(self, items: List[Node], fullname: str,
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
-        tv = TypeVarType('T', -1, [], self.chk.object_type())
+        tv = TypeVarType('T', -99, [], self.chk.object_type())
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -1141,7 +1147,7 @@ class ExpressionChecker:
             self.chk.named_generic_type(fullname, [tv]),
             self.named_type('builtins.function'),
             name=tag,
-            variables=[TypeVarDef('T', -1, None, self.chk.object_type())])
+            variables=[TypeVarDef('T', -99, None, self.chk.object_type())])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -1170,8 +1176,8 @@ class ExpressionChecker:
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
-        tv1 = TypeVarType('KT', -1, [], self.chk.object_type())
-        tv2 = TypeVarType('VT', -2, [], self.chk.object_type())
+        tv1 = TypeVarType('KT', -99, [], self.chk.object_type())
+        tv2 = TypeVarType('VT', -98, [], self.chk.object_type())
         # The callable type represents a function like this:
         #
         #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
@@ -1182,8 +1188,8 @@ class ExpressionChecker:
             self.chk.named_generic_type('builtins.dict', [tv1, tv2]),
             self.named_type('builtins.function'),
             name='<list>',
-            variables=[TypeVarDef('KT', -1, None, self.chk.object_type()),
-                       TypeVarDef('VT', -2, None, self.chk.object_type())])
+            variables=[TypeVarDef('KT', -99, None, self.chk.object_type()),
+                       TypeVarDef('VT', -98, None, self.chk.object_type())])
         # Synthesize function arguments.
         args = []  # type: List[Node]
         for key, value in e.items:
@@ -1295,7 +1301,7 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        tv = TypeVarType('T', -1, [], self.chk.object_type())
+        tv = TypeVarType('T', -99, [], self.chk.object_type())
         constructor = CallableType(
             [tv],
             [nodes.ARG_POS],
@@ -1303,7 +1309,7 @@ class ExpressionChecker:
             self.chk.named_generic_type(type_name, [tv]),
             self.chk.named_type('builtins.function'),
             name=id_for_messages,
-            variables=[TypeVarDef('T', -1, None, self.chk.object_type())])
+            variables=[TypeVarDef('T', -99, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
@@ -1313,8 +1319,8 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        key_tv = TypeVarType('KT', -1, [], self.chk.object_type())
-        value_tv = TypeVarType('VT', -2, [], self.chk.object_type())
+        key_tv = TypeVarType('KT', -99, [], self.chk.object_type())
+        value_tv = TypeVarType('VT', -98, [], self.chk.object_type())
         constructor = CallableType(
             [key_tv, value_tv],
             [nodes.ARG_POS, nodes.ARG_POS],
@@ -1322,8 +1328,8 @@ class ExpressionChecker:
             self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
             self.chk.named_type('builtins.function'),
             name='<dictionary-comprehension>',
-            variables=[TypeVarDef('KT', -1, None, self.chk.object_type()),
-                       TypeVarDef('VT', -2, None, self.chk.object_type())])
+            variables=[TypeVarDef('KT', -99, None, self.chk.object_type()),
+                       TypeVarDef('VT', -98, None, self.chk.object_type())])
         return self.check_call(constructor,
                                [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 

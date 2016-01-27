@@ -225,6 +225,9 @@ class FunctionLike(Type):
     """Abstract base class for function types."""
 
     @abstractmethod
+    def is_generic(self) -> bool: pass
+
+    @abstractmethod
     def is_type_obj(self) -> bool: pass
 
     @abstractmethod
@@ -392,6 +395,9 @@ class Overloaded(FunctionLike):
 
     def name(self) -> str:
         return self._items[0].name
+
+    def is_generic(self) -> bool:
+        return any(item.is_generic() for item in self._items)
 
     def is_type_obj(self) -> bool:
         # All the items must have the same type object status, so it's
