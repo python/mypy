@@ -38,6 +38,12 @@ from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 
 
+# Type of callback user for checking individual function arguments. See
+# check_args() below for details.
+ArgChecker = Callable[[Type, Type, Type, int, int, CallableType, Context, MessageBuilder],
+                      None]
+
+
 class ExpressionChecker:
     """Expression type checker.
 
@@ -244,7 +250,7 @@ class ExpressionChecker:
             arg_types = self.infer_arg_types_in_context(None, args)
             self.msg.enable_errors()
 
-            target = self.overload_call_target(arg_types, is_var_arg,
+            target = self.overload_call_target(arg_types, arg_kinds, arg_names, is_var_arg,
                                                callee, context,
                                                messages=arg_messages)
             return self.check_call(target, args, arg_kinds, context, arg_names,
@@ -549,12 +555,14 @@ class ExpressionChecker:
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
-                             messages: MessageBuilder = None) -> None:
+                             messages: MessageBuilder = None,
+                             check_arg: ArgChecker = None) -> None:
         """Check argument types against a callable type.
 
         Report errors if the argument types are not compatible.
         """
         messages = messages or self.msg
+        check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
         tuple_counter = [0]
         for i, actuals in enumerate(formal_to_actual):
@@ -567,13 +575,13 @@ class ExpressionChecker:
                 if (arg_kinds[actual] == nodes.ARG_STAR2 and
                         not self.is_valid_keyword_var_arg(arg_type)):
                     messages.invalid_keyword_var_arg(arg_type, context)
-                # Get the type of an inidividual actual argument (for *args
+                # Get the type of an individual actual argument (for *args
                 # and **args this is the item type, not the collection type).
                 actual_type = get_actual_type(arg_type, arg_kinds[actual],
                                               tuple_counter)
-                self.check_arg(actual_type, arg_type,
-                               callee.arg_types[i],
-                               actual + 1, i + 1, callee, context, messages)
+                check_arg(actual_type, arg_type,
+                          callee.arg_types[i],
+                          actual + 1, i + 1, callee, context, messages)
 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
@@ -585,9 +593,9 @@ class ExpressionChecker:
                         actual_type = get_actual_type(arg_type,
                                                       arg_kinds[actual],
                                                       tuple_counter)
-                        self.check_arg(actual_type, arg_type,
-                                       callee.arg_types[i],
-                                       actual + 1, i + 1, callee, context, messages)
+                        check_arg(actual_type, arg_type,
+                                  callee.arg_types[i],
+                                  actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
                   callee_type: Type, n: int, m: int, callee: CallableType,
@@ -601,7 +609,8 @@ class ExpressionChecker:
             messages.incompatible_argument(n, m, callee, original_caller_type,
                                            context)
 
-    def overload_call_target(self, arg_types: List[Type], is_var_arg: bool,
+    def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
+                             arg_names: List[str], is_var_arg: bool,
                              overload: Overloaded, context: Context,
                              messages: MessageBuilder = None) -> Type:
         """Infer the correct overload item to call with given argument types.
@@ -617,7 +626,8 @@ class ExpressionChecker:
         match = []  # type: List[CallableType]
         best_match = 0
         for typ in overload.items():
-            similarity = self.erased_signature_similarity(arg_types, is_var_arg, typ)
+            similarity = self.erased_signature_similarity(arg_types, arg_kinds, arg_names,
+                                                          is_var_arg, typ)
             if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
@@ -651,7 +661,8 @@ class ExpressionChecker:
                         return m
                 return match[0]
 
-    def erased_signature_similarity(self, arg_types: List[Type], is_var_arg: bool,
+    def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
+                                    arg_names: List[str], is_var_arg: bool,
                                     callee: CallableType) -> int:
         """Determine whether arguments could match the signature at runtime.
 
@@ -664,31 +675,31 @@ class ExpressionChecker:
         if not is_valid_argc(len(arg_types), is_var_arg, callee):
             return False
 
-        if is_var_arg:
-            if not self.is_valid_var_arg(arg_types[-1]):
-                return False
-            arg_types, rest = expand_caller_var_args(arg_types,
-                                                     callee.max_fixed_args())
-
-        # Fixed function arguments.
-        func_fixed = callee.max_fixed_args()
+        formal_to_actual = map_actuals_to_formals(arg_kinds,
+                                                  arg_names,
+                                                  callee.arg_kinds,
+                                                  callee.arg_names,
+                                                  lambda i: arg_types[i])
         similarity = 2
-        for i in range(min(len(arg_types), func_fixed)):
-            # Instead of just is_subtype, we use a relaxed overlapping check to determine
-            # which overload variant could apply.
+
+        class Finished(Exception):
+            """Raised if we can terminate overload argument check early (no match)."""
+
+        def check_arg(caller_type: Type, original_caller_type: Type,
+                      callee_type: Type, n: int, m: int, callee: CallableType,
+                      context: Context, messages: MessageBuilder) -> None:
+            nonlocal similarity
             similarity = min(similarity,
-                             overload_arg_similarity(arg_types[i], callee.arg_types[i]))
+                             overload_arg_similarity(caller_type, callee_type))
             if similarity == 0:
-                return 0
-        # Function varargs.
-        if callee.is_var_arg:
-            for i in range(func_fixed, len(arg_types)):
-                # See above for why we use is_compatible_overload_arg.
-                similarity = min(similarity,
-                                 overload_arg_similarity(arg_types[i],
-                                                         callee.arg_types[func_fixed]))
-                if similarity == 0:
-                    return 0
+                raise Finished
+
+        try:
+            self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
+                                      None, check_arg=check_arg)
+        except Finished:
+            pass
+
         return similarity
 
     def match_signature_types(self, arg_types: List[Type], is_var_arg: bool,

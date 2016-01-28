@@ -526,3 +526,12 @@ def f(x: A) -> A: pass
 def f(x: B) -> B: pass
 
 f(A() + B())() # E: "B" not callable
+
+[case testKeywordArgOverload]
+from typing import overload
+@overload
+def f(x: int, y: str) -> int: pass
+@overload
+def f(x: str, y: int) -> str: pass
+f(x=1, y='')() # E: "int" not callable
+f(y=1, x='')() # E: "str" not callable
