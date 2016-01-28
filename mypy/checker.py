@@ -1636,16 +1636,19 @@ class TypeChecker(NodeVisitor[Type]):
                 # Cases like "raise/from ExceptionClass".
                 typeinfo = typ.type_object()
                 base = self.lookup_typeinfo('builtins.BaseException')
-                if base in typeinfo.mro:
+                if base in typeinfo.mro or typeinfo.fallback_to_any:
                     # Good!
-                    return None
+                    return
                 # Else fall back to the checks below (which will fail).
         if isinstance(typ, TupleType) and self.pyversion[0] == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
             if len(cast(TupleType, typ).items) in (2, 3):
-                return None
+                return
+        if isinstance(typ, Instance) and typ.type.fallback_to_any:
+            # OK!
+            return
         self.check_subtype(typ,
                            self.named_type('builtins.BaseException'), s,
                            messages.INVALID_EXCEPTION)

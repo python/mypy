@@ -614,6 +614,14 @@ except E as e:
     e = BaseException() # E: Incompatible types in assignment (expression has type "BaseException", variable has type "E")
 [builtins fixtures/exception.py]
 
+[case testExceptionWithAnyBaseClass]
+from typing import Any
+E = None  # type: Any
+class EE(E): pass
+raise EE()
+raise EE
+[builtins fixtures/exception.py]
+
 
 -- Del statement
 -- -------------
