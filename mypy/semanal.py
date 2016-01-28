@@ -2253,6 +2253,7 @@ class FirstPass(NodeVisitor):
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.analyze_lvalue(s.index)
+        s.body.accept(self)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for n in s.target:

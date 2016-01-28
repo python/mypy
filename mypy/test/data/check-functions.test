@@ -1248,3 +1248,14 @@ def g(x, y): pass
 def h(y): pass
 f = h
 f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
+
+
+-- Special cases
+-- -------------
+
+
+[case testFunctionDefinitionWithForStatement]
+for _ in [1]:
+    def f(): pass
+f()
+[builtins fixtures/list.py]
