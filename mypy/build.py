@@ -347,6 +347,7 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors, modules, self.pyversion)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
+        self.module_path_cache = {}  # type: Dict[str, str]  # includes modules we don't process
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
 
@@ -529,7 +530,12 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path) is not None
+        return self.find_module(id) is not None
+
+    def find_module(self, id: str) -> str:
+        if id not in self.module_path_cache:
+            self.module_path_cache[id] = find_module(id, self.lib_path)
+        return self.module_path_cache[id]
 
     def final_passes(self, files: List[MypyFile],
                      types: Dict[Node, Type]) -> None:
