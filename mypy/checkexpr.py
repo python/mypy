@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import cast, List, Tuple, Dict, Callable, Union
+from typing import cast, List, Tuple, Dict, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
@@ -42,6 +42,10 @@ from mypy.checkstrformat import StringFormatterChecker
 # check_args() below for details.
 ArgChecker = Callable[[Type, Type, Type, int, int, CallableType, Context, MessageBuilder],
                       None]
+
+
+class Finished(Exception):
+    """Raised if we can terminate overload argument check early (no match)."""
 
 
 class ExpressionChecker:
@@ -233,7 +237,7 @@ class ExpressionChecker:
                 callee, args, arg_kinds, formal_to_actual)
 
             self.check_argument_count(callee, arg_types, arg_kinds,
-                                      arg_names, formal_to_actual, context)
+                                      arg_names, formal_to_actual, context, self.msg)
 
             self.check_argument_types(arg_types, arg_kinds, callee,
                                       formal_to_actual, context,
@@ -501,11 +505,16 @@ class ExpressionChecker:
     def check_argument_count(self, callee: CallableType, actual_types: List[Type],
                              actual_kinds: List[int], actual_names: List[str],
                              formal_to_actual: List[List[int]],
-                             context: Context) -> None:
-        """Check that the number of arguments to a function are valid.
+                             context: Context,
+                             messages: Optional[MessageBuilder]) -> bool:
+        """Check that there is a value for all required arguments to a function.
 
-        Also check that there are no duplicate values for arguments.
+        Also check that there are no duplicate values for arguments. Report errors if
+        messages is not None.
+
+        Return False if there were any errors.
         """
+        # TODO(jukka): We could return as soon as we find an error if messages is None.
         formal_kinds = callee.arg_kinds
 
         # Collect list of all actual arguments matched to formal arguments.
@@ -513,43 +522,56 @@ class ExpressionChecker:
         for actuals in formal_to_actual:
             all_actuals.extend(actuals)
 
-        is_error = False  # Keep track of errors to avoid duplicate errors.
+        is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors.
+        ok = True  # False if we've found any error.
         for i, kind in enumerate(actual_kinds):
             if i not in all_actuals and (
                     kind != nodes.ARG_STAR or
                     not is_empty_tuple(actual_types[i])):
                 # Extra actual: not matched by a formal argument.
+                ok = False
                 if kind != nodes.ARG_NAMED:
-                    self.msg.too_many_arguments(callee, context)
+                    if messages:
+                        messages.too_many_arguments(callee, context)
                 else:
-                    self.msg.unexpected_keyword_argument(
-                        callee, actual_names[i], context)
-                    is_error = True
+                    if messages:
+                        messages.unexpected_keyword_argument(
+                            callee, actual_names[i], context)
+                    is_unexpected_arg_error = True
             elif kind == nodes.ARG_STAR and (
                     nodes.ARG_STAR not in formal_kinds):
                 actual_type = actual_types[i]
                 if isinstance(actual_type, TupleType):
                     if all_actuals.count(i) < len(actual_type.items):
                         # Too many tuple items as some did not match.
-                        self.msg.too_many_arguments(callee, context)
+                        if messages:
+                            messages.too_many_arguments(callee, context)
+                        ok = False
                 # *args can be applied even if the function takes a fixed
                 # number of positional arguments. This may succeed at runtime.
 
         for i, kind in enumerate(formal_kinds):
             if kind == nodes.ARG_POS and (not formal_to_actual[i] and
-                                          not is_error):
+                                          not is_unexpected_arg_error):
                 # No actual for a mandatory positional formal.
-                self.msg.too_few_arguments(callee, context, actual_names)
+                if messages:
+                    messages.too_few_arguments(callee, context, actual_names)
+                ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED] and is_duplicate_mapping(
                     formal_to_actual[i], actual_kinds):
                 if (self.chk.typing_mode_full() or
                         isinstance(actual_types[formal_to_actual[i][0]], TupleType)):
-                    self.msg.duplicate_argument_value(callee, i, context)
+                    if messages:
+                        messages.duplicate_argument_value(callee, i, context)
+                    ok = False
             elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] != nodes.ARG_NAMED):
                 # Positional argument when expecting a keyword argument.
-                self.msg.too_many_positional_arguments(callee, context)
+                if messages:
+                    messages.too_many_positional_arguments(callee, context)
+                ok = False
+        return ok
 
     def check_argument_types(self, arg_types: List[Type], arg_kinds: List[int],
                              callee: CallableType,
@@ -672,18 +694,18 @@ class ExpressionChecker:
         Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
         overload_arg_similarity for a discussion of similarity levels.
         """
-        if not is_valid_argc(len(arg_types), is_var_arg, callee):
-            return False
-
         formal_to_actual = map_actuals_to_formals(arg_kinds,
                                                   arg_names,
                                                   callee.arg_kinds,
                                                   callee.arg_names,
                                                   lambda i: arg_types[i])
-        similarity = 2
 
-        class Finished(Exception):
-            """Raised if we can terminate overload argument check early (no match)."""
+        if not self.check_argument_count(callee, arg_types, arg_kinds, arg_names,
+                                         formal_to_actual, None, None):
+            # Too few or many arguments -> no match.
+            return 0
+
+        similarity = 2
 
         def check_arg(caller_type: Type, original_caller_type: Type,
                       callee_type: Type, n: int, m: int, callee: CallableType,
@@ -692,6 +714,8 @@ class ExpressionChecker:
             similarity = min(similarity,
                              overload_arg_similarity(caller_type, callee_type))
             if similarity == 0:
+                # No match -- exit early since none of the remaining work can change
+                # the result.
                 raise Finished
 
         try:
@@ -1446,23 +1470,6 @@ class ExpressionChecker:
             return self.has_member(typ.fallback, member)
         else:
             return False
-
-
-def is_valid_argc(nargs: int, is_var_arg: bool, callable: CallableType) -> bool:
-    """Return a boolean indicating whether a call expression has a
-    (potentially) compatible number of arguments for calling a function.
-    Varargs at caller are not checked.
-    """
-    if is_var_arg:
-        if callable.is_var_arg:
-            return True
-        else:
-            return nargs - 1 <= callable.max_fixed_args()
-    elif callable.is_var_arg:
-        return nargs >= callable.min_args
-    else:
-        # Neither has varargs.
-        return nargs <= len(callable.arg_types) and nargs >= callable.min_args
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
