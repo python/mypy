@@ -17,7 +17,7 @@ import sys
 import re
 from os.path import dirname, basename
 
-from typing import Dict, List, Tuple, cast, Set, Union, Optional
+from typing import Dict, List, Tuple, Iterable, cast, Set, Union, Optional
 
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
@@ -334,7 +334,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
-        self.lib_path = lib_path
+        self.lib_path = tuple(lib_path)
         self.target = target
         self.pyversion = pyversion
         self.flags = flags
@@ -347,7 +347,6 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors, modules, self.pyversion)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
-        self.module_path_cache = {}  # type: Dict[str, str]  # includes modules we don't process
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
 
@@ -530,12 +529,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return self.find_module(id) is not None
-
-    def find_module(self, id: str) -> str:
-        if id not in self.module_path_cache:
-            self.module_path_cache[id] = find_module(id, self.lib_path)
-        return self.module_path_cache[id]
+        return find_module(id, self.lib_path) is not None
 
     def final_passes(self, files: List[MypyFile],
                      types: Dict[Node, Type]) -> None:
@@ -921,7 +915,7 @@ def trace(s):
 
 
 def read_module_source_from_file(id: str,
-                                 lib_path: List[str],
+                                 lib_path: Iterable[str],
                                  pyversion: Tuple[int, int],
                                  silent: bool) -> Tuple[Optional[str], Optional[str]]:
     """Find and read the source file of a module.
@@ -947,17 +941,29 @@ def read_module_source_from_file(id: str,
         return None, None
 
 
-def find_module(id: str, lib_path: List[str]) -> str:
+find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], str]
+
+def find_module(id: str, lib_path: Iterable[str]) -> str:
     """Return the path of the module source file, or None if not found."""
-    for pathitem in lib_path:
-        for extension in PYTHON_EXTENSIONS:
-            comp = id.split('.')
-            path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
-            if not os.path.isfile(path):
-                path = os.path.join(pathitem, os.sep.join(comp), '__init__{}'.format(extension))
-            if os.path.isfile(path) and verify_module(id, path):
-                return path
-    return None
+    if isinstance(lib_path, tuple):
+        key = (id, lib_path)
+    else:
+        key = (id, tuple(lib_path))
+
+    def find():
+        for pathitem in lib_path:
+            for extension in PYTHON_EXTENSIONS:
+                comp = id.split('.')
+                path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
+                if not os.path.isfile(path):
+                    path = os.path.join(pathitem, os.sep.join(comp), '__init__{}'.format(extension))
+                if os.path.isfile(path) and verify_module(id, path):
+                    return path
+        return None
+
+    if key not in find_module_cache:
+        find_module_cache[key] = find()
+    return find_module_cache[key]
 
 
 def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
