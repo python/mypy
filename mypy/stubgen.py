@@ -636,7 +636,7 @@ def usage() -> None:
 
         Generate draft stubs for modules.
 
-        Stubs are generated in directry ./out, to avoid overriding files with
+        Stubs are generated in directory ./out, to avoid overriding files with
         manual changes.  This directory is assumed to exist.
 
         Options:
