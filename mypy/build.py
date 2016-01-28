@@ -975,11 +975,14 @@ def find_module(id: str, lib_path: Iterable[str]) -> str:
         # contains just the subdirectories 'foo/bar' that actually exist under the
         # elements of lib_path.  This is probably much shorter than lib_path itself.
         # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
+        seplast = os.sep + components[-1]  # so e.g. '/baz'
+        sepinit = os.sep + '__init__'
         for base_dir in candidate_base_dirs:
+            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
             for extension in PYTHON_EXTENSIONS:
-                path = os.path.join(base_dir, components[-1] + extension)
+                path = base_path + extension
                 if not os.path.isfile(path):
-                    path = os.path.join(base_dir, components[-1], '__init__{}'.format(extension))
+                    path = base_path + sepinit + extension
                 if os.path.isfile(path) and verify_module(id, path):
                     return path
         return None
