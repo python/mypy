@@ -114,7 +114,9 @@ class MessageBuilder:
 
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""
-        self.errors.error_info.extend(messages.errors.error_info)
+        if self.disable_count <= 0:
+            for info in messages.errors.error_info:
+                self.errors.add_error_info(info)
 
     def disable_errors(self) -> None:
         self.disable_count += 1

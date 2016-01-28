@@ -1096,3 +1096,10 @@ class B(metaclass=A):
 print(getattr(B(), 'x'))
 [out]
 7
+
+[case testSortedNoError]
+from typing import Iterable, Callable, TypeVar, List, Dict
+T = TypeVar('T')
+def sorted(x: Iterable[T], *, key: Callable[[T], object] = None) -> None: ...
+a = None # type: List[Dict[str, str]]
+sorted(a, key=lambda y: y[''])

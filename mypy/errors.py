@@ -37,9 +37,12 @@ class ErrorInfo:
     # If True, we should halt build after the file that generated this error.
     blocker = False
 
+    # Only report this particular messages once per program.
+    only_once = False
+
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
                  function_or_member: str, line: int, severity: str, message: str,
-                 blocker: bool) -> None:
+                 blocker: bool, only_once: bool) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
@@ -48,6 +51,7 @@ class ErrorInfo:
         self.severity = severity
         self.message = message
         self.blocker = blocker
+        self.only_once = only_once
 
 
 class Errors:
@@ -155,13 +159,6 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
         """
-        if line in self.ignored_lines:
-            # Annotation requests us to ignore all errors on this line.
-            return
-        if only_once:
-            if message in self.only_once_messages:
-                return
-            self.only_once_messages.add(message)
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
@@ -169,7 +166,17 @@ class Errors:
             file = self.file
         info = ErrorInfo(self.import_context(), file, type,
                          self.function_or_member[-1], line, severity, message,
-                         blocker)
+                         blocker, only_once)
+        self.add_error_info(info)
+
+    def add_error_info(self, info: ErrorInfo) -> None:
+        if info.line in self.ignored_lines:
+            # Annotation requests us to ignore all errors on this line.
+            return
+        if info.only_once:
+            if info.message in self.only_once_messages:
+                return
+            self.only_once_messages.add(info.message)
         self.error_info.append(info)
 
     def num_messages(self) -> int:
