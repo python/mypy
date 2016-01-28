@@ -122,7 +122,7 @@ class ExpressionChecker:
         """Type check a call expression."""
         if e.analyzed:
             # It's really a special form that only looks like a call.
-            return self.accept(e.analyzed)
+            return self.accept(e.analyzed, self.chk.type_context[-1])
         self.try_infer_partial_type(e)
         self.accept(e.callee)
         # Access callee type directly, since accept may return the Any type

@@ -1370,8 +1370,8 @@ def g() -> Iterator[int]:
 [case testDictWithKeywordArgs]
 from typing import Dict, Any
 d1 = dict(a=1, b=2) # type: Dict[str, int]
-d2 = dict(a=1, b='') # type: Dict[str, int] # E: Incompatible types in assignment (expression has type Dict[str, object], variable has type Dict[str, int])
-d3 = dict(a=1) # type: Dict[int, int] # E: Incompatible types in assignment (expression has type Dict[str, int], variable has type Dict[int, int])
+d2 = dict(a=1, b='') # type: Dict[str, int] # E: List item 1 has incompatible type "Tuple[str, str]"
+d3 = dict(a=1) # type: Dict[int, int] # E: List item 0 has incompatible type "Tuple[str, int]"
 d4 = dict(a=1, b=1)
 d4.xyz # E: Dict[str, int] has no attribute "xyz"
 d5 = dict(a=1, b='') # type: Dict[str, Any]
