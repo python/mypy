@@ -119,37 +119,3 @@ def update_callable_implicit_bounds(
         t: CallableType, arg_types: List[Tuple[int, Type]]) -> CallableType:
     # FIX what if there are existing bounds?
     return t.copy_modified(bound_vars=arg_types)
-
-
-def expand_caller_var_args(arg_types: List[Type],
-                           fixed_argc: int) -> Tuple[List[Type], Type]:
-    """Expand the caller argument types in a varargs call.
-
-    Fixedargc is the maximum number of fixed arguments that the target
-    function accepts.
-
-    Return (fixed argument types, type of the rest of the arguments). Return
-    (None, None) if the last (vararg) argument had an invalid type. If the
-    vararg argument was not an array (nor dynamic), the last item in the
-    returned tuple is None.
-    """
-
-    if isinstance(arg_types[-1], TupleType):
-        return arg_types[:-1] + (cast(TupleType, arg_types[-1])).items, None
-    else:
-        item_type = None  # type: Type
-        if isinstance(arg_types[-1], AnyType):
-            item_type = AnyType()
-        elif isinstance(arg_types[-1], Instance) and (
-                cast(Instance, arg_types[-1]).type.fullname() ==
-                'builtins.list'):
-            # List.
-            item_type = (cast(Instance, arg_types[-1])).args[0]
-        else:
-            return None, None
-
-        if len(arg_types) > fixed_argc:
-            return arg_types[:-1], item_type
-        else:
-            return (arg_types[:-1] +
-                    [item_type] * (fixed_argc - len(arg_types) + 1), item_type)

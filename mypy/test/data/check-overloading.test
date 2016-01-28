@@ -526,3 +526,44 @@ def f(x: A) -> A: pass
 def f(x: B) -> B: pass
 
 f(A() + B())() # E: "B" not callable
+
+[case testKeywordArgOverload]
+from typing import overload
+@overload
+def f(x: int, y: str) -> int: pass
+@overload
+def f(x: str, y: int) -> str: pass
+f(x=1, y='')() # E: "int" not callable
+f(y=1, x='')() # E: "str" not callable
+
+[case testIgnoreOverloadVariantBasedOnKeywordArg]
+from typing import overload
+@overload
+def f(x: int) -> int: pass
+@overload
+def f(y: int) -> str: pass
+f(x=1)() # E: "int" not callable
+f(y=1)() # E: "str" not callable
+
+[case testOverloadWithTupleVarArg]
+from typing import overload
+@overload
+def f(x: int, y: str) -> int: pass
+@overload
+def f(*x: str) -> str: pass
+f(*(1,))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int]]
+f(*('',))() # E: "str" not callable
+f(*(1, ''))() # E: "int" not callable
+f(*(1, '', 1))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int, builtins.str, builtins.int]]
+
+[case testPreferExactSignatureMatchInOverload]
+from typing import overload, List
+@overload
+def f(x: int, y: List[int] = None) -> int: pass
+@overload
+def f(x: int, y: List[str] = None) -> int: pass
+f(y=[1], x=0)() # E: "int" not callable
+f(y=[''], x=0)() # E: "int" not callable
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]
+a() # E: "int" not callable
+[builtins fixtures/list.py]
