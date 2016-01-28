@@ -7,7 +7,6 @@ from mypy.types import (
     Instance, TupleType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     is_named_instance
 )
-from mypy.expandtype import expand_caller_var_args
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
 import mypy.subtypes

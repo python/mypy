@@ -544,3 +544,15 @@ def f(x: int) -> int: pass
 def f(y: int) -> str: pass
 f(x=1)() # E: "int" not callable
 f(y=1)() # E: "str" not callable
+
+[case testPreferExactSignatureMatchInOverload]
+from typing import overload, List
+@overload
+def f(x: int, y: List[int] = None) -> int: pass
+@overload
+def f(x: int, y: List[str] = None) -> int: pass
+f(y=[1], x=0)() # E: "int" not callable
+f(y=[''], x=0)() # E: "int" not callable
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]
+a() # E: "int" not callable
+[builtins fixtures/list.py]

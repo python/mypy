@@ -28,7 +28,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.expandtype import expand_type, expand_caller_var_args
+from mypy.expandtype import expand_type
 from mypy.subtypes import is_subtype, is_more_precise
 from mypy import applytype
 from mypy import erasetype
@@ -214,7 +214,6 @@ class ExpressionChecker:
           arg_messages: TODO
         """
         arg_messages = arg_messages or self.msg
-        is_var_arg = nodes.ARG_STAR in arg_kinds
         if isinstance(callee, CallableType):
             if callee.is_type_obj() and callee.type_object().is_abstract:
                 type = callee.type_object()
@@ -254,7 +253,7 @@ class ExpressionChecker:
             arg_types = self.infer_arg_types_in_context(None, args)
             self.msg.enable_errors()
 
-            target = self.overload_call_target(arg_types, arg_kinds, arg_names, is_var_arg,
+            target = self.overload_call_target(arg_types, arg_kinds, arg_names,
                                                callee, context,
                                                messages=arg_messages)
             return self.check_call(target, args, arg_kinds, context, arg_names,
@@ -632,14 +631,13 @@ class ExpressionChecker:
                                            context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
-                             arg_names: List[str], is_var_arg: bool,
+                             arg_names: List[str],
                              overload: Overloaded, context: Context,
                              messages: MessageBuilder = None) -> Type:
         """Infer the correct overload item to call with given argument types.
 
         The return value may be CallableType or AnyType (if an unique item
-        could not be determined). If is_var_arg is True, the caller
-        uses varargs.
+        could not be determined).
         """
         messages = messages or self.msg
         # TODO also consider argument names and kinds
@@ -649,7 +647,7 @@ class ExpressionChecker:
         best_match = 0
         for typ in overload.items():
             similarity = self.erased_signature_similarity(arg_types, arg_kinds, arg_names,
-                                                          is_var_arg, typ)
+                                                          typ)
             if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
@@ -679,13 +677,12 @@ class ExpressionChecker:
                 # matching signature, or default to the first one if none
                 # match.
                 for m in match:
-                    if self.match_signature_types(arg_types, is_var_arg, m):
+                    if self.match_signature_types(arg_types, arg_kinds, arg_names, m):
                         return m
                 return match[0]
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
-                                    arg_names: List[str], is_var_arg: bool,
-                                    callee: CallableType) -> int:
+                                    arg_names: List[str], callee: CallableType) -> int:
         """Determine whether arguments could match the signature at runtime.
 
         If is_var_arg is True, the caller uses varargs. This is used for
@@ -726,29 +723,31 @@ class ExpressionChecker:
 
         return similarity
 
-    def match_signature_types(self, arg_types: List[Type], is_var_arg: bool,
-                              callee: CallableType) -> bool:
+    def match_signature_types(self, arg_types: List[Type], arg_kinds: List[int],
+                              arg_names: List[str], callee: CallableType) -> bool:
         """Determine whether arguments types match the signature.
 
-        If is_var_arg is True, the caller uses varargs. Assume that argument
-        counts are compatible.
-        """
-        if is_var_arg:
-            arg_types, rest = expand_caller_var_args(arg_types,
-                                                     callee.max_fixed_args())
+        Assume that argument counts are compatible.
 
-        # Fixed function arguments.
-        func_fixed = callee.max_fixed_args()
-        for i in range(min(len(arg_types), func_fixed)):
-            if not is_subtype(arg_types[i], callee.arg_types[i]):
-                return False
-        # Function varargs.
-        if callee.is_var_arg:
-            for i in range(func_fixed, len(arg_types)):
-                if not is_subtype(arg_types[i],
-                                  callee.arg_types[func_fixed]):
-                    return False
-        return True
+        Return True if arguments match.
+        """
+        formal_to_actual = map_actuals_to_formals(arg_kinds,
+                                                  arg_names,
+                                                  callee.arg_kinds,
+                                                  callee.arg_names,
+                                                  lambda i: arg_types[i])
+        ok = True
+
+        def check_arg(caller_type: Type, original_caller_type: Type,
+                      callee_type: Type, n: int, m: int, callee: CallableType,
+                      context: Context, messages: MessageBuilder) -> None:
+            nonlocal ok
+            if not is_subtype(caller_type, callee_type):
+                ok = False
+
+        self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
+                                  None, check_arg=check_arg)
+        return ok
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],
                                 context: Context) -> Type:
