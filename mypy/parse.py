@@ -452,11 +452,17 @@ class Parser:
 
             # add implicit anys
             if typ is None and self.implicit_any and not self.is_stub_file:
+                ret_type = None  # type: Type
+                if is_method and name == '__init__':
+                    ret_type = UnboundType('None', [])
+                else:
+                    ret_type = AnyType()
                 typ = CallableType([AnyType() for _ in args],
                                    arg_kinds,
                                    [a.variable.name() for a in args],
-                                   AnyType(),
-                                   None)
+                                   ret_type,
+                                   None,
+                                   line=def_tok.line)
 
             node = FuncDef(name, args, body, typ)
             node.set_line(def_tok)
