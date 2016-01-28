@@ -508,10 +508,10 @@ class ExpressionChecker:
                              messages: Optional[MessageBuilder]) -> bool:
         """Check that there is a value for all required arguments to a function.
 
-        Also check that there are no duplicate values for arguments. Report errors if
-        messages is not None.
+        Also check that there are no duplicate values for arguments. Report found errors
+        using 'messages' if it's not None.
 
-        Return False if there were any errors.
+        Return False if there were any errors. Otherwise return True
         """
         # TODO(jukka): We could return as soon as we find an error if messages is None.
         formal_kinds = callee.arg_kinds

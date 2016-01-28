@@ -545,6 +545,17 @@ def f(y: int) -> str: pass
 f(x=1)() # E: "int" not callable
 f(y=1)() # E: "str" not callable
 
+[case testOverloadWithTupleVarArg]
+from typing import overload
+@overload
+def f(x: int, y: str) -> int: pass
+@overload
+def f(*x: str) -> str: pass
+f(*(1,))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int]]
+f(*('',))() # E: "str" not callable
+f(*(1, ''))() # E: "int" not callable
+f(*(1, '', 1))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int, builtins.str, builtins.int]]
+
 [case testPreferExactSignatureMatchInOverload]
 from typing import overload, List
 @overload
