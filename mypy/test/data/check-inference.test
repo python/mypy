@@ -1360,3 +1360,17 @@ y = x # E: Cannot determine type of 'x'
 y()
 x = 1
 [out]
+
+[case testMultipassAndDecoratedMethod]
+from typing import Callable
+
+class A:
+    def f(self) -> None:
+        self.g() # E: Too few arguments for "g" of "A"
+        self.g(1)
+    @dec
+    def g(self, x: str) -> None: pass
+
+def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
+[out]
+main: note: In member "f" of class "A":
