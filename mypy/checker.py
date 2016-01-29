@@ -1147,6 +1147,8 @@ class TypeChecker(NodeVisitor[Type]):
                         if partial_types is not None:
                             if not self.current_node_deferred:
                                 var.type = rvalue_type
+                            else:
+                                var.type = None
                             del partial_types[var]
                     # Try to infer a partial type. No need to check the return value, as
                     # an error will be reported elsewhere.
@@ -2232,9 +2234,10 @@ class TypeChecker(NodeVisitor[Type]):
         types, i.e. we couldn't infer a complete type.
         """
         partial_types = self.partial_types.pop()
-        for var, context in partial_types.items():
-            self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-            var.type = AnyType()
+        if not self.current_node_deferred:
+            for var, context in partial_types.items():
+                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                var.type = AnyType()
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):

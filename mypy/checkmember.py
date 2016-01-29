@@ -92,7 +92,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             ret_type = ret_type.fallback
         if isinstance(ret_type, Instance):
             result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
-                                                    builtin_type, msg)
+                                                    builtin_type, not_ready_callback, msg)
             if result:
                 return result
             # Look up from the 'type' type.
@@ -229,6 +229,7 @@ def analyze_class_attribute_access(itype: Instance,
                                    context: Context,
                                    is_lvalue: bool,
                                    builtin_type: Callable[[str], Instance],
+                                   not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder) -> Type:
     node = itype.type.get(name)
     if not node:
@@ -252,7 +253,7 @@ def analyze_class_attribute_access(itype: Instance,
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
         return add_class_tvars(t, itype.type, is_classmethod, builtin_type)
     elif isinstance(node.node, Var):
-        msg.cannot_determine_type(name, context)
+        not_ready_callback(name, context)
         return AnyType()
 
     if isinstance(node.node, TypeInfo):
