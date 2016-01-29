@@ -20,6 +20,7 @@ from mypy import subtypes
 def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                           is_super: bool,
                           builtin_type: Callable[[str], Instance],
+                          not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder, override_info: TypeInfo = None,
                           report_type: Type = None) -> Type:
     """Analyse attribute access.
@@ -50,7 +51,8 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
                 method = cast(OverloadedFuncDef, method)
-                return analyze_var(name, method.items[0].var, typ, info, node, is_lvalue, msg)
+                return analyze_var(name, method.items[0].var, typ, info, node, is_lvalue, msg,
+                                   not_ready_callback)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             typ = map_instance_to_supertype(typ, method.info)
@@ -65,7 +67,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             # Not a method.
             return analyze_member_var_access(name, typ, info, node,
                                              is_lvalue, is_super, builtin_type,
-                                             msg,
+                                             not_ready_callback, msg,
                                              report_type=report_type)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
@@ -74,14 +76,14 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # The base object has dynamic type.
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue,
-                                         is_super, builtin_type, msg)
+                                         is_super, builtin_type, not_ready_callback, msg)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue,
-                                     is_super, builtin_type, msg)
+                                     is_super, builtin_type, not_ready_callback, msg)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -95,16 +97,19 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                 return result
             # Look up from the 'type' type.
             return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                         builtin_type, msg, report_type=report_type)
+                                         builtin_type, not_ready_callback, msg,
+                                         report_type=report_type)
         else:
             assert False, 'Unexpected type {}'.format(repr(ret_type))
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     builtin_type, msg, report_type=report_type)
+                                     builtin_type, not_ready_callback, msg,
+                                     report_type=report_type)
     elif isinstance(typ, TypeVarType):
         return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
-                                     builtin_type, msg, report_type=report_type)
+                                     builtin_type, not_ready_callback, msg,
+                                     report_type=report_type)
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
         return AnyType()
@@ -114,6 +119,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
 def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               node: Context, is_lvalue: bool, is_super: bool,
                               builtin_type: Callable[[str], Instance],
+                              not_ready_callback: Callable[[str, Context], None],
                               msg: MessageBuilder,
                               report_type: Type = None) -> Type:
     """Analyse attribute access that does not target a method.
@@ -130,7 +136,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         v = vv.var
 
     if isinstance(v, Var):
-        return analyze_var(name, v, itype, info, node, is_lvalue, msg)
+        return analyze_var(name, v, itype, info, node, is_lvalue, msg, not_ready_callback)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__']:
@@ -155,7 +161,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
-               is_lvalue: bool, msg: MessageBuilder) -> Type:
+               is_lvalue: bool, msg: MessageBuilder,
+               not_ready_callback: Callable[[str, Context], None]) -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
@@ -188,7 +195,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         return t
     else:
         if not var.is_ready:
-            msg.cannot_determine_type(var.name(), node)
+            not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
         return AnyType()
 

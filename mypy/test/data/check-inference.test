@@ -1336,10 +1336,21 @@ class C:
 -- ---------
 
 
-[case testAccessVariableBeforeDefinition]
+[case testMultipassAndAccessVariableBeforeDefinition]
 def f() -> None:
     y = x
     y() # E: "int" not callable
 x = 1
+[out]
+main: note: In function "f":
+
+[case testMultipassAndAccessInstanceVariableBeforeDefinition]
+class A:
+    def f(self) -> None:
+        y = self.x
+        y() # E: "int" not callable
+
+    def g(self) -> None:
+        self.x = 1
 [out]
 main: note: In function "f":
