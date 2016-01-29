@@ -1353,7 +1353,7 @@ class A:
     def g(self) -> None:
         self.x = 1
 [out]
-main: note: In function "f":
+main: note: In member "f" of class "A":
 
 [case testMultipassAndTopLevelVariable]
 y = x # E: Cannot determine type of 'x'

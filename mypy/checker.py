@@ -3,7 +3,7 @@
 import itertools
 
 from typing import (
-    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional
+    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional, NamedTuple
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -306,6 +306,14 @@ def meet_frames(*frames: Frame) -> Frame:
     return answer
 
 
+# A node which is postponed to be type checked during the next pass.
+DeferredNode = NamedTuple(
+    'DeferredNode',
+    [('node', Node),
+     ('context_type_name', Optional[str])  # Name of the surround class (for error messages)
+    ])
+
+
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
@@ -349,7 +357,7 @@ class TypeChecker(NodeVisitor[Type]):
     modules = None  # type: Dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
     # another pass and try these again.
-    deferred_nodes = None  # type: List[None]
+    deferred_nodes = None  # type: List[DeferredNode]
     # Type checking pass number (0 = first pass)
     pass_num = None  # type: int
 
@@ -402,14 +410,23 @@ class TypeChecker(NodeVisitor[Type]):
         """Run second pass of type checking which goes through deferred nodes."""
         #self.enter_partial_types()
         self.pass_num = 1
-        for node in self.deferred_nodes:
+        for node, type_name in self.deferred_nodes:
+            if type_name:
+                self.errors.push_type(type_name)
             self.accept(node)
+            if type_name:
+                self.errors.pop_type()
         #self.leave_partial_types()
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         if self.pass_num == 0 and self.function_stack:
             # Don't report an error yet. Just defer.
-            self.deferred_nodes.append(self.function_stack[-1])
+            node = self.function_stack[-1]
+            if self.errors.type_name:
+                type_name = self.errors.type_name[-1]
+            else:
+                type_name = None
+            self.deferred_nodes.append(DeferredNode(node, type_name))
         else:
             self.msg.cannot_determine_type(name, context)
 
