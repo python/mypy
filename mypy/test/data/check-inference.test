@@ -1459,7 +1459,7 @@ class A:
 [out]
 main: note: In member "f" of class "A":
 
-[case testMultipassAndPartialTypesSpecialCase]
+[case testMultipassAndPartialTypesSpecialCase1]
 def f() -> None:
     y = o
     x = []
@@ -1467,6 +1467,27 @@ def f() -> None:
     x() # E: List[int] not callable
 o = 1
 [builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testMultipassAndPartialTypesSpecialCase2]
+def f() -> None:
+    y = o
+    x = {}
+    x[''] = y
+    x() # E: Dict[str, int] not callable
+o = 1
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
+[case testMultipassAndPartialTypesSpecialCase3]
+def f() -> None:
+    x = {} # E: Need type annotation for variable
+    y = o
+    z = {} # E: Need type annotation for variable
+o = 1
+[builtins fixtures/dict.py]
 [out]
 main: note: In function "f":
 
