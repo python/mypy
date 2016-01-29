@@ -1419,3 +1419,32 @@ y = ''
 [builtins fixtures/list.py]
 [out]
 main: note: In function "f":
+
+[case testMultipassAndPartialTypes2]
+s = ''
+n = 0
+def f() -> None:
+    global s, n
+    x = []
+    x.append(y)
+    s = x[0]
+    n = x[0] # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    x.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
+y = ''
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testMultipassAndPartialTypes3]
+from typing import Dict
+def g(d: Dict[str, int]) -> None: pass
+def f() -> None:
+    x = {}
+    x[1] = y
+    g(x) # E: Argument 1 to "g" has incompatible type Dict[int, str]; expected Dict[str, int]
+    x[1] = 1 # E: Incompatible types in assignment
+    x[1] = ''
+y = ''
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
