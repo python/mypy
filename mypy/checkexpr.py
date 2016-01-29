@@ -91,7 +91,7 @@ class ExpressionChecker:
                         result = NoneTyp()
                 else:
                     partial_types = self.chk.find_partial_types(node)
-                    if partial_types is not None:
+                    if partial_types is not None and not self.chk.current_node_deferred:
                         context = partial_types[node]
                         self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
                     result = AnyType()
