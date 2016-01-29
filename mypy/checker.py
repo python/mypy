@@ -1147,6 +1147,8 @@ class TypeChecker(NodeVisitor[Type]):
                         if partial_types is not None:
                             if not self.current_node_deferred:
                                 var.type = rvalue_type
+                            else:
+                                var.type = None
                             del partial_types[var]
                     # Try to infer a partial type. No need to check the return value, as
                     # an error will be reported elsewhere.
