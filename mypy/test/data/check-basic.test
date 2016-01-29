@@ -208,6 +208,16 @@ main:3: error: Incompatible return value type: expected __main__.A, got __main__
 main: note: At top level:
 main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
+[case testEmptyReturnInAnyTypedFunction]
+from typing import Any
+def f() -> Any:
+  return
+
+[case testEmptyYieldInAnyTypedFunction]
+from typing import Any
+def f() -> Any:
+  yield
+
 [case testModule__name__]
 import typing
 x = __name__ # type: str
