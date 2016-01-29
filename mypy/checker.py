@@ -410,6 +410,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_second_pass()
 
         self.errors.set_ignored_lines(set())
+        self.current_node_deferred = False
 
     def check_second_pass(self):
         """Run second pass of type checking which goes through deferred nodes."""
@@ -420,6 +421,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(node)
             if type_name:
                 self.errors.pop_type()
+        self.deferred_nodes = []
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         if self.pass_num == 0 and self.function_stack:
