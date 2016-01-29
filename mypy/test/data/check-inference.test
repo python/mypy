@@ -1407,3 +1407,15 @@ main:5: error: "int" not callable
 main:6: error: "int" not callable
 main: note: In member "h" of class "A":
 main:12: error: "int" not callable
+
+[case testMultipassAndPartialTypes]
+def f() -> None:
+    x = []
+    y
+    x.append(1)
+    x.append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+    x.append(y) # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+y = ''
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
