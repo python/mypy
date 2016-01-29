@@ -1449,6 +1449,19 @@ y = ''
 [out]
 main: note: In function "f":
 
+[case testMultipassAndPartialTypes4]
+from typing import Dict
+def g(d: Dict[str, int]) -> None: pass
+def f() -> None:
+    x = {}
+    y
+    x[1] = 1
+    g(x) # E: Argument 1 to "g" has incompatible type Dict[int, int]; expected Dict[str, int]
+y = ''
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
 [case testMultipassAndCircularDependency]
 class A:
     def f(self) -> None:
