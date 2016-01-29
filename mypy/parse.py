@@ -70,7 +70,7 @@ none = Token('')  # Empty token
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None) -> MypyFile:
+          custom_typing_module: str = None, implicit_any: bool = False) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -79,7 +79,12 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     The pyversion (major, minor) argument determines the Python syntax variant.
     """
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
-    parser = Parser(fnam, errors, pyversion, custom_typing_module, is_stub_file=is_stub_file)
+    parser = Parser(fnam,
+                    errors,
+                    pyversion,
+                    custom_typing_module,
+                    is_stub_file=is_stub_file,
+                    implicit_any=implicit_any)
     tree = parser.parse(source)
     tree.path = fnam
     tree.is_stub = is_stub_file
@@ -111,11 +116,13 @@ class Parser:
     ignored_lines = None  # type: Set[int]
 
     def __init__(self, fnam: str, errors: Errors, pyversion: Tuple[int, int],
-                 custom_typing_module: str = None, is_stub_file: bool = False) -> None:
+                 custom_typing_module: str = None, is_stub_file: bool = False,
+                 implicit_any = False) -> None:
         self.raise_on_error = errors is None
         self.pyversion = pyversion
         self.custom_typing_module = custom_typing_module
         self.is_stub_file = is_stub_file
+        self.implicit_any = implicit_any
         if errors is not None:
             self.errors = errors
         else:
@@ -442,6 +449,20 @@ class Parser:
             # node.
             if is_error:
                 return None
+
+            # add implicit anys
+            if typ is None and self.implicit_any and not self.is_stub_file:
+                ret_type = None  # type: Type
+                if is_method and name == '__init__':
+                    ret_type = UnboundType('None', [])
+                else:
+                    ret_type = AnyType()
+                typ = CallableType([AnyType() for _ in args],
+                                   arg_kinds,
+                                   [a.variable.name() for a in args],
+                                   ret_type,
+                                   None,
+                                   line=def_tok.line)
 
             node = FuncDef(name, args, body, typ)
             node.set_line(def_tok)

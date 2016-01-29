@@ -27,6 +27,7 @@ class Options:
         self.build_flags = []  # type: List[str]
         self.pyversion = defaults.PYTHON3_VERSION
         self.custom_typing_module = None  # type: str
+        self.implicit_any = False
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
         self.dirty_stubs = False
@@ -91,6 +92,7 @@ def type_check_only(sources: List[BuildSource],
                 bin_dir=bin_dir,
                 pyversion=options.pyversion,
                 custom_typing_module=options.custom_typing_module,
+                implicit_any=options.implicit_any,
                 report_dirs=options.report_dirs,
                 flags=options.build_flags,
                 python_path=options.python_path)
@@ -166,6 +168,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             args = args[1:]
         elif args[0] == '--pdb':
             options.pdb = True
+            args = args[1:]
+        elif args[0] == '--implicit-any':
+            options.implicit_any = True
             args = args[1:]
         elif args[0] == '--version':
             ver = True
@@ -297,6 +302,7 @@ Options:
   --python-version x.y  use Python x.y
   --silent, --silent-imports  don't follow imports to .py files
   -f, --dirty-stubs  don't warn if typeshed is out of sync
+  --implicit-any     behave as though all functions were annotated with Any
   --pdb              invoke pdb on fatal error
   --use-python-path  search for modules in sys.path of running Python
   --stats            dump stats
