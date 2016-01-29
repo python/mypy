@@ -412,7 +412,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_second_pass(self):
         """Run second pass of type checking which goes through deferred nodes."""
-        #self.enter_partial_types()
         self.pass_num = 1
         for node, type_name in self.deferred_nodes:
             if type_name:
@@ -420,7 +419,6 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(node)
             if type_name:
                 self.errors.pop_type()
-        #self.leave_partial_types()
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         if self.pass_num == 0 and self.function_stack:
