@@ -1502,7 +1502,13 @@ class TypeChecker(NodeVisitor[Type]):
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
                     return None
 
-                if (not isinstance(return_type, Void) and self.typing_mode_full()):
+                if isinstance(return_type, Void):
+                    return None
+
+                if isinstance(return_type, AnyType):
+                    return None
+
+                if self.typing_mode_full():
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
     def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
@@ -2011,7 +2017,9 @@ class TypeChecker(NodeVisitor[Type]):
         return_type = self.return_types[-1]
         expected_item_type = self.get_generator_yield_type(return_type)
         if e.expr is None:
-            if not isinstance(expected_item_type, Void) and self.typing_mode_full():
+            if (not (isinstance(expected_item_type, Void) or
+                     isinstance(expected_item_type, AnyType))
+                    and self.typing_mode_full()):
                 self.fail(messages.YIELD_VALUE_EXPECTED, e)
         else:
             actual_item_type = self.accept(e.expr, expected_item_type)
