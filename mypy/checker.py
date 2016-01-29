@@ -347,6 +347,11 @@ class TypeChecker(NodeVisitor[Type]):
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
+    # Nodes that couldn't be checked because some types weren't available. We'll run
+    # another pass and try these again.
+    deferred = None  # type: List[None]
+    # Type checking pass number (0 = first pass)
+    pass_num = None  # type: int
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
@@ -370,6 +375,8 @@ class TypeChecker(NodeVisitor[Type]):
         self.function_stack = []
         self.weak_opts = set()  # type: Set[str]
         self.partial_types = []
+        self.deferred = []
+        self.pass_num = 0
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -385,7 +392,25 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(d)
 
         self.leave_partial_types()
+
+        if self.deferred:
+            self.second_pass()
+
         self.errors.set_ignored_lines(set())
+
+    def second_pass(self):
+        #self.enter_partial_types()
+        self.pass_num = 1
+        for node in self.deferred:
+            self.accept(node)
+        #self.leave_partial_types()
+
+    def handle_cannot_determine_type(self, name: str, context: Context) -> None:
+        if self.pass_num == 0 and self.function_stack:
+            # Don't report an error yet. Just defer.
+            self.deferred.append(self.function_stack[-1])
+        else:
+            self.msg.cannot_determine_type(var.name(), context)
 
     def accept(self, node: Node, type_context: Type = None) -> Type:
         """Type check a node in the given type context."""

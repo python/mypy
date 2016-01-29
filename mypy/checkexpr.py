@@ -117,7 +117,7 @@ class ExpressionChecker:
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if not var.type:
             if not var.is_ready and self.chk.typing_mode_full():
-                self.msg.cannot_determine_type(var.name(), context)
+                self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
         else:

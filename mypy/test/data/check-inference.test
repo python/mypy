@@ -1330,3 +1330,16 @@ class C:
         global a
         a = 42
 [out]
+
+
+-- Multipass
+-- ---------
+
+
+[case testAccessVariableBeforeDefinition]
+def f() -> None:
+    y = x
+    y() # E: "int" not callable
+x = 1
+[out]
+main: note: In function "f":
