@@ -1526,7 +1526,7 @@ main: note: In function "f":
 
 [case testMultipassAndClassAttribute]
 class S:
-    def foo(self) -> None:
+    def foo(self) -> int:
         return R.X
 
 class R:
