@@ -1299,8 +1299,8 @@ class ExpressionChecker:
                         return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True,
-                                                 self.named_type, self.not_ready_callback, self.msg,
-                                                 base)
+                                                 self.named_type, self.not_ready_callback,
+                                                 self.msg, base)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()

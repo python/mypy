@@ -309,8 +309,9 @@ def meet_frames(*frames: Frame) -> Frame:
 # A node which is postponed to be type checked during the next pass.
 DeferredNode = NamedTuple(
     'DeferredNode',
-    [('node', Node),
-     ('context_type_name', Optional[str])  # Name of the surround class (for error messages)
+    [
+        ('node', Node),
+        ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
     ])
 
 
