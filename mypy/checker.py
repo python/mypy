@@ -1507,9 +1507,14 @@ class TypeChecker(NodeVisitor[Type]):
         # TODO: Should we share some of this with try_infer_partial_type?
         if isinstance(lvalue.base, RefExpr):
             var = cast(Var, lvalue.base.node)
-            partial_types = self.find_partial_types(var)
-            if partial_types is not None:
-                typename = cast(Instance, var.type).type.fullname()
+            if var is not None and isinstance(var.type, PartialType):
+                type_type = var.type.type
+                if type_type is None:
+                    return  # The partial type is None.
+                partial_types = self.find_partial_types(var)
+                if partial_types is None:
+                    return
+                typename = type_type.fullname()
                 if typename == 'builtins.dict':
                     # TODO: Don't infer things twice.
                     key_type = self.accept(lvalue.index)
