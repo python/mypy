@@ -117,7 +117,7 @@ class ExpressionChecker:
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if not var.type:
             if not var.is_ready and self.chk.typing_mode_full():
-                self.msg.cannot_determine_type(var.name(), context)
+                self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
         else:
@@ -271,7 +271,8 @@ class ExpressionChecker:
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                         False, False, self.named_type, self.msg)
+                                         False, False, self.named_type, self.not_ready_callback,
+                                         self.msg)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         else:
@@ -781,7 +782,7 @@ class ExpressionChecker:
             # This is a reference to a non-module attribute.
             return analyze_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False,
-                                         self.named_type, self.msg)
+                                         self.named_type, self.not_ready_callback, self.msg)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -790,7 +791,7 @@ class ExpressionChecker:
         """
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False,
-                                     self.named_type, self.msg)
+                                     self.named_type, self.not_ready_callback, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -928,7 +929,7 @@ class ExpressionChecker:
         Return tuple (result type, inferred operator method type).
         """
         method_type = analyze_member_access(method, base_type, context, False, False,
-                                            self.named_type, local_errors)
+                                            self.named_type, self.not_ready_callback, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -1298,8 +1299,8 @@ class ExpressionChecker:
                         return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True,
-                                                 self.named_type, self.msg,
-                                                 base)
+                                                 self.named_type, self.not_ready_callback,
+                                                 self.msg, base)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
@@ -1469,6 +1470,14 @@ class ExpressionChecker:
             return self.has_member(typ.fallback, member)
         else:
             return False
+
+    def not_ready_callback(self, name: str, context: Context) -> None:
+        """Called when we can't infer the type of a variable because it's not ready yet.
+
+        Either defer type checking of the enclosing function to the next
+        pass or report an error.
+        """
+        self.chk.handle_cannot_determine_type(name, context)
 
 
 def map_actuals_to_formals(caller_kinds: List[int],

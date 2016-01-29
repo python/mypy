@@ -3,7 +3,7 @@
 import itertools
 
 from typing import (
-    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional
+    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional, NamedTuple
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -306,6 +306,15 @@ def meet_frames(*frames: Frame) -> Frame:
     return answer
 
 
+# A node which is postponed to be type checked during the next pass.
+DeferredNode = NamedTuple(
+    'DeferredNode',
+    [
+        ('node', Node),
+        ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
+    ])
+
+
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
@@ -347,6 +356,14 @@ class TypeChecker(NodeVisitor[Type]):
     globals = None  # type: SymbolTable
     locals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
+    # Nodes that couldn't be checked because some types weren't available. We'll run
+    # another pass and try these again.
+    deferred_nodes = None  # type: List[DeferredNode]
+    # Type checking pass number (0 = first pass)
+    pass_num = 0
+    # Have we deferred the current function? If yes, don't infer additional
+    # types during this pass within the function.
+    current_node_deferred = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
@@ -370,6 +387,9 @@ class TypeChecker(NodeVisitor[Type]):
         self.function_stack = []
         self.weak_opts = set()  # type: Set[str]
         self.partial_types = []
+        self.deferred_nodes = []
+        self.pass_num = 0
+        self.current_node_deferred = False
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -385,7 +405,37 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(d)
 
         self.leave_partial_types()
+
+        if self.deferred_nodes:
+            self.check_second_pass()
+
         self.errors.set_ignored_lines(set())
+
+    def check_second_pass(self):
+        """Run second pass of type checking which goes through deferred nodes."""
+        self.pass_num = 1
+        for node, type_name in self.deferred_nodes:
+            if type_name:
+                self.errors.push_type(type_name)
+            self.accept(node)
+            if type_name:
+                self.errors.pop_type()
+
+    def handle_cannot_determine_type(self, name: str, context: Context) -> None:
+        if self.pass_num == 0 and self.function_stack:
+            # Don't report an error yet. Just defer.
+            node = self.function_stack[-1]
+            if self.errors.type_name:
+                type_name = self.errors.type_name[-1]
+            else:
+                type_name = None
+            self.deferred_nodes.append(DeferredNode(node, type_name))
+            # Set a marker so that we won't infer additional types in this
+            # function. Any inferred types could be bogus, because there's at
+            # least one type that we don't know.
+            self.current_node_deferred = True
+        else:
+            self.msg.cannot_determine_type(name, context)
 
     def accept(self, node: Node, type_context: Type = None) -> Type:
         """Type check a node in the given type context."""
@@ -575,6 +625,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         self.dynamic_funcs.pop()
         self.function_stack.pop()
+        self.current_node_deferred = False
 
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: str) -> None:
         """Type check a function definition."""
@@ -1094,7 +1145,8 @@ class TypeChecker(NodeVisitor[Type]):
                         var = lvalue_type.var
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
-                            var.type = rvalue_type
+                            if not self.current_node_deferred:
+                                var.type = rvalue_type
                             del partial_types[var]
                     # Try to infer a partial type. No need to check the return value, as
                     # an error will be reported elsewhere.
@@ -1386,7 +1438,7 @@ class TypeChecker(NodeVisitor[Type]):
         Store the type to both the variable node and the expression node that
         refers to the variable (lvalue). If var is None, do nothing.
         """
-        if var:
+        if var and not self.current_node_deferred:
             var.type = type
             self.store_type(lvalue, type)
 
@@ -1463,7 +1515,9 @@ class TypeChecker(NodeVisitor[Type]):
                     key_type = self.accept(lvalue.index)
                     value_type = self.accept(rvalue)
                     if is_valid_inferred_type(key_type) and is_valid_inferred_type(value_type):
-                        var.type = self.named_generic_type('builtins.dict', [key_type, value_type])
+                        if not self.current_node_deferred:
+                            var.type = self.named_generic_type('builtins.dict',
+                                                               [key_type, value_type])
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> Type:
