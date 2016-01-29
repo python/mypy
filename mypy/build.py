@@ -17,7 +17,7 @@ import sys
 import re
 from os.path import dirname, basename
 
-from typing import Dict, List, Tuple, cast, Set, Union, Optional
+from typing import Dict, List, Tuple, Iterable, cast, Set, Union, Optional
 
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
@@ -147,6 +147,8 @@ def build(sources: List[BuildSource],
     flags = flags or []
 
     data_dir = default_data_dir(bin_dir)
+
+    find_module_clear_caches()
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir, pyversion, python_path)
@@ -338,7 +340,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
-        self.lib_path = lib_path
+        self.lib_path = tuple(lib_path)
         self.target = target
         self.pyversion = pyversion
         self.flags = flags
@@ -352,7 +354,6 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors, modules, self.pyversion)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
-        self.module_path_cache = {}  # type: Dict[str, str]  # includes modules we don't process
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
 
@@ -535,12 +536,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return self.find_module(id) is not None
-
-    def find_module(self, id: str) -> str:
-        if id not in self.module_path_cache:
-            self.module_path_cache[id] = find_module(id, self.lib_path)
-        return self.module_path_cache[id]
+        return find_module(id, self.lib_path) is not None
 
     def final_passes(self, files: List[MypyFile],
                      types: Dict[Node, Type]) -> None:
@@ -927,7 +923,7 @@ def trace(s):
 
 
 def read_module_source_from_file(id: str,
-                                 lib_path: List[str],
+                                 lib_path: Iterable[str],
                                  pyversion: Tuple[int, int],
                                  silent: bool) -> Tuple[Optional[str], Optional[str]]:
     """Find and read the source file of a module.
@@ -953,17 +949,63 @@ def read_module_source_from_file(id: str,
         return None, None
 
 
-def find_module(id: str, lib_path: List[str]) -> str:
+# Cache find_module: (id, lib_path) -> result.
+find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], str]
+
+# Cache some repeated work within distinct find_module calls: finding which
+# elements of lib_path have even the subdirectory they'd need for the module
+# to exist.  This is shared among different module ids when they differ only
+# in the last component.
+find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
+
+
+def find_module_clear_caches():
+    find_module_cache.clear()
+    find_module_dir_cache.clear()
+
+
+def find_module(id: str, lib_path: Iterable[str]) -> str:
     """Return the path of the module source file, or None if not found."""
-    for pathitem in lib_path:
-        for extension in PYTHON_EXTENSIONS:
-            comp = id.split('.')
-            path = os.path.join(pathitem, os.sep.join(comp[:-1]), comp[-1] + extension)
-            if not os.path.isfile(path):
-                path = os.path.join(pathitem, os.sep.join(comp), '__init__{}'.format(extension))
-            if os.path.isfile(path) and verify_module(id, path):
-                return path
-    return None
+    if not isinstance(lib_path, tuple):
+        lib_path = tuple(lib_path)
+
+    def find():
+        # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
+        # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
+        # that only once and cache it for when we look for modules like 'foo.bar.blah'
+        # that will require the same subdirectory.
+        components = id.split('.')
+        dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
+        if (dir_chain, lib_path) not in find_module_dir_cache:
+            dirs = []
+            for pathitem in lib_path:
+                # e.g., '/usr/lib/python3.4/foo/bar'
+                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                if os.path.isdir(dir):
+                    dirs.append(dir)
+            find_module_dir_cache[dir_chain, lib_path] = dirs
+        candidate_base_dirs = find_module_dir_cache[dir_chain, lib_path]
+
+        # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
+        # contains just the subdirectories 'foo/bar' that actually exist under the
+        # elements of lib_path.  This is probably much shorter than lib_path itself.
+        # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
+        seplast = os.sep + components[-1]  # so e.g. '/baz'
+        sepinit = os.sep + '__init__'
+        for base_dir in candidate_base_dirs:
+            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+            for extension in PYTHON_EXTENSIONS:
+                path = base_path + extension
+                if not os.path.isfile(path):
+                    path = base_path + sepinit + extension
+                if os.path.isfile(path) and verify_module(id, path):
+                    return path
+        return None
+
+    key = (id, lib_path)
+    if key not in find_module_cache:
+        find_module_cache[key] = find()
+    return find_module_cache[key]
 
 
 def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
