@@ -1458,3 +1458,11 @@ class A:
         self.y = self.x
 [out]
 main: note: In member "f" of class "A":
+
+[case testMultipassAndClassAttribute]
+class S:
+    def foo(self) -> None:
+        return R.X
+
+class R:
+    X = 2
