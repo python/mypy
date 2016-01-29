@@ -1354,3 +1354,9 @@ class A:
         self.x = 1
 [out]
 main: note: In function "f":
+
+[case testMultipassAndTopLevelVariable]
+y = x # E: Cannot determine type of 'x'
+y()
+x = 1
+[out]

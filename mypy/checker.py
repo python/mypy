@@ -411,7 +411,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Don't report an error yet. Just defer.
             self.deferred_nodes.append(self.function_stack[-1])
         else:
-            self.msg.cannot_determine_type(var.name(), context)
+            self.msg.cannot_determine_type(name, context)
 
     def accept(self, node: Node, type_context: Type = None) -> Type:
         """Type check a node in the given type context."""
