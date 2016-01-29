@@ -124,6 +124,16 @@ TYPE_PROMOTIONS_PYTHON2.update({
 })
 
 
+# When analyzing a function, should we analyze the whole function in one go, or
+# should we only perform one phase of the analysis? The latter is used for
+# nested functions. In the first phase we add the function to the symbol table
+# but don't process body. In the second phase we process function body. This
+# way we can have mutually recursive nested functions.
+FUNCTION_BOTH_PHASES = 0  # Everthing in one go
+FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
+FUNCTION_SECOND_PHASE = 2  # Only analyze body
+
+
 class SemanticAnalyzer(NodeVisitor):
     """Semantically analyze parsed mypy files.
 
@@ -160,6 +170,14 @@ class SemanticAnalyzer(NodeVisitor):
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
 
+    # Status of postponing analysis of nested function bodies. By using this we
+    # can have mutually recursive nested functions. Values are FUNCTION_x
+    # constants. Note that separate phasea are not used for methods.
+    postpone_nested_functions_stack = None  # type: List[int]
+    # Postponed functions collected if
+    # postpone_nested_functions_stack[-1] == FUNCTION_FIRST_PHASE_POSTPONE_SECOND.
+    postponed_functions_stack = None  # type: List[List[Node]]
+
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
@@ -186,6 +204,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors = errors
         self.modules = {}
         self.pyversion = pyversion
+        self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
+        self.postponed_functions_stack = []
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -215,60 +235,68 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors.set_ignored_lines(set())
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        self.errors.push_function(defn.name())
-        self.update_function_type_variables(defn)
-        self.errors.pop_function()
+        phase_info = self.postpone_nested_functions_stack[-1]
+        if phase_info != FUNCTION_SECOND_PHASE:
+            # First phase of analysis for function.
+            self.errors.push_function(defn.name())
+            self.update_function_type_variables(defn)
+            self.errors.pop_function()
 
-        defn.is_conditional = self.block_depth[-1] > 0
+            defn.is_conditional = self.block_depth[-1] > 0
 
-        # TODO(jukka): Figure out how to share the various cases. It doesn't
-        #   make sense to have (almost) duplicate code (here and elsewhere) for
-        #   3 cases: module-level, class-level and local names. Maybe implement
-        #   a common stack of namespaces. As the 3 kinds of namespaces have
-        #   different semantics, this wouldn't always work, but it might still
-        #   be a win.
-        if self.is_class_scope():
-            # Method definition
-            defn.info = self.type
-            if not defn.is_decorated and not defn.is_overload:
-                if defn.name() in self.type.names:
-                    # Redefinition. Conditional redefinition is okay.
-                    n = self.type.names[defn.name()].node
-                    if self.is_conditional_func(n, defn):
-                        defn.original_def = cast(FuncDef, n)
+            # TODO(jukka): Figure out how to share the various cases. It doesn't
+            #   make sense to have (almost) duplicate code (here and elsewhere) for
+            #   3 cases: module-level, class-level and local names. Maybe implement
+            #   a common stack of namespaces. As the 3 kinds of namespaces have
+            #   different semantics, this wouldn't always work, but it might still
+            #   be a win.
+            if self.is_class_scope():
+                # Method definition
+                defn.info = self.type
+                if not defn.is_decorated and not defn.is_overload:
+                    if defn.name() in self.type.names:
+                        # Redefinition. Conditional redefinition is okay.
+                        n = self.type.names[defn.name()].node
+                        if self.is_conditional_func(n, defn):
+                            defn.original_def = cast(FuncDef, n)
+                        else:
+                            self.name_already_defined(defn.name(), defn)
+                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                self.prepare_method_signature(defn)
+            elif self.is_func_scope():
+                # Nested function
+                if not defn.is_decorated and not defn.is_overload:
+                    if defn.name() in self.locals[-1]:
+                        # Redefinition. Conditional redefinition is okay.
+                        n = self.locals[-1][defn.name()].node
+                        if self.is_conditional_func(n, defn):
+                            defn.original_def = cast(FuncDef, n)
+                        else:
+                            self.name_already_defined(defn.name(), defn)
                     else:
-                        self.name_already_defined(defn.name(), defn)
-                self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-            self.prepare_method_signature(defn)
-        elif self.is_func_scope():
-            # Nested function
-            if not defn.is_decorated and not defn.is_overload:
-                if defn.name() in self.locals[-1]:
-                    # Redefinition. Conditional redefinition is okay.
-                    n = self.locals[-1][defn.name()].node
-                    if self.is_conditional_func(n, defn):
-                        defn.original_def = cast(FuncDef, n)
-                    else:
-                        self.name_already_defined(defn.name(), defn)
-                else:
-                    self.add_local(defn, defn)
-        else:
-            # Top-level function
-            if not defn.is_decorated and not defn.is_overload:
-                symbol = self.globals.get(defn.name())
-                if isinstance(symbol.node, FuncDef) and symbol.node != defn:
-                    # This is redefinition. Conditional redefinition is okay.
-                    original_def = symbol.node
-                    if self.is_conditional_func(original_def, defn):
-                        # Conditional function definition -- multiple defs are ok.
-                        defn.original_def = cast(FuncDef, original_def)
-                    else:
-                        # Report error.
-                        self.check_no_global(defn.name(), defn, True)
-
-        self.errors.push_function(defn.name())
-        self.analyze_function(defn)
-        self.errors.pop_function()
+                        self.add_local(defn, defn)
+            else:
+                # Top-level function
+                if not defn.is_decorated and not defn.is_overload:
+                    symbol = self.globals.get(defn.name())
+                    if isinstance(symbol.node, FuncDef) and symbol.node != defn:
+                        # This is redefinition. Conditional redefinition is okay.
+                        original_def = symbol.node
+                        if self.is_conditional_func(original_def, defn):
+                            # Conditional function definition -- multiple defs are ok.
+                            defn.original_def = cast(FuncDef, original_def)
+                        else:
+                            # Report error.
+                            self.check_no_global(defn.name(), defn, True)
+            if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
+                # Postpone this function (for the second phase).
+                self.postponed_functions_stack[-1].append(defn)
+                return
+        if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
+            # Second phase of analysis for function.
+            self.errors.push_function(defn.name())
+            self.analyze_function(defn)
+            self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
@@ -429,7 +457,18 @@ class SemanticAnalyzer(NodeVisitor):
         if is_method and not defn.is_static and not defn.is_class and defn.arguments:
             defn.arguments[0].variable.is_self = True
 
+        # First analyze body of the function but ignore nested functions.
+        self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
+        self.postponed_functions_stack.append([])
         defn.body.accept(self)
+
+        # Analyze nested functions (if any) as a second phase.
+        self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
+        for postponed in self.postponed_functions_stack[-1]:
+            postponed.accept(self)
+        self.postpone_nested_functions_stack.pop()
+        self.postponed_functions_stack.pop()
+
         disable_typevars(tvarnodes)
         self.leave()
         self.function_stack.pop()
@@ -500,10 +539,12 @@ class SemanticAnalyzer(NodeVisitor):
         self.type_stack.append(self.type)
         self.locals.append(None)  # Add class scope
         self.block_depth.append(-1)  # The class body increments this to 0
+        self.postpone_nested_functions_stack.append(FUNCTION_BOTH_PHASES)
         self.type = defn.info
 
     def leave_class(self) -> None:
         """ Restore analyzer state. """
+        self.postpone_nested_functions_stack.pop()
         self.block_depth.pop()
         self.locals.pop()
         self.type = self.type_stack.pop()

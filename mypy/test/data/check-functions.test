@@ -457,6 +457,38 @@ main:6: error: Incompatible types in assignment (expression has type "int", vari
 main: note: In member "f" of class "A":
 main:8: error: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
 
+[case testMutuallyRecursiveNestedFunctions]
+def f() -> None:
+    def g() -> None:
+        h(1)
+        h('') # E
+    def h(x: int) -> None:
+        g()
+        g(1) # E
+[out]
+main: note: In function "g":
+main:4: error: Argument 1 to "h" has incompatible type "str"; expected "int"
+main: note: In function "h":
+main:7: error: Too many arguments for "g"
+
+[case testMutuallyRecursiveDecoratedFunctions]
+from typing import Callable, Any
+def dec(f) -> Callable[..., Any]: pass
+def f() -> None:
+    @dec
+    def g() -> None:
+        h()
+        h.x # E
+    @dec
+    def h(x: int) -> None:
+        g(1)
+        g.x # E
+[out]
+main: note: In function "g":
+main:7: error: Callable[..., Any] has no attribute "x"
+main: note: In function "h":
+main:11: error: Callable[..., Any] has no attribute "x"
+
 
 -- Casts
 -- -----
