@@ -1448,3 +1448,13 @@ y = ''
 [builtins fixtures/dict.py]
 [out]
 main: note: In function "f":
+
+[case testMultipassAndCircularDependency]
+class A:
+    def f(self) -> None:
+        self.x = self.y # E: Cannot determine type of 'y'
+
+    def g(self) -> None:
+        self.y = self.x
+[out]
+main: note: In member "f" of class "A":
