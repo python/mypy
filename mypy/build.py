@@ -146,6 +146,8 @@ def build(sources: List[BuildSource],
 
     data_dir = default_data_dir(bin_dir)
 
+    find_module_clear_caches()
+
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir, pyversion, python_path)
 
@@ -950,6 +952,12 @@ find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], str]
 # in the last component.
 find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 
+
+def find_module_clear_caches():
+    find_module_cache.clear()
+    find_module_dir_cache.clear()
+
+
 def find_module(id: str, lib_path: Iterable[str]) -> str:
     """Return the path of the module source file, or None if not found."""
     if not isinstance(lib_path, tuple):
@@ -965,7 +973,8 @@ def find_module(id: str, lib_path: Iterable[str]) -> str:
         if (dir_chain, lib_path) not in find_module_dir_cache:
             dirs = []
             for pathitem in lib_path:
-                dir = os.path.join(pathitem, dir_chain)  # e.g., '/usr/lib/python3.4/foo/bar'
+                # e.g., '/usr/lib/python3.4/foo/bar'
+                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
                 if os.path.isdir(dir):
                     dirs.append(dir)
             find_module_dir_cache[dir_chain, lib_path] = dirs
