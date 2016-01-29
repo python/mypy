@@ -1491,6 +1491,16 @@ o = 1
 [out]
 main: note: In function "f":
 
+[case testMultipassAndPartialTypesSpecialCase4]
+def f() -> None:
+    y = o
+    x = None
+    x = y
+    x() # E: "int" not callable
+o = 1
+[out]
+main: note: In function "f":
+
 [case testMultipassAndClassAttribute]
 class S:
     def foo(self) -> None:
