@@ -1459,6 +1459,17 @@ class A:
 [out]
 main: note: In member "f" of class "A":
 
+[case testMultipassAndPartialTypesSpecialCase]
+def f() -> None:
+    y = o
+    x = []
+    x.append(y)
+    x() # E: List[int] not callable
+o = 1
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
 [case testMultipassAndClassAttribute]
 class S:
     def foo(self) -> None:
