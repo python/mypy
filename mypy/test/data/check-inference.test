@@ -1374,3 +1374,36 @@ class A:
 def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
 [out]
 main: note: In member "f" of class "A":
+
+[case testMultipassAndDefineAttributeBasedOnNotReadyAttribute]
+class A:
+    def f(self) -> None:
+        self.y = self.x
+
+    def g(self) -> None:
+        self.x = 1
+
+    def h(self) -> None:
+        self.y() # E: "int" not callable
+[out]
+main: note: In member "h" of class "A":
+
+[case testMultipassAndDefineAttributeBasedOnNotReadyAttribute2]
+class A:
+    def f(self) -> None:
+        self.y = self.x
+        self.z = self.y
+        self.z() # E
+        self.y() # E
+
+    def g(self) -> None:
+        self.x = 1
+
+    def h(self) -> None:
+        self.y() # E
+[out]
+main: note: In member "f" of class "A":
+main:5: error: "int" not callable
+main:6: error: "int" not callable
+main: note: In member "h" of class "A":
+main:12: error: "int" not callable
