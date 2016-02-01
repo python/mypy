@@ -340,7 +340,7 @@ class CompileError(Exception):
     messages = None  # type: List[str]
 
     def __init__(self, messages: List[str]) -> None:
-        super().__init__()
+        super().__init__('\n'.join(messages))
         self.messages = messages
 
 
