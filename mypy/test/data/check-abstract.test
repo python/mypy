@@ -695,3 +695,37 @@ main: note: In class "B":
 main:8: error: Read-only property cannot override read-write property
 main: note: At top level:
 main:11: error: "int" has no attribute "y"
+
+[case testDynamicallyTypedReadOnlyAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self): pass
+def f(a: A) -> None:
+    a.x.y
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+[out]
+main: note: In function "f":
+
+[case testDynamicallyTypedReadOnlyAbstractPropertyForwardRef]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x.y
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self): pass
+[out]
+main: note: In function "f":
+
+[case testDynamicallyTypedReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x.y
+    a.x = 1
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self): pass
+    @x.setter
+    def x(self, x): pass
+[out]
