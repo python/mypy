@@ -943,7 +943,6 @@ print(r"""\"""$""")
 [out]
 '
 \"""$
---' (hack to fix syntax highlighting)
 
 [case testSubclassBothGenericAndNonGenericABC]
 from typing import Generic, TypeVar
@@ -1103,3 +1102,17 @@ T = TypeVar('T')
 def sorted(x: Iterable[T], *, key: Callable[[T], object] = None) -> None: ...
 a = None # type: List[Dict[str, str]]
 sorted(a, key=lambda y: y[''])
+
+[case testAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    @property
+    def x(self) -> int:
+        return 3
+b = B()
+print(b.x + 1)
+[out]
+4
