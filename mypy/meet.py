@@ -28,8 +28,8 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
         return s
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
-    elif not is_overlapping_types(s, t):
-        return Void()
+    elif not is_overlapping_types(s, t, use_promotions=True):
+        return NoneTyp()
     else:
         if default_right:
             return t
@@ -37,12 +37,27 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
             return s
 
 
-def is_overlapping_types(t: Type, s: Type) -> bool:
-    """Can a value of type t be a value of type s, or vice versa?"""
+def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
+    """Can a value of type t be a value of type s, or vice versa?
+
+    Note that this effectively checks against erased types, since X[Any] is always
+    compatible with X[T].
+
+    If use_promitions is True, also consider type promotions (int and
+    float would only be overlapping if it's True).
+    """
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Only consider two classes non-disjoint if one is included in the mro
             # of another.
+            if use_promotions:
+                # Consider cases like int vs float to be overlapping where
+                # there is only a type promition relationship but not proper
+                # subclassing.
+                if t.type._promote and is_overlapping_types(t.type._promote, s):
+                    return True
+                if s.type._promote and is_overlapping_types(s.type._promote, t):
+                    return True
             return t.type in s.type.mro or s.type in t.type.mro
     if isinstance(t, UnionType):
         return any(is_overlapping_types(item, s)
