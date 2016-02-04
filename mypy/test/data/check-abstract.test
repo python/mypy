@@ -557,3 +557,21 @@ class B(A):
 b = B()
 b.x() # E: "int" not callable
 [builtins fixtures/property.py]
+
+[case testCantImplementAbstractPropertyViaInstanceVariable]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    def __init__(self) -> None:
+        self.x = 1 # E
+b = B() # E
+b.x.y # E
+[builtins fixtures/property.py]
+[out]
+main: note: In member "__init__" of class "B":
+main:7: error: Property "x" defined in "B" is read-only
+main: note: At top level:
+main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+main:9: error: "int" has no attribute "y"
