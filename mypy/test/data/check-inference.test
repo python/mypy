@@ -1531,3 +1531,19 @@ class S:
 
 class R:
     X = 2
+
+[case testMultipassAndMultipleFiles]
+import m
+def f() -> None:
+    x()
+x = 0
+[file m.py]
+def g() -> None:
+    y()
+y = 0
+[out]
+main:1: note: In module imported here:
+tmp/m.py: note: In function "g":
+tmp/m.py:2: error: "int" not callable
+main: note: In function "f":
+main:3: error: "int" not callable

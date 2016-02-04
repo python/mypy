@@ -393,6 +393,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
+        self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
         self.errors.set_ignored_lines(file_node.ignored_lines)
