@@ -559,6 +559,16 @@ class A(metaclass=ABCMeta):
 class B(A): pass
 b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 
+[case testInstantiateClassWithReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, x: int) -> None: pass
+class B(A): pass
+b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+
 [case testImplementAbstractPropertyViaProperty]
 from abc import abstractproperty, ABCMeta
 class A(metaclass=ABCMeta):
