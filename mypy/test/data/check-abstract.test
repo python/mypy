@@ -665,3 +665,22 @@ main: note: In member "x" of class "B":
 main:10: error: "int" has no attribute "y"
 main: note: In function "x":
 main:13: error: Invalid assignment target
+
+[case testOnlyImplementGetterOfReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+class B(A):
+    @property # E
+    def x(self) -> int: pass
+b = B()
+b.x.y # E
+[builtins fixtures/property.py]
+[out]
+main: note: In class "B":
+main:8: error: Read-only property cannot override read-write property
+main: note: At top level:
+main:11: error: "int" has no attribute "y"

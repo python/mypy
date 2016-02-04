@@ -1898,6 +1898,20 @@ class TypeChecker(NodeVisitor[Type]):
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
+        if e.func.is_property:
+            self.check_incompatible_property_override(e)
+
+    def check_incompatible_property_override(self, e: Decorator) -> None:
+        if not e.var.is_settable_property:
+            name = e.func.name()
+            for base in e.func.info.mro[1:]:
+                base_attr = base.names.get(name)
+                if not base_attr:
+                    continue
+                if (isinstance(base_attr.node, OverloadedFuncDef) and
+                        base_attr.node.is_property and
+                        base_attr.node.items[0].var.is_settable_property):
+                    self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> Type:
         echk = self.expr_checker
