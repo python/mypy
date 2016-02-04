@@ -1498,7 +1498,8 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.func.is_class = True
                 dec.var.is_classmethod = True
                 self.check_decorated_function_is_method('classmethod', dec)
-            elif refers_to_fullname(d, 'builtins.property'):
+            elif (refers_to_fullname(d, 'builtins.property') or
+                  refers_to_fullname(d, 'abc.abstractproperty')):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True

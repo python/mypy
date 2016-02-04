@@ -521,3 +521,19 @@ class B:
 class C:
     def __add__(self, other: int) -> B: pass
 [out]
+
+
+-- Abstract properties
+-- -------------------
+
+
+[case testReadOnlyAbstractProperty]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x() # E: "int" not callable
+    a.x = 1  # Should be an error but isn't
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+[out]
+main: note: In function "f":
