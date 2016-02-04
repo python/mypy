@@ -2361,7 +2361,8 @@ class ThirdPass(TraverserVisitor[None]):
             if dec.func.type is None:
                 dec.var.type = AnyType()
             elif isinstance(dec.func.type, CallableType):
-                dec.var.type = dec.func.type.ret_type
+                # Decorators are expected to have a callable type (it's a little odd).
+                dec.var.type = dec.func.type
             return
         decorator_preserves_type = True
         for expr in dec.decorators:

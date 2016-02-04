@@ -529,9 +529,20 @@ class C:
 
 [case testReadOnlyAbstractProperty]
 from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
 def f(a: A) -> None:
     a.x() # E: "int" not callable
-    a.x = 1  # Should be an error but isn't
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+[out]
+main: note: In function "f":
+
+[case testReadOnlyAbstractPropertyForwardRef]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x() # E: "int" not callable
+    a.x = 1  # E: Property "x" defined in "A" is read-only
 class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
