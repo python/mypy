@@ -545,3 +545,15 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A): pass
 b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+
+[case testImplementAbstractPropertyViaProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    @property
+    def x(self) -> int: pass
+b = B()
+b.x() # E: "int" not callable
+[builtins fixtures/property.py]
