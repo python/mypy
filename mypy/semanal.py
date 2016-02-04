@@ -1503,6 +1503,8 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
+                if refers_to_fullname(d, 'abc.abstractproperty'):
+                    dec.func.is_abstract = True
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.arguments) > 1:
                     self.fail('Too many arguments', dec.func)
