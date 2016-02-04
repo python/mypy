@@ -581,6 +581,22 @@ b = B()
 b.x() # E: "int" not callable
 [builtins fixtures/property.py]
 
+[case testImplementReradWriteAbstractPropertyViaProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+class B(A):
+    @property
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+b = B()
+b.x.y # E: "int" has no attribute "y"
+[builtins fixtures/property.py]
+
 [case testImplementAbstractPropertyViaPropertyInvalidType]
 from abc import abstractproperty, ABCMeta
 class A(metaclass=ABCMeta):
