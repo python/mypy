@@ -424,6 +424,8 @@ class SemanticAnalyzer(NodeVisitor):
                     if node.name == 'setter':
                         # The first item represents the entire property.
                         defn.items[0].var.is_settable_property = True
+                        # Get abstractness from the original definition.
+                        item.func.is_abstract = items[0].func.is_abstract
             else:
                 self.fail("Decorated property not supported", item)
             item.func.accept(self)

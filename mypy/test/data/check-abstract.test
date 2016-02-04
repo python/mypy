@@ -538,7 +538,20 @@ class A(metaclass=ABCMeta):
 [out]
 main: note: In function "f":
 
-[case testInstantiateClassWithAbstractProperty]
+[case testReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x.y # E: "int" has no attribute "y"
+    a.x = 1
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, x: int) -> None: pass
+[out]
+main: note: In function "f":
+
+[case testInstantiateClassWithReadOnlyAbstractProperty]
 from abc import abstractproperty, ABCMeta
 class A(metaclass=ABCMeta):
     @abstractproperty
