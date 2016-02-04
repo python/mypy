@@ -142,7 +142,7 @@ class B(metaclass=ABCMeta):
   @abstractmethod
   def f(self): pass
 A() # OK
-B() # E: Cannot instantiate abstract class 'B' with abstract method 'f'
+B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
 [out]
 
 [case testInstantiatingClassWithInheritedAbstractMethod]
@@ -154,7 +154,7 @@ class A(metaclass=ABCMeta):
   @abstractmethod
   def g(self): pass
 class B(A): pass
-B()# E: Cannot instantiate abstract class 'B' with abstract methods 'f' and 'g'
+B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
 
@@ -376,8 +376,8 @@ class D(A, B):
 class E(A, B):
   def f(self) -> None: pass
   def g(self) -> None: pass
-C() # E: Cannot instantiate abstract class 'C' with abstract method 'g'
-D() # E: Cannot instantiate abstract class 'D' with abstract method 'f'
+C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'g'
+D() # E: Cannot instantiate abstract class 'D' with abstract attribute 'f'
 E()
 
 [case testInconsistentMro]
@@ -405,7 +405,7 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract method 'f'
+A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
 B()
 B().f(1)
 a = B() # type: A
@@ -430,7 +430,7 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract method 'f'
+A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
 B()
 B().f(1)
 a = B() # type: A
@@ -520,4 +520,212 @@ class B:
     def __add__(self, other: 'A') -> int: pass
 class C:
     def __add__(self, other: int) -> B: pass
+[out]
+
+
+-- Abstract properties
+-- -------------------
+
+
+[case testReadOnlyAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+def f(a: A) -> None:
+    a.x() # E: "int" not callable
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+[out]
+main: note: In function "f":
+
+[case testReadOnlyAbstractPropertyForwardRef]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x() # E: "int" not callable
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+[out]
+main: note: In function "f":
+
+[case testReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x.y # E: "int" has no attribute "y"
+    a.x = 1
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, x: int) -> None: pass
+[out]
+main: note: In function "f":
+
+[case testInstantiateClassWithReadOnlyAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A): pass
+b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+
+[case testInstantiateClassWithReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, x: int) -> None: pass
+class B(A): pass
+b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+
+[case testImplementAbstractPropertyViaProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    @property
+    def x(self) -> int: pass
+b = B()
+b.x() # E: "int" not callable
+[builtins fixtures/property.py]
+
+[case testImplementReradWriteAbstractPropertyViaProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+class B(A):
+    @property
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+b = B()
+b.x.y # E: "int" has no attribute "y"
+[builtins fixtures/property.py]
+
+[case testImplementAbstractPropertyViaPropertyInvalidType]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    @property
+    def x(self) -> str: pass # E
+b = B()
+b.x() # E
+[builtins fixtures/property.py]
+[out]
+main: note: In class "B":
+main:7: error: Return type of "x" incompatible with supertype "A"
+main: note: At top level:
+main:9: error: "str" not callable
+
+[case testCantImplementAbstractPropertyViaInstanceVariable]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    def __init__(self) -> None:
+        self.x = 1 # E
+b = B() # E
+b.x.y # E
+[builtins fixtures/property.py]
+[out]
+main: note: In member "__init__" of class "B":
+main:7: error: Property "x" defined in "B" is read-only
+main: note: At top level:
+main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+main:9: error: "int" has no attribute "y"
+
+[case testSuperWithAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    @property
+    def x(self) -> int:
+        return super().x.y # E: "int" has no attribute "y"
+[builtins fixtures/property.py]
+[out]
+main: note: In member "x" of class "B":
+
+[case testSuperWithReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+class B(A):
+    @property
+    def x(self) -> int:
+        return super().x.y # E
+    @x.setter
+    def x(self, v: int) -> None:
+        super().x = '' # E
+[builtins fixtures/property.py]
+[out]
+main: note: In member "x" of class "B":
+main:10: error: "int" has no attribute "y"
+main: note: In function "x":
+main:13: error: Invalid assignment target
+
+[case testOnlyImplementGetterOfReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+class B(A):
+    @property # E
+    def x(self) -> int: pass
+b = B()
+b.x.y # E
+[builtins fixtures/property.py]
+[out]
+main: note: In class "B":
+main:8: error: Read-only property cannot override read-write property
+main: note: At top level:
+main:11: error: "int" has no attribute "y"
+
+[case testDynamicallyTypedReadOnlyAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self): pass
+def f(a: A) -> None:
+    a.x.y
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+[out]
+main: note: In function "f":
+
+[case testDynamicallyTypedReadOnlyAbstractPropertyForwardRef]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x.y
+    a.x = 1  # E: Property "x" defined in "A" is read-only
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self): pass
+[out]
+main: note: In function "f":
+
+[case testDynamicallyTypedReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+def f(a: A) -> None:
+    a.x.y
+    a.x = 1
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self): pass
+    @x.setter
+    def x(self, x): pass
 [out]

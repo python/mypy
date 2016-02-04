@@ -379,3 +379,19 @@ _program.py:2: error: No overload variant of "f" matches argument types [builtin
 def f(x): # type: (str) -> None
     pass
 f(bytearray('foo'))
+
+[case testAbstractProperty_python2]
+from abc import abstractproperty, ABCMeta
+class A:
+    __metaclass__ = ABCMeta
+    @abstractproperty
+    def x(self): # type: () -> int
+        pass
+class B(A):
+    @property
+    def x(self): # type: () -> int
+        return 3
+b = B()
+print b.x + 1
+[out]
+4

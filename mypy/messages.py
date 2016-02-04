@@ -64,6 +64,8 @@ CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
 INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
+READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
+    'Read-only property cannot override read-write property'
 INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
 GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
@@ -732,7 +734,7 @@ class MessageBuilder:
                                           context: Context) -> None:
         attrs = format_string_list("'%s'" % a for a in abstract_attributes[:5])
         self.fail("Cannot instantiate abstract class '%s' with abstract "
-                  "method%s %s" % (class_name, plural_s(abstract_attributes),
+                  "attribute%s %s" % (class_name, plural_s(abstract_attributes),
                                    attrs),
                   context)
 

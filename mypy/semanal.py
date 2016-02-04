@@ -424,6 +424,8 @@ class SemanticAnalyzer(NodeVisitor):
                     if node.name == 'setter':
                         # The first item represents the entire property.
                         defn.items[0].var.is_settable_property = True
+                        # Get abstractness from the original definition.
+                        item.func.is_abstract = items[0].func.is_abstract
             else:
                 self.fail("Decorated property not supported", item)
             item.func.accept(self)
@@ -1498,10 +1500,13 @@ class SemanticAnalyzer(NodeVisitor):
                 dec.func.is_class = True
                 dec.var.is_classmethod = True
                 self.check_decorated_function_is_method('classmethod', dec)
-            elif refers_to_fullname(d, 'builtins.property'):
+            elif (refers_to_fullname(d, 'builtins.property') or
+                  refers_to_fullname(d, 'abc.abstractproperty')):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
+                if refers_to_fullname(d, 'abc.abstractproperty'):
+                    dec.func.is_abstract = True
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.arguments) > 1:
                     self.fail('Too many arguments', dec.func)
@@ -2353,10 +2358,17 @@ class ThirdPass(TraverserVisitor[None]):
         """
         super().visit_decorator(dec)
         if dec.var.is_property:
+            # Decorators are expected to have a callable type (it's a little odd).
             if dec.func.type is None:
-                dec.var.type = AnyType()
+                dec.var.type = CallableType(
+                    [AnyType()],
+                    [ARG_POS],
+                    [None],
+                    AnyType(),
+                    self.builtin_type('function'),
+                    name=dec.var.name())
             elif isinstance(dec.func.type, CallableType):
-                dec.var.type = dec.func.type.ret_type
+                dec.var.type = dec.func.type
             return
         decorator_preserves_type = True
         for expr in dec.decorators:
