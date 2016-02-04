@@ -631,3 +631,37 @@ main:7: error: Property "x" defined in "B" is read-only
 main: note: At top level:
 main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 main:9: error: "int" has no attribute "y"
+
+[case testSuperWithAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+class B(A):
+    @property
+    def x(self) -> int:
+        return super().x.y # E: "int" has no attribute "y"
+[builtins fixtures/property.py]
+[out]
+main: note: In member "x" of class "B":
+
+[case testSuperWithReadWriteAbstractProperty]
+from abc import abstractproperty, ABCMeta
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
+class B(A):
+    @property
+    def x(self) -> int:
+        return super().x.y # E
+    @x.setter
+    def x(self, v: int) -> None:
+        super().x = '' # E
+[builtins fixtures/property.py]
+[out]
+main: note: In member "x" of class "B":
+main:10: error: "int" has no attribute "y"
+main: note: In function "x":
+main:13: error: Invalid assignment target
