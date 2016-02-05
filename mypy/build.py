@@ -213,8 +213,17 @@ def build(sources: List[BuildSource],
 def default_data_dir(bin_dir: str) -> str:
     # TODO fix this logic
     if not bin_dir:
+        mypy_package = os.path.dirname(__file__)
+        parent = os.path.dirname(mypy_package)
+        if os.path.basename(parent) == 'site-packages':
+            # Installed in site-packages, but invoked with python3 -m mypy;
+            # __file__ is .../blah/lib/python3.N/site-packages/mypy/__init__.py;
+            # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
+            lib = os.path.dirname(os.path.dirname(parent))
+            if os.path.basename(lib) == 'lib':
+                return os.path.join(lib, 'mypy')
         # Default to directory containing this file's parent.
-        return os.path.dirname(os.path.dirname(__file__))
+        return parent
     base = os.path.basename(bin_dir)
     dir = os.path.dirname(bin_dir)
     if (sys.platform == 'win32' and base.lower() == 'scripts'
