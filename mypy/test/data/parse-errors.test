@@ -294,6 +294,20 @@ def f(x, y: Z): # type: (x, y) -> z
 file: note: In function "f":
 file:1: error: Function has duplicate type signatures
 
+[case testTooManyTypes]
+def f(x, y): # type: (x, y, z) -> z
+  pass
+[out]
+file: note: In function "f":
+file:1: error: Type signature has too many arguments
+
+[case testTooFewTypes]
+def f(x, y): # type: (x) -> z
+  pass
+[out]
+file: note: In function "f":
+file:1: error: Type signature has too few arguments
+
 [case testCommentFunctionAnnotationVarArgMispatch]
 def f(x): # type: (*X) -> Y
     pass
