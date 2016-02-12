@@ -197,8 +197,6 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             targets.append(BuildSource(arg, crawl_up(arg)[1], None))
         elif os.path.isdir(arg):
             targets.extend(expand_dir(arg))
-        elif arg.endswith('.pyc'):
-            fail("Can't check .pyc files: '{}'".format(arg))
         else:
             targets.append(BuildSource(arg, None, None))
     return targets, options
