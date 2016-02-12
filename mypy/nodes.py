@@ -1717,15 +1717,20 @@ class SymbolTableNode:
 
     def serialize(self, visitor: Any) -> Any:
         res = {
-            '.type': node_kinds[self.kind],
-            }
+            '.tag': node_kinds[self.kind],
+            }  # type: Dict[str, Any]
+        if self.kind == MODULE_REF:
+            assert isinstance(self.node, MypyFile), self.node
+            res['module'] = self.node.fullname()
         if self.mod_id != visitor.mod_id:
             res['mod_id'] = self.mod_id
+        if self.tvar_id != 0:
+            res['tvar_id'] = self.tvar_id
         t = self.type
-        if t is None:
-            res['type'] = None
-        else:
+        if t is not None:
             res['type'] = str(t)
+        if self.node is not None and self.kind != MODULE_REF:
+            res['node'] = str(self.node)
         return res
 
 
@@ -1745,11 +1750,6 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         a.insert(0, 'SymbolTable(')
         a[-1] += ')'
         return '\n'.join(a)
-
-
-def clean_up(s: str) -> str:
-    # TODO remove
-    return re.sub('.*::', '', s)
 
 
 def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':

@@ -19,7 +19,7 @@ class SerializeVisitor(NodeVisitor[JsonThing]):
                 'fullname': node.fullname(),
                 'path': node.path,
                 ## 'defs': [n.accept(self) for n in node.defs],
-                'names': {k: v.serialize(self) for k, v in node.names.items()},
+                'names': {k: v.serialize(self) for k, v in node.names.items() if k != '__builtins__'},  # TODO: Move to SymbolTable.
                 'imports': [n.accept(self) for n in node.imports],
                 'is_stub': node.is_stub,
                 }
@@ -39,3 +39,7 @@ class SerializeVisitor(NodeVisitor[JsonThing]):
             '.tag': 'Import',
             'ids': [[t[0], t[1]] for t in node.ids],
             }
+
+
+def load_tree(data: Any) -> MypyFile:
+    return MypyFile([], [])  # TODO
