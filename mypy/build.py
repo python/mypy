@@ -9,6 +9,8 @@ file.  The individual passes are implemented in separate modules.
 The function build() is the main interface to this module.
 """
 
+import binascii
+import json
 import os
 import os.path
 import shlex
@@ -17,7 +19,7 @@ import sys
 import re
 from os.path import dirname, basename
 
-from typing import Dict, List, Tuple, Iterable, cast, Set, Union, Optional
+from typing import Any, Dict, List, Tuple, Iterable, cast, Set, Union, Optional, NamedTuple
 
 from mypy.types import Type
 from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
@@ -30,6 +32,7 @@ from mypy import stats
 from mypy.report import Reports
 from mypy import defaults
 from mypy import moduleinfo
+from mypy import serialization
 from mypy import util
 
 
@@ -73,7 +76,7 @@ TYPE_CHECKED_STATE = 5
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
-final_state = TYPE_CHECKED_STATE
+final_state = TYPE_CHECKED_STATE  # XXX Should be FINAL_STATE
 
 
 def earlier_state(s: int, t: int) -> bool:
@@ -325,6 +328,16 @@ def read_program(path: str, pyversion: Tuple[int, int]) -> str:
     return text
 
 
+CacheMeta = NamedTuple('CacheMeta',
+                       [('id', str),
+                        ('path', str),
+                        ('mtime', float),
+                        ('size', int),
+                        ('dependencies', List[str]),
+                        ('data_mtime', float),
+                        ])
+
+
 class BuildManager:
     """This is the central class for building a mypy program.
 
@@ -355,6 +368,7 @@ class BuildManager:
                        Item (m, n) indicates whether m depends on n (directly
                        or indirectly).
       missing_modules: Set of modules that could not be imported encountered so far
+      loading_cache:   Cache for type-checked files
     """
 
     def __init__(self, data_dir: str,
@@ -388,6 +402,7 @@ class BuildManager:
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
+        self.loading_cache = {}  # type: Dict[str, Optional[CacheMeta]]
 
     def process(self, initial_states: List['UnprocessedFile']) -> BuildResult:
         """Perform a build.
@@ -397,6 +412,7 @@ class BuildManager:
         manager object.  The return values are identical to the return
         values of the build function.
         """
+        # TODO: Try import_from_cache() too.
         self.states += initial_states
         for initial_state in initial_states:
             self.module_files[initial_state.id] = initial_state.path
@@ -613,6 +629,7 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
+# TODO: Use a NamedTuple?
 class StateInfo:
     """Description of a source file that is being built."""
 
@@ -781,6 +798,10 @@ class UnprocessedFile(State):
         first = FirstPass(self.semantic_analyzer())
         first.analyze(tree, self.path, self.id)
 
+        # Initialize module symbol table, which was populated by the semantic
+        # analyzer.
+        tree.names = self.semantic_analyzer().globals
+
         # Add all directly imported modules to be processed (however they are
         # not processed yet, just waiting to be processed).
         for id, line in self.manager.all_imported_modules_in_file(tree):
@@ -802,10 +823,6 @@ class UnprocessedFile(State):
                         self.module_not_found(self.path, line, id)
                 self.manager.missing_modules.add(id)
 
-        # Initialize module symbol table, which was populated by the semantic
-        # analyzer.
-        tree.names = self.semantic_analyzer().globals
-
         # Replace this state object with a parsed state in BuildManager.
         self.switch_state(ParsedFile(self.info(), tree))
 
@@ -817,6 +834,9 @@ class UnprocessedFile(State):
         """
         if self.manager.has_module(id):
             # Do nothing: already being compiled.
+            return True
+
+        if import_from_cache(id, self.manager):
             return True
 
         if id == 'builtins' and self.manager.pyversion[0] == 2:
@@ -883,7 +903,7 @@ class ParsedFile(State):
 
         # Record the dependencies. Note that the dependencies list also
         # contains any superpackages and we must preserve them (e.g. os for
-        # os.path).
+        # os.path).  XXX NOT ACTUALLY TRUE XXX
         self.dependencies.extend(imp)
 
     def process(self) -> None:
@@ -935,7 +955,9 @@ class SemanticallyAnalyzedFile(ParsedFile):
 
         # FIX remove from active state list to speed up processing
 
-        self.switch_state(TypeCheckedFile(self.info(), self.tree))
+        file = TypeCheckedFile(self.info(), self.tree)
+        dump_to_json(file, self.manager)
+        self.switch_state(file)
 
     def state(self) -> int:
         return SEMANTICALLY_ANALYSED_STATE
@@ -1124,3 +1146,167 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
 
         source_bytearray.extend(f.read())
         return source_bytearray.decode(encoding)
+
+
+# Experimental incremental loading
+# TODO: Flags
+# TODO: files on command line (but not __main__)
+
+MYPY_CACHE = '.mypy_cache'
+
+
+def get_cache_prefix(id: str) -> str:
+    return os.path.join(MYPY_CACHE, *id.split('.'))
+
+
+def get_cache_names(id: str, path: str) -> Tuple[str, str]:
+    prefix = get_cache_prefix(id)
+    is_package = os.path.basename(path).startswith('__init__.py')
+    if is_package:
+        prefix = os.path.join(prefix, '__init__')
+    return (prefix + '.meta.json', prefix + '.data.json')
+
+
+def find_cache_thing(id: str, path: str,
+                     lib_path: Tuple[str, ...],
+                     cache: Dict[str, Optional[CacheMeta]]) -> Optional[CacheMeta]:
+    if id in cache:
+        print('    Cached', id, cache[id])
+        return cache[id]  # Meaning failure if cache[id] is None
+    meta_json, data_json = get_cache_names(id, path)
+    print('    Finding', id, data_json)
+    if not os.path.exists(meta_json):
+        cache[id] = None
+        return None
+    with open(meta_json, 'r') as f:
+        meta = json.load(f)  # TODO: Errors
+        print('    Meta', id, meta)
+    if not isinstance(meta, dict):
+        cache[id] = None
+        return None
+    path = os.path.abspath(path)
+    m = CacheMeta(
+        meta.get('id'),
+        meta.get('path'),
+        meta.get('mtime'),
+        meta.get('size'),
+        meta.get('dependencies'),
+        meta.get('data_mtime'),
+        )
+    if (m.id != id or m.path != path or
+            m.mtime is None or m.size is None or
+            m.dependencies is None or m.data_mtime is None):
+        cache[id] = None
+        return None
+    st = os.stat(path)  # TODO: Errors
+    if st.st_mtime != m.mtime or st.st_size != m.size:
+        cache[id] = None
+        return None
+    # It's a match on (id, path, mtime, size).  Check the rest.
+    data_st = os.stat(data_json)  # TODO: Combine with exists() above
+    if data_st.st_mtime != m.data_mtime:
+        cache[id] = None
+        return None
+    # Optimistically put it in the cache to guard against cycles.
+    # If a dependency is bad we'll change it to None.
+    cache[id] = m
+    for d_id in m.dependencies:
+        if d_id == id:
+            print('    Cycle', id, m.dependencies)
+            continue  # Depends on itself?!
+        d_path = find_module(d_id, lib_path)
+        if d_path is None:
+            cache[id] = None
+            return None
+        thing = find_cache_thing(d_id, d_path, lib_path, cache)
+        if thing is None:
+            cache[id] = None
+            return None
+    print('    Found', id, meta_json)
+    return m
+
+
+# TODO: Make the rest BuildManager methods?
+
+def load_cache_things(id: str, path: str, manager: BuildManager) -> bool:
+    print('  Looking', id, path)
+    cache = manager.loading_cache
+    thing = find_cache_thing(id, path, manager.lib_path, cache)
+    if thing is None:
+        return False
+    for d_id in thing.dependencies:
+        assert d_id in cache, cache
+        if not manager.has_module(d_id):
+            if not load_cache_things(d_id, cache[d_id].path, manager):
+                return False
+    _, data_json = get_cache_names(id, path)  # TODO: Awkward
+    print('  Loading', id, data_json)
+    with open(data_json, 'r') as f:
+        data = json.load(f)
+    if os.path.getmtime(data_json) != thing.data_mtime:
+        return False
+    tree = MypyFile([], [])
+    # TODO: Load data into tree
+    info = StateInfo(path, id, [], manager)
+    new_file = TypeCheckedFile(info, tree)  # TODO: New class to say "from cache"
+    # TODO: Set new_file.dependencies (avoid computing them)
+    manager.states.append(new_file)
+    manager.module_files[id] = path
+    print('  Loaded', id)
+    return True
+
+
+def import_from_cache(id: str, manager: BuildManager) -> bool:
+    print('Import', id)
+    assert not manager.has_module(id)
+    path = find_module(id, manager.lib_path)  # TODO: Share with rest of import_module()
+    if path is None:
+        return False
+    return load_cache_things(id, path, manager)
+
+
+def rand_suffix():
+    return '.' + binascii.hexlify(os.urandom(8)).decode('ascii')
+
+
+def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
+    if file.tree.is_stub:
+        return
+    id = file.id
+    if id == '__main__':
+        return
+    path = file.path
+    if path == '<string>':
+        return
+    path = os.path.abspath(path)
+    print('Dumping', id, path)
+    st = os.stat(path)
+    mtime = st.st_mtime
+    size = st.st_size
+    meta_json, data_json = get_cache_names(id, path)
+    print('  Writing', id, meta_json, data_json)
+    data = file.tree.accept(serialization.SerializeVisitor())
+    parent = os.path.dirname(data_json)
+    if not os.path.isdir(parent):
+        os.makedirs(parent)
+    assert os.path.dirname(meta_json) == parent
+    data_json_tmp = data_json + rand_suffix()
+    meta_json_tmp = meta_json + rand_suffix()
+    with open(data_json_tmp, 'w') as f:
+        json.dump(data, f)
+        f.write('\n')
+    data_mtime = os.path.getmtime(data_json_tmp)
+    meta = {'id': id,
+            'path': path,
+            'mtime': mtime,
+            'size': size,
+            'data_mtime': data_mtime,
+            'dependencies': [d
+                             for d in file.dependencies
+                             if not cast(TypeCheckedFile, manager.lookup_state(d)).tree.is_stub],
+            }
+    with open(meta_json_tmp, 'w') as f:
+        json.dump(meta, f)
+        f.write('\n')
+    os.rename(data_json_tmp, data_json)
+    os.rename(meta_json_tmp, meta_json)

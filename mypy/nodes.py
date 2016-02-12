@@ -1715,6 +1715,19 @@ class SymbolTableNode:
             s += ' : {}'.format(self.type)
         return s
 
+    def serialize(self, visitor: Any) -> Any:
+        res = {
+            '.type': node_kinds[self.kind],
+            }
+        if self.mod_id != visitor.mod_id:
+            res['mod_id'] = self.mod_id
+        t = self.type
+        if t is None:
+            res['type'] = None
+        else:
+            res['type'] = str(t)
+        return res
+
 
 class SymbolTable(Dict[str, SymbolTableNode]):
     def __str__(self) -> str:
