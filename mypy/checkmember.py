@@ -172,16 +172,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
     typ = var.type
     if typ:
         if isinstance(typ, PartialType):
-            if typ.type is None:
-                # 'None' partial type. It has a well-defined type -- 'None'.
-                # In an lvalue context we want to preserver the knowledge of
-                # it being a partial type.
-                if not is_lvalue:
-                    return NoneTyp()
-                return typ
-            else:
-                msg.fail(messages.NEED_ANNOTATION_FOR_VAR, var)
-                return AnyType()
+            return handle_partial_attribute_type(typ, is_lvalue, msg, var)
         t = expand_type_by_instance(typ, itype)
         if var.is_initialized_in_class and isinstance(t, FunctionLike):
             if is_lvalue:
@@ -209,6 +200,20 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         if not var.is_ready:
             not_ready_callback(var.name(), node)
         # Implicit 'Any' type.
+        return AnyType()
+
+
+def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
+                                  context: Context) -> Type:
+    if typ.type is None:
+        # 'None' partial type. It has a well-defined type -- 'None'.
+        # In an lvalue context we want to preserver the knowledge of
+        # it being a partial type.
+        if not is_lvalue:
+            return NoneTyp()
+        return typ
+    else:
+        msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
         return AnyType()
 
 
@@ -262,6 +267,8 @@ def analyze_class_attribute_access(itype: Instance,
 
     t = node.type
     if t:
+        if isinstance(t, PartialType):
+            return handle_partial_attribute_type(t, is_lvalue, msg, node)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
         return add_class_tvars(t, itype.type, is_classmethod, builtin_type)
     elif isinstance(node.node, Var):
