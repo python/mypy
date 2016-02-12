@@ -1331,6 +1331,36 @@ class C:
         a = 42
 [out]
 
+-- More partial type errors
+-- ------------------------
+
+[case testPartialTypeErrorSpecialCase1]
+# This used to crash.
+class A:
+    x = None
+    def f(self) -> None:
+        for a in self.x:
+            pass
+[builtins fixtures/for.py]
+[out]
+main: note: In class "A":
+main:3: error: Need type annotation for variable
+main: note: In member "f" of class "A":
+main:5: error: None has no attribute "__iter__"
+
+[case testPartialTypeErrorSpecialCase2]
+# This used to crash.
+class A:
+    x = []
+    def f(self) -> None:
+        for a in self.x:
+            pass
+[builtins fixtures/for.py]
+[out]
+main: note: In member "f" of class "A":
+main:3: error: Need type annotation for variable
+main: note: In class "A":
+main:3: error: Need type annotation for variable
 
 -- Multipass
 -- ---------
