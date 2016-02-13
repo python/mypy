@@ -945,6 +945,8 @@ class ProbablyCachedFile(UnprocessedBase):
             file = UnprocessedFile(self.info(), text)
         self.switch_state(file)
 
+    # TODO: is_ready() that waits for dependencies to be out of limbo
+
     def state(self) -> int:
         return PROBABLY_CACHED_STATE
 

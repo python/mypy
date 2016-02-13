@@ -37,7 +37,7 @@ GDEF = 1  # type: int
 MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
 # Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind TVAR) within
+# valid as a type. A type variable is valid as a type (kind BOUND_TVAR) within
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
 UNBOUND_TVAR = 4  # type: int
@@ -46,6 +46,7 @@ TYPE_ALIAS = 6  # type: int
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
+# XXX what?
 UNBOUND_IMPORTED = 7  # type: int
 
 
@@ -1715,7 +1716,7 @@ class SymbolTableNode:
             s += ' : {}'.format(self.type)
         return s
 
-    def serialize(self, visitor: Any) -> Any:
+    def serialize(self, visitor: NodeVisitor[Any]) -> Any:
         res = {
             '.tag': node_kinds[self.kind],
             }  # type: Dict[str, Any]
@@ -1750,6 +1751,15 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         a.insert(0, 'SymbolTable(')
         a[-1] += ')'
         return '\n'.join(a)
+
+    def serialize(self, visitor: NodeVisitor[Any]) -> Dict[str, Any]:
+        res = {}
+        for name, node in sorted(self.items()):  # XXX: Don't sort
+            if name != '__builtins__':
+                ser = node.serialize(visitor)
+                print('%20s : %s -- %s' % (name, ser['.tag'], repr(ser.get('type'))))  # XXX
+                res[name] = ser
+        return res
 
 
 def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':

@@ -18,9 +18,7 @@ class SerializeVisitor(NodeVisitor[JsonThing]):
                 '.tag': 'MypyFile',
                 'fullname': node.fullname(),
                 'path': node.path,
-                ## 'defs': [n.accept(self) for n in node.defs],
-                'names': {k: v.serialize(self) for k, v in node.names.items() if k != '__builtins__'},  # TODO: Move to SymbolTable.
-                'imports': [n.accept(self) for n in node.imports],
+                'names': node.names.serialize(self),
                 'is_stub': node.is_stub,
                 }
         finally:
