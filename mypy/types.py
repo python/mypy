@@ -1,13 +1,15 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Any, TypeVar, List, Tuple, cast, Generic, Set, Sequence, Optional
+from typing import Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional
 
 import mypy.nodes
 from mypy.nodes import INVARIANT, SymbolNode
 
 
 T = TypeVar('T')
+
+JsonDict = Dict[str, Any]
 
 
 class Type(mypy.nodes.Context):
@@ -26,6 +28,20 @@ class Type(mypy.nodes.Context):
 
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor())
+
+    def serialize(self) -> JsonDict:
+        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Type':
+        classname = data['.class']
+        if classname == 'AnyType':
+            return AnyType.deserialize(data)
+        if classname == 'Instance':
+            return Instance.deserialize(data)
+        if classname == 'CallableType':
+            return CallableType.deserialize(data)
+        raise RuntimeError('unexpected .class {}'.format(classname))
 
 
 class TypeVarDef(mypy.nodes.Context):
@@ -104,6 +120,14 @@ class AnyType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'AnyType'}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'AnyType':
+        assert data['.class'] == 'AnyType'
+        return AnyType()
 
 
 class Void(Type):
@@ -192,6 +216,28 @@ class Instance(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
+
+    def serialize(self) -> JsonDict:
+        res = {'.class': 'Instance',
+               }  # type: JsonDict
+        if self.type is not None:
+            res['type'] = self.type.serialize()
+        if self.args:
+            res['args'] = [arg.serialize() for arg in self.args]
+        return res
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Instance':
+        assert data['.class'] == 'Instance'
+        typ = None
+        if 'type' in data:
+            typ = mypy.nodes.TypeInfo.deserialize(data['type'])
+        args = []  # type: List[Type]
+        if 'args' in data:
+            args_list = data['args']
+            assert isinstance(args_list, list)
+            args = [Type.deserialize(arg) for arg in args_list]
+        return Instance(typ, args)
 
 
 class TypeVarType(Type):
@@ -373,6 +419,29 @@ class CallableType(FunctionLike):
         for tv in self.variables:
             a.append(tv.id)
         return a
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'CallableType',
+                'arg_types': [t.serialize() for t in self.arg_types],
+                'arg_kinds': self.arg_kinds,
+                'arg_names': self.arg_names,
+                'ret_type': self.ret_type.serialize(),
+                'fallback': self.fallback.serialize(),
+                'name': self.name,
+                # TODO: definition, variables, bound_vars, is_ellipsis_args
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'CallableType':
+        assert data['.class'] == 'CallableType'
+        return CallableType([Type.deserialize(t) for t in data['arg_types']],
+                            data['arg_kinds'],
+                            data['arg_names'],
+                            Type.deserialize(data['ret_type']),
+                            Instance.deserialize(data['fallback']),
+                            name=data.get('name'),
+                            # TODO: definition, variables, bound_vars, is_ellipsis_args
+                            )
 
 
 class Overloaded(FunctionLike):

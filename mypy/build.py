@@ -33,7 +33,6 @@ from mypy import stats
 from mypy.report import Reports
 from mypy import defaults
 from mypy import moduleinfo
-from mypy import serialization
 from mypy import util
 
 
@@ -959,7 +958,7 @@ class CacheLoadedFile(State):
         self.data = data
 
     def process(self) -> None:
-        tree = serialization.load_tree(self.data)
+        tree = MypyFile.deserialize(self.data)
         file = TypeCheckedFile(self.info(), tree)
         self.switch_state(file)
 
@@ -1306,7 +1305,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     size = st.st_size
     meta_json, data_json = get_cache_names(id, path)
     print('  Writing', id, meta_json, data_json)
-    data = file.tree.accept(serialization.SerializeVisitor())
+    data = file.tree.serialize()
     parent = os.path.dirname(data_json)
     if not os.path.isdir(parent):
         os.makedirs(parent)
