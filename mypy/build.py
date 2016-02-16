@@ -901,6 +901,10 @@ class CacheLoadedFile(State):
 
     def process(self) -> None:
         tree = MypyFile.deserialize(self.data)
+
+        # Store the parsed module in the shared module symbol table.
+        self.manager.semantic_analyzer.modules[self.id] = tree
+
         file = TypeCheckedFile(self.info(), tree, self.meta)
         self.switch_state(file)
 

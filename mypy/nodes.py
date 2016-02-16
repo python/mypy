@@ -126,19 +126,18 @@ class SymbolNode(Node):
     def fullname(self) -> str: pass
 
     # @abstractmethod  # TODO
-    def serialize(self) -> JsonDict:
+    def serialize(self) -> Any:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
         classname = data['.class']
-        if classname == 'Var':
-            return Var.deserialize(data)
-        if classname == 'TypeInfo':
-            return TypeInfo.deserialize(data)
-        if classname == 'FuncDef':
-            return FuncDef.deserialize(data)
-        raise RuntimeError('unexpected .class {}'.format(classname))
+        glo = globals()
+        if classname in glo:
+            cl = glo[classname]
+            if 'deserialize' in cl.__dict__:
+                return cl.deserialize(data)
+        raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
 class MypyFile(SymbolNode):
@@ -979,9 +978,6 @@ class NameExpr(RefExpr):
         self.name = name
         self.literal_hash = ('Var', name,)
 
-    def type_node(self):
-        return cast(TypeInfo, self.node)
-
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
 
@@ -1483,6 +1479,22 @@ class TypeVarExpr(SymbolNode):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeVarExpr',
+                'name': self._name,
+                'fullname': self._fullname,
+                'values': [t.serialize() for t in self.values],
+                'variance': self.variance,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarExpr':
+        assert data['.class'] == 'TypeVarExpr'
+        return TypeVarExpr(data['name'],
+                           data['fullname'],
+                           [mypy.types.Type.deserialize(v) for v in data['values']],
+                           data['variance'])
+
 
 class TypeAliasExpr(Node):
     """Type alias expression (rvalue)."""
@@ -1733,21 +1745,58 @@ class TypeInfo(SymbolNode):
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
-    def serialize(self) -> JsonDict:
-        # TODO (esp. names)
+    def serialize(self) -> Union[str, JsonDict]:
+        fn = self.fullname()
+        # TODO: When to return a name, when an object?
+        if fn:
+            return fn
         res = {'.class': 'TypeInfo',
                'name': self.name(),
                'fullname': self.fullname(),
+               'mro': [t.serialize() for t in self.mro],
+               'subtypes': [t.serialize() for t in self.subtypes],
+               'names': self.names.serialize(),
+               'is_abstract': self.is_abstract,
+               'abstract_attributes': self.abstract_attributes,
+               'is_enum': self.is_enum,
+               'fallback_to_any': self.fallback_to_any,
+               'type_vars': self.type_vars,
+               'bases': [b.serialize() for b in self.bases],
+               '_promote': None if self._promote is None else self._promote.serialize(),
+               'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
+               'is_named_tuple': self.is_named_tuple,
                }
         return res
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeInfo':
-        assert data['.class'] == 'TypeInfo'
-        names = SymbolTable()  # TODO
-        cdef = ClassDef(data['name'], Block([]))
-        cdef.fullname = data['fullname']
-        return TypeInfo(names, cdef)
+    def deserialize(cls, data: Union[str, JsonDict]) -> 'TypeInfo':
+        if isinstance(data, str):
+            fullname = data
+            name = fullname.rsplit('.', 1)[-1]
+            names = SymbolTable()
+        else:
+            fullname = data['fullname']
+            name = data['name']
+            names = SymbolTable.deserialize(data['names'])
+        cdef = ClassDef(name, Block([]))
+        cdef.fullname = fullname
+        ti = TypeInfo(names, cdef)
+        ti._fullname = fullname
+        if isinstance(data, str):
+            ti.mro = []
+        else:
+            ti.mro = [TypeInfo.deserialize(t) for t in data['mro']]
+            ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
+            ti.is_abstract = data['is_abstract']
+            ti.abstract_attributes = data['abstract_attributes']
+            ti.is_enum = data['is_enum']
+            ti.fallback_to_any = data['fallback_to_any']
+            ti.type_vars = data['type_vars']
+            ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
+            ti._promote = None if data['_promote'] is None else mypy.types.Type.deserialize(data['_promote'])
+            ti.tuple_type = None if data['tuple_type'] is None else mypy.types.TupleType.deserialize(data['tuple_type'])
+            ti.is_named_tuple = data['is_named_tuple']
+        return ti
 
 
 class SymbolTableNode:
@@ -1823,11 +1872,11 @@ class SymbolTableNode:
         else:
             typ = self.type
             if typ is not None:
-                # TODO: Shorten simple type references (e.g. builtins.str)
-                res['type'] = typ.serialize()
-            else:
                 if self.node is not None:
-                    res['node'] = self.node.serialize()
+                    res['node'] = Var(self.node.name(), self.type).serialize()
+                else:
+                    res['type'] = typ.serialize()
+            # TODO: else???
         return res
 
     @classmethod

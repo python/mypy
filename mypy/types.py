@@ -35,13 +35,12 @@ class Type(mypy.nodes.Context):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Type':
         classname = data['.class']
-        if classname == 'AnyType':
-            return AnyType.deserialize(data)
-        if classname == 'Instance':
-            return Instance.deserialize(data)
-        if classname == 'CallableType':
-            return CallableType.deserialize(data)
-        raise RuntimeError('unexpected .class {}'.format(classname))
+        glo = globals()
+        if classname in glo:
+            cl = glo[classname]
+            if 'deserialize' in cl.__dict__:
+                return cl.deserialize(data)
+        raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
 class TypeVarDef(mypy.nodes.Context):
@@ -149,6 +148,14 @@ class Void(Type):
     def with_source(self, source: str) -> 'Void':
         return Void(source, self.line)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'Void'}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Void':
+        assert data['.class'] == 'Void'
+        return Void()
+
 
 class NoneTyp(Type):
     """The type of 'None'.
@@ -168,6 +175,14 @@ class NoneTyp(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'NoneTyp'}
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'NoneTyp':
+        assert data['.class'] == 'NoneTyp'
+        return NoneTyp()
 
 
 class ErasedType(Type):
@@ -195,6 +210,14 @@ class DeletedType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_deleted_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'DeletedType'}
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'DeletedType':
+        assert data['.class'] == 'DeletedType'
+        return DeletedType()
 
 
 class Instance(Type):
@@ -265,6 +288,24 @@ class TypeVarType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeVarType',
+                'name': self.name,
+                'id': self.id,
+                'values': [v.serialize() for v in self.values],
+                'upper_bound': self.upper_bound.serialize(),
+                'variance': self.variance,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarType':
+        assert data['.class'] == 'TypeVarType'
+        return TypeVarType(data['name'],
+                           data['id'],
+                           [Type.deserialize(v) for v in data['values']],
+                           Type.deserialize(data['upper_bound']),
+                           data['variance'])
 
 
 class FunctionLike(Type):
@@ -422,25 +463,29 @@ class CallableType(FunctionLike):
 
     def serialize(self) -> JsonDict:
         return {'.class': 'CallableType',
-                'arg_types': [t.serialize() for t in self.arg_types],
+                'arg_types': [(None if t is None else t.serialize())
+                              for t in self.arg_types],
                 'arg_kinds': self.arg_kinds,
                 'arg_names': self.arg_names,
                 'ret_type': self.ret_type.serialize(),
                 'fallback': self.fallback.serialize(),
                 'name': self.name,
-                # TODO: definition, variables, bound_vars, is_ellipsis_args
+                # TODO: definition, variables, bound_vars
+                'is_ellipsis_args': self.is_ellipsis_args,
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'CallableType':
         assert data['.class'] == 'CallableType'
-        return CallableType([Type.deserialize(t) for t in data['arg_types']],
+        return CallableType([(None if t is None else Type.deserialize(t))
+                             for t in data['arg_types']],
                             data['arg_kinds'],
                             data['arg_names'],
                             Type.deserialize(data['ret_type']),
                             Instance.deserialize(data['fallback']),
                             name=data.get('name'),
-                            # TODO: definition, variables, bound_vars, is_ellipsis_args
+                            # TODO: definition, variables, bound_vars
+                            is_ellipsis_args=data['is_ellipsis_args'],
                             )
 
 
@@ -485,6 +530,16 @@ class Overloaded(FunctionLike):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'Overloaded',
+                'items': [t.serialize() for t in self.items()],
+                }
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'Overloaded':
+        assert data['.class'] == 'Overloaded'
+        return Overloaded([CallableType.deserialize(t) for t in data['items']])
+
 
 class TupleType(Type):
     """The tuple type Tuple[T1, ..., Tn] (at least one type argument).
@@ -513,6 +568,19 @@ class TupleType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_tuple_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TupleType',
+                'items': [t.serialize() for t in self.items],
+                'fallback': self.fallback.serialize(),
+                # TODO: implicit
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TupleType':
+        assert data['.class'] == 'TupleType'
+        return TupleType([Type.deserialize(t) for t in data['items']],
+                         Instance.deserialize(data['fallback']))
 
 
 class StarType(Type):
@@ -588,6 +656,16 @@ class UnionType(Type):
         return all((isinstance(x, UnionType) and cast(UnionType, x).has_readable_member(name)) or
                    (isinstance(x, Instance) and cast(Instance, x).type.has_readable_member(name))
                    for x in self.items)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'UnionType',
+                'items': [t.serialize() for t in self.items],
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'UnionType':
+        assert data['.class'] == 'UnionType'
+        return UnionType([Type.deserialize(t) for t in data['items']])
 
 
 class PartialType(Type):
