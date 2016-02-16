@@ -110,7 +110,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     help = False
     ver = False
     while args and args[0].startswith('-'):
-        if args[0] == '--verbose':
+        if args[0] in ('--verbose', '-v'):
             options.build_flags.append(build.VERBOSE)
             args = args[1:]
         elif args[0] == '--py2':
@@ -172,7 +172,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         elif args[0] == '--implicit-any':
             options.implicit_any = True
             args = args[1:]
-        elif args[0] == '--version':
+        elif args[0] in ('--version', '-V'):
             ver = True
             args = args[1:]
         else:
@@ -296,8 +296,8 @@ usage: mypy [option ...] [-c cmd | -m mod | file_or_dir ...]
 
 Options:
   -h, --help         print this help message and exit
-  --version          show the current version information and exit
-  --verbose          more verbose messages
+  -V, --version      show the current version information and exit
+  -v, --verbose      more verbose messages
   --py2              use Python 2 mode
   --python-version x.y  use Python x.y
   --silent, --silent-imports  don't follow imports to .py files
