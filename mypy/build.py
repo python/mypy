@@ -441,7 +441,7 @@ class BuildManager:
                 break
 
             # Potentially output some debug information.
-            self.trace('next {} ({})'.format(next.path, next.state()))
+            self.trace('next {}={} ({})'.format(next.id, next.path, next.state()))
 
             # Set the import context for reporting error messages correctly.
             self.errors.set_import_context(next.import_context)
@@ -603,6 +603,13 @@ class BuildManager:
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
 
+    def maybe_make_cached_state(self, id: str, path: str) -> Optional['UnprocessedBase']:
+        m = find_cache_meta(id, path, self)
+        if m is None:
+            return None
+        info = StateInfo(path, id, self.errors.import_context(), self)
+        return ProbablyCachedFile(info, m)
+
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
             print('LOG:', message, file=sys.stderr)
@@ -610,13 +617,6 @@ class BuildManager:
     def trace(self, message: str) -> None:
         if self.flags.count(VERBOSE) >= 2:
             print('TRACE:', message, file=sys.stderr)
-
-    def maybe_make_cached_state(self, id: str, path: str) -> Optional['UnprocessedBase']:
-        m = find_cache_meta(id, path, self.lib_path)
-        if m is None:
-            return None
-        info = StateInfo(path, id, self.errors.import_context(), self)
-        return ProbablyCachedFile(info, m)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -676,6 +676,7 @@ class State:
     """
 
     # The StateInfo attributes are duplicated here for convenience.
+    # TODO: Why not just inherit from StateInfo?
     path = ''
     id = ''
     import_context = None  # type: List[Tuple[str, int]]
@@ -708,8 +709,19 @@ class State:
         return True
 
     def num_incomplete_deps(self) -> int:
-        """Return the number of dependencies that are ready but incomplete."""
-        return 0  # Does not matter in this state
+        """Return the number of dependencies that are incomplete.
+
+        Here complete means that their state is *later* than this module.
+        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
+        arbitrarily).
+        """
+        incomplete = 0
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
+            if (not earlier_state(self.state(), state) and
+                    not self.manager.is_dep(module, self.id)):
+                incomplete += 1
+        return incomplete
 
     def state(self) -> int:
         raise RuntimeError('Not implemented')
@@ -719,9 +731,13 @@ class State:
 
         Also notify the manager.
         """
+        # TODO: Make this a method on the manager?
         for i in range(len(self.manager.states)):
             if self.manager.states[i].path == state_object.path:
                 self.manager.states[i] = state_object
+                self.manager.trace('switch {}={} ({})'.format(state_object.id,
+                                                              state_object.path,
+                                                              state_object.state()))
                 return
         raise RuntimeError('State for {} not found'.format(state_object.path))
 
@@ -766,6 +782,15 @@ class UnprocessedBase(State):
 
     def load_dependencies(self) -> None:
         # TODO: @abstractmethod
+        """Finish initialization by adding dependencies.
+
+        This should call import_module() for each dependency and if
+        that succeeds append it to self.dependencies.
+
+        This cannot be done in __init__() because the new state must
+        first be added to the manager, so that cyclic imports don't
+        cause an infinite regress.
+        """
         raise NotImplementedError
 
     def import_module(self, id: str) -> bool:
@@ -794,6 +819,7 @@ class UnprocessedBase(State):
 
         new_file = self.manager.maybe_make_cached_state(id, path)
         if new_file is not None:
+            # TODO: Refactor so this manager update dance only occurs once?
             self.manager.states.append(new_file)
             self.manager.module_files[id] = path
             new_file.load_dependencies()
@@ -813,13 +839,82 @@ class UnprocessedBase(State):
             return False
 
 
+class ProbablyCachedFile(UnprocessedBase):
+    def __init__(self, info: StateInfo, meta: CacheMeta) -> None:
+        super().__init__(info)
+        self.meta = meta
+
+    def load_dependencies(self):
+        for dep_id in self.meta.dependencies:
+            if self.import_module(dep_id):
+                self.dependencies.append(dep_id)
+
+    def process(self) -> None:
+        ok = True
+        for dep_id in self.dependencies:
+            state_obj = self.manager.lookup_state(dep_id)
+            if (isinstance(state_obj, CacheLoadedFile) or
+                    isinstance(state_obj, ProbablyCachedFile)):
+                continue
+            if isinstance(state_obj, TypeCheckedFile) and state_obj.meta is not None:
+                continue
+            self.manager.log('Abandoning cached data for {} '
+                             'because {} changed ({})'.format(self.id, state_obj.id,
+                                                              state_obj.__class__.__name__))
+            ok = False
+            break
+        if ok:
+            # TODO: Errors
+            with open(self.meta.data_json) as f:
+                data = json.load(f)
+            if os.path.getmtime(self.meta.data_json) != self.meta.data_mtime:
+                self.manager.log('Abandoning cached data for {} '
+                                 'due to race condition'.format(self.id))
+                ok = False
+        file = None  # type: State
+        if ok:
+            file = CacheLoadedFile(self.info(), self.meta, data)
+        else:
+            # Didn't work -- construct an UnprocessedFile.
+            path, text = read_module_source_from_file(self.id,
+                                                      self.manager.lib_path,
+                                                      self.manager.pyversion,
+                                                      SILENT_IMPORTS in self.manager.flags)
+            # TODO: Errors
+            assert text is not None
+            assert path == os.path.abspath(self.path), (path, self.path)
+            file = UnprocessedFile(self.info(), text)
+        self.switch_state(file)
+
+    # TODO: is_ready() that waits for dependencies to be out of limbo
+
+    def state(self) -> int:
+        return PROBABLY_CACHED_STATE
+
+
+class CacheLoadedFile(State):
+    def __init__(self, info: StateInfo, meta: CacheMeta, data: Any) -> None:
+        super().__init__(info)
+        self.meta = meta
+        self.dependencies.extend(meta.dependencies)
+        self.data = data
+
+    def process(self) -> None:
+        tree = MypyFile.deserialize(self.data)
+        file = TypeCheckedFile(self.info(), tree, self.meta)
+        self.switch_state(file)
+
+    def state(self) -> int:
+        return CACHE_LOADED_STATE
+
+
 class UnprocessedFile(UnprocessedBase):
     def __init__(self, info: StateInfo, program_text: str) -> None:
         super().__init__(info)
         self.program_text = program_text
 
     def load_dependencies(self):
-        # Add surrounding package(s) as dependencies.
+        # Add surrounding (ancestor) package(s) as dependencies.
         for p in super_packages(self.id):
             if p in self.manager.missing_modules:
                 continue
@@ -915,76 +1010,31 @@ class UnprocessedFile(UnprocessedBase):
         return UNPROCESSED_STATE
 
 
-class ProbablyCachedFile(UnprocessedBase):
-    def __init__(self, info: StateInfo, meta: CacheMeta) -> None:
-        super().__init__(info)
-        self.meta = meta
-
-    def load_dependencies(self):
-        for dep_id in self.meta.dependencies:
-            if self.import_module(dep_id):
-                self.dependencies.append(dep_id)
-
-    def process(self) -> None:
-        # TODO: Errors
-        with open(self.meta.data_json) as f:
-            data = json.load(f)
-        file = None  # type: State
-        if os.path.getmtime(self.meta.data_json) == self.meta.data_mtime:
-            file = CacheLoadedFile(self.info(), self.meta, data)
-        else:
-            # Didn't work -- construct an UnprocessedFile.
-            path, text = read_module_source_from_file(self.id,
-                                                      self.manager.lib_path,
-                                                      self.manager.pyversion,
-                                                      SILENT_IMPORTS in self.manager.flags)
-            # TODO: Errors
-            assert text is not None
-            assert path == os.path.abspath(self.path), (path, self.path)
-            file = UnprocessedFile(self.info(), text)
-        self.switch_state(file)
-
-    # TODO: is_ready() that waits for dependencies to be out of limbo
-
-    def state(self) -> int:
-        return PROBABLY_CACHED_STATE
-
-
-class CacheLoadedFile(State):
-    def __init__(self, info: StateInfo, meta: CacheMeta, data: Any) -> None:
-        super().__init__(info)
-        self.meta = meta
-        self.dependencies += meta.dependencies
-        self.data = data
-
-    def process(self) -> None:
-        tree = MypyFile.deserialize(self.data)
-        file = TypeCheckedFile(self.info(), tree)
-        self.switch_state(file)
-
-    def state(self) -> int:
-        return CACHE_LOADED_STATE
-
-
 class ParsedFile(State):
     tree = None  # type: MypyFile
+    meta = None  # type: Optional[CacheMeta]
 
-    def __init__(self, info: StateInfo, tree: MypyFile) -> None:
+    def __init__(self, info: StateInfo, tree: MypyFile,
+                 meta: CacheMeta = None) -> None:
         super().__init__(info)
         self.tree = tree
+        self.meta = meta
 
-        # Build a list all directly imported moules (dependencies).
-        imp = []  # type: List[str]
-        for id, line in self.manager.all_imported_modules_in_file(tree):
-            # Omit missing modules, as otherwise we could not type check
-            # programs with missing modules.
-            if id not in self.manager.missing_modules and id != self.id:
-                imp.append(id)
-        if self.id != 'builtins':
-            imp.append('builtins')
+        if meta is not None:
+            imp = meta.dependencies
+        else:
+            # Build a list all directly imported moules (dependencies).
+            imp = []
+            for id, line in self.manager.all_imported_modules_in_file(tree):
+                # Omit missing modules, as otherwise we could not type check
+                # programs with missing modules.
+                if id not in self.manager.missing_modules and id != self.id:
+                    imp.append(id)
+            if self.id != 'builtins':
+                imp.append('builtins')
 
         if imp != []:
-            self.manager.trace('{} dependencies: {}'.format(info.path, imp))
+            self.manager.trace('{}={} dependencies: {}'.format(info.id, info.path, imp))
 
         # Record the dependencies. Note that the dependencies list also
         # contains any superpackages and we must preserve them (e.g. os for
@@ -996,21 +1046,6 @@ class ParsedFile(State):
         self.semantic_analyzer().visit_file(self.tree, self.tree.path)
         self.switch_state(PartiallySemanticallyAnalyzedFile(self.info(),
                                                             self.tree))
-
-    def num_incomplete_deps(self) -> int:
-        """Return the number of dependencies that are incomplete.
-
-        Here complete means that their state is *later* than this module.
-        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
-        arbitrarily).
-        """
-        incomplete = 0
-        for module in self.dependencies:
-            state = self.manager.module_state(module)
-            if (not earlier_state(self.state(), state) and
-                    not self.manager.is_dep(module, self.id)):
-                incomplete += 1
-        return incomplete
 
     def state(self) -> int:
         return PARSED_STATE
@@ -1248,14 +1283,15 @@ def get_cache_names(id: str, path: str) -> Tuple[str, str]:
     return (prefix + '.meta.json', prefix + '.data.json')
 
 
-def find_cache_meta(id: str, path: str, lib_path: Tuple[str, ...]) -> Optional[CacheMeta]:
+def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
     meta_json, data_json = get_cache_names(id, path)
-    print('    Finding', id, data_json)
+    manager.log('Finding {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
     with open(meta_json, 'r') as f:
-        meta = json.load(f)  # TODO: Errors
-        print('    Meta', id, meta)
+        meta_str = f.read()
+        manager.log('Meta {} {}'.format(id, meta_str.rstrip()))
+        meta = json.loads(meta_str)  # TODO: Errors
     if not isinstance(meta, dict):
         return None
     path = os.path.abspath(path)
@@ -1267,7 +1303,7 @@ def find_cache_meta(id: str, path: str, lib_path: Tuple[str, ...]) -> Optional[C
         meta.get('dependencies'),
         meta.get('data_mtime'),
         data_json,
-        )
+    )
     if (m.id != id or m.path != path or
             m.mtime is None or m.size is None or
             m.dependencies is None or m.data_mtime is None):
@@ -1275,18 +1311,19 @@ def find_cache_meta(id: str, path: str, lib_path: Tuple[str, ...]) -> Optional[C
     # TODO: Share stat() outcome with find_module()
     st = os.stat(path)  # TODO: Errors
     if st.st_mtime != m.mtime or st.st_size != m.size:
+        manager.log('Metadata abandoned because of modified file')
         return None
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
     if os.path.getmtime(data_json) != m.data_mtime:
         return None
-    print('    Found', id, meta_json, m)
+    manager.log('Found {} {} {}'.format(id, meta_json, m))
     return m
 
 
-def rand_suffix():
-    return '.' + binascii.hexlify(os.urandom(8)).decode('ascii')
+def random_string():
+    return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
 def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
@@ -1299,19 +1336,20 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     if path == '<string>':
         return
     path = os.path.abspath(path)
-    print('Dumping', id, path)
+    manager.log('Dumping {} {}'.format(id, path))
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
     meta_json, data_json = get_cache_names(id, path)
-    print('  Writing', id, meta_json, data_json)
+    manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
     data = file.tree.serialize()
     parent = os.path.dirname(data_json)
     if not os.path.isdir(parent):
         os.makedirs(parent)
     assert os.path.dirname(meta_json) == parent
-    data_json_tmp = data_json + rand_suffix()
-    meta_json_tmp = meta_json + rand_suffix()
+    nonce = '.' + random_string()
+    data_json_tmp = data_json + nonce
+    meta_json_tmp = meta_json + nonce
     with open(data_json_tmp, 'w') as f:
         json.dump(data, f, indent=2, sort_keys=True)
         f.write('\n')
@@ -1326,7 +1364,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
                              if not cast(TypeCheckedFile, manager.lookup_state(d)).tree.is_stub],
             }
     with open(meta_json_tmp, 'w') as f:
-        json.dump(meta, f, indent=2, sort_keys=True)
+        json.dump(meta, f, sort_keys=True)
         f.write('\n')
     os.rename(data_json_tmp, data_json)
     os.rename(meta_json_tmp, meta_json)
