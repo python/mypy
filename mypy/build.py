@@ -558,11 +558,11 @@ class BuildManager:
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
-            print('LOG:', message)
+            print('LOG:', message, file=sys.stderr)
 
     def trace(self, message: str) -> None:
         if self.flags.count(VERBOSE) >= 2:
-            print('TRACE:', message)
+            print('TRACE:', message, file=sys.stderr)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
