@@ -1996,4 +1996,4 @@ if __name__ == '__main__':
             for msg in e.messages:
                 sys.stderr.write('%s\n' % msg)
             status = 1
-    exit(status)
+    sys.exit(status)

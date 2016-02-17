@@ -326,7 +326,7 @@ Environment variables:
 
 def version() -> None:
     sys.stdout.write("mypy {}\n".format(__version__))
-    exit(0)
+    sys.exit(0)
 
 
 def fail(msg: str) -> None:

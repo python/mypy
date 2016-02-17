@@ -149,7 +149,7 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError:
         print("Can't import module %s" % module)
-        exit(1)
+        sys.exit(1)
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
     if not module_path.endswith(('.py', '.pyc', '.pyo')):
@@ -171,7 +171,7 @@ def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
         # Syntax error!
         for m in e.messages:
             sys.stderr.write('%s\n' % m)
-        exit(1)
+        sys.exit(1)
 
     gen = StubGenerator(_all_, pyversion=pyversion)
     ast.accept(gen)

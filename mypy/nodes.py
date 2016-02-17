@@ -1723,7 +1723,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
                 if (value.fullname != 'builtins' and
-                        value.fullname.split('.')[-1] not in
+                        (value.fullname or '').split('.')[-1] not in
                         implicit_module_attrs):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:

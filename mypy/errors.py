@@ -378,4 +378,4 @@ def report_internal_error(err: Exception, file: str, line: int) -> None:
     print('\n{}:{}: error: Internal error --'.format(file, line),
           'please report a bug at https://github.com/JukkaL/mypy/issues')
     print('\nNOTE: you can use "mypy --pdb ..." to drop into the debugger when this happens.')
-    exit(1)
+    sys.exit(1)
