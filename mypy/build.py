@@ -37,8 +37,6 @@ from mypy import util
 # until Python 3.4, __file__ is relative.
 __file__ = os.path.realpath(__file__)
 
-debug = False
-
 
 # Build targets (for selecting compiler passes)
 SEMANTIC_ANALYSIS = 0   # Semantic analysis only
@@ -392,11 +390,11 @@ class BuildManager:
             # Find the next state that has all its dependencies met.
             next = self.next_available_state()
             if not next:
-                trace('done')
+                self.trace('done')
                 break
 
             # Potentially output some debug information.
-            trace('next {} ({})'.format(next.path, next.state()))
+            self.trace('next {} ({})'.format(next.path, next.state()))
 
             # Set the import context for reporting error messages correctly.
             self.errors.set_import_context(next.import_context)
@@ -560,7 +558,11 @@ class BuildManager:
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
-            print('LOG: %s' % message)
+            print('LOG:', message)
+
+    def trace(self, message: str) -> None:
+        if self.flags.count(VERBOSE) >= 2:
+            print('TRACE:', message)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -747,7 +749,7 @@ class UnprocessedFile(State):
         if self.id != 'builtins':
             # The builtins module is imported implicitly in every program (it
             # contains definitions of int, print etc.).
-            trace('import builtins')
+            self.manager.trace('import builtins')
             if not self.import_module('builtins'):
                 self.fail(self.path, 1, 'Could not find builtins')
 
@@ -854,7 +856,7 @@ class ParsedFile(State):
             imp.append('builtins')
 
         if imp != []:
-            trace('{} dependencies: {}'.format(info.path, imp))
+            self.manager.trace('{} dependencies: {}'.format(info.path, imp))
 
         # Record the dependencies. Note that the dependencies list also
         # contains any superpackages and we must preserve them (e.g. os for
@@ -927,11 +929,6 @@ class TypeCheckedFile(SemanticallyAnalyzedFile):
 
     def state(self) -> int:
         return TYPE_CHECKED_STATE
-
-
-def trace(s):
-    if debug:
-        print(s)
 
 
 def read_module_source_from_file(id: str,
