@@ -268,7 +268,7 @@ def analyze_class_attribute_access(itype: Instance,
     t = node.type
     if t:
         if isinstance(t, PartialType):
-            return handle_partial_attribute_type(t, is_lvalue, msg, node)
+            return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
         return add_class_tvars(t, itype.type, is_classmethod, builtin_type)
     elif isinstance(node.node, Var):
