@@ -11,7 +11,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
-    Overloaded, FunctionLike, DeletedType,
+    Overloaded, FunctionLike, DeletedType, PartialType
 )
 from mypy.nodes import TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases
 
