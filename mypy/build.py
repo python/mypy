@@ -28,6 +28,7 @@ from mypy.nodes import SymbolTableNode, MODULE_REF
 from mypy.semanal import SemanticAnalyzer, FirstPass, ThirdPass
 from mypy.checker import TypeChecker
 from mypy.errors import Errors, CompileError
+from mypy import fixup
 from mypy import parse
 from mypy import stats
 from mypy.report import Reports
@@ -845,19 +846,46 @@ class ProbablyCachedFile(UnprocessedBase):
         self.meta = meta
 
     def load_dependencies(self):
-        for dep_id in self.meta.dependencies:
+        deps = self.meta.dependencies[:]
+        if self.id != 'builtins':
+            deps.append('builtins')  # Even cached modules need this.
+        for dep_id in deps:
             if self.import_module(dep_id):
                 self.dependencies.append(dep_id)
+            # TODO: else fail(...)
+
+    def is_ready(self):
+        # Special case for builtins.
+        if self.id != 'builtins':
+            state = self.manager.module_state('builtins')
+            if state not in (UNSEEN_STATE, TYPE_CHECKED_STATE):
+                return False
+        return super().is_ready()
 
     def process(self) -> None:
+        """Transition to either UnprocessedFile or CacheLoadedFile.
+
+        We've been waiting for results on the dependencies.  If all
+        dependencies have now transitioned to eith CacheLoadedFile
+        (meaning their own dependencies were found good, except for
+        cycles) or from there to TypeCheckedFile (note that we check
+        that meta is not None) then we can in turn (try to) transition
+        to CacheLoadedFile.  This could still fail due to a race
+        condition (if the data file's mtime).
+
+        If any dependency was not loaded from cache or loading the
+        data failed, we fall back to reading the source, by switching
+        to an UnprocessedFile.
+        """
         ok = True
         for dep_id in self.dependencies:
             state_obj = self.manager.lookup_state(dep_id)
             if (isinstance(state_obj, CacheLoadedFile) or
                     isinstance(state_obj, ProbablyCachedFile)):
                 continue
-            if isinstance(state_obj, TypeCheckedFile) and state_obj.meta is not None:
-                continue
+            if isinstance(state_obj, TypeCheckedFile):
+                if state_obj.meta is not None or dep_id == 'builtins':
+                    continue
             self.manager.log('Abandoning cached data for {} '
                              'because {} changed ({})'.format(self.id, state_obj.id,
                                                               state_obj.__class__.__name__))
@@ -897,13 +925,23 @@ class CacheLoadedFile(State):
         super().__init__(info)
         self.meta = meta
         self.dependencies.extend(meta.dependencies)
+        if self.id != 'builtins':
+            self.dependencies.append('builtins')  # Even cached modules need this.
         self.data = data
 
     def process(self) -> None:
+        """Transition directly to TypeCheckedFile.
+
+        This deserializes the tree and patches up cross-references.
+        """
         tree = MypyFile.deserialize(self.data)
 
         # Store the parsed module in the shared module symbol table.
         self.manager.semantic_analyzer.modules[self.id] = tree
+
+        # Fix up various things in the symbol tables.
+        print('Fixing up', self.id)
+        fixup.fixup_symbol_table(tree.names, self.semantic_analyzer().modules)
 
         file = TypeCheckedFile(self.info(), tree, self.meta)
         self.switch_state(file)

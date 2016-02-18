@@ -1608,6 +1608,9 @@ class TypeInfo(SymbolNode):
     # Is this a named tuple type?
     is_named_tuple = False
 
+    # Is this a dummy from deserialization?
+    is_dummy = False
+
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
         self.names = names
@@ -1783,7 +1786,7 @@ class TypeInfo(SymbolNode):
         ti = TypeInfo(names, cdef)
         ti._fullname = fullname
         if isinstance(data, str):
-            ti.mro = []
+            ti.is_dummy = True
         else:
             ti.mro = [TypeInfo.deserialize(t) for t in data['mro']]
             ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
@@ -1793,8 +1796,10 @@ class TypeInfo(SymbolNode):
             ti.fallback_to_any = data['fallback_to_any']
             ti.type_vars = data['type_vars']
             ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
-            ti._promote = None if data['_promote'] is None else mypy.types.Type.deserialize(data['_promote'])
-            ti.tuple_type = None if data['tuple_type'] is None else mypy.types.TupleType.deserialize(data['tuple_type'])
+            ti._promote = (None if data['_promote'] is None
+                           else mypy.types.Type.deserialize(data['_promote']))
+            ti.tuple_type = (None if data['tuple_type'] is None
+                             else mypy.types.TupleType.deserialize(data['tuple_type']))
             ti.is_named_tuple = data['is_named_tuple']
         return ti
 
