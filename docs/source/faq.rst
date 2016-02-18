@@ -86,14 +86,13 @@ existing Python VMs to take advantage of static type information, but
 whether this is feasible is still unknown. This is nontrivial since
 the runtime types do not necessarily correspond to the static types.
 
-All of my code is still in Python 2. What are my options?
-*********************************************************
+How do I type check my Python 2 code?
+*************************************
 
-Mypy currently supports Python 3 syntax. Python 2 support is still in
-early stages of development. However, Python 2 support will be
-improving. Mypy includes a custom codec that lets you use Python 3
-function annotations in Python 2 code. The codec just removes the
-annotations before bytecode compilation.
+You can use a `comment-based function annotation syntax
+<https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code>`_
+and use the ``--py2`` command-line option to type check your Python 2 code.
+You'll also need to install ``typing`` for Python 2 via ``pip install typing``.
 
 Is mypy free?
 *************

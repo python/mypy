@@ -43,22 +43,3 @@ benefit from more powerful type inference:
 
 We would infer the type of ``x`` to be int in the else block due to the
 check against ``None`` in the if condition.
-
-More general type inference
----------------------------
-
-It may be useful to support type inference also for variables defined
-in multiple locations in an if/else statement, even if the initializer
-types are different:
-
-.. code-block:: python
-
-   if x:
-       y = None     # First definition of y
-   else:
-       y = 'a'      # Second definition of y
-
-In the above example, both of the assignments would be used in type
-inference, and the type of ``y`` would be ``str``. However, it is not
-obvious whether this would be generally desirable in more complex
-cases.
