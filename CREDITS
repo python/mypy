@@ -5,33 +5,77 @@ Lead developer:
 
   Jukka Lehtosalo <jukka.lehtosalo@iki.fi>
 
-Contributors (in alphabetical order):
+Core team:
 
+  Guido <guido@dropbox.com>
+  David Fisher <ddfisher@dropbox.com>
+  Greg Price <gregprice@dropbox.com>
+
+Contributors (in alphabetical order, including typeshed):
+
+  Tim Abbott
   Steven Allen (@Stebalien)
+  Della Anjeh
   Reid Barton (@rwbarton)
+  Matthias Bussonnier
+  Anup Chenthamarakshan
+  Kyle Consalus
+  Ian Cordasco
+  ctcutler
+  Ben Darnell
   Miguel Garcia (@rockneurotiko)
+  Mihnea Giurgea
   Ryan Gonzalez (@kirbyfan64)
+  James Guthrie
+  Jared Hance
   Ashley Hewson (@ashleyh)
+  icoxfog417
   Bob Ippolito (@etrepum)
+  ismail-s
   Sander Kersten (@spkersten)
+  Matthias Kramm
   Ian Kronquist (@iankronquist)
+  Yuval Langer
+  Howard Lee
+  Tad Leonard
+  Li Haoyi
+  Darjus Loktevic
+  Ben Longbons
   Florian Ludwig (@FlorianLudwig)
-  Jared Pochtar (@jaredp)
-  Eric Price (@ecprice)
+  Robert T. McGibbon
   Ron Murawski <ron@horizonchess.com>
+  Motoki Naruse
+  Jared Pochtar (@jaredp)
+  Michal Pokorný
+  Eric Price (@ecprice)
   Brodie Rao
+  Sebastian Reuße
   Sebastian Riikonen
+  Seo Sanghyeon
   Marek Sapota
+  Gigi Sayfan
+  Vlad Shcherbina
   Anders Schuller
+  Daniel Shaulov
+  David Shea
+  Vita Smid
   Schuyler Smith
   Marcell Vazquez-Chanlatte (@mvcisback)
+  Prayag Verma
   Igor Vuk (@ivuk)
   Jeff Walden (@jswalden)
+  Michael Walter
+  Jing Wang
+  Wen Zhang
+  Roy Williams
+  wizzardx
+  Matthew Wright
   Yuanchao Zhu (@yczhu)
   Gennadiy Zlobin (@gennad)
 
 Additional thanks to:
 
+  Alex Allain
   Max Bolingbroke
   Peter Calvert
   Kannan Goundan
@@ -40,6 +84,7 @@ Additional thanks to:
   Riitta Ikonen
   Terho Ikonen
   Stephen Kell
+  Łukasz Langa
   Laura Lehtosalo
   Peter Ludemann
   Seppo Mattila
@@ -47,9 +92,10 @@ Additional thanks to:
   Alan Mycroft
   Dominic Orchard
   Pekka Rapinoja
-  Guido van Rossum
+  Matt Robben
   Satnam Singh
   Juha Sorva
   Clay Sweetser
   Jorma Tarhio
   Jussi Tuovila
+  Andrey Vlasovskikh
