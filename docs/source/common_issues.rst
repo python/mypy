@@ -39,47 +39,31 @@ The second line is now fine, since the ignore comment causes the name
 Types of empty collections
 --------------------------
 
-You need to specify the type when you assign an empty list or
+You often need to specify the type when you assign an empty list or
 dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
    a = []  # type: List[int]
 
-Without the annotation the type checker has no way of figuring out the
+Without the annotation mypy can't always figure out the
 precise type of ``a``.
 
 You can use a simple empty list literal in a dynamically typed function (as the
-type of ``a`` would be implicitly ``Any`` and need not be inferred), or if type
-of the variable has been declared or inferred before:
+type of ``a`` would be implicitly ``Any`` and need not be inferred), if type
+of the variable has been declared or inferred before, or if you perform a simple
+modification operation in the same scope (such as ``append`` for a list):
 
 .. code-block:: python
 
-   a = []  # Okay if type of a known
-
-Sometimes you can avoid the explicit list item type by using a list
-comprehension. Here a type annotation is needed:
-
-.. code-block:: python
-
-   l = []  # type: List[int]
+   a = []  # Okay because followed by append, inferred type List[int]
    for i in range(n):
-       l.append(i * i)
+       a.append(i * i)
 
-.. note::
-
-   A future mypy version may be able to deal with cases such as the
-   above without type annotations.
-
-No type annotation needed if using a list comprehension:
-
-.. code-block:: python
-
-   l = [i * i for i in range(n)]
-
-However, in more complex cases the explicit type annotation can
-improve the clarity of your code, whereas a complex list comprehension
-can make your code difficult to understand.
+However, in more complex cases an explicit type annotation can be
+required (mypy will tell you this). Often the annotation can
+make your code easier to understand, so it doesn't only help mypy but
+everybody who is reading the code!
 
 Redefinitions with incompatible types
 -------------------------------------
@@ -98,8 +82,8 @@ with the ``Any`` type.
 
 .. note::
 
-   This is another limitation that could be lifted in a future mypy
-   version.
+   This limitation could be lifted in a future mypy
+   release.
 
 Note that you can redefine a variable with a more *precise* or a more
 concrete type. For example, you can redefine a sequence (which does
@@ -137,19 +121,21 @@ above example:
    ...
    shape = Triangle()               # OK
 
-Complex isinstance tests
-------------------------
+Complex type tests
+------------------
 
-If you use ``isinstance()`` tests or other kinds of runtime type
-tests, you may have to add casts (this is similar to ``instanceof`` tests
-in Java):
+Mypy can usually infer the types correctly when using ``isinstance()``
+type tests, but for other kinds of checks you may need to add an
+explicit type cast:
 
 .. code-block:: python
 
-   def f(o: object, x: int) -> None:
-       if isinstance(o, int) and x > 1:
-           n = cast(int, o)
-           g(n + 1)    # o + 1 would be an error
+   def f(o: object) -> None:
+       if type(o) is int:
+           o = cast(int, o)
+           g(o + 1)    # This would be an error without the cast
+           ...
+       else:
            ...
 
 .. note::
@@ -161,25 +147,17 @@ in Java):
     runtime. The cast above would have been unnecessary if the type of
     ``o`` was ``Any``.
 
-Mypy can't infer the type of ``o`` after the ``isinstance()`` check
-because of the ``and`` operator (this limitation will likely be lifted
-in the future).  We can write the above code without a cast by using a
-nested if statement:
+Mypy can't infer the type of ``o`` after the ``type()`` check
+because it only knows about ``isinstance()`` (and the latter is better
+style anyway).  We can write the above code without a cast by using
+``isinstance()``:
 
 .. code-block:: python
 
-   def f(o: object, x: int) -> None:
-       if isinstance(o, int):  # Mypy understands a lone isinstance check
-           if x > 1:
-               g(o + 1)        # Okay; type of o is inferred as int here
+   def f(o: object) -> None:
+       if isinstance(o, int):  # Mypy understands isinstance checks
+           g(o + 1)        # Okay; type of o is inferred as int here
            ...
-
-Some consider casual use of ``isinstance()`` tests a sign of bad
-programming style. Often a method override or a ``hasattr`` check
-is a cleaner way of implementing functionality that depends on the
-runtime types of values. However, use whatever techniques that work
-for you. Sometimes ``isinstance`` tests *are* the cleanest way of
-implementing a piece of functionality.
 
 Type inference in mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error

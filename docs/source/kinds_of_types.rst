@@ -221,27 +221,39 @@ The type of None and optional types
 ***********************************
 
 Mypy treats the type of ``None`` as special. ``None`` is a valid value
-for every type, which resembles ``null`` in Java and null pointers in
-C/C++. Unlike Java, C and C++, mypy doesn't treat primitives types
+for every type, which resembles ``null`` in Java. Unlike Java, mypy
+doesn't treat primitives types
 specially: ``None`` is also valid for primitive types such as ``int``
 and ``float``.
 
 When initializing a variable as ``None``, ``None`` is usually an
-empty place-holder value, and the actual value is something else.
-This is why you need to annotate variable in cases like these:
+empty place-holder value, and the actual value has a different type.
+This is why you need to annotate an attribute in a case like this:
 
 .. code-block:: python
 
-    count = None  # type: int
-    ...
-    count = 2  # Okay
+    class A:
+        def __init__(self) -> None:
+            self.count = None  # type: int
 
-Mypy will complain if omit the type annotation, as it otherwise
-cannot infer a non-trivial type for ``count``. Remember that mypy
-uses the first assignment to a variable to infer the type of the
-variable.
+Mypy will complain if you omit the type annotation, as it wouldn't be
+able to infer a non-trivial type for the ``count`` attribute
+otherwise.
 
-However, often it's useful to know whether a variable can be
+Mypy generally uses the first assignment to a variable to
+infer the type of the variable. However, if you assign both a ``None``
+value and a non-``None`` value in the same scope, mypy can often do
+the right thing:
+
+.. code-block:: python
+
+   def f(i: int) -> None:
+       n = None  # Inferred type int because of the assignment below
+       if i > 0:
+            n = i
+       ...
+
+Often it's useful to know whether a variable can be
 ``None``. For example, this function accepts a ``None`` argument,
 but it's not obvious from its signature:
 
