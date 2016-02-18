@@ -1410,3 +1410,52 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
         f.write('\n')
     os.rename(data_json_tmp, data_json)
     os.rename(meta_json_tmp, meta_json)
+
+    # Now, as a test, read it back.
+    print()
+    print('Reading what we wrote for', file.id, 'from', data_json)
+    with open(data_json, 'r') as f:
+        new_data = json.load(f)
+    assert new_data == data
+    new_tree = MypyFile.deserialize(new_data)
+    new_names = new_tree.names
+    new_keys = sorted(new_names)
+
+    print('Fixing up', file.id)
+    fixup.fixup_symbol_table(new_names, file.semantic_analyzer().modules)
+
+    print('Comparing keys', file.id)
+    old_tree = file.tree
+    old_names = old_tree.names
+    old_keys = sorted(old_names)
+    if new_keys != old_keys:
+        for key in new_keys:
+            if key not in old_keys:
+                print('  New key', key, 'not found in old tree')
+        for key in old_keys:
+            if key not in new_keys:
+                v = old_names[key]
+                if key != '__builtins__' and v.module_public:
+                    print('  Old key', key, 'not found in new tree')
+
+    print('Comparing values', file.id)
+    modules = file.semantic_analyzer().modules
+    for key in old_keys:
+        if key not in new_keys:
+            continue
+        oldv = old_names[key]
+        newv = new_names[key]
+        if newv.mod_id != oldv.mod_id:
+            newv.mod_id = file.id  # XXX Hack
+        if newv.kind == MODULE_REF and newv.node is None:
+            fn = oldv.node.fullname()
+            if fn in modules:
+                newv.node = modules[fn]
+            else:
+                print('*** Cannot fix up reference to module', fn, 'for', key)
+        if str(oldv) != str(newv):
+            print(' ', key, 'old', oldv)
+            print(' ', ' ' * len(key), 'new', newv)
+            import pdb  # type: ignore
+            pdb.set_trace()
+            print()

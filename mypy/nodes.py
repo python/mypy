@@ -194,14 +194,20 @@ class MypyFile(SymbolNode):
 
     def serialize(self) -> JsonDict:
         return {'.class': 'MypyFile',
+                '_name': self._name,
+                '_fullname': self._fullname,
                 'names': self.names.serialize(),
+                'is_stub': self.is_stub,
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'MypyFile':
         assert data['.class'] == 'MypyFile', data
         tree = MypyFile([], [])
+        tree._name = data['_name']
+        tree._fullname = data['_fullname']
         tree.names = SymbolTable.deserialize(data['names'])
+        tree.is_stub = data['is_stub']
         return tree
 
 
@@ -300,6 +306,16 @@ class OverloadedFuncDef(FuncBase):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'OverloadedFuncDef',
+                'items': [i.serialize() for i in self.items],
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
+        assert data['.class'] == 'OverloadedFuncDef'
+        return OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+
 
 class Argument(Node):
     """A single argument in a FuncItem."""
@@ -342,12 +358,12 @@ class Argument(Node):
             self.initialization_statement.lvalues[0].set_line(self.line)
 
     def serialize(self) -> JsonDict:
-        res = {'.class': 'Argument'}  # type: JsonDict
-        res['variable'] = self.variable.serialize()
+        data = {'.class': 'Argument'}  # type: JsonDict
+        data['variable'] = self.variable.serialize()
         # TODO: type_annotation
         # TODO: initializer
-        res['kind'] = self.kind
-        return res
+        data['kind'] = self.kind
+        return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Argument':
@@ -434,6 +450,7 @@ class FuncDef(FuncItem):
         return {'.class': 'FuncDef',
                 'name': self._name,
                 'arguments': [a.serialize() for a in self.arguments],
+                'type': None if self.type is None else self.type.serialize(),
                 # TODO: type
                 }
 
@@ -443,7 +460,10 @@ class FuncDef(FuncItem):
         body = Block([])
         return FuncDef(data['name'],
                        [Argument.deserialize(a) for a in data['arguments']],
-                       body)
+                       body,
+                       (None if data['type'] is None
+                        else mypy.types.FunctionLike.deserialize(data['type'])),
+                       )
 
 
 class Decorator(SymbolNode):
@@ -472,6 +492,23 @@ class Decorator(SymbolNode):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_decorator(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'Decorator',
+                'func': self.func.serialize(),
+                # TODO: 'decorators'
+                'var': self.var.serialize(),
+                'is_overload': self.is_overload,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Decorator':
+        assert data['.class'] == 'Decorator'
+        dec = Decorator(FuncDef.deserialize(data['func']),
+                        [],  # TODO: decorators
+                        Var.deserialize(data['var']))
+        dec.is_overload = data['is_overload']
+        return dec
 
 
 class Var(SymbolNode):
@@ -511,14 +548,14 @@ class Var(SymbolNode):
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
-        res = {'.class': 'Var',
-               'name': self._name,
-               }  # type: JsonDict
+        data = {'.class': 'Var',
+                'name': self._name,
+                }  # type: JsonDict
         if self._fullname is not None:
-            res['fullname'] = self._fullname
+            data['fullname'] = self._fullname
         if self.type is not None:
-            res['type'] = self.type.serialize()
-        return res
+            data['type'] = self.type.serialize()
+        return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Var':
@@ -1748,28 +1785,28 @@ class TypeInfo(SymbolNode):
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
-    def serialize(self) -> Union[str, JsonDict]:
+    def serialize(self, full=False) -> Union[str, JsonDict]:
         fn = self.fullname()
         # TODO: When to return a name, when an object?
-        if fn:
+        if fn and not full:
             return fn
-        res = {'.class': 'TypeInfo',
-               'name': self.name(),
-               'fullname': self.fullname(),
-               'mro': [t.serialize() for t in self.mro],
-               'subtypes': [t.serialize() for t in self.subtypes],
-               'names': self.names.serialize(),
-               'is_abstract': self.is_abstract,
-               'abstract_attributes': self.abstract_attributes,
-               'is_enum': self.is_enum,
-               'fallback_to_any': self.fallback_to_any,
-               'type_vars': self.type_vars,
-               'bases': [b.serialize() for b in self.bases],
-               '_promote': None if self._promote is None else self._promote.serialize(),
-               'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
-               'is_named_tuple': self.is_named_tuple,
-               }
-        return res
+        data = {'.class': 'TypeInfo',
+                'name': self.name(),
+                'fullname': self.fullname(),
+                'mro': [t.serialize() for t in self.mro],
+                'subtypes': [t.serialize() for t in self.subtypes],
+                'names': self.names.serialize(),
+                'is_abstract': self.is_abstract,
+                'abstract_attributes': self.abstract_attributes,
+                'is_enum': self.is_enum,
+                'fallback_to_any': self.fallback_to_any,
+                'type_vars': self.type_vars,
+                'bases': [b.serialize() for b in self.bases],
+                '_promote': None if self._promote is None else self._promote.serialize(),
+                'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
+                'is_named_tuple': self.is_named_tuple,
+                }
+        return data
 
     @classmethod
     def deserialize(cls, data: Union[str, JsonDict]) -> 'TypeInfo':
@@ -1869,20 +1906,35 @@ class SymbolTableNode:
         return s
 
     def serialize(self) -> JsonDict:
-        res = {'.class': 'SymbolTableNode',
-               'kind': node_kinds[self.kind],
-               }  # type: JsonDict
+        data = {'.class': 'SymbolTableNode',
+                'kind': node_kinds[self.kind],
+                }  # type: JsonDict
         if self.kind == MODULE_REF:
-            res['module_ref'] = self.node.fullname()
+            data['module_ref'] = self.node.fullname()
+        elif self.kind == TYPE_ALIAS:
+            assert self.type_override is not None
+            assert self.node is not None
+            data['type'] = self.type_override.serialize()
+            data['node'] = self.node.serialize()
         else:
-            typ = self.type
-            if typ is not None:
-                if self.node is not None:
-                    res['node'] = Var(self.node.name(), self.type).serialize()
-                else:
-                    res['type'] = typ.serialize()
-            # TODO: else???
-        return res
+            if isinstance(self.node, TypeInfo):
+                data['node'] = self.node.serialize(True)
+                typ = self.type
+                if typ is not None:
+                    print('XXX Huh?', typ, 'for', self.node._fullname)
+            elif isinstance(self.node, FuncDef):
+                data['node'] = self.node.serialize()
+                typ = self.type
+                if typ is not None:
+                    data['type'] = typ.serialize()
+            elif isinstance(self.node, (Var, TypeVarExpr, OverloadedFuncDef, Decorator)):
+                data['node'] = self.node.serialize()
+            # else? XXX
+        if len(data) == 2 and self.kind != UNBOUND_IMPORTED:
+            print('An unsupported case!')
+            import pdb  # type: ignore
+            pdb.set_trace()
+        return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolTableNode':
@@ -1917,12 +1969,12 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return '\n'.join(a)
 
     def serialize(self) -> JsonDict:
-        res = {'.class': 'SymbolTable'}  # type: JsonDict
+        data = {'.class': 'SymbolTable'}  # type: JsonDict
         for key, value in self.items():
             if key == '__builtins__' or not value.module_public:
                 continue
-            res[key] = value.serialize()
-        return res
+            data[key] = value.serialize()
+        return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolTable':

@@ -71,6 +71,25 @@ class TypeVarDef(mypy.nodes.Context):
         else:
             return self.name
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeVarDef',
+                'name': self.name,
+                'id': self.id,
+                'values': [v.serialize() for v in self.values],
+                'upper_bound': self.upper_bound.serialize(),
+                'variance': self.variance,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarDef':
+        assert data['.class'] == 'TypeVarDef'
+        return TypeVarDef(data['name'],
+                          data['id'],
+                          [Type.deserialize(v) for v in data['values']],
+                          Type.deserialize(data['upper_bound']),
+                          data['variance'],
+                          )
+
 
 class UnboundType(Type):
     """Instance type that has not been bound during semantic analysis."""
@@ -212,12 +231,13 @@ class DeletedType(Type):
         return visitor.visit_deleted_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'DeletedType'}
+        return {'.class': 'DeletedType',
+                'source': self.source}
 
     @classmethod
     def deserialize(self, data: JsonDict) -> 'DeletedType':
         assert data['.class'] == 'DeletedType'
-        return DeletedType()
+        return DeletedType(data.get('source'))
 
 
 class Instance(Type):
@@ -241,13 +261,15 @@ class Instance(Type):
         return visitor.visit_instance(self)
 
     def serialize(self) -> JsonDict:
-        res = {'.class': 'Instance',
-               }  # type: JsonDict
+        data = {'.class': 'Instance',
+                }  # type: JsonDict
         if self.type is not None:
-            res['type'] = self.type.serialize()
+            data['type'] = self.type.serialize()
         if self.args:
-            res['args'] = [arg.serialize() for arg in self.args]
-        return res
+            data['args'] = [arg.serialize() for arg in self.args]
+        if self.erased:
+            data['erased'] = True
+        return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Instance':
@@ -260,7 +282,7 @@ class Instance(Type):
             args_list = data['args']
             assert isinstance(args_list, list)
             args = [Type.deserialize(arg) for arg in args_list]
-        return Instance(typ, args)
+        return Instance(typ, args, erased=data.get('erased', False))
 
 
 class TypeVarType(Type):
@@ -325,6 +347,10 @@ class FunctionLike(Type):
 
     # Corresponding instance type (e.g. builtins.type)
     fallback = None  # type: Instance
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'FunctionLike':
+        return cast(FunctionLike, super().deserialize(data))
 
 
 _dummy = object()  # type: Any
@@ -470,13 +496,17 @@ class CallableType(FunctionLike):
                 'ret_type': self.ret_type.serialize(),
                 'fallback': self.fallback.serialize(),
                 'name': self.name,
-                # TODO: definition, variables, bound_vars
+                'variables': (None if self.variables is None
+                              else [v.serialize() for v in self.variables]),
+                'bound_vars': (None if self.bound_vars is None
+                               else [[x, y.serialize()] for x, y in self.bound_vars]),
                 'is_ellipsis_args': self.is_ellipsis_args,
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'CallableType':
         assert data['.class'] == 'CallableType'
+        # TODO: Set definition to the containing SymbolNode?
         return CallableType([(None if t is None else Type.deserialize(t))
                              for t in data['arg_types']],
                             data['arg_kinds'],
@@ -484,7 +514,12 @@ class CallableType(FunctionLike):
                             Type.deserialize(data['ret_type']),
                             Instance.deserialize(data['fallback']),
                             name=data.get('name'),
-                            # TODO: definition, variables, bound_vars
+                            variables=(None if data.get('variables') is None
+                                       else [TypeVarDef.deserialize(v)
+                                             for v in data['variables']]),
+                            bound_vars=(None if data.get('bound_vars') is None
+                                        else [(x, Type.deserialize(y))
+                                              for x, y in data['bound_vars']]),
                             is_ellipsis_args=data['is_ellipsis_args'],
                             )
 

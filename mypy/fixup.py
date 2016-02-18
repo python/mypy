@@ -2,7 +2,8 @@
 
 from typing import Dict, cast
 
-from mypy.nodes import MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Var, LDEF, MDEF, GDEF, MODULE_REF
+from mypy.nodes import (MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Var,
+                        LDEF, MDEF, GDEF, MODULE_REF)
 from mypy.types import Instance, CallableType
 
 
@@ -15,7 +16,7 @@ def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode
         if part not in node.names:
             return None
         node = cast(MypyFile, node.names[part].node)
-        assert isinstance(node, MypyFile)
+        assert isinstance(node, MypyFile), node
     return node.names.get(parts[-1])
 
 
@@ -31,7 +32,7 @@ def fixup_var(node: Var, modules: Dict[str, MypyFile]) -> None:
         if isinstance(node.type.type, TypeInfo):
             if node.type.type.is_dummy:
                 stnode = lookup_qualified(node.type.type.fullname(), modules)
-                assert stnode is not None and stnode.kind == GDEF
+                assert stnode is not None and stnode.kind == GDEF, stnode
                 if isinstance(stnode.node, TypeInfo):
                     node.type.type = stnode.node
                     print('Fixed up type for', node, 'from', stnode.node.fullname())
