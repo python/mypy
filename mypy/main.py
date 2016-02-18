@@ -131,9 +131,13 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             options.dirty_stubs = True
             args = args[1:]
         elif args[0] == '-m' and args[1:]:
+            if args[2:]:
+                fail("No extra argument should appear after '-m mod'")
             options.build_flags.append(build.MODULE)
             return [BuildSource(None, args[1], None)], options
         elif args[0] == '--package' and args[1:]:
+            if args[2:]:
+                fail("No extra argument should appear after '--package dir'")
             options.build_flags.append(build.MODULE)
             lib_path = [os.getcwd()] + build.mypy_path()
             targets = build.find_modules_recursive(args[1], lib_path)
@@ -141,6 +145,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                 fail("Can't find package '{}'".format(args[1]))
             return targets, options
         elif args[0] == '-c' and args[1:]:
+            if args[2:]:
+                fail("No extra argument should appear after '-c string'")
             options.build_flags.append(build.PROGRAM_TEXT)
             return [BuildSource(None, None, args[1])], options
         elif args[0] in ('-h', '--help'):
@@ -163,7 +169,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         elif args[0] == '--use-python-path':
             options.python_path = True
             args = args[1:]
-        elif args[0] in ('--silent-imports', '--silent'):
+        elif args[0] in ('--silent-imports', '--silent', '-s'):
             options.build_flags.append(build.SILENT_IMPORTS)
             args = args[1:]
         elif args[0] == '--pdb':
@@ -292,7 +298,7 @@ Try 'mypy -h' for more information.
         sys.exit(2)
     else:
         sys.stdout.write("""\
-usage: mypy [option ...] [-c cmd | -m mod | file_or_dir ...]
+usage: mypy [option ...] [-c string | -m mod | file_or_dir ...]
 
 Options:
   -h, --help         print this help message and exit
@@ -300,9 +306,9 @@ Options:
   -v, --verbose      more verbose messages
   --py2              use Python 2 mode
   --python-version x.y  use Python x.y
-  --silent, --silent-imports  don't follow imports to .py files
-  -f, --dirty-stubs  don't warn if typeshed is out of sync
+  -s, --silent-imports  don't follow imports to .py files
   --implicit-any     behave as though all functions were annotated with Any
+  -f, --dirty-stubs  don't warn if typeshed is out of sync
   --pdb              invoke pdb on fatal error
   --use-python-path  search for modules in sys.path of running Python
   --stats            dump stats
