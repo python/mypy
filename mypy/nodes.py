@@ -1787,13 +1787,11 @@ class TypeInfo(SymbolNode):
 
     def serialize(self, full=False) -> Union[str, JsonDict]:
         fn = self.fullname()
-        # TODO: When to return a name, when an object?
         if fn and not full:
             return fn
         data = {'.class': 'TypeInfo',
                 'name': self.name(),
                 'fullname': self.fullname(),
-                'mro': [t.serialize() for t in self.mro],
                 'subtypes': [t.serialize() for t in self.subtypes],
                 'names': self.names.serialize(),
                 'is_abstract': self.is_abstract,
@@ -1825,7 +1823,6 @@ class TypeInfo(SymbolNode):
         if isinstance(data, str):
             ti.is_dummy = True
         else:
-            ti.mro = [TypeInfo.deserialize(t) for t in data['mro']]
             ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
             ti.is_abstract = data['is_abstract']
             ti.abstract_attributes = data['abstract_attributes']
@@ -1838,6 +1835,7 @@ class TypeInfo(SymbolNode):
             ti.tuple_type = (None if data['tuple_type'] is None
                              else mypy.types.TupleType.deserialize(data['tuple_type']))
             ti.is_named_tuple = data['is_named_tuple']
+            ti.calculate_mro()
         return ti
 
 
