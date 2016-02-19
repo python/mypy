@@ -441,8 +441,15 @@ class BuildManager:
                 self.trace('done')
                 break
 
+            # XXX
+            self.trace('STATES OF THE WORLD')
+            for s in self.states:
+                self.trace('  id=%-15s ready=%-5s deps=%d (%2d) %s' %
+                    (s.id, s.is_ready(), s.num_incomplete_deps(), s.state(), s.dependencies))
+            self.trace('')
+
             # Potentially output some debug information.
-            self.trace('next {}={} ({})'.format(next.id, next.path, next.state()))
+            self.trace('next {} ({})'.format(next.id, next.state()))
 
             # Set the import context for reporting error messages correctly.
             self.errors.set_import_context(next.import_context)
@@ -736,9 +743,8 @@ class State:
         for i in range(len(self.manager.states)):
             if self.manager.states[i].path == state_object.path:
                 self.manager.states[i] = state_object
-                self.manager.trace('switch {}={} ({})'.format(state_object.id,
-                                                              state_object.path,
-                                                              state_object.state()))
+                self.manager.trace('switch {} ({})'.format(state_object.id,
+                                                           state_object.state()))
                 return
         raise RuntimeError('State for {} not found'.format(state_object.path))
 
@@ -847,20 +853,12 @@ class ProbablyCachedFile(UnprocessedBase):
 
     def load_dependencies(self):
         deps = self.meta.dependencies[:]
-        if self.id != 'builtins':
+        if self.id != 'builtins' and 'builtins' not in deps:
             deps.append('builtins')  # Even cached modules need this.
         for dep_id in deps:
             if self.import_module(dep_id):
                 self.dependencies.append(dep_id)
             # TODO: else fail(...)
-
-    def is_ready(self):
-        # Special case for builtins.
-        if self.id != 'builtins':
-            state = self.manager.module_state('builtins')
-            if state not in (UNSEEN_STATE, TYPE_CHECKED_STATE):
-                return False
-        return super().is_ready()
 
     def process(self) -> None:
         """Transition to either UnprocessedFile or CacheLoadedFile.
@@ -927,23 +925,24 @@ class CacheLoadedFile(State):
         self.dependencies.extend(meta.dependencies)
         if self.id != 'builtins':
             self.dependencies.append('builtins')  # Even cached modules need this.
-        self.data = data
+
+        # Deserialize the tree now.
+        self.tree = MypyFile.deserialize(data)
+
+        # Store the parsed module in the shared module symbol table.
+        self.manager.semantic_analyzer.modules[self.id] = self.tree
 
     def process(self) -> None:
         """Transition directly to TypeCheckedFile.
 
-        This deserializes the tree and patches up cross-references.
+        This patches up cross-references.
         """
-        tree = MypyFile.deserialize(self.data)
-
-        # Store the parsed module in the shared module symbol table.
-        self.manager.semantic_analyzer.modules[self.id] = tree
-
         # Fix up various things in the symbol tables.
+        print()
         print('Fixing up', self.id)
-        fixup.fixup_symbol_table(tree.names, self.semantic_analyzer().modules)
+        fixup.fixup_symbol_table(self.tree.names, self.semantic_analyzer().modules)
 
-        file = TypeCheckedFile(self.info(), tree, self.meta)
+        file = TypeCheckedFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
 
     def state(self) -> int:
@@ -988,8 +987,7 @@ class UnprocessedFile(UnprocessedBase):
             p = '.'.join(c[:-1])
             sem_anal = self.manager.semantic_analyzer
             if p in sem_anal.modules:
-                sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
-                    MODULE_REF, tree, p)
+                sem_anal.modules[p].names[c[-1]] = SymbolTableNode(MODULE_REF, tree, p)
 
         if self.id != 'builtins':
             # The builtins module is imported implicitly in every program (it
@@ -1076,7 +1074,7 @@ class ParsedFile(State):
                 imp.append('builtins')
 
         if imp != []:
-            self.manager.trace('{}={} dependencies: {}'.format(info.id, info.path, imp))
+            self.manager.trace('{} dependencies: {}'.format(info.id, imp))
 
         # Record the dependencies. Note that the dependencies list also
         # contains any superpackages and we must preserve them (e.g. os for
@@ -1369,8 +1367,6 @@ def random_string():
 
 
 def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
-    if file.tree.is_stub:
-        return
     id = file.id
     if id == '__main__':
         return
@@ -1401,15 +1397,15 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
             'mtime': mtime,
             'size': size,
             'data_mtime': data_mtime,
-            'dependencies': [d
-                             for d in file.dependencies
-                             if not cast(TypeCheckedFile, manager.lookup_state(d)).tree.is_stub],
+            'dependencies': file.dependencies,
             }
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
     os.rename(data_json_tmp, data_json)
     os.rename(meta_json_tmp, meta_json)
+
+    return
 
     # Now, as a test, read it back.
     print()

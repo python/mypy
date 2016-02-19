@@ -1864,8 +1864,10 @@ class SymbolTableNode:
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
+    # For deserialized MODULE_REF nodes, the referenced module name
+    module_ref = None  # type: str
 
-    def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,
+    def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None, tvar_id: int = 0,
                  module_public: bool = True) -> None:
         self.kind = kind
@@ -1931,7 +1933,7 @@ class SymbolTableNode:
                 data['node'] = self.node.serialize()
             # else? XXX
         if len(data) == 2 and self.kind != UNBOUND_IMPORTED:
-            print('An unsupported case!')
+            print('An unsupported SymbolTableNode!')
             import pdb  # type: ignore
             pdb.set_trace()
         return data
@@ -1940,7 +1942,11 @@ class SymbolTableNode:
     def deserialize(cls, data: JsonDict) -> 'SymbolTableNode':
         assert data['.class'] == 'SymbolTableNode'
         kind = inverse_node_kinds[data['kind']]
-        # NOTE: MODULE_REF needs to be fixed up in a later pass.
+        if kind == MODULE_REF:
+            # This needs to be fixed up in a later pass.
+            stnode = SymbolTableNode(kind, None)
+            stnode.module_ref = data['module_ref']
+            return stnode
         typ = None
         node = None
         if 'type' in data:
