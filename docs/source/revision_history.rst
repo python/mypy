@@ -3,8 +3,19 @@ Revision history
 
 List of major changes to this document:
 
+- Feb 2016
+    Publish ``mypy-lang`` version 0.3.0 on PyPI.
+
+    Document Python 2 support.
+
+- Nov 2015
+    Add :ref:`library-stubs`.
+
+- Jun 2015
+    Remove ``Undefined`` and ``Dynamic``, as they are not in PEP 484.
+
 - Apr 2015
-    Publish mypy version 0.2.0 on PyPI.
+    Publish ``mypy-lang`` version 0.2.0 on PyPI.
 
 - Mar 2015
     Update documentation to reflect PEP 484:
@@ -37,9 +48,6 @@ List of major changes to this document:
 
 - Dec 2014
     Publish mypy version 0.1.0 on PyPI.
-
-- Nov 2014
-    Add :ref:`library-stubs`.
 
 - Oct 2014
     Major restructuring.

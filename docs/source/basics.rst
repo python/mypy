@@ -10,10 +10,10 @@ Function signatures
 
 A function without a type signature is dynamically typed. You can
 declare the signature of a function using the Python 3 annotation
-syntax. This makes the function statically typed (the type checker
-reports type errors within the function). A function without a
-type annotation is dynamically typed, and identical to ordinary
-Python:
+syntax (Python 2 is discussed later in :ref:`python2`.) This makes the
+function statically typed (the type checker reports type errors within
+the function). A function without a type annotation is dynamically
+typed, and identical to ordinary Python:
 
 .. code-block:: python
 
