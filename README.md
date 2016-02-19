@@ -66,7 +66,7 @@ Mypy can be installed using pip:
 Currently, the version of mypy on PYPI is not compatible with Python 3.5.
 If you run Python 3.5 install directly form git:
 
-    $ pip3 install git+git://github.com/JukkaL/mypy.git
+    $ pip3 install git+git://github.com/python/mypy.git
 
 
 Now, if Python on your system is configured properly (else see
@@ -118,7 +118,7 @@ Quick start for contributing to mypy
 
 If you want to contribute, first clone the mypy git repository:
 
-    $ git clone --recurse-submodules https://github.com/JukkaL/mypy.git
+    $ git clone --recurse-submodules https://github.com/python/mypy.git
 
 Run the supplied `setup.py` script to install mypy:
 
@@ -228,7 +228,7 @@ Issue tracker
 Please report any bugs and enhancement ideas using the mypy issue
 tracker:
 
-  https://github.com/JukkaL/mypy/issues
+  https://github.com/python/mypy/issues
 
 Feel free to also ask questions on the tracker.
 
