@@ -4,7 +4,7 @@ Revision history
 List of major changes to this document:
 
 - Feb 2016
-    Publish ``mypy-lang`` version 0.3.0 on PyPI.
+    Publish ``mypy-lang`` version 0.3.1 on PyPI.
 
     Document Python 2 support.
 
