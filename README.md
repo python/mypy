@@ -1,7 +1,7 @@
 Mypy: Optional Static Typing for Python
 =======================================
 
-[![Build Status](https://travis-ci.org/JukkaL/mypy.svg)](https://travis-ci.org/JukkaL/mypy)
+[![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
 
 
 What is mypy?
@@ -67,7 +67,7 @@ Currently, the version of mypy on PYPI is not compatible with Python 3.5.
 If you run Python 3.5 install directly form git:
 
     $ pip3 install git+git://github.com/JukkaL/mypy.git
- 
+
 
 Now, if Python on your system is configured properly (else see
 "Troubleshooting" below), you can type-check a program like this:
