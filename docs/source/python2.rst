@@ -59,6 +59,11 @@ Here are more specifics:
   <http://github.com/python/typeshed>`_ for Python 2. Library support
   may vary between Python 2 and Python 3.
 
+- In Python 2 mode ``str`` is implicitly promoted to ``unicode``, similar
+  to how ``int`` is compatible with ``float``. This is unlike ``bytes`` and
+  ``str`` in Python 3, which are incompatible. ``bytes`` in Python 2 is
+  equivalent to ``str``.
+
 .. note::
 
     Currently there's no support for splitting an annotation to multiple

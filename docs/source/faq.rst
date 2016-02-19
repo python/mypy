@@ -68,11 +68,12 @@ may be useful:
 Can I use mypy to type check my existing Python code?
 *****************************************************
 
-It depends. Compatibility is pretty good, but several Python features
-are not yet implemented. The ultimate goal is to make using mypy
-practical for most Python code. Code that uses complex introspection
-or metaprogramming may be impractical to type check, but it should
-still be possible to use static typing in other parts of a program.
+It depends. Compatibility is pretty good, but some Python features are
+not yet implemented or fully supported. The ultimate goal is to make
+using mypy practical for most Python code. Code that uses complex
+introspection or metaprogramming may be impractical to type check, but
+it should still be possible to use static typing in other parts of a
+program.
 
 Will static typing make my programs run faster?
 ***********************************************
@@ -236,7 +237,7 @@ typed subsets of Python. Mypy does the following important things
 differently:
 
 - RPython is primarily designed for implementing virtual machines;
-  mypy is a general-purpose language.
+  mypy is a general-purpose tool.
 
 - Mypy supports both static and dynamic typing. Dynamically typed and
   statically typed code can be freely mixed and can interact
