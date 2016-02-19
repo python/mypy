@@ -70,6 +70,10 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
+package_dir = {'mypy': 'mypy'}
+if sys.version_info < (3, 5, 0):
+    package_dir[''] = 'lib-typing/3.2'
+
 setup(name='mypy-lang',
       version=version,
       description=description,
@@ -79,7 +83,7 @@ setup(name='mypy-lang',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       platforms=['POSIX'],
-      package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
+      package_dir=package_dir,
       py_modules=['typing'] if sys.version_info < (3, 5, 0) else [],
       packages=['mypy'],
       scripts=['scripts/mypy', 'scripts/stubgen'],
