@@ -391,6 +391,11 @@ class MessageBuilder:
         self.fail('{} not callable'.format(self.format(typ)), context)
         return AnyType()
 
+    def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
+        name = callee.name if callee.name is not None else '(unknown)'
+        self.fail('call to untyped function {} in typed context'.format(name), context)
+        return AnyType()
+
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
                               context: Context) -> None:
         """Report an error about an incompatible argument type.

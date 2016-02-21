@@ -274,6 +274,8 @@ class CallableType(FunctionLike):
 
     # Is this Callable[..., t] (with literal '...')?
     is_ellipsis_args = False
+    # Was this type implicitly generated instead of explicitly specified by the user?
+    implicit = False
 
     def __init__(self, arg_types: List[Type],
                  arg_kinds: List[int],
@@ -285,7 +287,8 @@ class CallableType(FunctionLike):
                  variables: List[TypeVarDef] = None,
                  bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1,
-                 is_ellipsis_args: bool = False) -> None:
+                 is_ellipsis_args: bool = False,
+                 implicit=False) -> None:
         if variables is None:
             variables = []
         if not bound_vars:
@@ -303,6 +306,7 @@ class CallableType(FunctionLike):
         self.variables = variables
         self.bound_vars = bound_vars
         self.is_ellipsis_args = is_ellipsis_args
+        self.implicit = implicit
         super().__init__(line)
 
     def copy_modified(self,
