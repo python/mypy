@@ -260,11 +260,13 @@ class Instance(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
+    type_ref = None  # type: str
+
     def serialize(self) -> JsonDict:
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         if self.type is not None:
-            data['type'] = self.type.serialize()
+            data['type_ref'] = self.type.fullname()
         if self.args:
             data['args'] = [arg.serialize() for arg in self.args]
         if self.erased:
@@ -274,15 +276,16 @@ class Instance(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Instance':
         assert data['.class'] == 'Instance'
-        typ = None
-        if 'type' in data:
-            typ = mypy.nodes.TypeInfo.deserialize(data['type'])
         args = []  # type: List[Type]
         if 'args' in data:
             args_list = data['args']
             assert isinstance(args_list, list)
             args = [Type.deserialize(arg) for arg in args_list]
-        return Instance(typ, args, erased=data.get('erased', False))
+        inst = Instance(None, args, erased=data.get('erased', False))
+        if 'type_ref' in data:
+            inst.type_ref = data['type_ref']
+            # Will be fixed up by fixup.py later.
+        return inst
 
 
 class TypeVarType(Type):

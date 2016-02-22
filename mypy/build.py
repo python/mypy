@@ -941,6 +941,9 @@ class CacheLoadedFile(State):
         print()
         print('Fixing up', self.id)
         fixup.fixup_symbol_table(self.tree.names, self.semantic_analyzer().modules)
+        # TODO: For import cycles, if not everything was fixed up,
+        # stay in this state and try again later (or move to one extra
+        # state, if two passes are always enough).
 
         file = TypeCheckedFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
@@ -1309,8 +1312,7 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
 
 
 # Experimental incremental loading
-# TODO: Flags
-# TODO: files on command line (but not __main__)
+# TODO: Flags (e.g. py2, implicit-any)
 
 MYPY_CACHE = '.mypy_cache'
 

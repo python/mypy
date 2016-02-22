@@ -451,7 +451,6 @@ class FuncDef(FuncItem):
                 'name': self._name,
                 'arguments': [a.serialize() for a in self.arguments],
                 'type': None if self.type is None else self.type.serialize(),
-                # TODO: type
                 }
 
     @classmethod
@@ -1785,10 +1784,7 @@ class TypeInfo(SymbolNode):
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
-    def serialize(self, full=False) -> Union[str, JsonDict]:
-        fn = self.fullname()
-        if fn and not full:
-            return fn
+    def serialize(self) -> Union[str, JsonDict]:
         data = {'.class': 'TypeInfo',
                 'name': self.name(),
                 'fullname': self.fullname(),
@@ -1807,35 +1803,26 @@ class TypeInfo(SymbolNode):
         return data
 
     @classmethod
-    def deserialize(cls, data: Union[str, JsonDict]) -> 'TypeInfo':
-        if isinstance(data, str):
-            fullname = data
-            name = fullname.rsplit('.', 1)[-1]
-            names = SymbolTable()
-        else:
-            fullname = data['fullname']
-            name = data['name']
-            names = SymbolTable.deserialize(data['names'])
+    def deserialize(cls, data: JsonDict) -> 'TypeInfo':
+        fullname = data['fullname']
+        name = data['name']
+        names = SymbolTable.deserialize(data['names'])
         cdef = ClassDef(name, Block([]))
         cdef.fullname = fullname
         ti = TypeInfo(names, cdef)
         ti._fullname = fullname
-        if isinstance(data, str):
-            ti.is_dummy = True
-        else:
-            ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
-            ti.is_abstract = data['is_abstract']
-            ti.abstract_attributes = data['abstract_attributes']
-            ti.is_enum = data['is_enum']
-            ti.fallback_to_any = data['fallback_to_any']
-            ti.type_vars = data['type_vars']
-            ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
-            ti._promote = (None if data['_promote'] is None
-                           else mypy.types.Type.deserialize(data['_promote']))
-            ti.tuple_type = (None if data['tuple_type'] is None
-                             else mypy.types.TupleType.deserialize(data['tuple_type']))
-            ti.is_named_tuple = data['is_named_tuple']
-            ti.calculate_mro()
+        ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
+        ti.is_abstract = data['is_abstract']
+        ti.abstract_attributes = data['abstract_attributes']
+        ti.is_enum = data['is_enum']
+        ti.fallback_to_any = data['fallback_to_any']
+        ti.type_vars = data['type_vars']
+        ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
+        ti._promote = (None if data['_promote'] is None
+                       else mypy.types.Type.deserialize(data['_promote']))
+        ti.tuple_type = (None if data['tuple_type'] is None
+                         else mypy.types.TupleType.deserialize(data['tuple_type']))
+        ti.is_named_tuple = data['is_named_tuple']
         return ti
 
 
@@ -1918,7 +1905,7 @@ class SymbolTableNode:
             data['node'] = self.node.serialize()
         else:
             if isinstance(self.node, TypeInfo):
-                data['node'] = self.node.serialize(True)
+                data['node'] = self.node.serialize()
                 typ = self.type
                 if typ is not None:
                     print('XXX Huh?', typ, 'for', self.node._fullname)
