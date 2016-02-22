@@ -453,7 +453,7 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type.fullname() == 'builtins.type'
+        return self.fallback.type is not None and self.fallback.type.fullname() == 'builtins.type'
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()

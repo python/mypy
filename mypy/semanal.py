@@ -1810,8 +1810,7 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(base, RefExpr) and cast(RefExpr,
                                               base).kind == MODULE_REF:
             file = cast(MypyFile, cast(RefExpr, base).node)
-            names = file.names
-            n = names.get(expr.name, None)
+            n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
@@ -1827,7 +1826,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # one type checker run. If we reported errors here,
                 # the build would terminate after semantic analysis
                 # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname(), expr.name)
+                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
                 if full_name in obsolete_name_mapping:
                     self.fail("Module has no attribute %r (it's now called %r)" % (
                         expr.name, obsolete_name_mapping[full_name]), expr)

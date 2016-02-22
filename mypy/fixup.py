@@ -59,9 +59,9 @@ class NodeFixer(NodeVisitor[None]):
                 info._promote.accept(self.type_fixer)
             if info.tuple_type is not None:
                 info.tuple_type.accept(self.type_fixer)
-            # print('Calculating mro for', info.fullname())
             info.calculate_mro()
-            # print('MRO for', info.fullname(), info.mro)
+            if info.mro is None:
+                print('*** No MRO calculated for', info.fullname())
         finally:
             self.current_info = save_info
 
@@ -104,6 +104,9 @@ class TypeFixer(TypeVisitor[None]):
     def visit_callable_type(self, ct: CallableType) -> None:
         if ct.arg_types:
             for argt in ct.arg_types:
+                if argt is None:
+                    import pdb  # type: ignore
+                    pdb.set_trace()
                 argt.accept(self)
         if ct.ret_type is not None:
             ct.ret_type.accept(self)

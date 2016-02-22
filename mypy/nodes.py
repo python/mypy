@@ -309,12 +309,16 @@ class OverloadedFuncDef(FuncBase):
     def serialize(self) -> JsonDict:
         return {'.class': 'OverloadedFuncDef',
                 'items': [i.serialize() for i in self.items],
+                'type': None if self.type is None else self.type.serialize(),
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
         assert data['.class'] == 'OverloadedFuncDef'
-        return OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+        res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+        if data.get('type') is not None:
+            res.type = mypy.types.Type.deserialize(data['type'])
+        return res
 
 
 class Argument(Node):
@@ -1739,16 +1743,19 @@ class TypeInfo(SymbolNode):
 
         Raise MroError if cannot determine mro.
         """
-        self.mro = linearize_hierarchy(self)
+        mro = linearize_hierarchy(self)
+        if mro is None: return  # TODO: Or raise MroError()?
+        self.mro = mro
 
     def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.
 
         This can be either via extension or via implementation.
         """
-        for cls in self.mro:
-            if cls.fullname() == fullname:
-                return True
+        if self.mro:
+            for cls in self.mro:
+                if cls.fullname() == fullname:
+                    return True
         return False
 
     def all_subtypes(self) -> 'Set[TypeInfo]':
@@ -2030,14 +2037,21 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+def linearize_hierarchy(info: TypeInfo) -> Optional[List[TypeInfo]]:
     # TODO describe
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
-    if None in bases: print('SORRY!', repr(info), info.bases, bases); return [info]
-    return [info] + merge([linearize_hierarchy(base) for base in bases] +
-                          [bases])
+    lin_bases = []
+    for base in bases:
+        if base is None:
+            return None
+        more_bases = linearize_hierarchy(base)
+        if more_bases is None:
+            return None
+        lin_bases.append(more_bases)
+    lin_bases.append(bases)
+    return [info] + merge(lin_bases)
 
 
 def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
