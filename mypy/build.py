@@ -620,11 +620,11 @@ class BuildManager:
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
-            print('LOG:', message, file=sys.stderr)
+            print('LOG:', message, file=sys.stderr, flush=True)
 
     def trace(self, message: str) -> None:
         if self.flags.count(VERBOSE) >= 2:
-            print('TRACE:', message, file=sys.stderr)
+            print('TRACE:', message, file=sys.stderr, flush=True)
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -939,7 +939,7 @@ class CacheLoadedFile(State):
         """
         # Fix up various things in the symbol tables.
         print()
-        print('Fixing up', self.id)
+        print('FIXING MODULE', self.id)
         fixup.fixup_symbol_table(self.tree.names, self.semantic_analyzer().modules)
         # TODO: For import cycles, if not everything was fixed up,
         # stay in this state and try again later (or move to one extra

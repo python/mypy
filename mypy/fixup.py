@@ -16,21 +16,15 @@ from mypy.visitor import NodeVisitor
 
 
 def fixup_symbol_table(symtab: SymbolTable, modules: Dict[str, MypyFile],
-                       info: TypeInfo = None, visitor: 'NodeFixer' = None) -> None:
-    if visitor is None:
-        visitor = NodeFixer(modules)
+                       info: TypeInfo = None) -> None:
+    node_fixer = NodeFixer(modules, info)
     for key, value in symtab.items():
         if value.kind in (LDEF, MDEF, GDEF):
             if isinstance(value.node, TypeInfo):
-                print('Descending', value.node.fullname())
-                if value.node.names is not None:
-                    fixup_symbol_table(value.node.names, modules, value.node, visitor)
-                if value.node._promote is not None:
-                    value.node._promote.accept(visitor.type_fixer)
-                print("Calculating mro for", value.node.fullname())
-                value.node.calculate_mro()
+                # TypeInfo has no accept().  TODO: Add it?
+                node_fixer.visit_type_info(value.node)
             elif value.node is not None:
-                value.node.accept(visitor)
+                value.node.accept(node_fixer)
         elif value.kind == MODULE_REF:
             if value.module_ref not in modules:
                 print('*** Cannot find module', value.module_ref, 'needed for patch-up')
@@ -41,23 +35,55 @@ def fixup_symbol_table(symtab: SymbolTable, modules: Dict[str, MypyFile],
 
 
 class NodeFixer(NodeVisitor[None]):
-    def __init__(self, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], info: TypeInfo = None) -> None:
         self.modules = modules
         self.type_fixer = TypeFixer(self.modules)
+        self.current_info = info
+
+    # NOTE: This method isn't (yet) part of the NodeVisitor API.
+    def visit_type_info(self, info: TypeInfo) -> None:
+        save_info = self.current_info
+        try:
+            self.current_info = info
+            print('Descending', info.fullname())
+            if info.names is not None:
+                fixup_symbol_table(info.names, self.modules, info)
+            print('Fixing up', info.fullname())
+            if info.subtypes is not None:
+                for st in info.subtypes:
+                    self.visit_type_info(st)
+            if info.bases is not None:
+                for base in info.bases:
+                    base.accept(self.type_fixer)
+            if info._promote is not None:
+                info._promote.accept(self.type_fixer)
+            if info.tuple_type is not None:
+                info.tuple_type.accept(self.type_fixer)
+            print("Calculating mro for", info.fullname())
+            info.calculate_mro()
+            print("MRO for", info.fullname(), info.mro)
+        finally:
+            self.current_info = save_info
 
     def visit_func_def(self, func: FuncDef) -> None:
+        if self.current_info is not None:
+            print('  Setting', repr(func), 'info to', repr(self.current_info))
+            func.info = self.current_info
+        else:
+            print('  No info for', func)
         if func.type is not None:
             func.type.accept(self.type_fixer)
         for arg in func.arguments:
             if arg.type_annotation is not None:
                 arg.type_annotation.accept(self.type_fixer)
-        # TODO: Also fix up func.info here?
 
-    def visit_overloaded_func_def(self, over: OverloadedFuncDef) -> None:
-        # TODO: Fix up func.info here?
-        pass
+    def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
+        if self.current_info is not None:
+            func.info = self.current_info
 
     def visit_var(self, v: Var) -> None:
+        if self.current_info is not None:
+            v.info = self.current_info
         if v.type is not None:
             v.type.accept(self.type_fixer)
 
@@ -70,6 +96,7 @@ class TypeFixer(TypeVisitor[None]):
         # TODO: Combine Instances that are exactly the same?
         type_ref = inst.type_ref
         if type_ref is not None:
+            print("Fixing instance", type_ref)
             del inst.type_ref
             stnode =lookup_qualified(type_ref, self.modules)
             if stnode is not None and isinstance(stnode.node, TypeInfo):

@@ -952,7 +952,7 @@ class TypeStrVisitor(TypeVisitor[str]):
             return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t):
-        s = t.type.fullname()
+        s = t.type.fullname() if t.type is not None else '<?>'
         if t.erased:
             s += '*'
         if t.args != []:
@@ -1011,7 +1011,7 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_tuple_type(self, t):
         s = self.list_str(t.items)
-        if t.fallback:
+        if t.fallback and t.fallback.type:
             fallback_name = t.fallback.type.fullname()
             if fallback_name != 'builtins.tuple':
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
