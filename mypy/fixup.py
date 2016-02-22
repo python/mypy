@@ -11,7 +11,7 @@ from typing import Any, Dict, cast
 from mypy.nodes import (MypyFile, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Var,
                         LDEF, MDEF, GDEF, MODULE_REF)
-from mypy.types import Instance, CallableType, TypeVisitor
+from mypy.types import Instance, CallableType, TupleType, TypeVarType, UnionType, TypeVisitor
 from mypy.visitor import NodeVisitor
 
 
@@ -45,10 +45,10 @@ class NodeFixer(NodeVisitor[None]):
         save_info = self.current_info
         try:
             self.current_info = info
-            print('Descending', info.fullname())
+            # print('Descending into', info.fullname())
             if info.names is not None:
                 fixup_symbol_table(info.names, self.modules, info)
-            print('Fixing up', info.fullname())
+            # print('Fixing up', info.fullname())
             if info.subtypes is not None:
                 for st in info.subtypes:
                     self.visit_type_info(st)
@@ -59,18 +59,15 @@ class NodeFixer(NodeVisitor[None]):
                 info._promote.accept(self.type_fixer)
             if info.tuple_type is not None:
                 info.tuple_type.accept(self.type_fixer)
-            print("Calculating mro for", info.fullname())
+            # print('Calculating mro for', info.fullname())
             info.calculate_mro()
-            print("MRO for", info.fullname(), info.mro)
+            # print('MRO for', info.fullname(), info.mro)
         finally:
             self.current_info = save_info
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:
-            print('  Setting', repr(func), 'info to', repr(self.current_info))
             func.info = self.current_info
-        else:
-            print('  No info for', func)
         if func.type is not None:
             func.type.accept(self.type_fixer)
         for arg in func.arguments:
@@ -96,43 +93,55 @@ class TypeFixer(TypeVisitor[None]):
         # TODO: Combine Instances that are exactly the same?
         type_ref = inst.type_ref
         if type_ref is not None:
-            print("Fixing instance", type_ref)
             del inst.type_ref
             stnode =lookup_qualified(type_ref, self.modules)
             if stnode is not None and isinstance(stnode.node, TypeInfo):
                 inst.type = stnode.node
 
-    # TODO: Why are these abstract?
-
     def visit_any(self, o: Any) -> None:
-        pass
+        pass  # Nothing to descend into.
 
-    def visit_callable_type(self, o: Any) -> None:
-        pass
+    def visit_callable_type(self, ct: CallableType) -> None:
+        if ct.arg_types:
+            for argt in ct.arg_types:
+                argt.accept(self)
+        if ct.ret_type is not None:
+            ct.ret_type.accept(self)
+        # TODO: What to do with ct.variables?
 
     def visit_deleted_type(self, o: Any) -> None:
-        pass
+        pass  # Nothing to descend into.
 
     def visit_none_type(self, o: Any) -> None:
-        pass
+        pass  # Nothing to descend into.
 
     def visit_partial_type(self, o: Any) -> None:
-        pass
+        raise RuntimeError("Shouldn't get here", o)
 
-    def visit_tuple_type(self, o: Any) -> None:
-        pass
+    def visit_tuple_type(self, tt: TupleType) -> None:
+        if tt.items:
+            for it in tt.items:
+                it.accept(self)
+        if tt.fallback is not None:
+            tt.fallback.accept(self)
 
-    def visit_type_var(self, o: Any) -> None:
-        pass
+    def visit_type_var(self, tvt: TypeVarType) -> None:
+        if tvt.values:
+            for vt in tvt.values:
+                vt.accept(self)
+        if tvt.upper_bound is not None:
+            tvt.upper_bound.accept(self)
 
     def visit_unbound_type(self, o: Any) -> None:
-        pass
+        raise RuntimeError("Shouldn't get here", o)
 
-    def visit_union_type(self, o: Any) -> None:
-        pass
+    def visit_union_type(self, ut: UnionType) -> None:
+        if ut.items:
+            for it in ut.items:
+                it.accept(self)
 
     def visit_void(self, o: Any) -> None:
-        pass
+        pass  # Nothing to descend into.
 
 
 def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode:

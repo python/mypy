@@ -2032,7 +2032,6 @@ class MroError(Exception):
 
 def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
     # TODO describe
-    print('Linearize', repr(info))
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
