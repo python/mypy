@@ -51,7 +51,8 @@ TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
 SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
-STRICT_MODE = 'strict-mode'      # Disallow calling untyped functions from typed ones
+# Disallow calling untyped functions from typed ones
+DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 
 # State ids. These describe the states a source file / module can be in a
 # build.
@@ -365,7 +366,7 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors,
                                         modules,
                                         self.pyversion,
-                                        STRICT_MODE in self.flags)
+                                        DISALLOW_UNTYPED_CALLS in self.flags)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]

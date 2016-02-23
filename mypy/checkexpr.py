@@ -139,7 +139,7 @@ class ExpressionChecker:
         # even if the type is known (in a dynamically typed function). This
         # way we get a more precise callee in dynamically typed functions.
         callee_type = self.chk.type_map[e.callee]
-        if (self.chk.strict and
+        if (self.chk.disallow_untyped_calls and
                 self.chk.typing_mode_full() and
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
