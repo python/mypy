@@ -68,6 +68,8 @@ UNSEEN_STATE = 0
 PROBABLY_CACHED_STATE = 1
 # We've loaded the module from cache.
 CACHE_LOADED_STATE = 2
+# We've patched up cross-references.
+CACHE_PATCHED_STATE = 3
 # The source file has a state object, but we haven't done anything with it yet.
 UNPROCESSED_STATE = 11
 # We've parsed the source file.
@@ -933,23 +935,44 @@ class CacheLoadedFile(State):
         self.manager.semantic_analyzer.modules[self.id] = self.tree
 
     def process(self) -> None:
-        """Transition directly to TypeCheckedFile.
+        """Transition to the next stage (CachePatchedFile).f
 
         This patches up cross-references.
         """
         # Fix up various things in the symbol tables.
-        print()
-        print('FIXING MODULE', self.id)
-        fixup.fixup_symbol_table(self.tree.names, self.semantic_analyzer().modules)
-        # TODO: For import cycles, if not everything was fixed up,
-        # stay in this state and try again later (or move to one extra
-        # state, if two passes are always enough).
-
-        file = TypeCheckedFile(self.info(), self.tree, self.meta)
+        print()  # TODO : Reduce debug prints
+        print('FIXING MODULE PASS ONE', self.id)
+        fixup.fixup_module_pass_one(self.tree, self.semantic_analyzer().modules)
+        file = CachePatchedFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
 
     def state(self) -> int:
         return CACHE_LOADED_STATE
+
+
+class CachePatchedFile(State):
+    def __init__(self, info: StateInfo, tree: MypyFile, meta: CacheMeta) -> None:
+        super().__init__(info)
+        self.tree = tree
+        self.meta = meta
+        self.dependencies.extend(meta.dependencies)
+        if self.id != 'builtins':
+            self.dependencies.append('builtins')  # Even cached modules need this.
+
+    def process(self) -> None:
+        """Transition directly to TypeCheckedFile.
+
+        This calculates the MROs for all classes.
+        """
+        # Fix up various things in the symbol tables.
+        print()
+        print('FIXING MODULE PASS TWO', self.id)
+        fixup.fixup_module_pass_two(self.tree, self.semantic_analyzer().modules)
+        file = TypeCheckedFile(self.info(), self.tree, self.meta)
+        self.switch_state(file)
+
+    def state(self) -> int:
+        return CACHE_PATCHED_STATE
 
 
 class UnprocessedFile(UnprocessedBase):

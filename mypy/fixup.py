@@ -15,6 +15,29 @@ from mypy.types import Instance, CallableType, TupleType, TypeVarType, UnionType
 from mypy.visitor import NodeVisitor
 
 
+def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
+    assert modules[tree.fullname()] is tree
+    fixup_symbol_table(tree.names, modules)
+    print('Done pass 1', tree.fullname())
+
+
+def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
+    assert modules[tree.fullname()] is tree
+    compute_all_mros(tree.names, modules)
+    print('Done pass 2', tree.fullname())
+
+
+def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
+    for key, value in symtab.items():
+        if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
+            info = value.node
+            print('  Calc MRO for', info.fullname())
+            info.calculate_mro()
+            if not info.mro:
+                print('*** No MRO calculated for', info.fullname())
+            compute_all_mros(info.names, modules)
+
+
 def fixup_symbol_table(symtab: SymbolTable, modules: Dict[str, MypyFile],
                        info: TypeInfo = None) -> None:
     node_fixer = NodeFixer(modules, info)
@@ -34,6 +57,7 @@ def fixup_symbol_table(symtab: SymbolTable, modules: Dict[str, MypyFile],
         # TODO: Other kinds?
 
 
+# TODO: FIx up .info when deserializing, i.e. much earlier.
 class NodeFixer(NodeVisitor[None]):
     def __init__(self, modules: Dict[str, MypyFile], info: TypeInfo = None) -> None:
         self.modules = modules
@@ -59,9 +83,6 @@ class NodeFixer(NodeVisitor[None]):
                 info._promote.accept(self.type_fixer)
             if info.tuple_type is not None:
                 info.tuple_type.accept(self.type_fixer)
-            info.calculate_mro()
-            if info.mro is None:
-                print('*** No MRO calculated for', info.fullname())
         finally:
             self.current_info = save_info
 

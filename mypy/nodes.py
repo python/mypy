@@ -609,6 +609,31 @@ class ClassDef(Node):
     def is_generic(self) -> bool:
         return self.info.is_generic()
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'ClassDef',
+                'name': self.name,
+                'fullname': self.fullname,
+                'type_vars': [v.serialize() for v in self.type_vars],
+                # TODO: base_types?
+                'metaclass': self.metaclass,
+                # TODO: decorators?
+                'is_builtinclass': self.is_builtinclass,
+                }
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'ClassDef':
+        assert data['.class'] == 'ClassDef'
+        res = ClassDef(data['name'],
+                       Block([]),
+                       [mypy.types.TypeVarDef.deserialize(v) for v in data['type_vars']],
+                       # TODO: base_types?
+                       metaclass=data['metaclass'],
+                       # TODO: decorators?
+                       )
+        res.fullname = data['fullname']
+        res.is_builtinclass = data['is_builtinclass']
+        return res
+
 
 class GlobalDecl(Node):
     """Declaration global x, y, ..."""
@@ -1793,10 +1818,10 @@ class TypeInfo(SymbolNode):
 
     def serialize(self) -> Union[str, JsonDict]:
         data = {'.class': 'TypeInfo',
-                'name': self.name(),
                 'fullname': self.fullname(),
                 'subtypes': [t.serialize() for t in self.subtypes],
                 'names': self.names.serialize(),
+                'defn': self.defn.serialize(),
                 'is_abstract': self.is_abstract,
                 'abstract_attributes': self.abstract_attributes,
                 'is_enum': self.is_enum,
@@ -1811,13 +1836,10 @@ class TypeInfo(SymbolNode):
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeInfo':
-        fullname = data['fullname']
-        name = data['name']
         names = SymbolTable.deserialize(data['names'])
-        cdef = ClassDef(name, Block([]))
-        cdef.fullname = fullname
-        ti = TypeInfo(names, cdef)
-        ti._fullname = fullname
+        defn = ClassDef.deserialize(data['defn'])
+        ti = TypeInfo(names, defn)
+        ti._fullname = data['fullname']
         ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
         ti.is_abstract = data['is_abstract']
         ti.abstract_attributes = data['abstract_attributes']
