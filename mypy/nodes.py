@@ -2045,6 +2045,7 @@ def linearize_hierarchy(info: TypeInfo) -> Optional[List[TypeInfo]]:
     lin_bases = []
     for base in bases:
         if base is None:
+            print('*** Cannot linearize bases for', info.fullname(), bases)
             return None
         more_bases = linearize_hierarchy(base)
         if more_bases is None:

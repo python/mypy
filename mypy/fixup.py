@@ -97,6 +97,12 @@ class TypeFixer(TypeVisitor[None]):
             stnode =lookup_qualified(type_ref, self.modules)
             if stnode is not None and isinstance(stnode.node, TypeInfo):
                 inst.type = stnode.node
+                if inst.type.bases:
+                    # Also fix up the bases, just in case.
+                    for base in inst.type.bases:
+                        if base.type is None:
+                            base.accept(self)
+
 
     def visit_any(self, o: Any) -> None:
         pass  # Nothing to descend into.
