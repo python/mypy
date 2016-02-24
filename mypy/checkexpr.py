@@ -139,6 +139,11 @@ class ExpressionChecker:
         # even if the type is known (in a dynamically typed function). This
         # way we get a more precise callee in dynamically typed functions.
         callee_type = self.chk.type_map[e.callee]
+        if (self.chk.disallow_untyped_calls and
+                self.chk.typing_mode_full() and
+                isinstance(callee_type, CallableType)
+                and callee_type.implicit):
+            return self.msg.untyped_function_call(callee_type, e)
         return self.check_call_expr_with_callee_type(callee_type, e)
 
     # Types and methods that can be used to infer partial types.

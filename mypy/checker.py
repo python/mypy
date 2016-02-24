@@ -364,9 +364,12 @@ class TypeChecker(NodeVisitor[Type]):
     # Have we deferred the current function? If yes, don't infer additional
     # types during this pass within the function.
     current_node_deferred = False
+    # This makes it an error to call an untyped function from a typed one
+    disallow_untyped_calls = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                 disallow_untyped_calls=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -390,6 +393,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.deferred_nodes = []
         self.pass_num = 0
         self.current_node_deferred = False
+        self.disallow_untyped_calls = disallow_untyped_calls
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
