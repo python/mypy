@@ -2219,7 +2219,7 @@ class FirstPass(NodeVisitor):
         if mod_id == 'builtins':
             literal_types = [
                 ('None', NoneTyp()),
-            ]
+            ]  # type: List[Tuple[str, Type]]
 
             # TODO(ddfisher): This guard is only needed because mypy defines
             # fake builtins for its tests which often don't define bool.  If
