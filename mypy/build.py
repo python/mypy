@@ -443,12 +443,12 @@ class BuildManager:
                 self.trace('done')
                 break
 
-            # XXX
-            self.trace('STATES OF THE WORLD')
-            for s in self.states:
-                self.trace('  id=%-15s ready=%-5s deps=%d (%2d) %s' %
-                    (s.id, s.is_ready(), s.num_incomplete_deps(), s.state(), s.dependencies))
-            self.trace('')
+            if self.flags.count(VERBOSE) >= 3:
+                self.trace('STATES OF THE WORLD')
+                for s in self.states:
+                    self.trace('  id=%-15s ready=%-5s deps=%d (%2d) %s' %
+                        (s.id, s.is_ready(), s.num_incomplete_deps(), s.state(), s.dependencies))
+                self.trace('')
 
             # Potentially output some debug information.
             self.trace('next {} ({})'.format(next.id, next.state()))
@@ -606,11 +606,13 @@ class BuildManager:
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
-            print('LOG:', message, file=sys.stderr, flush=True)
+            print('LOG:', message, file=sys.stderr)
+            sys.stderr.flush()
 
     def trace(self, message: str) -> None:
         if self.flags.count(VERBOSE) >= 2:
-            print('TRACE:', message, file=sys.stderr, flush=True)
+            print('TRACE:', message, file=sys.stderr)
+            sys.stderr.flush()
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -703,19 +705,8 @@ class State:
         return True
 
     def num_incomplete_deps(self) -> int:
-        """Return the number of dependencies that are incomplete.
-
-        Here complete means that their state is *later* than this module.
-        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
-        arbitrarily).
-        """
-        incomplete = 0
-        for module in self.dependencies:
-            state = self.manager.module_state(module)
-            if (not earlier_state(self.state(), state) and
-                    not self.manager.is_dep(module, self.id)):
-                incomplete += 1
-        return incomplete
+        """Return the number of dependencies that are ready but incomplete."""
+        return 0  # Does not matter in this state
 
     def state(self) -> int:
         raise RuntimeError('Not implemented')
@@ -841,9 +832,10 @@ class ProbablyCachedFile(UnprocessedBase):
         deps = self.meta.dependencies[:]
         if self.id != 'builtins' and 'builtins' not in deps:
             deps.append('builtins')  # Even cached modules need this.
-        for dep_id in deps:
-            if self.import_module(dep_id):
-                self.dependencies.append(dep_id)
+        for dep_id in deps + super_packages(self.id):
+            if dep_id not in self.dependencies:
+                if self.import_module(dep_id):
+                    self.dependencies.append(dep_id)
             # TODO: else fail(...)
 
     def process(self) -> None:
@@ -864,12 +856,12 @@ class ProbablyCachedFile(UnprocessedBase):
         ok = True
         for dep_id in self.dependencies:
             state_obj = self.manager.lookup_state(dep_id)
-            if (isinstance(state_obj, CacheLoadedFile) or
-                    isinstance(state_obj, ProbablyCachedFile)):
+            if isinstance(state_obj,
+                          (ProbablyCachedFile, CacheLoadedFile,
+                           CachePatchedFile, CacheWithMroFile)):
                 continue
-            if isinstance(state_obj, TypeCheckedFile):
-                if state_obj.meta is not None or dep_id == 'builtins':
-                    continue
+            if isinstance(state_obj, TypeCheckedFile) and state_obj.meta:
+                continue
             self.manager.log('Abandoning cached data for {} '
                              'because {} changed ({})'.format(self.id, state_obj.id,
                                                               state_obj.__class__.__name__))
@@ -905,12 +897,16 @@ class ProbablyCachedFile(UnprocessedBase):
 
 
 class CacheLoadedFile(State):
+    # TODO: Deserialize tree in caller?
     def __init__(self, info: StateInfo, meta: CacheMeta, data: Any) -> None:
         super().__init__(info)
         self.meta = meta
         self.dependencies.extend(meta.dependencies)
         if self.id != 'builtins':
             self.dependencies.append('builtins')  # Even cached modules need this.
+        for dep_id in super_packages(self.id):
+            if dep_id not in self.dependencies:
+                self.dependencies.append(dep_id)
 
         # Deserialize the tree now.
         self.tree = MypyFile.deserialize(data)
@@ -919,11 +915,7 @@ class CacheLoadedFile(State):
         self.manager.semantic_analyzer.modules[self.id] = self.tree
 
     def process(self) -> None:
-        """Transition to the next stage (CachePatchedFile).f
-
-        This patches up cross-references.
-        """
-        # Fix up various things in the symbol tables.
+        """Patch up cross-references and Transition to CachePatchedFile."""
         print()  # TODO : Reduce debug prints
         print('FIXING MODULE PASS ONE', self.id)
         fixup.fixup_module_pass_one(self.tree, self.semantic_analyzer().modules)
@@ -934,6 +926,7 @@ class CacheLoadedFile(State):
         return CACHE_LOADED_STATE
 
 
+# TODO: Inherit from CacheLoadedFile?
 class CachePatchedFile(State):
     def __init__(self, info: StateInfo, tree: MypyFile, meta: CacheMeta) -> None:
         super().__init__(info)
@@ -942,16 +935,25 @@ class CachePatchedFile(State):
         self.dependencies.extend(meta.dependencies)
         if self.id != 'builtins':
             self.dependencies.append('builtins')  # Even cached modules need this.
+        for dep_id in super_packages(self.id):
+            if dep_id not in self.dependencies:
+                self.dependencies.append(dep_id)
 
     def process(self) -> None:
-        """Transition directly to TypeCheckedFile.
-
-        This calculates the MROs for all classes.
-        """
-        # Fix up various things in the symbol tables.
+        """Calculate all MROs and transition to CacheWithMroFile."""
         print()
         print('FIXING MODULE PASS TWO', self.id)
         fixup.fixup_module_pass_two(self.tree, self.semantic_analyzer().modules)
+        file = CacheWithMroFile(self.info(), self.tree, self.meta)
+        self.switch_state(file)
+
+    def state(self) -> int:
+        return CACHE_PATCHED_STATE
+
+
+class CacheWithMroFile(CachePatchedFile):
+    def process(self) -> None:
+        """Transition to TypeCheckedFile."""
         file = TypeCheckedFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
 
@@ -1096,6 +1098,21 @@ class ParsedFile(State):
         self.semantic_analyzer().visit_file(self.tree, self.tree.path)
         self.switch_state(PartiallySemanticallyAnalyzedFile(self.info(),
                                                             self.tree))
+
+    def num_incomplete_deps(self) -> int:
+        """Return the number of dependencies that are incomplete.
+
+        Here complete means that their state is *later* than this module.
+        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
+        arbitrarily).
+        """
+        incomplete = 0
+        for module in self.dependencies:
+            state = self.manager.module_state(module)
+            if (not earlier_state(self.state(), state) and
+                    not self.manager.is_dep(module, self.id)):
+                incomplete += 1
+        return incomplete
 
     def state(self) -> int:
         return PARSED_STATE
