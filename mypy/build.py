@@ -473,14 +473,6 @@ class BuildManager:
         if self.errors.is_errors():
             self.errors.raise_error()
 
-        # Collect a list of all files.
-        trees = []  # type: List[MypyFile]
-        for state in self.states:
-            trees.append(cast(ParsedFile, state).tree)
-
-        # Perform any additional passes after type checking for all the files.
-        self.final_passes(trees, self.type_checker.type_map)
-
         return BuildResult(self.semantic_analyzer.modules,
                            self.type_checker.type_map)
 
@@ -604,14 +596,6 @@ class BuildManager:
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
-
-    def final_passes(self, files: List[MypyFile],
-                     types: Dict[Node, Type]) -> None:
-        """Perform the code generation passes for type checked files."""
-        if self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
-            pass  # Nothing to do.
-        else:
-            raise RuntimeError('Unsupported target %d' % self.target)
 
     def maybe_make_cached_state(self, id: str, path: str) -> Optional['UnprocessedBase']:
         m = find_cache_meta(id, path, self)
