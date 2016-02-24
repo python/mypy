@@ -2214,12 +2214,21 @@ class FirstPass(NodeVisitor):
         for d in defs:
             d.accept(self)
 
-        # Add implicit definition of 'None' to builtins, as we cannot define a
-        # variable with a None type explicitly.
+        # Add implicit definition of literals/keywords to builtins, as we
+        # cannot define a variable with a them explicitly.
         if mod_id == 'builtins':
-            v = Var('None', NoneTyp())
-            v._fullname = self.sem.qualified_name('None')
-            self.sem.globals['None'] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+            bool_type = self.sem.named_type('bool')
+            literal_types = [
+                ('None', NoneTyp()),
+                ('True', bool_type),
+                ('False', bool_type),
+                ('__debug__', bool_type),
+            ]
+
+            for name, typ in literal_types:
+                v = Var(name, typ)
+                v._fullname = self.sem.qualified_name(name)
+                self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:

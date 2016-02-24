@@ -5,6 +5,8 @@ class object:
 
 class type: pass
 
+class bool: pass  # needed for automatic True, False, and __debug__ definitions
+
 # str is handy for debugging; allows outputting messages.
 class str: pass
 

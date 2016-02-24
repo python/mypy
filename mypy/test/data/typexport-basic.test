@@ -112,6 +112,7 @@ a = 1 + 2
 class object:
     def __init__(self) -> None: pass
 class function: pass
+class bool: pass  # needed for automatic True, False, and __debug__ definitions
 class int:
     def __add__(self, x: int) -> int: pass
     def __truediv__(self, x: int) -> float: pass

@@ -500,6 +500,7 @@ T = TypeVar('T')
 class object: pass
 class list(Iterable[T], Generic[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
+class bool: pass  # needed for automatic True, False, and __debug__ definitions
 class int: pass
 class type: pass
 class tuple: pass

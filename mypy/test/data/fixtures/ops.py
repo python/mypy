@@ -37,7 +37,4 @@ class float: pass
 
 class BaseException: pass
 
-True = None # type: bool
-False = None # type: bool
-
 def __print(a1=None, a2=None, a3=None, a4=None): pass
