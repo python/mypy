@@ -62,7 +62,6 @@ class type: pass
 class function: pass
 class float: pass
 class str: pass
-class bool: pass  # needed for automatic True, False, and __debug__ definitions
 
 [case testComplexLiteral]
 a = 0.0j
@@ -78,7 +77,6 @@ class type: pass
 class function: pass
 class complex: pass
 class str: pass
-class bool: pass  # needed for automatic True, False, and __debug__ definitions
 
 [case testBytesLiteral]
 b, a = None, None # type: (bytes, A)
@@ -95,7 +93,6 @@ class tuple: pass
 class function: pass
 class bytes: pass
 class str: pass
-class bool: pass  # needed for automatic True, False, and __debug__ definitions
 
 [case testUnicodeLiteralInPython3]
 s = None  # type: str
@@ -1314,7 +1311,6 @@ class ellipsis:
 class type: pass
 class function: pass
 class str: pass
-class bool: pass  # needed for automatic True, False, and __debug__ definitions
 [out]
 
 

@@ -10,7 +10,6 @@ class function: pass
 
 staticmethod = object() # Dummy definition.
 
-class bool: pass  # needed for automatic True, False, and __debug__ definitions
 class int:
     @staticmethod
     def from_bytes(bytes: bytes, byteorder: str) -> int: pass

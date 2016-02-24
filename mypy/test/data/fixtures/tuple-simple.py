@@ -18,4 +18,3 @@ class function: pass
 # We need int for indexing tuples.
 class int: pass
 class str: pass # For convenience
-class bool: pass  # needed for automatic True, False, and __debug__ definitions

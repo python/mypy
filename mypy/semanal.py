@@ -2215,15 +2215,23 @@ class FirstPass(NodeVisitor):
             d.accept(self)
 
         # Add implicit definition of literals/keywords to builtins, as we
-        # cannot define a variable with a them explicitly.
+        # cannot define a variable with them explicitly.
         if mod_id == 'builtins':
-            bool_type = self.sem.named_type('bool')
             literal_types = [
                 ('None', NoneTyp()),
-                ('True', bool_type),
-                ('False', bool_type),
-                ('__debug__', bool_type),
             ]
+
+            # TODO(ddfisher): This guard is only needed because mypy defines
+            # fake builtins for its tests which often don't define bool.  If
+            # mypy is fast enough that we no longer need those, this
+            # conditional check should be removed.
+            if 'bool' in self.sem.globals:
+                bool_type = self.sem.named_type('bool')
+                literal_types.extend([
+                    ('True', bool_type),
+                    ('False', bool_type),
+                    ('__debug__', bool_type),
+                ])
 
             for name, typ in literal_types:
                 v = Var(name, typ)

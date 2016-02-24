@@ -20,3 +20,5 @@ class str: pass # For convenience
 T = TypeVar('T')
 
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
+
+True = bool()
