@@ -41,10 +41,14 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
+    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional
 )
 
+from mypy import defaults
+from mypy.errors import Errors, report_internal_error
+from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.nodes import (
+    function_type, implicit_module_attrs,
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
@@ -62,21 +66,15 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
     INVARIANT, UNBOUND_IMPORTED
 )
-from mypy.visitor import NodeVisitor
+from mypy.sametypes import is_same_type
 from mypy.traverser import TraverserVisitor
-from mypy.errors import Errors, report_internal_error
+from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
+    FunctionLike, UnboundType, TypeList, TypeVarDef,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
-from mypy.nodes import function_type, implicit_module_attrs
-from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.lex import lex
-from mypy.parsetype import parse_type
-from mypy.sametypes import is_same_type
-from mypy import defaults
+from mypy.visitor import NodeVisitor
 
 
 T = TypeVar('T')
