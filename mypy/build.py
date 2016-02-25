@@ -70,6 +70,8 @@ PROBABLY_CACHED_STATE = 1
 CACHE_LOADED_STATE = 2
 # We've patched up cross-references.
 CACHE_PATCHED_STATE = 3
+# We've calculated MROs.
+CACHE_WITH_MRO_STATE = 4
 # The source file has a state object, but we haven't done anything with it yet.
 UNPROCESSED_STATE = 11
 # We've parsed the source file.
@@ -890,8 +892,6 @@ class ProbablyCachedFile(UnprocessedBase):
             file = UnprocessedFile(self.info(), text)
         self.switch_state(file)
 
-    # TODO: is_ready() that waits for dependencies to be out of limbo
-
     def state(self) -> int:
         return PROBABLY_CACHED_STATE
 
@@ -912,7 +912,7 @@ class CacheLoadedFile(State):
         self.tree = MypyFile.deserialize(data)
 
         # Store the parsed module in the shared module symbol table.
-        self.manager.semantic_analyzer.modules[self.id] = self.tree
+        self.semantic_analyzer().modules[self.id] = self.tree
 
     def process(self) -> None:
         """Patch up cross-references and Transition to CachePatchedFile."""
@@ -958,7 +958,7 @@ class CacheWithMroFile(CachePatchedFile):
         self.switch_state(file)
 
     def state(self) -> int:
-        return CACHE_PATCHED_STATE
+        return CACHE_WITH_MRO_STATE
 
 
 class UnprocessedFile(UnprocessedBase):
@@ -984,20 +984,20 @@ class UnprocessedFile(UnprocessedBase):
 
     def process(self) -> None:
         """Parse the file, store global names and advance to the next state."""
-        if self.id in self.manager.semantic_analyzer.modules:
+        if self.id in self.semantic_analyzer().modules:
             self.fail(self.path, 1, "Duplicate module named '{}'".format(self.id))
             return
 
         tree = self.parse(self.program_text, self.path)
 
         # Store the parsed module in the shared module symbol table.
-        self.manager.semantic_analyzer.modules[self.id] = tree
+        self.semantic_analyzer().modules[self.id] = tree
 
         if '.' in self.id:
             # Include module in the symbol table of the enclosing package.
             c = self.id.split('.')
             p = '.'.join(c[:-1])
-            sem_anal = self.manager.semantic_analyzer
+            sem_anal = self.semantic_analyzer()
             if p in sem_anal.modules:
                 sem_anal.modules[p].names[c[-1]] = SymbolTableNode(MODULE_REF, tree, p)
 
@@ -1137,8 +1137,8 @@ class SemanticallyAnalyzedFile(ParsedFile):
             self.type_checker().visit_file(self.tree, self.tree.path)
             if DUMP_INFER_STATS in self.manager.flags:
                 stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
-                                      typemap=self.manager.type_checker.type_map)
-            self.manager.reports.file(self.tree, type_map=self.manager.type_checker.type_map)
+                                      typemap=self.type_checker().type_map)
+            self.manager.reports.file(self.tree, type_map=self.type_checker().type_map)
 
         # FIX remove from active state list to speed up processing
 
@@ -1356,7 +1356,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         return None
     with open(meta_json, 'r') as f:
         meta_str = f.read()
-        manager.log('Meta {} {}'.format(id, meta_str.rstrip()))
+        manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
         meta = json.loads(meta_str)  # TODO: Errors
     if not isinstance(meta, dict):
         return None
@@ -1384,7 +1384,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # TODO: stat() errors
     if os.path.getmtime(data_json) != m.data_mtime:
         return None
-    manager.log('Found {} {} {}'.format(id, meta_json, m))
+    manager.log('Found {} {}'.format(id, meta_json))
     return m
 
 

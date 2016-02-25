@@ -180,14 +180,20 @@ def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode
     node = modules.get(parts[0])
     if node is None:
         print('*** Cannot find module', parts[0])
+        import pdb  # type: ignore
+        pdb.set_trace()
         return None
     for i, part in enumerate(parts[1:-1], 1):
         # print('  Looking for submodule', part, 'of package', parts[:i])
         if part not in node.names:
             print('*** Cannot find submodule', part, 'of package', parts[:i])
+            import pdb  # type: ignore
+            pdb.set_trace()
             return None
         if node.names[part].node is None:
             print('*** Weird!!!', part, 'exists in', parts[:i], 'but its node is None')
+            import pdb  # type: ignore
+            pdb.set_trace()
             return None
         node = cast(MypyFile, node.names[part].node)
         assert isinstance(node, MypyFile), node
@@ -195,4 +201,6 @@ def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode
     res = node.names.get(parts[-1])
     if res is None:
         print('*** Cannot find', parts[-1], 'in module', parts[:-1])
+        import pdb  # type: ignore
+        pdb.set_trace()
     return res
