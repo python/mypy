@@ -31,7 +31,7 @@ def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
     for key, value in symtab.items():
         if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
             info = value.node
-            print('  Calc MRO for', info.fullname())
+            # print('  Calc MRO for', info.fullname())
             info.calculate_mro()
             if not info.mro:
                 print('*** No MRO calculated for', info.fullname())
@@ -51,6 +51,8 @@ def fixup_symbol_table(symtab: SymbolTable, modules: Dict[str, MypyFile],
         elif value.kind == MODULE_REF:
             if value.module_ref not in modules:
                 print('*** Cannot find module', value.module_ref, 'needed for patch-up')
+                ## import pdb  # type: ignore
+                ## pdb.set_trace()
                 return
             value.node = modules[value.module_ref]
             # print('Fixed up module ref to', value.module_ref)
@@ -129,15 +131,19 @@ class TypeFixer(TypeVisitor[None]):
         pass  # Nothing to descend into.
 
     def visit_callable_type(self, ct: CallableType) -> None:
+        if ct.fallback:
+            ct.fallback.accept(self)
         if ct.arg_types:
             for argt in ct.arg_types:
-                if argt is None:
-                    import pdb  # type: ignore
-                    pdb.set_trace()
-                argt.accept(self)
+                # TODO: When is argt None?  Maybe when no type is specified?
+                if argt is not None:
+                    argt.accept(self)
         if ct.ret_type is not None:
             ct.ret_type.accept(self)
         # TODO: What to do with ct.variables?
+        if ct.bound_vars:
+            for i, t in ct.bound_vars:
+                t.accept(self)
 
     def visit_deleted_type(self, o: Any) -> None:
         pass  # Nothing to descend into.
