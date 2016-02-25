@@ -113,6 +113,20 @@ class Node(Context):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
+    # @abstractmethod  # TODO
+    def serialize(self) -> Any:
+        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Node':
+        classname = data['.class']
+        glo = globals()
+        if classname in glo:
+            cl = glo[classname]
+            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
+                return cl.deserialize(data)
+        raise NotImplementedError('unexpected .class {}'.format(classname))
+
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
@@ -125,19 +139,9 @@ class SymbolNode(Node):
     @abstractmethod
     def fullname(self) -> str: pass
 
-    # @abstractmethod  # TODO
-    def serialize(self) -> Any:
-        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
-
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
-        classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
-        raise NotImplementedError('unexpected .class {}'.format(classname))
+        return cast(SymbolNode, super().deserialize(data))
 
 
 class MypyFile(SymbolNode):
@@ -499,7 +503,7 @@ class Decorator(SymbolNode):
     def serialize(self) -> JsonDict:
         return {'.class': 'Decorator',
                 'func': self.func.serialize(),
-                # TODO: 'decorators'
+                'decorators': [d.serialize() for d in self.decorators],
                 'var': self.var.serialize(),
                 'is_overload': self.is_overload,
                 }
@@ -508,7 +512,7 @@ class Decorator(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'Decorator':
         assert data['.class'] == 'Decorator'
         dec = Decorator(FuncDef.deserialize(data['func']),
-                        [],  # TODO: decorators
+                        [Node.deserialize(d) for d in data['decorators']],
                         Var.deserialize(data['var']))
         dec.is_overload = data['is_overload']
         return dec
@@ -1045,6 +1049,15 @@ class NameExpr(RefExpr):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
+
+    def serialize(self) -> JsonDict:
+        # TODO: kind, node, fullname, is_def
+        return {'.class': 'NameExpr', 'name': self.name}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'NameExpr':
+        assert data['.class'] == 'NameExpr'
+        return NameExpr(data['name'])
 
 
 class MemberExpr(RefExpr):
@@ -1945,7 +1958,11 @@ class SymbolTableNode:
                     data['type'] = typ.serialize()
             elif isinstance(self.node, (Var, TypeVarExpr, OverloadedFuncDef, Decorator)):
                 data['node'] = self.node.serialize()
-            # else? XXX
+            else:
+                if self.kind == UNBOUND_IMPORTED:
+                    pass  # TODO
+                else:
+                    print('XXX Huhhhh?', self.__dict__)  # type: ignore
         if len(data) == 2 and self.kind != UNBOUND_IMPORTED:
             print('An unsupported SymbolTableNode!')
             import pdb  # type: ignore
