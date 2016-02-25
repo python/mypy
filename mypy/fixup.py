@@ -175,32 +175,26 @@ class TypeFixer(TypeVisitor[None]):
 
 
 def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode:
-    parts = name.split('.')
     # print('  Looking for module', parts)
-    node = modules.get(parts[0])
-    if node is None:
-        print('*** Cannot find module', parts[0])
-        import pdb  # type: ignore
-        pdb.set_trace()
-        return None
-    for i, part in enumerate(parts[1:-1], 1):
-        # print('  Looking for submodule', part, 'of package', parts[:i])
-        if part not in node.names:
-            print('*** Cannot find submodule', part, 'of package', parts[:i])
+    head = name
+    rest = []
+    while True:
+        head, tail = head.rsplit('.', 1)
+        mod = modules.get(head)
+        if mod is not None:
+            rest.append(tail)
+            break
+    names = mod.names
+    while True:
+        if not rest:
+            print('*** Cannot find', name)
             import pdb  # type: ignore
             pdb.set_trace()
             return None
-        if node.names[part].node is None:
-            print('*** Weird!!!', part, 'exists in', parts[:i], 'but its node is None')
-            import pdb  # type: ignore
-            pdb.set_trace()
-            return None
-        node = cast(MypyFile, node.names[part].node)
-        assert isinstance(node, MypyFile), node
-    # print('  Looking for', parts[-1], 'in module', parts[:-1])
-    res = node.names.get(parts[-1])
-    if res is None:
-        print('*** Cannot find', parts[-1], 'in module', parts[:-1])
-        import pdb  # type: ignore
-        pdb.set_trace()
-    return res
+        key = rest.pop()
+        stnode = names[key]
+        if not rest:
+            return stnode
+        node = stnode.node
+        assert isinstance(node, TypeInfo)
+        names = cast(TypeInfo, node).names

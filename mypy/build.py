@@ -469,6 +469,9 @@ class BuildManager:
 
         # If there were no errors, all files should have been fully processed.
         for s in self.states:
+            if s.state() != FINAL_STATE:
+                import pdb  # type: ignore
+                pdb.set_trace()
             assert s.state() == FINAL_STATE, (
                 '{} still unprocessed in state {}'.format(s.path, s.state()))
 
@@ -830,6 +833,20 @@ class ProbablyCachedFile(UnprocessedBase):
         super().__init__(info)
         self.meta = meta
 
+    def is_ready(self) -> bool:
+        """Return True if all dependencies are at least in the same state
+        as this object (but not in the initial state), *and* the transitive
+        closure of dependencies is too.
+        """
+        my_state = self.state()
+        # To avoid quadratic behavior of repeatedly calling module_state(),
+        # just loop once over all states.  Note that is_dep() is heavily cached.
+        for state_obj in self.manager.states:
+            if self.manager.is_dep(self.id, state_obj.id):
+                if earlier_state(state_obj.state(), my_state):
+                    return False
+        return True
+
     def load_dependencies(self):
         deps = self.meta.dependencies[:]
         if self.id != 'builtins' and 'builtins' not in deps:
@@ -914,6 +931,20 @@ class CacheLoadedFile(State):
         # Store the parsed module in the shared module symbol table.
         self.semantic_analyzer().modules[self.id] = self.tree
 
+    def is_ready(self) -> bool:
+        """Return True if all dependencies are at least in the same state
+        as this object (but not in the initial state), *and* the transitive
+        closure of dependencies is too.
+        """
+        my_state = self.state()
+        # To avoid quadratic behavior of repeatedly calling module_state(),
+        # just loop once over all states.  Note that is_dep() is heavily cached.
+        for state_obj in self.manager.states:
+            if self.manager.is_dep(self.id, state_obj.id):
+                if earlier_state(state_obj.state(), my_state):
+                    return False
+        return True
+
     def process(self) -> None:
         """Patch up cross-references and Transition to CachePatchedFile."""
         print()  # TODO : Reduce debug prints
@@ -938,6 +969,20 @@ class CachePatchedFile(State):
         for dep_id in super_packages(self.id):
             if dep_id not in self.dependencies:
                 self.dependencies.append(dep_id)
+
+    def is_ready(self) -> bool:
+        """Return True if all dependencies are at least in the same state
+        as this object (but not in the initial state), *and* the transitive
+        closure of dependencies is too.
+        """
+        my_state = self.state()
+        # To avoid quadratic behavior of repeatedly calling module_state(),
+        # just loop once over all states.  Note that is_dep() is heavily cached.
+        for state_obj in self.manager.states:
+            if self.manager.is_dep(self.id, state_obj.id):
+                if earlier_state(state_obj.state(), my_state):
+                    return False
+        return True
 
     def process(self) -> None:
         """Calculate all MROs and transition to CacheWithMroFile."""
