@@ -1,13 +1,13 @@
 """Type parser"""
 
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple
 
+from mypy import nodes
+from mypy.lex import Token, Name, StrLit, lex
 from mypy.types import (
-    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType,
+    Type, UnboundType, TupleType, TypeList, CallableType, StarType,
     EllipsisType
 )
-from mypy.lex import Token, Name, StrLit, Break, lex
-from mypy import nodes
 
 
 none = Token('')  # Empty token
