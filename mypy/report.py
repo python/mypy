@@ -5,12 +5,13 @@ import cgi
 import os
 import shutil
 
-from typing import Callable, Dict, List, cast
+from typing import Callable, Dict, List, Tuple, cast
 
 import mypy.build
-from mypy.types import Type
-from mypy.nodes import MypyFile, Node
+from mypy.nodes import MypyFile, Node, FuncDef
 from mypy import stats
+from mypy.traverser import TraverserVisitor
+from mypy.types import Type
 
 
 reporter_classes = {}  # type: Dict[str, Callable[[Reports, str], AbstractReporter]]
@@ -57,6 +58,49 @@ class AbstractReporter(metaclass=ABCMeta):
     @abstractmethod
     def on_finish(self) -> None:
         pass
+
+
+
+class FuncCounterVisitor(TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.counts = [0, 0]
+
+    def visit_func_def(self, defn: FuncDef):
+        self.counts[defn.type is not None] += 1
+
+
+class LineCountReporter(AbstractReporter):
+    def __init__(self, reports: Reports, output_dir: str) -> None:
+        super().__init__(reports, output_dir)
+        self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
+
+        stats.ensure_dir_exists(output_dir)
+
+    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+        physical_lines = len(open(tree.path).readlines())
+
+        func_counter = FuncCounterVisitor()
+        tree.accept(func_counter)
+        unannotated_funcs, annotated_funcs = func_counter.counts
+        total_funcs = annotated_funcs + unannotated_funcs
+
+        imputed_annotated_lines = (physical_lines * annotated_funcs // total_funcs
+                                   if total_funcs else physical_lines)
+
+        self.counts[tree._fullname] = (imputed_annotated_lines, physical_lines, annotated_funcs, total_funcs)
+
+    def on_finish(self) -> None:
+        counts = sorted(((c, p) for p, c in self.counts.items()), reverse=True)  # type: List[Tuple[tuple, str]]
+        total_counts = tuple(sum(c[i] for c, p in counts)
+                             for i in range(4))
+        with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
+            f.write('{:7} {:7} {:6} {:6} total\n'.format(*total_counts))
+            for c, p in counts:
+                f.write('{:7} {:7} {:6} {:6} {}\n'.format(
+                    c[0], c[1], c[2], c[3], p))
+
+reporter_classes['linecount'] = LineCountReporter
 
 
 class OldHtmlReporter(AbstractReporter):
