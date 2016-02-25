@@ -32,7 +32,7 @@ ignore_files = set()
 # sometimes we do something like infer_type(arg.keys()) or infer_type(arg.values()) if
 # the arg is a collection, and we want to know about the types of its elements.  .keys(),
 # .values(), etc. can be overloaded, possibly to a method we've wrapped.  This can become
-# infinitely recursive, particuarly because on something like arg.keys(), keys() gets passed
+# infinitely recursive, particularly because on something like arg.keys(), keys() gets passed
 # arg as the first parameter, so if we've wrapped keys() we'll try to infer_type(arg),
 # which will detect it's a dictionary, call infer_type(arg.keys()), recurse and so on.
 # We ran in to this problem with collections.OrderedDict.

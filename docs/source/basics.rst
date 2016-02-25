@@ -170,7 +170,7 @@ takes precedence. This way you can easily add annotations for a module even if
 you don't want to modify the source code. This can be useful, for example, if you
 use 3rd party open source libraries in your program.
 
-You can also override the stubs mypy uses for standard libary modules, in case
+You can also override the stubs mypy uses for standard library modules, in case
 you need to make local modifications. (Note that if you want to submit your
 changes, please submit a pull request to `typeshed <http://github.com/python/typeshed>`_
 first, and then update the submodule in mypy using a commit that only touches

@@ -1514,7 +1514,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                 elif callee_kinds[j] == nodes.ARG_STAR:
                     map[j].append(i)
         elif kind == nodes.ARG_STAR:
-            # We need to to know the actual type to map varargs.
+            # We need to know the actual type to map varargs.
             argt = caller_arg_type(i)
             if isinstance(argt, TupleType):
                 # A tuple actual maps to a fixed number of formals.

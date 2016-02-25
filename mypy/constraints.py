@@ -104,8 +104,8 @@ def infer_constraints(template: Type, actual: Type,
     recursively against a type which does not contain (the same) type
     variable references. The result is a list of type constrains of
     form 'T is a supertype/subtype of x', where T is a type variable
-    present in the the template and x is a type without reference to
-    type variables present in the template.
+    present in the template and x is a type without reference to type
+    variables present in the template.
 
     Assume T and S are type variables. Now the following results can be
     calculated (read as '(template, actual) --> result'):

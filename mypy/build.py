@@ -403,7 +403,7 @@ class BuildManager:
 
             # Set the import context for reporting error messages correctly.
             self.errors.set_import_context(next.import_context)
-            # Process the state. The process method is reponsible for adding a
+            # Process the state. The process method is responsible for adding a
             # new state object representing the new state of the file.
             next.process()
 
