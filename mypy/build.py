@@ -947,8 +947,7 @@ class CacheLoadedFile(State):
 
     def process(self) -> None:
         """Patch up cross-references and Transition to CachePatchedFile."""
-        print()  # TODO : Reduce debug prints
-        print('FIXING MODULE PASS ONE', self.id)
+        self.manager.log('FIXING MODULE PASS ONE {}'.format(self.id))
         fixup.fixup_module_pass_one(self.tree, self.semantic_analyzer().modules)
         file = CachePatchedFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
@@ -986,8 +985,7 @@ class CachePatchedFile(State):
 
     def process(self) -> None:
         """Calculate all MROs and transition to CacheWithMroFile."""
-        print()
-        print('FIXING MODULE PASS TWO', self.id)
+        self.manager.log('FIXING MODULE PASS TWO {}'.format(self.id))
         fixup.fixup_module_pass_two(self.tree, self.semantic_analyzer().modules)
         file = CacheWithMroFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
