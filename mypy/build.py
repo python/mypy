@@ -122,7 +122,7 @@ def build(sources: List[BuildSource],
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
           custom_typing_module: str = None,
           implicit_any: bool = False,
-          report_dirs: Dict[str, str] = {},
+          report_dirs: Dict[str, str] = None,
           flags: List[str] = None,
           python_path: bool = False) -> BuildResult:
     """Analyze a program.
@@ -144,6 +144,7 @@ def build(sources: List[BuildSource],
       implicit_any: if True, add implicit Any signatures to all functions
       flags: list of build options (e.g. COMPILE_ONLY)
     """
+    report_dirs = report_dirs or {}
     flags = flags or []
 
     data_dir = default_data_dir(bin_dir)
