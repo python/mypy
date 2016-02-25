@@ -237,7 +237,7 @@ class DeletedType(Type):
     @classmethod
     def deserialize(self, data: JsonDict) -> 'DeletedType':
         assert data['.class'] == 'DeletedType'
-        return DeletedType(data.get('source'))
+        return DeletedType(data['source'])
 
 
 class Instance(Type):
@@ -499,10 +499,8 @@ class CallableType(FunctionLike):
                 'ret_type': self.ret_type.serialize(),
                 'fallback': self.fallback.serialize(),
                 'name': self.name,
-                'variables': (None if self.variables is None
-                              else [v.serialize() for v in self.variables]),
-                'bound_vars': (None if self.bound_vars is None
-                               else [[x, y.serialize()] for x, y in self.bound_vars]),
+                'variables': [v.serialize() for v in self.variables],
+                'bound_vars': [[x, y.serialize()] for x, y in self.bound_vars],
                 'is_ellipsis_args': self.is_ellipsis_args,
                 }
 
@@ -516,13 +514,9 @@ class CallableType(FunctionLike):
                             data['arg_names'],
                             Type.deserialize(data['ret_type']),
                             Instance.deserialize(data['fallback']),
-                            name=data.get('name'),
-                            variables=(None if data.get('variables') is None
-                                       else [TypeVarDef.deserialize(v)
-                                             for v in data['variables']]),
-                            bound_vars=(None if data.get('bound_vars') is None
-                                        else [(x, Type.deserialize(y))
-                                              for x, y in data['bound_vars']]),
+                            name=data['name'],
+                            variables=[TypeVarDef.deserialize(v) for v in data['variables']],
+                            bound_vars=[(x, Type.deserialize(y)) for x, y in data['bound_vars']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             )
 
