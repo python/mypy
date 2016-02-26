@@ -1182,7 +1182,7 @@ class A:
 [case testEllipsisWithArbitraryArgsOnStaticmethod]
 class A:
     @staticmethod
-    def f(cls, x, y, z): # type: (...) -> None
+    def f(x, y, z): # type: (...) -> None
         pass
 [builtins fixtures/staticmethod.py]
 
