@@ -1161,6 +1161,45 @@ f(g1)
 f(g2)
 f(g3)
 
+-- (...) -> T
+-- ----------------
+[case testEllipsisWithArbitraryArgsOnBareFunction]
+def f(x, y, z): # type: (...) -> None
+    pass
+
+[case testEllipsisWithArbitraryArgsOnMethod]
+class A:
+    def f(self, x, y, z): # type: (...) -> None
+        pass
+
+[case testEllipsisWithArbitraryArgsOnClassmethod]
+class A:
+    @classmethod
+    def f(cls, x, y, z): # type: (...) -> None
+        pass
+[builtins fixtures/classmethod.py]
+
+[case testEllipsisWithArbitraryArgsOnStaticmethod]
+class A:
+    @staticmethod
+    def f(cls, x, y, z): # type: (...) -> None
+        pass
+[builtins fixtures/staticmethod.py]
+
+[case testEllipsisWithSomethingAfterItFails]
+def f(x, y, z): # type: (..., int) -> None
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before ) due to: Ellipses cannot accompany other argument types.
+
+[case testEllipsisWithSomethingBeforeItFails]
+def f(x, y, z): # type: (int, ...) -> None
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before ) due to: Ellipses cannot accompany other argument types.
+
 
 [case testDocstringFunction-skip]
 def realtypes(x : int, y : int) -> int:

@@ -421,7 +421,18 @@ class Parser:
                     self.errors.report(
                         def_tok.line, 'Function has duplicate type signatures')
                 sig = cast(CallableType, comment_type)
-                if is_method and len(sig.arg_kinds) < len(arg_kinds):
+                if sig.is_ellipsis_args:
+                    # When we encounter an ellipsis, fill in the arg_types with
+                    # a bunch of AnyTypes, emulating Callable[..., T]
+                    arg_types = [AnyType()] * len(arg_kinds)  # type: List[Type]
+                    typ = CallableType(
+                        arg_types,
+                        arg_kinds,
+                        arg_names,
+                        sig.ret_type,
+                        None,
+                        line=def_tok.line)
+                elif is_method and len(sig.arg_kinds) < len(arg_kinds):
                     self.check_argument_kinds(arg_kinds,
                                               [nodes.ARG_POS] + sig.arg_kinds,
                                               def_tok.line)
@@ -1837,7 +1848,7 @@ class Parser:
         self.parse_error_at(self.current())
         raise ParseError()
 
-    def parse_error_at(self, tok: Token, skip: bool = True) -> None:
+    def parse_error_at(self, tok: Token, skip: bool = True, reason: Optional[str] = None) -> None:
         msg = ''
         if isinstance(tok, LexError):
             msg = token_repr(tok)
@@ -1845,7 +1856,8 @@ class Parser:
         elif isinstance(tok, Indent) or isinstance(tok, Dedent):
             msg = 'Inconsistent indentation'
         else:
-            msg = 'Parse error before {}'.format(token_repr(tok))
+            reason = " due to: {}".format(reason) if reason else ""
+            msg = 'Parse error before {}{}'.format(token_repr(tok), reason)
 
         self.errors.report(tok.line, msg)
 
@@ -1878,7 +1890,7 @@ class Parser:
         try:
             typ, self.ind = parse_type(self.tok, self.ind)
         except TypeParseError as e:
-            self.parse_error_at(e.token)
+            self.parse_error_at(e.token, reason=e.message)
             raise ParseError()
         return typ
 
@@ -1908,7 +1920,7 @@ class Parser:
                 else:
                     type, index = parse_signature(tokens)
             except TypeParseError as e:
-                self.parse_error_at(e.token, skip=False)
+                self.parse_error_at(e.token, skip=False, reason=e.message)
                 return None
             if index < len(tokens) - 2:
                 self.parse_error_at(tokens[index], skip=False)

@@ -159,3 +159,16 @@ y = '' # type: bi.int  # E: Incompatible types in assignment (expression has typ
 from __builtin__ import int
 x = 1 # type: int
 y = '' # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+-- Copied from check-functions.test
+[case testEllipsisWithArbitraryArgsOnBareFunctionInPython2]
+def f(x, y, z): # type: (...) -> None
+    pass
+
+-- Copied from check-functions.test
+[case testEllipsisWithSomethingAfterItFailsInPython2]
+def f(x, y, z): # type: (..., int) -> None
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before ) due to: Ellipses cannot accompany other argument types.
