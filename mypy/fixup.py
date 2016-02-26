@@ -9,22 +9,22 @@
 from typing import Any, Dict, cast
 
 from mypy.nodes import (MypyFile, SymbolTable, SymbolTableNode,
-                        TypeInfo, FuncDef, OverloadedFuncDef, Var,
+                        TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
                         LDEF, MDEF, GDEF, MODULE_REF)
-from mypy.types import Instance, CallableType, TupleType, TypeVarType, UnionType, TypeVisitor
+from mypy.types import Instance, CallableType, Overloaded, TupleType, TypeVarType, UnionType, TypeVisitor
 from mypy.visitor import NodeVisitor
 
 
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     assert modules[tree.fullname()] is tree
     fixup_symbol_table(tree.names, modules)
-    print('Done pass 1', tree.fullname())
+    # print('Done pass 1', tree.fullname())
 
 
 def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     assert modules[tree.fullname()] is tree
     compute_all_mros(tree.names, modules)
-    print('Done pass 2', tree.fullname())
+    # print('Done pass 2', tree.fullname())
 
 
 def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
@@ -101,6 +101,10 @@ class NodeFixer(NodeVisitor[None]):
         if self.current_info is not None:
             func.info = self.current_info
 
+    def visit_decorator(self, d: Decorator) -> None:
+        if self.current_info is not None:
+            d.var.info = self.current_info
+
     def visit_var(self, v: Var) -> None:
         if self.current_info is not None:
             v.info = self.current_info
@@ -144,6 +148,10 @@ class TypeFixer(TypeVisitor[None]):
         if ct.bound_vars:
             for i, t in ct.bound_vars:
                 t.accept(self)
+
+    def visit_overloaded(self, t: Overloaded) -> None:
+        for ct in t.items():
+            ct.accept(self)
 
     def visit_deleted_type(self, o: Any) -> None:
         pass  # Nothing to descend into.
