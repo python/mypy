@@ -237,7 +237,8 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
         arg_types.append(arg)
         next = tokens[i].string
 
-        # Check for ellipsis. If it exists, assert it's the only arg_type. Disallow '(..., int) -> None' for example.
+        # Check for ellipsis. If it exists, assert it's the only arg_type.
+        # Disallow '(..., int) -> None' for example.
         if isinstance(arg, EllipsisType):
             encountered_ellipsis = True
         if encountered_ellipsis and len(arg_types) != 1:
