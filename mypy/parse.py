@@ -70,7 +70,8 @@ none = Token('')  # Empty token
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None, implicit_any: bool = False) -> MypyFile:
+          custom_typing_module: str = None, implicit_any: bool = False,
+          fast_parser: bool = False) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -78,6 +79,15 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
     The pyversion (major, minor) argument determines the Python syntax variant.
     """
+    if fast_parser:
+        import mypy.fastparse
+        return mypy.fastparse.parse(source,
+                                    fnam=fnam,
+                                    errors=errors,
+                                    pyversion=pyversion,
+                                    custom_typing_module=custom_typing_module,
+                                    implicit_any=implicit_any)
+
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     parser = Parser(fnam,
                     errors,

@@ -51,6 +51,7 @@ TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
 SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
+FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
 DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 
@@ -833,7 +834,8 @@ class UnprocessedFile(State):
         tree = parse.parse(source_text, fnam, self.errors(),
                            pyversion=self.manager.pyversion,
                            custom_typing_module=self.manager.custom_typing_module,
-                           implicit_any=self.manager.implicit_any)
+                           implicit_any=self.manager.implicit_any,
+                           fast_parser=FAST_PARSER in self.manager.flags)
         tree._fullname = self.id
         if self.errors().num_messages() != num_errs:
             self.errors().raise_error()

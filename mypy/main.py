@@ -178,6 +178,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         elif args[0] == '--implicit-any':
             options.implicit_any = True
             args = args[1:]
+        elif args[0] == '--fast-parser':
+            options.build_flags.append(build.FAST_PARSER)
+            args = args[1:]
         elif args[0] == '--disallow-untyped-calls':
             options.build_flags.append(build.DISALLOW_UNTYPED_CALLS)
             args = args[1:]
@@ -199,6 +202,10 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     if options.python_path and options.pyversion[0] == 2:
         usage('Python version 2 (or --py2) specified, '
               'but --use-python-path will search in sys.path of Python 3')
+
+    if build.FAST_PARSER in options.build_flags and options.pyversion[0] == 2:
+        usage('The experimental fast parser is only compatible with Python 3, '
+              'but Python 2 specified.')
 
     targets = []
     for arg in args:
