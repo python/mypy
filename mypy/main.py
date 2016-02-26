@@ -1,20 +1,15 @@
 """Mypy type checker command line tool."""
 
-import os
-import shutil
-import subprocess
 import sys
-import tempfile
+from typing import Optional, List, Tuple
 
-import typing
-from typing import Optional, Dict, List, Tuple
+import os
 
 from mypy import build
 from mypy import defaults
 from mypy import git
 from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
-
 from mypy.version import __version__
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)

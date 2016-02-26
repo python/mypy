@@ -1,42 +1,37 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import cast, List, Tuple, Dict, Callable, Union, Optional
+from typing import cast, List, Tuple, Callable, Union, Optional
 
-from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType,
-    PartialType, DeletedType
-)
+import mypy.checker
+from mypy import applytype
+from mypy import erasetype
+from mypy import join
+from mypy import messages
+from mypy import nodes
+from mypy import types
+from mypy.checkmember import analyze_member_access, type_object_type
+from mypy.checkstrformat import StringFormatterChecker
+from mypy.constraints import get_actual_type
+from mypy.infer import infer_type_arguments, infer_function_type_arguments
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
-    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+    function_type, NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
-    TypeAliasExpr, YieldExpr, BackquoteExpr, ARG_POS
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr, BackquoteExpr, ARG_POS
 )
-from mypy.errors import Errors
-from mypy.nodes import function_type
-from mypy import nodes
-import mypy.checker
-from mypy import types
+from mypy.replacetvars import replace_func_type_vars
 from mypy.sametypes import is_same_type
-from mypy.replacetvars import replace_func_type_vars, replace_type_vars
-from mypy.messages import MessageBuilder
-from mypy import messages
-from mypy.infer import infer_type_arguments, infer_function_type_arguments
-from mypy import join
-from mypy.expandtype import expand_type
-from mypy.subtypes import is_subtype, is_more_precise
-from mypy import applytype
-from mypy import erasetype
-from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.semanal import self_type
-from mypy.constraints import get_actual_type
-from mypy.checkstrformat import StringFormatterChecker
-
+from mypy.subtypes import is_subtype
+from mypy.types import (
+    Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
+    TupleType, Instance, TypeVarType, ErasedType, UnionType,
+    PartialType, DeletedType
+)
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
