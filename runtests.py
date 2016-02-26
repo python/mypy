@@ -200,7 +200,10 @@ def add_imports(driver: Driver) -> None:
         if '.test.data.' in mod:
             continue
         driver.add_mypy_string('import %s' % mod, 'import %s' % mod)
-        if not mod.endswith('.__main__'):
+        # Don't check the importability of the fastparse module because it
+        # requires typed_ast which may not be available (but which we don't
+        # want to have an explicit dependency on yet)
+        if not mod.endswith('.__main__') and not mod.endswith('.fastparse'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
         driver.add_flake8('module %s' % mod, f)
 
