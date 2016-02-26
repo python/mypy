@@ -40,6 +40,7 @@ def parse_types(tok: List[Token], index: int) -> Tuple[Type, int]:
     p = TypeParser(tok, index)
     return p.parse_types(), p.index()
 
+
 class TypeParser:
     def __init__(self, tok: List[Token], ind: int) -> None:
         self.tok = tok
