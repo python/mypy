@@ -8,7 +8,7 @@ from typing import (
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, LDEF, Var,
+    SymbolTable, Node, MypyFile, Var,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
