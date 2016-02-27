@@ -98,58 +98,50 @@ class ASTConverter(typed_ast.NodeTransformer):
     def visit_list(self, l):
         return [self.visit(e) for e in l]
 
+    op_map = {
+        typed_ast.Add: '+',
+        typed_ast.Sub: '-',
+        typed_ast.Mult: '*',
+        typed_ast.MatMult: '@',
+        typed_ast.Div: '/',
+        typed_ast.Mod: '%',
+        typed_ast.Pow: '**',
+        typed_ast.LShift: '<<',
+        typed_ast.RShift: '>>',
+        typed_ast.BitOr: '|',
+        typed_ast.BitXor: '^',
+        typed_ast.BitAnd: '&',
+        typed_ast.FloorDiv: '//'
+    }
+
     def from_operator(self, op):
-        if isinstance(op, typed_ast.Add):
-            return '+'
-        elif isinstance(op, typed_ast.Sub):
-            return '-'
-        elif isinstance(op, typed_ast.Mult):
-            return '*'
-        elif isinstance(op, typed_ast.MatMult):
-            raise RuntimeError('No conversion for MatMult operator')
-        elif isinstance(op, typed_ast.Div):
-            return '/'
-        elif isinstance(op, typed_ast.Mod):
-            return '%'
-        elif isinstance(op, typed_ast.Pow):
-            return '**'
-        elif isinstance(op, typed_ast.LShift):
-            return '<<'
-        elif isinstance(op, typed_ast.RShift):
-            return '>>'
-        elif isinstance(op, typed_ast.BitOr):
-            return '|'
-        elif isinstance(op, typed_ast.BitXor):
-            return '^'
-        elif isinstance(op, typed_ast.BitAnd):
-            return '&'
-        elif isinstance(op, typed_ast.FloorDiv):
-            return '//'
-        raise RuntimeError('Unknown operator ' + str(type(op)))
+        op_name = ASTConverter.op_map.get(type(op))
+        if op_name is None:
+            raise RuntimeError('Unknown operator ' + str(type(op)))
+        elif op_name == '@':
+            raise RuntimeError('mypy does not support the MatMult operator')
+        else:
+            return op_name
+
+    comp_op_map = {
+        typed_ast.Gt: '>',
+        typed_ast.Lt: '<',
+        typed_ast.Eq: '==',
+        typed_ast.GtE: '>=',
+        typed_ast.LtE: '<=',
+        typed_ast.NotEq: '!=',
+        typed_ast.Is: 'is',
+        typed_ast.IsNot: 'is not',
+        typed_ast.In: 'in',
+        typed_ast.NotIn: 'not in'
+    }
 
     def from_comp_operator(self, op):
-        if isinstance(op, typed_ast.Gt):
-            return '>'
-        elif isinstance(op, typed_ast.Lt):
-            return '<'
-        elif isinstance(op, typed_ast.Eq):
-            return '=='
-        elif isinstance(op, typed_ast.GtE):
-            return '>='
-        elif isinstance(op, typed_ast.LtE):
-            return '<='
-        elif isinstance(op, typed_ast.NotEq):
-            return '!='
-        elif isinstance(op, typed_ast.Is):
-            return 'is'
-        elif isinstance(op, typed_ast.IsNot):
-            return 'is not'
-        elif isinstance(op, typed_ast.In):
-            return 'in'
-        elif isinstance(op, typed_ast.NotIn):
-            return 'not in'
-        else:
+        op_name = ASTConverter.comp_op_map.get(type(op))
+        if op_name is None:
             raise RuntimeError('Unknown comparison operator ' + str(type(op)))
+        else:
+            return op_name
 
     def as_block(self, stmts, lineno):
         b = None
