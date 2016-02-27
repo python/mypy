@@ -1,4 +1,4 @@
-from typing import List, cast, Sequence
+from typing import cast, Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
