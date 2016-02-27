@@ -2353,7 +2353,6 @@ def find_isinstance_check(node: Node,
                     elsetype = vartype
                     if vartype:
                         if is_proper_subtype(vartype, type):
-                            elsetype = None
                             return {expr: type}, None
                         elif not is_overlapping_types(vartype, type):
                             return None, {expr: elsetype}
