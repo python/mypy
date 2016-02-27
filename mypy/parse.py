@@ -1856,8 +1856,8 @@ class Parser:
         elif isinstance(tok, Indent) or isinstance(tok, Dedent):
             msg = 'Inconsistent indentation'
         else:
-            reason = " due to: {}".format(reason) if reason else ""
-            msg = 'Parse error before {}{}'.format(token_repr(tok), reason)
+            formatted_reason = ": {}".format(reason) if reason else ""
+            msg = 'Parse error before {}{}'.format(token_repr(tok), formatted_reason)
 
         self.errors.report(tok.line, msg)
 

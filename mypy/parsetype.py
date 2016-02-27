@@ -243,8 +243,9 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
         if isinstance(arg, EllipsisType):
             encountered_ellipsis = True
         if encountered_ellipsis and len(arg_types) != 1:
-            raise TypeParseError(tokens[i], i, "Ellipses cannot accompany other"
-                                               " argument types.")
+            raise TypeParseError(tokens[i], i,
+                                 "Ellipses cannot accompany other argument types"
+                                 " in function type signature.")
 
         if next not in ',)':
             raise TypeParseError(tokens[i], i)
