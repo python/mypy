@@ -3,7 +3,7 @@
 import itertools
 
 from typing import (
-    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional, NamedTuple
+    Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -17,7 +17,7 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr, PrintStmt,
+    Decorator, SetExpr, TypeVarExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
@@ -28,7 +28,7 @@ from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
+    Instance, NoneTyp, ErrorType, strip_type,
     UnionType, TypeVarType, PartialType, DeletedType
 )
 from mypy.sametypes import is_same_type
