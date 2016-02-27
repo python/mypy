@@ -375,7 +375,6 @@ class TypeChecker(NodeVisitor[Type]):
         Use errors to report type check errors. Assume symtable has been
         populated by the semantic analyzer.
         """
-        self.expr_checker
         self.errors = errors
         self.modules = modules
         self.pyversion = pyversion
