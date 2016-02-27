@@ -75,7 +75,6 @@ def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
             return base
     else:
         return None
-        assert False, 'No built-in ancestor found for {}'.format(type.name())
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
