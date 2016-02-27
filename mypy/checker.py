@@ -466,9 +466,7 @@ class TypeChecker(NodeVisitor[Type]):
             changed, _ = self.binder.pop_frame(True, True)
             self.breaking_out = False
             if not repeat_till_fixed or not changed:
-                break
-
-        return answer
+                return answer
 
     #
     # Definitions
