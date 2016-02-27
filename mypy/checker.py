@@ -1227,9 +1227,6 @@ class TypeChecker(NodeVisitor[Type]):
                                msg: str = None) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
 
-        if not msg:
-            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
-
         # Infer the type of an ordinary rvalue expression.
         rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
         undefined_rvalue = False
