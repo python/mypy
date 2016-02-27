@@ -1,12 +1,8 @@
 """Mypy type checker command line tool."""
 
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
 
-import typing
 from typing import Optional, Dict, List, Tuple
 
 from mypy import build
