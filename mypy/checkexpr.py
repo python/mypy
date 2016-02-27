@@ -1,10 +1,10 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import cast, List, Tuple, Dict, Callable, Union, Optional
+from typing import cast, List, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarType, TypeTranslator, ErasedType, FunctionLike, UnionType,
+    TupleType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType
 )
 from mypy.nodes import (
@@ -14,22 +14,20 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
-    TypeAliasExpr, YieldExpr, BackquoteExpr, ARG_POS
+    DictionaryComprehension, ComplexExpr, EllipsisExpr,
+    TypeAliasExpr, BackquoteExpr, ARG_POS
 )
-from mypy.errors import Errors
 from mypy.nodes import function_type
 from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.replacetvars import replace_func_type_vars, replace_type_vars
+from mypy.replacetvars import replace_func_type_vars
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.expandtype import expand_type
-from mypy.subtypes import is_subtype, is_more_precise
+from mypy.subtypes import is_subtype
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
