@@ -1978,7 +1978,7 @@ if __name__ == '__main__':
     import sys
 
     def usage():
-        print('Usage: parse.py [--py2] [--quiet] FILE [...]')
+        print('Usage: parse.py [--py2] [--quiet] FILE [...]', file=sys.stderr)
         sys.exit(2)
 
     args = sys.argv[1:]

@@ -374,8 +374,10 @@ def report_internal_error(err: Exception, file: str, line: int) -> None:
     for s in traceback.format_list(tb + tb2):
         print(s.rstrip('\n'))
     print('{}: {}'.format(type(err).__name__, err))
-    print('\n*** INTERNAL ERROR ***')
+    print('\n*** INTERNAL ERROR ***', file=sys.stderr)
     print('\n{}:{}: error: Internal error --'.format(file, line),
-          'please report a bug at https://github.com/JukkaL/mypy/issues')
-    print('\nNOTE: you can use "mypy --pdb ..." to drop into the debugger when this happens.')
+          'please report a bug at https://github.com/JukkaL/mypy/issues',
+          file=sys.stderr)
+    print('\nNOTE: you can use "mypy --pdb ..." to drop into the debugger when this happens.',
+          file=sys.stderr)
     sys.exit(1)
