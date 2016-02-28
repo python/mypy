@@ -880,7 +880,7 @@ if __name__ == '__main__':
     # Lexically analyze a file and dump the tokens to stdout.
     import sys
     if len(sys.argv) != 2:
-        print('Usage: lex.py FILE')
+        print('Usage: lex.py FILE', file=sys.stderr)
         sys.exit(2)
     fnam = sys.argv[1]
     s = open(fnam, 'rb').read()

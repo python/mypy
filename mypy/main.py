@@ -52,7 +52,7 @@ def main(script_path: str) -> None:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
         for m in e.messages:
-            sys.stdout.write(m + '\n')
+            sys.stderr.write(m + '\n')
         sys.exit(1)
 
 
