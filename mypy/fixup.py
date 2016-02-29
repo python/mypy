@@ -11,7 +11,8 @@ from typing import Any, Dict, cast
 from mypy.nodes import (MypyFile, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
                         LDEF, MDEF, GDEF, MODULE_REF)
-from mypy.types import Instance, CallableType, Overloaded, TupleType, TypeVarType, UnionType, TypeVisitor
+from mypy.types import (Instance, CallableType, Overloaded, TupleType,
+                        TypeVarType, UnboundType, UnionType, TypeVisitor)
 from mypy.visitor import NodeVisitor
 
 
@@ -176,8 +177,9 @@ class TypeFixer(TypeVisitor[None]):
         if tvt.upper_bound is not None:
             tvt.upper_bound.accept(self)
 
-    def visit_unbound_type(self, o: Any) -> None:
-        raise RuntimeError("Shouldn't get here", o)
+    def visit_unbound_type(self, o: UnboundType) -> None:
+        for a in o.args:
+            a.accept(self)
 
     def visit_union_type(self, ut: UnionType) -> None:
         if ut.items:

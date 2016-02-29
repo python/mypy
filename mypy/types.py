@@ -107,6 +107,18 @@ class UnboundType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'UnboundType',
+                'name': self.name,
+                'args': [a.serialize() for a in self.args],
+                }
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'UnboundType':
+        assert data['.class'] == 'UnboundType'
+        return UnboundType(data['name'],
+                           [Type.deserialize(a) for a in data['args']])
+
 
 class ErrorType(Type):
     """The error type is used as the result of failed type operations."""
