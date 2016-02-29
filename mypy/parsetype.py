@@ -1,6 +1,6 @@
 """Type parser"""
 
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple, Union, cast, Optional
 
 from mypy.types import (
     Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType,
@@ -14,10 +14,11 @@ none = Token('')  # Empty token
 
 
 class TypeParseError(Exception):
-    def __init__(self, token: Token, index: int) -> None:
+    def __init__(self, token: Token, index: int, message: Optional[str] = None) -> None:
         super().__init__()
         self.token = token
         self.index = index
+        self.message = message
 
 
 def parse_type(tok: List[Token], index: int) -> Tuple[Type, int]:
@@ -223,6 +224,7 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
     i += 1
     arg_types = []  # type: List[Type]
     arg_kinds = []  # type: List[int]
+    encountered_ellipsis = False
     while tokens[i].string != ')':
         if tokens[i].string == '*':
             arg_kinds.append(nodes.ARG_STAR)
@@ -235,6 +237,16 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
         arg, i = parse_type(tokens, i)
         arg_types.append(arg)
         next = tokens[i].string
+
+        # Check for ellipsis. If it exists, assert it's the only arg_type.
+        # Disallow '(..., int) -> None' for example.
+        if isinstance(arg, EllipsisType):
+            encountered_ellipsis = True
+        if encountered_ellipsis and len(arg_types) != 1:
+            raise TypeParseError(tokens[i], i,
+                                 "Ellipses cannot accompany other argument types"
+                                 " in function type signature.")
+
         if next not in ',)':
             raise TypeParseError(tokens[i], i)
         if next == ',':
@@ -247,4 +259,5 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
     return CallableType(arg_types,
                         arg_kinds,
                         [None] * len(arg_types),
-                        ret_type, None), i
+                        ret_type, None,
+                        is_ellipsis_args=encountered_ellipsis), i

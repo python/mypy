@@ -1161,6 +1161,75 @@ f(g1)
 f(g2)
 f(g3)
 
+-- (...) -> T
+-- ----------------
+[case testEllipsisWithArbitraryArgsOnBareFunction]
+def f(x, y, z): # type: (...) -> None
+    pass
+f(1, "hello", [])
+f(x=1, y="hello", z=[])
+[builtins fixtures/dict.py]
+
+[case testEllipsisWithArbitraryArgsOnBareFunctionWithDefaults]
+def f(x, y=1, z="hey"): # type: (...) -> None
+    pass
+f(1, "hello", [])
+f(x=1, y="hello", z=[])
+[builtins fixtures/dict.py]
+
+[case testEllipsisWithArbitraryArgsOnBareFunctionWithKwargs]
+from typing import Dict
+def f(x, **kwargs): # type: (...) -> None
+    success_dict_type = kwargs # type: Dict[str, str]
+    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[int, str])
+f(1, thing_in_kwargs=["hey"])
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
+[case testEllipsisWithArbitraryArgsOnBareFunctionWithVarargs]
+from typing import Tuple, Any
+def f(x, *args): # type: (...) -> None
+    success_tuple_type = args # type: Tuple[Any, ...]
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
+f(1, "hello")
+[builtins fixtures/tuple.py]
+[out]
+main: note: In function "f":
+
+[case testEllipsisWithArbitraryArgsOnInstanceMethod]
+class A:
+    def f(self, x, y, z): # type: (...) -> None
+        pass
+
+[case testEllipsisWithArbitraryArgsOnClassMethod]
+class A:
+    @classmethod
+    def f(cls, x, y, z): # type: (...) -> None
+        pass
+[builtins fixtures/classmethod.py]
+
+[case testEllipsisWithArbitraryArgsOnStaticMethod]
+class A:
+    @staticmethod
+    def f(x, y, z): # type: (...) -> None
+        pass
+[builtins fixtures/staticmethod.py]
+
+[case testEllipsisWithSomethingAfterItFails]
+def f(x, y, z): # type: (..., int) -> None
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+
+[case testEllipsisWithSomethingBeforeItFails]
+def f(x, y, z): # type: (int, ...) -> None
+    pass
+[out]
+main: note: In function "f":
+main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+
 
 [case testDocstringFunction-skip]
 def realtypes(x : int, y : int) -> int:
