@@ -224,6 +224,12 @@ def default_data_dir(bin_dir: str) -> str:
             lib = os.path.dirname(os.path.dirname(parent))
             if os.path.basename(lib) == 'lib':
                 return os.path.join(lib, 'mypy')
+        subdir = os.path.join(parent, 'lib', 'mypy')
+        if os.path.isdir(subdir):
+            # If installed via buildout, the __file__ is
+            # somewhere/mypy/__init__.py and what we want is
+            # somewhere/lib/mypy.
+            return subdir
         # Default to directory containing this file's parent.
         return parent
     base = os.path.basename(bin_dir)
