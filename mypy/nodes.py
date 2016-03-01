@@ -1689,6 +1689,9 @@ class TypeInfo(SymbolNode):
     # Is this a dummy from deserialization?
     is_dummy = False
 
+    # Alternative to fullname() for 'anonymous' classes.
+    alt_fullname = None  # type: Optional[str]
+
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
         self.names = names
@@ -1832,6 +1835,7 @@ class TypeInfo(SymbolNode):
     def serialize(self) -> Union[str, JsonDict]:
         data = {'.class': 'TypeInfo',
                 'fullname': self.fullname(),
+                'alt_fullname': self.alt_fullname,
                 'subtypes': [t.serialize() for t in self.subtypes],
                 'names': self.names.serialize(),
                 'defn': self.defn.serialize(),
@@ -1853,6 +1857,7 @@ class TypeInfo(SymbolNode):
         defn = ClassDef.deserialize(data['defn'])
         ti = TypeInfo(names, defn)
         ti._fullname = data['fullname']
+        ti.alt_fullname = data['alt_fullname']
         ti.subtypes = {TypeInfo.deserialize(t) for t in data['subtypes']}
         ti.is_abstract = data['is_abstract']
         ti.abstract_attributes = data['abstract_attributes']

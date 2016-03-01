@@ -278,7 +278,7 @@ class Instance(Type):
         data = {'.class': 'Instance',
                 }  # type: JsonDict
         if self.type is not None:
-            data['type_ref'] = self.type.fullname()
+            data['type_ref'] = self.type.alt_fullname or self.type.fullname()
         if self.args:
             data['args'] = [arg.serialize() for arg in self.args]
         if self.erased:

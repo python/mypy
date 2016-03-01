@@ -1,24 +1,28 @@
-"""Fix up various things after deserialization()."""
+"""Fix up various things after deserialization.
 
-# TODO: Handle import cycles better. Once several modules are all
-# loaded, keep fixing them up until they are all fixed 100%.  (This
-# requires adding logic to build.py.)
+Also clean up a few things before serialization.
+"""
 
-# TODO: Fix up info everywhere it occurs.
+from typing import Any, Dict, Optional, cast
 
-from typing import Any, Dict, cast
-
-from mypy.nodes import (MypyFile, SymbolTable, SymbolTableNode,
+from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
                         LDEF, MDEF, GDEF, MODULE_REF)
-from mypy.types import (Instance, CallableType, Overloaded, TupleType,
-                        TypeVarType, UnboundType, UnionType, TypeVisitor)
+from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
+                        TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor)
 from mypy.visitor import NodeVisitor
+
+
+def cleanup_module(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
+    print("Cleaning", tree.fullname())
+    node_cleaner = NodeCleaner(modules)
+    node_cleaner.visit_symbol_table(tree.names)
 
 
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     assert modules[tree.fullname()] is tree
-    fixup_symbol_table(tree.names, modules)
+    node_fixer = NodeFixer(modules)
+    node_fixer.visit_symbol_table(tree.names)
     # print('Done pass 1', tree.fullname())
 
 
@@ -39,33 +43,15 @@ def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
             compute_all_mros(info.names, modules)
 
 
-def fixup_symbol_table(symtab: SymbolTable, modules: Dict[str, MypyFile],
-                       info: TypeInfo = None) -> None:
-    node_fixer = NodeFixer(modules, info)
-    for key, value in symtab.items():
-        if value.kind in (LDEF, MDEF, GDEF):
-            if isinstance(value.node, TypeInfo):
-                # TypeInfo has no accept().  TODO: Add it?
-                node_fixer.visit_type_info(value.node)
-            elif value.node is not None:
-                value.node.accept(node_fixer)
-        elif value.kind == MODULE_REF:
-            if value.module_ref not in modules:
-                print('*** Cannot find module', value.module_ref, 'needed for patch-up')
-                ## import pdb  # type: ignore
-                ## pdb.set_trace()
-                return
-            value.node = modules[value.module_ref]
-            # print('Fixed up module ref to', value.module_ref)
-        # TODO: Other kinds?
-
-
-# TODO: FIx up .info when deserializing, i.e. much earlier.
+# TODO: Fix up .info when deserializing, i.e. much earlier.
 class NodeFixer(NodeVisitor[None]):
-    def __init__(self, modules: Dict[str, MypyFile], info: TypeInfo = None) -> None:
+    current_info = None  # type: Optional[TypeInfo]
+
+    def __init__(self, modules: Dict[str, MypyFile], type_fixer: 'TypeFixer' = None) -> None:
         self.modules = modules
-        self.type_fixer = TypeFixer(self.modules)
-        self.current_info = info
+        if type_fixer is None:
+            type_fixer = TypeFixer(self.modules)
+        self.type_fixer = type_fixer
 
     # NOTE: This method isn't (yet) part of the NodeVisitor API.
     def visit_type_info(self, info: TypeInfo) -> None:
@@ -74,7 +60,7 @@ class NodeFixer(NodeVisitor[None]):
             self.current_info = info
             # print('Descending into', info.fullname())
             if info.names is not None:
-                fixup_symbol_table(info.names, self.modules, info)
+                self.visit_symbol_table(info.names)
             # print('Fixing up', info.fullname())
             if info.subtypes is not None:
                 for st in info.subtypes:
@@ -88,6 +74,26 @@ class NodeFixer(NodeVisitor[None]):
                 info.tuple_type.accept(self.type_fixer)
         finally:
             self.current_info = save_info
+
+    # NOTE: This method *definitely* isn't part of the NodeVisitor API.
+    def visit_symbol_table(self, symtab: SymbolTable) -> None:
+        for key, value in list(symtab.items()):  # TODO: Only use list() when cleaning.
+            if value.kind in (LDEF, MDEF, GDEF):
+                if isinstance(value.node, TypeInfo):
+                    # TypeInfo has no accept().  TODO: Add it?
+                    self.visit_type_info(value.node)
+                elif value.node is not None:
+                    value.node.accept(self)
+            elif value.kind == MODULE_REF:
+                self.visit_module_ref(value)
+            # TODO: Other kinds?
+
+    # NOTE: Nor is this one.
+    def visit_module_ref(self, value: SymbolTableNode):
+        if value.module_ref not in self.modules:
+            print('*** Cannot find module', value.module_ref, 'needed for patch-up')
+            return
+        value.node = self.modules[value.module_ref]
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:
@@ -122,15 +128,15 @@ class TypeFixer(TypeVisitor[None]):
         type_ref = inst.type_ref
         if type_ref is not None:
             del inst.type_ref
-            stnode =lookup_qualified(type_ref, self.modules)
-            if stnode is not None and isinstance(stnode.node, TypeInfo):
-                inst.type = stnode.node
+            node = lookup_qualified(self.modules, type_ref)
+            if isinstance(node, TypeInfo):
+                inst.type = node
                 if inst.type.bases:
+                    # TODO: Is this needed or redundant?
                     # Also fix up the bases, just in case.
                     for base in inst.type.bases:
                         if base.type is None:
                             base.accept(self)
-
 
     def visit_any(self, o: Any) -> None:
         pass  # Nothing to descend into.
@@ -149,6 +155,9 @@ class TypeFixer(TypeVisitor[None]):
         if ct.bound_vars:
             for i, t in ct.bound_vars:
                 t.accept(self)
+
+    def visit_ellipsis_type(self, e: EllipsisType) -> None:
+        pass  # Nothing to descend into.
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
@@ -170,6 +179,10 @@ class TypeFixer(TypeVisitor[None]):
         if tt.fallback is not None:
             tt.fallback.accept(self)
 
+    def visit_type_list(self, tl: TypeList) -> None:
+        for t in tl.items:
+            t.accept(self)
+
     def visit_type_var(self, tvt: TypeVarType) -> None:
         if tvt.values:
             for vt in tvt.values:
@@ -190,8 +203,30 @@ class TypeFixer(TypeVisitor[None]):
         pass  # Nothing to descend into.
 
 
-def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode:
-    # print('  Looking for module', parts)
+class TypeCleaner(TypeFixer):
+    counter = 0
+
+    def visit_instance(self, inst: Instance) -> None:
+        info = inst.type
+        if info.alt_fullname is not None:
+            return
+        if lookup_qualified(self.modules, info.fullname()) is info:
+            return
+        self.counter += 1
+        info.alt_fullname = info.fullname() + '$' + str(self.counter)
+        print("Set alt_fullname for", info.alt_fullname)
+        store_qualified(self.modules, info.alt_fullname, info)
+
+
+class NodeCleaner(NodeFixer):
+    def __init__(self, modules: Dict[str, MypyFile]) -> None:
+        super().__init__(modules, TypeCleaner(modules))
+
+    def visit_module_ref(self, value: SymbolTableNode) -> None:
+        assert value.kind == MODULE_REF
+
+
+def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
     head = name
     rest = []
     while True:
@@ -208,9 +243,50 @@ def lookup_qualified(name: str, modules: Dict[str, MypyFile]) -> SymbolTableNode
             pdb.set_trace()
             return None
         key = rest.pop()
+        if key not in names:
+            print('*** Cannot find', key, 'for', name)
+            return None
         stnode = names[key]
-        if not rest:
-            return stnode
         node = stnode.node
+        if not rest:
+            return node
         assert isinstance(node, TypeInfo)
         names = cast(TypeInfo, node).names
+
+
+def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -> None:
+    print("store_qualified", name, repr(info))
+    head = name
+    rest = []
+    while True:
+        head, tail = head.rsplit('.', 1)
+        mod = modules.get(head)
+        if mod is not None:
+            rest.append(tail)
+            break
+    names = mod.names
+    while True:
+        if not rest:
+            print('*** Cannot find', name)
+            import pdb  # type: ignore
+            pdb.set_trace()
+            return
+        key = rest.pop()
+        if key not in names:
+            if rest:
+                print('*** Cannot find', key, 'for', name)
+                return
+            # Store it.
+            # TODO: kind might be something else?
+            names[key] = SymbolTableNode(GDEF, info)
+            print('Stored', names[key])
+            return
+        stnode = names[key]
+        node = stnode.node
+        if not rest:
+            print('*** Overwriting!', name, stnode)
+            stnode.node = info
+            return
+        assert isinstance(node, TypeInfo)
+        names = cast(TypeInfo, node).names
+    

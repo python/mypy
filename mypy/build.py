@@ -1442,8 +1442,10 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     path = file.path
     if path == '<string>':
         return
+    manager.log('Cleaning {}'.format(id))
+    fixup.cleanup_module(file.tree, manager.semantic_analyzer.modules)
     path = os.path.abspath(path)
-    manager.log('Dumping {} {}'.format(id, path))
+    manager.log('Dumping {} to {}'.format(id, path))
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
