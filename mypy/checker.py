@@ -3,12 +3,12 @@
 import itertools
 
 from typing import (
-    Any, Dict, Set, List, cast, Tuple, Callable, TypeVar, Union, Optional, NamedTuple
+    Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
 )
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, LDEF, Var,
+    SymbolTable, Node, MypyFile, Var,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -17,7 +17,7 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, PassStmt, TypeVarExpr, PrintStmt,
+    Decorator, SetExpr, TypeVarExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
@@ -28,7 +28,7 @@ from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, UnboundType, ErrorType, TypeTranslator, strip_type,
+    Instance, NoneTyp, ErrorType, strip_type,
     UnionType, TypeVarType, PartialType, DeletedType
 )
 from mypy.sametypes import is_same_type
@@ -375,7 +375,6 @@ class TypeChecker(NodeVisitor[Type]):
         Use errors to report type check errors. Assume symtable has been
         populated by the semantic analyzer.
         """
-        self.expr_checker
         self.errors = errors
         self.modules = modules
         self.pyversion = pyversion
@@ -467,9 +466,7 @@ class TypeChecker(NodeVisitor[Type]):
             changed, _ = self.binder.pop_frame(True, True)
             self.breaking_out = False
             if not repeat_till_fixed or not changed:
-                break
-
-        return answer
+                return answer
 
     #
     # Definitions
@@ -1227,9 +1224,6 @@ class TypeChecker(NodeVisitor[Type]):
                                infer_lvalue_type: bool = True,
                                msg: str = None) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
-
-        if not msg:
-            msg = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT
 
         # Infer the type of an ordinary rvalue expression.
         rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
@@ -2356,7 +2350,6 @@ def find_isinstance_check(node: Node,
                     elsetype = vartype
                     if vartype:
                         if is_proper_subtype(vartype, type):
-                            elsetype = None
                             return {expr: type}, None
                         elif not is_overlapping_types(vartype, type):
                             return None, {expr: elsetype}

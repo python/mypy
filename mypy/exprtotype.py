@@ -1,7 +1,5 @@
 """Translate an expression (Node) to a Type value."""
 
-from typing import cast
-
 from mypy.nodes import (
     Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, EllipsisExpr
 )

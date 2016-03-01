@@ -1,5 +1,3 @@
-import typing
-
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,

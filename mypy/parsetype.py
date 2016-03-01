@@ -3,10 +3,10 @@
 from typing import List, Tuple, Union, cast, Optional
 
 from mypy.types import (
-    Type, UnboundType, TupleType, UnionType, TypeList, AnyType, CallableType, StarType,
+    Type, UnboundType, TupleType, TypeList, CallableType, StarType,
     EllipsisType
 )
-from mypy.lex import Token, Name, StrLit, Break, lex
+from mypy.lex import Token, Name, StrLit, lex
 from mypy import nodes
 
 
