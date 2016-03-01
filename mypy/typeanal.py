@@ -1,6 +1,6 @@
 """Semantic analysis of types"""
 
-from typing import Callable, cast, List, Tuple, Dict, Any, Union
+from typing import Callable, cast, List, Tuple
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
@@ -8,9 +8,9 @@ from mypy.types import (
     EllipsisType
 )
 from mypy.nodes import (
-    GDEF, BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
+    BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, TypeVarExpr, Var, Node,
-    IndexExpr, NameExpr, TupleExpr, RefExpr
+    IndexExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError

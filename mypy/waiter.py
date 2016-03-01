@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 import os
 import pipes
 import re
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, STDOUT
 import sys
 import tempfile
 

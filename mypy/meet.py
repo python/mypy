@@ -5,7 +5,6 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType, DeletedType
 )
-from mypy.sametypes import is_same_type
 from mypy.subtypes import is_subtype
 from mypy.nodes import TypeInfo
 
@@ -76,7 +75,6 @@ def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
             return base
     else:
         return None
-        assert False, 'No built-in ancestor found for {}'.format(type.name())
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):

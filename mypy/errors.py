@@ -3,7 +3,7 @@ import os.path
 import sys
 import traceback
 
-from typing import Tuple, List, TypeVar, Sequence, Any, Callable, Set
+from typing import Tuple, List, TypeVar, Set
 
 
 T = TypeVar('T')
