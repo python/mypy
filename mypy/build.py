@@ -222,7 +222,7 @@ def default_data_dir(bin_dir: str) -> str:
         mypy_package = os.path.dirname(__file__)
         parent = os.path.dirname(mypy_package)
         if (os.path.basename(parent) == 'site-packages' or
-            os.path.basename(parent) == 'dist-packages'):
+                os.path.basename(parent) == 'dist-packages'):
             # Installed in site-packages or dist-packages, but invoked with python3 -m mypy;
             # __file__ is .../blah/lib/python3.N/site-packages/mypy/build.py
             # or .../blah/lib/python3.N/dist-packages/mypy/build.py (Debian)
