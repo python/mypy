@@ -213,17 +213,26 @@ def build(sources: List[BuildSource],
 
 
 def default_data_dir(bin_dir: str) -> str:
-    # TODO fix this logic
+    """Returns directory containing typeshed directory
+
+    Args:
+      bin_dir: directory containing the mypy script
+    """
     if not bin_dir:
         mypy_package = os.path.dirname(__file__)
         parent = os.path.dirname(mypy_package)
-        if os.path.basename(parent) == 'site-packages':
-            # Installed in site-packages, but invoked with python3 -m mypy;
-            # __file__ is .../blah/lib/python3.N/site-packages/mypy/__init__.py;
+        if (os.path.basename(parent) == 'site-packages' or
+            os.path.basename(parent) == 'dist-packages'):
+            # Installed in site-packages or dist-packages, but invoked with python3 -m mypy;
+            # __file__ is .../blah/lib/python3.N/site-packages/mypy/build.py
+            # or .../blah/lib/python3.N/dist-packages/mypy/build.py (Debian)
+            # or .../blah/lib/site-packages/mypy/build.py (Windows)
             # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
-            lib = os.path.dirname(os.path.dirname(parent))
-            if os.path.basename(lib) == 'lib':
-                return os.path.join(lib, 'mypy')
+            lib = parent
+            for i in range(2):
+                lib = os.path.dirname(lib)
+                if os.path.basename(lib) == 'lib':
+                    return os.path.join(lib, 'mypy')
         subdir = os.path.join(parent, 'lib', 'mypy')
         if os.path.isdir(subdir):
             # If installed via buildout, the __file__ is
@@ -240,7 +249,7 @@ def default_data_dir(bin_dir: str) -> str:
         return os.path.join(dir, 'Lib', 'mypy')
     elif base == 'scripts':
         # Assume that we have a repo check out or unpacked source tarball.
-        return os.path.dirname(bin_dir)
+        return dir
     elif base == 'bin':
         # Installed to somewhere (can be under /usr/local or anywhere).
         return os.path.join(dir, 'lib', 'mypy')
