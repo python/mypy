@@ -63,8 +63,7 @@ Mypy can be installed using pip:
 
 *Note that the package name is `mypy-lang`, not `mypy`.*
 
-Currently, the version of mypy on PYPI is not compatible with Python 3.5.
-If you run Python 3.5 install directly form git:
+If you want to run the latest version of the code, you can install from git:
 
     $ pip3 install git+git://github.com/python/mypy.git
 
