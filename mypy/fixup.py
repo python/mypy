@@ -14,7 +14,7 @@ from mypy.visitor import NodeVisitor
 
 
 def cleanup_module(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
-    print("Cleaning", tree.fullname())
+    # print("Cleaning", tree.fullname())
     node_cleaner = NodeCleaner(modules)
     node_cleaner.visit_symbol_table(tree.names)
 
@@ -126,17 +126,19 @@ class TypeFixer(TypeVisitor[None]):
     def visit_instance(self, inst: Instance) -> None:
         # TODO: Combine Instances that are exactly the same?
         type_ref = inst.type_ref
-        if type_ref is not None:
-            del inst.type_ref
-            node = lookup_qualified(self.modules, type_ref)
-            if isinstance(node, TypeInfo):
-                inst.type = node
-                if inst.type.bases:
-                    # TODO: Is this needed or redundant?
-                    # Also fix up the bases, just in case.
-                    for base in inst.type.bases:
-                        if base.type is None:
-                            base.accept(self)
+        if type_ref is None:
+            return  # We've already been here.
+        del inst.type_ref
+        node = lookup_qualified(self.modules, type_ref)
+        if isinstance(node, TypeInfo):
+            inst.type = node
+            # TODO: Is this needed or redundant?
+            # Also fix up the bases, just in case.
+            for base in inst.type.bases:
+                if base.type is None:
+                    base.accept(self)
+        for a in inst.args:
+            a.accept(self)
 
     def visit_any(self, o: Any) -> None:
         pass  # Nothing to descend into.
@@ -209,13 +211,14 @@ class TypeCleaner(TypeFixer):
     def visit_instance(self, inst: Instance) -> None:
         info = inst.type
         if info.alt_fullname is not None:
-            return
-        if lookup_qualified(self.modules, info.fullname()) is info:
-            return
-        self.counter += 1
-        info.alt_fullname = info.fullname() + '$' + str(self.counter)
-        print("Set alt_fullname for", info.alt_fullname)
-        store_qualified(self.modules, info.alt_fullname, info)
+            return  # We've already been here
+        if lookup_qualified(self.modules, info.fullname()) is not info:
+            self.counter += 1
+            info.alt_fullname = info.fullname() + '$' + str(self.counter)
+            print("Set alt_fullname for", info.alt_fullname)
+            store_qualified(self.modules, info.alt_fullname, info)
+        for a in inst.args:
+            a.accept(self)
 
 
 class NodeCleaner(NodeFixer):
