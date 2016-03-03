@@ -366,19 +366,22 @@ class Argument(Node):
             self.initialization_statement.lvalues[0].set_line(self.line)
 
     def serialize(self) -> JsonDict:
-        data = {'.class': 'Argument'}  # type: JsonDict
-        data['variable'] = self.variable.serialize()
-        # TODO: type_annotation
-        # TODO: initializer
-        data['kind'] = self.kind
+        data = {'.class': 'Argument',
+                'kind': self.kind,
+                'variable': self.variable.serialize(),
+                'type_annotation': (None if self.type_annotation is None
+                                    else self.type_annotation.serialize()),
+                }  # type: JsonDict
+        # TODO: initializer?
         return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Argument':
         assert data['.class'] == 'Argument'
         return Argument(Var.deserialize(data['variable']),
-                        None,  # TODO: type_annotation
-                        None,  # TODO: initializer
+                        (None if data.get('type_annotation') is None
+                         else mypy.types.Type.deserialize(data['type_annotation'])),
+                        None,  # TODO: initializer?
                         kind=data['kind'])
 
 
