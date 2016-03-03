@@ -144,6 +144,16 @@ class TypeList(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_list(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeList',
+                'items': [t.serialize() for t in self.items],
+                }
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'TypeList':
+        assert data['.class'] == 'TypeList'
+        return TypeList([Type.deserialize(t) for t in data['items']])
+
 
 class AnyType(Type):
     """The type 'Any'."""
@@ -749,6 +759,14 @@ class EllipsisType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_ellipsis_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'EllipsisType'}
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'EllipsisType':
+        assert data['.class'] == 'EllipsisType'
+        return EllipsisType()
 
 
 #
