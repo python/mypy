@@ -387,9 +387,10 @@ class CallableType(FunctionLike):
     arg_types = None  # type: List[Type]  # Types of function arguments
     arg_kinds = None  # type: List[int]   # mypy.nodes.ARG_ constants
     arg_names = None  # type: List[str]   # None if not a keyword argument
-    min_args = 0                    # Minimum number of arguments
-    is_var_arg = False              # Is it a varargs function?
-    ret_type = None  # type:Type    # Return value type
+    min_args = 0                    # Minimum number of arguments; derived from arg_kinds
+    is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
+    ret_type = None  # type: Type   # Return value type
+    fallback = None  # type: Instance
     name = ''                       # Name (may be None; for error messages)
     definition = None  # type: SymbolNode # For error messages.  May be None.
     # Type variables for a generic function
@@ -415,7 +416,8 @@ class CallableType(FunctionLike):
     # Was this type implicitly generated instead of explicitly specified by the user?
     implicit = False
 
-    def __init__(self, arg_types: List[Type],
+    def __init__(self,
+                 arg_types: List[Type],
                  arg_kinds: List[int],
                  arg_names: List[str],
                  ret_type: Type,
@@ -521,9 +523,11 @@ class CallableType(FunctionLike):
                 'ret_type': self.ret_type.serialize(),
                 'fallback': self.fallback.serialize(),
                 'name': self.name,
+                # We don't serialize the definition (only used for error messages).
                 'variables': [v.serialize() for v in self.variables],
                 'bound_vars': [[x, y.serialize()] for x, y in self.bound_vars],
                 'is_ellipsis_args': self.is_ellipsis_args,
+                'implicit': self.implicit,
                 }
 
     @classmethod
@@ -540,6 +544,7 @@ class CallableType(FunctionLike):
                             variables=[TypeVarDef.deserialize(v) for v in data['variables']],
                             bound_vars=[(x, Type.deserialize(y)) for x, y in data['bound_vars']],
                             is_ellipsis_args=data['is_ellipsis_args'],
+                            implicit=data['implicit'],
                             )
 
 
