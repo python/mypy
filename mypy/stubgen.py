@@ -148,7 +148,7 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError:
-        print("Can't import module %s" % module)
+        print("Can't import module %s" % module, file=sys.stderr)
         sys.exit(1)
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
