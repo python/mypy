@@ -109,6 +109,8 @@ class NodeFixer(NodeVisitor[None]):
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
         if self.current_info is not None:
             func.info = self.current_info
+        if func.type:
+            func.type.accept(self.type_fixer)
 
     def visit_decorator(self, d: Decorator) -> None:
         if self.current_info is not None:
@@ -148,17 +150,15 @@ class TypeFixer(TypeVisitor[None]):
     def visit_callable_type(self, ct: CallableType) -> None:
         if ct.fallback:
             ct.fallback.accept(self)
-        if ct.arg_types:
-            for argt in ct.arg_types:
-                # TODO: When is argt None?  Maybe when no type is specified?
-                if argt is not None:
-                    argt.accept(self)
+        for argt in ct.arg_types:
+            # TODO: When is argt None?  Maybe when no type is specified?
+            if argt is not None:
+                argt.accept(self)
         if ct.ret_type is not None:
             ct.ret_type.accept(self)
         # TODO: What to do with ct.variables?
-        if ct.bound_vars:
-            for i, t in ct.bound_vars:
-                t.accept(self)
+        for i, t in ct.bound_vars:
+            t.accept(self)
 
     def visit_ellipsis_type(self, e: EllipsisType) -> None:
         pass  # Nothing to descend into.
