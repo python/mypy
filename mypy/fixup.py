@@ -151,12 +151,15 @@ class TypeFixer(TypeVisitor[None]):
         if ct.fallback:
             ct.fallback.accept(self)
         for argt in ct.arg_types:
-            # TODO: When is argt None?  Maybe when no type is specified?
+            # argt may be None, e.g. for __self in NamedTuple constructors.
             if argt is not None:
                 argt.accept(self)
         if ct.ret_type is not None:
             ct.ret_type.accept(self)
-        # TODO: What to do with ct.variables?
+        for v in ct.variables:
+            for val in v.values:
+                val.accept(self)
+            v.upper_bound.accept(self)
         for i, t in ct.bound_vars:
             t.accept(self)
 
