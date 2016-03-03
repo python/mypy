@@ -84,6 +84,8 @@ class NodeFixer(NodeVisitor[None]):
                     self.visit_type_info(value.node)
                 elif value.node is not None:
                     value.node.accept(self)
+                if value.type is not None:
+                    value.type.accept(self.type_fixer)
             elif value.kind == MODULE_REF:
                 self.visit_module_ref(value)
             # TODO: Other kinds?
@@ -227,6 +229,7 @@ class NodeCleaner(NodeFixer):
 
     def visit_module_ref(self, value: SymbolTableNode) -> None:
         assert value.kind == MODULE_REF
+        # TODO: Now what?
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
