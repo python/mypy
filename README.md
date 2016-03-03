@@ -240,6 +240,8 @@ highly appreciated and useful to the project.  Contact the developers
 to join the project, or just start coding and send pull requests!
 There are tasks for contributors of all experience levels.
 
+For more details, see the file CONTRIBUTING.md.
+
 
 License
 -------
