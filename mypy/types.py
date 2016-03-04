@@ -632,14 +632,15 @@ class TupleType(Type):
         return {'.class': 'TupleType',
                 'items': [t.serialize() for t in self.items],
                 'fallback': self.fallback.serialize(),
-                # TODO: implicit
+                'implicit': self.implicit,
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TupleType':
         assert data['.class'] == 'TupleType'
         return TupleType([Type.deserialize(t) for t in data['items']],
-                         Instance.deserialize(data['fallback']))
+                         Instance.deserialize(data['fallback']),
+                         implicit=data['implicit'])
 
 
 class StarType(Type):
