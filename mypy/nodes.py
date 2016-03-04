@@ -606,16 +606,16 @@ class ClassDef(Node):
     # Built-in/extension class? (single implementation inheritance only)
     is_builtinclass = False
 
-    def __init__(self, name: str, defs: 'Block',
+    def __init__(self,
+                 name: str,
+                 defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_type_exprs: List[Node] = None,
                  metaclass: str = None) -> None:
-        if not base_type_exprs:
-            base_type_exprs = []
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
-        self.base_type_exprs = base_type_exprs
+        self.base_type_exprs = base_type_exprs or []
         self.base_types = []  # Not yet semantically analyzed --> don't know base types
         self.metaclass = metaclass
         self.decorators = []
@@ -627,13 +627,14 @@ class ClassDef(Node):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
+        # Not serialized: defs, base_type_exprs
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,
                 'type_vars': [v.serialize() for v in self.type_vars],
-                # TODO: base_types?
+                'base_types': [t.serialize() for t in self.base_types],
                 'metaclass': self.metaclass,
-                # TODO: decorators?
+                'decorators': [d.serialize() for d in self.decorators],
                 'is_builtinclass': self.is_builtinclass,
                 }
 
@@ -643,11 +644,11 @@ class ClassDef(Node):
         res = ClassDef(data['name'],
                        Block([]),
                        [mypy.types.TypeVarDef.deserialize(v) for v in data['type_vars']],
-                       # TODO: base_types?
                        metaclass=data['metaclass'],
-                       # TODO: decorators?
                        )
         res.fullname = data['fullname']
+        res.base_types = [mypy.types.Instance.deserialize(t) for t in data['base_types']]
+        res.decorators = [Node.deserialize(d) for d in data['decorators']]
         res.is_builtinclass = data['is_builtinclass']
         return res
 
