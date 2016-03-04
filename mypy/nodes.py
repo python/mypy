@@ -1064,13 +1064,25 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        # TODO: kind, node, fullname, is_def
-        return {'.class': 'NameExpr', 'name': self.name}
+        return {'.class': 'NameExpr',
+                'kind': self.kind,
+                'node': None if self.node is None else self.node.serialize(),
+                'fullname': self.fullname,
+                'is_def': self.is_def,
+                'name': self.name,
+                'literal': self.literal,
+                }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'NameExpr':
         assert data['.class'] == 'NameExpr'
-        return NameExpr(data['name'])
+        ret = NameExpr(data['name'])
+        ret.kind = data['kind']
+        ret.node = None if data['node'] is None else Node.deserialize(data['node'])
+        ret.fullname = data['fullname']
+        ret.is_def = data['is_def']
+        ret.literal = data['literal']
+        return ret
 
 
 class MemberExpr(RefExpr):
