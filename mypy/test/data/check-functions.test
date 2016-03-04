@@ -1360,3 +1360,10 @@ for _ in [1]:
     def f(): pass
 f()
 [builtins fixtures/list.py]
+
+[case testBareCallable]
+from typing import Callable, Any
+
+def foo(f: Callable) -> bool:
+    return f()
+[builtins fixtures/bool.py]
