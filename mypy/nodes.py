@@ -460,6 +460,7 @@ class FuncDef(FuncItem):
     def serialize(self) -> JsonDict:
         return {'.class': 'FuncDef',
                 'name': self._name,
+                'fullname': self._fullname,
                 'arguments': [a.serialize() for a in self.arguments],
                 'type': None if self.type is None else self.type.serialize(),
                 }
@@ -468,12 +469,13 @@ class FuncDef(FuncItem):
     def deserialize(cls, data: JsonDict) -> 'FuncDef':
         assert data['.class'] == 'FuncDef'
         body = Block([])
-        return FuncDef(data['name'],
-                       [Argument.deserialize(a) for a in data['arguments']],
-                       body,
-                       (None if data['type'] is None
-                        else mypy.types.FunctionLike.deserialize(data['type'])),
-                       )
+        ret = FuncDef(data['name'],
+                      [Argument.deserialize(a) for a in data['arguments']],
+                      body,
+                      (None if data['type'] is None
+                       else mypy.types.FunctionLike.deserialize(data['type'])))
+        ret._fullname = data['fullname']
+        return ret
 
 
 class Decorator(SymbolNode):
