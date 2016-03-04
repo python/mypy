@@ -558,24 +558,34 @@ class Var(SymbolNode):
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
+        # TODO: Leave default values out?
         data = {'.class': 'Var',
                 'name': self._name,
+                'fullname': self._fullname,
+                'type': None if self.type is None else self.type.serialize(),
+                'is_self': self.is_self,
+                'is_ready': self.is_ready,  # TODO: is this needed?
+                'is_initialized_in_class': self.is_initialized_in_class,
+                'is_staticmethod': self.is_staticmethod,
+                'is_classmethod': self.is_classmethod,
+                'is_property': self.is_property,
+                'is_settable_property': self.is_settable_property,
                 }  # type: JsonDict
-        if self._fullname is not None:
-            data['fullname'] = self._fullname
-        if self.type is not None:
-            data['type'] = self.type.serialize()
         return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Var':
         assert data['.class'] == 'Var'
         name = data['name']
-        type = None
-        if 'type' in data:
-            type = mypy.types.Type.deserialize(data['type'])
+        type = None if data['type'] is None else mypy.types.Type.deserialize(data['type'])
         v = Var(name, type)
-        v._fullname = data.get('fullname')
+        v._fullname = data['fullname']
+        v.is_self = data['is_self']
+        v.is_initialized_in_class = data['is_initialized_in_class']
+        v.is_staticmethod = data['is_staticmethod']
+        v.is_classmethod = data['is_classmethod']
+        v.is_property = data['is_property']
+        v.is_settable_property = data['is_settable_property']
         return v
 
 
