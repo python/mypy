@@ -463,6 +463,8 @@ class FuncDef(FuncItem):
                 'fullname': self._fullname,
                 'arguments': [a.serialize() for a in self.arguments],
                 'type': None if self.type is None else self.type.serialize(),
+                'is_class': self.is_class,
+                # TODO: Various other flags
                 }
 
     @classmethod
@@ -475,6 +477,7 @@ class FuncDef(FuncItem):
                       (None if data['type'] is None
                        else mypy.types.FunctionLike.deserialize(data['type'])))
         ret._fullname = data['fullname']
+        ret.is_class = data['is_class']
         return ret
 
 
