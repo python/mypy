@@ -14,7 +14,7 @@ from mypy.visitor import NodeVisitor
 from mypy.util import dump_tagged, short_type
 
 
-class Context(metaclass=ABCMeta):
+class Context:
     """Base type for objects that are valid as error message locations."""
     @abstractmethod
     def get_line(self) -> int: pass
