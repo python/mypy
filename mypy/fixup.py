@@ -215,8 +215,8 @@ class TypeCleaner(TypeFixer):
 
     def visit_instance(self, inst: Instance) -> None:
         info = inst.type
-        if info.alt_fullname is not None:
-            return  # We've already been here
+        if info is None or info.alt_fullname is not None:
+            return  # Nothing here; or we've already been here
         if lookup_qualified(self.modules, info.fullname()) is not info:
             self.counter += 1
             info.alt_fullname = info.fullname() + '$' + str(self.counter)
@@ -298,4 +298,3 @@ def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -
             return
         assert isinstance(node, TypeInfo)
         names = cast(TypeInfo, node).names
-    
