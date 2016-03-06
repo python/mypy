@@ -1351,8 +1351,8 @@ class SemanticAnalyzer(NodeVisitor):
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
-        items, types = self.parse_namedtuple_args(call, fullname)
-        if not items:
+        items, types, ok = self.parse_namedtuple_args(call, fullname)
+        if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
@@ -1362,7 +1362,7 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def parse_namedtuple_args(self, call: CallExpr,
-                              fullname: str) -> Tuple[List[str], List[Type]]:
+                              fullname: str) -> Tuple[List[str], List[Type], bool]:
         # TODO Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
@@ -1375,6 +1375,7 @@ class SemanticAnalyzer(NodeVisitor):
             return self.fail_namedtuple_arg(
                 "namedtuple() expects a string literal as the first argument", call)
         types = []  # type: List[Type]
+        ok = True
         if not isinstance(args[1], ListExpr):
             if fullname == 'collections.namedtuple' and isinstance(args[1], StrExpr):
                 str_expr = cast(StrExpr, args[1])
@@ -1392,13 +1393,13 @@ class SemanticAnalyzer(NodeVisitor):
                 items = [cast(StrExpr, item).value for item in listexpr.items]
             else:
                 # The fields argument contains (name, type) tuples.
-                items, types = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+                items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
         if not types:
             types = [AnyType() for _ in items]
-        return items, types
+        return items, types, ok
 
     def parse_namedtuple_fields_with_types(self, nodes: List[Node],
-                                           context: Context) -> Tuple[List[str], List[Type]]:
+                                           context: Context) -> Tuple[List[str], List[Type], bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
@@ -1418,11 +1419,12 @@ class SemanticAnalyzer(NodeVisitor):
                 types.append(self.anal_type(type))
             else:
                 return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
-        return items, types
+        return items, types, True
 
-    def fail_namedtuple_arg(self, message: str, context: Context) -> Tuple[List[str], List[Type]]:
+    def fail_namedtuple_arg(self, message: str,
+                            context: Context) -> Tuple[List[str], List[Type], bool]:
         self.fail(message, context)
-        return [], []
+        return [], [], False
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
