@@ -168,3 +168,8 @@ a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]
 import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
 MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
+
+[case testNamedTupleEmptyItems]
+from typing import NamedTuple
+A = NamedTuple('A', [])
+[builtins fixtures/list.py]
