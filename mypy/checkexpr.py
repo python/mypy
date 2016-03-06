@@ -644,9 +644,8 @@ class ExpressionChecker:
         could not be determined).
         """
         messages = messages or self.msg
-        # TODO also consider argument names and kinds
-        # TODO for overlapping signatures we should try to get a more precise
-        #      result than 'Any'
+        # TODO: For overlapping signatures we should try to get a more precise
+        #       result than 'Any'.
         match = []  # type: List[CallableType]
         best_match = 0
         for typ in overload.items():
@@ -658,14 +657,23 @@ class ExpressionChecker:
                     not mypy.checker.is_more_precise_signature(
                         match[-1], typ)):
                     # Ambiguous return type. Either the function overload is
-                    # overlapping (which results in an error elsewhere) or the
-                    # caller has provided some Any argument types; in
-                    # either case can only infer the type to be Any, as it is
-                    # not an error to use Any types in calls.
+                    # overlapping (which we don't handle very well here) or the
+                    # caller has provided some Any argument types; in either
+                    # case we'll fall back to Any. It's okay to use Any types
+                    # in calls.
                     #
-                    # Overlapping overload items are fine if the items are
+                    # Overlapping overload items are generally fine if the
+                    # overlapping is only possible when there is multiple
+                    # inheritance, as this is rare. See docstring of
+                    # mypy.meet.is_overlapping_types for more about this.
+                    #
+                    # Note that there is no ambiguity if the items are
                     # covariant in both argument types and return types with
-                    # respect to type precision.
+                    # respect to type precision. We'll pick the best/closest
+                    # match.
+                    #
+                    # TODO: Consider returning a union type instead if the
+                    #       overlapping is NOT due to Any types?
                     return AnyType()
                 else:
                     match.append(typ)
@@ -688,9 +696,6 @@ class ExpressionChecker:
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
                                     arg_names: List[str], callee: CallableType) -> int:
         """Determine whether arguments could match the signature at runtime.
-
-        If is_var_arg is True, the caller uses varargs. This is used for
-        overload resolution.
 
         Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
         overload_arg_similarity for a discussion of similarity levels.
