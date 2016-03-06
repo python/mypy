@@ -39,11 +39,29 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
     """Can a value of type t be a value of type s, or vice versa?
 
-    Note that this effectively checks against erased types, since X[Any] is always
-    compatible with X[T].
+    Note that this effectively checks against erased types, since type
+    variables are erased at runtime and the overlapping check is based
+    on runtime behavior.
 
     If use_promitions is True, also consider type promotions (int and
     float would only be overlapping if it's True).
+
+    This does not consider multiple inheritance. For example, A and B in
+    the following example are not considered overlapping, even though
+    via C they can be overlapping:
+
+        class A: ...
+        class B: ...
+        class C(A, B): ...
+
+    The rationale is that this case is usually very unlikely as multiple
+    inhreitance is rare. Also, we can't reliably determine whether
+    multiple inheritance actually occurs somewhere in a program, due to
+    stub files hiding implementation details, dynamic loading etc.
+
+    TODO: Don't consider tuples always overlapping.
+    TODO: Don't consider callables always overlapping.
+    TODO: Don't consider type variables with values always overlapping.
     """
     if isinstance(t, Instance):
         if isinstance(s, Instance):
@@ -51,7 +69,7 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
             # of another.
             if use_promotions:
                 # Consider cases like int vs float to be overlapping where
-                # there is only a type promition relationship but not proper
+                # there is only a type promotion relationship but not proper
                 # subclassing.
                 if t.type._promote and is_overlapping_types(t.type._promote, s):
                     return True
