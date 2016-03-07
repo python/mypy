@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, cast
 
 from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
+                        TypeVarExpr, ClassDef,
                         LDEF, MDEF, GDEF, MODULE_REF)
 from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
                         TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor)
@@ -37,7 +38,10 @@ def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
         if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
             info = value.node
             # print('  Calc MRO for', info.fullname())
-            info.calculate_mro()
+            try:
+                info.calculate_mro()
+            except Exception:
+                import pdb; pdb.set_trace()
             if not info.mro:
                 print('*** No MRO calculated for', info.fullname())
             compute_all_mros(info.names, modules)
@@ -59,18 +63,20 @@ class NodeFixer(NodeVisitor[None]):
         try:
             self.current_info = info
             # print('Descending into', info.fullname())
-            if info.names is not None:
+            if info.defn:
+                info.defn.accept(self)
+            if info.names:
                 self.visit_symbol_table(info.names)
             # print('Fixing up', info.fullname())
-            if info.subtypes is not None:
+            if info.subtypes:
                 for st in info.subtypes:
                     self.visit_type_info(st)
-            if info.bases is not None:
+            if info.bases:
                 for base in info.bases:
                     base.accept(self.type_fixer)
-            if info._promote is not None:
+            if info._promote:
                 info._promote.accept(self.type_fixer)
-            if info.tuple_type is not None:
+            if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
         finally:
             self.current_info = save_info
@@ -78,24 +84,26 @@ class NodeFixer(NodeVisitor[None]):
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
     def visit_symbol_table(self, symtab: SymbolTable) -> None:
         for key, value in list(symtab.items()):  # TODO: Only use list() when cleaning.
-            if value.kind in (LDEF, MDEF, GDEF):
+            cross_ref = value.cross_ref
+            if cross_ref is not None:  # Fix up cross-reference.
+                del value.cross_ref
+                if cross_ref in self.modules:
+                    value.node = self.modules[cross_ref]
+                else:
+                    stnode = lookup_qualified_stnode(self.modules, cross_ref)
+                    if stnode is None:
+                        print("*** Could not find cross-reference", cross_ref)
+                    else:
+                        value.node = stnode.node
+                        value.type_override = stnode.type_override
+            else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
                     self.visit_type_info(value.node)
                 elif value.node is not None:
                     value.node.accept(self)
-                if value.type is not None:
-                    value.type.accept(self.type_fixer)
-            elif value.kind == MODULE_REF:
-                self.visit_module_ref(value)
-            # TODO: Other kinds?
-
-    # NOTE: Nor is this one.
-    def visit_module_ref(self, value: SymbolTableNode):
-        if value.module_ref not in self.modules:
-            print('*** Cannot find module', value.module_ref, 'needed for patch-up')
-            return
-        value.node = self.modules[value.module_ref]
+                if value.type_override is not None:
+                    value.type_override.accept(self.type_fixer)
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:
@@ -106,15 +114,32 @@ class NodeFixer(NodeVisitor[None]):
             if arg.type_annotation is not None:
                 arg.type_annotation.accept(self.type_fixer)
 
-    def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
+    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         if self.current_info is not None:
-            func.info = self.current_info
-        if func.type:
-            func.type.accept(self.type_fixer)
+            o.info = self.current_info
+        if o.type:
+            o.type.accept(self.type_fixer)
+        for item in o.items:
+            item.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
         if self.current_info is not None:
             d.var.info = self.current_info
+        if d.func:
+            d.func.accept(self)
+        if d.var:
+            d.var.accept(self)
+        for node in d.decorators:
+            node.accept(self)
+
+    def visit_class_def(self, c: ClassDef) -> None:
+        for v in c.type_vars:
+            for value in v.values:
+                value.accept(self.type_fixer)
+
+    def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
+        for value in tv.values:
+            value.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
         if self.current_info is not None:
@@ -236,6 +261,14 @@ class NodeCleaner(NodeFixer):
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
+    stnode = lookup_qualified_stnode(modules, name)
+    if stnode is None:
+        return None
+    else:
+        return stnode.node
+
+
+def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTableNode:
     head = name
     rest = []
     while True:
@@ -248,17 +281,15 @@ def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
     while True:
         if not rest:
             print('*** Cannot find', name)
-            import pdb  # type: ignore
-            pdb.set_trace()
             return None
         key = rest.pop()
         if key not in names:
             print('*** Cannot find', key, 'for', name)
             return None
         stnode = names[key]
-        node = stnode.node
         if not rest:
-            return node
+            return stnode
+        node = stnode.node
         assert isinstance(node, TypeInfo)
         names = cast(TypeInfo, node).names
 

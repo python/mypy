@@ -200,7 +200,7 @@ class MypyFile(SymbolNode):
         return {'.class': 'MypyFile',
                 '_name': self._name,
                 '_fullname': self._fullname,
-                'names': self.names.serialize(),
+                'names': self.names.serialize(self._fullname),
                 'is_stub': self.is_stub,
                 }
 
@@ -438,7 +438,7 @@ class FuncDef(FuncItem):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_property = False
-    original_def = None  # type: Union[FuncDef, Var]  # Original conditional definition
+    original_def = None  # type: Union[None, FuncDef, Var]  # Original conditional definition
 
     def __init__(self,
                  name: str,              # Function name
@@ -488,7 +488,7 @@ class Decorator(SymbolNode):
     """
 
     func = None  # type: FuncDef           # Decorated function
-    decorators = None  # type: List[Node]  # Decorators, at least one
+    decorators = None  # type: List[Node]  # Decorators, at least one  # XXX Not true
     var = None  # type: Var              # Represents the decorated function obj
     is_overload = False
 
@@ -1868,7 +1868,7 @@ class TypeInfo(SymbolNode):
                 'fullname': self.fullname(),
                 'alt_fullname': self.alt_fullname,
                 'subtypes': [t.serialize() for t in self.subtypes],
-                'names': self.names.serialize(),
+                'names': self.names.serialize(self.alt_fullname or self.fullname()),
                 'defn': self.defn.serialize(),
                 'is_abstract': self.is_abstract,
                 'abstract_attributes': self.abstract_attributes,
@@ -1923,12 +1923,13 @@ class SymbolTableNode:
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
     # If this not None, override the type of the 'node' attribute.
-    type_override = None  # type: mypy.types.Type
+    type_override = None  # type: Optional[mypy.types.Type]
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
-    # For deserialized MODULE_REF nodes, the referenced module name
-    module_ref = None  # type: str
+    # For deserialized MODULE_REF nodes, the referenced module name;
+    # for other nodes, optionally the name of the referenced object.
+    cross_ref = None  # type: Optional[str]
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None, tvar_id: int = 0,
@@ -1970,58 +1971,48 @@ class SymbolTableNode:
             s += ' : {}'.format(self.type)
         return s
 
-    def serialize(self) -> JsonDict:
+    def serialize(self, prefix: str, name: str) -> JsonDict:
         data = {'.class': 'SymbolTableNode',
                 'kind': node_kinds[self.kind],
                 }  # type: JsonDict
+        if self.tvar_id:
+            data['tvar_id'] = self.tvar_id
         if self.kind == MODULE_REF:
-            data['module_ref'] = self.node.fullname()
-        elif self.kind == TYPE_ALIAS:
-            assert self.type_override is not None
-            assert self.node is not None
-            data['type'] = self.type_override.serialize()
-            data['node'] = self.node.serialize()
+            data['cross_ref'] = self.node.fullname()
         else:
-            if isinstance(self.node, TypeInfo):
+            if self.node is not None:
+                if prefix is not None:
+                    if isinstance(self.node, TypeInfo):
+                        fullname = self.node.alt_fullname or self.node.fullname()
+                    else:
+                        fullname = self.node.fullname()
+                    if fullname is not None and fullname != prefix + '.' + name:
+                        data['cross_ref'] = fullname
+                        return data
                 data['node'] = self.node.serialize()
-                typ = self.type
-                if typ is not None:
-                    print('XXX Huh?', typ, 'for', self.node._fullname)
-            elif isinstance(self.node, FuncDef):
-                data['node'] = self.node.serialize()
-                typ = self.type
-                if typ is not None:
-                    data['type'] = typ.serialize()
-            elif isinstance(self.node, (Var, TypeVarExpr, OverloadedFuncDef, Decorator)):
-                data['node'] = self.node.serialize()
-            else:
-                if self.kind == UNBOUND_IMPORTED:
-                    pass  # TODO
-                else:
-                    print('XXX Huhhhh?', self.__dict__)  # type: ignore
-        if len(data) == 2 and self.kind != UNBOUND_IMPORTED:
-            print('An unsupported SymbolTableNode!')
-            import pdb  # type: ignore
-            pdb.set_trace()
+            if self.type_override is not None:
+                data['type'] = self.type.serialize()
         return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolTableNode':
         assert data['.class'] == 'SymbolTableNode'
         kind = inverse_node_kinds[data['kind']]
-        if kind == MODULE_REF:
+        if 'cross_ref' in data:
             # This needs to be fixed up in a later pass.
             stnode = SymbolTableNode(kind, None)
-            stnode.module_ref = data['module_ref']
-            return stnode
-        typ = None
-        node = None
-        if 'type' in data:
-            typ = mypy.types.Type.deserialize(data['type'])
-        if 'node' in data:
-            node = SymbolNode.deserialize(data['node'])
-        # TODO: Rest
-        return SymbolTableNode(kind, node, typ=typ)
+            stnode.cross_ref = data['cross_ref']
+        else:
+            node = None
+            if 'node' in data:
+                node = SymbolNode.deserialize(data['node'])
+            typ = None
+            if 'type' in data:
+                typ = mypy.types.Type.deserialize(data['type'])
+            stnode = SymbolTableNode(kind, node, typ=typ)
+        if 'tvar_id' in data:
+            stnode.tvar_id = data['tvar_id']
+        return stnode
 
 
 class SymbolTable(Dict[str, SymbolTableNode]):
@@ -2041,12 +2032,12 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         a[-1] += ')'
         return '\n'.join(a)
 
-    def serialize(self) -> JsonDict:
+    def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict
         for key, value in self.items():
             if key == '__builtins__' or not value.module_public:
                 continue
-            data[key] = value.serialize()
+            data[key] = value.serialize(fullname, key)
         return data
 
     @classmethod
