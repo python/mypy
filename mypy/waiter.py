@@ -3,7 +3,7 @@
 This is used for running mypy tests.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import os
 import pipes

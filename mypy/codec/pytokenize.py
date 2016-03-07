@@ -87,6 +87,9 @@ __author__ = 'Ka-Ping Yee <ping@lfw.org>'
 __credits__ = ('GvR, ESR, Tim Peters, Thomas Wouters, Fred Drake, '
                'Skip Montanaro, Raymond Hettinger')
 
+if False:
+    from typing import List, Dict
+
 import string
 import re
 from token import *
