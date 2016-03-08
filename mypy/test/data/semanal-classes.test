@@ -329,7 +329,7 @@ MypyFile:1(
       B
       PassStmt:2())
     ExpressionStmt:3(
-      NameExpr(B [m]))))
+      NameExpr(B [__main__.A.B]))))
 
 [case testClassWithBaseClassWithinClass]
 class A:
@@ -345,7 +345,7 @@ MypyFile:1(
     ClassDef:3(
       C
       BaseType(
-        B)
+        __main__.A.B)
       PassStmt:3())))
 
 [case testDeclarationReferenceToNestedClass]

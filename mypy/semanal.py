@@ -2300,7 +2300,10 @@ class FirstPass(NodeVisitor):
         for node in outer_def.defs.body:
             if isinstance(node, ClassDef):
                 node.info = TypeInfo(SymbolTable(), node)
-                node.info._fullname = node.info.name()
+                if outer_def.fullname:
+                    node.info._fullname = outer_def.fullname + '.' + node.info.name()
+                else:
+                    node.info._fullname = node.info.name()
                 symbol = SymbolTableNode(MDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
