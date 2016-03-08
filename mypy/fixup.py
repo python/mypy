@@ -30,7 +30,8 @@ def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
             try:
                 info.calculate_mro()
             except Exception:
-                import pdb; pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             if not info.mro:
                 print('*** No MRO calculated for', info.fullname())
             compute_all_mros(info.names, modules)

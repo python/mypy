@@ -1357,7 +1357,7 @@ class SemanticAnalyzer(NodeVisitor):
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
             # Give it a unique name derived from the line number.
-            name = cast(StrExpr, call.args[0]).value +  '@' + str(call.line)
+            name = cast(StrExpr, call.args[0]).value + '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
