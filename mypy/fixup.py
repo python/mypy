@@ -1,7 +1,4 @@
-"""Fix up various things after deserialization.
-
-Also clean up a few things before serialization.
-"""
+"""Fix up various things after deserialization."""
 
 from typing import Any, Dict, Optional, cast
 
@@ -12,12 +9,6 @@ from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
 from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
                         TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor)
 from mypy.visitor import NodeVisitor
-
-
-def cleanup_module(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
-    # print("Cleaning", tree.fullname())
-    node_cleaner = NodeCleaner(modules)
-    node_cleaner.visit_symbol_table(tree.names)
 
 
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
@@ -83,7 +74,8 @@ class NodeFixer(NodeVisitor[None]):
 
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
     def visit_symbol_table(self, symtab: SymbolTable) -> None:
-        for key, value in list(symtab.items()):  # TODO: Only use list() when cleaning.
+        # Copy the items because we may mutate symtab.
+        for key, value in list(symtab.items()):
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
                 del value.cross_ref
@@ -233,31 +225,6 @@ class TypeFixer(TypeVisitor[None]):
 
     def visit_void(self, o: Any) -> None:
         pass  # Nothing to descend into.
-
-
-class TypeCleaner(TypeFixer):
-    counter = 0
-
-    def visit_instance(self, inst: Instance) -> None:
-        info = inst.type
-        if info is None or info.alt_fullname is not None:
-            return  # Nothing here; or we've already been here
-        if lookup_qualified(self.modules, info.fullname()) is not info:
-            self.counter += 1
-            info.alt_fullname = info.fullname() + '$' + str(self.counter)
-            print("Set alt_fullname for", info.alt_fullname)
-            store_qualified(self.modules, info.alt_fullname, info)
-        for a in inst.args:
-            a.accept(self)
-
-
-class NodeCleaner(NodeFixer):
-    def __init__(self, modules: Dict[str, MypyFile]) -> None:
-        super().__init__(modules, TypeCleaner(modules))
-
-    def visit_module_ref(self, value: SymbolTableNode) -> None:
-        assert value.kind == MODULE_REF
-        # TODO: Now what?
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:

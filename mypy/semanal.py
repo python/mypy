@@ -1356,8 +1356,11 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
-            name = cast(StrExpr, call.args[0]).value
+            # Give it a unique name derived from the line number.
+            name = cast(StrExpr, call.args[0]).value +  '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
+            # Store it as a global just in case it would remain anonymous.
+            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
         call.analyzed = NamedTupleExpr(info).set_line(call.line)
         return info
 
