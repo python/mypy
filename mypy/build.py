@@ -1487,7 +1487,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     new_keys = sorted(new_names)
 
     print('Fixing up', file.id)
-    fixup.fixup_symbol_table(new_names, file.semantic_analyzer().modules)
+    fixup.fixup_module_pass_one(new_tree, file.semantic_analyzer().modules)
 
     print('Comparing keys', file.id)
     old_tree = file.tree

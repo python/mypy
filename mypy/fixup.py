@@ -12,14 +12,12 @@ from mypy.visitor import NodeVisitor
 
 
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
-    assert modules[tree.fullname()] is tree
     node_fixer = NodeFixer(modules)
     node_fixer.visit_symbol_table(tree.names)
     # print('Done pass 1', tree.fullname())
 
 
 def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
-    assert modules[tree.fullname()] is tree
     compute_all_mros(tree.names, modules)
     # print('Done pass 2', tree.fullname())
 
