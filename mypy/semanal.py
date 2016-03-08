@@ -1323,19 +1323,22 @@ class SemanticAnalyzer(NodeVisitor):
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
-        named_tuple = self.check_namedtuple(s.rvalue)
+        lvalue = cast(NameExpr, s.lvalues[0])
+        name = lvalue.name
+        named_tuple = self.check_namedtuple(s.rvalue, name)
         if named_tuple is None:
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
-        lvalue = cast(NameExpr, s.lvalues[0])
-        name = lvalue.name
         node = self.lookup(name, s)
         node.kind = GDEF   # TODO locally defined namedtuple
         # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Node) -> TypeInfo:
+    def check_namedtuple(self, node: Node, var_name: str = None) -> TypeInfo:
         """Check if a call defines a namedtuple.
+
+        The optional var_name argument is the name of the variable to
+        which this is assigned, if any.
 
         If it does, return the corresponding TypeInfo. Return None otherwise.
 
@@ -1357,7 +1360,9 @@ class SemanticAnalyzer(NodeVisitor):
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
             # Give it a unique name derived from the line number.
-            name = cast(StrExpr, call.args[0]).value + '@' + str(call.line)
+            name = cast(StrExpr, call.args[0]).value
+            if name != var_name:
+                name += '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
