@@ -511,7 +511,6 @@ class Decorator(SymbolNode):
     def serialize(self) -> JsonDict:
         return {'.class': 'Decorator',
                 'func': self.func.serialize(),
-                'decorators': [d.serialize() for d in self.decorators],
                 'var': self.var.serialize(),
                 'is_overload': self.is_overload,
                 }
@@ -520,7 +519,7 @@ class Decorator(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'Decorator':
         assert data['.class'] == 'Decorator'
         dec = Decorator(FuncDef.deserialize(data['func']),
-                        [Node.deserialize(d) for d in data['decorators']],
+                        [],
                         Var.deserialize(data['var']))
         dec.is_overload = data['is_overload']
         return dec
