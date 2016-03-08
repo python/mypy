@@ -1986,7 +1986,8 @@ class SymbolTableNode:
                         fullname = self.node.alt_fullname or self.node.fullname()
                     else:
                         fullname = self.node.fullname()
-                    if fullname is not None and fullname != prefix + '.' + name:
+                    if (fullname is not None and '.' in fullname and
+                        fullname != prefix + '.' + name):
                         data['cross_ref'] = fullname
                         return data
                 data['node'] = self.node.serialize()
