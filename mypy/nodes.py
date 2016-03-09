@@ -1976,6 +1976,8 @@ class SymbolTableNode:
                 }  # type: JsonDict
         if self.tvar_id:
             data['tvar_id'] = self.tvar_id
+        if not self.module_public:
+            data['module_public'] = False
         if self.kind == MODULE_REF:
             data['cross_ref'] = self.node.fullname()
         else:
@@ -2012,6 +2014,8 @@ class SymbolTableNode:
             stnode = SymbolTableNode(kind, node, typ=typ)
         if 'tvar_id' in data:
             stnode.tvar_id = data['tvar_id']
+        if 'module_public' in data:
+            stnode.module_public = data['module_public']
         return stnode
 
 
@@ -2035,7 +2039,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
     def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict
         for key, value in self.items():
-            if key == '__builtins__' or not value.module_public:
+            if key == '__builtins__':
                 continue
             data[key] = value.serialize(fullname, key)
         return data
