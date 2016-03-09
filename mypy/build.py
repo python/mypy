@@ -58,6 +58,7 @@ SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
 FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
 DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
+INCREMENTAL = 'incremental'      # Incremental mode: use the cache
 
 # State ids. These describe the states a source file / module can be in a
 # build.
@@ -603,6 +604,8 @@ class BuildManager:
         return find_module(id, self.lib_path) is not None
 
     def maybe_make_cached_state(self, id: str, path: str) -> Optional['UnprocessedBase']:
+        if INCREMENTAL not in self.flags:
+            return None
         m = find_cache_meta(id, path, self)
         if m is None:
             return None
@@ -1182,7 +1185,8 @@ class SemanticallyAnalyzedFile(ParsedFile):
         # FIX remove from active state list to speed up processing
 
         file = TypeCheckedFile(self.info(), self.tree)
-        dump_to_json(file, self.manager)
+        if INCREMENTAL in self.manager.flags:
+            dump_to_json(file, self.manager)
         self.switch_state(file)
 
     def state(self) -> int:

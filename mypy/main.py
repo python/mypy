@@ -181,6 +181,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         elif args[0] == '--disallow-untyped-calls':
             options.build_flags.append(build.DISALLOW_UNTYPED_CALLS)
             args = args[1:]
+        elif args[0] == '--incremental':
+            options.build_flags.append(build.INCREMENTAL)
+            args = args[1:]
         elif args[0] in ('--version', '-V'):
             ver = True
             args = args[1:]
@@ -316,6 +319,7 @@ Options:
   -s, --silent-imports  don't follow imports to .py files
   --disallow-untyped-calls  disallow calling functions without type annotations
                             from functions with type annotations
+  --incremental      incremental mode: cache type-checking results
   --implicit-any     behave as though all functions were annotated with Any
   -f, --dirty-stubs  don't warn if typeshed is out of sync
   --pdb              invoke pdb on fatal error
