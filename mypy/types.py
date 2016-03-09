@@ -48,12 +48,12 @@ class TypeVarDef(mypy.nodes.Context):
 
     name = ''
     id = 0
-    values = None  # type: List[Type]
+    values = None  # type: Optional[List[Type]]
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
     line = 0
 
-    def __init__(self, name: str, id: int, values: List[Type],
+    def __init__(self, name: str, id: int, values: Optional[List[Type]],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1) -> None:
         self.name = name
         self.id = id
@@ -75,7 +75,7 @@ class TypeVarDef(mypy.nodes.Context):
         return {'.class': 'TypeVarDef',
                 'name': self.name,
                 'id': self.id,
-                'values': [v.serialize() for v in self.values],
+                'values': None if self.values is None else [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
                 }
@@ -85,7 +85,7 @@ class TypeVarDef(mypy.nodes.Context):
         assert data['.class'] == 'TypeVarDef'
         return TypeVarDef(data['name'],
                           data['id'],
-                          [Type.deserialize(v) for v in data['values']],
+                          None if data['values'] is None else [Type.deserialize(v) for v in data['values']],
                           Type.deserialize(data['upper_bound']),
                           data['variance'],
                           )

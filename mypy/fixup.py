@@ -173,8 +173,9 @@ class TypeFixer(TypeVisitor[None]):
         if ct.ret_type is not None:
             ct.ret_type.accept(self)
         for v in ct.variables:
-            for val in v.values:
-                val.accept(self)
+            if v.values:
+                for val in v.values:
+                    val.accept(self)
             v.upper_bound.accept(self)
         for i, t in ct.bound_vars:
             t.accept(self)
