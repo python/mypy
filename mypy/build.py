@@ -1380,8 +1380,8 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
 MYPY_CACHE = '.mypy_cache'
 
 
-def get_cache_names(id: str, path: str) -> Tuple[str, str]:
-    prefix = os.path.join(MYPY_CACHE, *id.split('.'))
+def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+    prefix = os.path.join(MYPY_CACHE, '%d.%d' % pyversion, *id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
@@ -1389,7 +1389,7 @@ def get_cache_names(id: str, path: str) -> Tuple[str, str]:
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
-    meta_json, data_json = get_cache_names(id, path)
+    meta_json, data_json = get_cache_names(id, path, manager.pyversion)
     manager.log('Finding {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
@@ -1443,7 +1443,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
-    meta_json, data_json = get_cache_names(id, path)
+    meta_json, data_json = get_cache_names(id, path, manager.pyversion)
     manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
     data = file.tree.serialize()
     parent = os.path.dirname(data_json)
