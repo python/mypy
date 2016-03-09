@@ -899,13 +899,9 @@ class ProbablyCachedFile(UnprocessedBase):
             file = CacheLoadedFile(self.info(), self.meta, data)
         else:
             # Didn't work -- construct an UnprocessedFile.
-            path, text = read_module_source_from_file(self.id,
-                                                      self.manager.lib_path,
-                                                      self.manager.pyversion,
-                                                      SILENT_IMPORTS in self.manager.flags)
+            text = read_with_python_encoding(self.path, self.manager.pyversion)
             # TODO: Errors
             assert text is not None
-            assert path == os.path.abspath(self.path), (path, self.path)
             file = UnprocessedFile(self.info(), text)
         self.switch_state(file)
 
