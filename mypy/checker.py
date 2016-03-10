@@ -366,10 +366,12 @@ class TypeChecker(NodeVisitor[Type]):
     current_node_deferred = False
     # This makes it an error to call an untyped function from a typed one
     disallow_untyped_calls = False
+    # This makes it an error to define an untyped or partially-typed function
+    disallow_untyped_funcs = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 disallow_untyped_calls=False) -> None:
+                 disallow_untyped_calls=False, disallow_untyped_funcs=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -393,6 +395,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pass_num = 0
         self.current_node_deferred = False
         self.disallow_untyped_calls = disallow_untyped_calls
+        self.disallow_untyped_funcs = disallow_untyped_funcs
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -657,6 +660,19 @@ class TypeChecker(NodeVisitor[Type]):
                         not self.dynamic_funcs[-1]):
                     self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
+
+                if self.disallow_untyped_funcs:
+                    # Check for functions with unspecified/not fully specified types.
+                    def is_implicit_any(t: Type) -> bool:
+                        return isinstance(t, AnyType) and t.implicit
+
+                    if fdef.type is None:
+                        self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
+                    elif isinstance(fdef.type, CallableType):
+                        if is_implicit_any(fdef.type.ret_type):
+                            self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                        if any(is_implicit_any(t) for t in fdef.type.arg_types):
+                            self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
 
             if name in nodes.reverse_op_method_set:
                 self.check_reverse_op_method(item, typ, name)
