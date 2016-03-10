@@ -365,6 +365,7 @@ class BuildManager:
       data_dir:        Mypy data directory (contains stubs)
       target:          Build target; selects which passes to perform
       lib_path:        Library path for looking up modules
+      modules:         Mapping of module ID to MypyFile
       semantic_analyzer:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
@@ -408,10 +409,10 @@ class BuildManager:
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
-        modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(modules, self.errors)
+        self.modules = self.semantic_analyzer.modules
+        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors,
-                                        modules,
+                                        self.modules,
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags)
         self.states = []  # type: List[State]
@@ -479,8 +480,7 @@ class BuildManager:
         if self.errors.is_errors():
             self.errors.raise_error()
 
-        return BuildResult(self.semantic_analyzer.modules,
-                           self.type_checker.type_map)
+        return BuildResult(self.modules, self.type_checker.type_map)
 
     def next_available_state(self) -> 'State':
         """Find a ready state (one that has all its dependencies met)."""
@@ -928,7 +928,7 @@ class CacheLoadedFile(State):
         self.tree = MypyFile.deserialize(data)
 
         # Store the parsed module in the shared module symbol table.
-        self.semantic_analyzer().modules[self.id] = self.tree
+        self.manager.modules[self.id] = self.tree
 
     def is_ready(self) -> bool:
         """Return True if all dependencies are at least in the same state
@@ -947,7 +947,7 @@ class CacheLoadedFile(State):
     def process(self) -> None:
         """Patch up cross-references and Transition to CachePatchedFile."""
         self.manager.log('FIXING MODULE PASS ONE {}'.format(self.id))
-        fixup.fixup_module_pass_one(self.tree, self.semantic_analyzer().modules)
+        fixup.fixup_module_pass_one(self.tree, self.manager.modules)
         file = CachePatchedFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
 
@@ -985,7 +985,7 @@ class CachePatchedFile(State):
     def process(self) -> None:
         """Calculate all MROs and transition to CacheWithMroFile."""
         self.manager.log('FIXING MODULE PASS TWO {}'.format(self.id))
-        fixup.fixup_module_pass_two(self.tree, self.semantic_analyzer().modules)
+        fixup.fixup_module_pass_two(self.tree, self.manager.modules)
         file = CacheWithMroFile(self.info(), self.tree, self.meta)
         self.switch_state(file)
 
@@ -1026,22 +1026,22 @@ class UnprocessedFile(UnprocessedBase):
 
     def process(self) -> None:
         """Parse the file, store global names and advance to the next state."""
-        if self.id in self.semantic_analyzer().modules:
+        if self.id in self.manager.modules:
             self.fail(self.path, 1, "Duplicate module named '{}'".format(self.id))
             return
 
         tree = self.parse(self.program_text, self.path)
 
         # Store the parsed module in the shared module symbol table.
-        self.semantic_analyzer().modules[self.id] = tree
+        modules = self.manager.modules
+        modules[self.id] = tree
 
         if '.' in self.id:
             # Include module in the symbol table of the enclosing package.
             c = self.id.split('.')
             p = '.'.join(c[:-1])
-            sem_anal = self.semantic_analyzer()
-            if p in sem_anal.modules:
-                sem_anal.modules[p].names[c[-1]] = SymbolTableNode(MODULE_REF, tree, p)
+            if p in modules:
+                modules[p].names[c[-1]] = SymbolTableNode(MODULE_REF, tree, p)
 
         if self.id != 'builtins':
             # The builtins module is imported implicitly in every program (it
@@ -1487,7 +1487,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     new_keys = sorted(new_names)
 
     print('Fixing up', file.id)
-    fixup.fixup_module_pass_one(new_tree, file.semantic_analyzer().modules)
+    fixup.fixup_module_pass_one(new_tree, manager.modules)
 
     print('Comparing keys', file.id)
     old_tree = file.tree
@@ -1504,7 +1504,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
                     print('  Old key', key, 'not found in new tree')
 
     print('Comparing values', file.id)
-    modules = file.semantic_analyzer().modules
+    modules = manager.modules
     for key in old_keys:
         if key not in new_keys:
             continue
