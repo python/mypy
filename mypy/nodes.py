@@ -638,7 +638,6 @@ class ClassDef(Node):
                 'type_vars': [v.serialize() for v in self.type_vars],
                 'base_types': [t.serialize() for t in self.base_types],
                 'metaclass': self.metaclass,
-                'decorators': [d.serialize() for d in self.decorators],
                 'is_builtinclass': self.is_builtinclass,
                 }
 
@@ -652,7 +651,6 @@ class ClassDef(Node):
                        )
         res.fullname = data['fullname']
         res.base_types = [mypy.types.Instance.deserialize(t) for t in data['base_types']]
-        res.decorators = [Node.deserialize(d) for d in data['decorators']]
         res.is_builtinclass = data['is_builtinclass']
         return res
 
