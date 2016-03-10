@@ -1442,6 +1442,11 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     path = file.path
     if path == '<string>':
         return
+    write_cache(id, path, file.tree, file.dependencies, manager)
+
+
+def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
+                manager: BuildManager) -> None:
     path = os.path.abspath(path)
     manager.log('Dumping {} to {}'.format(id, path))
     st = os.stat(path)  # TODO: Errors
@@ -1449,7 +1454,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     size = st.st_size
     meta_json, data_json = get_cache_names(id, path, manager.pyversion)
     manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
-    data = file.tree.serialize()
+    data = tree.serialize()
     parent = os.path.dirname(data_json)
     if not os.path.isdir(parent):
         os.makedirs(parent)
@@ -1466,7 +1471,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
             'mtime': mtime,
             'size': size,
             'data_mtime': data_mtime,
-            'dependencies': file.dependencies,
+            'dependencies': dependencies,
             }
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
@@ -1478,7 +1483,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
 
     # Now, as a test, read it back.
     print()
-    print('Reading what we wrote for', file.id, 'from', data_json)
+    print('Reading what we wrote for', id, 'from', data_json)
     with open(data_json, 'r') as f:
         new_data = json.load(f)
     assert new_data == data
@@ -1486,11 +1491,11 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
     new_names = new_tree.names
     new_keys = sorted(new_names)
 
-    print('Fixing up', file.id)
+    print('Fixing up', id)
     fixup.fixup_module_pass_one(new_tree, manager.modules)
 
-    print('Comparing keys', file.id)
-    old_tree = file.tree
+    print('Comparing keys', id)
+    old_tree = tree
     old_names = old_tree.names
     old_keys = sorted(old_names)
     if new_keys != old_keys:
@@ -1503,7 +1508,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
                 if key != '__builtins__' and v.module_public:
                     print('  Old key', key, 'not found in new tree')
 
-    print('Comparing values', file.id)
+    print('Comparing values', id)
     modules = manager.modules
     for key in old_keys:
         if key not in new_keys:
@@ -1511,7 +1516,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
         oldv = old_names[key]
         newv = new_names[key]
         if newv.mod_id != oldv.mod_id:
-            newv.mod_id = file.id  # XXX Hack
+            newv.mod_id = id  # XXX Hack
         if newv.kind == MODULE_REF and newv.node is None:
             fn = oldv.node.fullname()
             if fn in modules:
