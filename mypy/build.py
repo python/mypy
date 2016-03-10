@@ -208,6 +208,11 @@ def build(sources: List[BuildSource],
                            implicit_any=implicit_any,
                            reports=reports)
 
+    if INCREMENTAL in flags:
+        from .depmgr import dispatch
+        dispatch(sources, manager)
+        return BuildResult(manager.modules, manager.type_checker.type_map)
+
     # Construct information that describes the initial files. __main__ is the
     # implicit module id and the import context is empty initially ([]).
     initial_states = []  # type: List[UnprocessedBase]
