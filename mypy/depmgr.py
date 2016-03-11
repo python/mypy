@@ -157,6 +157,8 @@ class State:
     """
 
     manager = None  # type: BuildManager
+    order_counter = 0  # Class variable
+    order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
     xpath = None  # type: str  # Path or '<string>'
@@ -164,7 +166,8 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
-    dependencies = None  # type: Optional[Set[str]]
+    dependencies = None  # type: Optional[List[str]]
+    roots = None  # type: Optional[List[str]]
 
     def __init__(self,
                  id: Optional[str],
@@ -174,8 +177,12 @@ class State:
                  ) -> None:
         assert id or path or source, "Neither id, path nor source given"
         self.manager = manager
+        State.order_counter += 1
+        self.order = State.order_counter
         self.id = id or '__main__'
         if not path and not source:
+            # TODO: If PY2, replace builtins with __builtin__;
+            # see mypy.build.UnprocessedBase.import_module().
             path = find_module(id, manager.lib_path)
             if not path:
                 raise CompileError(["mypy: can't find module '%s'" % id])
@@ -185,16 +192,28 @@ class State:
         if path and INCREMENTAL in manager.flags:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
+        self.add_roots()
         if self.meta:
-            self.dependencies = set(self.meta.dependencies)
+            self.dependencies = self.meta.dependencies
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
 
+    def add_roots(self) -> None:
+        # All parent packages are new roots.
+        roots = []
+        parent = self.id
+        while '.' in parent:
+            parent, _ = parent.rsplit('.', 1)
+            roots.append(parent)
+        self.roots = roots
+
     def is_fresh(self) -> bool:
+        """Return whether the cache data for this file is fresh."""
         return self.meta is not None
 
     def clear_fresh(self) -> None:
+        """Throw away the cache data for this file, marking it as stale."""
         self.meta = None
 
     # Methods for processing cached modules.
@@ -233,7 +252,10 @@ class State:
             # TODO: This is weirdly optional; why is it needed?
             parent, child = self.id.rsplit('.', 1)
             if parent in modules:
+                manager.trace("Added %s.%s" % (parent, child))
                 modules[parent].names[child] = SymbolTableNode(MODULE_REF, self.tree, parent)
+            else:
+                manager.log("Hm... couldn't add %s.%s" % (parent, child))
 
         # Do the first pass of semantic analysis: add top-level
         # definitions in the file to the symbol table.  We must do
@@ -246,18 +268,12 @@ class State:
         # semantic analyzer.  TODO: can't FirstPass .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
-        # Compute dependencies.
-        dependencies = set()
-        # Start with parent packages.
-        parent = self.id
-        while '.' in parent:
-            parent, _ = parent.rsplit('.', 1)
-            dependencies.add(parent)
-        # Every module implicitly depends on builtins.
-        if self.id != 'builtins':
-            dependencies.add('builtins')
+        # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
-        dependencies.update(id for id, _ in manager.all_imported_modules_in_file(self.tree))
+        dependencies = [id for id, _ in manager.all_imported_modules_in_file(self.tree)]
+        # Every module implicitly depends on builtins.
+        if self.id != 'builtins' and 'builtins' not in dependencies:
+            dependencies.append('builtins')
 
         # If self.dependencies is already set, it was read from the
         # cache, but for some reason we're re-parsing the file.
@@ -330,6 +346,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             for dep in st.dependencies:
                 if dep not in graph and dep not in new:
                     # TODO: Implement --silent-imports.
+                    # TODO: Import context (see mypy.build.UnprocessedFile.process()).
+                    # TODO: Error handling (ditto).
                     depst = State(dep, None, None, manager)
                     assert depst.id not in new, "TODO: This is bad %s" % depst.id
                     new[depst.id] = depst
@@ -340,29 +358,42 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
 
 
 def process_graph(graph: Graph, manager: BuildManager) -> None:
-    """Process everyhing in dependency order."""
+    """Process everything in dependency order."""
     sccs = sorted_components(graph)
-    manager.log("Found %d SCCs" % len(sccs))
-    for scc in sccs:
-        manager.trace("Processing SCC of size %d (%s)" % (len(scc), " ".join(sorted(scc))))
+    manager.log("Found %d SCCs; largest has %d nodes" %
+                (len(sccs), max(len(scc) for scc in sccs)))
+    for ascc in sccs:
+        # Sort the SCC's nodes in *reverse* order or encounter.
+        # This is a heuristic for handling import cycles.
+        # Note that ascc is a set, and scc is a list.
+        scc = sorted(ascc, key=lambda id: -graph[id].order)
+        # If builtins is in the list, move it last.
+        if 'builtins' in ascc:
+            scc.remove('builtins')
+            scc.append('builtins')
         # TODO: Do something about mtime ordering.
-        fresh = all(graph[id].is_fresh() for id in scc)
+        fresh = scc_is_fresh = all(graph[id].is_fresh() for id in scc)
         if fresh:
-            manager.trace("  Looks fresh...")
             deps = set()
             for id in scc:
                 deps.update(graph[id].dependencies)
-            deps -= scc
+            deps -= ascc
             fresh = all(graph[id].is_fresh() for id in deps)
         if fresh:
-            manager.trace("  Processing as fresh")
+            fresh_msg = "fresh"
+        elif scc_is_fresh:
+            fresh_msg = "stale due to stale deps"
+        else:
+            fresh_msg = "stale"
+        manager.log("Processing SCC of size %d as %s (%s)" %
+                    (len(scc), fresh_msg, " ".join(scc)))
+        if fresh:
             process_fresh_scc(graph, scc)
         else:
-            manager.trace("  *** Processing as stale ***")
             process_stale_scc(graph, scc)
 
 
-def process_fresh_scc(graph: Graph, scc: AbstractSet[str]) -> None:
+def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
     """Process the modules in one SCC from their cached data."""
     for id in scc:
         graph[id].load_tree()
@@ -372,17 +403,13 @@ def process_fresh_scc(graph: Graph, scc: AbstractSet[str]) -> None:
         graph[id].calculate_mros()
 
 
-def process_stale_scc(graph: Graph, ascc: AbstractSet[str]) -> None:
+def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     """Process the modules in one SCC from source code."""
-    if ascc == {'abc', 'typing', 'builtins'}:
-        # Hack: typing must be processed before builtins.  TODO: Why?
-        scc = ['abc', 'typing', 'builtins']
-    else:
-        scc = sorted(ascc)  # Sort for reproducibility.  TODO: Why?
     for id in scc:
         graph[id].clear_fresh()
     for id in scc:
         # We may already have parsed the module, or not.
+        # If the former, parse_file() is a no-op.
         graph[id].parse_file()
     for id in scc:
         graph[id].semantic_analysis()
@@ -413,7 +440,7 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
 
 # TODO: Use TypeVar T instead of str.
 def strongly_connected_components_path(vertices: Set[str],
-                                       edges: Dict[str, Set[str]]) -> Iterator[Set[str]]:
+                                       edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
     """Compute Strongly Connected Components of a graph.
 
     From http://code.activestate.com/recipes/578507/.
@@ -466,7 +493,8 @@ def topsort(data: Dict[AbstractSet[str], Set[AbstractSet[str]]]) -> Iterable[Abs
         ready = {item for item, dep in data.items() if not dep}
         if not ready:
             break
-        # TODO: Return the items in a reproducible order.
+        # TODO: Return the items in a reproducible order, or return
+        # the entire set of items.
         for item in ready:
             yield item
         data = {item: (dep - ready)
