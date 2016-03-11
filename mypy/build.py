@@ -17,6 +17,7 @@ import os.path
 import shlex
 import subprocess
 import sys
+import time
 import re
 from os.path import dirname, basename
 
@@ -208,30 +209,33 @@ def build(sources: List[BuildSource],
                            implicit_any=implicit_any,
                            reports=reports)
 
-    if INCREMENTAL in flags:
+    if INCREMENTAL in flags and VERBOSE in flags:
         from .depmgr import dispatch
         dispatch(sources, manager)
-        return BuildResult(manager.modules, manager.type_checker.type_map)
+        result = BuildResult(manager.modules, manager.type_checker.type_map)
+    else:
+        # Construct information that describes the initial files. __main__ is the
+        # implicit module id and the import context is empty initially ([]).
+        initial_states = []  # type: List[UnprocessedBase]
+        for source in sources:
+            initial_state = None  # type: Optional[UnprocessedBase]
+            if source.module != '__main__' and source.path is not None:
+                initial_state = manager.maybe_make_cached_state(source.module, source.path)
+            # TODO: else if using '-m x' try the cache too
+            if initial_state is None:
+                content = source.load(lib_path, pyversion)
+                info = StateInfo(source.effective_path, source.module, [], manager)
+                initial_state = UnprocessedFile(info, content)
+            initial_states.append(initial_state)
 
-    # Construct information that describes the initial files. __main__ is the
-    # implicit module id and the import context is empty initially ([]).
-    initial_states = []  # type: List[UnprocessedBase]
-    for source in sources:
-        initial_state = None  # type: Optional[UnprocessedBase]
-        if source.module != '__main__' and source.path is not None:
-            initial_state = manager.maybe_make_cached_state(source.module, source.path)
-        # TODO: else if using '-m x' try the cache too
-        if initial_state is None:
-            content = source.load(lib_path, pyversion)
-            info = StateInfo(source.effective_path, source.module, [], manager)
-            initial_state = UnprocessedFile(info, content)
-        initial_states.append(initial_state)
+        # Perform the build by sending the files as new file (UnprocessedFile is the
+        # initial state of all files) to the manager. The manager will process the
+        # file and all dependant modules recursively.
+        result = manager.process(initial_states)
 
-    # Perform the build by sending the files as new file (UnprocessedFile is the
-    # initial state of all files) to the manager. The manager will process the
-    # file and all dependant modules recursively.
-    result = manager.process(initial_states)
     reports.finish()
+    manager.log("Build finished with %d modules and %d types" %
+                (len(result.files), len(result.types)))
     return result
 
 
@@ -402,6 +406,7 @@ class BuildManager:
                  custom_typing_module: str,
                  implicit_any: bool,
                  reports: Reports) -> None:
+        self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
@@ -617,14 +622,14 @@ class BuildManager:
         info = StateInfo(path, id, self.errors.import_context(), self)
         return ProbablyCachedFile(info, m)
 
-    def log(self, message: str) -> None:
+    def log(self, *message: str) -> None:
         if VERBOSE in self.flags:
-            print('LOG:', message, file=sys.stderr)
+            print('%.3f:LOG: ' % (time.time() - self.start_time), *message, file=sys.stderr)
             sys.stderr.flush()
 
-    def trace(self, message: str) -> None:
+    def trace(self, *message: str) -> None:
         if self.flags.count(VERBOSE) >= 2:
-            print('TRACE:', message, file=sys.stderr)
+            print('%.3f:TRACE:' % (time.time() - self.start_time), *message, file=sys.stderr)
             sys.stderr.flush()
 
 
@@ -1399,7 +1404,7 @@ def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
     meta_json, data_json = get_cache_names(id, path, manager.pyversion)
-    manager.log('Finding {} {}'.format(id, data_json))
+    manager.trace('Looking for {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
     with open(meta_json, 'r') as f:
@@ -1425,7 +1430,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # TODO: Share stat() outcome with find_module()
     st = os.stat(path)  # TODO: Errors
     if st.st_mtime != m.mtime or st.st_size != m.size:
-        manager.log('Metadata abandoned because of modified file')
+        manager.log('Metadata abandoned because of modified file {}'.format(path))
         return None
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
@@ -1453,7 +1458,7 @@ def dump_to_json(file: TypeCheckedFile, manager: BuildManager) -> None:
 def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
                 manager: BuildManager) -> None:
     path = os.path.abspath(path)
-    manager.log('Dumping {} to {}'.format(id, path))
+    manager.trace('Dumping {} {}'.format(id, path))
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
