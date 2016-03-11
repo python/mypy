@@ -85,7 +85,8 @@ class TypeVarDef(mypy.nodes.Context):
         assert data['.class'] == 'TypeVarDef'
         return TypeVarDef(data['name'],
                           data['id'],
-                          None if data['values'] is None else [Type.deserialize(v) for v in data['values']],
+                          None if data['values'] is None
+                          else [Type.deserialize(v) for v in data['values']],
                           Type.deserialize(data['upper_bound']),
                           data['variance'],
                           )

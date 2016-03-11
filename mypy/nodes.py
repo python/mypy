@@ -1977,7 +1977,10 @@ class SymbolTableNode:
         if not self.module_public:
             data['module_public'] = False
         if self.kind == MODULE_REF:
-            data['cross_ref'] = self.node.fullname()
+            if self.node is None:
+                print("*** Missing module cross ref in %s for %s" % (prefix, name))
+            else:
+                data['cross_ref'] = self.node.fullname()
         else:
             if self.node is not None:
                 if prefix is not None:
@@ -1986,7 +1989,7 @@ class SymbolTableNode:
                     else:
                         fullname = self.node.fullname()
                     if (fullname is not None and '.' in fullname and
-                        fullname != prefix + '.' + name):
+                            fullname != prefix + '.' + name):
                         data['cross_ref'] = fullname
                         return data
                 data['node'] = self.node.serialize()
