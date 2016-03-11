@@ -114,10 +114,11 @@ from source.  We can do this as follows:
 be done for all nodes before starting the next pass for any nodes in
 the SCC.)
 
-We could process the nodes in the SCC in any order.  We *might*
-process them in the reverse order in which we encountered them when
-originally constructing the graph (IIUC that's how the old build.py
-deals with cycles).  For now we'll process them in alphabetical order.
+We could process the nodes in the SCC in any order.  For sentimental
+reasons, I've decided to process them in the reverse order in which we
+encountered them when originally constructing the graph.  That's how
+the old build.py deals with cycles, and at least this reproduces the
+previous implementation more accurately.
 
 Can we do better than re-parsing all nodes in the SCC when any of its
 dependencies are out of date?  It's doubtful.  The optimization
@@ -129,6 +130,14 @@ nodes in the cycle has completed.  (This is an important issue because
 we have a cycle of over 500 modules in the server repo.  But I'd like
 to deal with it later.)
 
+Additional wrinkles
+-------------------
+
+During implementation more wrinkles were found.
+
+- When a submodule of a package (e.g. x.y) is encountered, the parent
+  package (e.g. x) must also be loaded, but it is not strictly a
+  dependency.  See State.add_roots() below.
 """
 
 import json
