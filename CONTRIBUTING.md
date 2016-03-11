@@ -11,7 +11,7 @@ Getting started, building, and testing
 --------------------------------------
 
 If you haven't already, take a look at the project's
-[README.md file](https://github.com/python/mypy/blob/master/README.md)
+[README.md file](README.md)
 and the [Mypy documentation](http://mypy.readthedocs.org/en/latest/),
 and try adding type annotations to your file and type-checking it with Mypy.
 
