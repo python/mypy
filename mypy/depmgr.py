@@ -136,15 +136,15 @@ import os
 
 from typing import Any, Dict, List, Set, AbstractSet, Iterable, Iterator, Optional, TypeVar
 
-from .build import (BuildManager, BuildSource, CacheMeta,
+from mypy.build import (BuildManager, BuildSource, CacheMeta,
                     INCREMENTAL, FAST_PARSER, SILENT_IMPORTS,
                     find_cache_meta, find_module, read_with_python_encoding,
                     write_cache)
-from .errors import CompileError
-from .fixup import fixup_module_pass_one, fixup_module_pass_two
-from .nodes import MypyFile, SymbolTableNode, MODULE_REF
-from .parse import parse
-from .semanal import FirstPass
+from mypy.errors import CompileError
+from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.nodes import MypyFile, SymbolTableNode, MODULE_REF
+from mypy.parse import parse
+from mypy.semanal import FirstPass
 
 
 class State:
@@ -398,19 +398,18 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # TODO: Do something about mtime ordering.
         stale_scc = {id for id in scc if not graph[id].is_fresh()}
         fresh = not stale_scc
-        if fresh:
-            deps = set()
-            for id in scc:
-                deps.update(graph[id].dependencies)
-            deps -= ascc
-            stale_deps = {id for id in deps if not graph[id].is_fresh()}
-            fresh = not stale_deps
-        else:
-            stale_deps = {}  # Shouldn't be needed.
+        deps = set()
+        for id in scc:
+            deps.update(graph[id].dependencies)
+        deps -= ascc
+        stale_deps = {id for id in deps if not graph[id].is_fresh()}
+        fresh = fresh and not stale_deps
         if fresh:
             fresh_msg = "fresh"
         elif stale_scc:
             fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
+            if stale_deps:
+                fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
         manager.log("Processing SCC of size %d (%s) as %s" %

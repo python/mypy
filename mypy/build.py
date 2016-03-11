@@ -210,7 +210,7 @@ def build(sources: List[BuildSource],
                            reports=reports)
 
     if flags.count(INCREMENTAL) >= 2:
-        from .depmgr import dispatch
+        from mypy.depmgr import dispatch
         dispatch(sources, manager)
         result = BuildResult(manager.modules, manager.type_checker.type_map)
     else:
