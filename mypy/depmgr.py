@@ -137,7 +137,7 @@ import os
 from typing import Any, Dict, List, Set, AbstractSet, Iterable, Iterator, Optional, TypeVar
 
 from mypy.build import (BuildManager, BuildSource, CacheMeta,
-                    INCREMENTAL, FAST_PARSER, SILENT_IMPORTS,
+                    INCREMENTAL, FAST_PARSER, SILENT_IMPORTS, TYPE_CHECK,
                     find_cache_meta, find_module, read_with_python_encoding,
                     write_cache)
 from mypy.errors import CompileError
@@ -313,6 +313,8 @@ class State:
         self.check_blockers()
 
     def type_check(self) -> None:
+        if self.manager.target < TYPE_CHECK:
+            return
         self.manager.type_checker.visit_file(self.tree, self.xpath)
         # TODO: DUMP_INFER_STATS, manager.reports.file()
         self.check_blockers()
