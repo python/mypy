@@ -2,15 +2,15 @@ Contributing to Mypy
 ====================
 
 Welcome!  Mypy is a community project that aims to work for a wide
-swath of Python users and Python codebases.  If you're trying Mypy on
-your Python code, your experience and what you can contribute is
+range of Python users and Python codebases.  If you're trying Mypy on
+your Python code, your experience and what you can contribute are
 important to the project's success.
 
 
 Getting started, building, and testing
 --------------------------------------
 
-If you haven't already, take a look at the project's README file and
+If you haven't already, take a look at the project's README.md file and
 the [Mypy documentation](http://mypy.readthedocs.org/en/latest/), and
 try adding type annotations to your file and type-checking it with Mypy.
 
@@ -46,19 +46,22 @@ Submitting Changes
 ------------------
 
 Even more excellent than a good bug report is a fix for a bug, or the
-implementation of a much-needed new feature.  We'd love to have your
-contributions.
+implementation of a much-needed new feature. (*)  We'd love to have
+your contributions.
+
+(*) If your new feature will be a lot of work, we recommend talking to
+    us early -- see below.
 
 We use the usual GitHub pull-request flow, which may be familiar to
-you if you've contributed to other projects on GitHub.  For the mechanics
-of it, see [our git and GitHub workflow help page](http://www.mypy-lang.org/wiki/UsingGitAndGitHub),
+you if you've contributed to other projects on GitHub.  For the mechanics,
+see [our git and GitHub workflow help page](http://www.mypy-lang.org/wiki/UsingGitAndGitHub),
 or [GitHub's own documentation](https://help.github.com/articles/using-pull-requests/).
 
 Anyone interested in Mypy may review your code.  One of the Mypy core
 developers will merge your pull request when they think it's ready.
 For every pull request, we aim to promptly either merge it or say why
 it's not yet ready; if you go a few days without a reply, please feel
-free to ping the thread with a new comment.
+free to ping the thread by adding a new comment.
 
 At present the core developers are (alphabetically):
 * David Fisher (@ddfisher)
@@ -72,10 +75,9 @@ Preparing Changes
 
 Before you begin: if your change will be a significant amount of work
 to write, we highly recommend starting by opening an issue laying out
-what you want to do.  (This is good advice for all kinds of
-open-source projects in general.)  That lets a conversation happen
-early in case other contributors disagree with what you'd like to do
-or have ideas that will help you do it.
+what you want to do.  That lets a conversation happen early in case
+other contributors disagree with what you'd like to do or have ideas
+that will help you do it.
 
 The best pull requests are focused, clearly describe what they're for
 and why they're correct, and contain tests for whatever changes they
@@ -98,16 +100,16 @@ helpful in developing your change.
 Issue-tracker conventions
 -------------------------
 
-We aim to reply to all new issues promptly.  We'll assign a
-"milestone" to help us track which issues we intend to get to when,
-and may apply "labels" to carry some other information.  Here's what
-our milestones and labels mean.
+We aim to reply to all new issues promptly.  We'll assign a milestone
+to help us track which issues we intend to get to when, and may apply
+labels to carry some other information.  Here's what our milestones
+and labels mean.
 
 ### Milestones
 
-We use GitHub "milestones" (see [our
-milestones](https://github.com/python/mypy/milestones)) to roughly
-order what we want to do soon and less soon.
+We use GitHub "milestones" ([see our
+list](https://github.com/python/mypy/milestones)) to roughly order
+what we want to do soon and less soon.
 
 This means they represent a combination of priority and scale of work.
 Bugs that aren't a huge deal but do matter to users and don't seem
@@ -117,8 +119,8 @@ that will take longer may go further out.
 Specifically:
 
 * **Numbered milestones** correspond to releases.  These assignments
-  are changeable and issues may be moved earlier or later.
-  Assignments to further-out milestones are especially likely to
+  are changeable, and issues may be moved earlier or later.
+  Assignments to further-out milestones are more likely to
   change.
 * Point releases, like 0.x.y when we're already at 0.x.z, generally
   have issues that are less work to tackle and whose user-facing
@@ -126,9 +128,11 @@ Specifically:
   generally go to a full "minor" release, like 0.x.0.
 * **Future** has other things we don't currently plan to get to anytime
   soon -- akin to "backlog" in some systems.
-* **Questions** is for things that aren't yet clearly a thing to
-  actually change but rather a user asking a question -- we use the
-  issue tracker as the preferred venue for such questions.  These
+* **Questions** is for issue threads where a user is asking a question
+  but it isn't yet clear that it represents something to actually
+  change.  We use the issue tracker as the preferred venue for such
+  questions, even when they aren't literally issues, to keep down the
+  number of distinct discussion venues anyone needs to track.  These
   might move to a different milestone if after discussion a bug or
   feature request emerges.
 * Issues **without a milestone** haven't been triaged.  We aim to
