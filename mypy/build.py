@@ -613,6 +613,22 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
+    def module_not_found(self, path: str, line: int, id: str) -> None:
+        self.errors.set_file(path)
+        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
+        if ((self.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
+                (self.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+            self.errors.report(
+                line, "No library stub file for standard library module '{}'".format(id))
+            self.errors.report(line, stub_msg, severity='note', only_once=True)
+        elif moduleinfo.is_third_party_module(id):
+            self.errors.report(line, "No library stub file for module '{}'".format(id))
+            self.errors.report(line, stub_msg, severity='note', only_once=True)
+        else:
+            self.errors.report(line, "Cannot find module named '{}'".format(id))
+            self.errors.report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
+                               only_once=True)
+
     def maybe_make_cached_state(self, id: str, path: str) -> Optional['UnprocessedBase']:
         if INCREMENTAL not in self.flags:
             return None
@@ -759,22 +775,6 @@ class State:
         """Report an error in the build (e.g. if could not find a module)."""
         self.errors().set_file(path)
         self.errors().report(line, msg, blocker=blocker)
-
-    def module_not_found(self, path: str, line: int, id: str) -> None:
-        self.errors().set_file(path)
-        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if ((self.manager.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
-                (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
-            self.errors().report(
-                line, "No library stub file for standard library module '{}'".format(id))
-            self.errors().report(line, stub_msg, severity='note', only_once=True)
-        elif moduleinfo.is_third_party_module(id):
-            self.errors().report(line, "No library stub file for module '{}'".format(id))
-            self.errors().report(line, stub_msg, severity='note', only_once=True)
-        else:
-            self.errors().report(line, "Cannot find module named '{}'".format(id))
-            self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
-                                 only_once=True)
 
 
 class UnprocessedBase(State):
@@ -1030,7 +1030,7 @@ class UnprocessedFile(UnprocessedBase):
                 if self.silent:
                     self.manager.missing_modules.add(p)
                 else:
-                    self.module_not_found(self.path, 1, p)
+                    self.manager.module_not_found(self.path, 1, p)
             else:
                 self.dependencies.append(p)
 
@@ -1088,7 +1088,7 @@ class UnprocessedFile(UnprocessedBase):
                     if (line not in tree.ignored_lines and
                             'import' not in tree.weak_opts and
                             not self.silent):
-                        self.module_not_found(self.path, line, id)
+                        self.manager.module_not_found(self.path, line, id)
                 self.manager.missing_modules.add(id)
 
         # Replace this state object with a parsed state in BuildManager.
