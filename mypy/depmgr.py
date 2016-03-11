@@ -216,6 +216,12 @@ class State:
         """Throw away the cache data for this file, marking it as stale."""
         self.meta = None
 
+    def check_blockers(self) -> None:
+        """Raise CompileError if a blocking error is detected."""
+        if self.manager.errors.is_blockers():
+            self.manager.log("Bailing due to blocking errors")
+            self.manager.errors.raise_error()
+
     # Methods for processing cached modules.
 
     def load_tree(self) -> None:
@@ -265,7 +271,8 @@ class State:
         first.analyze(self.tree, self.xpath, self.id)
 
         # Initialize module symbol table, which was populated by the
-        # semantic analyzer.  TODO: can't FirstPass .analyze() do this?
+        # semantic analyzer.
+        # TODO: Why can't FirstPass .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
         # Compute (direct) dependencies.
@@ -285,17 +292,21 @@ class State:
             print("  Cached:", self.dependencies)
             print("  Source:", dependencies)
         self.dependencies = dependencies
+        self.check_blockers()
 
     def semantic_analysis(self) -> None:
         self.manager.semantic_analyzer.visit_file(self.tree, self.xpath)
+        self.check_blockers()
 
     def semantic_analysis_pass_three(self) -> None:
         self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
         # TODO: DUMP_TYPE_STATS
+        self.check_blockers()
 
     def type_check(self) -> None:
         self.manager.type_checker.visit_file(self.tree, self.xpath)
         # TODO: DUMP_INFER_STATS, manager.reports.file()
+        self.check_blockers()
 
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags:
@@ -317,6 +328,7 @@ def parse_file(id: str, path: str, source: str, manager: BuildManager) -> MypyFi
                  fast_parser=FAST_PARSER in manager.flags)
     tree._fullname = id
     if errors.num_messages() != num_errs:
+        manager.log("Bailing due to parse errors")
         errors.raise_error()
     return tree
 
@@ -329,6 +341,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
+    if manager.errors.is_errors():
+        manager.log("Found %d errors (before de-duping)" % manager.errors.num_messages())
+        manager.errors.raise_error()
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
@@ -420,7 +435,6 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].write_cache()
 
 
-# TODO: Use TypeVar T instead of str.
 def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies."""
     # Compute SCCs.
@@ -438,7 +452,6 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     return list(topsort(data))
 
 
-# TODO: Use TypeVar T instead of str.
 def strongly_connected_components_path(vertices: Set[str],
                                        edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
     """Compute Strongly Connected Components of a graph.
@@ -478,7 +491,6 @@ def strongly_connected_components_path(vertices: Set[str],
                 yield scc
 
 
-# TODO: Use TypeVar T instead of str.
 def topsort(data: Dict[AbstractSet[str], Set[AbstractSet[str]]]) -> Iterable[AbstractSet[str]]:
     """Topological sort.  Consumes its argument.
 
