@@ -140,10 +140,11 @@ During implementation more wrinkles were found.
   dependency.  See State.add_roots() below.
 """
 
+import contextlib
 import json
 import os
 
-from typing import Any, Dict, List, Set, AbstractSet, Iterable, Iterator, Optional, TypeVar
+from typing import Any, Dict, List, Set, AbstractSet, Tuple, Iterable, Iterator, Optional, TypeVar
 
 from mypy.build import (BuildManager, BuildSource, CacheMeta,
                     INCREMENTAL, FAST_PARSER, SILENT_IMPORTS, TYPE_CHECK,
@@ -154,6 +155,10 @@ from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.nodes import MypyFile, SymbolTableNode, MODULE_REF
 from mypy.parse import parse
 from mypy.semanal import FirstPass
+
+
+class ModuleNotFound(Exception):
+    """Control flow exception to signal that a module was not found."""
 
 
 class State:
@@ -175,21 +180,32 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
-    dependencies = None  # type: Optional[List[str]]
+    dependencies = None  # type: List[str]
+    dep_line_map = None  # tyoe: Dict[str, int]  # Line number where imported
     roots = None  # type: Optional[List[str]]
+    import_context = None  # type: List[Tuple[str, int]]
+    imported_from = None  # type: Optional[Tuple[State, int]]
 
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
                  source: Optional[str],
                  manager: BuildManager,
+                 imported_from: Tuple['State', int] = None,
                  ) -> None:
-        assert id or path or source, "Neither id, path nor source given"
+        assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
         State.order_counter += 1
         self.order = State.order_counter
+        self.imported_from = imported_from
+        if imported_from:
+            caller_state, caller_line = imported_from
+            self.import_context = caller_state.import_context[:]
+            self.import_context.append((caller_state.xpath, caller_line))
+        else:
+            self.import_context = []
         self.id = id or '__main__'
-        if not path and not source:
+        if not path and source is None:
             file_id = id
             if id == 'builtins' and manager.pyversion[0] == 2:
                 # The __builtin__ module is called internally by mypy
@@ -203,22 +219,44 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
             if not path:
-                raise CompileError(["mypy: can't find module '%s'" % id])
+                # Could not find a module.  Typically the reason is a
+                # misspelled module name, missing stub, module not in
+                # search path or the module has not been installed.
+                if self.imported_from:
+                    caller_state, caller_line = self.imported_from
+                    if not (SILENT_IMPORTS in manager.flags or
+                            (caller_state.tree is not None and
+                             (caller_line in caller_state.tree.ignored_lines or
+                              'import' in caller_state.tree.weak_opts))):
+                        ##print(caller_state.import_context, self.import_context, caller_state.xpath, self.xpath, caller_state.id)
+                        save_import_context = manager.errors.import_context()
+                        manager.errors.set_import_context(caller_state.import_context)
+                        manager.module_not_found(caller_state.xpath, caller_line, id)
+                        manager.errors.set_import_context(save_import_context)
+                    manager.missing_modules.add(id)
+                    raise ModuleNotFound
+                else:
+                    # If this is a root it's always fatal.
+                    # TODO: This might hide non-fatal errors from
+                    # roots processed earlier.
+                    raise CompileError(["mypy: can't find module '%s'" % id])
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
-        if path and INCREMENTAL in manager.flags:
+        if path and source is None and INCREMENTAL in manager.flags:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
         self.add_roots()
         if self.meta:
             self.dependencies = self.meta.dependencies
+            self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
 
     def add_roots(self) -> None:
         # All parent packages are new roots.
+        # TODO: Use build.super_packages()?
         roots = []
         parent = self.id
         while '.' in parent:
@@ -239,6 +277,14 @@ class State:
         if self.manager.errors.is_blockers():
             self.manager.log("Bailing due to blocking errors")
             self.manager.errors.raise_error()
+
+    @contextlib.contextmanager
+    def wrap_context(self) -> Iterator[None]:
+        save_import_context = self.manager.errors.import_context()
+        self.manager.errors.set_import_context(self.import_context)
+        yield
+        self.manager.errors.set_import_context(save_import_context)
+        self.check_blockers()
 
     # Methods for processing cached modules.
 
@@ -265,10 +311,20 @@ class State:
         manager = self.manager
         modules = manager.modules
 
-        if not self.source:
-            self.source = read_with_python_encoding(self.path, manager.pyversion)
-        self.tree = parse_file(self.id, self.path, self.source, manager)
-        self.source = None  # We won't need it again.
+        with self.wrap_context():
+            source = self.source
+            self.source = None  # We won't need it again.
+            if self.path and source is None:
+                try:
+                    source = read_with_python_encoding(self.path, manager.pyversion)
+                except IOError as ioerr:
+                    raise CompileError([
+                        "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
+                except UnicodeDecodeError as decodeerr:
+                    raise CompileError([
+                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
+            self.tree = parse_file(self.id, self.path, source, manager)
+
         modules[self.id] = self.tree
 
         if self.tree and '.' in self.id:
@@ -295,7 +351,17 @@ class State:
 
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
-        dependencies = [id for id, _ in manager.all_imported_modules_in_file(self.tree)]
+        # Also keep track of each dependency's source line.
+        dependencies = []
+        dep_line_map = {}
+        for id, line in manager.all_imported_modules_in_file(self.tree):
+            # Omit missing modules, as otherwise we could not type-check
+            # programs with missing modules.
+            if id == self.id or id in manager.missing_modules or not id:
+                continue
+            if id not in dep_line_map:
+                dependencies.append(id)
+                dep_line_map[id] = line
         # Every module implicitly depends on builtins.
         if self.id != 'builtins' and 'builtins' not in dependencies:
             dependencies.append('builtins')
@@ -310,23 +376,24 @@ class State:
             print("  Cached:", self.dependencies)
             print("  Source:", dependencies)
         self.dependencies = dependencies
+        self.dep_line_map = dep_line_map
         self.check_blockers()
 
     def semantic_analysis(self) -> None:
-        self.manager.semantic_analyzer.visit_file(self.tree, self.xpath)
-        self.check_blockers()
+        with self.wrap_context():
+            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath)
 
     def semantic_analysis_pass_three(self) -> None:
-        self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
-        # TODO: DUMP_TYPE_STATS
-        self.check_blockers()
+        with self.wrap_context():
+            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
+            # TODO: DUMP_TYPE_STATS
 
     def type_check(self) -> None:
         if self.manager.target < TYPE_CHECK:
             return
-        self.manager.type_checker.visit_file(self.tree, self.xpath)
-        # TODO: DUMP_INFER_STATS, manager.reports.file()
-        self.check_blockers()
+        with self.wrap_context():
+            self.manager.type_checker.visit_file(self.tree, self.xpath)
+            # TODO: DUMP_INFER_STATS, manager.reports.file()
 
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
@@ -371,19 +438,31 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     graph = {}  # type: Graph
     # Seed graph with roots.
     for bs in sources:
-        st = State(bs.module, bs.path, bs.text, manager)
-        assert st.id not in graph, "TODO: Duplicate module %s" % st.id
+        try:
+            st = State(bs.module, bs.path, bs.text, manager)
+        except ModuleNotFound:
+            continue
+        if st.id in graph:
+            manager.errors.set_file(st.xpath)
+            manager.errors.report(1, "Duplicate module named '%s'" % st.id)
+            manager.errors.raise_error()
         graph[st.id] = st
     # Collect dependencies.
     while True:
         new = {}  # type: Graph
         for st in graph.values():
-            for dep in st.dependencies:
+            for dep in st.roots + st.dependencies:
                 if dep not in graph and dep not in new:
-                    # TODO: Implement --silent-imports.
-                    # TODO: Import context (see mypy.build.UnprocessedFile.process()).
-                    # TODO: Error handling (ditto).
-                    depst = State(dep, None, None, manager)
+                    imported_from = None
+                    if dep in st.dependencies:
+                        imported_from = (st, st.dep_line_map.get(dep, 1))
+                    assert dep, (st.roots, st.dependencies, st.id)
+                    try:
+                        depst = State(dep, None, None, manager, imported_from=imported_from)
+                    except ModuleNotFound:
+                        if dep in st.dependencies:
+                            st.dependencies.remove(dep)
+                        continue
                     assert depst.id not in new, "TODO: This is bad %s" % depst.id
                     new[depst.id] = depst
         if not new:

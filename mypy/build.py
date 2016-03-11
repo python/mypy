@@ -209,7 +209,7 @@ def build(sources: List[BuildSource],
                            implicit_any=implicit_any,
                            reports=reports)
 
-    if flags.count(INCREMENTAL) >= 2:
+    if flags.count(INCREMENTAL) >= 2 or os.getenv("NEWINCREMENTAL"):
         from mypy.depmgr import dispatch
         dispatch(sources, manager)
         result = BuildResult(manager.modules, manager.type_checker.type_map)
