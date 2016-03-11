@@ -136,7 +136,8 @@ import os
 
 from typing import Any, Dict, List, Set, AbstractSet, Iterable, Iterator, Optional, TypeVar
 
-from .build import (BuildManager, BuildSource, CacheMeta, FAST_PARSER,
+from .build import (BuildManager, BuildSource, CacheMeta,
+                    INCREMENTAL, FAST_PARSER, SILENT_IMPORTS,
                     find_cache_meta, find_module, read_with_python_encoding,
                     write_cache)
 from .errors import CompileError
@@ -181,8 +182,7 @@ class State:
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
-        if path:
-            # TODO: Only if --incremental.
+        if path and INCREMENTAL in manager.flags:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
         if self.meta:
@@ -282,7 +282,7 @@ class State:
         # TODO: DUMP_INFER_STATS, manager.reports.file()
 
     def write_cache(self) -> None:
-        if self.path:
+        if self.path and INCREMENTAL in self.manager.flags:
             write_cache(self.id, self.path, self.tree, list(self.dependencies), self.manager)
 
 
@@ -390,7 +390,6 @@ def process_stale_scc(graph: Graph, ascc: AbstractSet[str]) -> None:
         graph[id].semantic_analysis_pass_three()
     for id in scc:
         graph[id].type_check()
-        # TODO: Only if --incremental.
         graph[id].write_cache()
 
 
