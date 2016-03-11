@@ -181,9 +181,18 @@ class State:
         self.order = State.order_counter
         self.id = id or '__main__'
         if not path and not source:
-            # TODO: If PY2, replace builtins with __builtin__;
-            # see mypy.build.UnprocessedBase.import_module().
-            path = find_module(id, manager.lib_path)
+            file_id = id
+            if id == 'builtins' and manager.pyversion[0] == 2:
+                # The __builtin__ module is called internally by mypy
+                # 'builtins' in Python 2 mode (similar to Python 3),
+                # but the stub file is __builtin__.pyi.  The reason is
+                # that a lot of code hard-codes 'builtins.x' and it's
+                # easier to work it around like this.  It also means
+                # that the implementation can mostly ignore the
+                # difference and just assume 'builtins' everywhere,
+                # which simplifies code.
+                file_id = '__builtin__'
+            path = find_module(file_id, manager.lib_path)
             if not path:
                 raise CompileError(["mypy: can't find module '%s'" % id])
         self.path = path
