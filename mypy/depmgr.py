@@ -309,7 +309,7 @@ class State:
         self.check_blockers()
 
     def write_cache(self) -> None:
-        if self.path and INCREMENTAL in self.manager.flags:
+        if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
             write_cache(self.id, self.path, self.tree, list(self.dependencies), self.manager)
 
 
@@ -387,21 +387,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             scc.remove('builtins')
             scc.append('builtins')
         # TODO: Do something about mtime ordering.
-        fresh = scc_is_fresh = all(graph[id].is_fresh() for id in scc)
+        stale_scc = {id for id in scc if not graph[id].is_fresh()}
+        fresh = not stale_scc
         if fresh:
             deps = set()
             for id in scc:
                 deps.update(graph[id].dependencies)
             deps -= ascc
-            fresh = all(graph[id].is_fresh() for id in deps)
+            stale_deps = {id for id in deps if not graph[id].is_fresh()}
+            fresh = not stale_deps
+        else:
+            stale_deps = {}  # Shouldn't be needed.
         if fresh:
             fresh_msg = "fresh"
-        elif scc_is_fresh:
-            fresh_msg = "stale due to stale deps"
+        elif stale_scc:
+            fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
         else:
-            fresh_msg = "stale"
-        manager.log("Processing SCC of size %d as %s (%s)" %
-                    (len(scc), fresh_msg, " ".join(scc)))
+            fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
+        manager.log("Processing SCC of size %d (%s) as %s" %
+                    (len(scc), " ".join(scc), fresh_msg))
         if fresh:
             process_fresh_scc(graph, scc)
         else:
