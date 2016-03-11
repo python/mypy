@@ -20,7 +20,7 @@ Wrinkles
 
 a. Need to parse source modules to determine dependencies.
 
-b. Import cycles.
+b. Processing order for modules within an SCC.
 
 c. Must order mtimes of files to decide whether to re-process; depends
    on clock never resetting.
@@ -48,7 +48,8 @@ Steps
    the graph:
 
    - for cached nodes use the list of dependencies from the cache
-     metadata;
+     metadata (this will be valid even if we later end up re-parsing
+     the same source);
 
    - for uncached nodes parse the file and process all imports found,
      taking care of (a) above.
@@ -63,7 +64,8 @@ on at least one module for which the cache metadata is stale.)
 
 Now we can execute steps A-C from the first section.  Finding SCCs for
 step A shouldn't be hard; there's a recipe here:
-http://code.activestate.com/recipes/578507/.
+http://code.activestate.com/recipes/578507/.  There's also a plethora
+of topsort recipes, e.g. http://code.activestate.com/recipes/577413/.
 
 For single nodes, processing is simple.  If the node was cached, we
 deserialize the cache data and fix up cross-references.  Otherwise, we
@@ -72,15 +74,16 @@ above; if a module has valid cache data *but* any of its
 dependendencies was processed from source, then the module should be
 processed from source.
 
-A relatively simple optimization (outside SCCs) is as follows: if a
-node's cache data is valid, but one or more of its dependencies are
-out of date so we have to re-parse the node from source, once we have
-fully type-checked the node, we can decide whether its symbol table
-actually changed compared to the cache data (by reading the cache data
-and comparing it to the data we would be writing).  If there is no
-change we can declare the node up to date, and any node that depends
-(and for which we have cached data, and whose other dependencies are
-up to date) on it won't need to be re-parsed from source.
+A relatively simple optimization (outside SCCs) we might do in the
+future is as follows: if a node's cache data is valid, but one or more
+of its dependencies are out of date so we have to re-parse the node
+from source, once we have fully type-checked the node, we can decide
+whether its symbol table actually changed compared to the cache data
+(by reading the cache data and comparing it to the data we would be
+writing).  If there is no change we can declare the node up to date,
+and any node that depends (and for which we have cached data, and
+whose other dependencies are up to date) on it won't need to be
+re-parsed from source.
 
 Import cycles
 -------------
@@ -93,7 +96,7 @@ deal with changes to the list of nodes while we're processing it.
 If all nodes in the SCC have valid cache metadata and all dependencies
 outside the SCC are still valid, we can proceed as follows:
 
-  1. Load cache data for all nodesin the SCC.
+  1. Load cache data for all nodes in the SCC.
 
   2. Fix up cross-references for all nodes in the SCC.
 
@@ -114,7 +117,7 @@ the SCC.)
 We could process the nodes in the SCC in any order.  We *might*
 process them in the reverse order in which we encountered them when
 originally constructing the graph (IIUC that's how the old build.py
-deals with cycles).
+deals with cycles).  For now we'll process them in alphabetical order.
 
 Can we do better than re-parsing all nodes in the SCC when any of its
 dependencies are out of date?  It's doubtful.  The optimization
@@ -156,6 +159,7 @@ class State:
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
     xpath = None  # type: str  # Path or '<string>'
+    source = None  # type: Optional[str]  # Module source code
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
@@ -178,11 +182,13 @@ class State:
         self.xpath = path or '<string>'
         self.source = source
         if path:
+            # TODO: Only if --incremental.
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
         if self.meta:
             self.dependencies = set(self.meta.dependencies)
         else:
+            # Parse the file (and then some) to get the dependencies.
             self.parse_file()
 
     def is_fresh(self) -> bool:
@@ -210,6 +216,7 @@ class State:
 
     def parse_file(self) -> None:
         if self.tree is not None:
+            # The file was already parsed (in __init__()).
             return
 
         manager = self.manager
@@ -218,30 +225,46 @@ class State:
         if not self.source:
             self.source = read_with_python_encoding(self.path, manager.pyversion)
         self.tree = parse_file(self.id, self.path, self.source, manager)
+        self.source = None  # We won't need it again.
         modules[self.id] = self.tree
 
         if self.tree and '.' in self.id:
             # Include module in the symbol table of the enclosing package.
+            # TODO: This is weirdly optional; why is it needed?
             parent, child = self.id.rsplit('.', 1)
             if parent in modules:
                 modules[parent].names[child] = SymbolTableNode(MODULE_REF, self.tree, parent)
 
-        # First pass of semantic analysis is needed before adding dependencies.
+        # Do the first pass of semantic analysis: add top-level
+        # definitions in the file to the symbol table.  We must do
+        # this before processing imports, since this may mark some
+        # import statements as unreachable.
         first = FirstPass(manager.semantic_analyzer)
         first.analyze(self.tree, self.xpath, self.id)
+
+        # Initialize module symbol table, which was populated by the
+        # semantic analyzer.  TODO: can't FirstPass .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
         # Compute dependencies.
         dependencies = set()
-        aid = self.id
-        while '.' in aid:
-            aid, _ = aid.rsplit('.', 1)
-            dependencies.add(aid)
+        # Start with parent packages.
+        parent = self.id
+        while '.' in parent:
+            parent, _ = parent.rsplit('.', 1)
+            dependencies.add(parent)
+        # Every module implicitly depends on builtins.
         if self.id != 'builtins':
             dependencies.add('builtins')
+        # Add all direct imports (this is why we needed the first pass).
         dependencies.update(id for id, _ in manager.all_imported_modules_in_file(self.tree))
 
+        # If self.dependencies is already set, it was read from the
+        # cache, but for some reason we're re-parsing the file.
+        # Double-check that the dependencies still match (otherwise
+        # the graph is out of date).
         if self.dependencies is not None and dependencies != self.dependencies:
+            # TODO: Make this into a reasonable error message.
             print("HELP!! Dependencies changed!")  # Probably the file was edited.
             print("  Cached:", self.dependencies)
             print("  Source:", dependencies)
@@ -371,7 +394,7 @@ def process_stale_scc(graph: Graph, ascc: AbstractSet[str]) -> None:
         graph[id].write_cache()
 
 
-# TODO: Use FrozenSet[T].
+# TODO: Use TypeVar T instead of str.
 def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies."""
     # Compute SCCs.
@@ -380,9 +403,9 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     sccs = list(strongly_connected_components_path(vertices, edges))
     # Topsort.
     sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
-    data = {}
+    data = {}  # type: Dict[AbstractSet[str], Set[AbstractSet[str]]]
     for scc in sccs:
-        deps = set()  # type: Set[frozenset]
+        deps = set()  # type: Set[AbstractSet[str]]
         for id in scc:
             deps.update(sccsmap[x] for x in graph[id].dependencies)
         data[frozenset(scc)] = deps
@@ -429,12 +452,13 @@ def strongly_connected_components_path(vertices: Set[str],
                 yield scc
 
 
-# TODO: Use FrozenSet[T or str] instead of frozenset.
-def topsort(data: Dict[frozenset, Set[frozenset]]) -> Iterable[frozenset]:
+# TODO: Use TypeVar T instead of str.
+def topsort(data: Dict[AbstractSet[str], Set[AbstractSet[str]]]) -> Iterable[AbstractSet[str]]:
     """Topological sort.  Consumes its argument.
 
     From http://code.activestate.com/recipes/577413/.
     """
+    # TODO: Use a faster algorithm?
     for k, v in data.items():
         v.discard(k)  # Ignore self dependencies.
     for item in set.union(*data.values()) - set(data.keys()):
@@ -443,6 +467,7 @@ def topsort(data: Dict[frozenset, Set[frozenset]]) -> Iterable[frozenset]:
         ready = {item for item, dep in data.items() if not dep}
         if not ready:
             break
+        # TODO: Return the items in a reproducible order.
         for item in ready:
             yield item
         data = {item: (dep - ready)
