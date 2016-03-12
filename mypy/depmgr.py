@@ -329,16 +329,6 @@ class State:
 
         modules[self.id] = self.tree
 
-        if self.tree and '.' in self.id:
-            # Include module in the symbol table of the enclosing package.
-            # TODO: This is weirdly optional; why is it needed?
-            parent, child = self.id.rsplit('.', 1)
-            if parent in modules:
-                manager.trace("Added %s.%s" % (parent, child))
-                modules[parent].names[child] = SymbolTableNode(MODULE_REF, self.tree, parent)
-            else:
-                manager.log("Hm... couldn't add %s.%s" % (parent, child))
-
         # Do the first pass of semantic analysis: add top-level
         # definitions in the file to the symbol table.  We must do
         # this before processing imports, since this may mark some
@@ -384,6 +374,18 @@ class State:
         self.dependencies = dependencies
         self.dep_line_map = dep_line_map
         self.check_blockers()
+
+    def patch_parent(self) -> None:
+        # Include module in the symbol table of the enclosing package.
+        assert '.' in self.id
+        manager = self.manager
+        modules = manager.modules
+        parent, child = self.id.rsplit('.', 1)
+        if parent in modules:
+            manager.trace("Added %s.%s" % (parent, child))
+            modules[parent].names[child] = SymbolTableNode(MODULE_REF, self.tree, parent)
+        else:
+            manager.log("Hm... couldn't add %s.%s" % (parent, child))
 
     def semantic_analysis(self) -> None:
         with self.wrap_context():
@@ -534,6 +536,9 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
+        # But we still need to patch a submodule into its parent package.
+        if '.' in id:
+            graph[id].patch_parent()
     for id in scc:
         graph[id].semantic_analysis()
     for id in scc:

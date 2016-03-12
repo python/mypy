@@ -295,7 +295,7 @@ from . import m
 [out]
 main:1: error: No parent module -- cannot perform relative import
 
-[case testRelativeImportAtTopLevelModule]
+[case testRelativeImportAtTopLevelModule2]
 from .. import m
 [out]
 main:1: error: No parent module -- cannot perform relative import
