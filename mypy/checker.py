@@ -367,11 +367,11 @@ class TypeChecker(NodeVisitor[Type]):
     # This makes it an error to call an untyped function from a typed one
     disallow_untyped_calls = False
     # This makes it an error to define an untyped or partially-typed function
-    disallow_untyped_funcs = False
+    disallow_untyped_defs = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 disallow_untyped_calls=False, disallow_untyped_funcs=False) -> None:
+                 disallow_untyped_calls=False, disallow_untyped_defs=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -395,7 +395,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pass_num = 0
         self.current_node_deferred = False
         self.disallow_untyped_calls = disallow_untyped_calls
-        self.disallow_untyped_funcs = disallow_untyped_funcs
+        self.disallow_untyped_defs = disallow_untyped_defs
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -661,7 +661,7 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
 
-                if self.disallow_untyped_funcs:
+                if self.disallow_untyped_defs:
                     # Check for functions with unspecified/not fully specified types.
                     def is_implicit_any(t: Type) -> bool:
                         return isinstance(t, AnyType) and t.implicit

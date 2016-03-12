@@ -55,7 +55,7 @@ FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
 DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 # Disallow defining untyped (or incompletely typed) functions
-DISALLOW_UNTYPED_FUNCS = 'disallow-untyped-funcs'
+DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
 
 # State ids. These describe the states a source file / module can be in a
 # build.
@@ -386,7 +386,7 @@ class BuildManager:
                                         modules,
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags,
-                                        DISALLOW_UNTYPED_FUNCS in self.flags)
+                                        DISALLOW_UNTYPED_DEFS in self.flags)
         self.states = []  # type: List[State]
         self.module_files = {}  # type: Dict[str, str]
         self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
