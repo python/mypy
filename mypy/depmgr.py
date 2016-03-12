@@ -325,7 +325,7 @@ class State:
                 except UnicodeDecodeError as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            self.tree = parse_file(self.id, self.path, source, manager)
+            self.tree = parse_file(self.id, self.xpath, source, manager)
 
         modules[self.id] = self.tree
 
@@ -359,8 +359,12 @@ class State:
         for id, line in manager.all_imported_modules_in_file(self.tree):
             # Omit missing modules, as otherwise we could not type-check
             # programs with missing modules.
-            if id == self.id or id in manager.missing_modules or not id:
+            if id == self.id or id in manager.missing_modules:
                 continue
+            if id == '':
+                # Must be from a relative import.
+                manager.errors.set_file(self.xpath)
+                manager.errors.report(line, "No parent module -- cannot perform relative import", blocker=True)
             if id not in dep_line_map:
                 dependencies.append(id)
                 dep_line_map[id] = line
