@@ -140,6 +140,7 @@ During implementation more wrinkles were found.
   dependency.  See State.add_roots() below.
 """
 
+import collections
 import contextlib
 import json
 import os
@@ -184,22 +185,24 @@ class State:
     dep_line_map = None  # tyoe: Dict[str, int]  # Line number where imported
     roots = None  # type: Optional[List[str]]
     import_context = None  # type: List[Tuple[str, int]]
-    imported_from = None  # type: Optional[Tuple[State, int]]
+    caller_state = None  # type: Optional[State]
+    caller_line = 0
 
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
                  source: Optional[str],
                  manager: BuildManager,
-                 imported_from: Tuple['State', int] = None,
+                 caller_state: 'State' = None,
+                 caller_line: int = 0,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
         State.order_counter += 1
         self.order = State.order_counter
-        self.imported_from = imported_from
-        if imported_from:
-            caller_state, caller_line = imported_from
+        self.caller_state = caller_state
+        self.caller_line = caller_line
+        if caller_state:
             self.import_context = caller_state.import_context[:]
             self.import_context.append((caller_state.xpath, caller_line))
         else:
@@ -222,13 +225,12 @@ class State:
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
-                if self.imported_from:
-                    caller_state, caller_line = self.imported_from
+                # TODO: Copy the check for id == '' from build.py?
+                if self.caller_state:
                     if not (SILENT_IMPORTS in manager.flags or
                             (caller_state.tree is not None and
                              (caller_line in caller_state.tree.ignored_lines or
                               'import' in caller_state.tree.weak_opts))):
-                        ##print(caller_state.import_context, self.import_context, caller_state.xpath, self.xpath, caller_state.id)
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
                         manager.module_not_found(caller_state.xpath, caller_line, id)
@@ -436,6 +438,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     """Given some source files, load the full dependency graph."""
     graph = {}  # type: Graph
+    # The deque is used to implement breadth first traversal.
+    new = collections.deque()  # type: collections.deque[State]
     # Seed graph with roots.
     for bs in sources:
         try:
@@ -447,27 +451,25 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.errors.report(1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st
-    # Collect dependencies.
-    while True:
-        new = {}  # type: Graph
-        for st in graph.values():
-            for dep in st.roots + st.dependencies:
-                if dep not in graph and dep not in new:
-                    imported_from = None
+        new.append(st)
+    # Collect dependencies.  We go breadth-first.
+    while new:
+        st = new.popleft()
+        for dep in st.roots + st.dependencies:
+            if dep not in graph:
+                try:
+                    if dep in st.roots:
+                        # Roots don't have import context.
+                        newst = State(dep, None, None, manager)
+                    else:
+                        newst = State(dep, None, None, manager, st, st.dep_line_map.get(dep, 1))
+                except ModuleNotFound:
                     if dep in st.dependencies:
-                        imported_from = (st, st.dep_line_map.get(dep, 1))
-                    assert dep, (st.roots, st.dependencies, st.id)
-                    try:
-                        depst = State(dep, None, None, manager, imported_from=imported_from)
-                    except ModuleNotFound:
-                        if dep in st.dependencies:
-                            st.dependencies.remove(dep)
-                        continue
-                    assert depst.id not in new, "TODO: This is bad %s" % depst.id
-                    new[depst.id] = depst
-        if not new:
-            break
-        graph.update(new)
+                        st.dependencies.remove(dep)
+                else:
+                    assert newst.id not in graph, newst.id
+                    graph[newst.id] = newst
+                    new.append(newst)
     return graph
 
 
