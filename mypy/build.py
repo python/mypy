@@ -921,6 +921,11 @@ class State:
                 # which simplifies code.
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
+            if (path and SILENT_IMPORTS in manager.flags and
+                    path.endswith('.py') and caller_state):
+                # In silent mode, for a non-root, don't load .py files.
+                # (This will still load a parent package's __init__.py.)
+                path = None
             if not path:
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in
