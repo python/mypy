@@ -143,9 +143,8 @@ During implementation more wrinkles were found.
 import collections
 import contextlib
 import json
-import os
 
-from typing import Any, Dict, List, Set, AbstractSet, Tuple, Iterable, Iterator, Optional, TypeVar
+from typing import Dict, List, Set, AbstractSet, Tuple, Iterable, Iterator, Optional
 
 from mypy.build import (BuildManager, BuildSource, CacheMeta,
                         TYPE_CHECK,
@@ -228,7 +227,6 @@ class State:
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
-                # TODO: Copy the check for id == '' from build.py?
                 if self.caller_state:
                     if not (SILENT_IMPORTS in manager.flags or
                             (caller_state.tree is not None and
@@ -261,7 +259,6 @@ class State:
 
     def add_roots(self) -> None:
         # All parent packages are new roots.
-        # TODO: Use build.super_packages()?
         roots = []
         parent = self.id
         while '.' in parent:
@@ -382,7 +379,8 @@ class State:
 
     def patch_parent(self) -> None:
         # Include module in the symbol table of the enclosing package.
-        assert '.' in self.id
+        if '.' not in self.id:
+            return
         manager = self.manager
         modules = manager.modules
         parent, child = self.id.rsplit('.', 1)
@@ -533,6 +531,8 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
     for id in scc:
         graph[id].load_tree()
     for id in scc:
+        graph[id].patch_parent()
+    for id in scc:
         graph[id].fix_cross_refs()
     for id in scc:
         graph[id].calculate_mros()
@@ -546,9 +546,8 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
-        # But we still need to patch a submodule into its parent package.
-        if '.' in id:
-            graph[id].patch_parent()
+    for id in scc:
+        graph[id].patch_parent()
     for id in scc:
         graph[id].semantic_analysis()
     for id in scc:
