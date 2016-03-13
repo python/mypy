@@ -209,9 +209,9 @@ def build(sources: List[BuildSource],
                            implicit_any=implicit_any,
                            reports=reports)
 
-    if flags.count(INCREMENTAL) >= 2 or os.getenv("NEWINCREMENTAL"):
-        from mypy.depmgr import dispatch
-        dispatch(sources, manager)
+    if INCREMENTAL in flags:
+        import mypy.depmgr  # type: ignore
+        mypy.depmgr.dispatch(sources, manager)  # type: ignore
         result = BuildResult(manager.modules, manager.type_checker.type_map)
     else:
         # Construct information that describes the initial files. __main__ is the

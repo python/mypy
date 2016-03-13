@@ -148,14 +148,17 @@ import os
 from typing import Any, Dict, List, Set, AbstractSet, Tuple, Iterable, Iterator, Optional, TypeVar
 
 from mypy.build import (BuildManager, BuildSource, CacheMeta,
-                    INCREMENTAL, FAST_PARSER, SILENT_IMPORTS, TYPE_CHECK,
-                    find_cache_meta, find_module, read_with_python_encoding,
-                    write_cache)
+                        TYPE_CHECK,
+                        INCREMENTAL, FAST_PARSER, SILENT_IMPORTS,
+                        DUMP_TYPE_STATS, DUMP_INFER_STATS,
+                        find_module, read_with_python_encoding,
+                        find_cache_meta, write_cache)
 from mypy.errors import CompileError
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.nodes import MypyFile, SymbolTableNode, MODULE_REF
 from mypy.parse import parse
 from mypy.semanal import FirstPass
+from mypy.stats import dump_type_stats
 
 
 class ModuleNotFound(Exception):
@@ -312,6 +315,7 @@ class State:
 
         manager = self.manager
         modules = manager.modules
+        manager.log("Parsing %s" % self.xpath)
 
         with self.wrap_context():
             source = self.source
@@ -354,7 +358,8 @@ class State:
             if id == '':
                 # Must be from a relative import.
                 manager.errors.set_file(self.xpath)
-                manager.errors.report(line, "No parent module -- cannot perform relative import", blocker=True)
+                manager.errors.report(line, "No parent module -- cannot perform relative import",
+                                      blocker=True)
             if id not in dep_line_map:
                 dependencies.append(id)
                 dep_line_map[id] = line
@@ -394,14 +399,19 @@ class State:
     def semantic_analysis_pass_three(self) -> None:
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
-            # TODO: DUMP_TYPE_STATS
+            if DUMP_TYPE_STATS in self.manager.flags:
+                dump_type_stats(self.tree, self.xpath)
 
     def type_check(self) -> None:
-        if self.manager.target < TYPE_CHECK:
+        manager = self.manager
+        if manager.target < TYPE_CHECK:
             return
         with self.wrap_context():
-            self.manager.type_checker.visit_file(self.tree, self.xpath)
-            # TODO: DUMP_INFER_STATS, manager.reports.file()
+            manager.type_checker.visit_file(self.tree, self.xpath)
+            type_map = manager.type_checker.type_map
+            if DUMP_INFER_STATS in manager.flags:
+                dump_type_stats(self.tree, self.xpath, inferred=True, typemap=type_map)
+            manager.reports.file(self.tree, type_map=type_map)
 
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():

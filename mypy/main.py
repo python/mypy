@@ -110,6 +110,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         if args[0] in ('--verbose', '-v'):
             options.build_flags.append(build.VERBOSE)
             args = args[1:]
+        elif args[0] == '--py1':
+            fail("Are you kidding me?")
         elif args[0] == '--py2':
             # Use Python 2 mode.
             options.pyversion = defaults.PYTHON2_VERSION
