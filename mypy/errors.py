@@ -196,7 +196,7 @@ class Errors:
 
         Render the messages suitable for displaying.
         """
-        raise CompileError(self.messages())
+        raise CompileError(self.messages(), use_stdout=True)
 
     def messages(self) -> List[str]:
         """Return a string list that represents the error messages.
@@ -338,10 +338,12 @@ class CompileError(Exception):
     """
 
     messages = None  # type: List[str]
+    use_stdout = False
 
-    def __init__(self, messages: List[str]) -> None:
+    def __init__(self, messages: List[str], use_stdout: bool = False) -> None:
         super().__init__('\n'.join(messages))
         self.messages = messages
+        self.use_stdout = use_stdout
 
 
 def remove_path_prefix(path: str, prefix: str) -> str:
