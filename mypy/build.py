@@ -1043,7 +1043,7 @@ class State:
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
         # Also keep track of each dependency's source line.
-        dependencies = []
+        dependencies = self.roots[:]
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for id, line in manager.all_imported_modules_in_file(self.tree):
             # Omit missing modules, as otherwise we could not type-check
@@ -1059,7 +1059,7 @@ class State:
                 dependencies.append(id)
                 dep_line_map[id] = line
         # Every module implicitly depends on builtins.
-        if self.id != 'builtins' and 'builtins' not in dependencies:
+        if self.id != 'builtins' and 'builtins' not in dep_line_map:
             dependencies.append('builtins')
 
         # If self.dependencies is already set, it was read from the
