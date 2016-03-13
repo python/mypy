@@ -1048,7 +1048,7 @@ class State:
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
         # Also keep track of each dependency's source line.
-        dependencies = self.roots[:]
+        dependencies = []
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for id, line in manager.all_imported_modules_in_file(self.tree):
             # Omit missing modules, as otherwise we could not type-check
