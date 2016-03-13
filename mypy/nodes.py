@@ -1180,7 +1180,7 @@ class FuncExpr(FuncItem):
 
     def expr(self) -> Node:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[0])
+        ret = cast(ReturnStmt, self.body.body[-1])
         return ret.expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

@@ -172,3 +172,7 @@ def f(x, y, z): # type: (..., int) -> None
 [out]
 main: note: In function "f":
 main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+
+[case testLambdaTupleArgInPython2]
+lambda (x, y): x + y
+[out]
