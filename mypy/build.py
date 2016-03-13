@@ -1184,7 +1184,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        # TODO: Do something about mtime ordering.
         stale_scc = {id for id in scc if not graph[id].is_fresh()}
         fresh = not stale_scc
         deps = set()
@@ -1194,7 +1193,30 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         stale_deps = {id for id in deps if not graph[id].is_fresh()}
         fresh = fresh and not stale_deps
         if fresh:
-            fresh_msg = "fresh"
+            # All cache files are fresh.  Check that no dependency's
+            # cache file is newer than any scc node's cache file.
+            oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
+            newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
+            if manager.flags.count(VERBOSE) >= 2:  # Dump all mtimes for extreme debugging.
+                all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
+                for id in all_ids:
+                    if id in scc:
+                        if graph[id].meta.data_mtime < newest_in_deps:
+                            key = "*id:"
+                        else:
+                            key = "id:"
+                    else:
+                        if graph[id].meta.data_mtime > oldest_in_scc:
+                            key = "+dep:"
+                        else:
+                            key = "dep:"
+                    manager.trace(" %5s %.0f %s" % (key, graph[id].meta.data_mtime, id))
+            # If equal, give the benefit of the doubt, due to 1-sec time granularity.
+            if oldest_in_scc < newest_in_deps:
+                fresh = False
+                fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
+            else:
+                fresh_msg = "fresh"
         elif stale_scc:
             fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
             if stale_deps:
