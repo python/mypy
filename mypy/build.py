@@ -378,6 +378,23 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
+    def parse_file(self, id: str, path: str, source: str) -> MypyFile:
+        """Parse the source of a file with the given name.
+
+        Raise CompileError if there is a parse error.
+        """
+        num_errs = self.errors.num_messages()
+        tree = parse(source, path, self.errors,
+                     pyversion=self.pyversion,
+                     custom_typing_module=self.custom_typing_module,
+                     implicit_any=self.implicit_any,
+                     fast_parser=FAST_PARSER in self.flags)
+        tree._fullname = id
+        if self.errors.num_messages() != num_errs:
+            self.log("Bailing due to parse errors")
+            self.errors.raise_error()
+        return tree
+
     def module_not_found(self, path: str, line: int, id: str) -> None:
         self.errors.set_file(path)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
@@ -1007,7 +1024,7 @@ class State:
                 except UnicodeDecodeError as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            self.tree = parse_file(self.id, self.xpath, source, manager)
+            self.tree = manager.parse_file(self.id, self.xpath, source)
 
         modules[self.id] = self.tree
 
@@ -1095,26 +1112,6 @@ class State:
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
             write_cache(self.id, self.path, self.tree, list(self.dependencies), self.manager)
-
-
-# TODO: This would make a nice method on BuildManager.
-def parse_file(id: str, path: str, source: str, manager: BuildManager) -> MypyFile:
-    """Parse the source of a file with the given name.
-
-    Raise CompileError if there is a parse error.
-    """
-    errors = manager.errors
-    num_errs = errors.num_messages()
-    tree = parse(source, path, errors,
-                 pyversion=manager.pyversion,
-                 custom_typing_module=manager.custom_typing_module,
-                 implicit_any=manager.implicit_any,
-                 fast_parser=FAST_PARSER in manager.flags)
-    tree._fullname = id
-    if errors.num_messages() != num_errs:
-        manager.log("Bailing due to parse errors")
-        errors.raise_error()
-    return tree
 
 
 Graph = Dict[str, State]
