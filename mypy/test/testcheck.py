@@ -4,7 +4,7 @@ import os.path
 import re
 import sys
 
-from typing import Tuple
+from typing import Tuple, List
 
 from mypy import build
 import mypy.myunit  # for mutable globals (ick!)
@@ -53,6 +53,7 @@ files = [
     'check-ignore.test',
     'check-type-promotion.test',
     'check-semanal-error.test',
+    'check-flags.test',
 ]
 
 
@@ -69,12 +70,13 @@ class TypeCheckSuite(Suite):
         pyversion = testcase_pyversion(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
+        flags = self.parse_flags(program_text)
         source = BuildSource(program_name, module_name, program_text)
         try:
             build.build(target=build.TYPE_CHECK,
                         sources=[source],
                         pyversion=pyversion,
-                        flags=[build.TEST_BUILTINS],
+                        flags=flags + [build.TEST_BUILTINS],
                         alt_lib_path=test_temp_dir)
         except CompileError as e:
             a = normalize_error_messages(e.messages)
@@ -109,3 +111,10 @@ class TypeCheckSuite(Suite):
             return m.group(1), path, program_text
         else:
             return '__main__', 'main', program_text
+
+    def parse_flags(self, program_text: str) -> List[str]:
+        m = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+        if m:
+            return m.group(1).split()
+        else:
+            return []
