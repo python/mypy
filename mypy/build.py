@@ -856,7 +856,7 @@ During implementation more wrinkles were found.
 
 - When a submodule of a package (e.g. x.y) is encountered, the parent
   package (e.g. x) must also be loaded, but it is not strictly a
-  dependency.  See State.add_roots() below.
+  dependency.  See State.add_ancestors() below.
 """
 
 
@@ -866,8 +866,6 @@ class ModuleNotFound(Exception):
 
 class State:
     """The state for a module.
-
-    It's a package if path ends in __init__.py[i].
 
     The source is only used for the -c command line option; in that
     case path is None.  Otherwise source is None and path isn't.
@@ -885,7 +883,7 @@ class State:
     tree = None  # type: Optional[MypyFile]
     dependencies = None  # type: List[str]
     dep_line_map = None  # tyoe: Dict[str, int]  # Line number where imported
-    roots = None  # type: Optional[List[str]]
+    ancestors = None  # type: Optional[List[str]]
     import_context = None  # type: List[Tuple[str, int]]
     caller_state = None  # type: Optional[State]
     caller_line = 0
@@ -897,6 +895,7 @@ class State:
                  manager: BuildManager,
                  caller_state: 'State' = None,
                  caller_line: int = 0,
+                 is_ancestor: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -923,16 +922,18 @@ class State:
                 # which simplifies code.
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
-            if (path and SILENT_IMPORTS in manager.flags and
-                    path.endswith('.py') and caller_state):
-                # In silent mode, for a non-root, don't load .py files.
-                # (This will still load a parent package's __init__.py.)
-                path = None
-            if not path:
+            if path:
+                # In silent mode, don't import .py files.
+                if (SILENT_IMPORTS in manager.flags and
+                    path.endswith('.py') and (caller_state or is_ancestor)):
+                    path = None
+                    manager.missing_modules.add(id)
+                    raise ModuleNotFound
+            else:
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
-                if self.caller_state:
+                if caller_state:
                     if not (SILENT_IMPORTS in manager.flags or
                             (caller_state.tree is not None and
                              (caller_line in caller_state.tree.ignored_lines or
@@ -944,9 +945,9 @@ class State:
                     manager.missing_modules.add(id)
                     raise ModuleNotFound
                 else:
-                    # If this is a root it's always fatal.
+                    # If we can't find a root source it's always fatal.
                     # TODO: This might hide non-fatal errors from
-                    # roots processed earlier.
+                    # root sources processed earlier.
                     raise CompileError(["mypy: can't find module '%s'" % id])
         self.path = path
         self.xpath = path or '<string>'
@@ -954,7 +955,7 @@ class State:
         if path and source is None and INCREMENTAL in manager.flags:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
-        self.add_roots()
+        self.add_ancestors()
         if self.meta:
             self.dependencies = self.meta.dependencies
             self.dep_line_map = {}
@@ -962,14 +963,14 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
 
-    def add_roots(self) -> None:
-        # All parent packages are new roots.
-        roots = []
+    def add_ancestors(self) -> None:
+        # All parent packages are new ancestors.
+        ancestors = []
         parent = self.id
         while '.' in parent:
             parent, _ = parent.rsplit('.', 1)
-            roots.append(parent)
-        self.roots = roots
+            ancestors.append(parent)
+        self.ancestors = ancestors
 
     def is_fresh(self) -> bool:
         """Return whether the cache data for this file is fresh."""
@@ -1139,7 +1140,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     graph = {}  # type: Graph
     # The deque is used to implement breadth first traversal.
     new = collections.deque()  # type: collections.deque[State]
-    # Seed graph with roots.
+    # Seed the graph with the initial root sources.
     for bs in sources:
         try:
             st = State(bs.module, bs.path, bs.text, manager)
@@ -1154,12 +1155,13 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # Collect dependencies.  We go breadth-first.
     while new:
         st = new.popleft()
-        for dep in st.roots + st.dependencies:
+        for dep in st.ancestors + st.dependencies:
             if dep not in graph:
                 try:
-                    if dep in st.roots:
-                        # Roots don't have import context.
-                        newst = State(dep, None, None, manager)
+                    if dep in st.ancestors:
+                        # TODO: Why not 'if dep not in st.dependencies' ?
+                        # Ancestors don't have import context.
+                        newst = State(dep, None, None, manager, is_ancestor=True)
                     else:
                         newst = State(dep, None, None, manager, st, st.dep_line_map.get(dep, 1))
                 except ModuleNotFound:
