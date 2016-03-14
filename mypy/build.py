@@ -434,7 +434,9 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     if basename(cur) != '':
         cur += os.sep
     # Compute root path.
-    while p and os.path.isfile(os.path.join(p, '__init__.py')):
+    while (p and
+           (os.path.isfile(os.path.join(p, '__init__.py')) or
+            os.path.isfile(os.path.join(p, '__init__.pyi')))):
         dir, base = os.path.split(p)
         if not base:
             break
