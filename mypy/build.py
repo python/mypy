@@ -925,7 +925,7 @@ class State:
             if path:
                 # In silent mode, don't import .py files.
                 if (SILENT_IMPORTS in manager.flags and
-                    path.endswith('.py') and (caller_state or is_ancestor)):
+                        path.endswith('.py') and (caller_state or is_ancestor)):
                     path = None
                     manager.missing_modules.add(id)
                     raise ModuleNotFound
@@ -1227,8 +1227,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
-        manager.log("Processing SCC of size %d (%s) as %s" %
-                    (len(scc), " ".join(scc), fresh_msg))
+        if len(scc) == 1:
+            manager.log("Processing SCC sigleton (%s) as %s" % (" ".join(scc), fresh_msg))
+        else:
+            manager.log("Processing SCC of size %d (%s) as %s" %
+                        (len(scc), " ".join(scc), fresh_msg))
         if fresh:
             process_fresh_scc(graph, scc)
         else:
