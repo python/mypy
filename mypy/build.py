@@ -1270,10 +1270,15 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
 
 
 def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
-    """Return the graph's SCCs, topologically sorted by dependencies."""
+    """Return the graph's SCCs, topologically sorted by dependencies.
+
+    This works for a subset of the full dependency graph too;
+    dependencies that aren't present in graph.keys() are ignored.
+    """
     # Compute SCCs.
     vertices = set(graph)
-    edges = {id: st.dependencies for id, st in graph.items()}
+    edges = {id: [dep for dep in st.dependencies if dep in graph]
+             for id, st in graph.items()}
     sccs = list(strongly_connected_components_path(vertices, edges))
     # Topsort.
     sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
@@ -1281,7 +1286,7 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     for scc in sccs:
         deps = set()  # type: Set[AbstractSet[str]]
         for id in scc:
-            deps.update(sccsmap[x] for x in graph[id].dependencies)
+            deps.update(sccsmap[x] for x in graph[id].dependencies if x in graph)
         data[frozenset(scc)] = deps
     return list(topsort(data))
 
