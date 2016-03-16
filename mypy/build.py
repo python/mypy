@@ -364,12 +364,22 @@ class BuildManager:
                         res.append((id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
-                    res.append((cur_id, imp.line))
+                    pos = len(res)
+                    all_are_submodules = True
                     # Also add any imported names that are submodules.
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((sub_id, imp.line))
+                        else:
+                            all_are_submodules = False
+                    # If all imported names are submodules, don't add
+                    # cur_id as a dependency.  Otherwise (i.e., if at
+                    # least one imported name isn't a submodule)
+                    # cur_id is also a dependency, and we should
+                    # insert it *before* any submodules.
+                    if not all_are_submodules:
+                        res.insert(pos, ((cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     res.append((correct_rel_imp(imp), imp.line))
         return res
@@ -1174,29 +1184,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     return graph
 
 
-# The key property of the ordering here that we really need is that
-# .sql.base is processed before .sql.schema.
-# TODO: We shouldn't need this special case.
-SQLALCHEMY_HACK = [
-    'sqlalchemy.sql.base',
-    'sqlalchemy.sql.type_api',
-    'sqlalchemy.sql.elements',
-    'sqlalchemy.sql.sqltypes',
-    'sqlalchemy.sql.ddl',
-    'sqlalchemy.sql.selectable',
-    'sqlalchemy.sql.schema',
-    'sqlalchemy.sql.functions',
-    'sqlalchemy.sql.dml',
-    'sqlalchemy.sql.expression',
-    'sqlalchemy.sql',
-    'sqlalchemy.pool',
-    'sqlalchemy.schema',
-    'sqlalchemy.types',
-    'sqlalchemy',
-]
-SQLALCHEMY_HACK_SET = frozenset(SQLALCHEMY_HACK)
-
-
 def process_graph(graph: Graph, manager: BuildManager) -> None:
     """Process everything in dependency order."""
     sccs = sorted_components(graph)
@@ -1211,23 +1198,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        elif ascc == SQLALCHEMY_HACK_SET:
-            # TODO: This is a really gross hack to deal with the
-            # unfortunate reality that the scqlalchemy package
-            # contains a cycle where our usual approach isn't enough.
-            # There is probably a better way to handle it but I need a
-            # break.  For example, if you look at each subpackage,
-            # *within* the subpackage there's a clear ordering, and we
-            # could handle that by running the SCC+topsort algorithm
-            # over that subgraph.
-            manager.log("Replacing %s with %s" % (scc, SQLALCHEMY_HACK_SET))
-            scc = SQLALCHEMY_HACK
-            # Here's how I came up with the ordering in SQLALCHEMY_HACK:
-            # sub_graph = {id: graph[id]
-            #              for id in scc if id.startswith('sqlalchemy.sql.')}
-            # sub_sccs = sorted_components(sub_graph)
-            # for sub_scc in sub_sccs:
-            #     print(sub_scc)
         stale_scc = {id for id in scc if not graph[id].is_fresh()}
         fresh = not stale_scc
         deps = set()
@@ -1328,7 +1298,19 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
         for id in scc:
             deps.update(sccsmap[x] for x in graph[id].dependencies if x in graph)
         data[frozenset(scc)] = deps
-    return list(topsort(data))
+    res = []
+    for ready in topsort(data):
+        # Sort the sets in ready by reversed smallest State.order.  Exampes:
+        #
+        # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
+        #   [{y}, {x}].
+        #
+        # - If ready is [{a, b}, {c, d}], a.order == 1, b.order == 3,
+        #   c.order == 2, d.order == 4, the sort keys become [1, 2]
+        #   and the result is [{c, d}, {a, b}].
+        res.extend(sorted(ready,
+                          key=lambda scc: -min(graph[id].order for id in scc)))
+    return res
 
 
 def strongly_connected_components_path(vertices: Set[str],
@@ -1370,7 +1352,8 @@ def strongly_connected_components_path(vertices: Set[str],
                 yield scc
 
 
-def topsort(data: Dict[AbstractSet[str], Set[AbstractSet[str]]]) -> Iterable[AbstractSet[str]]:
+def topsort(data: Dict[AbstractSet[str],
+                       Set[AbstractSet[str]]]) -> Iterable[Set[AbstractSet[str]]]:
     """Topological sort.  Consumes its argument.
 
     From http://code.activestate.com/recipes/577413/.
@@ -1384,10 +1367,7 @@ def topsort(data: Dict[AbstractSet[str], Set[AbstractSet[str]]]) -> Iterable[Abs
         ready = {item for item, dep in data.items() if not dep}
         if not ready:
             break
-        # TODO: Return the items in a reproducible order, or return
-        # the entire set of items.
-        for item in ready:
-            yield item
+        yield ready
         data = {item: (dep - ready)
                 for item, dep in data.items()
                 if item not in ready}
