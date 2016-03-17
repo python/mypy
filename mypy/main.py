@@ -2,8 +2,8 @@
 
 import argparse
 import os
+import re
 import sys
-import textwrap
 
 from typing import Optional, Dict, List, Tuple
 
@@ -42,7 +42,7 @@ def main(script_path: str) -> None:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
-    sources, options = process_options(sys.argv[1:])
+    sources, options = process_options()
     if options.pdb:
         set_drop_into_pdb(True)
     if not options.dirty_stubs:
@@ -97,7 +97,11 @@ def type_check_only(sources: List[BuildSource],
                 python_path=options.python_path)
 
 
-def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
+FOOTER = """environment variables:
+MYPYPATH     additional module search path"""
+
+
+def process_options() -> Tuple[List[BuildSource], Options]:
     """Process command line arguments.
 
     Return (mypy program path (or None),
@@ -105,28 +109,24 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             parsed flags)
     """
 
-    footer = textwrap.dedent(
-        """environment variables:
-        MYPYPATH     additional module search path"""
-    )
-
-    parser = argparse.ArgumentParser(prog='mypy', epilog=footer,
+    parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
 
     def parse_version(v):
-        version_components = v.split(".")[0:2]
-        if len(version_components) != 2:
+        m = re.match(r'\A(\d)\.(\d+)\Z', v)
+        if m:
+            return int(m.group(1)), int(m.group(2))
+        else:
             raise argparse.ArgumentTypeError(
                 "Invalid python version '{}' (expected format: 'x.y')".format(v))
-        if not all(item.isdigit() for item in version_components):
-            raise argparse.ArgumentTypeError("Found non-digit in python version: '{}'".format(v))
-        return (int(version_components[0]), int(version_components[1]))
 
-    parser.add_argument('-v', '--verbose', action='store_true', help="more verbose messages")
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('-v', '--verbose', action='count', help="more verbose messages")
+    parser.add_argument('-V', '--version', action='version',  # type: ignore # see typeshed#124
+                        version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
-    parser.add_argument('--py2', action='store_true', help="use Python 2 mode")
+    parser.add_argument('--py2', dest='python_version', action='store_const',
+                        const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', '--silent', action='store_true',
                         help="don't follow imports to .py files")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
@@ -191,14 +191,11 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     options.custom_typing_module = args.custom_typing
 
     # Set build flags.
-    if args.py2:
-        options.pyversion = defaults.PYTHON2_VERSION
-
     if args.python_version is not None:
         options.pyversion = args.python_version
 
     if args.verbose:
-        options.build_flags.append(build.VERBOSE)
+        options.build_flags.extend(args.verbose * [build.VERBOSE])
 
     if args.stats:
         options.build_flags.append(build.DUMP_TYPE_STATS)
