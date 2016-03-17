@@ -1,6 +1,8 @@
 """Mypy type checker command line tool."""
 
+import argparse
 import os
+import re
 import sys
 
 from typing import Optional, Dict, List, Tuple
@@ -40,7 +42,7 @@ def main(script_path: str) -> None:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
-    sources, options = process_options(sys.argv[1:])
+    sources, options = process_options()
     if options.pdb:
         set_drop_into_pdb(True)
     if not options.dirty_stubs:
@@ -95,127 +97,156 @@ def type_check_only(sources: List[BuildSource],
                 python_path=options.python_path)
 
 
-def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
+FOOTER = """environment variables:
+MYPYPATH     additional module search path"""
+
+
+def process_options() -> Tuple[List[BuildSource], Options]:
     """Process command line arguments.
 
     Return (mypy program path (or None),
             module to run as script (or None),
             parsed flags)
     """
-    # TODO: Rewrite using argparse.
+
+    parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    def parse_version(v):
+        m = re.match(r'\A(\d)\.(\d+)\Z', v)
+        if m:
+            return int(m.group(1)), int(m.group(2))
+        else:
+            raise argparse.ArgumentTypeError(
+                "Invalid python version '{}' (expected format: 'x.y')".format(v))
+
+    parser.add_argument('-v', '--verbose', action='count', help="more verbose messages")
+    parser.add_argument('-V', '--version', action='version',  # type: ignore # see typeshed#124
+                        version='%(prog)s ' + __version__)
+    parser.add_argument('--python-version', type=parse_version, metavar='x.y',
+                        help='use Python x.y')
+    parser.add_argument('--py2', dest='python_version', action='store_const',
+                        const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
+    parser.add_argument('-s', '--silent-imports', '--silent', action='store_true',
+                        help="don't follow imports to .py files")
+    parser.add_argument('--disallow-untyped-calls', action='store_true',
+                        help="disallow calling functions without type annotations"
+                        " from functions with type annotations")
+    parser.add_argument('--disallow-untyped-defs', action='store_true',
+                        help="disallow defining functions without type annotations"
+                        " or with incomplete type annotations")
+    parser.add_argument('--implicit-any', action='store_true',
+                        help="behave as though all functions were annotated with Any")
+    parser.add_argument('--fast-parser', action='store_true',
+                        help="enable experimental fast parser")
+    parser.add_argument('-f', '--dirty-stubs', action='store_true',
+                        help="don't warn if typeshed is out of sync")
+    parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
+    parser.add_argument('--use-python-path', action='store_true',
+                        help="search for modules in sys.path of running Python")
+    parser.add_argument('--stats', action='store_true', help="dump stats")
+    parser.add_argument('--inferstats', action='store_true', help="dump type inference stats")
+    parser.add_argument('--custom-typing', metavar='MODULE', help="use a custom typing module")
+
+    report_group = parser.add_argument_group(
+        title='report generation',
+        description='Generate a report in the specified format.')
+    report_group.add_argument('--html-report', metavar='DIR')
+    report_group.add_argument('--old-html-report', metavar='DIR')
+    report_group.add_argument('--xslt-html-report', metavar='DIR')
+    report_group.add_argument('--xml-report', metavar='DIR')
+    report_group.add_argument('--txt-report', metavar='DIR')
+    report_group.add_argument('--xslt-txt-report', metavar='DIR')
+
+    code_group = parser.add_argument_group(title='How to specify the code to type check')
+    code_group.add_argument('-m', '--module', help="type-check module (may be a dotted name)")
+    code_group.add_argument('-c', '--command', help="type-check program passed in as string")
+    code_group.add_argument('-p', '--package', help="type-check all files in a directory")
+    code_group.add_argument('files', nargs='*', help="type-check given files or directories")
+
+    args = parser.parse_args()
+
+    # Check for invalid argument combinations.
+    code_methods = sum(bool(c) for c in [args.module, args.command, args.package, args.files])
+    if code_methods == 0:
+        parser.error("Missing target module, package, files, or command.")
+    elif code_methods > 1:
+        parser.error("May only specify one of: module, package, files, or command.")
+
+    if args.use_python_path and args.python_version and args.python_version[0] == 2:
+        parser.error('Python version 2 (or --py2) specified, '
+                     'but --use-python-path will search in sys.path of Python 3')
+
+    if args.fast_parser and (args.py2 or
+                             args.python_version and args.python_version[0] == 2):
+        parser.error('The experimental fast parser is only compatible with Python 3, '
+                     'but Python 2 specified.')
+
+    # Set options.
     options = Options()
-    help = False
-    ver = False
-    while args and args[0].startswith('-'):
-        if args[0] in ('--verbose', '-v'):
-            options.build_flags.append(build.VERBOSE)
-            args = args[1:]
-        elif args[0] == '--py2':
-            # Use Python 2 mode.
-            options.pyversion = defaults.PYTHON2_VERSION
-            args = args[1:]
-        elif args[0] == '--python-version':
-            version_components = args[1].split(".")[0:2]
-            if len(version_components) != 2:
-                fail("Invalid python version {} (expected format: 'x.y')".format(
-                    repr(args[1])))
-            if not all(item.isdigit() for item in version_components):
-                fail("Found non-digit in python version: {}".format(
-                    args[1]))
-            options.pyversion = (int(version_components[0]), int(version_components[1]))
-            args = args[2:]
-        elif args[0] == '-f' or args[0] == '--dirty-stubs':
-            options.dirty_stubs = True
-            args = args[1:]
-        elif args[0] == '-m' and args[1:]:
-            if args[2:]:
-                fail("No extra argument should appear after '-m mod'")
-            options.build_flags.append(build.MODULE)
-            return [BuildSource(None, args[1], None)], options
-        elif args[0] == '--package' and args[1:]:
-            if args[2:]:
-                fail("No extra argument should appear after '--package dir'")
-            options.build_flags.append(build.MODULE)
-            lib_path = [os.getcwd()] + build.mypy_path()
-            targets = build.find_modules_recursive(args[1], lib_path)
-            if not targets:
-                fail("Can't find package '{}'".format(args[1]))
-            return targets, options
-        elif args[0] == '-c' and args[1:]:
-            if args[2:]:
-                fail("No extra argument should appear after '-c string'")
-            options.build_flags.append(build.PROGRAM_TEXT)
-            return [BuildSource(None, None, args[1])], options
-        elif args[0] in ('-h', '--help'):
-            help = True
-            args = args[1:]
-        elif args[0] == '--stats':
-            options.build_flags.append(build.DUMP_TYPE_STATS)
-            args = args[1:]
-        elif args[0] == '--inferstats':
-            options.build_flags.append(build.DUMP_INFER_STATS)
-            args = args[1:]
-        elif args[0] == '--custom-typing' and args[1:]:
-            options.custom_typing_module = args[1]
-            args = args[2:]
-        elif is_report(args[0]) and args[1:]:
-            report_type = args[0][2:-7]
-            report_dir = args[1]
+    options.dirty_stubs = args.dirty_stubs
+    options.python_path = args.use_python_path
+    options.pdb = args.pdb
+    options.implicit_any = args.implicit_any
+    options.custom_typing_module = args.custom_typing
+
+    # Set build flags.
+    if args.python_version is not None:
+        options.pyversion = args.python_version
+
+    if args.verbose:
+        options.build_flags.extend(args.verbose * [build.VERBOSE])
+
+    if args.stats:
+        options.build_flags.append(build.DUMP_TYPE_STATS)
+
+    if args.inferstats:
+        options.build_flags.append(build.DUMP_INFER_STATS)
+
+    if args.silent_imports:
+        options.build_flags.append(build.SILENT_IMPORTS)
+
+    if args.disallow_untyped_calls:
+        options.build_flags.append(build.DISALLOW_UNTYPED_CALLS)
+
+    if args.disallow_untyped_defs:
+        options.build_flags.append(build.DISALLOW_UNTYPED_DEFS)
+
+    # experimental
+    if args.fast_parser:
+        options.build_flags.append(build.FAST_PARSER)
+
+    # Set reports.
+    for flag, val in vars(args).items():
+        if flag.endswith('_report') and val is not None:
+            report_type = flag[:-7].replace('_', '-')
+            report_dir = val
             options.report_dirs[report_type] = report_dir
-            args = args[2:]
-        elif args[0] == '--use-python-path':
-            options.python_path = True
-            args = args[1:]
-        elif args[0] in ('--silent-imports', '--silent', '-s'):
-            options.build_flags.append(build.SILENT_IMPORTS)
-            args = args[1:]
-        elif args[0] == '--pdb':
-            options.pdb = True
-            args = args[1:]
-        elif args[0] == '--implicit-any':
-            options.implicit_any = True
-            args = args[1:]
-        elif args[0] == '--fast-parser':
-            options.build_flags.append(build.FAST_PARSER)
-            args = args[1:]
-        elif args[0] == '--disallow-untyped-calls':
-            options.build_flags.append(build.DISALLOW_UNTYPED_CALLS)
-            args = args[1:]
-        elif args[0] == '--disallow-untyped-defs':
-            options.build_flags.append(build.DISALLOW_UNTYPED_DEFS)
-            args = args[1:]
-        elif args[0] in ('--version', '-V'):
-            ver = True
-            args = args[1:]
-        else:
-            usage('Unknown option: {}'.format(args[0]))
 
-    if help:
-        usage()
-
-    if ver:
-        version()
-
-    if not args:
-        usage('Missing target file or module')
-
-    if options.python_path and options.pyversion[0] == 2:
-        usage('Python version 2 (or --py2) specified, '
-              'but --use-python-path will search in sys.path of Python 3')
-
-    if build.FAST_PARSER in options.build_flags and options.pyversion[0] == 2:
-        usage('The experimental fast parser is only compatible with Python 3, '
-              'but Python 2 specified.')
-
-    targets = []
-    for arg in args:
-        if arg.endswith(PY_EXTENSIONS):
-            targets.append(BuildSource(arg, crawl_up(arg)[1], None))
-        elif os.path.isdir(arg):
-            targets.extend(expand_dir(arg))
-        else:
-            targets.append(BuildSource(arg, None, None))
-    return targets, options
+    # Set target.
+    if args.module:
+        options.build_flags.append(build.MODULE)
+        return [BuildSource(None, args.module, None)], options
+    elif args.package:
+        options.build_flags.append(build.MODULE)
+        lib_path = [os.getcwd()] + build.mypy_path()
+        targets = build.find_modules_recursive(args.package, lib_path)
+        if not targets:
+            fail("Can't find package '{}'".format(args.package))
+        return targets, options
+    elif args.command:
+        options.build_flags.append(build.PROGRAM_TEXT)
+        return [BuildSource(None, None, args.command)], options
+    else:
+        targets = []
+        for f in args.files:
+            if f.endswith(PY_EXTENSIONS):
+                targets.append(BuildSource(f, crawl_up(f)[1], None))
+            elif os.path.isdir(f):
+                targets.extend(expand_dir(f))
+            else:
+                targets.append(BuildSource(f, None, None))
+        return targets, options
 
 
 def expand_dir(arg: str) -> List[BuildSource]:
@@ -278,75 +309,6 @@ def has_init_file(dir: str) -> bool:
         if os.path.isfile(os.path.join(dir, '__init__' + ext)):
             return True
     return False
-
-
-# Don't generate this from mypy.reports, not all are meant to be public.
-REPORTS = [
-    'html',
-    'old-html',
-    'xslt-html',
-    'xml',
-    'txt',
-    'xslt-txt',
-]
-
-
-def is_report(arg: str) -> bool:
-    if arg.startswith('--') and arg.endswith('-report'):
-        report_type = arg[2:-7]
-        return report_type in REPORTS
-    return False
-
-
-def usage(msg: str = None) -> None:
-    if msg:
-        sys.stderr.write('%s\n' % msg)
-        sys.stderr.write("""\
-usage: mypy [option ...] [-c cmd | -m mod | file_or_dir ...]
-Try 'mypy -h' for more information.
-""")
-        sys.exit(2)
-    else:
-        sys.stdout.write("""\
-usage: mypy [option ...] [-c string | -m mod | file_or_dir ...]
-
-Options:
-  -h, --help         print this help message and exit
-  -V, --version      show the current version information and exit
-  -v, --verbose      more verbose messages
-  --py2              use Python 2 mode
-  --python-version x.y  use Python x.y
-  -s, --silent-imports  don't follow imports to .py files
-  --disallow-untyped-calls  disallow calling functions without type annotations
-                            from functions with type annotations
-  --disallow-untyped-defs   disallow defining functions without type annotations
-                            or with incomplete type annotations
-  --implicit-any     behave as though all functions were annotated with Any
-  -f, --dirty-stubs  don't warn if typeshed is out of sync
-  --pdb              invoke pdb on fatal error
-  --use-python-path  search for modules in sys.path of running Python
-  --stats            dump stats
-  --inferstats       dump type inference stats
-  --custom-typing mod  use a custom typing module
-  --<fmt>-report dir generate a <fmt> report of type precision under dir/
-                     <fmt> may be one of: %s
-
-How to specify the code to type-check:
-  -m mod             type-check module (may be a dotted name)
-  -c string          type-check program passed in as string
-  --package dir      type-check all files in a directory
-  file ...           type-check given files
-  dir ...            type-check all files in given directories
-
-Environment variables:
-  MYPYPATH     additional module search path
-""" % ', '.join(REPORTS))
-        sys.exit(0)
-
-
-def version() -> None:
-    sys.stdout.write("mypy {}\n".format(__version__))
-    sys.exit(0)
 
 
 def fail(msg: str) -> None:
