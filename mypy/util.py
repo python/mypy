@@ -7,7 +7,7 @@ from typing import TypeVar, List, Any, Tuple, Optional
 
 T = TypeVar('T')
 
-ENCODING_RE = re.compile(br'(\s*#.*(\r\n?|\n))?\s*#.*coding[:=]\s*([-\w.]+)')
+ENCODING_RE = re.compile(br'(\s*#.*(\r\n?|\n)){0,1}?\s*#.*coding[:=]\s*([-\w.]+)')
 
 default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
 
