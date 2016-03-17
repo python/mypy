@@ -319,7 +319,6 @@ class FuncItem(FuncBase):
     # Maximum number of positional arguments, -1 if no explicit limit (*args not included)
     max_pos = 0
     body = None  # type: Block
-    is_implicit = False    # Implicit dynamic types?
     # Is this an overload variant of function with more than one overload variant?
     is_overload = False
     is_generator = False   # Contains a yield statement?
