@@ -481,6 +481,14 @@ file:2: error: Unknown encoding 'uft8'
 [out]
 file:4: error: Unrecognized character
 
+[case testDoubleEncoding4]
+
+
+# coding: ascii
+á = 1
+[out]
+file:4: error: Unrecognized character
+
 [case testLongLiteralInPython3]
 2L
 0x2L
