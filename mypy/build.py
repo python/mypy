@@ -182,9 +182,7 @@ def build(sources: List[BuildSource],
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    # TODO Reports is global to a build manager but only supports a single "main file"
-    # Fix this.
-    reports = Reports(sources[0].effective_path, data_dir, report_dirs)
+    reports = Reports(sources, data_dir, report_dirs)
 
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
