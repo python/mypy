@@ -25,7 +25,6 @@ class Options:
         self.build_flags = []  # type: List[str]
         self.pyversion = defaults.PYTHON3_VERSION
         self.custom_typing_module = None  # type: str
-        self.implicit_any = False
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
         self.dirty_stubs = False
@@ -91,7 +90,6 @@ def type_check_only(sources: List[BuildSource],
                 bin_dir=bin_dir,
                 pyversion=options.pyversion,
                 custom_typing_module=options.custom_typing_module,
-                implicit_any=options.implicit_any,
                 report_dirs=options.report_dirs,
                 flags=options.build_flags,
                 python_path=options.python_path)
@@ -135,8 +133,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     parser.add_argument('--disallow-untyped-defs', action='store_true',
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
-    parser.add_argument('--implicit-any', action='store_true',
-                        help="behave as though all functions were annotated with Any")
+    parser.add_argument('--check-untyped-defs', action='store_true',
+                        help="type check the interior of functions without type annotations")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
@@ -187,7 +185,6 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     options.dirty_stubs = args.dirty_stubs
     options.python_path = args.use_python_path
     options.pdb = args.pdb
-    options.implicit_any = args.implicit_any
     options.custom_typing_module = args.custom_typing
 
     # Set build flags.
@@ -211,6 +208,9 @@ def process_options() -> Tuple[List[BuildSource], Options]:
 
     if args.disallow_untyped_defs:
         options.build_flags.append(build.DISALLOW_UNTYPED_DEFS)
+
+    if args.check_untyped_defs:
+        options.build_flags.append(build.CHECK_UNTYPED_DEFS)
 
     # experimental
     if args.fast_parser:

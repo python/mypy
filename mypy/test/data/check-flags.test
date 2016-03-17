@@ -1,5 +1,3 @@
-# test cases for --disallow-untyped-defs
-
 [case testUnannotatedFunction]
 # flags: disallow-untyped-defs
 def f(x): pass
@@ -30,3 +28,11 @@ main:2: error: Function is missing a return type annotation
 # flags: disallow-untyped-defs
 lambda x: x
 [out]
+
+[case testUntypedDef]
+# flags: disallow-untyped-defs
+def f():
+    1 + "str"
+[out]
+main: note: In function "f":
+main:2: error: Function is missing a type annotation
