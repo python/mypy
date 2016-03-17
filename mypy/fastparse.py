@@ -33,7 +33,7 @@ T = TypeVar('T')
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None, implicit_any: bool = False) -> MypyFile:
+          custom_typing_module: str = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError

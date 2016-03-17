@@ -63,6 +63,8 @@ FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 # Disallow defining untyped (or incompletely typed) functions
 DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
+# Type check unannotated functions
+CHECK_UNTYPED_DEFS = 'check-untyped-defs' 
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
@@ -100,7 +102,6 @@ def build(sources: List[BuildSource],
           bin_dir: str = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
           custom_typing_module: str = None,
-          implicit_any: bool = False,
           report_dirs: Dict[str, str] = None,
           flags: List[str] = None,
           python_path: bool = False) -> BuildResult:
@@ -120,7 +121,6 @@ def build(sources: List[BuildSource],
         directories; if omitted, use '.' as the data directory
       pyversion: Python version (major, minor)
       custom_typing_module: if not None, use this module id as an alias for typing
-      implicit_any: if True, add implicit Any signatures to all functions
       flags: list of build options (e.g. COMPILE_ONLY)
     """
     report_dirs = report_dirs or {}
@@ -169,7 +169,6 @@ def build(sources: List[BuildSource],
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
-                           implicit_any=implicit_any,
                            reports=reports)
 
     try:
@@ -314,7 +313,6 @@ class BuildManager:
                  flags: List[str],
                  ignore_prefix: str,
                  custom_typing_module: str,
-                 implicit_any: bool,
                  reports: Reports) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -325,7 +323,6 @@ class BuildManager:
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
-        self.implicit_any = implicit_any
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
@@ -335,7 +332,8 @@ class BuildManager:
                                         self.modules,
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags,
-                                        DISALLOW_UNTYPED_DEFS in self.flags)
+                                        DISALLOW_UNTYPED_DEFS in self.flags,
+                                        CHECK_UNTYPED_DEFS in self.flags)
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
@@ -400,7 +398,6 @@ class BuildManager:
         tree = parse(source, path, self.errors,
                      pyversion=self.pyversion,
                      custom_typing_module=self.custom_typing_module,
-                     implicit_any=self.implicit_any,
                      fast_parser=FAST_PARSER in self.flags)
         tree._fullname = id
         if self.errors.num_messages() != num_errs:

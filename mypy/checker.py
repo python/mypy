@@ -368,10 +368,13 @@ class TypeChecker(NodeVisitor[Type]):
     disallow_untyped_calls = False
     # This makes it an error to define an untyped or partially-typed function
     disallow_untyped_defs = False
+    # Should we check untyped function defs?
+    check_untyped_defs = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 disallow_untyped_calls=False, disallow_untyped_defs=False) -> None:
+                 disallow_untyped_calls=False, disallow_untyped_defs=False,
+                 check_untyped_defs=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors. Assume symtable has been
@@ -396,6 +399,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.current_node_deferred = False
         self.disallow_untyped_calls = disallow_untyped_calls
         self.disallow_untyped_defs = disallow_untyped_defs
+        self.check_untyped_defs = check_untyped_defs
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -2196,7 +2200,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_map[node] = typ
 
     def typing_mode_none(self) -> bool:
-        if self.is_dynamic_function():
+        if self.is_dynamic_function() and not self.check_untyped_defs:
             return not self.weak_opts
         elif self.function_stack:
             return False
@@ -2204,7 +2208,7 @@ class TypeChecker(NodeVisitor[Type]):
             return False
 
     def typing_mode_weak(self) -> bool:
-        if self.is_dynamic_function():
+        if self.is_dynamic_function() and not self.check_untyped_defs:
             return bool(self.weak_opts)
         elif self.function_stack:
             return False
@@ -2212,7 +2216,7 @@ class TypeChecker(NodeVisitor[Type]):
             return 'global' in self.weak_opts
 
     def typing_mode_full(self) -> bool:
-        if self.is_dynamic_function():
+        if self.is_dynamic_function() and not self.check_untyped_defs:
             return False
         elif self.function_stack:
             return True

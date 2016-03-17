@@ -127,7 +127,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.info = original.info
         new.min_args = original.min_args
         new.max_pos = original.max_pos
-        new.is_implicit = original.is_implicit
         new.is_overload = original.is_overload
         new.is_generator = original.is_generator
 
