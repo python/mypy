@@ -73,6 +73,9 @@ GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
 RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
 INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
+FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"
+RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
+ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
 
 
 class MessageBuilder:

@@ -57,10 +57,12 @@ TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
 SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
+INCREMENTAL = 'incremental'      # Incremental mode: use the cache
 FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
 DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
-INCREMENTAL = 'incremental'      # Incremental mode: use the cache
+# Disallow defining untyped (or incompletely typed) functions
+DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
@@ -332,7 +334,8 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors,
                                         self.modules,
                                         self.pyversion,
-                                        DISALLOW_UNTYPED_CALLS in self.flags)
+                                        DISALLOW_UNTYPED_CALLS in self.flags,
+                                        DISALLOW_UNTYPED_DEFS in self.flags)
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,

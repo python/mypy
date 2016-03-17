@@ -159,6 +159,10 @@ class TypeList(Type):
 class AnyType(Type):
     """The type 'Any'."""
 
+    def __init__(self, implicit=False, line: int = -1) -> None:
+        super().__init__(line)
+        self.implicit = implicit
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_any(self)
 

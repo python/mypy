@@ -477,8 +477,8 @@ class Parser:
                 if is_method and name == '__init__':
                     ret_type = UnboundType('None', [])
                 else:
-                    ret_type = AnyType()
-                typ = CallableType([AnyType() for _ in args],
+                    ret_type = AnyType(implicit=True)
+                typ = CallableType([AnyType(implicit=True) for _ in args],
                                    arg_kinds,
                                    [a.variable.name() for a in args],
                                    ret_type,
@@ -812,9 +812,9 @@ class Parser:
         arg_types = [arg.type_annotation for arg in args]
         for i in range(len(arg_types)):
             if arg_types[i] is None:
-                arg_types[i] = AnyType()
+                arg_types[i] = AnyType(implicit=True)
         if ret_type is None:
-            ret_type = AnyType()
+            ret_type = AnyType(implicit=True)
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]
         return CallableType(arg_types, arg_kinds, arg_names, ret_type, None, name=None,
