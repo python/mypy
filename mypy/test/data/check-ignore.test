@@ -146,3 +146,26 @@ if 1:  # type: ignore
     # blah
     pass
 [out]
+
+[case testIgnoreTooManyTypeArguments]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+
+class Base(Generic[T, U]):
+  pass
+
+class PartialBase(Base[T, int], Generic[T]):
+  pass
+
+class Child(PartialBase[str, int]):  # type: ignore
+  pass
+
+
+def foo(x: Base[str, int]) -> None: pass
+foo(Child())
+
+def bar(x: Base[str, str]) -> None: pass
+bar(Child())
+[out]
+main:19: error: Argument 1 to "bar" has incompatible type "Child"; expected Base[str, str]
