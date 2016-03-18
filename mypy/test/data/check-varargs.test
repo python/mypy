@@ -557,3 +557,15 @@ x = f
 x = g # E: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
 [builtins fixtures/list.py]
 [out]
+
+
+-- Decorated method where self is implied by *args
+-- -----------------------------------------------
+
+[case testVarArgsCallableSelf]
+from typing import Callable
+def cm(func) -> Callable[..., None]: pass
+class C:
+    @cm
+    def foo(self) -> None: pass
+C().foo()
