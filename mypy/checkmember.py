@@ -231,8 +231,8 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
 def check_method_type(functype: FunctionLike, itype: Instance,
                       context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
-        if not item.arg_types or item.arg_kinds[0] != ARG_POS:
-            # No positional first (self) argument.
+        if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
+            # No positional first (self) argument (*args is okay).
             msg.invalid_method_type(item, context)
         else:
             # Check that self argument has type 'Any' or valid instance type.
