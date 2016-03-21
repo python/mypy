@@ -18,7 +18,8 @@ reporter_classes = {}  # type: Dict[str, Callable[[Reports, str], AbstractReport
 
 
 class Reports:
-    def __init__(self, sources: List['mypy.build.BuildSource'], data_dir: str, report_dirs: Dict[str, str]) -> None:
+    def __init__(self, sources: List['mypy.build.BuildSource'],
+                 data_dir: str, report_dirs: Dict[str, str]) -> None:
         self.sources = sources
         self.data_dir = data_dir
         self.reporters = []  # type: List[AbstractReporter]
@@ -60,7 +61,6 @@ class AbstractReporter(metaclass=ABCMeta):
         pass
 
 
-
 class FuncCounterVisitor(TraverserVisitor):
     def __init__(self) -> None:
         super().__init__()
@@ -88,10 +88,12 @@ class LineCountReporter(AbstractReporter):
         imputed_annotated_lines = (physical_lines * annotated_funcs // total_funcs
                                    if total_funcs else physical_lines)
 
-        self.counts[tree._fullname] = (imputed_annotated_lines, physical_lines, annotated_funcs, total_funcs)
+        self.counts[tree._fullname] = (imputed_annotated_lines, physical_lines,
+                                       annotated_funcs, total_funcs)
 
     def on_finish(self) -> None:
-        counts = sorted(((c, p) for p, c in self.counts.items()), reverse=True)  # type: List[Tuple[tuple, str]]
+        counts = sorted(((c, p) for p, c in self.counts.items()),
+                        reverse=True)  # type: List[Tuple[tuple, str]]
         total_counts = tuple(sum(c[i] for c, p in counts)
                              for i in range(4))
         with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
