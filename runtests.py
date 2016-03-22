@@ -374,10 +374,19 @@ def main() -> None:
     add_libpython(driver)
     add_samples(driver)
 
-    if not list_only:
-        driver.waiter.run()
-    else:
+    if list_only:
         driver.list_tasks()
+        return
+
+    exit_code = driver.waiter.run()
+
+    if verbosity >= 1:
+        times = driver.waiter.times2 if verbosity >= 2 else driver.waiter.times1
+        times_sortable = ((t, tp) for (tp, t) in times.items())
+        for total_time, test_type in sorted(times_sortable, reverse=True):
+            print('total time in %s: %f' % (test_type, total_time))
+
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':

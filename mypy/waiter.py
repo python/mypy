@@ -11,6 +11,7 @@ import re
 from subprocess import Popen, STDOUT
 import sys
 import tempfile
+import time
 
 
 class WaiterError(Exception):
@@ -26,9 +27,12 @@ class LazySubprocess:
         self.args = args
         self.cwd = cwd
         self.env = env
+        self.start_time = None  # type: float
+        self.end_time = None  # type: float
 
     def start(self) -> None:
         self.outfile = tempfile.NamedTemporaryFile()
+        self.start_time = time.time()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
         self.pid = self.process.pid
@@ -37,6 +41,7 @@ class LazySubprocess:
         """Update process exit status received via an external os.waitpid() call."""
         # Inlined subprocess._handle_exitstatus, it's not a public API.
         # TODO(jukka): I'm not quite sure why this is implemented like this.
+        self.end_time = time.time()
         process = self.process
         assert process.returncode is None
         if os.WIFSIGNALED(status):
@@ -62,6 +67,10 @@ class LazySubprocess:
     def cleanup(self) -> None:
         self.outfile.close()
         assert not os.path.exists(self.outfile.name)
+
+    @property
+    def elapsed_time(self) -> float:
+        return self.end_time - self.start_time
 
 
 class Noter:
@@ -136,6 +145,8 @@ class Waiter:
         assert limit > 0
         self.xfail = set(xfail)
         self._note = None  # type: Noter
+        self.times1 = {}  # type: Dict[str, float]
+        self.times2 = {}  # type: Dict[str, float]
 
     def add(self, cmd: LazySubprocess) -> int:
         rv = len(self.queue)
@@ -159,6 +170,14 @@ class Waiter:
             self._note.start(num)
         self.next += 1
 
+    def _record_time(self, name: str, elapsed_time: float) -> None:
+        # The names we use are space-separated series of rather arbitrary words.
+        # They tend to start general and get more specific, so use that.
+        name1 = re.sub(' .*', '', name)  # First word.
+        self.times1[name1] = elapsed_time + self.times1.get(name1, 0)
+        name2 = re.sub('( .*?) .*', r'\1', name)  # First two words.
+        self.times2[name2] = elapsed_time + self.times2.get(name2, 0)
+
     def _wait_next(self) -> Tuple[List[str], int, int]:
         """Wait for a single task to finish.
 
@@ -166,10 +185,12 @@ class Waiter:
         """
         pid, status = os.waitpid(-1, 0)
         num, cmd = self.current.pop(pid)
+        name = cmd.name
 
         cmd.handle_exit_status(status)
 
-        name = cmd.name
+        self._record_time(cmd.name, cmd.elapsed_time)
+
         rc = cmd.wait()
         if rc >= 0:
             msg = 'EXIT %d' % rc
@@ -223,7 +244,7 @@ class Waiter:
         sys.stdout.write(output + '\n')
         sys.stdout.flush()
 
-    def run(self) -> None:
+    def run(self) -> int:
         if self.verbosity >= -1:
             print('%-8s %d' % ('PARALLEL', self.limit))
             sys.stdout.flush()
@@ -256,12 +277,14 @@ class Waiter:
             print('*** FAILURE ***')
             sys.stdout.flush()
             if any('XFAIL' not in f for f in all_failures):
-                sys.exit(1)
+                return 1
         else:
             print('SUMMARY  all %d tasks and %d tests passed' % (
                 len(self.queue), total_tests))
             print('*** OK ***')
             sys.stdout.flush()
+
+        return 0
 
 
 def parse_test_stats_from_output(output: str, fail_type: Optional[str]) -> Tuple[int, int]:
