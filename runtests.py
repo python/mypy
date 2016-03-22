@@ -24,7 +24,7 @@ if True:
     # Now `typing` is available.
 
 
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import git, util
@@ -82,7 +82,8 @@ class Driver:
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, list(args), cwd=cwd)
 
-    def add_mypy_modules(self, name: str, modules: List[str], cwd: Optional[str] = None) -> None:
+    def add_mypy_modules(self, name: str, modules: Iterable[str],
+                         cwd: Optional[str] = None) -> None:
         args = list(itertools.chain(*(['-m', mod] for mod in modules)))
         self.add_mypy_cmd(name, args, cwd=cwd)
 
@@ -205,20 +206,20 @@ def add_myunit(driver: Driver) -> None:
 
 
 def add_stubs(driver: Driver) -> None:
-    # Only test each module once, for the latest Python version supported.
-    # The third-party stub modules will only be used if it is not in the version.
-    seen = set()  # type: Set[str]
+    # We only test each module in the one version mypy prefers to find.
+    # TODO: test stubs for other versions, especially Python 2 stubs.
+
+    modules = set()  # type: Set[str]
+    modules.add('typing')
     # TODO: This should also test Python 2, and pass pyversion accordingly.
     for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
         for stub_type in ['builtins', 'stdlib', 'third_party']:
             stubdir = join('typeshed', stub_type, version)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f[len(stubdir) + 1:])
-                if module not in seen:
-                    seen.add(module)
-                    driver.add_mypy_string(
-                        'stub (%s) module %s' % (stubdir, module),
-                        'import typing, %s' % module)
+                modules.add(module)
+
+    driver.add_mypy_modules('stubs', sorted(modules))
 
 
 def add_libpython(driver: Driver) -> None:
