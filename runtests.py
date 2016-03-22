@@ -72,14 +72,14 @@ class Driver:
             print('OMIT     %s' % name)
         return False
 
-    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'check %s' % name
+    def add_mypy_cmd(self, name: str, mypy_args: List[str], cwd: Optional[str] = None) -> None:
         if not self.allow(name):
             return
-        largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-f']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+        args = [sys.executable, self.mypy, '-f'] + mypy_args
+        self.waiter.add(LazySubprocess(name, args, cwd=cwd, env=self.env))
+
+    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy_cmd('check %s' % name, list(args), cwd=cwd)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -95,13 +95,7 @@ class Driver:
         self.add_python(name, *args, cwd=cwd)
 
     def add_mypy_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'check %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-f', '-m']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+        self.add_mypy_cmd('check %s' % name, ['-m'] + args, cwd=cwd)
 
     def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -117,20 +111,10 @@ class Driver:
         self.add_python_mod(name, *args, cwd=cwd)
 
     def add_mypy_package(self, name: str, packagename: str) -> None:
-        name = 'check %s' % name
-        if not self.allow(name):
-            return
-        largs = [sys.executable, self.mypy, '-f', '-p', packagename]
-        self.waiter.add(LazySubprocess(name, largs, env=self.env))
+        self.add_mypy_cmd('check %s' % name, ['-p', packagename])
 
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'check %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-f', '-c']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+        self.add_mypy_cmd('check %s' % name, ['-c'] + list(args), cwd=cwd)
 
     def add_python_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
