@@ -158,7 +158,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     report_group.add_argument('--linecount-report', metavar='DIR')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
-    code_group.add_argument('-m', '--module', help="type-check module (may be a dotted name)")
+    code_group.add_argument('-m', '--module', action='append', dest='modules',
+                            help="type-check module; can repeat for more modules")
     code_group.add_argument('-c', '--command', help="type-check program passed in as string")
     code_group.add_argument('-p', '--package', help="type-check all files in a directory")
     code_group.add_argument('files', nargs='*', help="type-check given files or directories")
@@ -166,7 +167,7 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     args = parser.parse_args()
 
     # Check for invalid argument combinations.
-    code_methods = sum(bool(c) for c in [args.module, args.command, args.package, args.files])
+    code_methods = sum(bool(c) for c in [args.modules, args.command, args.package, args.files])
     if code_methods == 0:
         parser.error("Missing target module, package, files, or command.")
     elif code_methods > 1:
@@ -225,9 +226,10 @@ def process_options() -> Tuple[List[BuildSource], Options]:
             options.report_dirs[report_type] = report_dir
 
     # Set target.
-    if args.module:
+    if args.modules:
         options.build_flags.append(build.MODULE)
-        return [BuildSource(None, args.module, None)], options
+        targets = [BuildSource(None, m, None) for m in args.modules]
+        return targets, options
     elif args.package:
         options.build_flags.append(build.MODULE)
         lib_path = [os.getcwd()] + build.mypy_path()
