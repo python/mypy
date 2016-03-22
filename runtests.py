@@ -200,9 +200,14 @@ def add_myunit(driver: Driver) -> None:
         elif mod == 'mypy.test.testpythoneval':
             # Run Python evaluation integration tests separetely since they are much slower
             # than proper unit tests.
-            driver.add_python_mod('eval-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+            pass
         else:
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+
+
+def add_pythoneval(driver: Driver) -> None:
+    driver.add_python_mod('eval-test', 'mypy.myunit',
+                          '-m', 'mypy.test.testpythoneval', *driver.arglist)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -349,6 +354,7 @@ def main() -> None:
     driver.prepend_path('PYTHONPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
+    add_pythoneval(driver)
     add_basic(driver)
     add_selftypecheck(driver)
     add_myunit(driver)
