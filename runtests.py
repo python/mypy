@@ -116,6 +116,13 @@ class Driver:
         self.add_mypy_mod(name, *args, cwd=cwd)
         self.add_python_mod(name, *args, cwd=cwd)
 
+    def add_mypy_package(self, name: str, packagename: str) -> None:
+        name = 'check %s' % name
+        if not self.allow(name):
+            return
+        largs = [sys.executable, self.mypy, '-f', '-p', packagename]
+        self.waiter.add(LazySubprocess(name, largs, env=self.env))
+
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'check %s' % name
         if not self.allow(name):
@@ -177,6 +184,10 @@ def add_basic(driver: Driver) -> None:
     driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
 
 
+def add_selftypecheck(driver: Driver) -> None:
+    driver.add_mypy_package('package mypy', 'mypy')
+
+
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
     return [join(root, f)
             for root, dirs, files in os.walk(base)
@@ -199,7 +210,6 @@ def add_imports(driver: Driver) -> None:
         mod = file_to_module(f)
         if '.test.data.' in mod:
             continue
-        driver.add_mypy_string('import %s' % mod, 'import %s' % mod)
         # Don't check the importability of the fastparse module because it
         # requires typed_ast which may not be available (but which we don't
         # want to have an explicit dependency on yet)
@@ -368,6 +378,7 @@ def main() -> None:
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
     add_basic(driver)
+    add_selftypecheck(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
