@@ -226,14 +226,14 @@ def add_libpython(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
         libpython_dir = join(driver.cwd, 'lib-python', version)
+        modules = []  # type: List[str]
         for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
             module = file_to_module(f[len(libpython_dir) + 1:])
             if module not in seen:
                 seen.add(module)
-                driver.add_mypy_modules(
-                    'libpython (%s) module %s' % (version, module),
-                    [module],
-                    cwd=libpython_dir)
+                modules.append(module)
+        if modules:
+            driver.add_mypy_modules('libpython (%s)' % (version,), modules, cwd=libpython_dir)
 
 
 def add_samples(driver: Driver) -> None:
