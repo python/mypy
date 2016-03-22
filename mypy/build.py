@@ -209,7 +209,7 @@ def build(sources: List[BuildSource],
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    reports = Reports(sources, data_dir, report_dirs)
+    reports = Reports(data_dir, report_dirs)
 
     source_set = BuildSourceSet(sources)
 

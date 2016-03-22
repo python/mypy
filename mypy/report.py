@@ -7,7 +7,6 @@ import shutil
 
 from typing import Callable, Dict, List, Tuple, cast
 
-import mypy.build
 from mypy.nodes import MypyFile, Node, FuncDef
 from mypy import stats
 from mypy.traverser import TraverserVisitor
@@ -18,9 +17,7 @@ reporter_classes = {}  # type: Dict[str, Callable[[Reports, str], AbstractReport
 
 
 class Reports:
-    def __init__(self, sources: List['mypy.build.BuildSource'],
-                 data_dir: str, report_dirs: Dict[str, str]) -> None:
-        self.sources = sources
+    def __init__(self, data_dir: str, report_dirs: Dict[str, str]) -> None:
         self.data_dir = data_dir
         self.reporters = []  # type: List[AbstractReporter]
         self.named_reporters = {}  # type: Dict[str, AbstractReporter]
@@ -144,7 +141,6 @@ class MemoryXmlReporter(AbstractReporter):
 
         super().__init__(reports, output_dir)
 
-        self.report_name = reports.sources[0].effective_path
         self.xslt_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.xslt')
         self.xslt_txt_path = os.path.join(reports.data_dir, 'xml', 'mypy-txt.xslt')
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
@@ -197,7 +193,7 @@ class MemoryXmlReporter(AbstractReporter):
         # index_path = os.path.join(self.output_dir, 'index.xml')
         output_files = sorted(self.files, key=lambda x: x.module)
 
-        root = etree.Element('mypy-report-index', name=self.report_name)
+        root = etree.Element('mypy-report-index', name='index')
         doc = etree.ElementTree(root)
 
         for file_info in output_files:
