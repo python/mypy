@@ -73,13 +73,24 @@ class Driver:
         return False
 
     def add_mypy_cmd(self, name: str, mypy_args: List[str], cwd: Optional[str] = None) -> None:
-        if not self.allow(name):
+        full_name = 'check %s' % name
+        if not self.allow(full_name):
             return
         args = [sys.executable, self.mypy, '-f'] + mypy_args
-        self.waiter.add(LazySubprocess(name, args, cwd=cwd, env=self.env))
+        self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd('check %s' % name, list(args), cwd=cwd)
+        self.add_mypy_cmd(name, list(args), cwd=cwd)
+
+    def add_mypy_modules(self, name: str, modules: List[str], cwd: Optional[str] = None) -> None:
+        args = list(itertools.chain(*(['-m', mod] for mod in modules)))
+        self.add_mypy_cmd(name, args, cwd=cwd)
+
+    def add_mypy_package(self, name: str, packagename: str) -> None:
+        self.add_mypy_cmd(name, ['-p', packagename])
+
+    def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -90,13 +101,6 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_both(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy(name, *args, cwd=cwd)
-        self.add_python(name, *args, cwd=cwd)
-
-    def add_mypy_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd('check %s' % name, ['-m'] + args, cwd=cwd)
-
     def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
         if not self.allow(name):
@@ -106,16 +110,6 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_both_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_mod(name, *args, cwd=cwd)
-        self.add_python_mod(name, *args, cwd=cwd)
-
-    def add_mypy_package(self, name: str, packagename: str) -> None:
-        self.add_mypy_cmd('check %s' % name, ['-p', packagename])
-
-    def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd('check %s' % name, ['-c'] + list(args), cwd=cwd)
-
     def add_python_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
         if not self.allow(name):
@@ -124,10 +118,6 @@ class Driver:
         largs[0:0] = [sys.executable, '-c']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
-    def add_both_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_string(name, *args, cwd=cwd)
-        self.add_python_string(name, *args, cwd=cwd)
 
     def add_python2(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run2 %s' % name
@@ -163,9 +153,6 @@ def add_basic(driver: Driver) -> None:
     driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
     driver.add_flake8('legacy myunit script', 'scripts/myunit')
-    driver.add_mypy_mod('entry mod mypy', 'mypy')
-    driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
-    driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
 
 
 def add_selftypecheck(driver: Driver) -> None:
@@ -242,9 +229,9 @@ def add_libpython(driver: Driver) -> None:
             module = file_to_module(f[len(libpython_dir) + 1:])
             if module not in seen:
                 seen.add(module)
-                driver.add_mypy_mod(
+                driver.add_mypy_modules(
                     'libpython (%s) module %s' % (version, module),
-                    module,
+                    [module],
                     cwd=libpython_dir)
 
 
