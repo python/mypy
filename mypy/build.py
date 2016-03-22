@@ -120,6 +120,33 @@ class BuildSource:
         return self.path or '<string>'
 
 
+class BuildSourceSet:
+    """Efficiently test a file's membership in the set of build sources."""
+
+    def __init__(self, sources: List[BuildSource]) -> None:
+        self.source_text_present = False
+        self.source_modules = set()  # type: Set[str]
+        self.source_paths = set()  # type: Set[str]
+
+        for source in sources:
+            if source.text is not None:
+                self.source_text_present = True
+            elif source.path:
+                self.source_paths.add(source.path)
+            else:
+                self.source_modules.add(source.module)
+
+    def is_source(self, file: MypyFile) -> bool:
+        if file.path and file.path in self.source_paths:
+            return True
+        elif file._fullname in self.source_modules:
+            return True
+        elif file.path is None and self.source_text_present:
+            return True
+        else:
+            return False
+
+
 def build(sources: List[BuildSource],
           target: int,
           alt_lib_path: str = None,
@@ -182,9 +209,9 @@ def build(sources: List[BuildSource],
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    # TODO Reports is global to a build manager but only supports a single "main file"
-    # Fix this.
-    reports = Reports(sources[0].effective_path, data_dir, report_dirs)
+    reports = Reports(data_dir, report_dirs)
+
+    source_set = BuildSourceSet(sources)
 
     # Construct a build manager object that performs all the stages of the
     # build in the correct order.
@@ -194,6 +221,7 @@ def build(sources: List[BuildSource],
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
+                           source_set=source_set,
                            reports=reports)
 
     # Construct information that describes the initial files. __main__ is the
@@ -365,6 +393,7 @@ class BuildManager:
                  flags: List[str],
                  ignore_prefix: str,
                  custom_typing_module: str,
+                 source_set: BuildSourceSet,
                  reports: Reports) -> None:
         self.data_dir = data_dir
         self.errors = Errors()
@@ -374,6 +403,7 @@ class BuildManager:
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
+        self.source_set = source_set
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
@@ -578,6 +608,10 @@ class BuildManager:
             pass  # Nothing to do.
         else:
             raise RuntimeError('Unsupported target %d' % self.target)
+
+    def report_file(self, file: MypyFile) -> None:
+        if self.source_set.is_source(file):
+            self.reports.file(file, type_map=self.type_checker.type_map)
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
@@ -931,7 +965,7 @@ class SemanticallyAnalyzedFile(ParsedFile):
             if DUMP_INFER_STATS in self.manager.flags:
                 stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
                                       typemap=self.manager.type_checker.type_map)
-            self.manager.reports.file(self.tree, type_map=self.manager.type_checker.type_map)
+            self.manager.report_file(self.tree)
 
         # FIX remove from active state list to speed up processing
 

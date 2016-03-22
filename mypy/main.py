@@ -155,6 +155,7 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     report_group.add_argument('--xml-report', metavar='DIR')
     report_group.add_argument('--txt-report', metavar='DIR')
     report_group.add_argument('--xslt-txt-report', metavar='DIR')
+    report_group.add_argument('--linecount-report', metavar='DIR')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', help="type-check module (may be a dotted name)")
