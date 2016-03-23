@@ -799,6 +799,18 @@ C().foo(1)  # E: Too many arguments for "foo" of "C"
 C.bozo()    # E: "C" has no attribute "bozo"
 [builtins fixtures/classmethod.py]
 
+[case testClassMethodMayCallAbstractMethod]
+from abc import abstractmethod
+import typing
+class C:
+  @classmethod
+  def foo(cls) -> None:
+      cls().bar()
+  @abstractmethod
+  def bar(self) -> None:
+      pass
+[builtins fixtures/classmethod.py]
+
 
 -- Properties
 -- ----------

@@ -382,7 +382,9 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance)
     callable_type = init_type.copy_modified(
         ret_type=self_type(info), fallback=type_type, name=None, variables=variables)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    return convert_class_tvars_to_func_tvars(c, len(initvars))
+    cc = convert_class_tvars_to_func_tvars(c, len(initvars))
+    cc.is_classmethod_class = True
+    return cc
 
 
 def convert_class_tvars_to_func_tvars(callable: CallableType,

@@ -231,6 +231,9 @@ class FunctionLike(Type):
     @abstractmethod
     def is_type_obj(self) -> bool: pass
 
+    def is_concrete_type_obj(self) -> bool:
+        return self.is_type_obj()
+
     @abstractmethod
     def type_object(self) -> mypy.nodes.TypeInfo: pass
 
@@ -278,6 +281,8 @@ class CallableType(FunctionLike):
 
     # Is this Callable[..., t] (with literal '...')?
     is_ellipsis_args = False
+    # Is this callable constructed for the benefit of a classmethod's 'cls' argument?
+    is_classmethod_class = False
     # Was this type implicitly generated instead of explicitly specified by the user?
     implicit = False
 
@@ -342,6 +347,9 @@ class CallableType(FunctionLike):
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.fullname() == 'builtins.type'
+
+    def is_concrete_type_obj(self) -> bool:
+        return self.is_type_obj() and self.is_classmethod_class
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
