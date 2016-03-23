@@ -545,6 +545,7 @@ class CallableType(FunctionLike):
                 'bound_vars': [[x, y.serialize()] for x, y in self.bound_vars],
                 'is_ellipsis_args': self.is_ellipsis_args,
                 'implicit': self.implicit,
+                'is_classmethod_class': self.is_classmethod_class,
                 }
 
     @classmethod
@@ -562,6 +563,7 @@ class CallableType(FunctionLike):
                             bound_vars=[(x, Type.deserialize(y)) for x, y in data['bound_vars']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
+                            is_classmethod_class=data['is_classmethod_class'],
                             )
 
 
