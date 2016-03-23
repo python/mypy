@@ -187,7 +187,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # methods: the former to the instance, the latter to the
                 # class.
                 functype = cast(FunctionLike, t)
-                check_method_type(functype, itype, node, msg)
+                check_method_type(functype, itype, var.is_classmethod, node, msg)
                 signature = method_type(functype)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
@@ -228,17 +228,26 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance,
+def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: bool,
                       context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
             msg.invalid_method_type(item, context)
-        else:
+        elif not is_classmethod:
             # Check that self argument has type 'Any' or valid instance type.
             selfarg = item.arg_types[0]
             if not subtypes.is_equivalent(selfarg, itype):
                 msg.invalid_method_type(item, context)
+        else:
+            # Check that cls argument has type 'Any' or valid class type.
+            clsarg = item.arg_types[0]
+            if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
+                if not subtypes.is_equivalent(clsarg.ret_type, itype):
+                    msg.invalid_class_method_type(item, context)
+            else:
+                if not subtypes.is_equivalent(clsarg, AnyType()):
+                    msg.invalid_class_method_type(item, context)
 
 
 def analyze_class_attribute_access(itype: Instance,

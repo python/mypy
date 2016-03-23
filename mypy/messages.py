@@ -733,6 +733,9 @@ class MessageBuilder:
     def invalid_method_type(self, sig: CallableType, context: Context) -> None:
         self.fail('Invalid method type', context)
 
+    def invalid_class_method_type(self, sig: CallableType, context: Context) -> None:
+        self.fail('Invalid class method type', context)
+
     def incompatible_conditional_function_def(self, defn: FuncDef) -> None:
         self.fail('All conditional function variants must have identical '
                   'signatures', defn)
