@@ -187,7 +187,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # methods: the former to the instance, the latter to the
                 # class.
                 functype = cast(FunctionLike, t)
-                check_method_type(functype, itype, node, msg)
+                check_method_type(functype, itype, var.is_classmethod, node, msg)
                 signature = method_type(functype)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
@@ -228,17 +228,29 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance,
+def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: bool,
                       context: Context, msg: MessageBuilder) -> None:
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
             msg.invalid_method_type(item, context)
-        else:
+        elif not is_classmethod:
             # Check that self argument has type 'Any' or valid instance type.
             selfarg = item.arg_types[0]
             if not subtypes.is_equivalent(selfarg, itype):
                 msg.invalid_method_type(item, context)
+        else:
+            # Check that cls argument has type 'Any' or valid class type.
+            # (This is sufficient for the current treatment of @classmethod,
+            # but probably needs to be revisited when we implement Type[C]
+            # or advanced variants of it like Type[<args>, C].)
+            clsarg = item.arg_types[0]
+            if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
+                if not subtypes.is_equivalent(clsarg.ret_type, itype):
+                    msg.invalid_class_method_type(item, context)
+            else:
+                if not subtypes.is_equivalent(clsarg, AnyType()):
+                    msg.invalid_class_method_type(item, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
@@ -370,7 +382,9 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance)
     callable_type = init_type.copy_modified(
         ret_type=self_type(info), fallback=type_type, name=None, variables=variables)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    return convert_class_tvars_to_func_tvars(c, len(initvars))
+    cc = convert_class_tvars_to_func_tvars(c, len(initvars))
+    cc.is_classmethod_class = True
+    return cc
 
 
 def convert_class_tvars_to_func_tvars(callable: CallableType,

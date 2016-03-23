@@ -179,7 +179,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.anal_array(t.arg_types),
                                ret_type=t.ret_type.accept(self),
-                               fallback=self.builtin_type('builtins.function'),
+                               fallback=t.fallback or self.builtin_type('builtins.function'),
                                variables=self.anal_var_defs(t.variables),
                                bound_vars=self.anal_bound_vars(t.bound_vars))
 

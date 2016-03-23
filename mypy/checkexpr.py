@@ -218,7 +218,7 @@ class ExpressionChecker:
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
-            if callee.is_type_obj() and callee.type_object().is_abstract:
+            if callee.is_concrete_type_obj() and callee.type_object().is_abstract:
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
