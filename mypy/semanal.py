@@ -307,7 +307,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif func.type:
                 sig = cast(FunctionLike, func.type)
                 if func.is_class:
-                    leading_type = self.class_subtype(self.type)
+                    leading_type = self.class_type(self.type)
                 else:
                     leading_type = self_type(self.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
@@ -809,7 +809,7 @@ class SemanticAnalyzer(NodeVisitor):
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
 
-    def class_subtype(self, info: TypeInfo) -> Type:
+    def class_type(self, info: TypeInfo) -> Type:
         # Construct a function type whose fallback is cls.
         from mypy import checkmember  # To avoid import cycle.
         leading_type = checkmember.type_object_type(info, self.builtin_type)
