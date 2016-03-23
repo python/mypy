@@ -64,7 +64,7 @@ DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 # Disallow defining untyped (or incompletely typed) functions
 DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
 # Type check unannotated functions
-CHECK_UNTYPED_DEFS = 'check-untyped-defs' 
+CHECK_UNTYPED_DEFS = 'check-untyped-defs'
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
