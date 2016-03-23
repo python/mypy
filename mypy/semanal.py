@@ -306,7 +306,10 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Method must have at least one argument', func)
             elif func.type:
                 sig = cast(FunctionLike, func.type)
-                leading_type = self.class_subtype(self.type) if func.is_class else self_type(self.type)
+                if func.is_class:
+                    leading_type = self.class_subtype(self.type)
+                else:
+                    leading_type = self_type(self.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
