@@ -2367,7 +2367,9 @@ class ThirdPass(TraverserVisitor[None]):
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
+        self.errors.set_ignored_lines(file_node.ignored_lines)
         file_node.accept(self)
+        self.errors.set_ignored_lines(set())
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         self.errors.push_function(fdef.name())

@@ -96,6 +96,33 @@ class BuildSource:
         return self.path or '<string>'
 
 
+class BuildSourceSet:
+    """Efficiently test a file's membership in the set of build sources."""
+
+    def __init__(self, sources: List[BuildSource]) -> None:
+        self.source_text_present = False
+        self.source_modules = set()  # type: Set[str]
+        self.source_paths = set()  # type: Set[str]
+
+        for source in sources:
+            if source.text is not None:
+                self.source_text_present = True
+            elif source.path:
+                self.source_paths.add(source.path)
+            else:
+                self.source_modules.add(source.module)
+
+    def is_source(self, file: MypyFile) -> bool:
+        if file.path and file.path in self.source_paths:
+            return True
+        elif file._fullname in self.source_modules:
+            return True
+        elif file.path is None and self.source_text_present:
+            return True
+        else:
+            return False
+
+
 def build(sources: List[BuildSource],
           target: int,
           alt_lib_path: str = None,
@@ -158,9 +185,9 @@ def build(sources: List[BuildSource],
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    # TODO: Reports is global to a build manager but only supports a
-    # single "main file" Fix this.
-    reports = Reports(sources[0].effective_path, data_dir, report_dirs)
+    reports = Reports(data_dir, report_dirs)
+
+    source_set = BuildSourceSet(sources)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -169,6 +196,7 @@ def build(sources: List[BuildSource],
                            pyversion=pyversion, flags=flags,
                            ignore_prefix=os.getcwd(),
                            custom_typing_module=custom_typing_module,
+                           source_set=source_set,
                            reports=reports)
 
     try:
@@ -313,6 +341,7 @@ class BuildManager:
                  flags: List[str],
                  ignore_prefix: str,
                  custom_typing_module: str,
+                 source_set: BuildSourceSet,
                  reports: Reports) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -323,6 +352,7 @@ class BuildManager:
         self.pyversion = pyversion
         self.flags = flags
         self.custom_typing_module = custom_typing_module
+        self.source_set = source_set
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
@@ -421,6 +451,10 @@ class BuildManager:
             self.errors.report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
                                only_once=True)
 
+    def report_file(self, file: MypyFile) -> None:
+        if self.source_set.is_source(file):
+            self.reports.file(file, type_map=self.type_checker.type_map)
+
     def log(self, *message: str) -> None:
         if VERBOSE in self.flags:
             print('%.3f:LOG: ' % (time.time() - self.start_time), *message, file=sys.stderr)
@@ -460,7 +494,6 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-# TODO: Maybe move this into BuildManager?
 # Cache find_module: (id, lib_path) -> result.
 find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], str]
 
@@ -1122,10 +1155,10 @@ class State:
             return
         with self.wrap_context():
             manager.type_checker.visit_file(self.tree, self.xpath)
-            type_map = manager.type_checker.type_map
             if DUMP_INFER_STATS in manager.flags:
-                dump_type_stats(self.tree, self.xpath, inferred=True, typemap=type_map)
-            manager.reports.file(self.tree, type_map=type_map)
+                dump_type_stats(self.tree, self.xpath, inferred=True,
+                                typemap=manager.type_checker.type_map)
+            manager.report_file(self.tree)
 
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():

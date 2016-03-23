@@ -201,6 +201,19 @@ To run the linter:
     $ ./runtests.py lint
 
 
+Coverage reports
+----------------
+
+There is an experimental feature to generate coverage reports.  To use
+this feature, you need to `pip install lxml`.  This is an extension
+module and requires various library headers to install; on a
+Debian-derived system the command
+  apt-get install python3-dev libxml2-dev libxslt1-dev
+may provide the necessary dependencies.
+
+To use the feature, pass e.g. `--txt-report "$(mktemp -d)"`.
+
+
 Development status
 ------------------
 
