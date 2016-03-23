@@ -241,6 +241,9 @@ def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: b
                 msg.invalid_method_type(item, context)
         else:
             # Check that cls argument has type 'Any' or valid class type.
+            # (This is sufficient for the current treatment of @classmethod,
+            # but probably needs to be revisited when we implement Type[C]
+            # or advanced variants of it like Type[<args>, C].)
             clsarg = item.arg_types[0]
             if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
                 if not subtypes.is_equivalent(clsarg.ret_type, itype):
