@@ -234,6 +234,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                                     ret_type=ret_type,
                                     fallback=fallback,
                                     is_ellipsis_args=True)
+            else:
+                self.fail('The first argument to Callable must be a list of types', t)
+                return AnyType()
 
         self.fail('Invalid function type', t)
         return AnyType()
