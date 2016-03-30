@@ -1,11 +1,9 @@
 Supported Python features and modules
 =====================================
 
-Lists of supported Python features and standard library modules are
-maintained in the mypy wiki:
+A list of unsupported Python features is maintained in the mypy wiki:
 
-- `Supported Python features <http://www.mypy-lang.org/wiki/SupportedPythonFeatures>`_
-- `Supported Python modules <http://www.mypy-lang.org/wiki/SupportedPythonModules>`_
+- `Unsupported Python features <https://github.com/python/mypy/wiki/Unsupported-Python-Features>`_
 
 Runtime definition of methods and functions
 *******************************************
