@@ -458,7 +458,7 @@ MypyFile:1(
         Args(
           Var(cls)
           Var(z))
-        def (cls: Any, z: builtins.int) -> builtins.str
+        def (cls: def () -> __main__.A, z: builtins.int) -> builtins.str
         Class
         Block:3(
           PassStmt:3())))))
@@ -478,7 +478,7 @@ MypyFile:1(
         f
         Args(
           Var(cls))
-        def (cls: Any) -> builtins.str
+        def (cls: def () -> __main__.A) -> builtins.str
         Class
         Block:3(
           PassStmt:3())))))

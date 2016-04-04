@@ -306,9 +306,10 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Method must have at least one argument', func)
             elif func.type:
                 sig = cast(FunctionLike, func.type)
-                # TODO: A classmethod's first argument should be more
-                #       precisely typed than Any.
-                leading_type = AnyType() if func.is_class else self_type(self.type)
+                if func.is_class:
+                    leading_type = self.class_type(self.type)
+                else:
+                    leading_type = self_type(self.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
@@ -807,6 +808,16 @@ class SemanticAnalyzer(NodeVisitor):
 
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
+
+    def class_type(self, info: TypeInfo) -> Type:
+        # Construct a function type whose fallback is cls.
+        from mypy import checkmember  # To avoid import cycle.
+        leading_type = checkmember.type_object_type(info, self.builtin_type)
+        if isinstance(leading_type, Overloaded):
+            # Overloaded __init__ is too complex to handle.  Plus it's stubs only.
+            return AnyType()
+        else:
+            return leading_type
 
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)

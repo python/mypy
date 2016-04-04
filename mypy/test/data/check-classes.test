@@ -763,6 +763,54 @@ class A:
 A().f = A.f # E: Cannot assign to a method
 [builtins fixtures/classmethod.py]
 
+[case testClassMethodCalledInClassMethod]
+import typing
+class C:
+  @classmethod
+  def foo(cls) -> None: pass
+  @classmethod
+  def bar(cls) -> None:
+    cls()
+    cls(1)      # E: Too many arguments for "C"
+    cls.bar()
+    cls.bar(1)  # E: Too many arguments for "bar" of "C"
+    cls.bozo()  # E: "C" has no attribute "bozo"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In member "bar" of class "C":
+
+[case testClassMethodCalledOnClass]
+import typing
+class C:
+  @classmethod
+  def foo(cls) -> None: pass
+C.foo()
+C.foo(1)  # E: Too many arguments for "foo" of "C"
+C.bozo()  # E: "C" has no attribute "bozo"
+[builtins fixtures/classmethod.py]
+
+[case testClassMethodCalledOnInstance]
+import typing
+class C:
+  @classmethod
+  def foo(cls) -> None: pass
+C().foo()
+C().foo(1)  # E: Too many arguments for "foo" of "C"
+C.bozo()    # E: "C" has no attribute "bozo"
+[builtins fixtures/classmethod.py]
+
+[case testClassMethodMayCallAbstractMethod]
+from abc import abstractmethod
+import typing
+class C:
+  @classmethod
+  def foo(cls) -> None:
+      cls().bar()
+  @abstractmethod
+  def bar(self) -> None:
+      pass
+[builtins fixtures/classmethod.py]
+
 
 -- Properties
 -- ----------
