@@ -426,8 +426,8 @@ main: note: In member "f" of class "A":
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]): pass
-A[A]() # E: Generic type not valid as an expression any more (use '# type:' comment instead)
-A[int, str]() # E: Generic type not valid as an expression any more (use '# type:' comment instead)
+A[A]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
+A[int, str]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
 [out]
 
 [case testInvalidTypeApplicationTarget2]
@@ -435,8 +435,8 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 S = TypeVar('S')
 class A(Generic[T, S]): pass
-A[int, str]() # E: Generic type not valid as an expression any more (use '# type:' comment instead)
-A[int]() # E: Generic type not valid as an expression any more (use '# type:' comment instead)
+A[int, str]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
+A[int]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
 [out]
 
 [case testInvalidTypeApplicationTarget3]
@@ -447,7 +447,7 @@ a[A]() # Fail
 A[A]() # Fail
 [out]
 main:4: error: Value of type "A" is not indexable
-main:5: error: Generic type not valid as an expression any more (use '# type:' comment instead)
+main:5: error: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
 
 
 -- Multiple assignment with lists
