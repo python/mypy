@@ -1782,6 +1782,11 @@ def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
 
 
 def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.CallableType':
+    if c.arg_kinds and c.arg_kinds[0] == ARG_STAR:
+        # The signature is of the form 'def foo(*args, ...)'.
+        # In this case we shouldn't drop the first arg,
+        # since self will be absorbed by the *args.
+        return c
     return c.copy_modified(arg_types=c.arg_types[1:],
                            arg_kinds=c.arg_kinds[1:],
                            arg_names=c.arg_names[1:])
