@@ -253,6 +253,9 @@ def default_data_dir(bin_dir: str) -> str:
     elif base == 'python3':
         # Assume we installed python3 with brew on os x
         return os.path.join(os.path.dirname(dir), 'lib', 'mypy')
+    elif dir.endswith('python-exec'):
+        # Gentoo uses a python wrapper in /usr/lib to which mypy is a symlink.
+        return os.path.join(os.path.dirname(dir), 'mypy')
     else:
         # Don't know where to find the data files!
         raise RuntimeError("Broken installation: can't determine base dir")
