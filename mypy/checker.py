@@ -2418,7 +2418,7 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
     else:
         all_types = [type]
 
-    types = [] # type: List[Type]
+    types = []  # type: List[Type]
 
     for type in all_types:
         if isinstance(type, FunctionLike):
