@@ -2412,12 +2412,29 @@ def find_isinstance_check(node: Node,
 
 def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
     type = type_map[node]
-    if isinstance(type, FunctionLike):
-        if type.is_type_obj():
-            # Type variables may be present -- erase them, which is the best
-            # we can do (outside disallowing them here).
-            return erase_typevars(type.items()[0].ret_type)
-    return None
+
+    if isinstance(type, TupleType):
+        all_types = type.items
+    else:
+        all_types = [type]
+
+    types = [] # type: List[Type]
+
+    for type in all_types:
+        if isinstance(type, FunctionLike):
+            if type.is_type_obj():
+                # Type variables may be present -- erase them, which is the best
+                # we can do (outside disallowing them here).
+                type = erase_typevars(type.items()[0].ret_type)
+
+            types.append(type)
+
+    if len(types) == 0:
+        return None
+    elif len(types) == 1:
+        return types[0]
+    else:
+        return UnionType(types)
 
 
 def expand_node(defn: Node, map: Dict[int, Type]) -> Node:

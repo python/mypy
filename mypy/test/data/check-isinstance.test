@@ -343,6 +343,31 @@ while 1:
         z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstancelist.py]
 
+[case testIsinstanceTuple]
+from typing import Union
+
+class A:
+    pass
+
+class B:
+    def method2(self, arg: int):
+        return 123
+
+class C:
+    def method2(self, arg: int):
+        return 456
+
+    def method3(self, arg: str):
+        return 'abc'
+
+v = A() # type: Union[A, B, C]
+
+if isinstance(v, (B, C)):
+    v.method2(123)
+    v.method3('xyz') # E: Some element of union has no attribute "method3"
+
+[builtins fixtures/isinstancelist.py]
+
 [case testMemberAssignmentChanges-skip]
 from typing import Union
 

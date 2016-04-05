@@ -1,4 +1,4 @@
-from typing import builtinclass
+from typing import builtinclass, Tuple, Union
 
 class object:
     def __init__(self) -> None: pass
@@ -9,7 +9,7 @@ class type:
 class tuple: pass
 class function: pass
 
-def isinstance(x: object, t: type) -> bool: pass
+def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 
 class int: pass
 class float: pass
