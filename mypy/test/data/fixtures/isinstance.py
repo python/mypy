@@ -1,4 +1,6 @@
-from typing import builtinclass
+from typing import builtinclass, Tuple, TypeVar, Generic, Union
+
+T = TypeVar('T')
 
 class object:
     def __init__(self) -> None: pass
@@ -6,10 +8,11 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
+
 class function: pass
 
-def isinstance(x: object, t: type) -> bool: pass
+def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 
 class int: pass
 class float: pass
