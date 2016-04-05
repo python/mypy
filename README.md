@@ -133,7 +133,7 @@ see "Troubleshooting" above.
 
 The mypy wiki contains some useful information for contributors:
 
-  http://www.mypy-lang.org/wiki/DeveloperGuides
+  https://github.com/python/mypy/wiki/Developer-Guides
 
 Working with the git version of mypy
 ------------------------------------

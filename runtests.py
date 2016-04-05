@@ -24,7 +24,7 @@ if True:
     # Now `typing` is available.
 
 
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import git, util
@@ -72,14 +72,26 @@ class Driver:
             print('OMIT     %s' % name)
         return False
 
-    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'check %s' % name
-        if not self.allow(name):
+    def add_mypy_cmd(self, name: str, mypy_args: List[str], cwd: Optional[str] = None) -> None:
+        full_name = 'check %s' % name
+        if not self.allow(full_name):
             return
-        largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-f']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
+        args = [sys.executable, self.mypy, '-f'] + mypy_args
+        self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
+
+    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy_cmd(name, list(args), cwd=cwd)
+
+    def add_mypy_modules(self, name: str, modules: Iterable[str],
+                         cwd: Optional[str] = None) -> None:
+        args = list(itertools.chain(*(['-m', mod] for mod in modules)))
+        self.add_mypy_cmd(name, args, cwd=cwd)
+
+    def add_mypy_package(self, name: str, packagename: str) -> None:
+        self.add_mypy_cmd(name, ['-p', packagename])
+
+    def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+        self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -87,19 +99,6 @@ class Driver:
             return
         largs = list(args)
         largs[0:0] = [sys.executable]
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
-    def add_both(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy(name, *args, cwd=cwd)
-        self.add_python(name, *args, cwd=cwd)
-
-    def add_mypy_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'check %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-f', '-m']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -112,19 +111,6 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_both_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_mod(name, *args, cwd=cwd)
-        self.add_python_mod(name, *args, cwd=cwd)
-
-    def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'check %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        largs[0:0] = [sys.executable, self.mypy, '-f', '-c']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
     def add_python_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
         if not self.allow(name):
@@ -133,10 +119,6 @@ class Driver:
         largs[0:0] = [sys.executable, '-c']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
-    def add_both_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_string(name, *args, cwd=cwd)
-        self.add_python_string(name, *args, cwd=cwd)
 
     def add_python2(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run2 %s' % name
@@ -172,9 +154,10 @@ def add_basic(driver: Driver) -> None:
     driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
     driver.add_flake8('legacy myunit script', 'scripts/myunit')
-    driver.add_mypy_mod('entry mod mypy', 'mypy')
-    driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
-    driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
+
+
+def add_selftypecheck(driver: Driver) -> None:
+    driver.add_mypy_package('package mypy', 'mypy')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -199,7 +182,6 @@ def add_imports(driver: Driver) -> None:
         mod = file_to_module(f)
         if '.test.data.' in mod:
             continue
-        driver.add_mypy_string('import %s' % mod, 'import %s' % mod)
         # Don't check the importability of the fastparse module because it
         # requires typed_ast which may not be available (but which we don't
         # want to have an explicit dependency on yet)
@@ -218,40 +200,45 @@ def add_myunit(driver: Driver) -> None:
         elif mod == 'mypy.test.testpythoneval':
             # Run Python evaluation integration tests separetely since they are much slower
             # than proper unit tests.
-            driver.add_python_mod('eval-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+            pass
         else:
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
 
 
+def add_pythoneval(driver: Driver) -> None:
+    driver.add_python_mod('eval-test', 'mypy.myunit',
+                          '-m', 'mypy.test.testpythoneval', *driver.arglist)
+
+
 def add_stubs(driver: Driver) -> None:
-    # Only test each module once, for the latest Python version supported.
-    # The third-party stub modules will only be used if it is not in the version.
-    seen = set()  # type: Set[str]
+    # We only test each module in the one version mypy prefers to find.
+    # TODO: test stubs for other versions, especially Python 2 stubs.
+
+    modules = set()  # type: Set[str]
+    modules.add('typing')
     # TODO: This should also test Python 2, and pass pyversion accordingly.
     for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
         for stub_type in ['builtins', 'stdlib', 'third_party']:
             stubdir = join('typeshed', stub_type, version)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f[len(stubdir) + 1:])
-                if module not in seen:
-                    seen.add(module)
-                    driver.add_mypy_string(
-                        'stub (%s) module %s' % (stubdir, module),
-                        'import typing, %s' % module)
+                modules.add(module)
+
+    driver.add_mypy_modules('stubs', sorted(modules))
 
 
 def add_libpython(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
         libpython_dir = join(driver.cwd, 'lib-python', version)
+        modules = []  # type: List[str]
         for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
             module = file_to_module(f[len(libpython_dir) + 1:])
             if module not in seen:
                 seen.add(module)
-                driver.add_mypy_mod(
-                    'libpython (%s) module %s' % (version, module),
-                    module,
-                    cwd=libpython_dir)
+                modules.append(module)
+        if modules:
+            driver.add_mypy_modules('libpython (%s)' % (version,), modules, cwd=libpython_dir)
 
 
 def add_samples(driver: Driver) -> None:
@@ -367,17 +354,28 @@ def main() -> None:
     driver.prepend_path('PYTHONPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
+    add_pythoneval(driver)
     add_basic(driver)
+    add_selftypecheck(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
     add_libpython(driver)
     add_samples(driver)
 
-    if not list_only:
-        driver.waiter.run()
-    else:
+    if list_only:
         driver.list_tasks()
+        return
+
+    exit_code = driver.waiter.run()
+
+    if verbosity >= 1:
+        times = driver.waiter.times2 if verbosity >= 2 else driver.waiter.times1
+        times_sortable = ((t, tp) for (tp, t) in times.items())
+        for total_time, test_type in sorted(times_sortable, reverse=True):
+            print('total time in %s: %f' % (test_type, total_time))
+
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':

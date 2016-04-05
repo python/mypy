@@ -182,6 +182,6 @@ consider making it available for other programmers that use mypy or
 contributing it to mypy.
 
 There is more information about creating stubs in the
-`mypy wiki <http://www.mypy-lang.org/wiki/CreatingStubsForPythonModules>`_.
+`mypy wiki <https://github.com/python/mypy/wiki/Creating-Stubs-For-Python-Modules>`_.
 The following sections explain the kinds of type annotations you can use
 in your programs and stub files.

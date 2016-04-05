@@ -496,6 +496,9 @@ class CallableType(FunctionLike):
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
 
+    def is_concrete_type_obj(self) -> bool:
+        return self.is_type_obj() and self.is_classmethod_class
+
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
         ret = self.ret_type

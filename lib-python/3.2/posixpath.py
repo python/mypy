@@ -17,7 +17,7 @@ import genericpath
 from genericpath import *
 
 from typing import (
-    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any, Union
+    Tuple, BinaryIO, TextIO, Pattern, AnyStr, List, Set, Any, Union, cast
 )
 
 __all__ = ["normcase","isabs","join","splitdrive","split","splitext",
@@ -56,7 +56,7 @@ def normcase(s: AnyStr) -> AnyStr:
     if not isinstance(s, (bytes, str)):
         raise TypeError("normcase() argument must be str or bytes, "
                         "not '{}'".format(s.__class__.__name__))
-    return s
+    return cast(AnyStr, s)
 
 
 # Return whether a path is absolute.

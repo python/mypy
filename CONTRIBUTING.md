@@ -55,7 +55,7 @@ your contributions.
 
 We use the usual GitHub pull-request flow, which may be familiar to
 you if you've contributed to other projects on GitHub.  For the mechanics,
-see [our git and GitHub workflow help page](http://www.mypy-lang.org/wiki/UsingGitAndGitHub),
+see [our git and GitHub workflow help page](https://github.com/python/mypy/wiki/Using-Git-And-GitHub),
 or [GitHub's own documentation](https://help.github.com/articles/using-pull-requests/).
 
 Anyone interested in Mypy may review your code.  One of the Mypy core
@@ -85,16 +85,16 @@ and why they're correct, and contain tests for whatever changes they
 make to the code's behavior.  As a bonus these are easiest for someone
 to review, which helps your pull request get merged quickly!  Standard
 advice about good pull requests for open-source projects applies; we
-have [our own writeup](http://www.mypy-lang.org/wiki/GoodPullRequest)
+have [our own writeup](https://github.com/python/mypy/wiki/Good-Pull-Request)
 of this advice.
 
-See also our [coding conventions](http://www.mypy-lang.org/wiki/CodeConventions) --
+See also our [coding conventions](https://github.com/python/mypy/wiki/Code-Conventions) --
 which consist mainly of a reference to
 [PEP 8](https://www.python.org/dev/peps/pep-0008/) -- for the code you
 put in the pull request.
 
 You may also find other pages in the
-[Mypy developer guide](http://www.mypy-lang.org/wiki/DeveloperGuides)
+[Mypy developer guide](https://github.com/python/mypy/wiki/Developer-Guides)
 helpful in developing your change.
 
 
