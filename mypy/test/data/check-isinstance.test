@@ -365,8 +365,7 @@ v = A() # type: Union[A, B, C]
 if isinstance(v, (B, C)):
     v.method2(123)
     v.method3('xyz') # E: Some element of union has no attribute "method3"
-
-[builtins fixtures/isinstancelist.py]
+[builtins fixtures/isinstance.py]
 
 [case testMemberAssignmentChanges-skip]
 from typing import Union
