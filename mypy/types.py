@@ -292,12 +292,10 @@ class Instance(Type):
     def serialize(self) -> JsonDict:
         data = {'.class': 'Instance',
                 }  # type: JsonDict
-        if self.type is not None:
-            data['type_ref'] = self.type.alt_fullname or self.type.fullname()
+        assert self.type is not None
+        data['type_ref'] = self.type.alt_fullname or self.type.fullname()
         if self.args:
             data['args'] = [arg.serialize() for arg in self.args]
-        if self.erased:
-            data['erased'] = True
         return data
 
     @classmethod
@@ -308,10 +306,8 @@ class Instance(Type):
             args_list = data['args']
             assert isinstance(args_list, list)
             args = [Type.deserialize(arg) for arg in args_list]
-        inst = Instance(None, args, erased=data.get('erased', False))
-        if 'type_ref' in data:
-            inst.type_ref = data['type_ref']
-            # Will be fixed up by fixup.py later.
+        inst = Instance(None, args)
+        inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
         return inst
 
 
@@ -398,7 +394,6 @@ class CallableType(FunctionLike):
     min_args = 0                    # Minimum number of arguments; derived from arg_kinds
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
     ret_type = None  # type: Type   # Return value type
-    fallback = None  # type: Instance
     name = ''                       # Name (may be None; for error messages)
     definition = None  # type: SymbolNode # For error messages.  May be None.
     # Type variables for a generic function
@@ -496,9 +491,6 @@ class CallableType(FunctionLike):
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
 
-    def is_concrete_type_obj(self) -> bool:
-        return self.is_type_obj() and self.is_classmethod_class
-
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
         ret = self.ret_type
@@ -535,6 +527,8 @@ class CallableType(FunctionLike):
         return a
 
     def serialize(self) -> JsonDict:
+        # TODO: As an optimization, leave out everything related to
+        # generic functions for non-generic functions.
         return {'.class': 'CallableType',
                 'arg_types': [(None if t is None else t.serialize())
                               for t in self.arg_types],
