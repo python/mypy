@@ -169,6 +169,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
+    # Stack of next available function type variable ids
+    next_function_tvar_id_stack = None  # type: List[int]
 
     # Status of postponing analysis of nested function bodies. By using this we
     # can have mutually recursive nested functions. Values are FUNCTION_x
@@ -198,6 +200,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.bound_tvars = None
         self.tvar_stack = []
         self.function_stack = []
+        self.next_function_tvar_id_stack = [-1]
         self.block_depth = [0]
         self.loop_depth = 0
         self.lib_path = lib_path
@@ -336,7 +339,9 @@ class SemanticAnalyzer(NodeVisitor):
             typevars = [(name, tvar) for name, tvar in typevars
                         if not self.is_defined_type_var(name, defn)]
             if typevars:
-                defs = [TypeVarDef(tvar[0], -i - 1, tvar[1].values, self.object_type(),
+                next_tvar_id = self.next_function_tvar_id()
+                defs = [TypeVarDef(tvar[0], next_tvar_id - i,
+                                   tvar[1].values, self.object_type(),
                                    tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
                 functype.variables = defs
@@ -431,9 +436,17 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Decorated property not supported", item)
             item.func.accept(self)
 
+    def next_function_tvar_id(self) -> int:
+        return self.next_function_tvar_id_stack[-1]
+
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
+
         tvarnodes = self.add_func_type_variables_to_symbol_table(defn)
+        next_function_tvar_id = min([self.next_function_tvar_id()] +
+                                    [n.tvar_id - 1 for n in tvarnodes])
+        self.next_function_tvar_id_stack.append(next_function_tvar_id)
+
         if defn.type:
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
@@ -472,7 +485,9 @@ class SemanticAnalyzer(NodeVisitor):
         self.postpone_nested_functions_stack.pop()
         self.postponed_functions_stack.pop()
 
+        self.next_function_tvar_id_stack.pop()
         disable_typevars(tvarnodes)
+
         self.leave()
         self.function_stack.pop()
 
