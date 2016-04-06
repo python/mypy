@@ -1339,7 +1339,7 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     vertices = set(graph)
     edges = {id: [dep for dep in st.dependencies if dep in graph]
              for id, st in graph.items()}
-    sccs = list(strongly_connected_components_path(vertices, edges))
+    sccs = list(strongly_connected_components(vertices, edges))
     # Topsort.
     sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
     data = {}  # type: Dict[AbstractSet[str], Set[AbstractSet[str]]]
@@ -1363,11 +1363,9 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     return res
 
 
-def strongly_connected_components_path(vertices: Set[str],
-                                       edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
-    """Compute Strongly Connected Components of a graph.
-
-    The graph is a DAG.
+def strongly_connected_components(vertices: Set[str],
+                                  edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
+    """Compute Strongly Connected Components of a directed graph.
 
     Args:
       vertices: the labels for the vertices
@@ -1416,7 +1414,7 @@ def strongly_connected_components_path(vertices: Set[str],
 
 def topsort(data: Dict[AbstractSet[str],
                        Set[AbstractSet[str]]]) -> Iterable[Set[AbstractSet[str]]]:
-    """Topological sort.  Consumes its argument.
+    """Topological sort.
 
     Args:
       data: A map from SCCs (represented as frozen sets of strings) to
