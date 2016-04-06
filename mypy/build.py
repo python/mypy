@@ -629,6 +629,17 @@ MYPY_CACHE = '.mypy_cache'
 
 
 def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+    """Return the file names for the cache files.
+
+    Args:
+      id: module ID
+      path: module path (used to recognize packages)
+      pyversion: Python version (major, minor)
+
+    Returns:
+      A tuple with the file names to be used for the meta JSON and the
+      data JSON, respectively.
+    """
     prefix = os.path.join(MYPY_CACHE, '%d.%d' % pyversion, *id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
@@ -637,6 +648,19 @@ def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
+    """Find cache data for a module.
+
+    Args:
+      id: module ID
+      path: module path
+      manager: the build manager (for pyversion, log/trace, and build options)
+
+    Returns:
+      A CacheMeta instance if the cache data was found and appears
+      valid; otherwise None.
+    """
+    # TODO: May need to take more build options into account; in
+    # particular SILENT_IMPORTS may affect the cache dramatically.
     meta_json, data_json = get_cache_names(id, path, manager.pyversion)
     manager.trace('Looking for {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
@@ -681,6 +705,15 @@ def random_string():
 
 def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
                 manager: BuildManager) -> None:
+    """Write cache files for a module.
+
+    Args:
+      id: module ID
+      path: module path
+      tree: the fully checked module data
+      dependencies: module IDs on which this module depends
+      manager: the build manager (for pyversion, log/trace)
+    """
     path = os.path.abspath(path)
     manager.trace('Dumping {} {}'.format(id, path))
     st = os.stat(path)  # TODO: Errors
@@ -710,59 +743,10 @@ def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
+    # TODO: On Windows, os.rename() may not be atomic, and we could
+    # use os.replace().  However that's new in Python 3.3.
     os.rename(data_json_tmp, data_json)
     os.rename(meta_json_tmp, meta_json)
-
-    return
-
-    # Now, as a test, read it back.
-    print()
-    print('Reading what we wrote for', id, 'from', data_json)
-    with open(data_json, 'r') as f:
-        new_data = json.load(f)
-    assert new_data == data
-    new_tree = MypyFile.deserialize(new_data)
-    new_names = new_tree.names
-    new_keys = sorted(new_names)
-
-    print('Fixing up', id)
-    fixup.fixup_module_pass_one(new_tree, manager.modules)
-
-    print('Comparing keys', id)
-    old_tree = tree
-    old_names = old_tree.names
-    old_keys = sorted(old_names)
-    if new_keys != old_keys:
-        for key in new_keys:
-            if key not in old_keys:
-                print('  New key', key, 'not found in old tree')
-        for key in old_keys:
-            if key not in new_keys:
-                v = old_names[key]
-                if key != '__builtins__' and v.module_public:
-                    print('  Old key', key, 'not found in new tree')
-
-    print('Comparing values', id)
-    modules = manager.modules
-    for key in old_keys:
-        if key not in new_keys:
-            continue
-        oldv = old_names[key]
-        newv = new_names[key]
-        if newv.mod_id != oldv.mod_id:
-            newv.mod_id = id  # XXX Hack
-        if newv.kind == MODULE_REF and newv.node is None:
-            fn = oldv.node.fullname()
-            if fn in modules:
-                newv.node = modules[fn]
-            else:
-                print('*** Cannot fix up reference to module', fn, 'for', key)
-        if str(oldv) != str(newv):
-            print(' ', key, 'old', oldv)
-            print(' ', ' ' * len(key), 'new', newv)
-            import pdb  # type: ignore
-            pdb.set_trace()
-            print()
 
 
 """Dependency manager.
@@ -892,8 +876,8 @@ and type-checking a node and then comparing its symbol table to the
 cached data; but because the node is part of a cycle we can't
 technically type-check it until the semantic analysis of all other
 nodes in the cycle has completed.  (This is an important issue because
-we have a cycle of over 500 modules in the server repo.  But I'd like
-to deal with it later.)
+Dropbox has a very large cycle in production code.  But I'd like to
+deal with it later.)
 
 Additional wrinkles
 -------------------
@@ -928,10 +912,20 @@ class State:
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
     dependencies = None  # type: List[str]
-    dep_line_map = None  # tyoe: Dict[str, int]  # Line number where imported
+
+    # Map each dependency to the line number where it is first imported
+    dep_line_map = None  # type: Dict[str, int]
+
+    # Parent package, its parent, etc.
     ancestors = None  # type: Optional[List[str]]
+
+    # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
+
+    # The State from which this module was imported, if any
     caller_state = None  # type: Optional[State]
+
+    # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
 
     def __init__(self,
@@ -1121,10 +1115,12 @@ class State:
         # Double-check that the dependencies still match (otherwise
         # the graph is out of date).
         if self.dependencies is not None and dependencies != self.dependencies:
-            # TODO: Make this into a reasonable error message.
-            print("HELP!! Dependencies changed!")  # Probably the file was edited.
+            # Presumably the file was edited while we were running.
+            # TODO: Make this into a reasonable error message, or recover somehow.
+            print("HELP!! Dependencies changed!")
             print("  Cached:", self.dependencies)
             print("  Source:", dependencies)
+            assert False, "Cache inconsistency for dependencies of %s" % (self.id,)
         self.dependencies = dependencies
         self.dep_line_map = dep_line_map
         self.check_blockers()
@@ -1184,12 +1180,14 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     """Given some source files, load the full dependency graph."""
     graph = {}  # type: Graph
-    # The deque is used to implement breadth first traversal.
+    # The deque is used to implement breadth-first traversal.
+    # TODO: Consider whether to go depth-first instead.  This may
+    # affect the order in which we process files within import cycles.
     new = collections.deque()  # type: collections.deque[State]
     # Seed the graph with the initial root sources.
     for bs in sources:
         try:
-            st = State(bs.module, bs.path, bs.text, manager)
+            st = State(id=bs.module, path=bs.path, source=bs.text, manager=manager)
         except ModuleNotFound:
             continue
         if st.id in graph:
@@ -1207,9 +1205,11 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                     if dep in st.ancestors:
                         # TODO: Why not 'if dep not in st.dependencies' ?
                         # Ancestors don't have import context.
-                        newst = State(dep, None, None, manager, is_ancestor=True)
+                        newst = State(id=dep, path=None, source=None, manager=manager,
+                                      is_ancestor=True)
                     else:
-                        newst = State(dep, None, None, manager, st, st.dep_line_map.get(dep, 1))
+                        newst = State(id=dep, path=None, source=None, manager=manager,
+                                      caller_state=st, caller_line=st.dep_line_map.get(dep, 1))
                 except ModuleNotFound:
                     if dep in st.dependencies:
                         st.dependencies.remove(dep)
@@ -1225,15 +1225,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     sccs = sorted_components(graph)
     manager.log("Found %d SCCs; largest has %d nodes" %
                 (len(sccs), max(len(scc) for scc in sccs)))
+    # We're processing SCCs from leaves (those without further
+    # dependencies) to roots (those from which everything else can be
+    # reached).
     for ascc in sccs:
         # Sort the SCC's nodes in *reverse* order or encounter.
         # This is a heuristic for handling import cycles.
         # Note that ascc is a set, and scc is a list.
         scc = sorted(ascc, key=lambda id: -graph[id].order)
-        # If builtins is in the list, move it last.
+        # If builtins is in the list, move it last.  (This is a bit of
+        # a hack, but it's necessary because the builtins module is
+        # part of a small cycle involving at least {builtins, abc,
+        # typing}.  Of these, builtins must be processed last or else
+        # some builtin objects will be incompletely processed.)
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
+        # Because the SCCs are presented in topological sort order, we
+        # don't need to look at dependencies recursively for staleness
+        # -- the immediate dependencies are sufficient.
         stale_scc = {id for id in scc if not graph[id].is_fresh()}
         fresh = not stale_scc
         deps = set()
@@ -1261,7 +1271,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                         else:
                             key = "dep:"
                     manager.trace(" %5s %.0f %s" % (key, graph[id].meta.data_mtime, id))
-            # If equal, give the benefit of the doubt, due to 1-sec time granularity.
+            # If equal, give the benefit of the doubt, due to 1-sec time granularity
+            # (on some platforms).
             if oldest_in_scc < newest_in_deps:
                 fresh = False
                 fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
@@ -1318,6 +1329,9 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
 def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 
+    The sort order is from leaves (nodes without dependencies) to
+    roots (nodes on which no other nodes depend).
+
     This works for a subset of the full dependency graph too;
     dependencies that aren't present in graph.keys() are ignored.
     """
@@ -1336,7 +1350,7 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
         data[frozenset(scc)] = deps
     res = []
     for ready in topsort(data):
-        # Sort the sets in ready by reversed smallest State.order.  Exampes:
+        # Sort the sets in ready by reversed smallest State.order.  Examples:
         #
         # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
         #   [{y}, {x}].
@@ -1352,6 +1366,18 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
 def strongly_connected_components_path(vertices: Set[str],
                                        edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
     """Compute Strongly Connected Components of a graph.
+
+    The graph is a DAG.
+
+    Args:
+      vertices: the labels for the vertices
+      edges: for each vertex, gives the target vertices of its outgoing edges
+
+    Returns:
+      An iterator yielding strongly connected components, each
+      represented as a set of vertices.  Each input vertex will occur
+      exactly once; vertices not part of a SCC are returned as
+      singleton sets.
 
     From http://code.activestate.com/recipes/578507/.
     """
@@ -1391,6 +1417,33 @@ def strongly_connected_components_path(vertices: Set[str],
 def topsort(data: Dict[AbstractSet[str],
                        Set[AbstractSet[str]]]) -> Iterable[Set[AbstractSet[str]]]:
     """Topological sort.  Consumes its argument.
+
+    Args:
+      data: A map from SCCs (represented as frozen sets of strings) to
+            sets of SCCs, its dependencies.  NOTE: This data structure
+            is modified in place -- for normalization purposes,
+            self-dependencies are removed and entries representing
+            orphans are added.
+
+    Returns:
+      An iterator yielding sets of SCCs that have an equivalent
+      ordering.  NOTE: The algorithm doesn't care about the internal
+      structure of SCCs.
+
+    Example:
+      Suppose the input has the following structure:
+
+        {A: {B, C}, B: {D}, C: {D}}
+
+      This is normalized to:
+
+        {A: {B, C}, B: {D}, C: {D}, D: {}}
+
+      The algorithm will yield the following values:
+
+        {D}
+        {B, C}
+        {A}
 
     From http://code.activestate.com/recipes/577413/.
     """
