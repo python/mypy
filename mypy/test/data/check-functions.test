@@ -489,6 +489,15 @@ main:7: error: Callable[..., Any] has no attribute "x"
 main: note: In function "h":
 main:11: error: Callable[..., Any] has no attribute "x"
 
+[case testNestedGenericFunctions]
+from typing import TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
+
+def outer(x: T) -> T:
+    def inner(y: U) -> T: ...
+    return inner(1)
+
 
 -- Casts
 -- -----
