@@ -14,26 +14,18 @@ from mypy.visitor import NodeVisitor
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     node_fixer = NodeFixer(modules)
     node_fixer.visit_symbol_table(tree.names)
-    # print('Done pass 1', tree.fullname())
 
 
 def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     compute_all_mros(tree.names, modules)
-    # print('Done pass 2', tree.fullname())
 
 
 def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
     for key, value in symtab.items():
         if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
             info = value.node
-            # print('  Calc MRO for', info.fullname())
-            try:
-                info.calculate_mro()
-            except Exception:
-                import pdb
-                pdb.set_trace()
-            if not info.mro:
-                print('*** No MRO calculated for', info.fullname())
+            info.calculate_mro()
+            assert info.mro, "No MRO calculated for %s" % (info.fullname(),)
             compute_all_mros(info.names, modules)
 
 
@@ -52,12 +44,10 @@ class NodeFixer(NodeVisitor[None]):
         save_info = self.current_info
         try:
             self.current_info = info
-            # print('Descending into', info.fullname())
             if info.defn:
                 info.defn.accept(self)
             if info.names:
                 self.visit_symbol_table(info.names)
-            # print('Fixing up', info.fullname())
             if info.subtypes:
                 for st in info.subtypes:
                     self.visit_type_info(st)
@@ -82,11 +72,9 @@ class NodeFixer(NodeVisitor[None]):
                     value.node = self.modules[cross_ref]
                 else:
                     stnode = lookup_qualified_stnode(self.modules, cross_ref)
-                    if stnode is None:
-                        print("*** Could not find cross-reference", cross_ref)
-                    else:
-                        value.node = stnode.node
-                        value.type_override = stnode.type_override
+                    assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
+                    value.node = stnode.node
+                    value.type_override = stnode.type_override
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -246,13 +234,9 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
             break
     names = mod.names
     while True:
-        if not rest:
-            print('*** Cannot find', name)
-            return None
+        assert rest, "Cannot find %s" % (name,)
         key = rest.pop()
-        if key not in names:
-            print('*** Cannot find', key, 'for', name)
-            return None
+        assert key in names, "Cannot find %s for %s" % (key, name)
         stnode = names[key]
         if not rest:
             return stnode
@@ -262,7 +246,6 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
 
 
 def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -> None:
-    print("store_qualified", name, repr(info))
     head = name
     rest = []
     while True:
@@ -273,25 +256,17 @@ def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -
             break
     names = mod.names
     while True:
-        if not rest:
-            print('*** Cannot find', name)
-            import pdb  # type: ignore
-            pdb.set_trace()
-            return
+        assert rest, "Cannot find %s" % (name,)
         key = rest.pop()
         if key not in names:
-            if rest:
-                print('*** Cannot find', key, 'for', name)
-                return
+            assert not rest, "Cannot find %s for %s" % (key, name)
             # Store it.
             # TODO: kind might be something else?
             names[key] = SymbolTableNode(GDEF, info)
-            print('Stored', names[key])
             return
         stnode = names[key]
         node = stnode.node
         if not rest:
-            print('*** Overwriting!', name, stnode)
             stnode.node = info
             return
         assert isinstance(node, TypeInfo)
