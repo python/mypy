@@ -202,9 +202,18 @@ def is_callable_subtype(left: CallableType, right: CallableType,
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
         return False
-    if right.variables:
-        # Subtyping is not currently supported for generic function as the supertype.
-        return False
+
+    # A callable L is a subtype of a generic callable R if L is a
+    # subtype of every type obtained from R by substituting types for
+    # the variables of R. We can check this by simply leaving the
+    # generic variables of R as type variables, effectively varying
+    # over all possible values.
+
+    # It's okay even if these variables share ids with generic
+    # type variables of L, because generating and solving
+    # constraints for the variables of L to make L a subtype of R
+    # (below) treats type variables on the two sides as independent.
+
     if left.variables:
         # Apply generic type variables away in left via type inference.
         left = unify_generic_callable(left, right, ignore_return=ignore_return)
