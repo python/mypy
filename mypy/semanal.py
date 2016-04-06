@@ -482,11 +482,11 @@ class SemanticAnalyzer(NodeVisitor):
             tt = defn.type
             names = self.type_var_names()
             items = cast(CallableType, tt).variables
-            for i, item in enumerate(items):
+            for item in items:
                 name = item.name
                 if name in names:
                     self.name_already_defined(name, defn)
-                node = self.bind_type_var(name, -i - 1, defn)
+                node = self.bind_type_var(name, item.id, defn)
                 nodes.append(node)
                 names.add(name)
         return nodes
