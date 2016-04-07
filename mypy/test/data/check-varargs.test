@@ -569,3 +569,4 @@ class C:
     @cm
     def foo(self) -> None: pass
 C().foo()
+C().foo(1)  # The decorator's return type says this should be okay
