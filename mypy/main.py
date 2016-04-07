@@ -184,8 +184,7 @@ def process_options() -> Tuple[List[BuildSource], Options]:
         parser.error('Python version 2 (or --py2) specified, '
                      'but --use-python-path will search in sys.path of Python 3')
 
-    if args.fast_parser and (args.py2 or
-                             args.python_version and args.python_version[0] == 2):
+    if args.fast_parser and args.python_version and args.python_version[0] == 2:
         parser.error('The experimental fast parser is only compatible with Python 3, '
                      'but Python 2 specified.')
 
