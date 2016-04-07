@@ -154,7 +154,8 @@ def add_basic(driver: Driver) -> None:
     driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
     driver.add_flake8('legacy myunit script', 'scripts/myunit')
-    driver.add_mypy('fast-parse', '--fast-parse', 'samples/hello.py')
+    # needs typed_ast installed:
+    # driver.add_mypy('fast-parse', '--fast-parse', 'samples/hello.py')
 
 
 def add_selftypecheck(driver: Driver) -> None:

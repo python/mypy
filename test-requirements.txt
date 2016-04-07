@@ -1,2 +1,1 @@
 flake8
--e git+git://github.com/ddfisher/typed_ast.git#egg=typed_ast
