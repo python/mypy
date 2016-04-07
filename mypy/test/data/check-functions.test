@@ -1376,3 +1376,11 @@ from typing import Callable, Any
 def foo(f: Callable) -> bool:
     return f()
 [builtins fixtures/bool.py]
+
+[case testFunctionNestedWithinWith]
+from typing import Any
+a = 1  # type: Any
+with a:
+    def f() -> None:
+        pass
+    f(1) # E: Too many arguments for "f"

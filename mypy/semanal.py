@@ -2351,6 +2351,7 @@ class FirstPass(NodeVisitor):
         for n in s.target:
             if n:
                 self.analyze_lvalue(n)
+        s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
