@@ -44,7 +44,9 @@ def test_transform(testcase):
                              pyversion=testfile_pyversion(testcase.file),
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
-        a = []
+        a = result.errors
+        if a:
+            raise CompileError(a)
         # Include string representations of the source files in the actual
         # output.
         for fnam in sorted(result.files.keys()):

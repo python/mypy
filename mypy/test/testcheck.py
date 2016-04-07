@@ -13,9 +13,9 @@ from mypy.myunit import Suite
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases
 from mypy.test.helpers import (
-    assert_string_arrays_equal, testcase_pyversion, update_testcase_output
+    assert_string_arrays_equal, normalize_error_messages,
+    testcase_pyversion, update_testcase_output,
 )
-from mypy.test.testsemanal import normalize_error_messages
 from mypy.errors import CompileError
 
 
@@ -73,13 +73,15 @@ class TypeCheckSuite(Suite):
         flags = self.parse_flags(program_text)
         source = BuildSource(program_name, module_name, program_text)
         try:
-            build.build(target=build.TYPE_CHECK,
-                        sources=[source],
-                        pyversion=pyversion,
-                        flags=flags + [build.TEST_BUILTINS],
-                        alt_lib_path=test_temp_dir)
+            res = build.build(target=build.TYPE_CHECK,
+                              sources=[source],
+                              pyversion=pyversion,
+                              flags=flags + [build.TEST_BUILTINS],
+                              alt_lib_path=test_temp_dir)
+            a = res.errors
         except CompileError as e:
-            a = normalize_error_messages(e.messages)
+            a = e.messages
+        a = normalize_error_messages(a)
 
         if testcase.output != a and mypy.myunit.UPDATE_TESTCASES:
             update_testcase_output(testcase, a, mypy.myunit.APPEND_TESTCASES)

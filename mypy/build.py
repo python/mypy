@@ -73,14 +73,17 @@ class BuildResult:
     """The result of a successful build.
 
     Attributes:
-      files:  Dictionary from module name to related AST node.
-      types:  Dictionary from parse tree node to its inferred type.
+      manager: The build manager.
+      files:   Dictionary from module name to related AST node.
+      types:   Dictionary from parse tree node to its inferred type.
+      errors:  List of error messages.
     """
 
-    def __init__(self, files: Dict[str, MypyFile],
-                 types: Dict[Node, Type]) -> None:
-        self.files = files
-        self.types = types
+    def __init__(self, manager: 'BuildManager') -> None:
+        self.manager = manager
+        self.files = manager.modules
+        self.types = manager.type_checker.type_map
+        self.errors = manager.errors.messages()
 
 
 class BuildSource:
@@ -137,7 +140,8 @@ def build(sources: List[BuildSource],
     A single call to build performs parsing, semantic analysis and optionally
     type checking for the program *and* all imported modules, recursively.
 
-    Return BuildResult if successful; otherwise raise CompileError.
+    Return BuildResult if successful or only non-blocking errors were found;
+    otherwise raise CompileError.
 
     Args:
       target: select passes to perform (a build target constant, e.g. C)
@@ -201,10 +205,12 @@ def build(sources: List[BuildSource],
 
     try:
         dispatch(sources, manager)
-        return BuildResult(manager.modules, manager.type_checker.type_map)
+        return BuildResult(manager)
     finally:
-        manager.log("Build finished with %d modules and %d types" %
-                    (len(manager.modules), len(manager.type_checker.type_map)))
+        manager.log("Build finished with %d modules, %d types, and %d errors" %
+                    (len(manager.modules),
+                     len(manager.type_checker.type_map),
+                     manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
         reports.finish()
 
@@ -1172,9 +1178,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
-    if manager.errors.is_errors():
-        manager.log("Found %d errors (before de-duping)" % manager.errors.num_messages())
-        manager.errors.raise_error()
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:

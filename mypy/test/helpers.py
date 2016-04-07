@@ -274,3 +274,12 @@ def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
         return defaults.PYTHON2_VERSION
     else:
         return testfile_pyversion(path)
+
+
+def normalize_error_messages(messages):
+    """Translate an array of error messages to use / as path separator."""
+
+    a = []
+    for m in messages:
+        a.append(m.replace(os.sep, '/'))
+    return a
