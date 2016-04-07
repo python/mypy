@@ -12,7 +12,7 @@ import mypy.myunit  # for mutable globals (ick!)
 from mypy.build import BuildSource
 from mypy.myunit import Suite, AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases
+from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     testcase_pyversion, update_testcase_output,
@@ -60,14 +60,15 @@ files = [
 
 
 class TypeCheckSuite(Suite):
-    def cases(self):
-        c = []
+
+    def cases(self) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
         for f in files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir, True)
         return c
 
-    def run_test(self, testcase):
+    def run_test(self, testcase: DataDrivenTestCase) -> None:
         incremental = 'Incremental' in testcase.name.lower() or 'incremental' in testcase.file
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
@@ -78,12 +79,12 @@ class TypeCheckSuite(Suite):
         else:
             self.run_test_once(testcase)
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         dn = build.MYPY_CACHE
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
-    def run_test_once(self, testcase, incremental=0):
+    def run_test_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
         pyversion = testcase_pyversion(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
@@ -130,7 +131,7 @@ class TypeCheckSuite(Suite):
             self.verify_cache(module_name, program_name, a, res.manager)
 
     def verify_cache(self, module_name: str, program_name: str, a: List[str],
-                     manager: build.BuildManager):
+                     manager: build.BuildManager) -> None:
         # There should be valid cache metadata for each module except
         # those in error_paths; for those there should not be.
         #
@@ -153,7 +154,7 @@ class TypeCheckSuite(Suite):
                 hits.add(m.group(1))
         return hits
 
-    def find_module_files(self):
+    def find_module_files(self) -> Dict[str, str]:
         modules = {}
         for dn, dirs, files in os.walk(test_temp_dir):
             dnparts = dn.split(os.sep)
@@ -166,7 +167,8 @@ class TypeCheckSuite(Suite):
                     modules[id] = os.path.join(dn, file)
         return modules
 
-    def find_missing_cache_files(self, modules, manager):
+    def find_missing_cache_files(self, modules: Dict[str, str],
+                                 manager: build.BuildManager) -> Set[str]:
         missing = {}
         for id, path in modules.items():
             meta = build.find_cache_meta(id, path, manager)
