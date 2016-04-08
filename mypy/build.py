@@ -28,7 +28,7 @@ from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
                         SymbolTableNode, MODULE_REF)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
-from mypy.errors import Errors, CompileError
+from mypy.errors import Errors, CompileError, report_internal_error
 from mypy import fixup
 from mypy.report import Reports
 from mypy import defaults
@@ -1036,7 +1036,12 @@ class State:
     def wrap_context(self) -> Iterator[None]:
         save_import_context = self.manager.errors.import_context()
         self.manager.errors.set_import_context(self.import_context)
-        yield
+        try:
+            yield
+        except CompileError:
+            raise
+        except Exception as err:
+            report_internal_error(err, self.path, 0)
         self.manager.errors.set_import_context(save_import_context)
         self.check_blockers()
 

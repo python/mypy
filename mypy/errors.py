@@ -377,8 +377,12 @@ def report_internal_error(err: Exception, file: str, line: int) -> None:
         print(s.rstrip('\n'))
     print('{}: {}'.format(type(err).__name__, err))
     print('\n*** INTERNAL ERROR ***', file=sys.stderr)
-    print('\n{}:{}: error: Internal error --'.format(file, line),
-          'please report a bug at https://github.com/JukkaL/mypy/issues',
+    if line:
+        prefix = '{}:{}'.format(file, line)
+    else:
+        prefix = file
+    print('\n{}: error: Internal error --'.format(prefix),
+          'please report a bug at https://github.com/python/mypy/issues',
           file=sys.stderr)
     print('\nNOTE: you can use "mypy --pdb ..." to drop into the debugger when this happens.',
           file=sys.stderr)
