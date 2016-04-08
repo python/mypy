@@ -74,6 +74,10 @@ package_dir = {'mypy': 'mypy'}
 if sys.version_info < (3, 5, 0):
     package_dir[''] = 'lib-typing/3.2'
 
+scripts = ['scripts/mypy', 'scripts/stubgen']
+if os.name == 'nt':
+    scripts.append('scripts/mypy.bat')
+
 setup(name='mypy-lang',
       version=version,
       description=description,
@@ -86,7 +90,7 @@ setup(name='mypy-lang',
       package_dir=package_dir,
       py_modules=['typing'] if sys.version_info < (3, 5, 0) else [],
       packages=['mypy'],
-      scripts=['scripts/mypy', 'scripts/stubgen'],
+      scripts=scripts,
       data_files=data_files,
       classifiers=classifiers,
       )
