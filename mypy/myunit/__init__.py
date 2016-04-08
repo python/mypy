@@ -19,7 +19,7 @@ UPDATE_TESTCASES = False
 
 
 class AssertionFailure(Exception):
-    """Exception used to signal skipped test cases."""
+    """Exception used to signal failed test cases."""
     def __init__(self, s: str = None) -> None:
         if s:
             super().__init__(s)
@@ -27,7 +27,9 @@ class AssertionFailure(Exception):
             super().__init__()
 
 
-class SkipTestCaseException(Exception): pass
+class SkipTestCaseException(Exception):
+    """Exception used to signal skipped test cases."""
+    pass
 
 
 def assert_true(b: bool, msg: str = None) -> None:

@@ -7,6 +7,7 @@ from typing import List, Dict, Tuple
 from mypy import defaults
 from mypy.myunit import AssertionFailure
 from mypy.test import config
+from mypy.test.data import DataDrivenTestCase
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if
@@ -85,7 +86,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
         raise AssertionFailure(msg)
 
 
-def update_testcase_output(testcase, output, append):
+def update_testcase_output(testcase: DataDrivenTestCase, output: List[str], append: str) -> None:
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
     newfile = testcase_path + append
     data_lines = open(testcase_path).read().splitlines()
@@ -182,7 +183,7 @@ def assert_string_arrays_equal_wildcards(expected: List[str],
     assert_string_arrays_equal(expected, actual, msg)
 
 
-def clean_up(a):
+def clean_up(a: List[str]) -> List[str]:
     """Remove common directory prefix from all strings in a.
 
     This uses a naive string replace; it seems to work well enough. Also
@@ -274,3 +275,12 @@ def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
         return defaults.PYTHON2_VERSION
     else:
         return testfile_pyversion(path)
+
+
+def normalize_error_messages(messages: List[str]) -> List[str]:
+    """Translate an array of error messages to use / as path separator."""
+
+    a = []
+    for m in messages:
+        a.append(m.replace(os.sep, '/'))
+    return a

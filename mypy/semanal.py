@@ -1349,19 +1349,22 @@ class SemanticAnalyzer(NodeVisitor):
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
-        named_tuple = self.check_namedtuple(s.rvalue)
+        lvalue = cast(NameExpr, s.lvalues[0])
+        name = lvalue.name
+        named_tuple = self.check_namedtuple(s.rvalue, name)
         if named_tuple is None:
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
-        lvalue = cast(NameExpr, s.lvalues[0])
-        name = lvalue.name
         node = self.lookup(name, s)
         node.kind = GDEF   # TODO locally defined namedtuple
         # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Node) -> TypeInfo:
+    def check_namedtuple(self, node: Node, var_name: str = None) -> TypeInfo:
         """Check if a call defines a namedtuple.
+
+        The optional var_name argument is the name of the variable to
+        which this is assigned, if any.
 
         If it does, return the corresponding TypeInfo. Return None otherwise.
 
@@ -1382,8 +1385,13 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
+            # Give it a unique name derived from the line number.
             name = cast(StrExpr, call.args[0]).value
+            if name != var_name:
+                name += '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
+            # Store it as a global just in case it would remain anonymous.
+            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
         call.analyzed = NamedTupleExpr(info).set_line(call.line)
         return info
 
@@ -1836,8 +1844,7 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(base, RefExpr) and cast(RefExpr,
                                               base).kind == MODULE_REF:
             file = cast(MypyFile, cast(RefExpr, base).node)
-            names = file.names
-            n = names.get(expr.name, None)
+            n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
@@ -1853,7 +1860,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # one type checker run. If we reported errors here,
                 # the build would terminate after semantic analysis
                 # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname(), expr.name)
+                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
                 if full_name in obsolete_name_mapping:
                     self.fail("Module has no attribute %r (it's now called %r)" % (
                         expr.name, obsolete_name_mapping[full_name]), expr)
@@ -2319,7 +2326,10 @@ class FirstPass(NodeVisitor):
         for node in outer_def.defs.body:
             if isinstance(node, ClassDef):
                 node.info = TypeInfo(SymbolTable(), node)
-                node.info._fullname = node.info.name()
+                if outer_def.fullname:
+                    node.info._fullname = outer_def.fullname + '.' + node.info.name()
+                else:
+                    node.info._fullname = node.info.name()
                 symbol = SymbolTableNode(MDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
