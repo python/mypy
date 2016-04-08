@@ -653,7 +653,7 @@ class ClassDef(Node):
         return self.info.is_generic()
 
     def serialize(self) -> JsonDict:
-        # Not serialized: defs, base_type_exprs,d ecorators
+        # Not serialized: defs, base_type_exprs, decorators
         return {'.class': 'ClassDef',
                 'name': self.name,
                 'fullname': self.fullname,
