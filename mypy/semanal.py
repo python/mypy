@@ -2385,8 +2385,14 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
         self.errors.set_ignored_lines(file_node.ignored_lines)
-        file_node.accept(self)
+        self.accept(file_node)
         self.errors.set_ignored_lines(set())
+
+    def accept(self, node: Node) -> None:
+        try:
+            node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.errors.file, node.line)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
