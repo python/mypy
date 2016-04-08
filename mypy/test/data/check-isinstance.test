@@ -817,3 +817,10 @@ def f(x: Union[A, B]) -> None:
     if not isinstance(x, B):
         f(x)
 [builtins fixtures/isinstance.py]
+
+[case testAssertIsinstance]
+def f(x: object):
+    assert isinstance(x, int)
+    y = 0 # type: int
+    y = x
+[builtins fixtures/isinstance.py]
