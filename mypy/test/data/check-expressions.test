@@ -1376,3 +1376,9 @@ d4 = dict(a=1, b=1)
 d4.xyz # E: Dict[str, int] has no attribute "xyz"
 d5 = dict(a=1, b='') # type: Dict[str, Any]
 [builtins fixtures/dict.py]
+
+[case testDictWithoutKeywordArgs]
+dict(undefined)
+[builtins fixtures/dict.py]
+[out]
+main:1: error: Name 'undefined' is not defined
