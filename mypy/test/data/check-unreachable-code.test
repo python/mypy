@@ -89,3 +89,12 @@ if MYPY:
 else:
     None + ''
 [builtins fixtures/bool.py]
+
+[case testConditionalClassDefPY3]
+def f(): pass
+PY3 = f()
+if PY3:
+    pass
+else:
+    class X(object):
+        pass

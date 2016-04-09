@@ -8,29 +8,35 @@ file.  The individual passes are implemented in separate modules.
 
 The function build() is the main interface to this module.
 """
+# TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
+import binascii
+import collections
+import contextlib
+import json
 import os
 import os.path
-import shlex
-import subprocess
 import sys
-import re
+import time
 from os.path import dirname, basename
 
-from typing import Dict, List, Tuple, Iterable, cast, Set, Union, Optional
+from typing import (AbstractSet, Dict, Iterable, Iterator, List,
+                    NamedTuple, Optional, Set, Tuple, Union)
 
 from mypy.types import Type
-from mypy.nodes import MypyFile, Node, Import, ImportFrom, ImportAll
-from mypy.nodes import SymbolTableNode, MODULE_REF
-from mypy.semanal import SemanticAnalyzer, FirstPass, ThirdPass
+from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
+                        SymbolTableNode, MODULE_REF)
+from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
-from mypy.errors import Errors, CompileError
-from mypy import parse
-from mypy import stats
+from mypy.errors import Errors, CompileError, report_internal_error
+from mypy import fixup
 from mypy.report import Reports
 from mypy import defaults
 from mypy import moduleinfo
 from mypy import util
+from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.parse import parse
+from mypy.stats import dump_type_stats
 
 
 # We need to know the location of this file to load data, but
@@ -51,6 +57,7 @@ TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
 SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
+INCREMENTAL = 'incremental'      # Incremental mode: use the cache
 FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
 DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
@@ -59,43 +66,24 @@ DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
 # Type check unannotated functions
 CHECK_UNTYPED_DEFS = 'check-untyped-defs'
 
-# State ids. These describe the states a source file / module can be in a
-# build.
-
-# We aren't processing this source file yet (no associated state object).
-UNSEEN_STATE = 0
-# The source file has a state object, but we haven't done anything with it yet.
-UNPROCESSED_STATE = 1
-# We've parsed the source file.
-PARSED_STATE = 2
-# We've done the first two passes of semantic analysis.
-PARTIAL_SEMANTIC_ANALYSIS_STATE = 3
-# We've semantically analyzed the source file.
-SEMANTICALLY_ANALYSED_STATE = 4
-# We've type checked the source file (and all its dependencies).
-TYPE_CHECKED_STATE = 5
-
 PYTHON_EXTENSIONS = ['.pyi', '.py']
-
-final_state = TYPE_CHECKED_STATE
-
-
-def earlier_state(s: int, t: int) -> bool:
-    return s < t
 
 
 class BuildResult:
     """The result of a successful build.
 
     Attributes:
-      files:  Dictionary from module name to related AST node.
-      types:  Dictionary from parse tree node to its inferred type.
+      manager: The build manager.
+      files:   Dictionary from module name to related AST node.
+      types:   Dictionary from parse tree node to its inferred type.
+      errors:  List of error messages.
     """
 
-    def __init__(self, files: Dict[str, MypyFile],
-                 types: Dict[Node, Type]) -> None:
-        self.files = files
-        self.types = types
+    def __init__(self, manager: 'BuildManager') -> None:
+        self.manager = manager
+        self.files = manager.modules
+        self.types = manager.type_checker.type_map
+        self.errors = manager.errors.messages()
 
 
 class BuildSource:
@@ -104,15 +92,6 @@ class BuildSource:
         self.path = path
         self.module = module or '__main__'
         self.text = text
-
-    def load(self, lib_path, pyversion: Tuple[int, int]) -> str:
-        """Load the module if needed. This also has the side effect
-        of calculating the effective path for modules."""
-        if self.text is not None:
-            return self.text
-
-        self.path = self.path or lookup_program(self.module, lib_path)
-        return read_program(self.path, pyversion)
 
     @property
     def effective_path(self) -> str:
@@ -161,7 +140,8 @@ def build(sources: List[BuildSource],
     A single call to build performs parsing, semantic analysis and optionally
     type checking for the program *and* all imported modules, recursively.
 
-    Return BuildResult if successful; otherwise raise CompileError.
+    Return BuildResult if successful or only non-blocking errors were found;
+    otherwise raise CompileError.
 
     Args:
       target: select passes to perform (a build target constant, e.g. C)
@@ -213,8 +193,7 @@ def build(sources: List[BuildSource],
 
     source_set = BuildSourceSet(sources)
 
-    # Construct a build manager object that performs all the stages of the
-    # build in the correct order.
+    # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
     manager = BuildManager(data_dir, lib_path, target,
@@ -224,21 +203,16 @@ def build(sources: List[BuildSource],
                            source_set=source_set,
                            reports=reports)
 
-    # Construct information that describes the initial files. __main__ is the
-    # implicit module id and the import context is empty initially ([]).
-    initial_states = []  # type: List[UnprocessedFile]
-    for source in sources:
-        content = source.load(lib_path, pyversion)
-        info = StateInfo(source.effective_path, source.module, [], manager)
-        initial_state = UnprocessedFile(info, content)
-        initial_states += [initial_state]
-
-    # Perform the build by sending the files as new file (UnprocessedFile is the
-    # initial state of all files) to the manager. The manager will process the
-    # file and all dependant modules recursively.
-    result = manager.process(initial_states)
-    reports.finish()
-    return result
+    try:
+        dispatch(sources, manager)
+        return BuildResult(manager)
+    finally:
+        manager.log("Build finished with %d modules, %d types, and %d errors" %
+                    (len(manager.modules),
+                     len(manager.type_checker.type_map),
+                     manager.errors.num_messages()))
+        # Finish the HTML or XML reports even if CompileError was raised.
+        reports.finish()
 
 
 def default_data_dir(bin_dir: str) -> str:
@@ -335,39 +309,29 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
     return path
 
 
-def lookup_program(module: str, lib_path: List[str]) -> str:
-    # Modules are .py or .pyi
-    path = find_module(module, lib_path)
-    if path:
-        return path
-    else:
-        raise CompileError([
-            "mypy: can't find module '{}'".format(module)])
-
-
-def read_program(path: str, pyversion: Tuple[int, int]) -> str:
-    try:
-        text = read_with_python_encoding(path, pyversion)
-    except IOError as ioerr:
-        raise CompileError([
-            "mypy: can't read file '{}': {}".format(path, ioerr.strerror)])
-    except UnicodeDecodeError as decodeerr:
-        raise CompileError([
-            "mypy: can't decode file '{}': {}".format(path, str(decodeerr))])
-    return text
+CacheMeta = NamedTuple('CacheMeta',
+                       [('id', str),
+                        ('path', str),
+                        ('mtime', float),
+                        ('size', int),
+                        ('dependencies', List[str]),
+                        ('data_mtime', float),  # mtime of data_json
+                        ('data_json', str),  # path of <id>.data.json
+                        ])
 
 
 class BuildManager:
-    """This is the central class for building a mypy program.
+    """This class holds shared state for building a mypy program.
 
-    It coordinates parsing, import processing, semantic analysis and
-    type checking. It manages state objects that actually perform the
-    build steps.
+    It is used to coordinate parsing, import processing, semantic
+    analysis and type checking.  The actual build steps are carried
+    out by dispatch().
 
     Attributes:
       data_dir:        Mypy data directory (contains stubs)
       target:          Build target; selects which passes to perform
       lib_path:        Library path for looking up modules
+      modules:         Mapping of module ID to MypyFile (shared by the passes)
       semantic_analyzer:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
@@ -376,16 +340,6 @@ class BuildManager:
       errors:          Used for reporting all errors
       pyversion:       Python version (major, minor)
       flags:           Build options
-      states:          States of all individual files that are being
-                       processed. Each file in a build is always represented
-                       by a single state object (after it has been encountered
-                       for the first time). This is the only place where
-                       states are stored.
-      module_files:    Map from module name to source file path. There is a
-                       1:1 mapping between modules and source files.
-      module_deps:     Cache for module dependencies (direct or indirect).
-                       Item (m, n) indicates whether m depends on n (directly
-                       or indirectly).
       missing_modules: Set of modules that could not be imported encountered so far
     """
 
@@ -398,6 +352,7 @@ class BuildManager:
                  custom_typing_module: str,
                  source_set: BuildSourceSet,
                  reports: Reports) -> None:
+        self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
@@ -410,156 +365,15 @@ class BuildManager:
         self.reports = reports
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion)
-        modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(modules, self.errors)
+        self.modules = self.semantic_analyzer.modules
+        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors,
-                                        modules,
+                                        self.modules,
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags,
                                         DISALLOW_UNTYPED_DEFS in self.flags,
                                         CHECK_UNTYPED_DEFS in self.flags)
-        self.states = []  # type: List[State]
-        self.module_files = {}  # type: Dict[str, str]
-        self.module_deps = {}  # type: Dict[Tuple[str, str], bool]
         self.missing_modules = set()  # type: Set[str]
-
-    def process(self, initial_states: List['UnprocessedFile']) -> BuildResult:
-        """Perform a build.
-
-        The argument is a state that represents the main program
-        file. This method should only be called once per a build
-        manager object.  The return values are identical to the return
-        values of the build function.
-        """
-        self.states += initial_states
-        for initial_state in initial_states:
-            self.module_files[initial_state.id] = initial_state.path
-        for initial_state in initial_states:
-            initial_state.load_dependencies()
-
-        # Process states in a loop until all files (states) have been
-        # semantically analyzed or type checked (depending on target).
-        #
-        # We type check all files before the rest of the passes so that we can
-        # report errors and fail as quickly as possible.
-        while True:
-            # Find the next state that has all its dependencies met.
-            next = self.next_available_state()
-            if not next:
-                self.trace('done')
-                break
-
-            # Potentially output some debug information.
-            self.trace('next {} ({})'.format(next.path, next.state()))
-
-            # Set the import context for reporting error messages correctly.
-            self.errors.set_import_context(next.import_context)
-            # Process the state. The process method is responsible for adding a
-            # new state object representing the new state of the file.
-            next.process()
-
-            # Raise exception if the build failed. The build can fail for
-            # various reasons, such as parse error, semantic analysis error,
-            # etc.
-            if self.errors.is_blockers():
-                self.errors.raise_error()
-
-        # If there were no errors, all files should have been fully processed.
-        for s in self.states:
-            assert s.state() == final_state, (
-                '{} still unprocessed in state {}'.format(s.path, s.state()))
-
-        if self.errors.is_errors():
-            self.errors.raise_error()
-
-        # Collect a list of all files.
-        trees = []  # type: List[MypyFile]
-        for state in self.states:
-            trees.append(cast(ParsedFile, state).tree)
-
-        # Perform any additional passes after type checking for all the files.
-        self.final_passes(trees, self.type_checker.type_map)
-
-        return BuildResult(self.semantic_analyzer.modules,
-                           self.type_checker.type_map)
-
-    def next_available_state(self) -> 'State':
-        """Find a ready state (one that has all its dependencies met)."""
-        i = len(self.states) - 1
-        while i >= 0:
-            if self.states[i].is_ready():
-                num_incomplete = self.states[i].num_incomplete_deps()
-                if num_incomplete == 0:
-                    # This is perfect; no need to look for the best match.
-                    return self.states[i]
-            i -= 1
-        return None
-
-    def has_module(self, name: str) -> bool:
-        """Have we seen a module yet?"""
-        return name in self.module_files
-
-    def file_state(self, path: str) -> int:
-        """Return the state of a source file.
-
-        In particular, return UNSEEN_STATE if the file has no associated
-        state.
-
-        This function does not consider any dependencies.
-        """
-        for s in self.states:
-            if s.path == path:
-                return s.state()
-        return UNSEEN_STATE
-
-    def module_state(self, name: str) -> int:
-        """Return the state of a module.
-
-        In particular, return UNSEEN_STATE if the file has no associated
-        state.
-
-        This considers also module dependencies.
-        """
-        if not self.has_module(name):
-            return UNSEEN_STATE
-        state = final_state
-        fs = self.file_state(self.module_files[name])
-        if earlier_state(fs, state):
-            state = fs
-        return state
-
-    def is_dep(self, m1: str, m2: str, done: Set[str] = None) -> bool:
-        """Does m1 import m2 directly or indirectly?"""
-        # Have we computed this previously?
-        dep = self.module_deps.get((m1, m2))
-        if dep is not None:
-            return dep
-
-        if not done:
-            done = set([m1])
-
-        # m1 depends on m2 iff one of the deps of m1 depends on m2.
-        st = self.lookup_state(m1)
-        for m in st.dependencies:
-            if m in done:
-                continue
-            done.add(m)
-            # Cache this dependency.
-            self.module_deps[m1, m] = True
-            # Search recursively.
-            if m == m2 or self.is_dep(m, m2, done):
-                # Yes! Mark it in the cache.
-                self.module_deps[m1, m2] = True
-                return True
-        # No dependency. Mark it in the cache.
-        self.module_deps[m1, m2] = False
-        return False
-
-    def lookup_state(self, module: str) -> 'State':
-        for state in self.states:
-            if state.id == module:
-                return state
-        raise RuntimeError('%s not found' % module)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[str, int]]:
@@ -590,12 +404,22 @@ class BuildManager:
                         res.append((id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
-                    res.append((cur_id, imp.line))
+                    pos = len(res)
+                    all_are_submodules = True
                     # Also add any imported names that are submodules.
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((sub_id, imp.line))
+                        else:
+                            all_are_submodules = False
+                    # If all imported names are submodules, don't add
+                    # cur_id as a dependency.  Otherwise (i.e., if at
+                    # least one imported name isn't a submodule)
+                    # cur_id is also a dependency, and we should
+                    # insert it *before* any submodules.
+                    if not all_are_submodules:
+                        res.insert(pos, ((cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     res.append((correct_rel_imp(imp), imp.line))
         return res
@@ -604,25 +428,51 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
-    def final_passes(self, files: List[MypyFile],
-                     types: Dict[Node, Type]) -> None:
-        """Perform the code generation passes for type checked files."""
-        if self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
-            pass  # Nothing to do.
+    def parse_file(self, id: str, path: str, source: str) -> MypyFile:
+        """Parse the source of a file with the given name.
+
+        Raise CompileError if there is a parse error.
+        """
+        num_errs = self.errors.num_messages()
+        tree = parse(source, path, self.errors,
+                     pyversion=self.pyversion,
+                     custom_typing_module=self.custom_typing_module,
+                     fast_parser=FAST_PARSER in self.flags)
+        tree._fullname = id
+        if self.errors.num_messages() != num_errs:
+            self.log("Bailing due to parse errors")
+            self.errors.raise_error()
+        return tree
+
+    def module_not_found(self, path: str, line: int, id: str) -> None:
+        self.errors.set_file(path)
+        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
+        if ((self.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
+                (self.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+            self.errors.report(
+                line, "No library stub file for standard library module '{}'".format(id))
+            self.errors.report(line, stub_msg, severity='note', only_once=True)
+        elif moduleinfo.is_third_party_module(id):
+            self.errors.report(line, "No library stub file for module '{}'".format(id))
+            self.errors.report(line, stub_msg, severity='note', only_once=True)
         else:
-            raise RuntimeError('Unsupported target %d' % self.target)
+            self.errors.report(line, "Cannot find module named '{}'".format(id))
+            self.errors.report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
+                               only_once=True)
 
     def report_file(self, file: MypyFile) -> None:
         if self.source_set.is_source(file):
             self.reports.file(file, type_map=self.type_checker.type_map)
 
-    def log(self, message: str) -> None:
+    def log(self, *message: str) -> None:
         if VERBOSE in self.flags:
-            print('LOG:', message, file=sys.stderr)
+            print('%.3f:LOG: ' % (time.time() - self.start_time), *message, file=sys.stderr)
+            sys.stderr.flush()
 
-    def trace(self, message: str) -> None:
+    def trace(self, *message: str) -> None:
         if self.flags.count(VERBOSE) >= 2:
-            print('TRACE:', message, file=sys.stderr)
+            print('%.3f:TRACE:' % (time.time() - self.start_time), *message, file=sys.stderr)
+            sys.stderr.flush()
 
 
 def remove_cwd_prefix_from_path(p: str) -> str:
@@ -637,7 +487,9 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     if basename(cur) != '':
         cur += os.sep
     # Compute root path.
-    while p and os.path.isfile(os.path.join(p, '__init__.py')):
+    while (p and
+           (os.path.isfile(os.path.join(p, '__init__.py')) or
+            os.path.isfile(os.path.join(p, '__init__.pyi')))):
         dir, base = os.path.split(p)
         if not base:
             break
@@ -649,373 +501,6 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     if p == '':
         p = '.'
     return p
-
-
-class StateInfo:
-    """Description of a source file that is being built."""
-
-    def __init__(self, path: str, id: str,
-                 import_context: List[Tuple[str, int]],
-                 manager: BuildManager) -> None:
-        """Initialize state information.
-
-        Arguments:
-          path:    Path to the file
-          id:      Module id, such as 'os.path' or '__main__' (for the main
-                   program file)
-          import_context:
-                   The import trail that caused this module to be
-                   imported (path, line) tuples
-          manager: The manager that manages this build
-        """
-        self.path = path
-        self.id = id
-        self.import_context = import_context
-        self.manager = manager
-
-
-class State:
-    """Abstract base class for build states.
-
-    There is always at most one state per source file.
-    """
-
-    # The StateInfo attributes are duplicated here for convenience.
-    path = ''
-    id = ''
-    import_context = None  # type: List[Tuple[str, int]]
-    manager = None  # type: BuildManager
-    # Modules that this file directly depends on (in no particular order).
-    dependencies = None  # type: List[str]
-
-    def __init__(self, info: StateInfo) -> None:
-        self.path = info.path
-        self.id = info.id
-        self.import_context = info.import_context
-        self.manager = info.manager
-        self.dependencies = []
-
-    def info(self) -> StateInfo:
-        return StateInfo(self.path, self.id, self.import_context, self.manager)
-
-    def process(self) -> None:
-        raise RuntimeError('Not implemented')
-
-    def is_ready(self) -> bool:
-        """Return True if all dependencies are at least in the same state
-        as this object (but not in the initial state).
-        """
-        for module in self.dependencies:
-            state = self.manager.module_state(module)
-            if earlier_state(state,
-                             self.state()) or state == UNPROCESSED_STATE:
-                return False
-        return True
-
-    def num_incomplete_deps(self) -> int:
-        """Return the number of dependencies that are ready but incomplete."""
-        return 0  # Does not matter in this state
-
-    def state(self) -> int:
-        raise RuntimeError('Not implemented')
-
-    def switch_state(self, state_object: 'State') -> None:
-        """Called by state objects to replace the state of the file.
-
-        Also notify the manager.
-        """
-        for i in range(len(self.manager.states)):
-            if self.manager.states[i].path == state_object.path:
-                self.manager.states[i] = state_object
-                return
-        raise RuntimeError('State for {} not found'.format(state_object.path))
-
-    def errors(self) -> Errors:
-        return self.manager.errors
-
-    def semantic_analyzer(self) -> SemanticAnalyzer:
-        return self.manager.semantic_analyzer
-
-    def semantic_analyzer_pass3(self) -> ThirdPass:
-        return self.manager.semantic_analyzer_pass3
-
-    def type_checker(self) -> TypeChecker:
-        return self.manager.type_checker
-
-    def fail(self, path: str, line: int, msg: str, blocker: bool = True) -> None:
-        """Report an error in the build (e.g. if could not find a module)."""
-        self.errors().set_file(path)
-        self.errors().report(line, msg, blocker=blocker)
-
-    def module_not_found(self, path: str, line: int, id: str) -> None:
-        self.errors().set_file(path)
-        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if ((self.manager.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
-                (self.manager.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
-            self.errors().report(
-                line, "No library stub file for standard library module '{}'".format(id))
-            self.errors().report(line, stub_msg, severity='note', only_once=True)
-        elif moduleinfo.is_third_party_module(id):
-            self.errors().report(line, "No library stub file for module '{}'".format(id))
-            self.errors().report(line, stub_msg, severity='note', only_once=True)
-        else:
-            self.errors().report(line, "Cannot find module named '{}'".format(id))
-            self.errors().report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
-                                 only_once=True)
-
-
-class UnprocessedFile(State):
-    def __init__(self, info: StateInfo, program_text: str) -> None:
-        super().__init__(info)
-        self.program_text = program_text
-        self.silent = SILENT_IMPORTS in self.manager.flags
-
-    def load_dependencies(self):
-        # Add surrounding package(s) as dependencies.
-        for p in super_packages(self.id):
-            if p in self.manager.missing_modules:
-                continue
-            if not self.import_module(p):
-                # Could not find a module. Typically the reason is a
-                # misspelled module name, missing stub, module not in
-                # search path or the module has not been installed.
-                if self.silent:
-                    self.manager.missing_modules.add(p)
-                else:
-                    self.module_not_found(self.path, 1, p)
-            else:
-                self.dependencies.append(p)
-
-    def process(self) -> None:
-        """Parse the file, store global names and advance to the next state."""
-        if self.id in self.manager.semantic_analyzer.modules:
-            self.fail(self.path, 1, "Duplicate module named '{}'".format(self.id))
-            return
-
-        tree = self.parse(self.program_text, self.path)
-
-        # Store the parsed module in the shared module symbol table.
-        self.manager.semantic_analyzer.modules[self.id] = tree
-
-        if '.' in self.id:
-            # Include module in the symbol table of the enclosing package.
-            c = self.id.split('.')
-            p = '.'.join(c[:-1])
-            sem_anal = self.manager.semantic_analyzer
-            if p in sem_anal.modules:
-                sem_anal.modules[p].names[c[-1]] = SymbolTableNode(
-                    MODULE_REF, tree, p)
-
-        if self.id != 'builtins':
-            # The builtins module is imported implicitly in every program (it
-            # contains definitions of int, print etc.).
-            self.manager.trace('import builtins')
-            if not self.import_module('builtins'):
-                self.fail(self.path, 1, 'Could not find builtins')
-
-        # Do the first pass of semantic analysis: add top-level definitions in
-        # the file to the symbol table. We must do this before processing imports,
-        # since this may mark some import statements as unreachable.
-        first = FirstPass(self.semantic_analyzer())
-        first.analyze(tree, self.path, self.id)
-
-        # Add all directly imported modules to be processed (however they are
-        # not processed yet, just waiting to be processed).
-        for id, line in self.manager.all_imported_modules_in_file(tree):
-            self.errors().push_import_context(self.path, line)
-            try:
-                res = self.import_module(id)
-            finally:
-                self.errors().pop_import_context()
-            if not res:
-                if id == '':
-                    # Must be from a relative import.
-                    self.fail(self.path, line,
-                              "No parent module -- cannot perform relative import".format(id),
-                              blocker=True)
-                else:
-                    if (line not in tree.ignored_lines and
-                            'import' not in tree.weak_opts and
-                            not self.silent):
-                        self.module_not_found(self.path, line, id)
-                self.manager.missing_modules.add(id)
-
-        # Initialize module symbol table, which was populated by the semantic
-        # analyzer.
-        tree.names = self.semantic_analyzer().globals
-
-        # Replace this state object with a parsed state in BuildManager.
-        self.switch_state(ParsedFile(self.info(), tree))
-
-    def import_module(self, id: str) -> bool:
-        """Schedule a module to be processed.
-
-        Add an unprocessed state object corresponding to the module to the
-        manager, or do nothing if the module already has a state object.
-        """
-        if self.manager.has_module(id):
-            # Do nothing: already being compiled.
-            return True
-
-        if id == 'builtins' and self.manager.pyversion[0] == 2:
-            # The __builtin__ module is called internally by mypy 'builtins' in Python 2 mode
-            # (similar to Python 3), but the stub file is __builtin__.pyi. The reason is that
-            # a lot of code hard codes 'builtins.x' and this it's easier to work it around like
-            # this. It also means that the implementation can mostly ignore the difference and
-            # just assume 'builtins' everywhere, which simplifies code.
-            file_id = '__builtin__'
-        else:
-            file_id = id
-        path, text = read_module_source_from_file(file_id, self.manager.lib_path,
-                                                  self.manager.pyversion, self.silent)
-        if text is not None:
-            info = StateInfo(path, id, self.errors().import_context(),
-                             self.manager)
-            new_file = UnprocessedFile(info, text)
-            self.manager.states.append(new_file)
-            self.manager.module_files[id] = path
-            new_file.load_dependencies()
-            return True
-        else:
-            return False
-
-    def parse(self, source_text: Union[str, bytes], fnam: str) -> MypyFile:
-        """Parse the source of a file with the given name.
-
-        Raise CompileError if there is a parse error.
-        """
-        num_errs = self.errors().num_messages()
-        tree = parse.parse(source_text, fnam, self.errors(),
-                           pyversion=self.manager.pyversion,
-                           custom_typing_module=self.manager.custom_typing_module,
-                           fast_parser=FAST_PARSER in self.manager.flags)
-        tree._fullname = self.id
-        if self.errors().num_messages() != num_errs:
-            self.errors().raise_error()
-        return tree
-
-    def state(self) -> int:
-        return UNPROCESSED_STATE
-
-
-class ParsedFile(State):
-    tree = None  # type: MypyFile
-
-    def __init__(self, info: StateInfo, tree: MypyFile) -> None:
-        super().__init__(info)
-        self.tree = tree
-
-        # Build a list all directly imported moules (dependencies).
-        imp = []  # type: List[str]
-        for id, line in self.manager.all_imported_modules_in_file(tree):
-            # Omit missing modules, as otherwise we could not type check
-            # programs with missing modules.
-            if id not in self.manager.missing_modules and id != self.id:
-                imp.append(id)
-        if self.id != 'builtins':
-            imp.append('builtins')
-
-        if imp != []:
-            self.manager.trace('{} dependencies: {}'.format(info.path, imp))
-
-        # Record the dependencies. Note that the dependencies list also
-        # contains any superpackages and we must preserve them (e.g. os for
-        # os.path).
-        self.dependencies.extend(imp)
-
-    def process(self) -> None:
-        """Semantically analyze file and advance to the next state."""
-        self.semantic_analyzer().visit_file(self.tree, self.tree.path)
-        self.switch_state(PartiallySemanticallyAnalyzedFile(self.info(),
-                                                            self.tree))
-
-    def num_incomplete_deps(self) -> int:
-        """Return the number of dependencies that are incomplete.
-
-        Here complete means that their state is *later* than this module.
-        Cyclic dependencies are omitted to break cycles forcibly (and somewhat
-        arbitrarily).
-        """
-        incomplete = 0
-        for module in self.dependencies:
-            state = self.manager.module_state(module)
-            if (not earlier_state(self.state(), state) and
-                    not self.manager.is_dep(module, self.id)):
-                incomplete += 1
-        return incomplete
-
-    def state(self) -> int:
-        return PARSED_STATE
-
-
-class PartiallySemanticallyAnalyzedFile(ParsedFile):
-    def process(self) -> None:
-        """Perform final pass of semantic analysis and advance state."""
-        self.semantic_analyzer_pass3().visit_file(self.tree, self.tree.path)
-        if DUMP_TYPE_STATS in self.manager.flags:
-            stats.dump_type_stats(self.tree, self.tree.path)
-        self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
-
-    def state(self) -> int:
-        return PARTIAL_SEMANTIC_ANALYSIS_STATE
-
-
-class SemanticallyAnalyzedFile(ParsedFile):
-    def process(self) -> None:
-        """Type check file and advance to the next state."""
-        if self.manager.target >= TYPE_CHECK:
-            self.type_checker().visit_file(self.tree, self.tree.path)
-            if DUMP_INFER_STATS in self.manager.flags:
-                stats.dump_type_stats(self.tree, self.tree.path, inferred=True,
-                                      typemap=self.manager.type_checker.type_map)
-            self.manager.report_file(self.tree)
-
-        # FIX remove from active state list to speed up processing
-
-        self.switch_state(TypeCheckedFile(self.info(), self.tree))
-
-    def state(self) -> int:
-        return SEMANTICALLY_ANALYSED_STATE
-
-
-class TypeCheckedFile(SemanticallyAnalyzedFile):
-    def process(self) -> None:
-        """Finished, so cannot process."""
-        raise RuntimeError('Cannot process TypeCheckedFile')
-
-    def is_ready(self) -> bool:
-        """Finished, so cannot ever become ready."""
-        return False
-
-    def state(self) -> int:
-        return TYPE_CHECKED_STATE
-
-
-def read_module_source_from_file(id: str,
-                                 lib_path: Iterable[str],
-                                 pyversion: Tuple[int, int],
-                                 silent: bool) -> Tuple[Optional[str], Optional[str]]:
-    """Find and read the source file of a module.
-
-    Return a pair (path, file contents). Return (None, None) if the module
-    could not be found or read.
-
-    Args:
-      id:       module name, a string of form 'foo' or 'foo.bar'
-      lib_path: library search path
-      silent:   if set, don't import .py files (only .pyi files)
-    """
-    path = find_module(id, lib_path)
-    if path is not None:
-        if silent and not path.endswith('.pyi'):
-            return None, None
-        try:
-            text = read_with_python_encoding(path, pyversion)
-        except IOError:
-            return None, None
-        return path, text
-    else:
-        return None, None
 
 
 # Cache find_module: (id, lib_path) -> result.
@@ -1121,23 +606,6 @@ def verify_module(id: str, path: str) -> bool:
     return True
 
 
-def super_packages(id: str) -> List[str]:
-    """Return the surrounding packages of a module, e.g. ['os'] for os.path."""
-    c = id.split('.')
-    res = []  # type: List[str]
-    for i in range(1, len(c)):
-        res.append('.'.join(c[:i]))
-    return res
-
-
-def make_parent_dirs(path: str) -> None:
-    parent = os.path.dirname(path)
-    try:
-        os.makedirs(parent)
-    except OSError:
-        pass
-
-
 def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection"""
     source_bytearray = bytearray()
@@ -1161,3 +629,841 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
 
         source_bytearray.extend(f.read())
         return source_bytearray.decode(encoding)
+
+
+MYPY_CACHE = '.mypy_cache'
+
+
+def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+    """Return the file names for the cache files.
+
+    Args:
+      id: module ID
+      path: module path (used to recognize packages)
+      pyversion: Python version (major, minor)
+
+    Returns:
+      A tuple with the file names to be used for the meta JSON and the
+      data JSON, respectively.
+    """
+    prefix = os.path.join(MYPY_CACHE, '%d.%d' % pyversion, *id.split('.'))
+    is_package = os.path.basename(path).startswith('__init__.py')
+    if is_package:
+        prefix = os.path.join(prefix, '__init__')
+    return (prefix + '.meta.json', prefix + '.data.json')
+
+
+def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
+    """Find cache data for a module.
+
+    Args:
+      id: module ID
+      path: module path
+      manager: the build manager (for pyversion, log/trace, and build options)
+
+    Returns:
+      A CacheMeta instance if the cache data was found and appears
+      valid; otherwise None.
+    """
+    # TODO: May need to take more build options into account; in
+    # particular SILENT_IMPORTS may affect the cache dramatically.
+    meta_json, data_json = get_cache_names(id, path, manager.pyversion)
+    manager.trace('Looking for {} {}'.format(id, data_json))
+    if not os.path.exists(meta_json):
+        return None
+    with open(meta_json, 'r') as f:
+        meta_str = f.read()
+        manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
+        meta = json.loads(meta_str)  # TODO: Errors
+    if not isinstance(meta, dict):
+        return None
+    path = os.path.abspath(path)
+    m = CacheMeta(
+        meta.get('id'),
+        meta.get('path'),
+        meta.get('mtime'),
+        meta.get('size'),
+        meta.get('dependencies'),
+        meta.get('data_mtime'),
+        data_json,
+    )
+    if (m.id != id or m.path != path or
+            m.mtime is None or m.size is None or
+            m.dependencies is None or m.data_mtime is None):
+        return None
+    # TODO: Share stat() outcome with find_module()
+    st = os.stat(path)  # TODO: Errors
+    if st.st_mtime != m.mtime or st.st_size != m.size:
+        manager.log('Metadata abandoned because of modified file {}'.format(path))
+        return None
+    # It's a match on (id, path, mtime, size).
+    # Check data_json; assume if its mtime matches it's good.
+    # TODO: stat() errors
+    if os.path.getmtime(data_json) != m.data_mtime:
+        return None
+    manager.log('Found {} {}'.format(id, meta_json))
+    return m
+
+
+def random_string():
+    return binascii.hexlify(os.urandom(8)).decode('ascii')
+
+
+def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
+                manager: BuildManager) -> None:
+    """Write cache files for a module.
+
+    Args:
+      id: module ID
+      path: module path
+      tree: the fully checked module data
+      dependencies: module IDs on which this module depends
+      manager: the build manager (for pyversion, log/trace)
+    """
+    path = os.path.abspath(path)
+    manager.trace('Dumping {} {}'.format(id, path))
+    st = os.stat(path)  # TODO: Errors
+    mtime = st.st_mtime
+    size = st.st_size
+    meta_json, data_json = get_cache_names(id, path, manager.pyversion)
+    manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
+    data = tree.serialize()
+    parent = os.path.dirname(data_json)
+    if not os.path.isdir(parent):
+        os.makedirs(parent)
+    assert os.path.dirname(meta_json) == parent
+    nonce = '.' + random_string()
+    data_json_tmp = data_json + nonce
+    meta_json_tmp = meta_json + nonce
+    with open(data_json_tmp, 'w') as f:
+        json.dump(data, f, indent=2, sort_keys=True)
+        f.write('\n')
+    data_mtime = os.path.getmtime(data_json_tmp)
+    meta = {'id': id,
+            'path': path,
+            'mtime': mtime,
+            'size': size,
+            'data_mtime': data_mtime,
+            'dependencies': dependencies,
+            }
+    with open(meta_json_tmp, 'w') as f:
+        json.dump(meta, f, sort_keys=True)
+        f.write('\n')
+    # TODO: On Windows, os.rename() may not be atomic, and we could
+    # use os.replace().  However that's new in Python 3.3.
+    os.rename(data_json_tmp, data_json)
+    os.rename(meta_json_tmp, meta_json)
+
+
+"""Dependency manager.
+
+Design
+======
+
+Ideally
+-------
+
+A. Collapse cycles (each SCC -- strongly connected component --
+   becomes one "supernode").
+
+B. Topologically sort nodes based on dependencies.
+
+C. Process from leaves towards roots.
+
+Wrinkles
+--------
+
+a. Need to parse source modules to determine dependencies.
+
+b. Processing order for modules within an SCC.
+
+c. Must order mtimes of files to decide whether to re-process; depends
+   on clock never resetting.
+
+d. from P import M; checks filesystem whether module P.M exists in
+   filesystem.
+
+e. Race conditions, where somebody modifies a file while we're
+   processing.  I propose not to modify the algorithm to handle this,
+   but to detect when this could lead to inconsistencies.  (For
+   example, when we decide on the dependencies based on cache
+   metadata, and then we decide to re-parse a file because of a stale
+   dependency, if the re-parsing leads to a different list of
+   dependencies we should warn the user or start over.)
+
+Steps
+-----
+
+1. For each explicitly given module find the source file location.
+
+2. For each such module load and check the cache metadata, and decide
+   whether it's valid.
+
+3. Now recursively (or iteratively) find dependencies and add those to
+   the graph:
+
+   - for cached nodes use the list of dependencies from the cache
+     metadata (this will be valid even if we later end up re-parsing
+     the same source);
+
+   - for uncached nodes parse the file and process all imports found,
+     taking care of (a) above.
+
+Step 3 should also address (d) above.
+
+Once step 3 terminates we have the entire dependency graph, and for
+each module we've either loaded the cache metadata or parsed the
+source code.  (However, we may still need to parse those modules for
+which we have cache metadata but that depend, directly or indirectly,
+on at least one module for which the cache metadata is stale.)
+
+Now we can execute steps A-C from the first section.  Finding SCCs for
+step A shouldn't be hard; there's a recipe here:
+http://code.activestate.com/recipes/578507/.  There's also a plethora
+of topsort recipes, e.g. http://code.activestate.com/recipes/577413/.
+
+For single nodes, processing is simple.  If the node was cached, we
+deserialize the cache data and fix up cross-references.  Otherwise, we
+do semantic analysis followed by type checking.  We also handle (c)
+above; if a module has valid cache data *but* any of its
+dependendencies was processed from source, then the module should be
+processed from source.
+
+A relatively simple optimization (outside SCCs) we might do in the
+future is as follows: if a node's cache data is valid, but one or more
+of its dependencies are out of date so we have to re-parse the node
+from source, once we have fully type-checked the node, we can decide
+whether its symbol table actually changed compared to the cache data
+(by reading the cache data and comparing it to the data we would be
+writing).  If there is no change we can declare the node up to date,
+and any node that depends (and for which we have cached data, and
+whose other dependencies are up to date) on it won't need to be
+re-parsed from source.
+
+Import cycles
+-------------
+
+Finally we have to decide how to handle (c), import cycles.  Here
+we'll need a modified version of the original state machine
+(build.py), but we only need to do this per SCC, and we won't have to
+deal with changes to the list of nodes while we're processing it.
+
+If all nodes in the SCC have valid cache metadata and all dependencies
+outside the SCC are still valid, we can proceed as follows:
+
+  1. Load cache data for all nodes in the SCC.
+
+  2. Fix up cross-references for all nodes in the SCC.
+
+Otherwise, the simplest (but potentially slow) way to proceed is to
+invalidate all cache data in the SCC and re-parse all nodes in the SCC
+from source.  We can do this as follows:
+
+  1. Parse source for all nodes in the SCC.
+
+  2. Semantic analysis for all nodes in the SCC.
+
+  3. Type check all nodes in the SCC.
+
+(If there are more passes the process is the same -- each pass should
+be done for all nodes before starting the next pass for any nodes in
+the SCC.)
+
+We could process the nodes in the SCC in any order.  For sentimental
+reasons, I've decided to process them in the reverse order in which we
+encountered them when originally constructing the graph.  That's how
+the old build.py deals with cycles, and at least this reproduces the
+previous implementation more accurately.
+
+Can we do better than re-parsing all nodes in the SCC when any of its
+dependencies are out of date?  It's doubtful.  The optimization
+mentioned at the end of the previous section would require re-parsing
+and type-checking a node and then comparing its symbol table to the
+cached data; but because the node is part of a cycle we can't
+technically type-check it until the semantic analysis of all other
+nodes in the cycle has completed.  (This is an important issue because
+Dropbox has a very large cycle in production code.  But I'd like to
+deal with it later.)
+
+Additional wrinkles
+-------------------
+
+During implementation more wrinkles were found.
+
+- When a submodule of a package (e.g. x.y) is encountered, the parent
+  package (e.g. x) must also be loaded, but it is not strictly a
+  dependency.  See State.add_ancestors() below.
+"""
+
+
+class ModuleNotFound(Exception):
+    """Control flow exception to signal that a module was not found."""
+
+
+class State:
+    """The state for a module.
+
+    The source is only used for the -c command line option; in that
+    case path is None.  Otherwise source is None and path isn't.
+    """
+
+    manager = None  # type: BuildManager
+    order_counter = 0  # Class variable
+    order = None  # type: int  # Order in which modules were encountered
+    id = None  # type: str  # Fully qualified module name
+    path = None  # type: Optional[str]  # Path to module source
+    xpath = None  # type: str  # Path or '<string>'
+    source = None  # type: Optional[str]  # Module source code
+    meta = None  # type: Optional[CacheMeta]
+    data = None  # type: Optional[str]
+    tree = None  # type: Optional[MypyFile]
+    dependencies = None  # type: List[str]
+
+    # Map each dependency to the line number where it is first imported
+    dep_line_map = None  # type: Dict[str, int]
+
+    # Parent package, its parent, etc.
+    ancestors = None  # type: Optional[List[str]]
+
+    # List of (path, line number) tuples giving context for import
+    import_context = None  # type: List[Tuple[str, int]]
+
+    # The State from which this module was imported, if any
+    caller_state = None  # type: Optional[State]
+
+    # If caller_state is set, the line number in the caller where the import occurred
+    caller_line = 0
+
+    def __init__(self,
+                 id: Optional[str],
+                 path: Optional[str],
+                 source: Optional[str],
+                 manager: BuildManager,
+                 caller_state: 'State' = None,
+                 caller_line: int = 0,
+                 is_ancestor: bool = False,
+                 ) -> None:
+        assert id or path or source is not None, "Neither id, path nor source given"
+        self.manager = manager
+        State.order_counter += 1
+        self.order = State.order_counter
+        self.caller_state = caller_state
+        self.caller_line = caller_line
+        if caller_state:
+            self.import_context = caller_state.import_context[:]
+            self.import_context.append((caller_state.xpath, caller_line))
+        else:
+            self.import_context = []
+        self.id = id or '__main__'
+        if not path and source is None:
+            file_id = id
+            if id == 'builtins' and manager.pyversion[0] == 2:
+                # The __builtin__ module is called internally by mypy
+                # 'builtins' in Python 2 mode (similar to Python 3),
+                # but the stub file is __builtin__.pyi.  The reason is
+                # that a lot of code hard-codes 'builtins.x' and it's
+                # easier to work it around like this.  It also means
+                # that the implementation can mostly ignore the
+                # difference and just assume 'builtins' everywhere,
+                # which simplifies code.
+                file_id = '__builtin__'
+            path = find_module(file_id, manager.lib_path)
+            if path:
+                # In silent mode, don't import .py files.
+                if (SILENT_IMPORTS in manager.flags and
+                        path.endswith('.py') and (caller_state or is_ancestor)):
+                    path = None
+                    manager.missing_modules.add(id)
+                    raise ModuleNotFound
+            else:
+                # Could not find a module.  Typically the reason is a
+                # misspelled module name, missing stub, module not in
+                # search path or the module has not been installed.
+                if caller_state:
+                    if not (SILENT_IMPORTS in manager.flags or
+                            (caller_state.tree is not None and
+                             (caller_line in caller_state.tree.ignored_lines or
+                              'import' in caller_state.tree.weak_opts))):
+                        save_import_context = manager.errors.import_context()
+                        manager.errors.set_import_context(caller_state.import_context)
+                        manager.module_not_found(caller_state.xpath, caller_line, id)
+                        manager.errors.set_import_context(save_import_context)
+                    manager.missing_modules.add(id)
+                    raise ModuleNotFound
+                else:
+                    # If we can't find a root source it's always fatal.
+                    # TODO: This might hide non-fatal errors from
+                    # root sources processed earlier.
+                    raise CompileError(["mypy: can't find module '%s'" % id])
+        self.path = path
+        self.xpath = path or '<string>'
+        self.source = source
+        if path and source is None and INCREMENTAL in manager.flags:
+            self.meta = find_cache_meta(self.id, self.path, manager)
+            # TODO: Get mtime if not cached.
+        self.add_ancestors()
+        if self.meta:
+            self.dependencies = self.meta.dependencies
+            self.dep_line_map = {}
+        else:
+            # Parse the file (and then some) to get the dependencies.
+            self.parse_file()
+
+    def add_ancestors(self) -> None:
+        # All parent packages are new ancestors.
+        ancestors = []
+        parent = self.id
+        while '.' in parent:
+            parent, _ = parent.rsplit('.', 1)
+            ancestors.append(parent)
+        self.ancestors = ancestors
+
+    def is_fresh(self) -> bool:
+        """Return whether the cache data for this file is fresh."""
+        return self.meta is not None
+
+    def clear_fresh(self) -> None:
+        """Throw away the cache data for this file, marking it as stale."""
+        self.meta = None
+
+    def check_blockers(self) -> None:
+        """Raise CompileError if a blocking error is detected."""
+        if self.manager.errors.is_blockers():
+            self.manager.log("Bailing due to blocking errors")
+            self.manager.errors.raise_error()
+
+    @contextlib.contextmanager
+    def wrap_context(self) -> Iterator[None]:
+        save_import_context = self.manager.errors.import_context()
+        self.manager.errors.set_import_context(self.import_context)
+        try:
+            yield
+        except CompileError:
+            raise
+        except Exception as err:
+            report_internal_error(err, self.path, 0)
+        self.manager.errors.set_import_context(save_import_context)
+        self.check_blockers()
+
+    # Methods for processing cached modules.
+
+    def load_tree(self) -> None:
+        with open(self.meta.data_json) as f:
+            data = json.load(f)
+        # TODO: Assert data file wasn't changed.
+        self.tree = MypyFile.deserialize(data)
+        self.manager.modules[self.id] = self.tree
+
+    def fix_cross_refs(self) -> None:
+        fixup_module_pass_one(self.tree, self.manager.modules)
+
+    def calculate_mros(self) -> None:
+        fixup_module_pass_two(self.tree, self.manager.modules)
+
+    # Methods for processing modules from source code.
+
+    def parse_file(self) -> None:
+        if self.tree is not None:
+            # The file was already parsed (in __init__()).
+            return
+
+        manager = self.manager
+        modules = manager.modules
+        manager.log("Parsing %s" % self.xpath)
+
+        with self.wrap_context():
+            source = self.source
+            self.source = None  # We won't need it again.
+            if self.path and source is None:
+                try:
+                    source = read_with_python_encoding(self.path, manager.pyversion)
+                except IOError as ioerr:
+                    raise CompileError([
+                        "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
+                except UnicodeDecodeError as decodeerr:
+                    raise CompileError([
+                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
+            self.tree = manager.parse_file(self.id, self.xpath, source)
+
+        modules[self.id] = self.tree
+
+        # Do the first pass of semantic analysis: add top-level
+        # definitions in the file to the symbol table.  We must do
+        # this before processing imports, since this may mark some
+        # import statements as unreachable.
+        first = FirstPass(manager.semantic_analyzer)
+        first.analyze(self.tree, self.xpath, self.id)
+
+        # Initialize module symbol table, which was populated by the
+        # semantic analyzer.
+        # TODO: Why can't FirstPass .analyze() do this?
+        self.tree.names = manager.semantic_analyzer.globals
+
+        # Compute (direct) dependencies.
+        # Add all direct imports (this is why we needed the first pass).
+        # Also keep track of each dependency's source line.
+        dependencies = []
+        dep_line_map = {}  # type: Dict[str, int]  # id -> line
+        for id, line in manager.all_imported_modules_in_file(self.tree):
+            # Omit missing modules, as otherwise we could not type-check
+            # programs with missing modules.
+            if id == self.id or id in manager.missing_modules:
+                continue
+            if id == '':
+                # Must be from a relative import.
+                manager.errors.set_file(self.xpath)
+                manager.errors.report(line, "No parent module -- cannot perform relative import",
+                                      blocker=True)
+            if id not in dep_line_map:
+                dependencies.append(id)
+                dep_line_map[id] = line
+        # Every module implicitly depends on builtins.
+        if self.id != 'builtins' and 'builtins' not in dep_line_map:
+            dependencies.append('builtins')
+
+        # If self.dependencies is already set, it was read from the
+        # cache, but for some reason we're re-parsing the file.
+        # Double-check that the dependencies still match (otherwise
+        # the graph is out of date).
+        if self.dependencies is not None and dependencies != self.dependencies:
+            # Presumably the file was edited while we were running.
+            # TODO: Make this into a reasonable error message, or recover somehow.
+            print("HELP!! Dependencies changed!")
+            print("  Cached:", self.dependencies)
+            print("  Source:", dependencies)
+            assert False, "Cache inconsistency for dependencies of %s" % (self.id,)
+        self.dependencies = dependencies
+        self.dep_line_map = dep_line_map
+        self.check_blockers()
+
+    def patch_parent(self) -> None:
+        # Include module in the symbol table of the enclosing package.
+        if '.' not in self.id:
+            return
+        manager = self.manager
+        modules = manager.modules
+        parent, child = self.id.rsplit('.', 1)
+        if parent in modules:
+            manager.trace("Added %s.%s" % (parent, child))
+            modules[parent].names[child] = SymbolTableNode(MODULE_REF, self.tree, parent)
+        else:
+            manager.log("Hm... couldn't add %s.%s" % (parent, child))
+
+    def semantic_analysis(self) -> None:
+        with self.wrap_context():
+            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath)
+
+    def semantic_analysis_pass_three(self) -> None:
+        with self.wrap_context():
+            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
+            if DUMP_TYPE_STATS in self.manager.flags:
+                dump_type_stats(self.tree, self.xpath)
+
+    def type_check(self) -> None:
+        manager = self.manager
+        if manager.target < TYPE_CHECK:
+            return
+        with self.wrap_context():
+            manager.type_checker.visit_file(self.tree, self.xpath)
+            if DUMP_INFER_STATS in manager.flags:
+                dump_type_stats(self.tree, self.xpath, inferred=True,
+                                typemap=manager.type_checker.type_map)
+            manager.report_file(self.tree)
+
+    def write_cache(self) -> None:
+        if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
+            write_cache(self.id, self.path, self.tree, list(self.dependencies), self.manager)
+
+
+Graph = Dict[str, State]
+
+
+def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
+    manager.log("Using new dependency manager")
+    graph = load_graph(sources, manager)
+    manager.log("Loaded graph with %d nodes" % len(graph))
+    process_graph(graph, manager)
+
+
+def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
+    """Given some source files, load the full dependency graph."""
+    graph = {}  # type: Graph
+    # The deque is used to implement breadth-first traversal.
+    # TODO: Consider whether to go depth-first instead.  This may
+    # affect the order in which we process files within import cycles.
+    new = collections.deque()  # type: collections.deque[State]
+    # Seed the graph with the initial root sources.
+    for bs in sources:
+        try:
+            st = State(id=bs.module, path=bs.path, source=bs.text, manager=manager)
+        except ModuleNotFound:
+            continue
+        if st.id in graph:
+            manager.errors.set_file(st.xpath)
+            manager.errors.report(1, "Duplicate module named '%s'" % st.id)
+            manager.errors.raise_error()
+        graph[st.id] = st
+        new.append(st)
+    # Collect dependencies.  We go breadth-first.
+    while new:
+        st = new.popleft()
+        for dep in st.ancestors + st.dependencies:
+            if dep not in graph:
+                try:
+                    if dep in st.ancestors:
+                        # TODO: Why not 'if dep not in st.dependencies' ?
+                        # Ancestors don't have import context.
+                        newst = State(id=dep, path=None, source=None, manager=manager,
+                                      is_ancestor=True)
+                    else:
+                        newst = State(id=dep, path=None, source=None, manager=manager,
+                                      caller_state=st, caller_line=st.dep_line_map.get(dep, 1))
+                except ModuleNotFound:
+                    if dep in st.dependencies:
+                        st.dependencies.remove(dep)
+                else:
+                    assert newst.id not in graph, newst.id
+                    graph[newst.id] = newst
+                    new.append(newst)
+    return graph
+
+
+def process_graph(graph: Graph, manager: BuildManager) -> None:
+    """Process everything in dependency order."""
+    sccs = sorted_components(graph)
+    manager.log("Found %d SCCs; largest has %d nodes" %
+                (len(sccs), max(len(scc) for scc in sccs)))
+    # We're processing SCCs from leaves (those without further
+    # dependencies) to roots (those from which everything else can be
+    # reached).
+    for ascc in sccs:
+        # Sort the SCC's nodes in *reverse* order or encounter.
+        # This is a heuristic for handling import cycles.
+        # Note that ascc is a set, and scc is a list.
+        scc = sorted(ascc, key=lambda id: -graph[id].order)
+        # If builtins is in the list, move it last.  (This is a bit of
+        # a hack, but it's necessary because the builtins module is
+        # part of a small cycle involving at least {builtins, abc,
+        # typing}.  Of these, builtins must be processed last or else
+        # some builtin objects will be incompletely processed.)
+        if 'builtins' in ascc:
+            scc.remove('builtins')
+            scc.append('builtins')
+        # Because the SCCs are presented in topological sort order, we
+        # don't need to look at dependencies recursively for staleness
+        # -- the immediate dependencies are sufficient.
+        stale_scc = {id for id in scc if not graph[id].is_fresh()}
+        fresh = not stale_scc
+        deps = set()
+        for id in scc:
+            deps.update(graph[id].dependencies)
+        deps -= ascc
+        stale_deps = {id for id in deps if not graph[id].is_fresh()}
+        fresh = fresh and not stale_deps
+        if fresh:
+            # All cache files are fresh.  Check that no dependency's
+            # cache file is newer than any scc node's cache file.
+            oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
+            newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
+            if manager.flags.count(VERBOSE) >= 2:  # Dump all mtimes for extreme debugging.
+                all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
+                for id in all_ids:
+                    if id in scc:
+                        if graph[id].meta.data_mtime < newest_in_deps:
+                            key = "*id:"
+                        else:
+                            key = "id:"
+                    else:
+                        if graph[id].meta.data_mtime > oldest_in_scc:
+                            key = "+dep:"
+                        else:
+                            key = "dep:"
+                    manager.trace(" %5s %.0f %s" % (key, graph[id].meta.data_mtime, id))
+            # If equal, give the benefit of the doubt, due to 1-sec time granularity
+            # (on some platforms).
+            if oldest_in_scc < newest_in_deps:
+                fresh = False
+                fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
+            else:
+                fresh_msg = "fresh"
+        elif stale_scc:
+            fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
+            if stale_deps:
+                fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
+        else:
+            fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
+        if len(scc) == 1:
+            manager.log("Processing SCC sigleton (%s) as %s" % (" ".join(scc), fresh_msg))
+        else:
+            manager.log("Processing SCC of size %d (%s) as %s" %
+                        (len(scc), " ".join(scc), fresh_msg))
+        if fresh:
+            process_fresh_scc(graph, scc)
+        else:
+            process_stale_scc(graph, scc)
+
+
+def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
+    """Process the modules in one SCC from their cached data."""
+    for id in scc:
+        graph[id].load_tree()
+    for id in scc:
+        graph[id].patch_parent()
+    for id in scc:
+        graph[id].fix_cross_refs()
+    for id in scc:
+        graph[id].calculate_mros()
+
+
+def process_stale_scc(graph: Graph, scc: List[str]) -> None:
+    """Process the modules in one SCC from source code."""
+    for id in scc:
+        graph[id].clear_fresh()
+    for id in scc:
+        # We may already have parsed the module, or not.
+        # If the former, parse_file() is a no-op.
+        graph[id].parse_file()
+    for id in scc:
+        graph[id].patch_parent()
+    for id in scc:
+        graph[id].semantic_analysis()
+    for id in scc:
+        graph[id].semantic_analysis_pass_three()
+    for id in scc:
+        graph[id].type_check()
+        graph[id].write_cache()
+
+
+def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
+    """Return the graph's SCCs, topologically sorted by dependencies.
+
+    The sort order is from leaves (nodes without dependencies) to
+    roots (nodes on which no other nodes depend).
+
+    This works for a subset of the full dependency graph too;
+    dependencies that aren't present in graph.keys() are ignored.
+    """
+    # Compute SCCs.
+    vertices = set(graph)
+    edges = {id: [dep for dep in st.dependencies if dep in graph]
+             for id, st in graph.items()}
+    sccs = list(strongly_connected_components(vertices, edges))
+    # Topsort.
+    sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
+    data = {}  # type: Dict[AbstractSet[str], Set[AbstractSet[str]]]
+    for scc in sccs:
+        deps = set()  # type: Set[AbstractSet[str]]
+        for id in scc:
+            deps.update(sccsmap[x] for x in graph[id].dependencies if x in graph)
+        data[frozenset(scc)] = deps
+    res = []
+    for ready in topsort(data):
+        # Sort the sets in ready by reversed smallest State.order.  Examples:
+        #
+        # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
+        #   [{y}, {x}].
+        #
+        # - If ready is [{a, b}, {c, d}], a.order == 1, b.order == 3,
+        #   c.order == 2, d.order == 4, the sort keys become [1, 2]
+        #   and the result is [{c, d}, {a, b}].
+        res.extend(sorted(ready,
+                          key=lambda scc: -min(graph[id].order for id in scc)))
+    return res
+
+
+def strongly_connected_components(vertices: Set[str],
+                                  edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
+    """Compute Strongly Connected Components of a directed graph.
+
+    Args:
+      vertices: the labels for the vertices
+      edges: for each vertex, gives the target vertices of its outgoing edges
+
+    Returns:
+      An iterator yielding strongly connected components, each
+      represented as a set of vertices.  Each input vertex will occur
+      exactly once; vertices not part of a SCC are returned as
+      singleton sets.
+
+    From http://code.activestate.com/recipes/578507/.
+    """
+    identified = set()  # type: Set[str]
+    stack = []  # type: List[str]
+    index = {}  # type: Dict[str, int]
+    boundaries = []  # type: List[int]
+
+    def dfs(v: str) -> Iterator[Set[str]]:
+        index[v] = len(stack)
+        stack.append(v)
+        boundaries.append(index[v])
+
+        for w in edges[v]:
+            if w not in index:
+                # For Python >= 3.3, replace with "yield from dfs(w)"
+                for scc in dfs(w):
+                    yield scc
+            elif w not in identified:
+                while index[w] < boundaries[-1]:
+                    boundaries.pop()
+
+        if boundaries[-1] == index[v]:
+            boundaries.pop()
+            scc = set(stack[index[v]:])
+            del stack[index[v]:]
+            identified.update(scc)
+            yield scc
+
+    for v in vertices:
+        if v not in index:
+            # For Python >= 3.3, replace with "yield from dfs(v)"
+            for scc in dfs(v):
+                yield scc
+
+
+def topsort(data: Dict[AbstractSet[str],
+                       Set[AbstractSet[str]]]) -> Iterable[Set[AbstractSet[str]]]:
+    """Topological sort.
+
+    Args:
+      data: A map from SCCs (represented as frozen sets of strings) to
+            sets of SCCs, its dependencies.  NOTE: This data structure
+            is modified in place -- for normalization purposes,
+            self-dependencies are removed and entries representing
+            orphans are added.
+
+    Returns:
+      An iterator yielding sets of SCCs that have an equivalent
+      ordering.  NOTE: The algorithm doesn't care about the internal
+      structure of SCCs.
+
+    Example:
+      Suppose the input has the following structure:
+
+        {A: {B, C}, B: {D}, C: {D}}
+
+      This is normalized to:
+
+        {A: {B, C}, B: {D}, C: {D}, D: {}}
+
+      The algorithm will yield the following values:
+
+        {D}
+        {B, C}
+        {A}
+
+    From http://code.activestate.com/recipes/577413/.
+    """
+    # TODO: Use a faster algorithm?
+    for k, v in data.items():
+        v.discard(k)  # Ignore self dependencies.
+    for item in set.union(*data.values()) - set(data.keys()):
+        data[item] = set()
+    while True:
+        ready = {item for item, dep in data.items() if not dep}
+        if not ready:
+            break
+        yield ready
+        data = {item: (dep - ready)
+                for item, dep in data.items()
+                if item not in ready}
+    assert not data, "A cyclic dependency exists amongst %r" % data

@@ -1,0 +1,31 @@
+-- Checks for incremental mode (see testcheck.py).
+-- Each test is run twice, once with a cold cache, once with a warm cache.
+-- The first time it must pass.
+-- Before it is run the second time, any *.py.next files are copied to *.py.
+-- The second time it must produce the errors given in the [out] section, if any.
+
+[case testIncrementalEmpty]
+[out]
+
+[case testIncrementalBasics]
+import m
+[file m.py]
+def foo():
+    pass
+[file m.py.next]
+def foo() -> None:
+    pass
+[out]
+
+[case testIncrementalError]
+import m
+[file m.py]
+def foo() -> None:
+    pass
+[file m.py.next]
+def foo() -> None:
+    bar()
+[out]
+main:1: note: In module imported here:
+tmp/m.py: note: In function "foo":
+tmp/m.py:2: error: Name 'bar' is not defined

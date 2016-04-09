@@ -10,7 +10,7 @@ from typing import Optional, Dict, List, Tuple
 from mypy import build
 from mypy import defaults
 from mypy import git
-from mypy.build import BuildSource, PYTHON_EXTENSIONS
+from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
 
 from mypy.version import __version__
@@ -46,14 +46,19 @@ def main(script_path: str) -> None:
         set_drop_into_pdb(True)
     if not options.dirty_stubs:
         git.verify_git_integrity_or_abort(build.default_data_dir(bin_dir))
+    f = sys.stdout
     try:
         if options.target == build.TYPE_CHECK:
-            type_check_only(sources, bin_dir, options)
+            res = type_check_only(sources, bin_dir, options)
+            a = res.errors
         else:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
-        f = sys.stdout if e.use_stdout else sys.stderr
-        for m in e.messages:
+        a = e.messages
+        if not e.use_stdout:
+            f = sys.stderr
+    if a:
+        for m in a:
             f.write(m + '\n')
         sys.exit(1)
 
@@ -83,16 +88,16 @@ def readlinkabs(link: str) -> str:
 
 
 def type_check_only(sources: List[BuildSource],
-        bin_dir: str, options: Options) -> None:
+        bin_dir: str, options: Options) -> BuildResult:
     # Type-check the program and dependencies and translate to Python.
-    build.build(sources=sources,
-                target=build.TYPE_CHECK,
-                bin_dir=bin_dir,
-                pyversion=options.pyversion,
-                custom_typing_module=options.custom_typing_module,
-                report_dirs=options.report_dirs,
-                flags=options.build_flags,
-                python_path=options.python_path)
+    return build.build(sources=sources,
+                       target=build.TYPE_CHECK,
+                       bin_dir=bin_dir,
+                       pyversion=options.pyversion,
+                       custom_typing_module=options.custom_typing_module,
+                       report_dirs=options.report_dirs,
+                       flags=options.build_flags,
+                       python_path=options.python_path)
 
 
 FOOTER = """environment variables:
@@ -137,6 +142,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                         help="type check the interior of functions without type annotations")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
+    parser.add_argument('-i', '--incremental', action='store_true',
+                        help="enable experimental module cache")
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
@@ -216,6 +223,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     # experimental
     if args.fast_parser:
         options.build_flags.append(build.FAST_PARSER)
+    if args.incremental:
+        options.build_flags.append(build.INCREMENTAL)
 
     # Set reports.
     for flag, val in vars(args).items():

@@ -27,6 +27,8 @@ if False:
 
 T = TypeVar('T')
 
+JsonDict = Dict[str, Any]
+
 
 # Symbol table node kinds
 #
@@ -37,7 +39,7 @@ GDEF = 1  # type: int
 MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
 # Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind TVAR) within
+# valid as a type. A type variable is valid as a type (kind BOUND_TVAR) within
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
 UNBOUND_TVAR = 4  # type: int
@@ -46,6 +48,7 @@ TYPE_ALIAS = 6  # type: int
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
+# XXX what?
 UNBOUND_IMPORTED = 7  # type: int
 
 
@@ -63,6 +66,7 @@ node_kinds = {
     TYPE_ALIAS: 'TypeAlias',
     UNBOUND_IMPORTED: 'UnboundImported',
 }
+inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
 
 
 implicit_module_attrs = {'__name__': '__builtins__.str',
@@ -109,6 +113,21 @@ class Node(Context):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
+    # NOTE: Can't use @abstractmethod, since many subclasses of Node
+    # don't implement serialize().
+    def serialize(self) -> Any:
+        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Node':
+        classname = data['.class']
+        glo = globals()
+        if classname in glo:
+            cl = glo[classname]
+            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
+                return cl.deserialize(data)
+        raise NotImplementedError('unexpected .class {}'.format(classname))
+
 
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
@@ -120,6 +139,10 @@ class SymbolNode(Node):
 
     @abstractmethod
     def fullname(self) -> str: pass
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'SymbolNode':
+        return cast(SymbolNode, super().deserialize(data))
 
 
 class MypyFile(SymbolNode):
@@ -173,6 +196,26 @@ class MypyFile(SymbolNode):
     def is_package_init_file(self) -> bool:
         return not (self.path is None) and len(self.path) != 0 \
             and os.path.basename(self.path).startswith('__init__.')
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'MypyFile',
+                '_name': self._name,
+                '_fullname': self._fullname,
+                'names': self.names.serialize(self._fullname),
+                'is_stub': self.is_stub,
+                'path': self.path,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'MypyFile':
+        assert data['.class'] == 'MypyFile', data
+        tree = MypyFile([], [])
+        tree._name = data['_name']
+        tree._fullname = data['_fullname']
+        tree.names = SymbolTable.deserialize(data['names'])
+        tree.is_stub = data['is_stub']
+        tree.path = data['path']
+        return tree
 
 
 class ImportBase(Node):
@@ -270,6 +313,25 @@ class OverloadedFuncDef(FuncBase):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'OverloadedFuncDef',
+                'items': [i.serialize() for i in self.items],
+                'type': None if self.type is None else self.type.serialize(),
+                'fullname': self._fullname,
+                'is_property': self.is_property,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
+        assert data['.class'] == 'OverloadedFuncDef'
+        res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+        if data.get('type') is not None:
+            res.type = mypy.types.Type.deserialize(data['type'])
+        res._fullname = data['fullname']
+        res.is_property = data['is_property']
+        # NOTE: res.info will be set in the fixup phase.
+        return res
+
 
 class Argument(Node):
     """A single argument in a FuncItem."""
@@ -310,6 +372,25 @@ class Argument(Node):
         if self.initialization_statement:
             self.initialization_statement.set_line(self.line)
             self.initialization_statement.lvalues[0].set_line(self.line)
+
+    def serialize(self) -> JsonDict:
+        data = {'.class': 'Argument',
+                'kind': self.kind,
+                'variable': self.variable.serialize(),
+                'type_annotation': (None if self.type_annotation is None
+                                    else self.type_annotation.serialize()),
+                }  # type: JsonDict
+        # TODO: initializer?
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Argument':
+        assert data['.class'] == 'Argument'
+        return Argument(Var.deserialize(data['variable']),
+                        (None if data.get('type_annotation') is None
+                         else mypy.types.Type.deserialize(data['type_annotation'])),
+                        None,  # TODO: initializer?
+                        kind=data['kind'])
 
 
 class FuncItem(FuncBase):
@@ -364,7 +445,7 @@ class FuncDef(FuncItem):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_property = False
-    original_def = None  # type: Union[FuncDef, Var]  # Original conditional definition
+    original_def = None  # type: Union[None, FuncDef, Var]  # Original conditional definition
 
     def __init__(self,
                  name: str,              # Function name
@@ -383,6 +464,44 @@ class FuncDef(FuncItem):
     def is_constructor(self) -> bool:
         return self.info is not None and self._name == '__init__'
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'FuncDef',
+                'name': self._name,
+                'fullname': self._fullname,
+                'arguments': [a.serialize() for a in self.arguments],
+                'type': None if self.type is None else self.type.serialize(),
+                'is_property': self.is_property,
+                'is_overload': self.is_overload,
+                'is_generator': self.is_generator,
+                'is_static': self.is_static,
+                'is_class': self.is_class,
+                'is_decorated': self.is_decorated,
+                'is_conditional': self.is_conditional,
+                'is_abstract': self.is_abstract,
+                # TODO: Do we need expanded, original_def?
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'FuncDef':
+        assert data['.class'] == 'FuncDef'
+        body = Block([])
+        ret = FuncDef(data['name'],
+                      [Argument.deserialize(a) for a in data['arguments']],
+                      body,
+                      (None if data['type'] is None
+                       else mypy.types.FunctionLike.deserialize(data['type'])))
+        ret._fullname = data['fullname']
+        ret.is_property = data['is_property']
+        ret.is_overload = data['is_overload']
+        ret.is_generator = data['is_generator']
+        ret.is_static = data['is_static']
+        ret.is_class = data['is_class']
+        ret.is_decorated = data['is_decorated']
+        ret.is_conditional = data['is_conditional']
+        ret.is_abstract = data['is_abstract']
+        # NOTE: ret.info is set in the fixup phase.
+        return ret
+
 
 class Decorator(SymbolNode):
     """A decorated function.
@@ -391,7 +510,7 @@ class Decorator(SymbolNode):
     """
 
     func = None  # type: FuncDef           # Decorated function
-    decorators = None  # type: List[Node]  # Decorators, at least one
+    decorators = None  # type: List[Node]  # Decorators, at least one  # XXX Not true
     var = None  # type: Var              # Represents the decorated function obj
     is_overload = False
 
@@ -410,6 +529,22 @@ class Decorator(SymbolNode):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_decorator(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'Decorator',
+                'func': self.func.serialize(),
+                'var': self.var.serialize(),
+                'is_overload': self.is_overload,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Decorator':
+        assert data['.class'] == 'Decorator'
+        dec = Decorator(FuncDef.deserialize(data['func']),
+                        [],
+                        Var.deserialize(data['var']))
+        dec.is_overload = data['is_overload']
+        return dec
 
 
 class Var(SymbolNode):
@@ -448,6 +583,37 @@ class Var(SymbolNode):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
+    def serialize(self) -> JsonDict:
+        # TODO: Leave default values out?
+        # NOTE: Sometimes self.is_ready is False here, but we don't care.
+        data = {'.class': 'Var',
+                'name': self._name,
+                'fullname': self._fullname,
+                'type': None if self.type is None else self.type.serialize(),
+                'is_self': self.is_self,
+                'is_initialized_in_class': self.is_initialized_in_class,
+                'is_staticmethod': self.is_staticmethod,
+                'is_classmethod': self.is_classmethod,
+                'is_property': self.is_property,
+                'is_settable_property': self.is_settable_property,
+                }  # type: JsonDict
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Var':
+        assert data['.class'] == 'Var'
+        name = data['name']
+        type = None if data['type'] is None else mypy.types.Type.deserialize(data['type'])
+        v = Var(name, type)
+        v._fullname = data['fullname']
+        v.is_self = data['is_self']
+        v.is_initialized_in_class = data['is_initialized_in_class']
+        v.is_staticmethod = data['is_staticmethod']
+        v.is_classmethod = data['is_classmethod']
+        v.is_property = data['is_property']
+        v.is_settable_property = data['is_settable_property']
+        return v
+
 
 class ClassDef(Node):
     """Class definition"""
@@ -466,16 +632,16 @@ class ClassDef(Node):
     # Built-in/extension class? (single implementation inheritance only)
     is_builtinclass = False
 
-    def __init__(self, name: str, defs: 'Block',
+    def __init__(self,
+                 name: str,
+                 defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
                  base_type_exprs: List[Node] = None,
                  metaclass: str = None) -> None:
-        if not base_type_exprs:
-            base_type_exprs = []
         self.name = name
         self.defs = defs
         self.type_vars = type_vars or []
-        self.base_type_exprs = base_type_exprs
+        self.base_type_exprs = base_type_exprs or []
         self.base_types = []  # Not yet semantically analyzed --> don't know base types
         self.metaclass = metaclass
         self.decorators = []
@@ -485,6 +651,30 @@ class ClassDef(Node):
 
     def is_generic(self) -> bool:
         return self.info.is_generic()
+
+    def serialize(self) -> JsonDict:
+        # Not serialized: defs, base_type_exprs, decorators
+        return {'.class': 'ClassDef',
+                'name': self.name,
+                'fullname': self.fullname,
+                'type_vars': [v.serialize() for v in self.type_vars],
+                'base_types': [t.serialize() for t in self.base_types],
+                'metaclass': self.metaclass,
+                'is_builtinclass': self.is_builtinclass,
+                }
+
+    @classmethod
+    def deserialize(self, data: JsonDict) -> 'ClassDef':
+        assert data['.class'] == 'ClassDef'
+        res = ClassDef(data['name'],
+                       Block([]),
+                       [mypy.types.TypeVarDef.deserialize(v) for v in data['type_vars']],
+                       metaclass=data['metaclass'],
+                       )
+        res.fullname = data['fullname']
+        res.base_types = [mypy.types.Instance.deserialize(t) for t in data['base_types']]
+        res.is_builtinclass = data['is_builtinclass']
+        return res
 
 
 class GlobalDecl(Node):
@@ -895,11 +1085,31 @@ class NameExpr(RefExpr):
         self.name = name
         self.literal_hash = ('Var', name,)
 
-    def type_node(self):
-        return cast(TypeInfo, self.node)
-
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
+
+    def serialize(self) -> JsonDict:
+        # TODO: Find out where and why NameExpr is being serialized (if at all).
+        assert False, "Serializing NameExpr: %s" % (self,)
+        return {'.class': 'NameExpr',
+                'kind': self.kind,
+                'node': None if self.node is None else self.node.serialize(),
+                'fullname': self.fullname,
+                'is_def': self.is_def,
+                'name': self.name,
+                'literal': self.literal,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'NameExpr':
+        assert data['.class'] == 'NameExpr'
+        ret = NameExpr(data['name'])
+        ret.kind = data['kind']
+        ret.node = None if data['node'] is None else Node.deserialize(data['node'])
+        ret.fullname = data['fullname']
+        ret.is_def = data['is_def']
+        ret.literal = data['literal']
+        return ret
 
 
 class MemberExpr(RefExpr):
@@ -1399,6 +1609,22 @@ class TypeVarExpr(SymbolNode):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeVarExpr',
+                'name': self._name,
+                'fullname': self._fullname,
+                'values': [t.serialize() for t in self.values],
+                'variance': self.variance,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarExpr':
+        assert data['.class'] == 'TypeVarExpr'
+        return TypeVarExpr(data['name'],
+                           data['fullname'],
+                           [mypy.types.Type.deserialize(v) for v in data['values']],
+                           data['variance'])
+
 
 class TypeAliasExpr(Node):
     """Type alias expression (rvalue)."""
@@ -1512,6 +1738,12 @@ class TypeInfo(SymbolNode):
     # Is this a named tuple type?
     is_named_tuple = False
 
+    # Is this a dummy from deserialization?
+    is_dummy = False
+
+    # Alternative to fullname() for 'anonymous' classes.
+    alt_fullname = None  # type: Optional[str]
+
     def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
         """Initialize a TypeInfo."""
         self.names = names
@@ -1606,16 +1838,19 @@ class TypeInfo(SymbolNode):
 
         Raise MroError if cannot determine mro.
         """
-        self.mro = linearize_hierarchy(self)
+        mro = linearize_hierarchy(self)
+        assert mro, "Could not produce a MRO at all for %s" % (self,)
+        self.mro = mro
 
     def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.
 
         This can be either via extension or via implementation.
         """
-        for cls in self.mro:
-            if cls.fullname() == fullname:
-                return True
+        if self.mro:
+            for cls in self.mro:
+                if cls.fullname() == fullname:
+                    return True
         return False
 
     def all_subtypes(self) -> 'Set[TypeInfo]':
@@ -1651,6 +1886,46 @@ class TypeInfo(SymbolNode):
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
+    def serialize(self) -> Union[str, JsonDict]:
+        # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
+        data = {'.class': 'TypeInfo',
+                'fullname': self.fullname(),
+                'alt_fullname': self.alt_fullname,
+                'names': self.names.serialize(self.alt_fullname or self.fullname()),
+                'defn': self.defn.serialize(),
+                'is_abstract': self.is_abstract,
+                'abstract_attributes': self.abstract_attributes,
+                'is_enum': self.is_enum,
+                'fallback_to_any': self.fallback_to_any,
+                'type_vars': self.type_vars,
+                'bases': [b.serialize() for b in self.bases],
+                '_promote': None if self._promote is None else self._promote.serialize(),
+                'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
+                'is_named_tuple': self.is_named_tuple,
+                }
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeInfo':
+        names = SymbolTable.deserialize(data['names'])
+        defn = ClassDef.deserialize(data['defn'])
+        ti = TypeInfo(names, defn)
+        ti._fullname = data['fullname']
+        ti.alt_fullname = data['alt_fullname']
+        # TODO: Is there a reason to reconstruct ti.subtypes?
+        ti.is_abstract = data['is_abstract']
+        ti.abstract_attributes = data['abstract_attributes']
+        ti.is_enum = data['is_enum']
+        ti.fallback_to_any = data['fallback_to_any']
+        ti.type_vars = data['type_vars']
+        ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
+        ti._promote = (None if data['_promote'] is None
+                       else mypy.types.Type.deserialize(data['_promote']))
+        ti.tuple_type = (None if data['tuple_type'] is None
+                         else mypy.types.TupleType.deserialize(data['tuple_type']))
+        ti.is_named_tuple = data['is_named_tuple']
+        return ti
+
 
 class SymbolTableNode:
     # Kind of node. Possible values:
@@ -1671,12 +1946,15 @@ class SymbolTableNode:
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
     # If this not None, override the type of the 'node' attribute.
-    type_override = None  # type: mypy.types.Type
+    type_override = None  # type: Optional[mypy.types.Type]
     # If False, this name won't be imported via 'from <module> import *'.
     # This has no effect on names within classes.
     module_public = True
+    # For deserialized MODULE_REF nodes, the referenced module name;
+    # for other nodes, optionally the name of the referenced object.
+    cross_ref = None  # type: Optional[str]
 
-    def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,
+    def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None, tvar_id: int = 0,
                  module_public: bool = True) -> None:
         self.kind = kind
@@ -1716,6 +1994,65 @@ class SymbolTableNode:
             s += ' : {}'.format(self.type)
         return s
 
+    def serialize(self, prefix: str, name: str) -> JsonDict:
+        """Serialize a SymbolTableNode.
+
+        Args:
+          prefix: full name of the containing module or class; or None
+          name: name of this object relative to the containing object
+        """
+        data = {'.class': 'SymbolTableNode',
+                'kind': node_kinds[self.kind],
+                }  # type: JsonDict
+        if self.tvar_id:
+            data['tvar_id'] = self.tvar_id
+        if not self.module_public:
+            data['module_public'] = False
+        if self.kind == MODULE_REF:
+            assert self.node is not None, "Missing module cross ref in %s for %s" % (prefix, name)
+            data['cross_ref'] = self.node.fullname()
+        else:
+            if self.node is not None:
+                if prefix is not None:
+                    # Check whether this is an alias for another object.
+                    # If the object's canonical full name differs from
+                    # the full name computed from prefix and name,
+                    # it's an alias, and we serialize it as a cross ref.
+                    if isinstance(self.node, TypeInfo):
+                        fullname = self.node.alt_fullname or self.node.fullname()
+                    else:
+                        fullname = self.node.fullname()
+                    if (fullname is not None and '.' in fullname and
+                            fullname != prefix + '.' + name):
+                        data['cross_ref'] = fullname
+                        return data
+                data['node'] = self.node.serialize()
+            if self.type_override is not None:
+                data['type_override'] = self.type_override.serialize()
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'SymbolTableNode':
+        assert data['.class'] == 'SymbolTableNode'
+        kind = inverse_node_kinds[data['kind']]
+        if 'cross_ref' in data:
+            # This will be fixed up later.
+            stnode = SymbolTableNode(kind, None)
+            stnode.cross_ref = data['cross_ref']
+        else:
+            node = None
+            if 'node' in data:
+                node = SymbolNode.deserialize(data['node'])
+            typ = None
+            if 'type_override' in data:
+                typ = mypy.types.Type.deserialize(data['type_override'])
+            stnode = SymbolTableNode(kind, node, typ=typ)
+        if 'tvar_id' in data:
+            stnode.tvar_id = data['tvar_id']
+        if 'module_public' in data:
+            stnode.module_public = data['module_public']
+        return stnode
+
 
 class SymbolTable(Dict[str, SymbolTableNode]):
     def __str__(self) -> str:
@@ -1734,10 +2071,26 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         a[-1] += ')'
         return '\n'.join(a)
 
+    def serialize(self, fullname: str) -> JsonDict:
+        data = {'.class': 'SymbolTable'}  # type: JsonDict
+        for key, value in self.items():
+            # Skip __builtins__: it's a reference to the builtins
+            # module that gets added to every module by
+            # SemanticAnalyzer.visit_file(), but it shouldn't be
+            # accessed by users of the module.
+            if key == '__builtins__':
+                continue
+            data[key] = value.serialize(fullname, key)
+        return data
 
-def clean_up(s: str) -> str:
-    # TODO remove
-    return re.sub('.*::', '', s)
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'SymbolTable':
+        assert data['.class'] == 'SymbolTable'
+        st = SymbolTable()
+        for key, value in data.items():
+            if key != '.class':
+                st[key] = SymbolTableNode.deserialize(value)
+        return st
 
 
 def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
@@ -1798,13 +2151,20 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+def linearize_hierarchy(info: TypeInfo) -> Optional[List[TypeInfo]]:
     # TODO describe
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
-    return [info] + merge([linearize_hierarchy(base) for base in bases] +
-                          [bases])
+    lin_bases = []
+    for base in bases:
+        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
+        more_bases = linearize_hierarchy(base)
+        if more_bases is None:
+            return None
+        lin_bases.append(more_bases)
+    lin_bases.append(bases)
+    return [info] + merge(lin_bases)
 
 
 def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:

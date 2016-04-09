@@ -9,6 +9,7 @@ docs/build/
 *.iml
 /out/
 .venv/
+.mypy_cache/
 
 # Packages
 *.egg

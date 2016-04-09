@@ -29,7 +29,6 @@ class TypeExportSuite(Suite):
         return c
 
     def run_test(self, testcase):
-        a = []
         try:
             line = testcase.input[0]
             mask = ''
@@ -41,6 +40,7 @@ class TypeExportSuite(Suite):
                                  sources=[BuildSource('main', None, src)],
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=config.test_temp_dir)
+            a = result.errors
             map = result.types
             nodes = map.keys()
 

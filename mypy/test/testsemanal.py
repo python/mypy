@@ -7,7 +7,9 @@ from typing import Dict, List
 from mypy import build
 from mypy.build import BuildSource
 from mypy.myunit import Suite
-from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
+from mypy.test.helpers import (
+    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
+)
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
@@ -52,7 +54,9 @@ def test_semanal(testcase):
                              pyversion=testfile_pyversion(testcase.file),
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
-        a = []
+        a = result.errors
+        if a:
+            raise CompileError(a)
         # Include string representations of the source files in the actual
         # output.
         for fnam in sorted(result.files.keys()):
@@ -96,28 +100,19 @@ def test_semanal_error(testcase):
 
     try:
         src = '\n'.join(testcase.input)
-        build.build(target=build.SEMANTIC_ANALYSIS,
-                    sources=[BuildSource('main', None, src)],
-                    flags=[build.TEST_BUILTINS],
-                    alt_lib_path=test_temp_dir)
-        raise AssertionError('No errors reported in {}, line {}'.format(
-            testcase.file, testcase.line))
+        res = build.build(target=build.SEMANTIC_ANALYSIS,
+                          sources=[BuildSource('main', None, src)],
+                          flags=[build.TEST_BUILTINS],
+                          alt_lib_path=test_temp_dir)
+        a = res.errors
+        assert a, 'No errors reported in {}, line {}'.format(testcase.file, testcase.line)
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
-        assert_string_arrays_equal(
-            testcase.output, normalize_error_messages(e.messages),
-            'Invalid compiler output ({}, line {})'.format(testcase.file,
-                                                           testcase.line))
-
-
-def normalize_error_messages(messages):
-    """Translate an array of error messages to use / as path separator."""
-
-    a = []
-    for m in messages:
-        a.append(m.replace(os.sep, '/'))
-    return a
+        a = e.messages
+    assert_string_arrays_equal(
+        testcase.output, normalize_error_messages(a),
+        'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
 
 
 # SymbolNode table export test cases
@@ -144,7 +139,9 @@ class SemAnalSymtableSuite(Suite):
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
-            a = []
+            a = result.errors
+            if a:
+                raise CompileError(a)
             for f in sorted(result.files.keys()):
                 if f not in ('builtins', 'typing', 'abc'):
                     a.append('{}:'.format(f))
@@ -181,6 +178,9 @@ class SemAnalTypeInfoSuite(Suite):
                                  sources=[BuildSource('main', None, src)],
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
+            a = result.errors
+            if a:
+                raise CompileError(a)
 
             # Collect all TypeInfos in top-level modules.
             typeinfos = TypeInfoMap()
