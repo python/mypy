@@ -1811,6 +1811,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not call.args:
             return None
         if not all(kind == ARG_NAMED for kind in call.arg_kinds):
+            # Must still accept those args.
+            for a in call.args:
+                a.accept(self)
             return None
         expr = DictExpr([(StrExpr(key), value)
                          for key, value in zip(call.arg_names, call.args)])
