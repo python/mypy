@@ -319,7 +319,7 @@ class ExpressionChecker:
         """Infer argument expression types using a callable type as context.
 
         For example, if callee argument 2 has type List[int], infer the
-        argument exprsession with List[int] type context.
+        argument expression with List[int] type context.
 
         Returns the inferred types of *actual arguments*.
         """
