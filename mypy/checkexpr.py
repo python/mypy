@@ -327,7 +327,7 @@ class ExpressionChecker:
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
-                if arg_kinds[ai] != nodes.ARG_STAR:
+                if arg_kinds[ai] not in (nodes.ARG_STAR, nodes.ARG_STAR2):
                     res[ai] = self.accept(args[ai], callee.arg_types[i])
 
         # Fill in the rest of the argument types.
