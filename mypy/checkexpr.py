@@ -38,7 +38,7 @@ from mypy.checkstrformat import StringFormatterChecker
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
-ArgChecker = Callable[[Type, Type, Type, int, int, CallableType, Context, MessageBuilder],
+ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, MessageBuilder],
                       None]
 
 
@@ -604,7 +604,7 @@ class ExpressionChecker:
                 # and **args this is the item type, not the collection type).
                 actual_type = get_actual_type(arg_type, arg_kinds[actual],
                                               tuple_counter)
-                check_arg(actual_type, arg_type,
+                check_arg(actual_type, arg_type, arg_kinds[actual],
                           callee.arg_types[i],
                           actual + 1, i + 1, callee, context, messages)
 
@@ -618,11 +618,12 @@ class ExpressionChecker:
                         actual_type = get_actual_type(arg_type,
                                                       arg_kinds[actual],
                                                       tuple_counter)
-                        check_arg(actual_type, arg_type,
+                        check_arg(actual_type, arg_type, arg_kinds[actual],
                                   callee.arg_types[i],
                                   actual + 1, i + 1, callee, context, messages)
 
     def check_arg(self, caller_type: Type, original_caller_type: Type,
+                  caller_kind: int,
                   callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
@@ -632,7 +633,7 @@ class ExpressionChecker:
             messages.deleted_as_rvalue(caller_type, context)
         elif not is_subtype(caller_type, callee_type):
             messages.incompatible_argument(n, m, callee, original_caller_type,
-                                           context)
+                                           caller_kind, context)
 
     def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
                              arg_names: List[str],
@@ -713,7 +714,7 @@ class ExpressionChecker:
 
         similarity = 2
 
-        def check_arg(caller_type: Type, original_caller_type: Type,
+        def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,
                       callee_type: Type, n: int, m: int, callee: CallableType,
                       context: Context, messages: MessageBuilder) -> None:
             nonlocal similarity
@@ -747,7 +748,7 @@ class ExpressionChecker:
                                                   lambda i: arg_types[i])
         ok = True
 
-        def check_arg(caller_type: Type, original_caller_type: Type,
+        def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,
                       callee_type: Type, n: int, m: int, callee: CallableType,
                       context: Context, messages: MessageBuilder) -> None:
             nonlocal ok
