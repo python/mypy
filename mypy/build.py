@@ -1123,15 +1123,10 @@ class State:
 
         # If self.dependencies is already set, it was read from the
         # cache, but for some reason we're re-parsing the file.
-        # Double-check that the dependencies still match (otherwise
-        # the graph is out of date).
-        if self.dependencies is not None and dependencies != self.dependencies:
-            # Presumably the file was edited while we were running.
-            # TODO: Make this into a reasonable error message, or recover somehow.
-            print("HELP!! Dependencies changed!")
-            print("  Cached:", self.dependencies)
-            print("  Source:", dependencies)
-            assert False, "Cache inconsistency for dependencies of %s" % (self.id,)
+        # NOTE: What to do about race conditions (like editing the
+        # file while mypy runs)?  A previous version of this code
+        # explicitly checked for this, but ran afoul of other reasons
+        # for differences (e.g. --silent-imports).
         self.dependencies = dependencies
         self.dep_line_map = dep_line_map
         self.check_blockers()
