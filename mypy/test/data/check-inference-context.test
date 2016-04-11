@@ -721,3 +721,12 @@ def g(y: object) -> None: pass
 a = [1]
 g(f(a))
 [builtins fixtures/list.py]
+
+[case testStar2Context]
+from typing import Any, Dict, Tuple, Iterable
+def f1(iterable: Iterable[Tuple[str, Any]] = None) -> None:
+    f2(**dict(iterable))
+def f2(iterable: Iterable[Tuple[str, Any]], **kw: Any) -> None:
+    pass
+[builtins fixtures/dict.py]
+[out]

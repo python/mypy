@@ -1,6 +1,6 @@
 # Builtins stub used in dictionary-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Any
+from typing import TypeVar, Generic, Iterable, Iterator, Tuple
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -10,9 +10,10 @@ class object:
 
 class type: pass
 
-class dict(Generic[T, S]):
-    def __init__(self, arg: Any = None) -> None: pass
+class dict(Iterable[T], Generic[T, S]):
+    def __init__(self, arg: Iterable[Tuple[T, S]] = None) -> None: pass
     def __setitem__(self, k: T, v: S) -> None: pass
+    def __iter__(self) -> Iterator[T]: pass
     def update(self, a: 'dict[T, S]') -> None: pass
 class int: pass # for convenience
 class str: pass # for keyword argument key type
