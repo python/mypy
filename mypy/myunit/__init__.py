@@ -228,7 +228,7 @@ def main(args: List[str] = None) -> None:
             patterns.append(a)
         else:
             sys.exit('Usage: python -m mypy.myunit [-v] [-q] [-u | -i]'
-                    + ' -m test.module [-m test.module ...] [filter ...]')
+                    + ' -m mypy.test.module [-m mypy.test.module ...] [filter ...]')
         i += 1
     if len(patterns) == 0:
         patterns.append('*')
