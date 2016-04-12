@@ -21,7 +21,7 @@ from mypy import defaults
 from mypy.errors import Errors
 
 try:
-    import typed_ast  # type: ignore
+    from typed_ast import ast35  # type: ignore
 except ImportError:
     print('You must install the typed_ast module before you can run mypy with `--fast-parser`.\n'
           'The typed_ast module can be found at https://github.com/ddfisher/typed_ast',
@@ -43,7 +43,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     """
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        ast = typed_ast.parse(source, fnam, 'exec')
+        ast = ast35.parse(source, fnam, 'exec')
     except SyntaxError as e:
         if errors:
             errors.set_file('<input>' if fnam is None else fnam)
@@ -64,7 +64,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
 
 def parse_type_comment(type_comment: str, line: int) -> Type:
-    typ = typed_ast.parse(type_comment, '<type_comment>', 'eval')
+    typ = ast35.parse(type_comment, '<type_comment>', 'eval')
     return TypeConverter(line=line).visit(typ.body)
 
 
@@ -84,7 +84,7 @@ def find(f: Callable[[T], bool], seq: Sequence[T]) -> T:
     return None
 
 
-class ASTConverter(typed_ast.NodeTransformer):
+class ASTConverter(ast35.NodeTransformer):
     def __init__(self):
         self.in_class = False
         self.imports = []
@@ -99,19 +99,19 @@ class ASTConverter(typed_ast.NodeTransformer):
         return [self.visit(e) for e in l]
 
     op_map = {
-        typed_ast.Add: '+',
-        typed_ast.Sub: '-',
-        typed_ast.Mult: '*',
-        typed_ast.MatMult: '@',
-        typed_ast.Div: '/',
-        typed_ast.Mod: '%',
-        typed_ast.Pow: '**',
-        typed_ast.LShift: '<<',
-        typed_ast.RShift: '>>',
-        typed_ast.BitOr: '|',
-        typed_ast.BitXor: '^',
-        typed_ast.BitAnd: '&',
-        typed_ast.FloorDiv: '//'
+        ast35.Add: '+',
+        ast35.Sub: '-',
+        ast35.Mult: '*',
+        ast35.MatMult: '@',
+        ast35.Div: '/',
+        ast35.Mod: '%',
+        ast35.Pow: '**',
+        ast35.LShift: '<<',
+        ast35.RShift: '>>',
+        ast35.BitOr: '|',
+        ast35.BitXor: '^',
+        ast35.BitAnd: '&',
+        ast35.FloorDiv: '//'
     }
 
     def from_operator(self, op):
@@ -124,16 +124,16 @@ class ASTConverter(typed_ast.NodeTransformer):
             return op_name
 
     comp_op_map = {
-        typed_ast.Gt: '>',
-        typed_ast.Lt: '<',
-        typed_ast.Eq: '==',
-        typed_ast.GtE: '>=',
-        typed_ast.LtE: '<=',
-        typed_ast.NotEq: '!=',
-        typed_ast.Is: 'is',
-        typed_ast.IsNot: 'is not',
-        typed_ast.In: 'in',
-        typed_ast.NotIn: 'not in'
+        ast35.Gt: '>',
+        ast35.Lt: '<',
+        ast35.Eq: '==',
+        ast35.GtE: '>=',
+        ast35.LtE: '<=',
+        ast35.NotEq: '!=',
+        ast35.Is: 'is',
+        ast35.IsNot: 'is not',
+        ast35.In: 'in',
+        ast35.NotIn: 'not in'
     }
 
     def from_comp_operator(self, op):
@@ -199,7 +199,7 @@ class ASTConverter(typed_ast.NodeTransformer):
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]
         if n.type_comment is not None:
-            func_type_ast = typed_ast.parse(n.type_comment, '<func_type>', 'func_type')
+            func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
             arg_types = [a if a is not None else AnyType() for
                          a in TypeConverter(line=n.lineno).visit(func_type_ast.argtypes)]
             return_type = TypeConverter(line=n.lineno).visit(func_type_ast.returns)
@@ -276,9 +276,9 @@ class ASTConverter(typed_ast.NodeTransformer):
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
 
     def stringify_name(self, n):
-        if isinstance(n, typed_ast.Name):
+        if isinstance(n, ast35.Name):
             return n.id
-        elif isinstance(n, typed_ast.Attribute):
+        elif isinstance(n, ast35.Attribute):
             return "{}.{}".format(self.stringify_name(n.value), n.attr)
         else:
             assert False, "can't stringify " + str(type(n))
@@ -451,9 +451,9 @@ class ASTConverter(typed_ast.NodeTransformer):
         # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
         assert len(n.values) >= 2
         op = None
-        if isinstance(n.op, typed_ast.And):
+        if isinstance(n.op, ast35.And):
             op = 'and'
-        elif isinstance(n.op, typed_ast.Or):
+        elif isinstance(n.op, ast35.Or):
             op = 'or'
         else:
             raise RuntimeError('unknown BoolOp ' + str(type(n)))
@@ -481,13 +481,13 @@ class ASTConverter(typed_ast.NodeTransformer):
     @with_line
     def visit_UnaryOp(self, n):
         op = None
-        if isinstance(n.op, typed_ast.Invert):
+        if isinstance(n.op, ast35.Invert):
             op = '~'
-        elif isinstance(n.op, typed_ast.Not):
+        elif isinstance(n.op, ast35.Not):
             op = 'not'
-        elif isinstance(n.op, typed_ast.UAdd):
+        elif isinstance(n.op, ast35.UAdd):
             op = '+'
-        elif isinstance(n.op, typed_ast.USub):
+        elif isinstance(n.op, ast35.USub):
             op = '-'
 
         if op is None:
@@ -498,7 +498,7 @@ class ASTConverter(typed_ast.NodeTransformer):
     # Lambda(arguments args, expr body)
     @with_line
     def visit_Lambda(self, n):
-        body = typed_ast.Return(n.body)
+        body = ast35.Return(n.body)
         body.lineno = n.lineno
 
         return FuncExpr(self.transform_args(n.args, n.lineno),
@@ -578,7 +578,7 @@ class ASTConverter(typed_ast.NodeTransformer):
     @with_line
     def visit_Call(self, n):
         def is_stararg(a):
-            return isinstance(a, typed_ast.Starred)
+            return isinstance(a, ast35.Starred)
 
         def is_star2arg(k):
             return k.arg is None
@@ -627,8 +627,8 @@ class ASTConverter(typed_ast.NodeTransformer):
     # Attribute(expr value, identifier attr, expr_context ctx)
     @with_line
     def visit_Attribute(self, n):
-        if (isinstance(n.value, typed_ast.Call) and
-                isinstance(n.value.func, typed_ast.Name) and
+        if (isinstance(n.value, ast35.Call) and
+                isinstance(n.value.func, ast35.Name) and
                 n.value.func.id == 'super'):
             return SuperExpr(n.attr)
 
@@ -676,7 +676,7 @@ class ASTConverter(typed_ast.NodeTransformer):
         return self.visit(n.value)
 
 
-class TypeConverter(typed_ast.NodeTransformer):
+class TypeConverter(ast35.NodeTransformer):
     def __init__(self, line=-1):
         self.line = line
 
@@ -701,14 +701,14 @@ class TypeConverter(typed_ast.NodeTransformer):
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n):
-        assert isinstance(n.slice, typed_ast.Index)
+        assert isinstance(n.slice, ast35.Index)
 
         value = self.visit(n.value)
 
         assert isinstance(value, UnboundType)
         assert not value.args
 
-        if isinstance(n.slice.value, typed_ast.Tuple):
+        if isinstance(n.slice.value, ast35.Tuple):
             params = self.visit(n.slice.value.elts)
         else:
             params = [self.visit(n.slice.value)]
