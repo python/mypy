@@ -95,6 +95,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
 
     def visit_instance(self, left: Instance) -> bool:
+        if left.type.fallback_to_any:
+            return True
         right = self.right
         if isinstance(right, Instance):
             if left.type._promote and is_subtype(left.type._promote,
