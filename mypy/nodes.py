@@ -1586,6 +1586,9 @@ class TypeVarExpr(SymbolNode):
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
     values = None  # type: List[mypy.types.Type]
+    # Upper bound: only subtypes of upper_bound are valid as values. By default
+    # this is 'object', meaning no restriction.
+    upper_bound = None  # type: mypy.types.Type
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
     # TypeVar(..., contravariant=True) defines a contravariant type
@@ -1594,10 +1597,12 @@ class TypeVarExpr(SymbolNode):
 
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
+                 upper_bound: 'mypy.types.Type',
                  variance: int=INVARIANT) -> None:
         self._name = name
         self._fullname = fullname
         self.values = values
+        self.upper_bound = upper_bound
         self.variance = variance
 
     def name(self) -> str:
@@ -1614,6 +1619,7 @@ class TypeVarExpr(SymbolNode):
                 'name': self._name,
                 'fullname': self._fullname,
                 'values': [t.serialize() for t in self.values],
+                'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
                 }
 
@@ -1623,6 +1629,7 @@ class TypeVarExpr(SymbolNode):
         return TypeVarExpr(data['name'],
                            data['fullname'],
                            [mypy.types.Type.deserialize(v) for v in data['values']],
+                           mypy.types.Type.deserialize(data['upper_bound']),
                            data['variance'])
 
 

@@ -1,0 +1,123 @@
+-- Enforcement of upper bounds
+-- ---------------------------
+
+
+[case testBoundOnGenericFunction]
+from typing import TypeVar
+
+class A: pass
+class B(A): pass
+class C(A): pass
+class D: pass
+
+T = TypeVar('T', bound=A)
+U = TypeVar('U')
+def f(x: T) -> T: pass
+def g(x: U) -> U:
+    return f(x) # Fail
+
+f(A())
+f(B())
+f(D()) # Fail
+
+b = B()
+b = f(b)
+b = f(C()) # Fail
+[out]
+main: note: In function "g":
+main:12: error: Type argument 1 of "f" has incompatible value "U"
+main: note: At top level:
+main:16: error: Type argument 1 of "f" has incompatible value "D"
+main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
+
+
+[case testBoundOnGenericClass]
+from typing import TypeVar, Generic
+
+class A: pass
+class B(A): pass
+T = TypeVar('T', bound=A)
+
+class G(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+
+x = None # type: G[str] # Fail
+y = G('a') # Fail
+z = G(A())
+z = G(B())
+[out]
+main:10: error: Type argument "builtins.str" of "G" must be a subtype of "__main__.A"
+main:11: error: Type argument 1 of "G" has incompatible value "str"
+
+
+[case testBoundVoid]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+c1 = None # type: C[None]
+
+
+[case testBoundAny]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+def f(x: T) -> T:
+    return x
+
+def g(): pass
+
+f(g())
+C(g())
+z = None # type: C
+
+
+[case testBoundHigherOrderWithVoid]
+from typing import TypeVar, Callable
+class A: pass
+T = TypeVar('T', bound=A)
+def f(g: Callable[[], T]) -> T:
+    return g()
+def h() -> None: pass
+f(h)
+
+
+-- Using information from upper bounds
+-- -----------------------------------
+
+
+[case testBoundGenericFunctions]
+from typing import TypeVar
+class A: pass
+class B(A): pass
+
+T = TypeVar('T')
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+
+def f(x: T) -> T:
+    return x
+def g(x: TA) -> TA:
+    return f(x)
+def h(x: TB) -> TB:
+    return g(x)
+def g2(x: TA) -> TA:
+    return h(x) # Fail
+[out]
+main: note: In function "g2":
+main:16: error: Type argument 1 of "h" has incompatible value "TA"
+
+
+[case testBoundMethodUsage]
+from typing import TypeVar
+class A:
+    def foo(self) -> None: pass
+class B(A): pass
+
+T = TypeVar('T', A)
+
+def f(x: T) -> T:
+    x.foo()
+    return x
+
+b = f(B())

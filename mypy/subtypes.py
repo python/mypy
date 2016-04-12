@@ -60,6 +60,19 @@ def is_equivalent(a: Type, b: Type,
     return is_subtype(a, b, type_parameter_checker) and is_subtype(b, a, type_parameter_checker)
 
 
+def satisfies_upper_bound(a: Type, upper_bound: Type) -> bool:
+    """Is 'a' valid value for a type variable with the given 'upper_bound'?
+
+    Same as is_subtype except that Void is considered to be a subtype of
+    any upper_bound. This is needed in a case like
+
+        def f(g: Callable[[], T]) -> T: ...
+        def h() -> None: ...
+        f(h)
+    """
+    return isinstance(a, Void) or is_subtype(a, upper_bound)
+
+
 class SubtypeVisitor(TypeVisitor[bool]):
 
     def __init__(self, right: Type,
@@ -121,7 +134,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TypeVarType):
             return left.id == right.id
         else:
-            return is_named_instance(self.right, 'builtins.object')
+            return is_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right

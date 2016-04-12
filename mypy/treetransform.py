@@ -443,7 +443,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> Node:
         return TypeVarExpr(node.name(), node.fullname(),
-                           self.types(node.values), variance=node.variance)
+                           self.types(node.values),
+                           self.type(node.upper_bound), variance=node.variance)
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
         return TypeAliasExpr(node.type)

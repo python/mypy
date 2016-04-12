@@ -14,6 +14,7 @@ from mypy.nodes import (
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.subtypes import satisfies_upper_bound
 from mypy import nodes
 
 
@@ -86,7 +87,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                         t.name), t)
                 tvar_expr = cast(TypeVarExpr, sym.node)
                 return TypeVarType(t.name, sym.tvar_id, tvar_expr.values,
-                                   self.builtin_type('builtins.object'),
+                                   tvar_expr.upper_bound,
                                    tvar_expr.variance,
                                    t.line)
             elif fullname == 'builtins.None':
@@ -323,6 +324,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
                                                TypeVar.values, t)
+                if not satisfies_upper_bound(arg, TypeVar.upper_bound):
+                    self.fail('Type argument "{}" of "{}" must be '
+                              'a subtype of "{}"'.format(
+                                  arg, info.name(), TypeVar.upper_bound), t)
         for arg in t.args:
             arg.accept(self)
 
