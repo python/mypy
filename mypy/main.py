@@ -112,8 +112,11 @@ def process_options() -> Tuple[List[BuildSource], Options]:
             parsed flags)
     """
 
+    # Make the help output a little less jarring.
+    help_factory = (lambda *a, **k:
+                    argparse.RawDescriptionHelpFormatter(max_help_position=28, *a, **k))
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+                                     formatter_class=help_factory)
 
     def parse_version(v):
         m = re.match(r'\A(\d)\.(\d+)\Z', v)
