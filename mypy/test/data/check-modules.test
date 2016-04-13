@@ -721,3 +721,21 @@ tmp/main.py:2: note: (This note courtesy of --almost-silent)
 tmp/foo/bar.py: note: Ancestor package 'foo' silently ignored
 tmp/foo/bar.py: note: (Using --silent-imports, submodule passed on command line)
 tmp/foo/bar.py: note: (This note brought to you by --almost-silent)
+
+[case testStubImportNonStubWhileSilent]
+# cmd: mypy -m main
+[file main.py]
+# flags: silent-imports
+from stub import x # Permitted
+from other import y # Disallowed
+x + '' # Error here
+y + '' # But not here
+[file stub.pyi]
+from non_stub import x
+[file non_stub.py]
+x = 42
+[file other.py]
+y = 42
+[builtins fixtures/module.py]
+[out]
+tmp/main.py:4: error: Unsupported left operand type for + ("int")

@@ -567,3 +567,19 @@ f(y=[''], x=0)() # E: "int" not callable
 a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]
 a() # E: "int" not callable
 [builtins fixtures/list.py]
+
+[case testOverloadWithDerivedFromAny]
+from typing import Any, overload
+Base = None  # type: Any
+
+class C:
+    @overload
+    def __init__(self, a: str) -> None: pass
+    @overload
+    def __init__(self, a: int) -> None: pass
+
+class Derived(Base):
+    def to_dict(self) -> C:
+        return C(self)  # fails without the fix for #1363
+C(Derived())  # fails without the hack
+C(Base())  # Always ok
