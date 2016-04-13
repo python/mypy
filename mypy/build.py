@@ -969,12 +969,18 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
             if path:
-                # In silent mode, don't import .py files.
+                # In silent mode, don't import .py files, except from stubs.
                 if (SILENT_IMPORTS in manager.flags and
                         path.endswith('.py') and (caller_state or is_ancestor)):
-                    path = None
-                    manager.missing_modules.add(id)
-                    raise ModuleNotFound
+                    # (Never silence builtins, even if it's a .py file;
+                    # this can happen in tests!)
+                    if (id != 'builtins' and
+                        not ((caller_state and
+                              caller_state.tree and
+                              caller_state.tree.is_stub))):
+                        path = None
+                        manager.missing_modules.add(id)
+                        raise ModuleNotFound
             else:
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in

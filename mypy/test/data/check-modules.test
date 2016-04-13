@@ -698,3 +698,21 @@ class C(B):
     pass
 [out]
 tmp/bar.py:1: error: Module has no attribute 'B'
+
+[case testStubImportNonStubWhileSilent]
+# cmd: mypy -m main
+[file main.py]
+# flags: silent-imports
+from stub import x # Permitted
+from other import y # Disallowed
+x + '' # Error here
+y + '' # But not here
+[file stub.pyi]
+from non_stub import x
+[file non_stub.py]
+x = 42
+[file other.py]
+y = 42
+[builtins fixtures/module.py]
+[out]
+tmp/main.py:4: error: Unsupported left operand type for + ("int")
