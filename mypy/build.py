@@ -1023,22 +1023,22 @@ class State:
         # But beware, some package may be the ancestor of many modules,
         # so we'd need to cache the decision.
         manager = self.manager
+        manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
-        manager.errors.report(1, "Ancestor package '%s' silently ignored" % (id,),
+        manager.errors.report(-1, "Ancestor package '%s' silently ignored" % (id,),
                               severity='note', only_once=True)
-        manager.errors.report(1, "(Using --silent-imports, submodule passed on command line)",
+        manager.errors.report(-1, "(Using --silent-imports, submodule passed on command line)",
                               severity='note', only_once=True)
-        manager.errors.report(1, "(This note brought to you by --almost-silent)",
+        manager.errors.report(-1, "(This note brought to you by --almost-silent)",
                               severity='note', only_once=True)
 
     def skipping_module(self, id, path):
         assert self.caller_state, (id, path)
         manager = self.manager
         save_import_context = manager.errors.import_context()
-        if self.caller_state:
-            manager.errors.set_import_context(self.caller_state.import_context)
-            manager.errors.set_file(self.caller_state.xpath)
-            line = self.caller_line
+        manager.errors.set_import_context(self.caller_state.import_context)
+        manager.errors.set_file(self.caller_state.xpath)
+        line = self.caller_line
         manager.errors.report(line, "Import of '%s' silently ignored" % (id,),
                               severity='note')
         manager.errors.report(line, "(Using --silent-imports, module not passed on command line)",
