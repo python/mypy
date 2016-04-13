@@ -57,6 +57,7 @@ TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
 SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
+ALMOST_SILENT = 'almost-silent'  # If SILENT_IMPORTS: report silenced imports as errors
 INCREMENTAL = 'incremental'      # Incremental mode: use the cache
 FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
@@ -941,7 +942,7 @@ class State:
                  manager: BuildManager,
                  caller_state: 'State' = None,
                  caller_line: int = 0,
-                 is_ancestor: bool = False,
+                 ancestor_for: 'State' = None,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -971,13 +972,18 @@ class State:
             if path:
                 # In silent mode, don't import .py files, except from stubs.
                 if (SILENT_IMPORTS in manager.flags and
-                        path.endswith('.py') and (caller_state or is_ancestor)):
+                        path.endswith('.py') and (caller_state or ancestor_for)):
                     # (Never silence builtins, even if it's a .py file;
                     # this can happen in tests!)
                     if (id != 'builtins' and
                         not ((caller_state and
                               caller_state.tree and
                               caller_state.tree.is_stub))):
+                        if ALMOST_SILENT in manager.flags:
+                            if ancestor_for:
+                                self.skipping_ancestor(id, path, ancestor_for)
+                            else:
+                                self.skipping_module(id, path)
                         path = None
                         manager.missing_modules.add(id)
                         raise ModuleNotFound
@@ -986,10 +992,12 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    if not (SILENT_IMPORTS in manager.flags or
-                            (caller_state.tree is not None and
-                             (caller_line in caller_state.tree.ignored_lines or
-                              'import' in caller_state.tree.weak_opts))):
+                    suppress_message = ((SILENT_IMPORTS in manager.flags and
+                                        ALMOST_SILENT not in manager.flags) or
+                                        (caller_state.tree is not None and
+                                         (caller_line in caller_state.tree.ignored_lines or
+                                          'import' in caller_state.tree.weak_opts)))
+                    if not suppress_message:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
                         manager.module_not_found(caller_state.xpath, caller_line, id)
@@ -1014,6 +1022,36 @@ class State:
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
+
+    def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
+        # TODO: Read the path (the __init__.py file) and return
+        # immediately if it's empty or only contains comments.
+        # But beware, some package may be the ancestor of many modules,
+        # so we'd need to cache the decision.
+        manager = self.manager
+        manager.errors.set_import_context([])
+        manager.errors.set_file(ancestor_for.xpath)
+        manager.errors.report(-1, "Ancestor package '%s' silently ignored" % (id,),
+                              severity='note', only_once=True)
+        manager.errors.report(-1, "(Using --silent-imports, submodule passed on command line)",
+                              severity='note', only_once=True)
+        manager.errors.report(-1, "(This note brought to you by --almost-silent)",
+                              severity='note', only_once=True)
+
+    def skipping_module(self, id: str, path: str) -> None:
+        assert self.caller_state, (id, path)
+        manager = self.manager
+        save_import_context = manager.errors.import_context()
+        manager.errors.set_import_context(self.caller_state.import_context)
+        manager.errors.set_file(self.caller_state.xpath)
+        line = self.caller_line
+        manager.errors.report(line, "Import of '%s' silently ignored" % (id,),
+                              severity='note')
+        manager.errors.report(line, "(Using --silent-imports, module not passed on command line)",
+                              severity='note', only_once=True)
+        manager.errors.report(line, "(This note courtesy of --almost-silent)",
+                              severity='note', only_once=True)
+        manager.errors.set_import_context(save_import_context)
 
     def add_ancestors(self) -> None:
         # All parent packages are new ancestors.
@@ -1215,7 +1253,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                         # TODO: Why not 'if dep not in st.dependencies' ?
                         # Ancestors don't have import context.
                         newst = State(id=dep, path=None, source=None, manager=manager,
-                                      is_ancestor=True)
+                                      ancestor_for=st)
                     else:
                         newst = State(id=dep, path=None, source=None, manager=manager,
                                       caller_state=st, caller_line=st.dep_line_map.get(dep, 1))

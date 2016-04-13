@@ -130,8 +130,12 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                         help='use Python x.y')
     parser.add_argument('--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
-    parser.add_argument('-s', '--silent-imports', '--silent', action='store_true',
+    parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
+    parser.add_argument('--silent', action='store_true',
+                        help="deprecated name for --silent-imports")
+    parser.add_argument('--almost-silent', action='store_true',
+                        help="like --silent-imports but reports the imports as errors")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -208,8 +212,11 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     if args.inferstats:
         options.build_flags.append(build.DUMP_INFER_STATS)
 
-    if args.silent_imports:
+    if args.silent_imports or args.silent:
         options.build_flags.append(build.SILENT_IMPORTS)
+    if args.almost_silent:
+        options.build_flags.append(build.SILENT_IMPORTS)
+        options.build_flags.append(build.ALMOST_SILENT)
 
     if args.disallow_untyped_calls:
         options.build_flags.append(build.DISALLOW_UNTYPED_CALLS)

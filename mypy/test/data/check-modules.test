@@ -699,6 +699,29 @@ class C(B):
 [out]
 tmp/bar.py:1: error: Module has no attribute 'B'
 
+[case testImportSuppressedWhileAlmostSilent]
+# cmd: mypy -m main
+[file main.py]
+# flags: silent-imports almost-silent
+import mod
+[file mod.py]
+[builtins fixtures/module.py]
+[out]
+tmp/main.py:2: note: Import of 'mod' silently ignored
+tmp/main.py:2: note: (Using --silent-imports, module not passed on command line)
+tmp/main.py:2: note: (This note courtesy of --almost-silent)
+
+[case testAncestorSuppressedWhileAlmostSilent]
+# cmd: mypy -m foo.bar
+[file foo/bar.py]
+# flags: silent-imports almost-silent
+[file foo/__init__.py]
+[builtins fixtures/module.py]
+[out]
+tmp/foo/bar.py: note: Ancestor package 'foo' silently ignored
+tmp/foo/bar.py: note: (Using --silent-imports, submodule passed on command line)
+tmp/foo/bar.py: note: (This note brought to you by --almost-silent)
+
 [case testStubImportNonStubWhileSilent]
 # cmd: mypy -m main
 [file main.py]
