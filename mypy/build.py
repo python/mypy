@@ -1018,7 +1018,7 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
 
-    def skipping_ancestor(self, id, path, ancestor_for):
+    def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
         # TODO: Read the path (the __init__.py file) and return
         # immediately if it's empty or only contains comments.
         # But beware, some package may be the ancestor of many modules,
@@ -1033,7 +1033,7 @@ class State:
         manager.errors.report(-1, "(This note brought to you by --almost-silent)",
                               severity='note', only_once=True)
 
-    def skipping_module(self, id, path):
+    def skipping_module(self, id: str, path: str) -> None:
         assert self.caller_state, (id, path)
         manager = self.manager
         save_import_context = manager.errors.import_context()
