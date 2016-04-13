@@ -113,8 +113,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     """
 
     # Make the help output a little less jarring.
-    help_factory = (lambda *a, **k:
-                    argparse.RawDescriptionHelpFormatter(max_help_position=28, *a, **k))
+    help_factory = (lambda prog:
+                    argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=help_factory)
 
