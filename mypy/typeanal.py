@@ -180,8 +180,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t.copy_modified(arg_types=self.anal_array(t.arg_types),
                                ret_type=t.ret_type.accept(self),
                                fallback=t.fallback or self.builtin_type('builtins.function'),
-                               variables=self.anal_var_defs(t.variables),
-                               bound_vars=self.anal_bound_vars(t.bound_vars))
+                               variables=self.anal_var_defs(t.variables))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if t.implicit:
@@ -245,13 +244,6 @@ class TypeAnalyser(TypeVisitor[Type]):
         res = []  # type: List[Type]
         for t in a:
             res.append(t.accept(self))
-        return res
-
-    def anal_bound_vars(self,
-                        a: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
-        res = []  # type: List[Tuple[int, Type]]
-        for id, t in a:
-            res.append((id, t.accept(self)))
         return res
 
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:

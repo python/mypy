@@ -800,7 +800,7 @@ class Parser:
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]
         return CallableType(arg_types, arg_kinds, arg_names, ret_type, None, name=None,
-                        variables=None, bound_vars=[], line=line)
+                        variables=None, line=line)
 
     # Parsing statements
 
