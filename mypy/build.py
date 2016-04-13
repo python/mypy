@@ -973,14 +973,15 @@ class State:
                 # In silent mode, don't import .py files.
                 if (SILENT_IMPORTS in manager.flags and
                         path.endswith('.py') and (caller_state or ancestor_for)):
-                    if ALMOST_SILENT in manager.flags:
-                        if ancestor_for:
-                            self.skipping_ancestor(id, path, ancestor_for)
-                        else:
-                            self.skipping_module(id, path)
-                    path = None
-                    manager.missing_modules.add(id)
-                    raise ModuleNotFound
+                    if id != 'builtins':
+                        if ALMOST_SILENT in manager.flags:
+                            if ancestor_for:
+                                self.skipping_ancestor(id, path, ancestor_for)
+                            else:
+                                self.skipping_module(id, path)
+                        path = None
+                        manager.missing_modules.add(id)
+                        raise ModuleNotFound
             else:
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in
