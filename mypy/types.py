@@ -399,21 +399,6 @@ class CallableType(FunctionLike):
     # Type variables for a generic function
     variables = None  # type: List[TypeVarDef]
 
-    # Implicit bound values of type variables. These can be either for
-    # class type variables or for generic function type variables.
-    # For example, the method 'append' of List[int] has implicit value
-    # 'int' for the list type variable; the explicit method type is
-    # just 'def append(int) -> None', without any type variable. Implicit
-    # values are needed for runtime type checking, but they do not
-    # affect static type checking.
-    #
-    # All class type arguments must be stored first, ordered by id,
-    # and function type arguments must be stored next, again ordered by id
-    # (absolute value this time).
-    #
-    # Stored as tuples (id, type).
-    bound_vars = None  # type: List[Tuple[int, Type]]
-
     # Is this Callable[..., t] (with literal '...')?
     is_ellipsis_args = False
     # Is this callable constructed for the benefit of a classmethod's 'cls' argument?
@@ -430,7 +415,6 @@ class CallableType(FunctionLike):
                  name: str = None,
                  definition: SymbolNode = None,
                  variables: List[TypeVarDef] = None,
-                 bound_vars: List[Tuple[int, Type]] = None,
                  line: int = -1,
                  is_ellipsis_args: bool = False,
                  implicit=False,
@@ -438,8 +422,6 @@ class CallableType(FunctionLike):
                  ) -> None:
         if variables is None:
             variables = []
-        if not bound_vars:
-            bound_vars = []
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
@@ -451,7 +433,6 @@ class CallableType(FunctionLike):
         self.name = name
         self.definition = definition
         self.variables = variables
-        self.bound_vars = bound_vars
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
         super().__init__(line)
@@ -465,7 +446,6 @@ class CallableType(FunctionLike):
                       name: str = _dummy,
                       definition: SymbolNode = _dummy,
                       variables: List[TypeVarDef] = _dummy,
-                      bound_vars: List[Tuple[int, Type]] = _dummy,
                       line: int = _dummy,
                       is_ellipsis_args: bool = _dummy) -> 'CallableType':
         return CallableType(
@@ -477,7 +457,6 @@ class CallableType(FunctionLike):
             name=name if name is not _dummy else self.name,
             definition=definition if definition is not _dummy else self.definition,
             variables=variables if variables is not _dummy else self.variables,
-            bound_vars=bound_vars if bound_vars is not _dummy else self.bound_vars,
             line=line if line is not _dummy else self.line,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
@@ -539,7 +518,6 @@ class CallableType(FunctionLike):
                 'name': self.name,
                 # We don't serialize the definition (only used for error messages).
                 'variables': [v.serialize() for v in self.variables],
-                'bound_vars': [[x, y.serialize()] for x, y in self.bound_vars],
                 'is_ellipsis_args': self.is_ellipsis_args,
                 'implicit': self.implicit,
                 'is_classmethod_class': self.is_classmethod_class,
@@ -557,7 +535,6 @@ class CallableType(FunctionLike):
                             Instance.deserialize(data['fallback']),
                             name=data['name'],
                             variables=[TypeVarDef.deserialize(v) for v in data['variables']],
-                            bound_vars=[(x, Type.deserialize(y)) for x, y in data['bound_vars']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
                             is_classmethod_class=data['is_classmethod_class'],
@@ -914,8 +891,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.translate_types(t.arg_types),
                                ret_type=t.ret_type.accept(self),
-                               variables=self.translate_variables(t.variables),
-                               bound_vars=self.translate_bound_vars(t.bound_vars))
+                               variables=self.translate_variables(t.variables))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
@@ -933,10 +909,6 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def translate_types(self, types: List[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
-
-    def translate_bound_vars(
-            self, types: List[Tuple[int, Type]]) -> List[Tuple[int, Type]]:
-        return [(id, t.accept(self)) for id, t in types]
 
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
@@ -1039,13 +1011,6 @@ class TypeStrVisitor(TypeVisitor[str]):
 
         if t.variables:
             s = '{} {}'.format(t.variables, s)
-
-        if t.bound_vars != []:
-            # Include implicit bound type variables.
-            a = []
-            for i, bt in t.bound_vars:
-                a.append('{}:{}'.format(i, bt))
-            s = '[{}] {}'.format(', '.join(a), s)
 
         return 'def {}'.format(s)
 

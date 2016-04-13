@@ -165,8 +165,6 @@ class TypeFixer(TypeVisitor[None]):
                 for val in v.values:
                     val.accept(self)
             v.upper_bound.accept(self)
-        for i, t in ct.bound_vars:
-            t.accept(self)
 
     def visit_ellipsis_type(self, e: EllipsisType) -> None:
         pass  # Nothing to descend into.

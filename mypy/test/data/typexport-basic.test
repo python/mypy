@@ -309,7 +309,7 @@ def g() -> None:
   a = None # type: A[B]
   f = a.f
 [out]
-MemberExpr(9) : def [1:B] () -> B
+MemberExpr(9) : def () -> B
 
 [case testImplicitBoundTypeVarsForSelfMethodReference]
 from typing import TypeVar, Generic
@@ -319,7 +319,7 @@ class A(Generic[T]):
     self.f()
 [out]
 CallExpr(5) : T`1
-MemberExpr(5) : def [1:T`1] () -> T`1
+MemberExpr(5) : def () -> T`1
 NameExpr(5) : A[T`1]
 
 [case testGenericFunctionCallWithTypeApp-skip]
@@ -335,13 +335,13 @@ def f(a: T) -> Tuple[T, T]: pass
 CallExpr(5) : A
 CallExpr(5) : Tuple[A, A]
 NameExpr(5) : def () -> A
-NameExpr(5) : def [-1:A] (a: A) -> Tuple[A, A]
-TypeApplication(5) : def [-1:A] (a: A) -> Tuple[A, A]
+NameExpr(5) : def (a: A) -> Tuple[A, A]
+TypeApplication(5) : def (a: A) -> Tuple[A, A]
 CallExpr(6) : A
 CallExpr(6) : Tuple[Any, Any]
 NameExpr(6) : def () -> A
-NameExpr(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
-TypeApplication(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
+NameExpr(6) : def (a: Any) -> Tuple[Any, Any]
+TypeApplication(6) : def (a: Any) -> Tuple[Any, Any]
 
 -- NOTE: Type applications are not supported for generic methods, so the
 --       following test cases are commented out.
@@ -358,11 +358,11 @@ TypeApplication(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
 --[builtins fixtures/tuple.py]
 --[out]
 --CallExpr(2) : Tuple[A, A]
---MemberExpr(2) : def [-1:A] (A a) -> Tuple[A, A]
---TypeApplication(2) : def [-1:A] (A a) -> Tuple[A, A]
+--MemberExpr(2) : def (A a) -> Tuple[A, A]
+--TypeApplication(2) : def (A a) -> Tuple[A, A]
 --CallExpr(3) : Tuple[Any, Any]
---MemberExpr(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
---TypeApplication(3) : def [-1:Any] (any a) -> Tuple[Any, Any]
+--MemberExpr(3) : def (any a) -> Tuple[Any, Any]
+--TypeApplication(3) : def (any a) -> Tuple[Any, Any]
 
 --[case testGenericMethodCallInGenericTypeWithTypeApp]
 --## CallExpr|MemberExpr|TypeApplication
@@ -380,11 +380,11 @@ TypeApplication(6) : def [-1:Any] (a: Any) -> Tuple[Any, Any]
 --[builtins fixtures/tuple.py]
 --[out]
 --CallExpr(6) : Tuple[C, B]
---MemberExpr(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
---TypeApplication(6) : def [1:C, -1:B] (B a) -> Tuple[C, B]
+--MemberExpr(6) : def (B a) -> Tuple[C, B]
+--TypeApplication(6) : def (B a) -> Tuple[C, B]
 --CallExpr(7) : Tuple[C, Any]
---MemberExpr(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
---TypeApplication(7) : def [1:C, -1:Any] (any a) -> Tuple[C, Any]
+--MemberExpr(7) : def (any a) -> Tuple[C, Any]
+--TypeApplication(7) : def (any a) -> Tuple[C, Any]
 
 [case testGenericTypeVariableInference]
 from typing import TypeVar, Generic
@@ -397,8 +397,8 @@ A(A(B()))
 CallExpr(6) : A[A[B]]
 CallExpr(6) : A[B]
 CallExpr(6) : B
-NameExpr(6) : def [-1:A[B]] (a: A[B]) -> A[A[B]]
-NameExpr(6) : def [-1:B] (a: B) -> A[B]
+NameExpr(6) : def (a: A[B]) -> A[A[B]]
+NameExpr(6) : def (a: B) -> A[B]
 NameExpr(6) : def () -> B
 
 
@@ -417,7 +417,7 @@ class B(A[C]):
     self.f(c)
 [out]
 CallExpr(8) : void
-MemberExpr(8) : def [1:C] (a: C)
+MemberExpr(8) : def (a: C)
 NameExpr(8) : C
 NameExpr(8) : B
 
@@ -433,7 +433,7 @@ class B(A[C, T], Generic[T]):
     self.f(c)
 [out]
 CallExpr(9) : void
-MemberExpr(9) : def [1:C, 2:T`1] (a: C)
+MemberExpr(9) : def (a: C)
 NameExpr(9) : C
 NameExpr(9) : B[T`1]
 
@@ -449,7 +449,7 @@ c = None # type: C
 b.f(c)
 [out]
 CallExpr(9) : void
-MemberExpr(9) : def [1:C] (a: C)
+MemberExpr(9) : def (a: C)
 NameExpr(9) : B
 NameExpr(9) : C
 
@@ -536,10 +536,10 @@ class B: pass
 b = None # type: B
 [out]
 CallExpr(4) : A[B]
-NameExpr(4) : def [-1:B] (a: B) -> A[B]
+NameExpr(4) : def (a: B) -> A[B]
 NameExpr(4) : B
 CallExpr(5) : A[builtins.object]
-NameExpr(5) : def [-1:builtins.object] (a: builtins.object) -> A[builtins.object]
+NameExpr(5) : def (a: builtins.object) -> A[builtins.object]
 NameExpr(5) : B
 
 [case testGenericCallInDynamicallyTypedFunction]
@@ -550,7 +550,7 @@ def f():
 class A(Generic[T]): pass
 [out]
 CallExpr(4) : A[Any]
-NameExpr(4) : def [-1:Any] () -> A[Any]
+NameExpr(4) : def () -> A[Any]
 
 [case testGenericCallInDynamicallyTypedFunction2]
 from typing import TypeVar, Generic
@@ -561,7 +561,7 @@ class A(Generic[T]):
     def __init__(self, x: T) -> None: pass
 [out]
 CallExpr(4) : A[Any]
-NameExpr(4) : def [-1:Any] (x: Any) -> A[Any]
+NameExpr(4) : def (x: Any) -> A[Any]
 NameExpr(4) : def () -> Any
 
 [case testGenericCallInDynamicallyTypedFunction3]
@@ -572,7 +572,7 @@ def f():
 def g(x: t) -> t: pass
 [out]
 CallExpr(4) : Any
-NameExpr(4) : def [-1:Any] (x: Any) -> Any
+NameExpr(4) : def (x: Any) -> Any
 
 
 -- Generic types and type inference
@@ -623,14 +623,14 @@ class B: pass
 class C: pass
 [out]
 CallExpr(4) : A[B]
-NameExpr(4) : def [-1:B] (x: B) -> A[B]
+NameExpr(4) : def (x: B) -> A[B]
 NameExpr(4) : A[B]
 NameExpr(4) : B
 NameExpr(5) : A[B]
 CallExpr(6) : A[B]
 CallExpr(6) : A[C]
-NameExpr(6) : def [-1:B] (x: B) -> A[B]
-NameExpr(6) : def [-1:C] (x: C) -> A[C]
+NameExpr(6) : def (x: B) -> A[B]
+NameExpr(6) : def (x: C) -> A[C]
 NameExpr(6) : A[B]
 NameExpr(6) : A[C]
 NameExpr(6) : B
@@ -656,8 +656,8 @@ def g(a: S) -> B[S]: pass
 CallExpr(5) : A[C]
 CallExpr(5) : B[A[C]]
 NameExpr(5) : C
-NameExpr(5) : def [-1:C] (a: C) -> A[C]
-NameExpr(5) : def [-1:A[C]] (a: A[C]) -> B[A[C]]
+NameExpr(5) : def (a: C) -> A[C]
+NameExpr(5) : def (a: A[C]) -> B[A[C]]
 
 [case testInferListLiterals]
 from typing import List
@@ -688,7 +688,7 @@ def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
 CallExpr(4) : builtins.list[B]
-NameExpr(4) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+NameExpr(4) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 NameExpr(5) : def (a: A) -> B
 CallExpr(6) : A
 ListExpr(6) : builtins.list[A]
@@ -752,7 +752,7 @@ def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
 CallExpr(5) : builtins.list[B]
-NameExpr(5) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 CallExpr(6) : B
 FuncExpr(6) : def (A) -> B
 NameExpr(6) : def (a: A) -> B
@@ -773,7 +773,7 @@ class B: pass
 def f(a: A) -> B: pass
 [builtins fixtures/list.py]
 [out]
-NameExpr(6) : def [-1:A, -2:B] (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
+NameExpr(6) : def (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
 FuncExpr(7) : def (A) -> builtins.list[B]
 ListExpr(7) : builtins.list[B]
 NameExpr(7) : def (a: A) -> B
@@ -795,7 +795,7 @@ class A: pass
 -- TODO We probably should not silently infer 'Any' types in statically typed
 --      context. Perhaps just fail instead?
 CallExpr(5) : builtins.list[Any]
-NameExpr(5) : def [-1:A, -2:Any] (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]
+NameExpr(5) : def (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]
 FuncExpr(6) : def (A) -> A
 ListExpr(6) : builtins.list[def (A) -> Any]
 NameExpr(6) : A
@@ -816,7 +816,7 @@ class B: pass
 [builtins fixtures/list.py]
 [out]
 CallExpr(5) : builtins.list[B]
-NameExpr(5) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 FuncExpr(6) : def (A) -> B
 MemberExpr(6) : B
 NameExpr(6) : A
@@ -837,7 +837,7 @@ class B: pass
 [builtins fixtures/list.py]
 [out]
 CallExpr(5) : builtins.list[B]
-NameExpr(5) : def [-1:A, -2:B] (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
+NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 NameExpr(6) : builtins.list[A]
 FuncExpr(7) : def (A) -> B
 MemberExpr(7) : B
@@ -937,7 +937,7 @@ class A:
     def f(self, x: t) -> None: pass
 A.f(A(), B())
 [out]
-MemberExpr(7) : def [-1:B] (self: A, x: B)
+MemberExpr(7) : def (self: A, x: B)
 
 [case testUnboundMethodOfGenericClass]
 ## MemberExpr
@@ -951,7 +951,7 @@ a_b = A() # type: A[B]
 A.f(a_b, B())
 [out]
 MemberExpr(7) : def [t] (self: A[t`1], x: t`1)
-MemberExpr(9) : def [1:B] (self: A[B], x: B)
+MemberExpr(9) : def (self: A[B], x: B)
 
 [case testUnboundOverloadedMethodOfGenericClass]
 ## CallExpr
@@ -991,7 +991,7 @@ ab = None # type: A[B]
 o = None # type: object
 A.f(ab, o)
 [out]
-MemberExpr(10) : def [1:B, -1:builtins.object] (self: A[B], y: builtins.object)
+MemberExpr(10) : def (self: A[B], y: builtins.object)
 
 
 -- Type variables with value restriction
@@ -1006,8 +1006,8 @@ def f(x: T) -> None: pass
 f(1)
 f('x')
 [out]
-NameExpr(5) : def [-1:builtins.int] (x: builtins.int)
-NameExpr(6) : def [-1:builtins.str] (x: builtins.str)
+NameExpr(5) : def (x: builtins.int)
+NameExpr(6) : def (x: builtins.str)
 
 [case testTypeVariableWithValueRestrictionAndSubtype]
 ## NameExpr|CallExpr
@@ -1019,7 +1019,7 @@ s = None # type: S
 f(s)
 [out]
 CallExpr(7) : builtins.str
-NameExpr(7) : def [-1:builtins.str] (x: builtins.str) -> builtins.str
+NameExpr(7) : def (x: builtins.str) -> builtins.str
 NameExpr(7) : S
 
 
@@ -1108,7 +1108,7 @@ IntExpr(13) : builtins.int
 ListExpr(13) : builtins.list[builtins.int]
 CallExpr(14) : void
 NameExpr(14) : def (s: builtins.int) -> builtins.int
-NameExpr(14) : def [-1:builtins.int, -2:builtins.int] (fun: def (builtins.int) -> builtins.int, iter: builtins.list[builtins.int])
+NameExpr(14) : def (fun: def (builtins.int) -> builtins.int, iter: builtins.list[builtins.int])
 NameExpr(15) : builtins.list[builtins.int]
 
 
