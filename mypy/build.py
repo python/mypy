@@ -57,7 +57,7 @@ TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
 DUMP_TYPE_STATS = 'dump-type-stats'
 DUMP_INFER_STATS = 'dump-infer-stats'
 SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
-ALMOST_SILENT = 'silent-imports'   # If SILENT_IMPORTS: report silenced imports as errors
+ALMOST_SILENT = 'almost-silent'  # If SILENT_IMPORTS: report silenced imports as errors
 INCREMENTAL = 'incremental'      # Incremental mode: use the cache
 FAST_PARSER = 'fast-parser'      # Use experimental fast parser
 # Disallow calling untyped functions from typed ones
