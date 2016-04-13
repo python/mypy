@@ -580,6 +580,6 @@ class C:
 
 class Derived(Base):
     def to_dict(self) -> C:
-        return C(self)  # fails without the hack
+        return C(self)  # fails without the fix for #1363
 C(Derived())  # fails without the hack
 C(Base())  # Always ok
