@@ -352,6 +352,41 @@ class A(B[S], Generic[T, S]):
 main: note: In member "g" of class "A":
 
 
+-- Type of inherited constructor
+-- -----------------------------
+
+
+[case testInheritedConstructor]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+class B(A[T], Generic[T]): pass
+class C(A[int]): pass
+class D(A[A[T]], Generic[T]): pass
+B(1)
+C(1)
+C('a')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+D(A(1))
+D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected A[None]
+
+
+[case testInheritedConstructor2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+Z = TypeVar('Z')
+class A(Generic[T, U]):
+    def __init__(self, x: T, y: U, z: Z) -> None: pass
+class B(A[int, T], Generic[T]): pass
+class C(B[A[T, str]], Generic[T, U]): pass
+# C[T, U] <: B[A[T, str]] <: A[int, A[T, str]]
+C(1, A(1, 'a', 0), 'z')
+C(1, A('1', 'a', 0), 'z')
+C('1', A(1, 'a', 0), 'z')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+C(1, A(1, 1, 0), 'z')  # E: Argument 2 to "A" has incompatible type "int"; expected "str"
+
+
 -- Subtyping with a generic abstract base class
 -- --------------------------------------------
 
