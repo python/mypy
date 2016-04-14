@@ -328,8 +328,6 @@ class TypeChecker(NodeVisitor[Type]):
     is_stub = False
     # Error message reporter
     errors = None  # type: Errors
-    # SymbolNode table for the whole program
-    symtable = None  # type: SymbolTable
     # Utility for generating messages
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
@@ -355,7 +353,6 @@ class TypeChecker(NodeVisitor[Type]):
     # Stack of collections of variables with partial types
     partial_types = None  # type: List[Dict[Var, Context]]
     globals = None  # type: SymbolTable
-    locals = None  # type: SymbolTable
     modules = None  # type: Dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
     # another pass and try these again.
@@ -378,8 +375,7 @@ class TypeChecker(NodeVisitor[Type]):
                  check_untyped_defs=False) -> None:
         """Construct a type checker.
 
-        Use errors to report type check errors. Assume symtable has been
-        populated by the semantic analyzer.
+        Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
@@ -409,7 +405,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.errors.set_file(path)
         self.errors.set_ignored_lines(file_node.ignored_lines)
         self.globals = file_node.names
-        self.locals = None
         self.weak_opts = file_node.weak_opts
         self.enter_partial_types()
 
@@ -656,8 +651,6 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 fdef = None
 
-            self.enter()
-
             if fdef:
                 # Check if __init__ has an invalid, non-None return type.
                 if (fdef.info and fdef.name() == '__init__' and
@@ -740,7 +733,6 @@ class TypeChecker(NodeVisitor[Type]):
 
             self.return_types.pop()
 
-            self.leave()
             self.binder = old_binder
 
     def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
@@ -2241,9 +2233,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Look up a definition from the symbol table with the given name.
         TODO remove kind argument
         """
-        if self.locals is not None and name in self.locals:
-            return self.locals[name]
-        elif name in self.globals:
+        if name in self.globals:
             return self.globals[name]
         else:
             b = self.globals.get('__builtins__', None)
@@ -2262,12 +2252,6 @@ class TypeChecker(NodeVisitor[Type]):
             for i in range(1, len(parts) - 1):
                 n = cast(MypyFile, n.names.get(parts[i], None).node)
             return n.names[parts[-1]]
-
-    def enter(self) -> None:
-        self.locals = SymbolTable()
-
-    def leave(self) -> None:
-        self.locals = None
 
     def enter_partial_types(self) -> None:
         """Push a new scope for collecting partial types."""
