@@ -68,6 +68,8 @@ class TypeVarDef(mypy.nodes.Context):
     def __repr__(self) -> str:
         if self.values:
             return '{} in {}'.format(self.name, tuple(self.values))
+        elif not is_named_instance(self.upper_bound, 'builtins.object'):
+            return '{} <: {}'.format(self.name, self.upper_bound)
         else:
             return self.name
 

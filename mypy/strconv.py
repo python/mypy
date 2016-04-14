@@ -399,14 +399,17 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr, ('Types', o.types)], o)
 
     def visit_type_var_expr(self, o):
+        import mypy.types
+        a = []
         if o.variance == mypy.nodes.COVARIANT:
-            return self.dump(['Variance(COVARIANT)'], o)
+            a += ['Variance(COVARIANT)']
         if o.variance == mypy.nodes.CONTRAVARIANT:
-            return self.dump(['Variance(CONTRAVARIANT)'], o)
+            a += ['Variance(CONTRAVARIANT)']
         if o.values:
-            return self.dump([('Values', o.values)], o)
-        else:
-            return 'TypeVarExpr:{}()'.format(o.line)
+            a += [('Values', o.values)]
+        if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
+            a += ['UpperBound({})'.format(o.upper_bound)]
+        return self.dump(a, o)
 
     def visit_type_alias_expr(self, o):
         return 'TypeAliasExpr({})'.format(o.type)
