@@ -315,10 +315,10 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('path', str),
                         ('mtime', float),
                         ('size', int),
-                        ('dependencies', List[str]),
+                        ('dependencies', List[str]),  # names of imported modules
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
-                        ('suppressed', List[str]),
+                        ('suppressed', List[str]),  # dependencies that weren't imported
                         ])
 
 
