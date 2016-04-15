@@ -315,10 +315,14 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('path', str),
                         ('mtime', float),
                         ('size', int),
-                        ('dependencies', List[str]),
+                        ('dependencies', List[str]),  # names of imported modules
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
+                        ('suppressed', List[str]),  # dependencies that weren't imported
                         ])
+# NOTE: dependencies + suppressed == all unreachable imports;
+# suppressed contains those reachable imports that were prevented by
+# --silent-imports or simply not found.
 
 
 class BuildManager:
@@ -684,9 +688,10 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('path'),
         meta.get('mtime'),
         meta.get('size'),
-        meta.get('dependencies'),
+        meta.get('dependencies', []),
         meta.get('data_mtime'),
         data_json,
+        meta.get('suppressed', []),
     )
     if (m.id != id or m.path != path or
             m.mtime is None or m.size is None or
@@ -710,7 +715,8 @@ def random_string():
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
-def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
+def write_cache(id: str, path: str, tree: MypyFile,
+                dependencies: List[str], suppressed: List[str],
                 manager: BuildManager) -> None:
     """Write cache files for a module.
 
@@ -719,6 +725,7 @@ def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
       path: module path
       tree: the fully checked module data
       dependencies: module IDs on which this module depends
+      suppressed: module IDs which were suppressed as dependencies
       manager: the build manager (for pyversion, log/trace)
     """
     path = os.path.abspath(path)
@@ -746,6 +753,7 @@ def write_cache(id: str, path: str, tree: MypyFile, dependencies: List[str],
             'size': size,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
+            'suppressed': suppressed,
             }
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
@@ -919,6 +927,7 @@ class State:
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
     dependencies = None  # type: List[str]
+    suppressed = None  # type: List[str]  # Suppressed/missing dependencies
 
     # Map each dependency to the line number where it is first imported
     dep_line_map = None  # type: Dict[str, int]
@@ -1017,11 +1026,15 @@ class State:
             # TODO: Get mtime if not cached.
         self.add_ancestors()
         if self.meta:
-            self.dependencies = self.meta.dependencies
+            # Make copies, since we may modify these and want to
+            # compare them to the originals later.
+            self.dependencies = list(self.meta.dependencies)
+            self.suppressed = list(self.meta.suppressed)
             self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
+            self.suppressed = []
 
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
         # TODO: Read the path (the __init__.py file) and return
@@ -1064,9 +1077,13 @@ class State:
 
     def is_fresh(self) -> bool:
         """Return whether the cache data for this file is fresh."""
-        return self.meta is not None
+        # NOTE: self.dependencies may differ from
+        # self.meta.dependencies when a dependency is dropped due to
+        # suppression by --silent-imports.  However when a suppressed
+        # dependency is added back we find out later in the process.
+        return self.meta is not None and self.dependencies == self.meta.dependencies
 
-    def clear_fresh(self) -> None:
+    def mark_stale(self) -> None:
         """Throw away the cache data for this file, marking it as stale."""
         self.meta = None
 
@@ -1147,17 +1164,24 @@ class State:
         # Add all direct imports (this is why we needed the first pass).
         # Also keep track of each dependency's source line.
         dependencies = []
+        suppressed = []
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for id, line in manager.all_imported_modules_in_file(self.tree):
+            if id == self.id:
+                continue
             # Omit missing modules, as otherwise we could not type-check
             # programs with missing modules.
-            if id == self.id or id in manager.missing_modules:
+            if id in manager.missing_modules:
+                if id not in dep_line_map:
+                    suppressed.append(id)
+                    dep_line_map[id] = line
                 continue
             if id == '':
                 # Must be from a relative import.
                 manager.errors.set_file(self.xpath)
                 manager.errors.report(line, "No parent module -- cannot perform relative import",
                                       blocker=True)
+                continue
             if id not in dep_line_map:
                 dependencies.append(id)
                 dep_line_map[id] = line
@@ -1172,6 +1196,7 @@ class State:
         # explicitly checked for this, but ran afoul of other reasons
         # for differences (e.g. --silent-imports).
         self.dependencies = dependencies
+        self.suppressed = suppressed
         self.dep_line_map = dep_line_map
         self.check_blockers()
 
@@ -1211,7 +1236,9 @@ class State:
 
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
-            write_cache(self.id, self.path, self.tree, list(self.dependencies), self.manager)
+            write_cache(self.id, self.path, self.tree,
+                        list(self.dependencies), list(self.suppressed),
+                        self.manager)
 
 
 Graph = Dict[str, State]
@@ -1260,6 +1287,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                 except ModuleNotFound:
                     if dep in st.dependencies:
                         st.dependencies.remove(dep)
+                        st.suppressed.append(dep)
                 else:
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
@@ -1299,6 +1327,16 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         deps -= ascc
         stale_deps = {id for id in deps if not graph[id].is_fresh()}
         fresh = fresh and not stale_deps
+        undeps = set()
+        if fresh:
+            # Check if any dependencies that were suppressed according
+            # to the cache have heen added back in this run.
+            # NOTE: Newly suppressed dependencies are handled by is_fresh().
+            for id in scc:
+                undeps.update(graph[id].suppressed)
+            undeps &= graph.keys()
+            if undeps:
+                fresh = False
         if fresh:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
@@ -1325,6 +1363,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
             else:
                 fresh_msg = "fresh"
+        elif undeps:
+            fresh_msg = "stale due to changed suppression (%s)" % " ".join(sorted(undeps))
         elif stale_scc:
             fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
             if stale_deps:
@@ -1357,7 +1397,7 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
 def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     """Process the modules in one SCC from source code."""
     for id in scc:
-        graph[id].clear_fresh()
+        graph[id].mark_stale()
     for id in scc:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
