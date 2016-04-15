@@ -278,6 +278,9 @@ class ExpressionChecker:
                                          self.msg)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
+        elif isinstance(callee, TypeVarType):
+            return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
+                                   callable_node, arg_messages)
         else:
             return self.msg.not_callable(callee, context), AnyType()
 

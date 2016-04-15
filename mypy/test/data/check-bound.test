@@ -192,7 +192,7 @@ from typing import TypeVar, Callable, Any, cast
 T = TypeVar('T', bound=Callable[..., Any])
 
 def twice(f: T) -> T:
-    def result(*args, **kwargs):
+    def result(*args, **kwargs) -> Any:
         f(*args, **kwargs)
         return f(*args, **kwargs)
     return cast(T, result)
@@ -205,4 +205,4 @@ a = 1
 b = foo(a)
 b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 twice(a) # E: Type argument 1 of "twice" has incompatible value "int"
-[builtins fixtures/dict.py]
+[builtins fixtures/args.py]
