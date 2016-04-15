@@ -335,7 +335,7 @@ class Parser:
         metaclass = None
 
         try:
-            commas, base_types = [], []  # type: List[Token], List[Node]
+            base_types = []  # type: List[Node]
             try:
                 name_tok = self.expect_type(Name)
                 name = name_tok.string
@@ -347,13 +347,13 @@ class Parser:
                     while True:
                         if self.current_str() == ')':
                             break
-                        if self.current_str() == 'metaclass':
-                            metaclass = self.parse_metaclass()
+                        if self.peek().string == '=':
+                            metaclass = self.parse_class_keywords()
                             break
                         base_types.append(self.parse_super_type())
                         if self.current_str() != ',':
                             break
-                        commas.append(self.skip())
+                        self.skip()
                     self.expect(')')
             except ParseError:
                 pass
@@ -366,13 +366,28 @@ class Parser:
             self.errors.pop_type()
             self.is_class_body = old_is_class_body
 
+    def parse_class_keywords(self) -> Optional[str]:
+        """Parse the class keyword arguments, keeping the metaclass but
+        ignoring all others.  Returns None if the metaclass isn't found.
+        """
+        metaclass = None
+        while True:
+            key = self.expect_type(Name)
+            self.expect('=')
+            if key.string == 'metaclass':
+                metaclass = self.parse_qualified_name()
+            else:
+                # skip the class value
+                self.parse_expression(precedence[','])
+            if self.current_str() != ',':
+                break
+            self.skip()
+            if self.current_str() == ')':
+                break
+        return metaclass
+
     def parse_super_type(self) -> Node:
         return self.parse_expression(precedence[','])
-
-    def parse_metaclass(self) -> str:
-        self.expect('metaclass')
-        self.expect('=')
-        return self.parse_qualified_name()
 
     def parse_decorated_function_or_class(self) -> Node:
         decorators = []
