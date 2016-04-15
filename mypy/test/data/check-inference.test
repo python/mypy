@@ -690,6 +690,98 @@ l = lb # E: Incompatible types in assignment (expression has type List[bool], va
 [builtins fixtures/for.py]
 
 
+-- Generic function inference with unions
+-- --------------------------------------
+
+
+[case testUnionInference]
+from typing import TypeVar, Union, List
+T = TypeVar('T')
+U = TypeVar('U')
+def f(x: Union[T, int], y: T) -> T: pass
+f(1, 'a')() # E: "str" not callable
+f('a', 1)() # E: "object" not callable
+f('a', 'a')() # E: "str" not callable
+f(1, 1)() # E: "int" not callable
+
+def g(x: Union[T, List[T]]) -> List[T]: pass
+def h(x: List[str]) -> None: pass
+g('a')() # E: List[str] not callable
+
+# The next line is a case where there are multiple ways to satisfy a constraint
+# involving a Union. Either T = List[str] or T = str would turn out to be valid,
+# but mypy doesn't know how to branch on these two options (and potentially have
+# to backtrack later) and defaults to T = None. The result is an awkward error
+# message. Either a better error message, or simply accepting the call, would be
+# preferable here.
+g(['a']) # E: Argument 1 to "g" has incompatible type List[str]; expected List[None]
+
+h(g(['a']))
+
+def i(x: Union[List[T], List[U]], y: List[T], z: List[U]) -> None: pass
+a = [1]
+b = ['b']
+i(a, a, b)
+i(b, a, b)
+i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
+[builtins fixtures/list.py]
+
+
+[case testUnionInferenceWithTypeVarValues]
+from typing import TypeVar, Union
+AnyStr = TypeVar('AnyStr', bytes, str)
+def f(x: Union[AnyStr, int], *a: AnyStr) -> None: pass
+f('foo')
+f('foo', 'bar')
+f('foo', b'bar') # E: Type argument 1 of "f" has incompatible value "object"
+f(1)
+f(1, 'foo')
+f(1, 'foo', b'bar') # E: Type argument 1 of "f" has incompatible value "object"
+[builtins fixtures/primitives.py]
+
+
+[case testUnionTwoPassInference-skip]
+from typing import TypeVar, Union, List
+T = TypeVar('T')
+U = TypeVar('U')
+def j(x: Union[List[T], List[U]], y: List[T]) -> List[U]: pass
+
+a = [1]
+b = ['b']
+# We could infer: Since List[str] <: List[T], we must have T = str.
+# Then since List[int] <: Union[List[str], List[U]], and List[int] is
+# not a subtype of List[str], we must have U = int.
+# This is not currently implemented.
+j(a, b)
+[builtins fixtures/list.py]
+
+
+[case testUnionContext]
+from typing import TypeVar, Union, List
+T = TypeVar('T')
+def f() -> List[T]: pass
+d1 = f() # type: Union[List[int], str]
+d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type List[None], variable has type "Union[int, str]")
+def g(x: T) -> List[T]: pass
+d3 = g(1) # type: Union[List[int], List[str]]
+[builtins fixtures/list.py]
+
+
+[case testGenericFunctionSubtypingWithUnions]
+from typing import TypeVar, Union, List
+T = TypeVar('T')
+S = TypeVar('S')
+def k1(x: int, y: List[T]) -> List[Union[T, int]]: pass
+def k2(x: S, y: List[T]) -> List[Union[T, int]]: pass
+a = k2
+a = k2
+a = k1 # E: Incompatible types in assignment (expression has type Callable[[int, List[T]], List[Union[T, int]]], variable has type Callable[[S, List[T]], List[Union[T, int]]])
+b = k1
+b = k1
+b = k2
+[builtins fixtures/list.py]
+
+
 -- Literal expressions
 -- -------------------
 
