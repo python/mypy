@@ -388,8 +388,7 @@ class ExpressionChecker:
 
         Infer based on the types of arguments.
 
-        Return a derived callable type that has the arguments applied (and
-        stored as implicit type arguments).
+        Return a derived callable type that has the arguments applied.
         """
         if not self.chk.typing_mode_none():
             # Disable type errors during type inference. There may be errors
