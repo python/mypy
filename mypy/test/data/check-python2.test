@@ -174,5 +174,22 @@ main: note: In function "f":
 main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
 
 [case testLambdaTupleArgInPython2]
-lambda (x, y): x + y
+f = lambda (x, y): x + y
+f((0, 0))
+[out]
+
+[case testLambdaSingletonTupleArgInPython2]
+f = lambda (x,): x + 1
+f((0,))
+[out]
+
+[case testLambdaNoTupleArgInPython2]
+f = lambda (x): x + 1
+f(0)
+[out]
+
+[case testDefTupleEdgeCasesPython2]
+def f((x,)): return x
+def g((x)): return x
+f(0) + g(0)
 [out]
