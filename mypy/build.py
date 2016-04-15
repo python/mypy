@@ -320,6 +320,9 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ])
+# NOTE: dependencies + suppressed == all unreachable imports;
+# suppressed contains those reachable imports that were prevented by
+# --silent-imports or simply not found.
 
 
 class BuildManager:
