@@ -2694,7 +2694,8 @@ def find_fixed_callable_return(expr: Node) -> Optional[CallableType]:
             typ = expr.node.type
             if typ:
                 if isinstance(typ, CallableType) and has_no_typevars(typ.ret_type):
-                    return typ.ret_type
+                    if isinstance(typ.ret_type, CallableType):
+                        return typ.ret_type
     elif isinstance(expr, CallExpr):
         t = find_fixed_callable_return(expr.callee)
         if t:
