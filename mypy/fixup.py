@@ -225,6 +225,7 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
     head = name
     rest = []
     while True:
+        assert '.' in head, "Cannot find %s" % (name,)
         head, tail = head.rsplit('.', 1)
         mod = modules.get(head)
         if mod is not None:

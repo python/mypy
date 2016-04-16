@@ -302,6 +302,34 @@ MypyFile:1(
         ReturnStmt:1(
           NameExpr(z))))))
 
+[case testLambdaSingletonTupleArgListInPython2]
+lambda (x,): z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(__tuple_arg_1))
+      Block:1(
+        AssignmentStmt:1(
+          TupleExpr:1(
+            NameExpr(x))
+          NameExpr(__tuple_arg_1))
+        ReturnStmt:1(
+          NameExpr(z))))))
+
+[case testLambdaNoTupleArgListInPython2]
+lambda (x): z
+[out]
+MypyFile:1(
+  ExpressionStmt:1(
+    FuncExpr:1(
+      Args(
+        Var(x))
+      Block:1(
+        ReturnStmt:1(
+          NameExpr(z))))))
+
 [case testInvalidExprInTupleArgListInPython2_1]
 def f(x, ()): pass
 [out]
@@ -343,9 +371,6 @@ MypyFile:1(
       Var(x)
       Var(y))
     Block:1(
-      AssignmentStmt:1(
-        NameExpr(y)
-        NameExpr(y))
       PassStmt:1())))
 
 [case testDuplicateNameInTupleArgList_python2]

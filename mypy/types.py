@@ -933,7 +933,6 @@ class TypeStrVisitor(TypeVisitor[str]):
     Do not preserve original formatting.
 
     Notes:
-     - Include implicit bound type variables of callables.
      - Represent unbound types as Foo? or Foo?[...].
      - Represent the NoneTyp type as None.
     """
