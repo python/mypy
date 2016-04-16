@@ -1,6 +1,6 @@
 """Type inference constraints."""
 
-from typing import List, cast
+from typing import List, Optional, cast
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
@@ -39,7 +39,7 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: List[Type], arg_kinds: List[int],
+        callee: CallableType, arg_types: List[Optional[Type]], arg_kinds: List[int],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
@@ -51,6 +51,9 @@ def infer_constraints_for_callable(
 
     for i, actuals in enumerate(formal_to_actual):
         for actual in actuals:
+            if arg_types[actual] is None:
+                continue
+
             actual_type = get_actual_type(arg_types[actual], arg_kinds[actual],
                                           tuple_counter)
             c = infer_constraints(callee.arg_types[i], actual_type,

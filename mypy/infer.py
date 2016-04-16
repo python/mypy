@@ -1,6 +1,6 @@
 """Utilities for type argument inference."""
 
-from typing import List
+from typing import List, Optional
 
 from mypy.constraints import infer_constraints, infer_constraints_for_callable
 from mypy.types import Type, CallableType
@@ -9,7 +9,7 @@ from mypy.constraints import SUBTYPE_OF
 
 
 def infer_function_type_arguments(callee_type: CallableType,
-                                  arg_types: List[Type],
+                                  arg_types: List[Optional[Type]],
                                   arg_kinds: List[int],
                                   formal_to_actual: List[List[int]],
                                   strict: bool = True) -> List[Type]:
@@ -21,7 +21,8 @@ def infer_function_type_arguments(callee_type: CallableType,
 
     Arguments:
       callee_type: the target generic function
-      arg_types: argument types at the call site
+      arg_types: argument types at the call site (each optional; if None,
+                 we are not considering this argument in the current pass)
       arg_kinds: nodes.ARG_* values for arg_types
       formal_to_actual: mapping from formal to actual variable indices
     """

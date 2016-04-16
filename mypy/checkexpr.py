@@ -405,7 +405,7 @@ class ExpressionChecker:
             arg_pass_nums = self.get_arg_infer_passes(
                 callee_type.arg_types, formal_to_actual, len(args))
 
-            pass1_args = []  # type: List[Type]
+            pass1_args = []  # type: List[Optional[Type]]
             for i, arg in enumerate(arg_types):
                 if arg_pass_nums[i] > 1:
                     pass1_args.append(None)
