@@ -87,7 +87,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if is_subtype(self.s, t):
             return t
         else:
-            return UnionType(t.items + [self.s])
+            return UnionType.make_simplified_union([self.s, t])
 
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
@@ -235,7 +235,6 @@ def join_instances(t: Instance, s: Instance) -> Type:
 
     Return ErrorType if the result is ambiguous.
     """
-
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
@@ -264,16 +263,29 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> Type:
         return join_types(t.type._promote, s)
     elif s.type._promote and is_subtype(s.type._promote, t):
         return join_types(t, s.type._promote)
-    res = s
-    mapped = map_instance_to_supertype(t, t.type.bases[0].type)
-    join = join_instances(mapped, res)
-    # If the join failed, fail. This is a defensive measure (this might
-    # never happen).
-    if isinstance(join, ErrorType):
-        return join
-    # Now the result must be an Instance, so the cast below cannot fail.
-    res = cast(Instance, join)
-    return res
+    # Compute the "best" supertype of t when joined with s.
+    # The definition of "best" may evolve; for now it is the one with
+    # the longest MRO.  Ties are broken by using the earlier base.
+    best = None  # type: Type
+    for base in t.type.bases:
+        mapped = map_instance_to_supertype(t, base.type)
+        res = join_instances(mapped, s)
+        if best is None or is_better(res, best):
+            best = res
+    assert best is not None
+    return best
+
+
+def is_better(t: Type, s: Type) -> bool:
+    # Given two possible results from join_instances_via_supertype(),
+    # indicate whether t is the better one.
+    if isinstance(t, Instance):
+        if not isinstance(s, Instance):
+            return True
+        # Use len(mro) as a proxy for the better choice.
+        if len(t.type.mro) > len(s.type.mro):
+            return True
+    return False
 
 
 def is_similar_callables(t: CallableType, s: CallableType) -> bool:
