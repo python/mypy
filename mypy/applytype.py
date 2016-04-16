@@ -12,8 +12,7 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
-    'def [-1:int] (int) -> int'. Here '[-1:int]' is an implicit bound type
-    variable.
+    'def (int) -> int'.
 
     Note that each type can be None; in this case, it will not be applied.
     """
@@ -46,10 +45,6 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     # Apply arguments to argument types.
     arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
 
-    bound_vars = [(tv.id, id_to_type[tv.id])
-                  for tv in tvars
-                  if tv.id in id_to_type]
-
     # The callable may retain some type vars if only some were applied.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
@@ -57,5 +52,4 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
         arg_types=arg_types,
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
-        bound_vars=callable.bound_vars + bound_vars,
     )

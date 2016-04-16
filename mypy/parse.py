@@ -631,9 +631,10 @@ class Parser:
                 elif self.current_str() == '(':
                     arg, extra_stmt, names = self.parse_tuple_arg(len(args))
                     args.append(arg)
-                    extra_stmts.append(extra_stmt)
+                    if extra_stmt is not None:
+                        extra_stmts.append(extra_stmt)
+                        has_tuple_arg = True
                     arg_names.extend(names)
-                    has_tuple_arg = True
                 else:
                     arg, require_named = self.parse_normal_arg(
                         require_named,
@@ -691,6 +692,10 @@ class Parser:
         function body (the second return value).
 
         Return tuple (argument, decomposing assignment, list of names defined).
+
+        Special case: if the argument is just (x) then it's not a tuple;
+        we indicate this by returning (argument, None, ['x']).
+        However, if the argument is (x,) then it *is* a (singleton) tuple.
         """
         line = self.current().line
         # Generate a new argument name that is very unlikely to clash with anything.
@@ -700,13 +705,14 @@ class Parser:
         paren_arg = self.parse_parentheses()
         self.verify_tuple_arg(paren_arg)
         if isinstance(paren_arg, NameExpr):
-            # This isn't a tuple. Revert to a normal argument. We'll still get a no-op
-            # assignment below but that's benign.
+            # This isn't a tuple. Revert to a normal argument.
             arg_name = paren_arg.name
-        rvalue = NameExpr(arg_name)
-        rvalue.set_line(line)
-        decompose = AssignmentStmt([paren_arg], rvalue)
-        decompose.set_line(line)
+            decompose = None
+        else:
+            rvalue = NameExpr(arg_name)
+            rvalue.set_line(line)
+            decompose = AssignmentStmt([paren_arg], rvalue)
+            decompose.set_line(line)
         kind = nodes.ARG_POS
         initializer = None
         if self.current_str() == '=':
@@ -800,7 +806,7 @@ class Parser:
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]
         return CallableType(arg_types, arg_kinds, arg_names, ret_type, None, name=None,
-                        variables=None, bound_vars=[], line=line)
+                        variables=None, line=line)
 
     # Parsing statements
 

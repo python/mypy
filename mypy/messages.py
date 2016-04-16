@@ -13,7 +13,10 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike, DeletedType
 )
-from mypy.nodes import TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases
+from mypy.nodes import (
+    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    ARG_STAR, ARG_STAR2
+)
 
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -400,7 +403,7 @@ class MessageBuilder:
         return AnyType()
 
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
-                              context: Context) -> None:
+                              arg_kind: int, context: Context) -> None:
         """Report an error about an incompatible argument type.
 
         The argument type is arg_type, argument number is n and the
@@ -465,6 +468,10 @@ class MessageBuilder:
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
+            if arg_kind == ARG_STAR:
+                arg_type_str = '*' + arg_type_str
+            elif arg_kind == ARG_STAR2:
+                arg_type_str = '**' + arg_type_str
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                 n, target, arg_type_str, expected_type_str)
         self.fail(msg, context)

@@ -224,6 +224,7 @@ third_party_modules = {
     'gtk',
     'PyQt4',
     'PyQt5',
+    'pylons',
 }
 
 # Modules and packages common to Python 2.7 and 3.x.
@@ -294,6 +295,7 @@ common_std_lib_modules = {
     'io',
     'json',
     'keyword',
+    'lib2to3',
     'linecache',
     'locale',
     'logging',

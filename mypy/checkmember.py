@@ -359,6 +359,19 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
                                    fallback: Instance) -> FunctionLike:
     signature = method_type_with_fallback(init_or_new, fallback)
+
+    # The __init__ method might come from a generic superclass
+    # (init_or_new.info) with type variables that do not map
+    # identically to the type variables of the class being constructed
+    # (info). For example
+    #
+    #   class A(Generic[T]): def __init__(self, x: T) -> None: pass
+    #   class B(A[List[T]], Generic[T]): pass
+    #
+    # We need to first map B's __init__ to the type (List[T]) -> None.
+    signature = cast(FunctionLike,
+                     map_type_from_supertype(signature, info, init_or_new.info))
+
     if isinstance(signature, CallableType):
         return class_callable(signature, info, fallback)
     else:
@@ -416,3 +429,33 @@ class TvarTranslator(TypeTranslator):
             else:
                 items.append(v)
         return items
+
+
+def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
+                            super_info: TypeInfo) -> Type:
+    """Map type variables in a type defined in a supertype context to be valid
+    in the subtype context. Assume that the result is unique; if more than
+    one type is possible, return one of the alternatives.
+
+    For example, assume
+
+    . class D(Generic[S]) ...
+    . class C(D[E[T]], Generic[T]) ...
+
+    Now S in the context of D would be mapped to E[T] in the context of C.
+    """
+    # Create the type of self in subtype, of form t[a1, ...].
+    inst_type = self_type(sub_info)
+    if isinstance(inst_type, TupleType):
+        inst_type = inst_type.fallback
+    # Map the type of self to supertype. This gets us a description of the
+    # supertype type variables in terms of subtype variables, i.e. t[t1, ...]
+    # so that any type variables in tN are to be interpreted in subtype
+    # context.
+    inst_type = map_instance_to_supertype(inst_type, super_info)
+    # Finally expand the type variables in type with those in the previously
+    # constructed type. Note that both type and inst_type may have type
+    # variables, but in type they are interpreterd in supertype context while
+    # in inst_type they are interpreted in subtype context. This works even if
+    # the names of type variables in supertype and subtype overlap.
+    return expand_type_by_instance(typ, inst_type)

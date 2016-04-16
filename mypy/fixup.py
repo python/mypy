@@ -165,8 +165,6 @@ class TypeFixer(TypeVisitor[None]):
                 for val in v.values:
                     val.accept(self)
             v.upper_bound.accept(self)
-        for i, t in ct.bound_vars:
-            t.accept(self)
 
     def visit_ellipsis_type(self, e: EllipsisType) -> None:
         pass  # Nothing to descend into.
@@ -227,6 +225,7 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
     head = name
     rest = []
     while True:
+        assert '.' in head, "Cannot find %s" % (name,)
         head, tail = head.rsplit('.', 1)
         mod = modules.get(head)
         if mod is not None:
