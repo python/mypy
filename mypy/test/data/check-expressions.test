@@ -1445,3 +1445,27 @@ class dict(Generic[T, S]):
     def __init__(self, x: T, **kwargs: T) -> None: pass
 dict(1, y=1)
 [builtins fixtures/dict.py]
+
+[case testSpecialSignatureForSubclassOfDict]
+from typing import TypeVar, Dict, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class D1(dict): pass # Implicit base class Dict[Any, Any]
+D1([(1, 2)], x=1)
+class D2(Dict[T, S], Generic[T, S]): pass
+da = D2([('x', 2)], x=1)
+da() # E: D2[str, int] not callable
+D2([(1, 2)], x=1) # E: Keyword argument only valid with "str" key type in call to "dict"
+db = D2(x=1)
+db() # E: D2[str, int] not callable
+[builtins fixtures/dict.py]
+
+[case testOverridingSpecialSignatureInSubclassOfDict]
+from typing import TypeVar, Dict, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class D(Dict[T, S], Generic[T, S]):
+    def __init__(self, x: S, y: T) -> None: pass
+d = D(1, y='')
+d() # E: D[str, int] not callable
+[builtins fixtures/dict.py]
