@@ -1406,7 +1406,9 @@ x = 1
 [out]
 
 [case testMultipassAndDecoratedMethod]
-from typing import Callable
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
 
 class A:
     def f(self) -> None:
@@ -1415,7 +1417,7 @@ class A:
     @dec
     def g(self, x: str) -> None: pass
 
-def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
+def dec(f: Callable[[A, str], T]) -> Callable[[A, int], T]: pass
 [out]
 main: note: In member "f" of class "A":
 

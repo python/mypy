@@ -2470,6 +2470,8 @@ class ThirdPass(TraverserVisitor[None]):
             if sig:
                 # The outermost decorator always returns the same kind of function,
                 # so we know that this is the type of the decoratored function.
+                orig_sig = function_type(dec.func, self.builtin_type('function'))
+                sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
