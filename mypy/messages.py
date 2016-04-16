@@ -79,6 +79,8 @@ INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
 FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"
 RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
 ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
+KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
+    'Keyword argument only valid with "str" key type in call to "dict"'
 
 
 class MessageBuilder:

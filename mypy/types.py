@@ -405,6 +405,9 @@ class CallableType(FunctionLike):
     is_classmethod_class = False
     # Was this type implicitly generated instead of explicitly specified by the user?
     implicit = False
+    # Defined for signatures that require special handling (currently only value is 'dict'
+    # for a signature similar to 'dict')
+    special_sig = None  # type: Optional[str]
 
     def __init__(self,
                  arg_types: List[Type],
@@ -419,6 +422,7 @@ class CallableType(FunctionLike):
                  is_ellipsis_args: bool = False,
                  implicit=False,
                  is_classmethod_class=False,
+                 special_sig=None,
                  ) -> None:
         if variables is None:
             variables = []
@@ -435,6 +439,7 @@ class CallableType(FunctionLike):
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
+        self.special_sig = special_sig
         super().__init__(line)
 
     def copy_modified(self,
@@ -447,7 +452,8 @@ class CallableType(FunctionLike):
                       definition: SymbolNode = _dummy,
                       variables: List[TypeVarDef] = _dummy,
                       line: int = _dummy,
-                      is_ellipsis_args: bool = _dummy) -> 'CallableType':
+                      is_ellipsis_args: bool = _dummy,
+                      special_sig: Optional[str] = _dummy) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -462,6 +468,7 @@ class CallableType(FunctionLike):
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
             implicit=self.implicit,
             is_classmethod_class=self.is_classmethod_class,
+            special_sig=special_sig if special_sig is not _dummy else self.special_sig,
         )
 
     def is_type_obj(self) -> bool:

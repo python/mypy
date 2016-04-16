@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List
+from typing import cast, Callable, List, Optional
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
@@ -350,7 +350,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
                                    arg_names=["_args", "_kwds"],
                                    ret_type=AnyType(),
                                    fallback=builtin_type('builtins.function'))
-                return class_callable(sig, info, fallback)
+                return class_callable(sig, info, fallback, None)
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
         return type_object_type_from_function(init_method, info, fallback)
@@ -372,17 +372,24 @@ def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, init_or_new.info))
 
+    if init_or_new.info.fullname() == 'builtins.dict':
+        # Special signature!
+        special_sig = 'dict'
+    else:
+        special_sig = None
+
     if isinstance(signature, CallableType):
-        return class_callable(signature, info, fallback)
+        return class_callable(signature, info, fallback, special_sig)
     else:
         # Overloaded __init__/__new__.
         items = []  # type: List[CallableType]
         for item in cast(Overloaded, signature).items():
-            items.append(class_callable(item, info, fallback))
+            items.append(class_callable(item, info, fallback, special_sig))
         return Overloaded(items)
 
 
-def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance) -> CallableType:
+def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
+                   special_sig: Optional[str]) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     for i, tvar in enumerate(info.defn.type_vars):
@@ -393,7 +400,8 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance)
     variables.extend(initvars)
 
     callable_type = init_type.copy_modified(
-        ret_type=self_type(info), fallback=type_type, name=None, variables=variables)
+        ret_type=self_type(info), fallback=type_type, name=None, variables=variables,
+        special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
     cc = convert_class_tvars_to_func_tvars(c, len(initvars))
     cc.is_classmethod_class = True

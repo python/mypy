@@ -15,7 +15,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS
+    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2
 )
 from mypy.nodes import function_type
 from mypy import nodes
@@ -422,6 +422,17 @@ class ExpressionChecker:
                  inferred_args) = self.infer_function_type_arguments_pass2(
                     callee_type, args, arg_kinds, formal_to_actual,
                     inferred_args, context)
+
+            if inferred_args and callee_type.special_sig == 'dict' and (
+                    ARG_NAMED in arg_kinds or ARG_STAR2 in arg_kinds):
+                # HACK: Infer str key type for dict(...) with keyword args. The type system
+                #       can't represent this so we special case it, as this is a pretty common
+                #       thing.
+                if isinstance(inferred_args[0], NoneTyp):
+                    inferred_args[0] = self.named_type('builtins.str')
+                elif not is_subtype(self.named_type('builtins.str'), inferred_args[0]):
+                    self.msg.fail(messages.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
+                                  context)
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
