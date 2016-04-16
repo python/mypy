@@ -1460,6 +1460,13 @@ db = D2(x=1)
 db() # E: D2[str, int] not callable
 [builtins fixtures/dict.py]
 
+[case testSpecialSignatureForSubclassOfDict2]
+from typing import TypeVar, Dict, Generic
+T = TypeVar('T')
+class D(Dict[str, T], Generic[T]): pass
+D([('x', 1)], x=1)
+[builtins fixtures/dict.py]
+
 [case testOverridingSpecialSignatureInSubclassOfDict]
 from typing import TypeVar, Dict, Generic
 T = TypeVar('T')

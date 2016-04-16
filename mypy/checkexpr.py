@@ -423,11 +423,14 @@ class ExpressionChecker:
                     callee_type, args, arg_kinds, formal_to_actual,
                     inferred_args, context)
 
-            if inferred_args and callee_type.special_sig == 'dict' and (
+            if callee_type.special_sig == 'dict' and len(inferred_args) == 2 and (
                     ARG_NAMED in arg_kinds or ARG_STAR2 in arg_kinds):
                 # HACK: Infer str key type for dict(...) with keyword args. The type system
                 #       can't represent this so we special case it, as this is a pretty common
-                #       thing.
+                #       thing. This doesn't quite work with all possible subclasses of dict
+                #       if they shuffle type variables around, as we assume that there is a 1-1
+                #       correspondence with dict type variables. This is a marginal issue and
+                #       a little tricky to fix so it's left unfixed for now.
                 if isinstance(inferred_args[0], NoneTyp):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not is_subtype(self.named_type('builtins.str'), inferred_args[0]):
