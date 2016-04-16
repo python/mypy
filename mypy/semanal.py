@@ -76,6 +76,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.lex import lex
 from mypy.parsetype import parse_type
 from mypy.sametypes import is_same_type
+from mypy.erasetype import erase_typevars
 from mypy import defaults
 
 
@@ -2426,8 +2427,12 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_decorator(self, dec: Decorator) -> None:
         """Try to infer the type of the decorated function.
 
-        This helps us resolve forward references to decorated
-        functions during type checking.
+        This lets us resolve references to decorated functions during
+        type checking when there are cyclic imports, as otherwise the
+        type might not be available when we need it.
+
+        This basically uses a simple special-purpose type inference
+        engine just for decorators.
         """
         super().visit_decorator(dec)
         if dec.var.is_property:
@@ -2453,13 +2458,21 @@ class ThirdPass(TraverserVisitor[None]):
                 decorator_preserves_type = False
                 break
         if decorator_preserves_type:
-            # No non-special decorators left. We can trivially infer the type
+            # No non-identity decorators left. We can trivially infer the type
             # of the function here.
             dec.var.type = function_type(dec.func, self.builtin_type('function'))
-        if dec.decorators and returns_any_if_called(dec.decorators[0]):
-            # The outermost decorator will return Any so we know the type of the
-            # decorated function.
-            dec.var.type = AnyType()
+        if dec.decorators:
+            if returns_any_if_called(dec.decorators[0]):
+                # The outermost decorator will return Any so we know the type of the
+                # decorated function.
+                dec.var.type = AnyType()
+            sig = find_fixed_callable_return(dec.decorators[0])
+            if sig:
+                # The outermost decorator always returns the same kind of function,
+                # so we know that this is the type of the decoratored function.
+                orig_sig = function_type(dec.func, self.builtin_type('function'))
+                sig.name = orig_sig.items()[0].name
+                dec.var.type = sig
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
@@ -2673,3 +2686,23 @@ def returns_any_if_called(expr: Node) -> bool:
     elif isinstance(expr, CallExpr):
         return returns_any_if_called(expr.callee)
     return False
+
+
+def find_fixed_callable_return(expr: Node) -> Optional[CallableType]:
+    if isinstance(expr, RefExpr):
+        if isinstance(expr.node, FuncDef):
+            typ = expr.node.type
+            if typ:
+                if isinstance(typ, CallableType) and has_no_typevars(typ.ret_type):
+                    if isinstance(typ.ret_type, CallableType):
+                        return typ.ret_type
+    elif isinstance(expr, CallExpr):
+        t = find_fixed_callable_return(expr.callee)
+        if t:
+            if isinstance(t.ret_type, CallableType):
+                return t.ret_type
+    return None
+
+
+def has_no_typevars(typ: Type) -> bool:
+    return is_same_type(typ, erase_typevars(typ))

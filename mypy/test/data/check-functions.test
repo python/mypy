@@ -863,6 +863,146 @@ def g(): pass
 def dec(f): pass
 
 
+-- Decorator functions in import cycles
+-- ------------------------------------
+
+
+[case testDecoratorWithIdentityTypeInImportCycle]
+import a
+
+[file a.py]
+import b
+from d import dec
+@dec
+def f(x: int) -> None: pass
+b.g(1) # E
+
+[file b.py]
+import a
+from d import dec
+@dec
+def g(x: str) -> None: pass
+a.f('')
+
+[file d.py]
+from typing import TypeVar
+T = TypeVar('T')
+def dec(f: T) -> T: return f
+
+[out]
+tmp/a.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/b.py:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:1: note: In module imported here:
+tmp/a.py:5: error: Argument 1 to "g" has incompatible type "int"; expected "str"
+
+[case testDecoratorWithNoAnnotationInImportCycle]
+import a
+
+[file a.py]
+import b
+from d import dec
+@dec
+def f(x: int) -> None: pass
+b.g(1, z=4)
+
+[file b.py]
+import a
+from d import dec
+@dec
+def g(x: str) -> None: pass
+a.f('', y=2)
+
+[file d.py]
+def dec(f): return f
+
+[case testDecoratorWithFixedReturnTypeInImportCycle]
+import a
+
+[file a.py]
+import b
+from d import dec
+@dec
+def f(x: int) -> str: pass
+b.g(1)()
+
+[file b.py]
+import a
+from d import dec
+@dec
+def g(x: int) -> str: pass
+a.f(1)()
+
+[file d.py]
+from typing import Callable
+def dec(f: Callable[[int], str]) -> Callable[[int], str]: return f
+
+[out]
+tmp/a.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/b.py:5: error: "str" not callable
+main:1: note: In module imported here:
+tmp/a.py:5: error: "str" not callable
+
+[case testDecoratorWithCallAndFixedReturnTypeInImportCycle]
+import a
+
+[file a.py]
+import b
+from d import dec
+@dec()
+def f(x: int) -> str: pass
+b.g(1)()
+
+[file b.py]
+import a
+from d import dec
+@dec()
+def g(x: int) -> str: pass
+a.f(1)()
+
+[file d.py]
+from typing import Callable
+def dec() -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
+
+[out]
+tmp/a.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/b.py:5: error: "str" not callable
+main:1: note: In module imported here:
+tmp/a.py:5: error: "str" not callable
+
+[case testDecoratorWithCallAndFixedReturnTypeInImportCycleAndDecoratorArgs]
+import a
+
+[file a.py]
+import b
+from d import dec
+@dec(1)
+def f(x: int) -> str: pass
+b.g(1)()
+
+[file b.py]
+import a
+from d import dec
+@dec(1)
+def g(x: int) -> str: pass
+a.f(1)()
+
+[file d.py]
+from typing import Callable
+def dec(x: str) -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
+
+[out]
+tmp/a.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/b.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
+tmp/b.py:5: error: "str" not callable
+main:1: note: In module imported here:
+tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
+tmp/a.py:5: error: "str" not callable
+
+
 -- Conditional function definition
 -- -------------------------------
 
@@ -1384,3 +1524,19 @@ with a:
     def f() -> None:
         pass
     f(1) # E: Too many arguments for "f"
+
+
+[case testNameForDecoratorMethod]
+from typing import Callable
+
+class A:
+    def f(self) -> None:
+        # In particular, test that the error message contains "g" of "A".
+        self.g() # E: Too few arguments for "g" of "A"
+        self.g(1)
+    @dec
+    def g(self, x: str) -> None: pass
+
+def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
+[out]
+main: note: In member "f" of class "A":
