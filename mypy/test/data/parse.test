@@ -2523,6 +2523,32 @@ MypyFile:1(
         NameExpr(x)))
     PassStmt:1()))
 
+[case testClassKeywordArgs]
+class Foo(_root=None): pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    Foo
+    PassStmt:1()))
+
+[case testClassKeywordArgsBeforeMeta]
+class Foo(_root=None, metaclass=Bar): pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    Foo
+    Metaclass(Bar)
+    PassStmt:1()))
+
+[case testClassKeywordArgsAfterMeta]
+class Foo(metaclass=Bar, _root=None): pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    Foo
+    Metaclass(Bar)
+    PassStmt:1()))
+
 [case testNamesThatAreNoLongerKeywords]
 any = interface
 [out]
