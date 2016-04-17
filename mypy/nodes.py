@@ -2152,7 +2152,7 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-def linearize_hierarchy(info: TypeInfo) -> Optional[List[TypeInfo]]:
+def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
     # TODO describe
     if info.mro:
         return info.mro
@@ -2160,10 +2160,7 @@ def linearize_hierarchy(info: TypeInfo) -> Optional[List[TypeInfo]]:
     lin_bases = []
     for base in bases:
         assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
-        more_bases = linearize_hierarchy(base)
-        if more_bases is None:
-            return None
-        lin_bases.append(more_bases)
+        lin_bases.append(linearize_hierarchy(base))
     lin_bases.append(bases)
     return [info] + merge(lin_bases)
 
