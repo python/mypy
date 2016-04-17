@@ -1082,7 +1082,6 @@ from collections import defaultdict
 T = t.TypeVar('T')
 
 d1 = defaultdict(list) # type: t.DefaultDict[int, str]
-
 d2 = defaultdict() # type: t.DefaultDict[int, str]
 d2[0] = '0'
 d2['0'] = 0
@@ -1091,9 +1090,7 @@ def tst(dct: t.DefaultDict[int, T]) -> T:
     return dct[0]
 
 collections = ['coins', 'stamps', 'comics'] # type: t.List[str]
-
 d3 = defaultdict(str) # type: t.DefaultDict[int, str]
-
 collections[2]
 
 tst(defaultdict(list, {0: []}))
@@ -1101,15 +1098,14 @@ tst(defaultdict(list, {'0': []}))
 
 class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
     pass
-
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
-_program.py:10: error: Invalid index type "str" for "dict"
-_program.py:10: error: Incompatible types in assignment
-_program.py:22: error: List item 0 has incompatible type "Tuple[str, List[None]]"
-_program.py:27: error: Invalid index type "str" for "dict"
+_program.py:9: error: Invalid index type "str" for "dict"
+_program.py:9: error: Incompatible types in assignment
+_program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
+_program.py:23: error: Invalid index type "str" for "dict"
 
 [case testSuperAndSetattr]
 class A:
