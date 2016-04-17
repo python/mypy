@@ -63,6 +63,12 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     TODO: Don't consider callables always overlapping.
     TODO: Don't consider type variables with values always overlapping.
     """
+    # Since we are effectively working with the erased types, we only
+    # need to handle occurrences of TypeVarType at the top level.
+    if isinstance(t, TypeVarType):
+        t = t.upper_bound
+    if isinstance(s, TypeVarType):
+        s = s.upper_bound
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Only consider two classes non-disjoint if one is included in the mro

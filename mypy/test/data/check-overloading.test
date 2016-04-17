@@ -583,3 +583,50 @@ class Derived(Base):
         return C(self)  # fails without the fix for #1363
 C(Derived())  # fails without the hack
 C(Base())  # Always ok
+
+[case testOverloadWithBoundedTypeVar]
+from typing import overload, TypeVar
+T = TypeVar('T', bound=str)
+@overload
+def f(x: T) -> T: pass
+@overload
+def f(x: int) -> bool: pass
+class mystr(str): pass
+
+f('x')() # E: "str" not callable
+f(1)() # E: "bool" not callable
+f(1.1) # E: No overload variant of "f" matches argument types [builtins.float]
+f(mystr())() # E: "mystr" not callable
+[builtins fixtures/primitives.py]
+
+[case testOverloadedCallWithVariableTypes]
+from typing import overload, TypeVar, List
+T = TypeVar('T', bound=str)
+@overload
+def f(x: T) -> T: pass
+@overload
+def f(x: List[T]) -> None: pass
+class mystr(str): pass
+
+U = TypeVar('U', bound=mystr)
+V = TypeVar('V')
+def g(x: U, y: V) -> None:
+    f(x)() # E: "mystr" not callable
+    f(y) # E: No overload variant of "f" matches argument types [V`-2]
+    a = f([x]) # E: "f" does not return a value
+    f([y]) # E: Type argument 1 of "f" has incompatible value "V"
+    f([x, y]) # E: Type argument 1 of "f" has incompatible value "object"
+[builtins fixtures/list.py]
+[out]
+main: note: In function "g":
+
+[case testOverlapWithTypeVars]
+from typing import overload, TypeVar, Sequence
+T = TypeVar('T', bound=str)
+@overload
+def f(x: Sequence[T]) -> None: pass
+@overload
+def f(x: Sequence[int]) -> int: pass
+# These are considered overlapping despite the bound on T due to runtime type erasure.
+[out]
+main:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types

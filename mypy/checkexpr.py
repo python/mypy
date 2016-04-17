@@ -1639,9 +1639,16 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     The distinction is important in cases where multiple overload items match. We want
     give priority to higher similarity matches.
     """
+    # Replace type variables with their upper bounds. Overloading
+    # resolution is based on runtime behavior which erases type
+    # parameters, so no need to handle type variables occuring within
+    # a type.
+    if isinstance(actual, TypeVarType):
+        actual = actual.upper_bound
+    if isinstance(formal, TypeVarType):
+        formal = formal.upper_bound
     if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
-            isinstance(formal, AnyType) or isinstance(formal, TypeVarType) or
-            isinstance(formal, CallableType) or
+            isinstance(formal, AnyType) or isinstance(formal, CallableType) or
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
