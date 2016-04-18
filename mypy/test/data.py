@@ -24,7 +24,7 @@ def parse_test_cases(
 
     if not include_path:
         include_path = os.path.dirname(path)
-    l = open(path).readlines()
+    l = open(path, encoding='utf-8').readlines()
     for i in range(len(l)):
         l[i] = l[i].rstrip('\n')
     p = parse_test_data(l, path)
