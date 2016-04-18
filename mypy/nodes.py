@@ -78,7 +78,6 @@ implicit_module_attrs = {'__name__': '__builtins__.str',
 type_aliases = {
     'typing.List': '__builtins__.list',
     'typing.Dict': '__builtins__.dict',
-    'typing.DefaultDict': 'collections.defaultdict',
     'typing.Set': '__builtins__.set',
 }
 

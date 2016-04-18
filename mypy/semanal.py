@@ -939,6 +939,9 @@ class SemanticAnalyzer(NodeVisitor):
         if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
+        if node.fullname == 'typing.DefaultDict':
+            self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
+            node = self.lookup_qualified('__mypy_collections__.defaultdict', ctx)
         return node
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
