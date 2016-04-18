@@ -1340,7 +1340,6 @@ def f(x: int) -> Iterator[None]:
 -- ----------------
 
 
-
 [case testYieldFromIteratorHasNoValue]
 from typing import Iterator
 def f() -> Iterator[int]:
@@ -1362,12 +1361,14 @@ def g() -> Iterator[int]:
 [out]
 
 
+-- dict(...)
+-- ---------
 
--- dict(x=y, ...)
--- --------------
 
+-- Note that the stub used in unit tests does not have all overload
+-- variants, but it should not matter.
 
-[case testDictWithKeywordArgs]
+[case testDictWithKeywordArgsOnly]
 from typing import Dict, Any
 d1 = dict(a=1, b=2) # type: Dict[str, int]
 d2 = dict(a=1, b='') # type: Dict[str, int] # E: List item 1 has incompatible type "Tuple[str, str]"
@@ -1378,7 +1379,100 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 [builtins fixtures/dict.py]
 
 [case testDictWithoutKeywordArgs]
-dict(undefined)
+from typing import Dict
+d = dict() # E: Need type annotation for variable
+d2 = dict() # type: Dict[int, str]
+dict(undefined) # E: Name 'undefined' is not defined
 [builtins fixtures/dict.py]
-[out]
-main:1: error: Name 'undefined' is not defined
+
+[case testDictFromList]
+from typing import Dict
+d = dict([(1, 'x'), (2, 'y')])
+d() # E: Dict[int, str] not callable
+d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, str]"
+[builtins fixtures/dict.py]
+
+[case testDictFromIterableAndKeywordArg]
+from typing import Dict
+it = [('x', 1)]
+
+d = dict(it, x=1)
+d() # E: Dict[str, int] not callable
+
+d2 = dict(it, x='') # E: Cannot infer type argument 2 of "dict"
+d2() # E: Dict[Any, Any] not callable
+
+d3 = dict(it, x='') # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.py]
+
+[case testDictFromIterableAndKeywordArg2]
+it = [(1, 'x')]
+dict(it, x='y') # E: Keyword argument only valid with "str" key type in call to "dict"
+[builtins fixtures/dict.py]
+
+[case testDictFromIterableAndKeywordArg3]
+d = dict([], x=1)
+d() # E: Dict[str, int] not callable
+[builtins fixtures/dict.py]
+
+[case testDictFromIterableAndStarStarArgs]
+from typing import Dict
+it = [('x', 1)]
+
+kw = {'x': 1}
+d = dict(it, **kw)
+d() # E: Dict[str, int] not callable
+
+kw2 = {'x': ''}
+d2 = dict(it, **kw2) # E: Cannot infer type argument 2 of "dict"
+d2() # E: Dict[Any, Any] not callable
+
+d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type **Dict[str, str]; expected "int"
+[builtins fixtures/dict.py]
+
+[case testDictFromIterableAndStarStarArgs2]
+it = [(1, 'x')]
+kw = {'x': 'y'}
+d = dict(it, **kw) # E: Keyword argument only valid with "str" key type in call to "dict"
+d() # E: Dict[int, str] not callable
+[builtins fixtures/dict.py]
+
+[case testUserDefinedClassNamedDict]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class dict(Generic[T, S]):
+    def __init__(self, x: T, **kwargs: T) -> None: pass
+dict(1, y=1)
+[builtins fixtures/dict.py]
+
+[case testSpecialSignatureForSubclassOfDict]
+from typing import TypeVar, Dict, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class D1(dict): pass # Implicit base class Dict[Any, Any]
+D1([(1, 2)], x=1)
+class D2(Dict[T, S], Generic[T, S]): pass
+da = D2([('x', 2)], x=1)
+da() # E: D2[str, int] not callable
+D2([(1, 2)], x=1) # E: Keyword argument only valid with "str" key type in call to "dict"
+db = D2(x=1)
+db() # E: D2[str, int] not callable
+[builtins fixtures/dict.py]
+
+[case testSpecialSignatureForSubclassOfDict2]
+from typing import TypeVar, Dict, Generic
+T = TypeVar('T')
+class D(Dict[str, T], Generic[T]): pass
+D([('x', 1)], x=1)
+[builtins fixtures/dict.py]
+
+[case testOverridingSpecialSignatureInSubclassOfDict]
+from typing import TypeVar, Dict, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class D(Dict[T, S], Generic[T, S]):
+    def __init__(self, x: S, y: T) -> None: pass
+d = D(1, y='')
+d() # E: D[str, int] not callable
+[builtins fixtures/dict.py]

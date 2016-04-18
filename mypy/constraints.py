@@ -45,7 +45,6 @@ def infer_constraints_for_callable(
 
     Return a list of constraints.
     """
-
     constraints = []  # type: List[Constraint]
     tuple_counter = [0]
 
