@@ -27,7 +27,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
@@ -1406,6 +1406,7 @@ class ExpressionChecker:
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
         self.check_not_void(cond_type, e)
+        ctx = self.chk.type_context[-1]
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
@@ -1414,26 +1415,44 @@ class ExpressionChecker:
             self.chk.type_map,
             self.chk.typing_mode_weak())
 
-        self.chk.binder.push_frame()
+        with self.chk.binder:
+            if if_map:
+                for var, type in if_map.items():
+                    self.chk.binder.push(var, type)
+            if_type = self.accept(e.if_expr, context=ctx)
 
-        if if_map:
-            for var, type in if_map.items():
-                self.chk.binder.push(var, type)
+        if has_unfinished_types(if_type):
+            # Analyze the right branch disregarding the left branch.
+            with self.chk.binder:
+                if else_map:
+                    for var, type in else_map.items():
+                        self.chk.binder.push(var, type)
+                else_type = self.accept(e.else_expr, context=ctx)
 
-        if_type = self.accept(e.if_expr)
+            # If it would make a difference, re-analyze the left
+            # branch using the right branch's type as context.
+            if ctx is None or not is_equivalent(else_type, ctx):
+                # TODO: If it's possible that the previous analysis of
+                # the left branch produced errors that are avoided
+                # using this context, suppress those errors.
+                with self.chk.binder:
+                    if if_map:
+                        for var, type in if_map.items():
+                            self.chk.binder.push(var, type)
+                    if_type = self.accept(e.if_expr, context=else_type)
 
-        self.chk.binder.pop_frame()
-        self.chk.binder.push_frame()
+        else:
+            # Analyze the right branch in the context of the left
+            # branch's type.
+            with self.chk.binder:
+                if else_map:
+                    for var, type in else_map.items():
+                        self.chk.binder.push(var, type)
+                else_type = self.accept(e.else_expr, context=if_type)
 
-        if else_map:
-            for var, type in else_map.items():
-                self.chk.binder.push(var, type)
+        res = join.join_types(if_type, else_type)
 
-        else_type = self.accept(e.else_expr, context=if_type)
-
-        self.chk.binder.pop_frame()
-
-        return join.join_types(if_type, else_type)
+        return res
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
@@ -1503,6 +1522,19 @@ class ExpressionChecker:
         pass or report an error.
         """
         self.chk.handle_cannot_determine_type(name, context)
+
+
+# TODO: What's a good name for this function?
+def has_unfinished_types(t: Type) -> bool:
+    """Check whether t has type variables replaced with 'None'.
+
+    This can happen when `[]` is evaluated without sufficient context.
+    """
+    if isinstance(t, NoneTyp):
+        return True
+    if isinstance(t, Instance):
+        return any(has_unfinished_types(arg) for arg in t.args)
+    return False
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
