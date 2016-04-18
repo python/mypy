@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 import cgi
 import os
 import shutil
+import tokenize
 
 from typing import Callable, Dict, List, Tuple, cast
 
@@ -168,7 +169,7 @@ class MemoryXmlReporter(AbstractReporter):
         doc = etree.ElementTree(root)
         file_info = FileInfo(path, tree._fullname)
 
-        with open(path) as input_file:
+        with tokenize.open(path) as input_file:
             for lineno, line_text in enumerate(input_file, 1):
                 status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
                 file_info.counts[status] += 1
