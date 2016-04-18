@@ -1,6 +1,7 @@
 """Mypy type checker."""
 
 import itertools
+import contextlib
 
 from typing import (
     Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
@@ -294,6 +295,12 @@ class ConditionalTypeBinder:
 
     def pop_loop_frame(self):
         self.loop_frames.pop()
+
+    def __enter__(self) -> None:
+        self.push_frame()
+
+    def __exit__(self, *args: Any) -> None:
+        self.pop_frame()
 
 
 def meet_frames(*frames: Frame) -> Frame:
