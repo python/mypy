@@ -479,3 +479,33 @@ a = g
 b = g
 b = g
 b = f # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[U], U])
+
+[case testInnerFunctionWithTypevarValues]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+U = TypeVar('U', int, str)
+def outer(x: T) -> T:
+    def inner(y: T) -> T:
+        return x
+    def inner2(y: U) -> U:
+        return y
+    inner(x)
+    inner(3) # E: Argument 1 to "inner" has incompatible type "int"; expected "str"
+    inner2(x)
+    inner2(3)
+    outer(3)
+    return x
+[out]
+main: note: In function "outer":
+
+[case testInnerFunctionMutualRecursionWithTypevarValues]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+def outer(x: T) -> T:
+    def inner1(y: T) -> T:
+        return inner2(y)
+    def inner2(y: T) -> T:
+        return inner1('a') # E: Argument 1 to "inner1" has incompatible type "str"; expected "int"
+    return inner1(x)
+[out]
+main: note: In function "inner2":
