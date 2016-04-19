@@ -630,3 +630,14 @@ def f(x: Sequence[int]) -> int: pass
 # These are considered overlapping despite the bound on T due to runtime type erasure.
 [out]
 main:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
+
+[case testOverlappingOverloadCounting]
+from typing import overload
+class A: pass
+class B(A): pass
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: B) -> str: pass # E: Overloaded function signatures 2 and 3 overlap with incompatible return types
+@overload
+def f(x: A) -> int: pass

@@ -498,7 +498,7 @@ class TypeChecker(NodeVisitor[Type]):
                 sig1 = self.function_type(item.func)
                 sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
-                    self.msg.overloaded_signatures_overlap(i + 1, j + 2,
+                    self.msg.overloaded_signatures_overlap(i + 1, i + j + 2,
                                                            item.func)
 
     def is_generator_return_type(self, typ: Type) -> bool:
