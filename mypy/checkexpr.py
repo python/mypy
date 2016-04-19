@@ -1644,9 +1644,9 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     # parameters, so no need to handle type variables occuring within
     # a type.
     if isinstance(actual, TypeVarType):
-        actual = actual.upper_bound
+        actual = actual.erase_to_union_or_bound()
     if isinstance(formal, TypeVarType):
-        formal = formal.upper_bound
+        formal = formal.erase_to_union_or_bound()
     if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
             isinstance(formal, AnyType) or isinstance(formal, CallableType) or
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):

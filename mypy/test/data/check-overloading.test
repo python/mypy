@@ -631,6 +631,43 @@ def f(x: Sequence[int]) -> int: pass
 [out]
 main:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
 
+[case testOverlapWithTypeVarsWithValues]
+from typing import overload, TypeVar
+AnyStr = TypeVar('AnyStr', bytes, str)
+
+@overload
+def f(x: int) -> int: pass
+@overload
+def f(x: AnyStr) -> str: pass
+
+f(1)() # E: "int" not callable
+f('1')() # E: "str" not callable
+f(b'1')() # E: "str" not callable
+f(1.0) # E: No overload variant of "f" matches argument types [builtins.float]
+
+@overload
+def g(x: AnyStr, *a: AnyStr) -> None: pass
+@overload
+def g(x: int, *a: AnyStr) -> None: pass
+
+g('foo')
+g('foo', 'bar')
+g('foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
+g(1)
+g(1, 'foo')
+g(1, 'foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
+[builtins fixtures/primitives.py]
+
+[case testBadOverlapWithTypeVarsWithValues]
+from typing import overload, TypeVar
+AnyStr = TypeVar('AnyStr', bytes, str)
+
+@overload
+def f(x: AnyStr) -> None: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: str) -> bool: pass
+[builtins fixtures/primitives.py]
+
 [case testOverlappingOverloadCounting]
 from typing import overload
 class A: pass
