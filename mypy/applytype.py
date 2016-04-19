@@ -2,7 +2,7 @@ from typing import List, Dict
 
 import mypy.subtypes
 from mypy.expandtype import expand_type
-from mypy.types import Type, CallableType, AnyType
+from mypy.types import Type, CallableType, AnyType, Void
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
@@ -22,7 +22,7 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
         return AnyType()
 
     # Check that inferred type variable values are compatible with allowed
-    # values.  Also, promote subtype values to allowed values.
+    # values and bounds.  Also, promote subtype values to allowed values.
     types = types[:]
     for i, type in enumerate(types):
         values = callable.variables[i].values
@@ -35,6 +35,10 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
                     break
             else:
                 msg.incompatible_typevar_value(callable, i + 1, type, context)
+
+        upper_bound = callable.variables[i].upper_bound
+        if type and not mypy.subtypes.satisfies_upper_bound(type, upper_bound):
+            msg.incompatible_typevar_value(callable, i + 1, type, context)
 
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[int, Type]

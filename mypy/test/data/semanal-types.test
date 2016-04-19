@@ -1248,6 +1248,32 @@ MypyFile:1(
         builtins.int
         builtins.str))))
 
+[case testTypevarWithValuesAndVariance]
+from typing import TypeVar
+T = TypeVar('T', int, str, covariant=True)
+[builtins fixtures/bool.py]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Variance(COVARIANT)
+      Values(
+        builtins.int
+        builtins.str))))
+
+[case testTypevarWithBound]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      UpperBound(builtins.int))))
+
 [case testGenericFunctionWithValueSet]
 from typing import TypeVar
 T = TypeVar('T', int, str)
@@ -1286,6 +1312,42 @@ MypyFile:1(
     C
     TypeVars(
       T in (builtins.int, builtins.str))
+    PassStmt:3()))
+
+[case testGenericFunctionWithBound]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      UpperBound(builtins.int)))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T <: builtins.int] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
+
+[case testGenericClassWithBound]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      UpperBound(builtins.int)))
+  ClassDef:3(
+    C
+    TypeVars(
+      T <: builtins.int)
     PassStmt:3()))
 
 [case testSimpleDucktypeDecorator]

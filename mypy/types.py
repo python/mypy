@@ -68,6 +68,8 @@ class TypeVarDef(mypy.nodes.Context):
     def __repr__(self) -> str:
         if self.values:
             return '{} in {}'.format(self.name, tuple(self.values))
+        elif not is_named_instance(self.upper_bound, 'builtins.object'):
+            return '{} <: {}'.format(self.name, self.upper_bound)
         else:
             return self.name
 
@@ -321,7 +323,7 @@ class TypeVarType(Type):
     name = ''  # Name of the type variable (for messages and debugging)
     id = 0     # 1, 2, ... for type-related, -1, ... for function-related
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
-    upper_bound = None  # type: Type   # Upper bound for values (currently always 'object')
+    upper_bound = None  # type: Type   # Upper bound for values
     # See comments in TypeVarDef for more about variance.
     variance = INVARIANT  # type: int
 

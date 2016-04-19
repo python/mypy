@@ -1,0 +1,208 @@
+-- Enforcement of upper bounds
+-- ---------------------------
+
+
+[case testBoundOnGenericFunction]
+from typing import TypeVar
+
+class A: pass
+class B(A): pass
+class C(A): pass
+class D: pass
+
+T = TypeVar('T', bound=A)
+U = TypeVar('U')
+def f(x: T) -> T: pass
+def g(x: U) -> U:
+    return f(x) # Fail
+
+f(A())
+f(B())
+f(D()) # Fail
+
+b = B()
+b = f(b)
+b = f(C()) # Fail
+[out]
+main: note: In function "g":
+main:12: error: Type argument 1 of "f" has incompatible value "U"
+main: note: At top level:
+main:16: error: Type argument 1 of "f" has incompatible value "D"
+main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
+
+
+[case testBoundOnGenericClass]
+from typing import TypeVar, Generic
+
+class A: pass
+class B(A): pass
+T = TypeVar('T', bound=A)
+
+class G(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+
+v = None # type: G[A]
+w = None # type: G[B]
+x = None # type: G[str] # E: Type argument "builtins.str" of "G" must be a subtype of "__main__.A"
+y = G('a') # E: Type argument 1 of "G" has incompatible value "str"
+z = G(A())
+z = G(B())
+
+
+[case testBoundVoid]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    t = None # type: T
+    def get(self) -> T:
+        return self.t
+c1 = None # type: C[None]
+c1.get()
+d = c1.get() # E: Function does not return a value
+
+
+[case testBoundAny]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+def f(x: T) -> T:
+    return x
+
+def g(): pass
+
+f(g())
+C(g())
+z = None # type: C
+
+
+[case testBoundHigherOrderWithVoid]
+from typing import TypeVar, Callable
+class A: pass
+T = TypeVar('T', bound=A)
+def f(g: Callable[[], T]) -> T:
+    return g()
+def h() -> None: pass
+f(h)
+a = f(h) # E: "h" does not return a value
+
+
+[case testBoundInheritance]
+from typing import TypeVar, Generic
+class A: pass
+T = TypeVar('T')
+TA = TypeVar('TA', bound=A)
+
+class C(Generic[TA]): pass
+class D0(C[TA], Generic[TA]): pass
+class D1(C[T], Generic[T]): pass # E: Type argument "T`1" of "C" must be a subtype of "__main__.A"
+class D2(C[A]): pass
+class D3(C[str]): pass # E: Type argument "builtins.str" of "C" must be a subtype of "__main__.A"
+
+
+-- Using information from upper bounds
+-- -----------------------------------
+
+
+[case testBoundGenericFunctions]
+from typing import TypeVar
+class A: pass
+class B(A): pass
+
+T = TypeVar('T')
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+
+def f(x: T) -> T:
+    return x
+def g(x: TA) -> TA:
+    return f(x)
+def h(x: TB) -> TB:
+    return g(x)
+def g2(x: TA) -> TA:
+    return h(x) # Fail
+
+def j(x: TA) -> A:
+    return x
+def k(x: TA) -> B:
+    return x # Fail
+[out]
+main: note: In function "g2":
+main:16: error: Type argument 1 of "h" has incompatible value "TA"
+main: note: In function "k":
+main:21: error: Incompatible return value type: expected __main__.B, got TA`-1
+
+
+[case testBoundMethodUsage]
+from typing import TypeVar
+class A0:
+    def foo(self) -> None: pass
+class A(A0):
+    def bar(self) -> None: pass
+    a = 1
+    @property
+    def b(self) -> int:
+        return self.a
+class B(A):
+    def baz(self) -> None: pass
+
+T = TypeVar('T', A)
+
+def f(x: T) -> T:
+    x.foo()
+    x.bar()
+    x.baz()  # E: "A" has no attribute "baz"
+    x.a
+    x.b
+    return x
+
+b = f(B())
+[builtins fixtures/property.py]
+[out]
+main: note: In function "f":
+
+[case testBoundClassMethod]
+from typing import TypeVar
+class A0:
+    @classmethod
+    def foo(cls, x: int) -> int: pass
+class A(A0): pass
+
+T = TypeVar('T', bound=A)
+def f(x: T) -> int:
+    return x.foo(22)
+[builtins fixtures/classmethod.py]
+
+
+[case testBoundStaticMethod]
+from typing import TypeVar
+class A0:
+    @staticmethod
+    def foo(x: int) -> int: pass
+class A(A0): pass
+
+T = TypeVar('T', bound=A)
+def f(x: T) -> int:
+    return x.foo(22)
+[builtins fixtures/staticmethod.py]
+
+
+[case testBoundOnDecorator]
+from typing import TypeVar, Callable, Any, cast
+T = TypeVar('T', bound=Callable[..., Any])
+
+def twice(f: T) -> T:
+    def result(*args, **kwargs) -> Any:
+        f(*args, **kwargs)
+        return f(*args, **kwargs)
+    return cast(T, result)
+
+@twice
+def foo(x: int) -> int:
+    return x
+
+a = 1
+b = foo(a)
+b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+twice(a) # E: Type argument 1 of "twice" has incompatible value "int"
+[builtins fixtures/args.py]
