@@ -599,9 +599,9 @@ g(a)
 b = f(A(), B())
 g(b)
 c = f(A(), D())
-g(c) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
+g(c) # E: Argument 1 to "g" has incompatible type "J"; expected "I"
 d = f(D(), A())
-g(d) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
+g(d) # E: Argument 1 to "g" has incompatible type "J"; expected "I"
 e = f(D(), C())
 g(e) # E: Argument 1 to "g" has incompatible type "object"; expected "I"
 
@@ -646,9 +646,9 @@ def f(a: T, b: T) -> T: pass
 def g(x: K) -> None: pass
 
 a = f(B(), C())
-g(a) # E: Argument 1 to "g" has incompatible type "object"; expected "K"
+g(a) # E: Argument 1 to "g" has incompatible type "J"; expected "K"
 b = f(A(), C())
-g(b) # E: Argument 1 to "g" has incompatible type "object"; expected "K"
+g(b) # E: Argument 1 to "g" has incompatible type "J"; expected "K"
 c = f(A(), B())
 g(c)
 
@@ -1593,3 +1593,49 @@ tmp/m.py: note: In function "g":
 tmp/m.py:2: error: "int" not callable
 main: note: In function "f":
 main:3: error: "int" not callable
+
+
+-- Tests for special cases of unification
+-- --------------------------------------
+
+[case testUnificationRedundantUnion]
+from typing import Union
+a = None  # type: Union[int, str]
+b = None  # type: Union[str, tuple]
+def f(): pass
+def g(x: Union[int, str]): pass
+c = a if f() else b
+g(c) # E: Argument 1 to "g" has incompatible type "Union[int, str, tuple]"; expected "Union[int, str]"
+
+[case testUnificationMultipleInheritance]
+class A: pass
+class B:
+    def foo(self): pass
+class C(A, B): pass
+def f(): pass
+a1 = B() if f() else C()
+a1.foo()
+a2 = C() if f() else B()
+a2.foo()
+
+[case testUnificationMultipleInheritanceAmbiguous]
+# Show that join_instances_via_supertype() breakes ties using the first base class.
+class A1: pass
+class B1:
+    def foo1(self): pass
+class C1(A1, B1): pass
+
+class A2: pass
+class B2:
+    def foo2(self): pass
+class C2(A2, B2): pass
+
+class D1(C1, C2): pass
+class D2(C2, C1): pass
+
+def f(): pass
+
+a1 = D1() if f() else D2()
+a1.foo1()
+a2 = D2() if f() else D1()
+a2.foo2()
