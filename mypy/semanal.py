@@ -30,7 +30,10 @@ subdivided into three passes:
    it will reject Dict[int].  We don't do this in the second pass,
    since we infer the type argument counts of classes during this
    pass, and it is possible to refer to classes defined later in a
-   file, which would not have the type argument count set yet.
+   file, which would not have the type argument count set yet. This
+   pass also recomputes the method resolution order of each class, in
+   case one of its bases belongs to a module involved in an import
+   loop.
 
 Semantic analysis of types is implemented in module mypy.typeanal.
 
@@ -41,7 +44,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
+    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional, Callable
 )
 
 from mypy.nodes import (
@@ -753,22 +756,17 @@ class SemanticAnalyzer(NodeVisitor):
             obj = self.object_type()
             defn.base_types.insert(0, obj)
         defn.info.bases = defn.base_types
+        # Calculate the MRO. It might be incomplete at this point if
+        # the bases of defn include classes imported from other
+        # modules in an import loop. We'll recompute it in ThirdPass.
         if not self.verify_base_classes(defn):
             defn.info.mro = []
             return
-        try:
-            defn.info.calculate_mro()
-        except MroError:
-            self.fail("Cannot determine consistent method resolution order "
-                      '(MRO) for "%s"' % defn.name, defn)
-            defn.info.mro = []
-        else:
-            # If there are cyclic imports, we may be missing 'object' in
-            # the MRO. Fix MRO if needed.
-            if defn.info.mro[-1].fullname() != 'builtins.object':
-                defn.info.mro.append(self.object_type().type)
-        # The property of falling back to Any is inherited.
-        defn.info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in defn.info.mro)
+        calculate_class_mro(defn, self.fail)
+        # If there are cyclic imports, we may be missing 'object' in
+        # the MRO. Fix MRO if needed.
+        if defn.info.mro and defn.info.mro[-1].fullname() != 'builtins.object':
+            defn.info.mro.append(self.object_type().type)
 
     def expr_to_analyzed_type(self, expr: Node) -> Type:
         if isinstance(expr, CallExpr):
@@ -2437,6 +2435,12 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_class_def(self, tdef: ClassDef) -> None:
         for type in tdef.info.bases:
             self.analyze(type)
+        # Recompute MRO now that we have analyzed all modules, to pick
+        # up superclasses of bases imported from other modules in an
+        # import loop. (Only do so if we succeeded the first time.)
+        if tdef.info.mro:
+            tdef.info.mro = []  # Force recomputation
+            calculate_class_mro(tdef, self.fail)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -2567,6 +2571,17 @@ def refers_to_class_or_function(node: Node) -> bool:
     return (isinstance(node, RefExpr) and
             isinstance(cast(RefExpr, node).node, (TypeInfo, FuncDef,
                                                   OverloadedFuncDef)))
+
+
+def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) -> None:
+    try:
+        defn.info.calculate_mro()
+    except MroError:
+        fail("Cannot determine consistent method resolution order "
+             '(MRO) for "%s"' % defn.name, defn)
+        defn.info.mro = []
+    # The property of falling back to Any is inherited.
+    defn.info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in defn.info.mro)
 
 
 def find_duplicate(list: List[T]) -> T:
