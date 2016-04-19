@@ -1421,7 +1421,7 @@ class ExpressionChecker:
                     self.chk.binder.push(var, type)
             if_type = self.accept(e.if_expr, context=ctx)
 
-        if has_unfinished_types(if_type):
+        if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
             with self.chk.binder:
                 if else_map:
@@ -1522,19 +1522,6 @@ class ExpressionChecker:
         pass or report an error.
         """
         self.chk.handle_cannot_determine_type(name, context)
-
-
-# TODO: What's a good name for this function?
-def has_unfinished_types(t: Type) -> bool:
-    """Check whether t has type variables replaced with 'None'.
-
-    This can happen when `[]` is evaluated without sufficient context.
-    """
-    if isinstance(t, NoneTyp):
-        return True
-    if isinstance(t, Instance):
-        return any(has_unfinished_types(arg) for arg in t.args)
-    return False
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
