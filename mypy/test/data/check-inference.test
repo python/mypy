@@ -1639,3 +1639,60 @@ a1 = D1() if f() else D2()
 a1.foo1()
 a2 = D2() if f() else D1()
 a2.foo2()
+
+[case testUnificationEmptyListLeft]
+def f(): pass
+a = [] if f() else [0]
+a() # E: List[int] not callable
+[builtins fixtures/list.py]
+
+[case testUnificationEmptyListRight]
+def f(): pass
+a = [0] if f() else []
+a() # E: List[int] not callable
+[builtins fixtures/list.py]
+
+[case testUnificationEmptyListLeftInContext]
+from typing import List
+def f(): pass
+a = [] if f() else [0] # type: List[int]
+a() # E: List[int] not callable
+[builtins fixtures/list.py]
+
+[case testUnificationEmptyListRightInContext]
+# TODO Find an example that really needs the context
+from typing import List
+def f(): pass
+a = [0] if f() else [] # type: List[int]
+a() # E: List[int] not callable
+[builtins fixtures/list.py]
+
+[case testUnificationEmptySetLeft]
+def f(): pass
+a = set() if f() else {0}
+a() # E: Set[int] not callable
+[builtins fixtures/set.py]
+
+[case testUnificationEmptyDictLeft]
+def f(): pass
+a = {} if f() else {0: 0}
+a() # E: Dict[int, int] not callable
+[builtins fixtures/dict.py]
+
+[case testUnificationEmptyDictRight]
+def f(): pass
+a = {0: 0} if f() else {}
+a() # E: Dict[int, int] not callable
+[builtins fixtures/dict.py]
+
+[case testUnificationDictWithEmptyListLeft]
+def f(): pass
+a = {0: []} if f() else {0: [0]}
+a() # E: Dict[int, List[int]] not callable
+[builtins fixtures/dict.py]
+
+[case testUnificationDictWithEmptyListRight]
+def f(): pass
+a = {0: [0]} if f() else {0: []}
+a() # E: Dict[int, List[int]] not callable
+[builtins fixtures/dict.py]

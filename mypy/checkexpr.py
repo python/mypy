@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import cast, List, Tuple, Callable, Union, Optional
+from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
@@ -27,7 +27,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
@@ -1406,6 +1406,7 @@ class ExpressionChecker:
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
         self.check_not_void(cond_type, e)
+        ctx = self.chk.type_context[-1]
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
@@ -1414,26 +1415,36 @@ class ExpressionChecker:
             self.chk.type_map,
             self.chk.typing_mode_weak())
 
-        self.chk.binder.push_frame()
+        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
-        if if_map:
-            for var, type in if_map.items():
-                self.chk.binder.push(var, type)
+        if not mypy.checker.is_valid_inferred_type(if_type):
+            # Analyze the right branch disregarding the left branch.
+            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
 
-        if_type = self.accept(e.if_expr)
+            # If it would make a difference, re-analyze the left
+            # branch using the right branch's type as context.
+            if ctx is None or not is_equivalent(else_type, ctx):
+                # TODO: If it's possible that the previous analysis of
+                # the left branch produced errors that are avoided
+                # using this context, suppress those errors.
+                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type)
 
-        self.chk.binder.pop_frame()
-        self.chk.binder.push_frame()
+        else:
+            # Analyze the right branch in the context of the left
+            # branch's type.
+            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
 
-        if else_map:
-            for var, type in else_map.items():
-                self.chk.binder.push(var, type)
+        res = join.join_types(if_type, else_type)
 
-        else_type = self.accept(e.else_expr, context=if_type)
+        return res
 
-        self.chk.binder.pop_frame()
-
-        return join.join_types(if_type, else_type)
+    def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
+                            node: Node, context: Optional[Type]) -> Type:
+        with self.chk.binder:
+            if map:
+                for var, type in map.items():
+                    self.chk.binder.push(var, type)
+            return self.accept(node, context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
