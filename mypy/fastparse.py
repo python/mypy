@@ -9,7 +9,7 @@ from mypy.nodes import (
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
-    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
+    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
@@ -21,7 +21,9 @@ from mypy import defaults
 from mypy.errors import Errors
 
 try:
+    from typed_ast import ast27  # type: ignore
     from typed_ast import ast35  # type: ignore
+    from typed_ast import conversions  # type: ignore
 except ImportError:
     print('You must install the typed_ast module before you can run mypy with `--fast-parser`.\n'
           'The typed_ast module can be found at https://github.com/ddfisher/typed_ast',
@@ -43,7 +45,11 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     """
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        ast = ast35.parse(source, fnam, 'exec')
+        if pyversion[0] == 3 or is_stub_file:
+            ast = ast35.parse(source, fnam, 'exec')
+        else:
+            ast = ast27.parse(source, fnam, 'exec')
+            ast = conversions.py2to3(ast)
     except SyntaxError as e:
         if errors:
             errors.set_file('<input>' if fnam is None else fnam)
@@ -51,7 +57,9 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
         else:
             raise
     else:
-        tree = ASTConverter().visit(ast)
+        tree = ASTConverter(pyversion=pyversion,
+                            custom_typing_module=custom_typing_module,
+                            ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
         return tree
@@ -85,9 +93,12 @@ def find(f: Callable[[T], bool], seq: Sequence[T]) -> T:
 
 
 class ASTConverter(ast35.NodeTransformer):
-    def __init__(self):
-        self.in_class = False
+    def __init__(self, pyversion, custom_typing_module = None):
+        self.class_nesting = 0
         self.imports = []
+
+        self.pyversion = pyversion
+        self.custom_typing_module = custom_typing_module
 
     def generic_visit(self, node):
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -178,6 +189,22 @@ class ASTConverter(ast35.NodeTransformer):
             ret.append(OverloadedFuncDef(current_overload))
         return ret
 
+    def in_class(self):
+        return self.class_nesting > 0
+
+    def translate_module_id(self, id: str) -> str:
+        """Return the actual, internal module id for a source text id.
+
+        For example, translate '__builtin__' in Python 2 to 'builtins'.
+        """
+        if id == self.custom_typing_module:
+            return 'typing'
+        elif id == '__builtin__' and self.pyversion[0] == 2:
+            # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
+            #   is named __builtin__.py (there is another layer of translation elsewhere).
+            return 'builtins'
+        return id
+
     def visit_Module(self, mod):
         body = self.fix_function_overloads(self.visit(mod.body))
 
@@ -200,12 +227,17 @@ class ASTConverter(ast35.NodeTransformer):
         arg_names = [arg.variable.name() for arg in args]
         if n.type_comment is not None:
             func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
-            arg_types = [a if a is not None else AnyType() for
-                         a in TypeConverter(line=n.lineno).visit(func_type_ast.argtypes)]
+            # for ellipsis arg
+            if (len(func_type_ast.argtypes) == 1 and
+                    isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
+                arg_types = [AnyType() for a in args]
+            else:
+                arg_types = [a if a is not None else AnyType() for
+                            a in TypeConverter(line=n.lineno).visit(func_type_ast.argtypes)]
             return_type = TypeConverter(line=n.lineno).visit(func_type_ast.returns)
 
             # add implicit self type
-            if self.in_class and len(arg_types) < len(args):
+            if self.in_class() and len(arg_types) < len(args):
                 arg_types.insert(0, AnyType())
         else:
             arg_types = [a.type_annotation for a in args]
@@ -290,7 +322,7 @@ class ASTConverter(ast35.NodeTransformer):
     #  expr* decorator_list)
     @with_line
     def visit_ClassDef(self, n):
-        self.in_class = True
+        self.class_nesting += 1
         metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
         metaclass = None
         if metaclass_arg:
@@ -302,7 +334,7 @@ class ASTConverter(ast35.NodeTransformer):
                         self.visit(n.bases),
                         metaclass=metaclass)
         cdef.decorators = self.visit(n.decorator_list)
-        self.in_class = False
+        self.class_nesting -= 1
         return cdef
 
     # Return(expr? value)
@@ -397,7 +429,7 @@ class ASTConverter(ast35.NodeTransformer):
     # Import(alias* names)
     @with_line
     def visit_Import(self, n):
-        i = Import([(a.name, a.asname) for a in n.names])
+        i = Import([(self.translate_module_id(a.name), a.asname) for a in n.names])
         self.imports.append(i)
         return i
 
@@ -407,7 +439,7 @@ class ASTConverter(ast35.NodeTransformer):
         if len(n.names) == 1 and n.names[0].name == '*':
             i = ImportAll(n.module, n.level)
         else:
-            i = ImportFrom(n.module if n.module is not None else '',
+            i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
                            n.level,
                            [(a.name, a.asname) for a in n.names])
         self.imports.append(i)
@@ -608,12 +640,20 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Str(self, n):
         return StrExpr(n.s)
+        # if self.pyversion[0] > 2:
+        #     return StrExpr(n.s)
+        # else:
+        #     return UnicodeExpr(n.s)
 
     # Bytes(bytes s)
     @with_line
     def visit_Bytes(self, n):
         # TODO: this is kind of hacky
         return BytesExpr(str(n.s)[2:-1])
+        # if self.pyversion[0] > 2:
+        #     return BytesExpr(str(n.s)[2:-1])
+        # else:
+        #     return StrExpr(str(n.s)[2:-1])
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n):
