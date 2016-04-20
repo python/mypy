@@ -155,7 +155,7 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                         help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--use-python-path', action='store_true',
-                        help="search for modules in sys.path of running Python")
+                        help="an anti-pattern")
     parser.add_argument('--stats', action='store_true', help="dump stats")
     parser.add_argument('--inferstats', action='store_true', help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', help="use a custom typing module")
@@ -179,6 +179,14 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     code_group.add_argument('files', nargs='*', help="type-check given files or directories")
 
     args = parser.parse_args()
+
+    # --use-python-path is no longer supported; explain why.
+    if args.use_python_path:
+        parser.error("Sorry, --use-python-path is no longer supported.\n"
+                     "If you are trying this because your code depends on a library module,\n"
+                     "you should really investigate how to obtain stubs for that module.\n"
+                     "See https://github.com/python/mypy/issues/1411 for more discussion."
+                     )
 
     # Check for invalid argument combinations.
     code_methods = sum(bool(c) for c in [args.modules, args.command, args.package, args.files])
