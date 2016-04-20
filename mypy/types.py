@@ -339,6 +339,12 @@ class TypeVarType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
 
+    def erase_to_union_or_bound(self) -> Type:
+        if self.values:
+            return UnionType.make_simplified_union(self.values)
+        else:
+            return self.upper_bound
+
     def serialize(self) -> JsonDict:
         return {'.class': 'TypeVarType',
                 'name': self.name,
