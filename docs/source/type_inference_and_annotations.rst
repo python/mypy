@@ -78,6 +78,12 @@ type:
 
    x = 1.1  # type: Union[int, str]  # Error!
 
+.. note::
+
+   The best way to think about this is that the type comment sets the
+   type of the variable, not the type of the expression. To force the
+   type of an expression you can use ``cast(<type>, <expression>)``.
+
 Explicit types for collections
 ******************************
 
