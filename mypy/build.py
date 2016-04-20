@@ -368,8 +368,10 @@ class BuildManager:
         self.custom_typing_module = custom_typing_module
         self.source_set = source_set
         self.reports = reports
+        check_untyped_defs = CHECK_UNTYPED_DEFS in self.flags
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
-                                                  pyversion=pyversion)
+                                                  pyversion=pyversion,
+                                                  check_untyped_defs=check_untyped_defs)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors,
@@ -377,7 +379,7 @@ class BuildManager:
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags,
                                         DISALLOW_UNTYPED_DEFS in self.flags,
-                                        CHECK_UNTYPED_DEFS in self.flags)
+                                        check_untyped_defs)
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,

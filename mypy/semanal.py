@@ -191,7 +191,8 @@ class SemanticAnalyzer(NodeVisitor):
     errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self, lib_path: List[str], errors: Errors,
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                 check_untyped_defs: bool = False) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -211,6 +212,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors = errors
         self.modules = {}
         self.pyversion = pyversion
+        self.check_untyped_defs = check_untyped_defs
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
 
@@ -244,10 +246,12 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
+            self.function_stack.append(defn)
             # First phase of analysis for function.
             self.errors.push_function(defn.name())
             self.update_function_type_variables(defn)
             self.errors.pop_function()
+            self.function_stack.pop()
 
             defn.is_conditional = self.block_depth[-1] > 0
 
@@ -2204,9 +2208,17 @@ class SemanticAnalyzer(NodeVisitor):
         self.fail("Name '{}' already defined".format(name), ctx)
 
     def fail(self, msg: str, ctx: Context) -> None:
+        if (self.function_stack and
+                self.function_stack[-1].is_dynamic() and
+                not self.check_untyped_defs):
+            return
         self.errors.report(ctx.get_line(), msg)
 
     def note(self, msg: str, ctx: Context) -> None:
+        if (self.function_stack and
+                self.function_stack[-1].is_dynamic() and
+                not self.check_untyped_defs):
+            return
         self.errors.report(ctx.get_line(), msg, severity='note')
 
     def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
