@@ -190,9 +190,11 @@ class SemanticAnalyzer(NodeVisitor):
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
-    def __init__(self, lib_path: List[str], errors: Errors,
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 check_untyped_defs: bool = False) -> None:
+    def __init__(self,
+                 lib_path: List[str],
+                 errors: Errors,
+                 pyversion: Tuple[int, int],
+                 check_untyped_defs: bool) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
