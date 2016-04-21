@@ -115,6 +115,7 @@ class NodeFixer(NodeVisitor[None]):
         for v in c.type_vars:
             for value in v.values:
                 value.accept(self.type_fixer)
+            v.upper_bound.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
