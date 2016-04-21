@@ -17,7 +17,7 @@ main:3: error: Name 'y' is not defined
 
 [case testUndefinedVariableWithinFunctionContext]
 import typing
-def f():
+def f() -> None:
   x
 y
 [out]
@@ -39,7 +39,7 @@ import typing
 class A:
   def f(self): pass
 class B:
-  def g(self):
+  def g(self) -> None:
     f # error
     g # error
 [out]
@@ -178,7 +178,7 @@ main:4: error: Name 'x' already defined
 [case testLocalVarRedefinition]
 import typing
 class A: pass
-def f():
+def f() -> None:
   x = 0 # type: A
   x = 0 # type: A
 [out]
@@ -523,7 +523,7 @@ main:4: error: Invalid type "__main__.t"
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class c(Generic[t]):
-    def f(self): x = t
+    def f(self) -> None: x = t
 def f(y: t): x = t
 [out]
 main: note: In function "f":
@@ -546,7 +546,7 @@ main:2: error: Name 'B' is not defined
 [case testSuperOutsideClass]
 class A: pass
 super().x
-def f(): super().y
+def f() -> None: super().y
 [out]
 main:2: error: "super" used outside class
 main: note: In function "f":
@@ -572,7 +572,7 @@ main:5: error: Name 'f' already defined
 
 [case testInvalidGlobalDecl]
 import typing
-def f():
+def f() -> None:
     global x
     x = None
 [out]
@@ -582,7 +582,7 @@ main:4: error: Name 'x' is not defined
 [case testInvalidNonlocalDecl]
 import typing
 def f():
-    def g():
+    def g() -> None:
        nonlocal x
        x = None
 [out]
@@ -593,7 +593,7 @@ main:5: error: Name 'x' is not defined
 [case testNonlocalDeclNotMatchingGlobal]
 import typing
 x = None
-def f():
+def f() -> None:
     nonlocal x
     x = None
 [out]
@@ -605,7 +605,7 @@ main:5: error: Name 'x' is not defined
 import typing
 def g():
     x = None
-    def f(x):
+    def f(x) -> None:
         nonlocal x
         x = None
 [out]
@@ -623,7 +623,7 @@ import typing
 x = 1
 def f():
     x = 1
-    def g():
+    def g() -> None:
        global x
        nonlocal x
        x = None
@@ -636,7 +636,7 @@ import typing
 x = 1
 def f():
     x = 1
-    def g():
+    def g() -> None:
        nonlocal x
        global x
        x = None
@@ -646,7 +646,7 @@ main:7: error: Name 'x' is nonlocal and global
 
 [case testNestedFunctionAndScoping]
 import typing
-def f(x):
+def f(x) -> None:
     def g(y):
         z = x
     z
@@ -659,7 +659,7 @@ main:6: error: Name 'y' is not defined
 
 [case testMultipleNestedFunctionDef]
 import typing
-def f(x):
+def f(x) -> None:
     def g(): pass
     x = 1
     def g(): pass
@@ -669,7 +669,7 @@ main:5: error: Name 'g' already defined
 
 [case testRedefinedOverloadedFunction]
 from typing import overload, Any
-def f():
+def f() -> None:
     @overload
     def p(o: object) -> None: pass # no error
     @overload
@@ -683,8 +683,8 @@ main:8: error: Name 'p' already defined
 [case testNestedFunctionInMethod]
 import typing
 class A:
-   def f(self):
-       def g():
+   def f(self) -> None:
+       def g() -> None:
            x
        y
 [out]
@@ -861,7 +861,7 @@ main:3: error: 'abstractmethod' used with a non-method
 [case testAbstractNestedFunction]
 import typing
 from abc import abstractmethod
-def g():
+def g() -> None:
   @abstractmethod
   def foo(): pass
 [out]
@@ -1133,7 +1133,7 @@ import typing
 @staticmethod
 def f(): pass
 class A:
-  def g(self):
+  def g(self) -> None:
     @staticmethod
     def h(): pass
 [builtins fixtures/staticmethod.py]
@@ -1147,7 +1147,7 @@ import typing
 @classmethod
 def f(): pass
 class A:
-  def g(self):
+  def g(self) -> None:
     @classmethod
     def h(): pass
 [builtins fixtures/classmethod.py]

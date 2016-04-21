@@ -534,7 +534,7 @@ MypyFile:1(
             IntExpr(0)))))))
 
 [case testDelMultipleThingsInvalid]
-def f(x, y):
+def f(x, y) -> None:
     del x, y + 1
 [out]
 main: note: In function "f":
