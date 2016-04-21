@@ -1634,11 +1634,11 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         if self.loop_depth == 0:
-            self.fail("'break' outside loop", s)
+            self.fail("'break' outside loop", s, True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         if self.loop_depth == 0:
-            self.fail("'continue' outside loop", s)
+            self.fail("'continue' outside loop", s, True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion)
@@ -2207,17 +2207,18 @@ class SemanticAnalyzer(NodeVisitor):
     def name_already_defined(self, name: str, ctx: Context) -> None:
         self.fail("Name '{}' already defined".format(name), ctx)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        if (self.function_stack and
-                self.function_stack[-1].is_dynamic() and
-                not self.check_untyped_defs):
+    def fail(self, msg: str, ctx: Context, serious: bool = False) -> None:
+        if (not serious and
+                not self.check_untyped_defs and
+                self.function_stack and
+                self.function_stack[-1].is_dynamic()):
             return
         self.errors.report(ctx.get_line(), msg)
 
     def note(self, msg: str, ctx: Context) -> None:
-        if (self.function_stack and
-                self.function_stack[-1].is_dynamic() and
-                not self.check_untyped_defs):
+        if (not self.check_untyped_defs and
+                self.function_stack and
+                self.function_stack[-1].is_dynamic()):
             return
         self.errors.report(ctx.get_line(), msg, severity='note')
 
