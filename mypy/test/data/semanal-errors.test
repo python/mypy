@@ -231,21 +231,21 @@ import typing
 import m
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
 main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -255,7 +255,7 @@ from .x import y
 [out]
 main:2: note: In module imported here:
 tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
-tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH would help)
+tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -266,7 +266,7 @@ from .x import y
 [out]
 main:2: note: In module imported here:
 tmp/m/a.py:1: error: Cannot find module named 'm.x'
-tmp/m/a.py:1: note: (Perhaps setting MYPYPATH would help)
+tmp/m/a.py:1: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testModuleNotImported]
 import typing
@@ -317,7 +317,7 @@ import typing
 import m.n
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testMissingPackage]
 import typing
@@ -325,7 +325,7 @@ from m.n import x
 from a.b import *
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 main:3: error: Cannot find module named 'a.b'
 
 [case testErrorInImportedModule]
@@ -358,7 +358,7 @@ m.n.x
 x = 1
 [out]
 main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH would help)
+main:2: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
 
 [case testBreakOutsideLoop]
 break
