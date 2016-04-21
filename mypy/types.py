@@ -1197,4 +1197,5 @@ def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
 
 def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
-            cast(Instance, t).type.fullname() == fullname)
+            t.type is not None and
+            t.type.fullname() == fullname)
