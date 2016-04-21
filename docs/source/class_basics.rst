@@ -20,8 +20,8 @@ initialized within the class. Mypy infers the types of attributes:
    a.y = 3       # Error: A has no attribute y
 
 This is a bit like each class having an implicitly defined
-``__slots__`` attribute. In Python semantics this is only enforced
-during type checking: at runtime we use standard Python semantics.
+``__slots__`` attribute. This is only enforced during type
+checking and not when your program is running.
 
 You can declare types of variables in the class body explicitly using
 a type comment:
@@ -93,11 +93,11 @@ override has a compatible signature:
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
 defined in library classes without worrying about their type
-signatures, similar to Python.
+signatures.
 
 There is no runtime enforcement that the method override returns a
-value that is compatible with the original return type, since types
-are erased in the Python semantics:
+value that is compatible with the original return type, since
+annotations have no effect at runtime:
 
 .. code-block:: python
 
