@@ -1,7 +1,7 @@
 """Translate an expression (Node) to a Type value."""
 
 from mypy.nodes import (
-    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, EllipsisExpr
+    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, BytesExpr, EllipsisExpr
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
@@ -42,7 +42,7 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
     elif isinstance(expr, ListExpr):
         return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
                         line=expr.line)
-    elif isinstance(expr, StrExpr):
+    elif isinstance(expr, (StrExpr, BytesExpr)):
         # Parse string literal type.
         try:
             result = parse_str_as_type(expr.value, expr.line)

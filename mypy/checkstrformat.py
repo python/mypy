@@ -8,7 +8,7 @@ from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
 )
 from mypy.nodes import (
-    Node, StrExpr, TupleExpr, DictExpr, Context
+    Node, StrExpr, BytesExpr, TupleExpr, DictExpr, Context
 )
 if False:
     # break import cycle only needed for mypy
@@ -136,7 +136,7 @@ class StringFormatterChecker:
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
                                        replacements: Node) -> None:
         dict_with_only_str_literal_keys = (isinstance(replacements, DictExpr) and
-                                          all(isinstance(k, StrExpr)
+                                          all(isinstance(k, (StrExpr, BytesExpr))
                                               for k, v in cast(DictExpr, replacements).items))
         if dict_with_only_str_literal_keys:
             mapping = {}  # type: Dict[str, Type]
@@ -255,7 +255,7 @@ class StringFormatterChecker:
         def check_node(node: Node) -> None:
             """int, or str with length 1"""
             type = self.accept(node, expected_type)
-            if isinstance(node, StrExpr) and len(cast(StrExpr, node).value) != 1:
+            if isinstance(node, (StrExpr, BytesExpr)) and len(cast(StrExpr, node).value) != 1:
                 self.msg.requires_int_or_char(context)
             check_type(type)
 
