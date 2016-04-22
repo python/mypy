@@ -112,8 +112,8 @@ explains how to download and install mypy.
 
 .. _library-stubs:
 
-Typeshed
-********
+Library stubs and the Typeshed repo
+***********************************
 
 In order to type check code that uses library modules such as those
 included in the Python standard library, you need to have library
