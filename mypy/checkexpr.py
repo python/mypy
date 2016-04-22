@@ -1325,7 +1325,8 @@ class ExpressionChecker:
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True,
                                                  self.named_type, self.not_ready_callback,
-                                                 self.msg, base)
+                                                 self.msg, base,
+                                                 strict=self.chk.typing_mode_full())
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
