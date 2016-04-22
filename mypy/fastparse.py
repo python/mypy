@@ -1,7 +1,7 @@
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -617,8 +617,9 @@ class ASTConverter(ast35.NodeTransformer):
         def is_star2arg(k):
             return k.arg is None
 
-        arg_types = self.visit_list([a.value if isinstance(a, ast35.Starred) else a for a in n.args] +
-                               [k.value for k in n.keywords])
+        arg_types = self.visit_list(
+            [a.value if isinstance(a, ast35.Starred) else a for a in n.args] +
+            [k.value for k in n.keywords])
         arg_kinds = ([ARG_STAR if isinstance(a, ast35.Starred) else ARG_POS for a in n.args] +
                      [ARG_STAR2 if is_star2arg(k) else ARG_NAMED for k in n.keywords])
         return CallExpr(self.visit(n.func),
