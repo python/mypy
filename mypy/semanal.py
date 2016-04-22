@@ -190,8 +190,11 @@ class SemanticAnalyzer(NodeVisitor):
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
 
-    def __init__(self, lib_path: List[str], errors: Errors,
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+    def __init__(self,
+                 lib_path: List[str],
+                 errors: Errors,
+                 pyversion: Tuple[int, int],
+                 check_untyped_defs: bool) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -211,6 +214,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.errors = errors
         self.modules = {}
         self.pyversion = pyversion
+        self.check_untyped_defs = check_untyped_defs
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
 
@@ -244,10 +248,12 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
+            self.function_stack.append(defn)
             # First phase of analysis for function.
             self.errors.push_function(defn.name())
             self.update_function_type_variables(defn)
             self.errors.pop_function()
+            self.function_stack.pop()
 
             defn.is_conditional = self.block_depth[-1] > 0
 
@@ -1630,11 +1636,11 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         if self.loop_depth == 0:
-            self.fail("'break' outside loop", s)
+            self.fail("'break' outside loop", s, True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         if self.loop_depth == 0:
-            self.fail("'continue' outside loop", s)
+            self.fail("'continue' outside loop", s, True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion)
@@ -2203,10 +2209,19 @@ class SemanticAnalyzer(NodeVisitor):
     def name_already_defined(self, name: str, ctx: Context) -> None:
         self.fail("Name '{}' already defined".format(name), ctx)
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, ctx: Context, serious: bool = False) -> None:
+        if (not serious and
+                not self.check_untyped_defs and
+                self.function_stack and
+                self.function_stack[-1].is_dynamic()):
+            return
         self.errors.report(ctx.get_line(), msg)
 
     def note(self, msg: str, ctx: Context) -> None:
+        if (not self.check_untyped_defs and
+                self.function_stack and
+                self.function_stack[-1].is_dynamic()):
+            return
         self.errors.report(ctx.get_line(), msg, severity='note')
 
     def undefined_name_extra_info(self, fullname: str) -> Optional[str]:

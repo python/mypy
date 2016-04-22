@@ -123,14 +123,6 @@ def f():
     1 + 'a' # E: Unsupported left operand type for + ("int")
 [out]
 main: note: In function "f":
-[case testNonWeakFunction]
-def f():
-    if y:      # E: Name 'y' is not defined
-        x = 1
-    else:
-        x = 'a'
-[out]
-main: note: In function "f":
 [case testWeakFunctionCall]
 # mypy: weak=global
 def f(a: str) -> None: pass
