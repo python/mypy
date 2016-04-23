@@ -20,8 +20,8 @@ annotation syntax (Python 2 is discussed later in :ref:`python2`).
 This makes the the function statically typed, and that causes type
 checker report type errors within the function.
 
-Here's a version of the above function is statically typed and will be
-type checked:
+Here's a version of the above function that is statically typed and
+will be type checked:
 
 .. code-block:: python
 
