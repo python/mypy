@@ -1322,11 +1322,12 @@ class ExpressionChecker:
                         # There's an undefined base class, and we're
                         # at the end of the chain.  That's not an error.
                         return AnyType()
+                    if not self.chk.typing_mode_full():
+                        return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True,
                                                  self.named_type, self.not_ready_callback,
-                                                 self.msg, base,
-                                                 strict=self.chk.typing_mode_full())
+                                                 self.msg, base)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()

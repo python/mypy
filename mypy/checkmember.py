@@ -22,8 +22,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder, override_info: TypeInfo = None,
-                          report_type: Type = None,
-                          strict: bool = True) -> Type:
+                          report_type: Type = None) -> Type:
     """Analyse attribute access.
 
     This is a general operation that supports various different variations:
@@ -69,8 +68,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
             return analyze_member_var_access(name, typ, info, node,
                                              is_lvalue, is_super, builtin_type,
                                              not_ready_callback, msg,
-                                             report_type=report_type,
-                                             strict=strict)
+                                             report_type=report_type)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType()
@@ -123,8 +121,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               builtin_type: Callable[[str], Instance],
                               not_ready_callback: Callable[[str, Context], None],
                               msg: MessageBuilder,
-                              report_type: Type = None,
-                              strict: bool = True) -> Type:
+                              report_type: Type = None) -> Type:
     """Analyse attribute access that does not target a method.
 
     This is logically part of analyze_member_access and the arguments are
@@ -157,8 +154,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
     # Could not find the member.
     if is_super:
-        if strict:
-            msg.undefined_in_superclass(name, node)
+        msg.undefined_in_superclass(name, node)
         return AnyType()
     else:
         return msg.has_no_attr(report_type or itype, name, node)
