@@ -238,7 +238,7 @@ class ExpressionChecker:
             arg_types = self.infer_arg_types_in_context2(
                 callee, args, arg_kinds, formal_to_actual)
 
-            if self.chk.typing_mode_full():
+            if not self.chk.typing_mode_none():
                 self.check_argument_count(callee, arg_types, arg_kinds,
                                           arg_names, formal_to_actual, context, self.msg)
 
