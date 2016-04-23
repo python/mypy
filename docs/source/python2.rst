@@ -67,4 +67,5 @@ Here are more specifics:
 .. note::
 
     Currently there's no support for splitting an annotation to multiple
-    lines. This will likely change in the future.
+    lines. This will likely change in the future. (PEP 484 already defines
+    the syntax to use; we just have to implement it.)
