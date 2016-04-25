@@ -1146,7 +1146,23 @@ main: note: In function "g":
 def g(): pass
 f = g
 if g():
-    def f(x): pass  # E: Incompatible redefinition (original type Callable[[], Any], redefinition with type Callable[[Any], Any])
+    def f(x): pass  # E: Incompatible redefinition (redefinition with type Callable[[Any], Any], original type Callable[[], Any])
+
+[case testRedefineFunctionDefinedAsVariableWithVariance1]
+class B: pass
+class C(B): pass
+def g(x: C) -> B: pass
+f = g
+if g(C()):
+    def f(x: C) -> C: pass
+
+[case testRedefineFunctionDefinedAsVariableWithVariance2]
+class B: pass
+class C(B): pass
+def g(x: C) -> B: pass
+f = g
+if g(C()):
+    def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
 f = [] # E: Need type annotation for variable
