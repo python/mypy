@@ -132,11 +132,7 @@ class ExpressionChecker:
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.chk.type_context[-1])
         self.try_infer_partial_type(e)
-        self.accept(e.callee)
-        # Access callee type directly, since accept may return the Any type
-        # even if the type is known (in a dynamically typed function). This
-        # way we get a more precise callee in dynamically typed functions.
-        callee_type = self.chk.type_map[e.callee]
+        callee_type = self.accept(e.callee)
         if (self.chk.disallow_untyped_calls and
                 self.chk.typing_mode_full() and
                 isinstance(callee_type, CallableType)
@@ -238,9 +234,8 @@ class ExpressionChecker:
             arg_types = self.infer_arg_types_in_context2(
                 callee, args, arg_kinds, formal_to_actual)
 
-            if not self.chk.typing_mode_none():
-                self.check_argument_count(callee, arg_types, arg_kinds,
-                                          arg_names, formal_to_actual, context, self.msg)
+            self.check_argument_count(callee, arg_types, arg_kinds,
+                                      arg_names, formal_to_actual, context, self.msg)
 
             self.check_argument_types(arg_types, arg_kinds, callee,
                                       formal_to_actual, context,
