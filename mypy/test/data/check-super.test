@@ -108,3 +108,12 @@ class C(B):
     def __init__(self, arg=0):
         super(C, self).__init__(arg, arg=arg)
 [out]
+
+[case testSuperSilentInDynamicFunction]
+class A:
+    pass
+
+class B(A):
+    def foo(self):
+        super(B, self).foo() # Not an error
+[out]
