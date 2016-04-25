@@ -426,6 +426,10 @@ class LexerSuite(Suite):
         self.assert_lex('\ufeff"\xbb"'.encode('utf8'),
                         'Bom(\ufeff) StrLit("\xbb") Break() Eof()')
 
+    def test_long_comment(self):
+        prog = '# pass\n' * 1000
+        self.assert_lex(prog, 'Eof(%s)' % repr(prog)[1:-1])
+
     # TODO
     #   invalid escape sequences in string literals etc.
 

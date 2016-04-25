@@ -688,15 +688,16 @@ class Lexer:
     def lex_indent(self) -> None:
         """Analyze whitespace chars at the beginning of a line (indents)."""
         s = self.match(self.indent_exp)
-        if s != '' and s[-1] in self.comment_or_newline:
+        while True:
+            s = self.match(self.indent_exp)
+            if s == '' or s[-1] not in self.comment_or_newline:
+                break
             # Empty line (whitespace only or comment only).
             self.add_pre_whitespace(s[:-1])
             if s[-1] == '#':
                 self.lex_comment()
             else:
                 self.lex_break()
-            self.lex_indent()
-            return
         indent = self.calc_indent(s)
         if indent == self.indents[-1]:
             # No change in indent: just whitespace.
