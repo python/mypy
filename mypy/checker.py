@@ -598,10 +598,10 @@ class TypeChecker(NodeVisitor[Type]):
                         self.fail(messages.INCOMPATIBLE_REDEFINITION, defn)
                 else:
                     # TODO: Update conditional type binder.
-                    self.check_subtype(orig_type, new_type, defn,
+                    self.check_subtype(new_type, orig_type, defn,
                                        messages.INCOMPATIBLE_REDEFINITION,
-                                       'original type',
-                                       'redefinition with type')
+                                       'redefinition with type',
+                                       'original type')
 
     def check_func_item(self, defn: FuncItem,
                         type_override: CallableType = None,
