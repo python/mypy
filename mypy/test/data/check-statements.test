@@ -532,7 +532,7 @@ else:
     def f3() -> None: pass
 [builtins fixtures/exception.py]
 [out]
-main:7: error: Incompatible redefinition (original type Callable[[], None], redefinition with type Callable[[], str])
+main:7: error: Incompatible redefinition (redefinition with type Callable[[], str], original type Callable[[], None])
 
 [case testExceptWithoutType]
 import typing
