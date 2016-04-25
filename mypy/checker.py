@@ -1758,8 +1758,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.binder.try_frames.add(len(self.binder.frames) - 2)
         self.accept(s.body)
         self.binder.try_frames.remove(len(self.binder.frames) - 2)
-        if s.else_body:
-            self.accept(s.else_body)
         self.breaking_out = False
         changed, frame_on_completion = self.binder.pop_frame()
         completed_frames.append(frame_on_completion)
@@ -1790,6 +1788,14 @@ class TypeChecker(NodeVisitor[Type]):
                 var.type = DeletedType(source=source)
                 self.binder.cleanse(s.vars[i])
 
+            self.breaking_out = False
+            changed, frame_on_completion = self.binder.pop_frame()
+            completed_frames.append(frame_on_completion)
+
+        # Do the else block similar to the way we do except blocks.
+        if s.else_body:
+            self.binder.push_frame()
+            self.accept(s.else_body)
             self.breaking_out = False
             changed, frame_on_completion = self.binder.pop_frame()
             completed_frames.append(frame_on_completion)
