@@ -1758,6 +1758,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.binder.try_frames.add(len(self.binder.frames) - 2)
         self.accept(s.body)
         self.binder.try_frames.remove(len(self.binder.frames) - 2)
+        self.breaking_out = False
         changed, frame_on_completion = self.binder.pop_frame()
         completed_frames.append(frame_on_completion)
 
