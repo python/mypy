@@ -510,7 +510,7 @@ def f():
 def g(a: object) -> object: pass
 o = None # type: object
 [out]
-CallExpr(3) : builtins.object
+CallExpr(3) : Any
 NameExpr(3) : def (a: builtins.object) -> builtins.object
 NameExpr(3) : builtins.object
 
@@ -549,8 +549,8 @@ def f():
   A()
 class A(Generic[T]): pass
 [out]
-CallExpr(4) : A[Any]
-NameExpr(4) : def () -> A[Any]
+CallExpr(4) : Any
+NameExpr(4) : def [T] () -> A[T`-1]
 
 [case testGenericCallInDynamicallyTypedFunction2]
 from typing import TypeVar, Generic
@@ -560,8 +560,8 @@ def f():
 class A(Generic[T]):
     def __init__(self, x: T) -> None: pass
 [out]
-CallExpr(4) : A[Any]
-NameExpr(4) : def (x: Any) -> A[Any]
+CallExpr(4) : Any
+NameExpr(4) : def [T] (x: T`-1) -> A[T`-1]
 NameExpr(4) : def () -> Any
 
 [case testGenericCallInDynamicallyTypedFunction3]
@@ -572,7 +572,7 @@ def f():
 def g(x: t) -> t: pass
 [out]
 CallExpr(4) : Any
-NameExpr(4) : def (x: Any) -> Any
+NameExpr(4) : def [t] (x: t`-1) -> t`-1
 
 
 -- Generic types and type inference
