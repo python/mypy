@@ -655,3 +655,25 @@ class A(B):
         x()
 [out]
 main: note: In class "A":
+
+
+-- Don't complain about too few/many arguments in dynamic functions
+-- ----------------------------------------------------------------
+
+[case testTooManyArgsInDynamic]
+def f() -> None: pass
+def g():
+    f(1) # Silent
+[out]
+
+[case testTooFewArgsInDynamic]
+def f(a: int) -> None: pass
+def g():
+    f() # Silent
+[out]
+
+[case testJustRightInDynamic]
+def f(a: int) -> None: pass
+def g():
+    f('') # Silent
+[out]
