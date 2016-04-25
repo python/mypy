@@ -160,7 +160,7 @@ class MessageBuilder:
             # If format_simple returns a non-trivial result, use that.
             return s
         elif isinstance(typ, FunctionLike):
-            func = cast(FunctionLike, typ)
+            func = typ
             if func.is_type_obj():
                 # The type of a type object type can be derived from the
                 # return type (this always works).
@@ -199,7 +199,7 @@ class MessageBuilder:
           callable type -> "" (empty string)
         """
         if isinstance(typ, Instance):
-            itype = cast(Instance, typ)
+            itype = typ
             # Get the short name of the type.
             if verbosity >= 2:
                 base_str = itype.type.fullname()
@@ -233,13 +233,13 @@ class MessageBuilder:
                     return '{}[...]'.format(base_str)
         elif isinstance(typ, TypeVarType):
             # This is similar to non-generic instance types.
-            return '"{}"'.format((cast(TypeVarType, typ)).name)
+            return '"{}"'.format(typ.name)
         elif isinstance(typ, TupleType):
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
             if typ.fallback.type.fullname() != 'builtins.tuple':
                 return self.format_simple(typ.fallback)
             items = []
-            for t in (cast(TupleType, typ)).items:
+            for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
             if len(s) < 40:
@@ -248,7 +248,7 @@ class MessageBuilder:
                 return 'tuple(length {})'.format(len(items))
         elif isinstance(typ, UnionType):
             items = []
-            for t in (cast(UnionType, typ)).items:
+            for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Union[{}]"'.format(', '.join(items))
             if len(s) < 40:
@@ -300,7 +300,7 @@ class MessageBuilder:
         messages. Return type Any.
         """
         if (isinstance(typ, Instance) and
-                (cast(Instance, typ)).type.has_readable_member(member)):
+                typ.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
         elif isinstance(typ, Void):
             self.check_void(typ, context)
@@ -336,8 +336,7 @@ class MessageBuilder:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
                 failed = False
-                if isinstance(typ, Instance) and cast(Instance, typ).type.names:
-                    typ = cast(Instance, typ)
+                if isinstance(typ, Instance) and typ.type.names:
                     alternatives = set(typ.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
@@ -681,8 +680,7 @@ class MessageBuilder:
         self.fail('List or tuple expected as variable arguments', context)
 
     def invalid_keyword_var_arg(self, typ: Type, context: Context) -> None:
-        if isinstance(typ, Instance) and (
-                (cast(Instance, typ)).type.fullname() == 'builtins.dict'):
+        if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.dict'):
             self.fail('Keywords must be strings', context)
         else:
             self.fail('Argument after ** must be a dictionary',

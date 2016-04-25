@@ -1815,7 +1815,7 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 node = cls.names[name].node
                 if isinstance(node, Var):
-                    return cast(Var, node)
+                    return node
                 else:
                     return None
         return None
@@ -1988,7 +1988,7 @@ class SymbolTableNode:
               and node.type is not None):
             return node.type
         elif isinstance(node, Decorator):
-            return (cast(Decorator, node)).var.type
+            return node.var.type
         else:
             return None
 

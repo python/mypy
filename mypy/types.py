@@ -721,8 +721,8 @@ class UnionType(Type):
         TODO: Deal with attributes of TupleType etc.
         TODO: This should probably be refactored to go elsewhere.
         """
-        return all((isinstance(x, UnionType) and cast(UnionType, x).has_readable_member(name)) or
-                   (isinstance(x, Instance) and cast(Instance, x).type.has_readable_member(name))
+        return all((isinstance(x, UnionType) and x.has_readable_member(name)) or
+                   (isinstance(x, Instance) and x.type.has_readable_member(name))
                    for x in self.items)
 
     def serialize(self) -> JsonDict:

@@ -1108,8 +1108,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif isinstance(lval.node, Var) and lval.is_def:
                 # Since the is_def flag is set, this must have been analyzed
                 # already in the first pass and added to the symbol table.
-                v = cast(Var, lval.node)
-                assert v.name() in self.globals
+                assert lval.node.name() in self.globals
             elif (self.is_func_scope() and lval.name not in self.locals[-1] and
                   lval.name not in self.global_decls[-1] and
                   lval.name not in self.nonlocal_decls[-1]):
@@ -1213,7 +1212,7 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(lvalue, RefExpr):
             lvalue.is_def = False
             if isinstance(lvalue.node, Var):
-                var = cast(Var, lvalue.node)
+                var = lvalue.node
                 var.type = typ
                 var.is_ready = True
             # If node is not a variable, we'll catch it elsewhere.
@@ -1438,7 +1437,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return self.fail_namedtuple_arg(
                     "List literal expected as the second argument to namedtuple()", call)
         else:
-            listexpr = cast(ListExpr, args[1])
+            listexpr = args[1]
             if fullname == 'collections.namedtuple':
                 # The fields argument contains just names, with implicit Any types.
                 if any(not isinstance(item, (StrExpr, BytesExpr)) for item in listexpr.items):
@@ -1864,9 +1863,8 @@ class SemanticAnalyzer(NodeVisitor):
         base = expr.expr
         base.accept(self)
         # Bind references to module attributes.
-        if isinstance(base, RefExpr) and cast(RefExpr,
-                                              base).kind == MODULE_REF:
-            file = cast(MypyFile, cast(RefExpr, base).node)
+        if isinstance(base, RefExpr) and base.kind == MODULE_REF:
+            file = cast(MypyFile, base.node)
             n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
@@ -1906,7 +1904,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
             if isinstance(expr.index, TupleExpr):
-                items = (cast(TupleExpr, expr.index)).items
+                items = expr.index.items
             else:
                 items = [expr.index]
             for item in items:
@@ -2577,15 +2575,13 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
 
 def refers_to_fullname(node: Node, fullname: str) -> bool:
     """Is node a name or member expression with the given full name?"""
-    return isinstance(node,
-                      RefExpr) and cast(RefExpr, node).fullname == fullname
+    return isinstance(node, RefExpr) and node.fullname == fullname
 
 
 def refers_to_class_or_function(node: Node) -> bool:
     """Does semantically analyzed node refer to a class?"""
     return (isinstance(node, RefExpr) and
-            isinstance(cast(RefExpr, node).node, (TypeInfo, FuncDef,
-                                                  OverloadedFuncDef)))
+            isinstance(node.node, (TypeInfo, FuncDef, OverloadedFuncDef)))
 
 
 def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) -> None:
