@@ -463,7 +463,7 @@ class BuildManager:
         else:
             self.errors.report(line, "Cannot find module named '{}'".format(id))
             self.errors.report(line, '(Perhaps setting MYPYPATH '
-                                     'or using the "--silent" flag would help)',
+                                     'or using the "--silent-imports" flag would help)',
                                severity='note', only_once=True)
 
     def report_file(self, file: MypyFile) -> None:

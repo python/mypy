@@ -19,7 +19,7 @@ m.x = m.y
 1() # E
 [out]
 main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 main:4: error: "int" not callable
 
 [case testMissingModuleImport2]
@@ -29,7 +29,7 @@ x.a = x.b
 1() # E
 [out]
 main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 main:4: error: "int" not callable
 
 [case testMissingModuleImport3]
@@ -38,7 +38,7 @@ x # E
 1() # E
 [out]
 main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--silent" flag would help)
+main:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 main:2: error: Name 'x' is not defined
 main:3: error: "int" not callable
 
