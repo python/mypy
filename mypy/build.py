@@ -464,8 +464,9 @@ class BuildManager:
             self.errors.report(line, stub_msg, severity='note', only_once=True)
         else:
             self.errors.report(line, "Cannot find module named '{}'".format(id))
-            self.errors.report(line, "(Perhaps setting MYPYPATH would help)", severity='note',
-                               only_once=True)
+            self.errors.report(line, '(Perhaps setting MYPYPATH '
+                                     'or using the "--silent-imports" flag would help)',
+                               severity='note', only_once=True)
 
     def report_file(self, file: MypyFile) -> None:
         if self.source_set.is_source(file):

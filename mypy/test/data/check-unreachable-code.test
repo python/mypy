@@ -79,7 +79,7 @@ else:
 [builtins fixtures/bool.py]
 [out]
 main:6: error: Cannot find module named 'pow123'
-main:6: note: (Perhaps setting MYPYPATH would help)
+main:6: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testMypyConditional]
 import typing
