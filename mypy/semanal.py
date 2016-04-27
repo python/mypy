@@ -2627,6 +2627,8 @@ def remove_imported_names_from_symtable(names: SymbolTable,
     """Remove all imported names from the symbol table of a module."""
     removed = []  # type: List[str]
     for name, node in names.items():
+        if node.node is None:
+            continue
         fullname = node.node.fullname()
         prefix = fullname[:fullname.rfind('.')]
         if prefix != module:
