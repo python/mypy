@@ -1528,7 +1528,7 @@ class TypeChecker(NodeVisitor[Type]):
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Node) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
-        if isinstance(lvalue.base, RefExpr):
+        if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
             var = cast(Var, lvalue.base.node)
             if var is not None and isinstance(var.type, PartialType):
                 type_type = var.type.type
