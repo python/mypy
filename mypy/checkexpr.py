@@ -5,7 +5,7 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType
+    PartialType, DeletedType, UnboundType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -1684,5 +1684,8 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
                 return 0
         else:
             return 0
+    if isinstance(actual, UnboundType) or isinstance(formal, UnboundType):
+        # Either actual or formal is the result of an error; shut up.
+        return 2
     # Fall back to a conservative equality check for the remaining kinds of type.
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
