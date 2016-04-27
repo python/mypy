@@ -1936,7 +1936,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_incompatible_property_override(e)
 
     def check_incompatible_property_override(self, e: Decorator) -> None:
-        if not e.var.is_settable_property:
+        if not e.var.is_settable_property and e.func.info is not None:
             name = e.func.name()
             for base in e.func.info.mro[1:]:
                 base_attr = base.names.get(name)
