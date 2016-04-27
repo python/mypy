@@ -1147,6 +1147,17 @@ class X:
 main: note: In member "__radd__" of class "B":
 main:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
+[case testUnsafeOverlappingWithLineNo]
+from typing import TypeVar
+T = TypeVar('T', Real)
+class Real:
+    def __add__(self, other): ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...
+[out]
+main: note: In member "__radd__" of class "Fraction":
+main:6: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
+
 [case testOverlappingNormalAndInplaceOperatorMethod]
 import typing
 class A:

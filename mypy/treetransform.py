@@ -129,6 +129,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.max_pos = original.max_pos
         new.is_overload = original.is_overload
         new.is_generator = original.is_generator
+        new.line = original.line
 
     def duplicate_inits(self,
                         inits: List[AssignmentStmt]) -> List[AssignmentStmt]:
