@@ -81,16 +81,14 @@ def get_actual_type(arg_type: Type, kind: int,
                 return AnyType()
         elif isinstance(arg_type, TupleType):
             # Get the next tuple item of a tuple *arg.
-            tuplet = cast(TupleType, arg_type)
             tuple_counter[0] += 1
-            return tuplet.items[tuple_counter[0] - 1]
+            return arg_type.items[tuple_counter[0] - 1]
         else:
             return AnyType()
     elif kind == nodes.ARG_STAR2:
-        if isinstance(arg_type, Instance) and (
-                (cast(Instance, arg_type)).type.fullname() == 'builtins.dict'):
+        if isinstance(arg_type, Instance) and (arg_type.type.fullname() == 'builtins.dict'):
             # Dict **arg. TODO more general (Mapping)
-            return (cast(Instance, arg_type)).args[1]
+            return arg_type.args[1]
         else:
             return AnyType()
     else:
@@ -176,7 +174,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         actual = self.actual
         res = []  # type: List[Constraint]
         if isinstance(actual, Instance):
-            instance = cast(Instance, actual)
+            instance = actual
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
@@ -208,7 +206,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
              is_named_instance(template, 'typing.Sequence') or
              is_named_instance(template, 'typing.Reversible'))
                 and self.direction == SUPERTYPE_OF):
-            actual = cast(TupleType, actual)
             for item in actual.items:
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
                 res.extend(cb)
@@ -218,7 +215,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_callable_type(self, template: CallableType) -> List[Constraint]:
         if isinstance(self.actual, CallableType):
-            cactual = cast(CallableType, self.actual)
+            cactual = self.actual
             # FIX verify argument counts
             # FIX what if one of the functions is generic
             res = []  # type: List[Constraint]
@@ -240,8 +237,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                          self.direction))
             return res
         elif isinstance(self.actual, Overloaded):
-            return self.infer_against_overloaded(cast(Overloaded, self.actual),
-                                                 template)
+            return self.infer_against_overloaded(self.actual, template)
         else:
             return []
 
@@ -258,12 +254,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
-        if (isinstance(actual, TupleType) and
-                len((cast(TupleType, actual)).items) == len(template.items)):
+        if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
             res = []  # type: List[Constraint]
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
-                                             cast(TupleType, actual).items[i],
+                                             actual.items[i],
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):

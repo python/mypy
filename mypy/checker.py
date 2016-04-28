@@ -958,15 +958,14 @@ class TypeChecker(NodeVisitor[Type]):
             original_type = base_attr.type
             if original_type is None and isinstance(base_attr.node,
                                                     FuncDef):
-                original_type = self.function_type(cast(FuncDef,
-                                                        base_attr.node))
+                original_type = self.function_type(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
                     method_type(original_type),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
-                self.check_override(cast(FunctionLike, typ),
+                self.check_override(typ,
                                     cast(FunctionLike, original),
                                     defn.name(),
                                     name,
@@ -1080,16 +1079,16 @@ class TypeChecker(NodeVisitor[Type]):
         second = base2[name]
         first_type = first.type
         if first_type is None and isinstance(first.node, FuncDef):
-            first_type = self.function_type(cast(FuncDef, first.node))
+            first_type = self.function_type(first.node)
         second_type = second.type
         if second_type is None and isinstance(second.node, FuncDef):
-            second_type = self.function_type(cast(FuncDef, second.node))
+            second_type = self.function_type(second.node)
         # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
-            first_sig = method_type(cast(FunctionLike, first_type))
-            second_sig = method_type(cast(FunctionLike, second_type))
+            first_sig = method_type(first_type)
+            second_sig = method_type(second_type)
             ok = is_subtype(first_sig, second_sig)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
@@ -1255,7 +1254,7 @@ class TypeChecker(NodeVisitor[Type]):
                     lv = lv.expr
                 self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
         elif isinstance(rvalue_type, TupleType):
-            self.check_multi_assignment_from_tuple(lvalues, rvalue, cast(TupleType, rvalue_type),
+            self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
                                                   context, undefined_rvalue, infer_lvalue_type)
         else:
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
@@ -1700,8 +1699,7 @@ class TypeChecker(NodeVisitor[Type]):
             method, lvalue_type, s.rvalue, s)
 
         if isinstance(s.lvalue, IndexExpr):
-            lv = cast(IndexExpr, s.lvalue)
-            self.check_indexed_assignment(lv, s.rvalue, s.rvalue)
+            self.check_indexed_assignment(s.lvalue, s.rvalue, s.rvalue)
         else:
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
@@ -1742,7 +1740,7 @@ class TypeChecker(NodeVisitor[Type]):
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
-            if len(cast(TupleType, typ).items) in (2, 3):
+            if len(typ.items) in (2, 3):
                 return
         if isinstance(typ, Instance) and typ.type.fallback_to_any:
             # OK!
@@ -1889,7 +1887,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_del_stmt(self, s: DelStmt) -> Type:
         if isinstance(s.expr, IndexExpr):
-            e = cast(IndexExpr, s.expr)  # Cast
+            e = s.expr
             m = MemberExpr(e.base, '__delitem__')
             m.line = s.line
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])

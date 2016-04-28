@@ -1102,7 +1102,6 @@ class ExpressionChecker:
             return self.accept(e.analyzed)
         left_type = self.accept(e.base)
         if isinstance(left_type, TupleType) and self.chk.typing_mode_full():
-            left_type = cast(TupleType, left_type)
             # Special case for tuples. They support indexing only by integer
             # literals.  (Except in weak type checking mode.)
             index = e.index
@@ -1210,7 +1209,7 @@ class ExpressionChecker:
         ctx = None  # type: TupleType
         # Try to determine type context for type inference.
         if isinstance(self.chk.type_context[-1], TupleType):
-            t = cast(TupleType, self.chk.type_context[-1])
+            t = self.chk.type_context[-1]
             if len(t.items) == len(e.items):
                 ctx = t
         # Infer item types.
@@ -1582,7 +1581,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
 
 
 def is_empty_tuple(t: Type) -> bool:
-    return isinstance(t, TupleType) and not cast(TupleType, t).items
+    return isinstance(t, TupleType) and not t.items
 
 
 def is_duplicate_mapping(mapping: List[int], actual_kinds: List[int]) -> bool:

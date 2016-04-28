@@ -1,4 +1,4 @@
-from typing import cast, Sequence
+from typing import Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
@@ -78,17 +78,17 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_instance(self, left: Instance) -> bool:
         return (isinstance(self.right, Instance) and
-                left.type == (cast(Instance, self.right)).type and
-                is_same_types(left.args, (cast(Instance, self.right)).args))
+                left.type == self.right.type and
+                is_same_types(left.args, self.right.args))
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and
-                left.id == (cast(TypeVarType, self.right)).id)
+                left.id == self.right.id)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics
         if isinstance(self.right, CallableType):
-            cright = cast(CallableType, self.right)
+            cright = self.right
             return (is_same_type(left.ret_type, cright.ret_type) and
                     is_same_types(left.arg_types, cright.arg_types) and
                     left.arg_names == cright.arg_names and
@@ -100,14 +100,14 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return is_same_types(left.items, cast(TupleType, self.right).items)
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
         # XXX This is a test for syntactic equality, not equivalence
         if isinstance(self.right, UnionType):
-            return is_same_types(left.items, cast(UnionType, self.right).items)
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

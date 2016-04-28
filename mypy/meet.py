@@ -158,14 +158,14 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         return self.s
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if isinstance(self.s, TypeVarType) and (cast(TypeVarType, self.s)).id == t.id:
+        if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
         else:
             return self.default(self.s)
 
     def visit_instance(self, t: Instance) -> Type:
         if isinstance(self.s, Instance):
-            si = cast(Instance, self.s)
+            si = self.s
             if t.type == si.type:
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
@@ -188,19 +188,16 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        if isinstance(self.s, CallableType) and is_similar_callables(
-                t, cast(CallableType, self.s)):
-            return combine_similar_callables(t, cast(CallableType, self.s))
+        if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
+            return combine_similar_callables(t, self.s)
         else:
             return self.default(self.s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        if isinstance(self.s, TupleType) and (
-                cast(TupleType, self.s).length() == t.length()):
+        if isinstance(self.s, TupleType) and self.s.length() == t.length():
             items = []  # type: List[Type]
             for i in range(t.length()):
-                items.append(self.meet(t.items[i],
-                                       (cast(TupleType, self.s)).items[i]))
+                items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
         else:

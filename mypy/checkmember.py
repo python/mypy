@@ -288,7 +288,7 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeInfo):
-        return type_object_type(cast(TypeInfo, node.node), builtin_type)
+        return type_object_type(node.node, builtin_type)
 
     if is_decorated:
         # TODO: Return type of decorated function. This is quick hack to work around #998.
