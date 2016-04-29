@@ -193,3 +193,11 @@ def f((x,)): return x
 def g((x)): return x
 f(0) + g(0)
 [out]
+
+[case testLambdaAsSortKeyForTuplePython2]
+from typing import Any, Tuple, Callable
+def bar(key: Callable[[Tuple[int, int]], int]) -> int:
+    pass
+def foo() -> int:
+    return bar(key=lambda (a, b): a)
+[out]
