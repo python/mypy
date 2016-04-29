@@ -364,6 +364,12 @@ b = ''
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testMultipleAssignmentWithMixedVariables]
+a = b, c = 1, 1
+x, y = p, q = 1, 1
+u, v, w = r, s = 1, 1 # E: Need more than 2 values to unpack (3 expected)
+d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
+
 
 -- Assignment to starred expressions
 -- ---------------------------------
