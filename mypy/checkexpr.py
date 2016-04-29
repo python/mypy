@@ -1267,6 +1267,8 @@ class ExpressionChecker:
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=inferred_type)
+            if e.expr() not in self.chk.type_map:
+                self.accept(e.expr())
             ret_type = self.chk.type_map[e.expr()]
             return replace_callable_return_type(inferred_type, ret_type)
 
