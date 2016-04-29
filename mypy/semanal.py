@@ -2644,7 +2644,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
             # This condition is always true, so all of the remaining
             # elif/else bodies will never be executed.
             for body in s.body[i + 1:]:
-                mark_block_unreachable(s.body[i])
+                mark_block_unreachable(body)
             if s.else_body:
                 mark_block_unreachable(s.else_body)
             break

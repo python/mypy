@@ -98,3 +98,16 @@ if PY3:
 else:
     class X(object):
         pass
+
+[case testUnreachabilityAndElifPY3]
+def f(): pass
+PY3 = f()
+if PY3:
+    pass
+elif 1:
+    import nonexistent
+    1 + ''
+else:
+    import bad_name
+    1 + ''
+[out]
