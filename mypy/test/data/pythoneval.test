@@ -1107,6 +1107,11 @@ _program.py:9: error: Incompatible types in assignment
 _program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
 _program.py:23: error: Invalid index type "str" for "dict"
 
+[case testDictUpdateInference]
+from typing import Dict, Optional
+d = {}  # type: Dict[str, Optional[int]]
+d.update({str(i): None for i in range(4)})
+
 [case testSuperAndSetattr]
 class A:
     def __init__(self) -> None:
