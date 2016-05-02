@@ -87,7 +87,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return TupleType(self.expand_types(t.items), t.fallback, t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.expand_types(t.items), t.line)
+        # After substituting for type variables in t.items,
+        # some of the resulting types might be subtypes of others.
+        return UnionType.make_simplified_union(self.expand_types(t.items), t.line)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
