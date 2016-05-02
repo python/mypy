@@ -1776,7 +1776,7 @@ class TypeInfo(SymbolNode):
 
     def is_generic(self) -> bool:
         """Is the type generic (i.e. does it have type variables)?"""
-        return self.type_vars is not None and len(self.type_vars) > 0
+        return len(self.type_vars) > 0
 
     def get(self, name: str) -> 'SymbolTableNode':
         for cls in self.mro:
