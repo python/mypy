@@ -147,7 +147,7 @@ def build(sources: List[BuildSource],
     Args:
       target: select passes to perform (a build target constant, e.g. C)
       sources: list of sources to build
-      alt_lib_dir: an additional directory for looking up library modules
+      alt_lib_path: an additional directory for looking up library modules
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
@@ -173,8 +173,9 @@ def build(sources: List[BuildSource],
         for source in sources:
             if source.path:
                 # Include directory of the program file in the module search path.
-                lib_path.insert(
-                    0, remove_cwd_prefix_from_path(dirname(source.path)))
+                dir = remove_cwd_prefix_from_path(dirname(source.path))
+                if dir not in lib_path:
+                    lib_path.insert(0, dir)
 
         # Do this even if running as a file, for sanity (mainly because with
         # multiple builds, there could be a mix of files/modules, so its easier
@@ -1133,7 +1134,7 @@ class State:
 
         manager = self.manager
         modules = manager.modules
-        manager.log("Parsing %s" % self.xpath)
+        manager.log("Parsing %s (%s)" % (self.xpath, self.id))
 
         with self.wrap_context():
             source = self.source
