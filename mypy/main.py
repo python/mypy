@@ -174,6 +174,9 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', dest='modules',
                             help="type-check module; can repeat for more modules")
+    # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
+    # ignore A (last option wins).  Perhaps -c, -m and -p could just
+    # be command-line flags that modify how we interpret self.files?
     code_group.add_argument('-c', '--command', help="type-check program passed in as string")
     code_group.add_argument('-p', '--package', help="type-check all files in a directory")
     code_group.add_argument('files', nargs='*', help="type-check given files or directories")
@@ -257,6 +260,9 @@ def process_options() -> Tuple[List[BuildSource], Options]:
         targets = [BuildSource(None, m, None) for m in args.modules]
         return targets, options
     elif args.package:
+        if os.sep in args.package or os.altsep and os.altsep in args.package:
+            fail("Package name '{}' cannot have a slash in it."
+                 .format(args.package))
         options.build_flags.append(build.MODULE)
         lib_path = [os.getcwd()] + build.mypy_path()
         targets = build.find_modules_recursive(args.package, lib_path)
@@ -279,27 +285,93 @@ def process_options() -> Tuple[List[BuildSource], Options]:
 
 
 def expand_dir(arg: str) -> List[BuildSource]:
-    """Convert a directory name to a list of sources to build."""
-    dir, mod = crawl_up(arg)
-    if not mod:
-        # It's a directory without an __init__.py[i].
-        # List all the .py[i] files (but not recursively).
-        targets = []  # type: List[BuildSource]
-        for name in os.listdir(dir):
-            stripped = strip_py(name)
-            if stripped:
-                path = os.path.join(dir, name)
-                targets.append(BuildSource(path, stripped, None))
-        if not targets:
-            fail("There are no .py[i] files in directory '{}'".format(arg))
-        return targets
+    """Convert a directory name to a list of sources to build.
 
+    This always recursively walks through the directory and collects
+    all .py[i] files, with the exception that if both foo.py and
+    foo.pyi exist, we only use foo.pyi; and another exception is that
+    if both directory foo/ and one or both of foo.py[i] exist,
+    directory foo/ wins (so foo.py[i] are both ignored in that case).
+
+    The tricky bit is how to map filenames to module names.
+
+    There are two cases to consider.
+
+    1) The argument directory is a package, i.e. it has an
+       __init__.py[i].  In this case we crawl up until we find a
+       parent without __init__.py[i], and determine the module name
+       relative to that point (considering the highest directory with
+       a __init__.py[i] as the toplevel package).
+
+    2) The argument directory has no __init__.py[i].  In this case we
+       consider every .py[i] file and subdirectory a toplevel module
+       or package.
+
+    Note that in either case, as a matter of principle, once we're
+    decided on a toplevel package name, even subdirectories without
+    __init__.py[i] files are searched and .py[i] files found there are
+    assigned module names as if those subdirectories did have a
+    __init__.py[i] files.  We do this because there's a strong
+    expectation that when giving a directory name as argument we want
+    *all* .py[i] files there analyzed, and also that they are assigned
+    module names implied by the directory hierarchy.
+    """
+    assert os.path.isdir(arg), arg
+    arg = os.path.abspath(arg)
+    for ext in PY_EXTENSIONS:
+        f = os.path.join(arg, '__init__' + ext)
+        if os.path.exists(f):
+            top_dir, top_mod = crawl_up(f)
+            break
     else:
-        lib_path = [dir]
-        targets = build.find_modules_recursive(mod, lib_path)
-        if not targets:
-            fail("Found no modules in package '{}'".format(arg))
-        return targets
+        top_dir = arg
+        top_mod = ''
+    
+    mods = set()
+    sources = []
+    for root, dirs, files in os.walk(arg):
+        dirs.sort()
+        files.sort()
+        for d in dirs:
+            if not d.startswith('.'):
+                d = os.path.join(root, d)
+                for ext in PY_EXTENSIONS:
+                    f = os.path.join(d, '__init__' + ext)
+                    mod = make_mod(top_dir, top_mod, f, ext)
+                    if os.path.exists(f):
+                        if mod not in mods:
+                            sources.append(BuildSource(f, mod, None))
+                            mods.add(mod)
+                            break
+                else:
+                    # Reuse the value of 'mod' set in the last
+                    # iteration of the for-loop above.
+                    sources.append(BuildSource(None, mod, 'pass'))
+                    mods.add(mod)
+        for ext in PY_EXTENSIONS:
+            for f in files:
+                f = os.path.join(root, f)
+                if f.endswith(ext):
+                    mod = make_mod(top_dir, top_mod, f, ext)
+                    if mod not in mods:
+                        sources.append(BuildSource(f, mod, None))
+                        mods.add(mod)
+    return sources
+
+
+def make_mod(dir: str, mod: str, file: str, ext: str) -> str:
+    """Produce the correct module name."""
+    assert file.startswith(dir), (dir, file)
+    assert file.endswith(ext), (file, ext)
+    file = file[len(dir) : -len(ext)]
+    if os.altsep:
+        file = file.replace(os.altsep, os.sep)
+    if file.startswith(os.sep):
+        file = file[1:]
+    mod = file.replace(os.sep, '.')
+    if mod.endswith('.__init__'):
+        mod = mod[:-9]  # len('.__init__')
+    return mod
 
 
 def crawl_up(arg: str) -> Tuple[str, str]:
