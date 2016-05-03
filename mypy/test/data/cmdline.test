@@ -39,22 +39,18 @@ pkg/a.py:1: error: Name 'undef' is not defined
 # cmd: mypy dir
 [file dir/a.py]
 undef
-import subdir.a
 [file dir/subdir/a.py]
 undef
 [out]
-dir/subdir/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackageSlash]
 # cmd: mypy dir/
 [file dir/a.py]
 undef
-import subdir.a
 [file dir/subdir/a.py]
 undef
 [out]
-dir/subdir/a.py:1: error: Name 'undef' is not defined
 dir/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlinePackageContainingSubdir]
@@ -62,11 +58,9 @@ dir/a.py:1: error: Name 'undef' is not defined
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
-import pkg.subdir.a
 [file pkg/subdir/a.py]
 undef
 [out]
-pkg/subdir/a.py:1: error: Name 'undef' is not defined
 pkg/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackageContainingPackage]

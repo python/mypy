@@ -306,17 +306,11 @@ def expand_dir(arg: str) -> List[BuildSource]:
        a __init__.py[i] as the toplevel package).
 
     2) The argument directory has no __init__.py[i].  In this case we
-       consider every .py[i] file and subdirectory a toplevel module
+       consider every .py[i] file and subpackage a toplevel module
        or package.
 
-    Note that in either case, as a matter of principle, once we're
-    decided on a toplevel package name, even subdirectories without
-    __init__.py[i] files are searched and .py[i] files found there are
-    assigned module names as if those subdirectories did have a
-    __init__.py[i] files.  We do this because there's a strong
-    expectation that when giving a directory name as argument we want
-    *all* .py[i] files there analyzed, and also that they are assigned
-    module names implied by the directory hierarchy.
+    Note that in either case, once we're decided on a toplevel package
+    name, only subdirectories with __init__.py[i] files are searched.
     """
     assert os.path.isdir(arg), arg
     arg = os.path.abspath(arg)
@@ -335,23 +329,26 @@ def expand_dir(arg: str) -> List[BuildSource]:
         # Sort dirs and files in place to create a stable order.
         dirs.sort()
         files.sort()
-        # Look for dirs that are definitely packages.
-        for d in dirs:
-            if not d.startswith('.'):
-                d = os.path.join(root, d)
-                # Note that .pyi gets preferred over .py because it
-                # comes first in PY_EXTENSIONS.
-                for ext in PY_EXTENSIONS:
-                    f = os.path.join(d, '__init__' + ext)
-                    mod = make_mod(top_dir, top_mod, f, ext)
-                    if os.path.exists(f):
-                        if mod not in mods:
-                            sources.append(BuildSource(f, mod, None))
-                            mods.add(mod)
-                            break
+        # Look for dirs that are packages.
+        packages = []
+        for pkg in dirs:
+            d = os.path.join(root, pkg)
+            for ext in PY_EXTENSIONS:
+                f = os.path.join(d, '__init__' + ext)
+                mod = make_mod(top_dir, top_mod, f, ext)
+                if os.path.exists(f):
+                    if mod not in mods:
+                        sources.append(BuildSource(f, mod, None))
+                        mods.add(mod)
+                        packages.append(pkg)
+                        break
+        # Only descend into packages.
+        dirs[:] = packages
         # Add modules at this level.  Note that (like Python) if
-        # foo.py and foo/__init__.py both exist, the latter wins.
+        # both foo.py and foo/__init__.py exist, the package wins.
         for ext in PY_EXTENSIONS:
+            # Note that .pyi gets preferred over .py because it
+            # comes first in PY_EXTENSIONS.
             for f in files:
                 f = os.path.join(root, f)
                 if f.endswith(ext):
@@ -359,18 +356,6 @@ def expand_dir(arg: str) -> List[BuildSource]:
                     if mod not in mods:
                         sources.append(BuildSource(f, mod, None))
                         mods.add(mod)
-        # Create dummy modules for directories without __init__.py.
-        # We do this after processing files, so that if we have both
-        # foo.py and foo/ (but not foo/__init__.py), foo.py wins; but
-        # we'll still descend into foo/ and modules found there will
-        # be submodules of foo.py.
-        for d in dirs:
-            if not d.startswith('.'):
-                f = os.path.join(root, d, '__init__')
-                mod = make_mod(top_dir, top_mod, f, '')
-                if mod not in mods:
-                    sources.append(BuildSource(None, mod, 'pass'))
-                    mods.add(mod)
     return sources
 
 
