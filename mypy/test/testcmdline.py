@@ -26,7 +26,7 @@ cmdline_files = ['cmdline.test']
 class PythonEvaluationSuite(Suite):
 
     def cases(self) -> List[DataDrivenTestCase]:
-        c = []
+        c = []  # type: List[DataDrivenTestCase]
         for f in cmdline_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_python_evaluation, test_temp_dir, True)
