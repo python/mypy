@@ -1153,3 +1153,13 @@ b = B()
 print(b.x + 1)
 [out]
 4
+
+[case testInferenceWithLambda]
+from typing import TypeVar, Iterable, Iterator
+import itertools
+
+_T = TypeVar('_T')
+
+def f(iterable): # type: (Iterable[_T]) -> Iterator[List[_T]]
+    grouped = itertools.groupby(enumerate(iterable), lambda pair: pair[0] // 2)
+    return ([elem for _, elem in group] for _, group in grouped)
