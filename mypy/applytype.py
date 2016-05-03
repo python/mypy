@@ -1,8 +1,9 @@
 from typing import List, Dict
 
 import mypy.subtypes
+from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
-from mypy.types import Type, CallableType, AnyType, Void
+from mypy.types import Type, TypeVarType, CallableType, AnyType, Void
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
@@ -29,6 +30,12 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
         if values and type:
             if isinstance(type, AnyType):
                 continue
+            if isinstance(type, TypeVarType) and type.values:
+                # Allow substituting T1 for T if every allowed value of T1
+                # is also a legal value of T.
+                if all(any(is_same_type(v, v1) for v in values)
+                       for v1 in type.values):
+                    continue
             for value in values:
                 if mypy.subtypes.is_subtype(type, value):
                     types[i] = value

@@ -465,3 +465,17 @@ def g(x: str) -> str: return x
 main: note: In function "f":
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")
+
+[case testGenericFunctionSubtypingWithTypevarValues]
+from typing import TypeVar
+class A: pass
+T = TypeVar('T', int, str)
+U = TypeVar('U', str, A, int)
+def f(x: T) -> T: pass
+def g(x: U) -> U: pass
+a = f
+a = f
+a = g
+b = g
+b = g
+b = f # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[U], U])
