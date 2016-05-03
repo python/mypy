@@ -17,6 +17,7 @@ undef
 [file pkg/subpkg/__init__.py]
 [file pkg/subpkg/a.py]
 undef
+import pkg.subpkg.a
 [out]
 pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 pkg/a.py:1: error: Name 'undef' is not defined
@@ -26,6 +27,7 @@ pkg/a.py:1: error: Name 'undef' is not defined
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
+import pkg.subpkg.a
 [file pkg/subpkg/__init__.py]
 [file pkg/subpkg/a.py]
 undef
@@ -34,21 +36,47 @@ pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 pkg/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackage]
-# cmd: mypy pkg
-[file pkg/a.py]
+# cmd: mypy dir
+[file dir/a.py]
 undef
-[file pkg/subpkg/a.py]
+import subdir.a
+[file dir/subdir/a.py]
 undef
 [out]
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
-pkg/a.py:1: error: Name 'undef' is not defined
+dir/subdir/a.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackageSlash]
-# cmd: mypy pkg/
-[file pkg/a.py]
+# cmd: mypy dir/
+[file dir/a.py]
 undef
-[file pkg/subpkg/a.py]
+import subdir.a
+[file dir/subdir/a.py]
 undef
 [out]
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+dir/subdir/a.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlinePackageContainingSubdir]
+# cmd: mypy pkg
+[file pkg/__init__.py]
+[file pkg/a.py]
+undef
+import pkg.subdir.a
+[file pkg/subdir/a.py]
+undef
+[out]
+pkg/subdir/a.py:1: error: Name 'undef' is not defined
 pkg/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlineNonPackageContainingPackage]
+# cmd: mypy dir
+[file dir/a.py]
+undef
+import subpkg.a
+[file dir/subpkg/__init__.py]
+[file dir/subpkg/a.py]
+undef
+[out]
+dir/subpkg/a.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name 'undef' is not defined
