@@ -84,7 +84,7 @@ and anything imported from there.)  For example::
 
   $ mypy -m html
 
-will type check the entore ``html`` package (of library stubs).
+will type check the entire ``html`` package (of library stubs).
 
 Finally the flag ``-c`` (long form: ``--command``) will take a string
 from the command line and type check it as a small program.  For
