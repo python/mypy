@@ -291,6 +291,10 @@ def process_options() -> Tuple[List[BuildSource], Options]:
 
 
 def keyfunc(name: str) -> Tuple[int, str]:
+    """Determines sort order for directory listing.
+
+    The desirable property is foo < foo.pyi < foo.py.
+    """
     base, suffix = os.path.splitext(name)
     for i, ext in enumerate(PY_EXTENSIONS):
         if suffix == ext:
@@ -300,7 +304,7 @@ def keyfunc(name: str) -> Tuple[int, str]:
 
 def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
     """Convert a directory name to a list of sources to build."""
-    f = has_init_file(arg)
+    f = get_init_file(arg)
     if mod_prefix and not f:
         return []
     seen = set()  # type: Set[str]
@@ -323,29 +327,11 @@ def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
             base, suffix = os.path.splitext(name)
             if base == '__init__':
                 continue
-            if base not in seen and '.' not in base:
-                for ext in PY_EXTENSIONS:
-                    if suffix == ext:
-                        seen.add(base)
-                        src = BuildSource(path, mod_prefix + base, None)
-                        sources.append(src)
-                        break
+            if base not in seen and '.' not in base and suffix in PY_EXTENSIONS:
+                seen.add(base)
+                src = BuildSource(path, mod_prefix + base, None)
+                sources.append(src)
     return sources
-
-
-def make_mod(dir: str, file: str, ext: str) -> str:
-    """Produce the correct module name."""
-    assert file.startswith(dir), (dir, file)
-    assert file.endswith(ext), (file, ext)
-    file = file[len(dir):len(file) - len(ext)]
-    if os.altsep:
-        file = file.replace(os.altsep, os.sep)
-    if file.startswith(os.sep):
-        file = file[1:]
-    mod = file.replace(os.sep, '.')
-    if mod.endswith('.__init__'):
-        mod = mod[:-9]  # len('.__init__')
-    return mod
 
 
 def crawl_up(arg: str) -> Tuple[str, str]:
@@ -357,7 +343,7 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
     assert '.' not in mod
-    while dir and has_init_file(dir):
+    while dir and get_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:
             break
@@ -379,7 +365,7 @@ def strip_py(arg: str) -> Optional[str]:
     return None
 
 
-def has_init_file(dir: str) -> Optional[str]:
+def get_init_file(dir: str) -> Optional[str]:
     """Check whether a directory contains a file named __init__.py[i].
 
     If so, return the file's name (with dir prefixed).  If not, return
