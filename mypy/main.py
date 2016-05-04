@@ -317,11 +317,10 @@ def expand_dir(arg: str) -> List[BuildSource]:
     for ext in PY_EXTENSIONS:
         f = os.path.join(arg, '__init__' + ext)
         if os.path.exists(f):
-            top_dir, top_mod = crawl_up(f)
+            top_dir = crawl_up(f)[0]
             break
     else:
         top_dir = arg
-        top_mod = ''
 
     mods = set()  # type: Set[str]
     sources = []
@@ -335,7 +334,7 @@ def expand_dir(arg: str) -> List[BuildSource]:
             d = os.path.join(root, pkg)
             for ext in PY_EXTENSIONS:
                 f = os.path.join(d, '__init__' + ext)
-                mod = make_mod(top_dir, top_mod, f, ext)
+                mod = make_mod(top_dir, f, ext)
                 if os.path.exists(f):
                     if mod not in mods:
                         sources.append(BuildSource(f, mod, None))
@@ -352,14 +351,16 @@ def expand_dir(arg: str) -> List[BuildSource]:
             for f in files:
                 f = os.path.join(root, f)
                 if f.endswith(ext):
-                    mod = make_mod(top_dir, top_mod, f, ext)
+                    mod = make_mod(top_dir, f, ext)
                     if mod not in mods:
                         sources.append(BuildSource(f, mod, None))
                         mods.add(mod)
+    if not sources:
+        fail("There are no .py[i] files in directory '{}'".format(arg))
     return sources
 
 
-def make_mod(dir: str, mod: str, file: str, ext: str) -> str:
+def make_mod(dir: str, file: str, ext: str) -> str:
     """Produce the correct module name."""
     assert file.startswith(dir), (dir, file)
     assert file.endswith(ext), (file, ext)
