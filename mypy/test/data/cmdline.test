@@ -1,0 +1,76 @@
+-- Tests for command line parsing
+-- ------------------------------
+--
+-- The initial line specifies the command line, in the format
+--
+--   # cmd: mypy <options>
+
+
+-- Directories/packages on the command line
+-- ----------------------------------------
+
+[case testCmdlinePackage]
+# cmd: mypy pkg
+[file pkg/__init__.py]
+[file pkg/a.py]
+undef
+[file pkg/subpkg/__init__.py]
+[file pkg/subpkg/a.py]
+undef
+import pkg.subpkg.a
+[out]
+pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlinePackageSlash]
+# cmd: mypy pkg/
+[file pkg/__init__.py]
+[file pkg/a.py]
+undef
+import pkg.subpkg.a
+[file pkg/subpkg/__init__.py]
+[file pkg/subpkg/a.py]
+undef
+[out]
+pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlineNonPackage]
+# cmd: mypy dir
+[file dir/a.py]
+undef
+[file dir/subdir/a.py]
+undef
+[out]
+dir/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlineNonPackageSlash]
+# cmd: mypy dir/
+[file dir/a.py]
+undef
+[file dir/subdir/a.py]
+undef
+[out]
+dir/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlinePackageContainingSubdir]
+# cmd: mypy pkg
+[file pkg/__init__.py]
+[file pkg/a.py]
+undef
+[file pkg/subdir/a.py]
+undef
+[out]
+pkg/a.py:1: error: Name 'undef' is not defined
+
+[case testCmdlineNonPackageContainingPackage]
+# cmd: mypy dir
+[file dir/a.py]
+undef
+import subpkg.a
+[file dir/subpkg/__init__.py]
+[file dir/subpkg/a.py]
+undef
+[out]
+dir/subpkg/a.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name 'undef' is not defined
