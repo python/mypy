@@ -3,7 +3,8 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType, DeletedType
+    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
+    UninhabitedType
 )
 from mypy.subtypes import is_subtype
 from mypy.nodes import TypeInfo
@@ -28,7 +29,7 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
     elif not is_overlapping_types(s, t, use_promotions=True):
-        return NoneTyp()
+        return UninhabitedType()
     else:
         if default_right:
             return t
@@ -175,7 +176,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.type, args)
                 else:
-                    return NoneTyp()
+                    return UninhabitedType()
             else:
                 if is_subtype(t, self.s):
                     return t
@@ -183,7 +184,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     # See also above comment.
                     return self.s
                 else:
-                    return NoneTyp()
+                    return UninhabitedType()
         else:
             return self.default(self.s)
 
@@ -216,4 +217,4 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
         else:
-            return NoneTyp()
+            return UninhabitedType()

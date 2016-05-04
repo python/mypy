@@ -16,6 +16,7 @@ from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import satisfies_upper_bound
 from mypy import nodes
+from mypy import experimental
 
 
 type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
@@ -73,6 +74,11 @@ class TypeAnalyser(TypeVisitor[Type]):
         self.fail = fail_func
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
+        if t.optional:
+            t.optional = False
+            # We don't need to worry about double-wrapping Optionals or
+            # wrapping Anys: Union simplification will take care of that.
+            return UnionType.make_simplified_union([self.visit_unbound_type(t), NoneTyp()])
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
@@ -91,7 +97,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                                    tvar_expr.variance,
                                    t.line)
             elif fullname == 'builtins.None':
-                return Void()
+                if experimental.STRICT_OPTIONAL:
+                    return NoneTyp()
+                else:
+                    return Void()
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
@@ -110,8 +119,11 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
                 items = self.anal_array(t.args)
-                # Currently Optional[t] is just an alias for t.
-                return items[0]
+                if experimental.STRICT_OPTIONAL:
+                    return UnionType.make_simplified_union([items[0], NoneTyp()])
+                else:
+                    # Without strict Optional checking Optional[t] is just an alias for t.
+                    return items[0]
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif sym.kind == TYPE_ALIAS:

@@ -50,6 +50,7 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+from mypy import experimental
 
 
 T = TypeVar('T')
@@ -376,10 +377,12 @@ class TypeChecker(NodeVisitor[Type]):
     # Should we check untyped function defs?
     check_untyped_defs = False
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 disallow_untyped_calls=False, disallow_untyped_defs=False,
-                 check_untyped_defs=False) -> None:
+    def __init__(self, errors: Errors,
+                 modules: Dict[str, MypyFile],
+                 pyversion: Tuple[int, int],
+                 disallow_untyped_calls: bool,
+                 disallow_untyped_defs: bool,
+                 check_untyped_defs: bool) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -547,7 +550,10 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.
-            return Void()
+            if experimental.STRICT_OPTIONAL:
+                return NoneTyp()
+            else:
+                return Void()
 
     def get_generator_return_type(self, return_type: Type) -> Type:
         if isinstance(return_type, AnyType):
@@ -661,7 +667,7 @@ class TypeChecker(NodeVisitor[Type]):
             if fdef:
                 # Check if __init__ has an invalid, non-None return type.
                 if (fdef.info and fdef.name() == '__init__' and
-                        not isinstance(typ.ret_type, Void) and
+                        not isinstance(typ.ret_type, (Void, NoneTyp)) and
                         not self.dynamic_funcs[-1]):
                     self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
@@ -2018,7 +2024,10 @@ class TypeChecker(NodeVisitor[Type]):
             return self.get_generator_return_type(iter_type)
         else:
             # Non-Generators don't return anything from `yield from` expressions.
-            return Void()
+            if experimental.STRICT_OPTIONAL:
+                return NoneTyp()
+            else:
+                return Void()
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)

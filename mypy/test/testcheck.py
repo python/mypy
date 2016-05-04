@@ -57,6 +57,7 @@ files = [
     'check-flags.test',
     'check-incremental.test',
     'check-bound.test',
+    'check-optional.test',
 ]
 
 

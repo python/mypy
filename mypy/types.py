@@ -99,12 +99,19 @@ class UnboundType(Type):
 
     name = ''
     args = None  # type: List[Type]
+    # should this type be wrapped in an Optional?
+    optional = False
 
-    def __init__(self, name: str, args: List[Type] = None, line: int = -1) -> None:
+    def __init__(self,
+                 name: str,
+                 args: List[Type] = None,
+                 line: int = -1,
+                 optional: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
+        self.optional = optional
         super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -203,6 +210,24 @@ class Void(Type):
     def deserialize(cls, data: JsonDict) -> 'Void':
         assert data['.class'] == 'Void'
         return Void()
+
+class UninhabitedType(Type):
+    """This type has no members.
+    """
+
+    def __init__(self, line: int = -1) -> None:
+        super().__init__(line)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_uninhabited_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'UninhabitedType'}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'UninhabitedType':
+        assert data['.class'] == 'UninhabitedType'
+        return UninhabitedType()
 
 
 class NoneTyp(Type):
@@ -683,7 +708,7 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            return Void()
+            return UninhabitedType()
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1) -> Type:
@@ -971,8 +996,8 @@ class TypeStrVisitor(TypeVisitor[str]):
         return 'void'
 
     def visit_none_type(self, t):
-        # Include quotes to make this distinct from the None value.
-        return "'None'"
+        # Fully qualify to make this distinct from the None value.
+        return "builtins.None"
 
     def visit_erased_type(self, t):
         return "<Erased>"

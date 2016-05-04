@@ -3,6 +3,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
     PartialType, DeletedType, TypeTranslator, TypeList
 )
+from mypy import experimental
 
 
 def erase_type(typ: Type) -> Type:
@@ -59,7 +60,8 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        return CallableType([], [], [], Void(), t.fallback)
+        none_type = NoneTyp() if experimental.STRICT_OPTIONAL else Void()
+        return CallableType([], [], [], none_type, t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         return t.items()[0].accept(self)
