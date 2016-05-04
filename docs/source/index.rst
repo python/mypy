@@ -25,6 +25,7 @@ Welcome to Mypy documentation!
    supported_python_features
    additional_features
    planned_features
+   command_line
    faq
    revision_history
 

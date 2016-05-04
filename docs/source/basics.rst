@@ -87,11 +87,11 @@ The presence or absence of the ``typing`` module does not affect
 whether your code is type checked; it is only required when you use
 one or more special features it defines.
 
-Type checking and running programs
-**********************************
+Type checking programs
+**********************
 
 You can type check a program by using the ``mypy`` tool, which is
-basically a linter — it checks your program for errors without actually
+basically a linter -- it checks your program for errors without actually
 running it::
 
    $ mypy program.py
@@ -101,6 +101,8 @@ to ignore, if you so wish.
 
 The `README <https://github.com/python/mypy/blob/master/README.md>`_
 explains how to download and install mypy.
+
+More command line options are documented in :ref:`command-line`.
 
 .. note::
 

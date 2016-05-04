@@ -3,6 +3,11 @@ Revision history
 
 List of major changes to this document:
 
+- May 2016
+    Publish ``mypy-lang`` version 0.4 on PyPI.
+
+    Document :ref:`command-line`.
+
 - Feb 2016
     Publish ``mypy-lang`` version 0.3.1 on PyPI.
 

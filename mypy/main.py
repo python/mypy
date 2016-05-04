@@ -187,6 +187,10 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                      "you should really investigate how to obtain stubs for that module.\n"
                      "See https://github.com/python/mypy/issues/1411 for more discussion."
                      )
+    # --silent is deprecated; warn about this.
+    if args.silent:
+        print("Warning: --silent is deprecated; use --silent-imports",
+              file=sys.stderr)
 
     # Check for invalid argument combinations.
     code_methods = sum(bool(c) for c in [args.modules, args.command, args.package, args.files])
