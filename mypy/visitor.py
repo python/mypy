@@ -165,6 +165,9 @@ class NodeVisitor(Generic[T]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> T:
         pass
 
+    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> T:
+        pass
+
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:
         pass
 

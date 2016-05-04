@@ -55,7 +55,7 @@ from mypy.nodes import (
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, TypeApplication, Context, SymbolTable,
+    SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
@@ -1795,6 +1795,12 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
+        elif expr.callee.fullname is None and expr.callee.name == 'reveal_type':
+            if not self.check_fixed_args(expr, 1, 'reveal_type'):
+                return
+            expr.analyzed = RevealTypeExpr(expr.args[0])
+            expr.analyzed.line = expr.line
+            expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
             # Special form Any(...).
             if not self.check_fixed_args(expr, 1, 'Any'):
@@ -1931,6 +1937,9 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
         expr.type = self.anal_type(expr.type)
+
+    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> None:
+        expr.expr.accept(self)
 
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)
@@ -2513,6 +2522,9 @@ class ThirdPass(TraverserVisitor[None]):
     def visit_cast_expr(self, e: CastExpr) -> None:
         self.analyze(e.type)
         super().visit_cast_expr(e)
+
+    def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
+        super().visit_reveal_type_expr(e)
 
     def visit_type_application(self, e: TypeApplication) -> None:
         for type in e.types:

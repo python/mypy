@@ -15,7 +15,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, SuperExpr,
+    BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, TypeVarExpr, PrintStmt,
@@ -2068,6 +2068,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_cast_expr(self, e: CastExpr) -> Type:
         return self.expr_checker.visit_cast_expr(e)
+
+    def visit_reveal_type_expr(self, e: RevealTypeExpr) -> Type:
+        return self.expr_checker.visit_reveal_type_expr(e)
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         return self.expr_checker.visit_super_expr(e)

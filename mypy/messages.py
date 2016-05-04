@@ -14,7 +14,7 @@ from mypy.types import (
     Overloaded, FunctionLike, DeletedType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases, Node,
     ARG_STAR, ARG_STAR2
 )
 
@@ -817,6 +817,9 @@ class MessageBuilder:
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
+
+    def reveal_type(self, expr: Node, typ: Type, context: Context) -> None:
+        self.fail('Type of "{}" is \'{}\''.format(expr, typ), context)
 
 
 def capitalize(s: str) -> str:
