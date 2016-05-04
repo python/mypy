@@ -1795,7 +1795,7 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = CastExpr(expr.args[1], target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
-        elif expr.callee.fullname is None and expr.callee.name == 'reveal_type':
+        elif refers_to_fullname(expr.callee, None) and expr.callee.name == 'reveal_type':
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
             expr.analyzed = RevealTypeExpr(expr.args[0])
@@ -2585,7 +2585,7 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
         return sig
 
 
-def refers_to_fullname(node: Node, fullname: str) -> bool:
+def refers_to_fullname(node: Node, fullname: Optional[str]) -> bool:
     """Is node a name or member expression with the given full name?"""
     return isinstance(node, RefExpr) and node.fullname == fullname
 
