@@ -19,21 +19,21 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 pkg/a.py:1: error: Name 'undef' is not defined
+pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlinePackageSlash]
 # cmd: mypy pkg/
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
-import pkg.subpkg.a
 [file pkg/subpkg/__init__.py]
 [file pkg/subpkg/a.py]
 undef
+import pkg.subpkg.a
 [out]
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 pkg/a.py:1: error: Name 'undef' is not defined
+pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackage]
 # cmd: mypy dir
