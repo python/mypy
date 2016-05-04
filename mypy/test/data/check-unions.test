@@ -110,3 +110,22 @@ def f(x: Optional[int]) -> None: pass
 f(1)
 f(None)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testUnionSimplificationGenericFunction]
+from typing import TypeVar, Union, List
+T = TypeVar('T')
+def f(x: List[T]) -> Union[T, int]: pass
+def g(y: str) -> None: pass
+a = f([1])
+g(a) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
+[builtins fixtures/list.py]
+
+[case testUnionSimplificationGenericClass]
+from typing import TypeVar, Union, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class C(Generic[T, U]):
+    def f(self, x: str) -> Union[T, U]: pass
+a = C() # type: C[int, int]
+b = a.f('a')
+a.f(b) # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "str"
