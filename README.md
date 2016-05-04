@@ -8,16 +8,16 @@ What is mypy?
 -------------
 
 Mypy is an optional static type checker for Python.  You can add type
-hints to your Python programs using the upcoming standard for type
-annotations introduced in Python 3.5 beta 1 (PEP 484), and use mypy to
+hints to your Python programs using the standard for type
+annotations introduced in Python 3.5 (PEP 484), and use mypy to
 type check them statically. Find bugs in your programs without even
 running them!
 
-The type annotation notation has also been backported to earlier
-Python 3.x versions.  Mypy programs are valid Python 3.x and you use a
-normal Python interpreter to run them.  There is essentially no
-performance overhead when using mypy, since mypy does not introduce
-runtime type checking.
+The type annotation standard has also been backported to earlier
+Python 3.x versions.  Mypy supports Python 3.2 and later.
+
+For Python 2.7, you can add annotations as comments (this is also
+specified in PEP 484).
 
 You can mix dynamic and static typing in your programs. You can always
 fall back to dynamic typing when static typing is not convenient, such
@@ -85,6 +85,10 @@ Web site and documentation
 Documentation and additional information is available at the web site:
 
   http://www.mypy-lang.org/
+
+Or you can jump straight to the documentation:
+
+  http://mypy.readthedocs.io/
 
 
 Troubleshooting
@@ -176,11 +180,13 @@ filters:
 If you want to run individual unit tests, you can run `myunit` directly, or
 pass inferior arguments via `-a`:
 
-    $ scripts/myunit -m mypy.test.testlex -v '*backslash*'
+    $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
 You can also run the type checker for manual testing without
-installing anything by setting up the Python module search path suitably:
+installing anything by setting up the Python module search path
+suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
+or when you have manually installed the `typing` module):
 
     $ export PYTHONPATH=$PWD:$PWD/lib-typing/3.2
     $ python<version> -m mypy PROGRAM.py
