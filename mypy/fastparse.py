@@ -25,9 +25,14 @@ try:
     from typed_ast import ast35
     from typed_ast import conversions
 except ImportError:
-    print('You must install the typed_ast module before you can run mypy with `--fast-parser`.\n'
-          'The typed_ast module can be found at https://github.com/ddfisher/typed_ast',
-          file=sys.stderr)
+    if sys.version_info.minor > 2:
+        print('You must install the typed_ast package before you can run mypy'
+              ' with `--fast-parser`.\n'
+              'You can do this with `python3 -m pip install typed-ast`.',
+              file=sys.stderr)
+    else:
+        print('The typed_ast package required by --fast-parser is only compatible with'
+              ' Python 3.3 and greater.')
     sys.exit(1)
 
 T = TypeVar('T')
