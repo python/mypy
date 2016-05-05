@@ -201,3 +201,65 @@ You can also use a ``TypeVar`` with a restricted set of possible
 values when defining a generic class. For example, mypy uses the type
 ``typing.Pattern[AnyStr]`` for the return value of ``re.compile``,
 since regular expressions can be based on a string or a bytes pattern.
+
+.. _type-variable-upper-bound:
+
+Type variables with upper bounds
+********************************
+
+A type variable can also be restricted to having values that are
+subtypes of a specific type. This type is called the upper bound of
+the type variable, and is specified with the ``bound=...`` keyword
+argument to ``TypeVar``.
+
+.. code-block:: python
+
+   from typing import TypeVar, SupportsAbs
+
+   T = TypeVar('T', bound=SupportsAbs[float])
+
+In the definition of a generic function that uses such a type variable
+``T``, the type represented by ``T`` is assumed to be a subtype of
+its upper bound, so the function can use methods of the upper bound on
+values of type ``T``.
+
+.. code-block:: python
+
+   def largest_in_absolute_value(*xs: T) -> T:
+       return max(xs, key=abs)  # Okay, because T is a subtype of SupportsAbs[float].
+
+In a call to such a function, the type ``T`` must be replaced by a
+type that is a subtype of its upper bound. Continuing the example
+above,
+
+.. code-block:: python
+
+   largest_in_absolute_value(-3.5, 2)   # Okay, has type float.
+   largest_in_absolute_value(5+6j, 7)   # Okay, has type complex.
+   largest_in_absolute_value('a', 'b')  # Error: 'str' is not a subtype of SupportsAbs[float].
+
+Type parameters of generic classes may also have upper bounds, which
+restrict the valid values for the type parameter in the same way.
+
+A type variable may not have both a value restriction (see
+:ref:`type-variable-value-restriction`) and an upper bound.
+
+One common application of type variable upper bounds is in declaring
+the types of decorators that do not change the type of the function
+they decorate:
+
+.. code-block:: python
+
+   from typing import TypeVar, Callable, Any
+
+   AnyCallable = TypeVar('AnyCallable', bound=Callable[..., Any])
+
+   def my_decorator(f: AnyCallable) -> AnyCallable: ...
+
+   @my_decorator
+   def my_function(x: int, y: str) -> bool:
+       ...
+
+The decorated ``my_function`` still has type ``Callable[[int, str],
+bool]``. Due to the bound on ``AnyCallable``, an application of the
+decorator to a non-function like ``my_decorator(1)`` will be rejected.
