@@ -82,7 +82,7 @@ subpackages (recursively) of that package.  (If you pass a package
 name to ``-m`` it will just type check the package's ``__init__.py``
 and anything imported from there.)  For example::
 
-  $ mypy -m html
+  $ mypy -p html
 
 will type check the entire ``html`` package (of library stubs).
 
@@ -102,7 +102,7 @@ When you're first attacking a large existing code base (without
 annotations) with mypy, you may only want it to type check selected
 files (for example, the files to which you have added annotations).
 While mypy's command line flags don't (yet) help you choose which
-files to type check, you *can* prevent it to type check other files
+files to type check, you *can* prevent it from type checking other files
 that may be imported from the files and/or packages you are explicitly
 passing on the command line.  For example, suppose your entire program
 consists of the files ``a.py`` and ``b.py``, and ``a.py`` contains
@@ -117,7 +117,8 @@ now.  In this case the ``-s`` flag (``--silent-imports``) is handy::
 
   $ mypy -s a.py
 
-will only type check ``a.py`` and ignore the ``import b``.  When you're ready to also type check ``b.py``, you can add it to the command line::
+will only type check ``a.py`` and ignore the ``import b``.  When you're
+ready to also type check ``b.py``, you can add it to the command line::
 
   $ mypy -s a.py b.py
 
@@ -180,7 +181,7 @@ Here are some more useful flags:
   it type checks the body of every function, regardless of whether it
   has type annotations.  (By default the bodies of functions without
   annotations are not type checked.)  It will assume all arguments
-  have type ``Any`` and alwats infer ``Any`` as the return type.
+  have type ``Any`` and always infer ``Any`` as the return type.
 
 For the remaining flags you can read the full ``mypy -h`` output.
 
