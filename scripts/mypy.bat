@@ -1,5 +1,9 @@
 @echo off
 
 setlocal
-"%~dp0..\python" "%~dp0mypy" %*
+if exist "%~dp0\python.exe" (
+    "%~dp0\python" "%~dp0mypy" %*
+) else (
+    "%~dp0..\python" "%~dp0mypy" %*
+)
 endlocal
