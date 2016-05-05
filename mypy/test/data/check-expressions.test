@@ -1476,3 +1476,11 @@ class D(Dict[T, S], Generic[T, S]):
 d = D(1, y='')
 d() # E: D[str, int] not callable
 [builtins fixtures/dict.py]
+
+[case testUserDefinedRevealType]
+def reveal_type(x: int) -> None: pass
+reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str"; expected "int"
+
+[case testRevealTypeVar]
+reveal_type = 1
+1 + "foo" # E: Unsupported left operand type for + ("int")
