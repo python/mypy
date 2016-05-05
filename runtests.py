@@ -235,18 +235,19 @@ def add_stubs(driver: Driver) -> None:
     driver.add_mypy_modules('stubs', sorted(modules))
 
 
-def add_libpython(driver: Driver) -> None:
+def add_stdlibsamples(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
-        libpython_dir = join(driver.cwd, 'lib-python', version)
+        stdlibsamples_dir = join(driver.cwd, 'stdlib-samples', version)
         modules = []  # type: List[str]
-        for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
-            module = file_to_module(f[len(libpython_dir) + 1:])
+        for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
+            module = file_to_module(f[len(stdlibsamples_dir) + 1:])
             if module not in seen:
                 seen.add(module)
                 modules.append(module)
         if modules:
-            driver.add_mypy_modules('libpython (%s)' % (version,), modules, cwd=libpython_dir)
+            driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules,
+                                    cwd=stdlibsamples_dir)
 
 
 def add_samples(driver: Driver) -> None:
@@ -369,7 +370,7 @@ def main() -> None:
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
-    add_libpython(driver)
+    add_stdlibsamples(driver)
     add_samples(driver)
 
     if list_only:

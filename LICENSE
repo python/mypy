@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 = = = = =
 
 Portions of mypy are licensed under different licenses.  The files
-under lib-python and lib-typing/3.2 are licensed under the PSF 2
+under stdlib-samples and lib-typing are licensed under the PSF 2
 License, reproduced below.
 
 = = = = =
