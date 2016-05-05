@@ -1477,6 +1477,15 @@ d = D(1, y='')
 d() # E: D[str, int] not callable
 [builtins fixtures/dict.py]
 
+[case testRevealType]
+reveal_type(1) # E: Revealed type is 'builtins.int'
+
+[case testUndefinedRevealType]
+reveal_type(x)
+[out]
+main:1: error: Name 'x' is not defined
+main:1: error: Revealed type is 'Any'
+
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass
 reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str"; expected "int"
