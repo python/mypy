@@ -246,7 +246,8 @@ def add_stdlibsamples(driver: Driver) -> None:
                 seen.add(module)
                 modules.append(module)
         if modules:
-            driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules, cwd=stdlibsamples_dir)
+            driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules,
+                                    cwd=stdlibsamples_dir)
 
 
 def add_samples(driver: Driver) -> None:
