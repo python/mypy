@@ -372,6 +372,9 @@ class StrConv(NodeVisitor[str]):
     def visit_cast_expr(self, o):
         return self.dump([o.expr, o.type], o)
 
+    def visit_reveal_type_expr(self, o):
+        return self.dump([o.expr], o)
+
     def visit_unary_expr(self, o):
         return self.dump([o.op, o.expr], o)
 

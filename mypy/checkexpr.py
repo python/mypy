@@ -10,7 +10,7 @@ from mypy.types import (
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
-    OpExpr, UnaryExpr, IndexExpr, CastExpr, TypeApplication, ListExpr,
+    OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
@@ -1171,6 +1171,12 @@ class ExpressionChecker:
         return (isinstance(target_type, AnyType) or
                 (not isinstance(source_type, Void) and
                  not isinstance(target_type, Void)))
+
+    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
+        """Type check a reveal_type expression."""
+        revealed_type = self.accept(expr.expr)
+        self.msg.reveal_type(revealed_type, expr)
+        return revealed_type
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""

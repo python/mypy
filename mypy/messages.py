@@ -818,6 +818,9 @@ class MessageBuilder:
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
 
+    def reveal_type(self, typ: Type, context: Context) -> None:
+        self.fail('Revealed type is \'{}\''.format(typ), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

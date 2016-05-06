@@ -1368,6 +1368,18 @@ class CastExpr(Node):
         return visitor.visit_cast_expr(self)
 
 
+class RevealTypeExpr(Node):
+    """Reveal type expression reveal_type(expr)."""
+
+    expr = None  # type: Node
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_reveal_type_expr(self)
+
+
 class SuperExpr(Node):
     """Expression super().name"""
 

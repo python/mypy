@@ -7,7 +7,7 @@ from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr,
+    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
     FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
@@ -167,6 +167,9 @@ class TraverserVisitor(NodeVisitor[T], Generic[T]):
             o.stride.accept(self)
 
     def visit_cast_expr(self, o: CastExpr) -> T:
+        o.expr.accept(self)
+
+    def visit_reveal_type_expr(self, o: RevealTypeExpr) -> T:
         o.expr.accept(self)
 
     def visit_unary_expr(self, o: UnaryExpr) -> T:
