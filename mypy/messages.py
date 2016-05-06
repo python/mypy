@@ -288,7 +288,7 @@ class MessageBuilder:
     # Specific operations
     #
 
-    # The following operations are for genering specific error messages. They
+    # The following operations are for generating specific error messages. They
     # get some information as arguments, and they build an error message based
     # on them.
 
