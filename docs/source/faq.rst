@@ -248,7 +248,7 @@ differently:
   inference which is very slow, does not scale well to large programs
   and often produces confusing error messages. Mypy can support
   modularity since it only uses local type inference; static type
-  checking depends on having type annotatations for functions
+  checking depends on having type annotations for functions
   signatures.
 
 - Mypy will support introspection, dynamic loading of code and many
