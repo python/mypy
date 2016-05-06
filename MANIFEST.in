@@ -1,0 +1,2 @@
+recursive-include lib-typing *.py
+recursive-include scripts *
