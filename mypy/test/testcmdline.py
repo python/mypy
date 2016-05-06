@@ -61,7 +61,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
 
 
 def parse_args(line: str) -> List[str]:
-    """Parse the first line of the proram for the command line.
+    """Parse the first line of the program for the command line.
 
     This should have the form
 
