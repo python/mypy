@@ -453,7 +453,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return None
         self._vars[-1].append(lvalue)
         self.add_typing_import('Any')
-        return '%s%s = ... # type: Any\n' % (self._indent, lvalue)
+        return '%s%s = ...  # type: Any\n' % (self._indent, lvalue)
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
