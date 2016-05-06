@@ -730,7 +730,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
         for base_expr in defn.base_type_exprs:
-            # The base class is originallly an expression; convert it to a type.
+            # The base class is originally an expression; convert it to a type.
             try:
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
