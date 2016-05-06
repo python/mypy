@@ -43,7 +43,7 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     variables are erased at runtime and the overlapping check is based
     on runtime behavior.
 
-    If use_promitions is True, also consider type promotions (int and
+    If use_promotions is True, also consider type promotions (int and
     float would only be overlapping if it's True).
 
     This does not consider multiple inheritance. For example, A and B in

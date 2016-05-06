@@ -1643,7 +1643,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
 
     Return a similarity level:
       0: no match
-      1: actual is compatible, but only using type promitions (e.g. int vs float)
+      1: actual is compatible, but only using type promotions (e.g. int vs float)
       2: actual is compatible without type promotions (e.g. int vs object)
 
     The distinction is important in cases where multiple overload items match. We want
