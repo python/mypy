@@ -7,7 +7,7 @@ Introduction
 Pinfer is tool for runtime type inference of variable types and
 function signatures in Python programs. The inferred types are mostly
 compatible with mypy types. It is intended for coming up with draft
-types when migrating Python code to static tryping, but it can also be
+types when migrating Python code to static typing, but it can also be
 used as a code understanding or analysis tool.
 
 Pinfer is very experimental!
