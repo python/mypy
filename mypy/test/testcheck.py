@@ -180,7 +180,7 @@ class TypeCheckSuite(Suite):
     def parse_options(self, program_text: str) -> Tuple[str, str, str]:
         """Return type check options for a test case.
 
-        The default ('__main__') module name can be overriden by
+        The default ('__main__') module name can be overridden by
         using a comment like this in the test case input:
 
           # cmd: mypy -m foo.bar

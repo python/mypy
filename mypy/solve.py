@@ -34,7 +34,7 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
         bottom = None  # type: Type
         top = None  # type: Type
 
-        # Process each contraint separely, and calculate the lower and upper
+        # Process each constraint separately, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the constraint
         # targets do not have constraint references.
         for c in cmap.get(tvar, []):

@@ -1042,7 +1042,7 @@ class B(A):
 main: note: In class "B":
 main:8: error: Signature of "__add__" incompatible with supertype "A"
 
-[case testReverseOperatorMethoddArgumentType]
+[case testReverseOperatorMethodArgumentType]
 from typing import Any
 class A: pass
 class B:
@@ -1053,7 +1053,7 @@ class D:
     def __radd__(self, x: A) -> object: pass
 [out]
 
-[case testReverseOperatorMethoddArgumentType2]
+[case testReverseOperatorMethodArgumentType2]
 from typing import Any, Tuple, Callable
 class A:
     def __radd__(self, x: Tuple[int, str]) -> int: pass
@@ -1402,7 +1402,7 @@ f(A) # E: Argument 1 to "f" has incompatible type "A" (type object); expected "A
 --   refer to attribute before type has been inferred (the initialization in
 --   __init__ has not been analyzed)
 
-[case testAnyBaseClassUnconstrainsConstructor]
+[case testAnyBaseClassUnconstrainedConstructor]
 from typing import Any
 B = None  # type: Any
 class C(B): pass

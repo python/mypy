@@ -168,7 +168,7 @@ class SemanticAnalyzer(NodeVisitor):
     type_stack = None  # type: List[TypeInfo]
     # Type variables that are bound by the directly enclosing class
     bound_tvars = None  # type: List[SymbolTableNode]
-    # Stack of type varialbes that were bound by outer classess
+    # Stack of type variables that were bound by outer classess
     tvar_stack = None  # type: List[List[SymbolTableNode]]
 
     # Stack of functions being analyzed
@@ -328,7 +328,7 @@ class SemanticAnalyzer(NodeVisitor):
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?
 
-        We reject straight redefinitions of functions, as they are usuallly
+        We reject straight redefinitions of functions, as they are usually
         a programming error. For example:
 
         . def f(): ...
@@ -427,7 +427,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_local(defn, defn)
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
-        """Analyze a propery defined using multiple methods (e.g., using @x.setter).
+        """Analyze a property defined using multiple methods (e.g., using @x.setter).
 
         Assume that the first method (@property) has already been analyzed.
         """
@@ -730,7 +730,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes."""
         for base_expr in defn.base_type_exprs:
-            # The base class is originallly an expression; convert it to a type.
+            # The base class is originally an expression; convert it to a type.
             try:
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:

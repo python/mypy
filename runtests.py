@@ -282,7 +282,7 @@ def usage(status: int) -> None:
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
     print('  -x, --exclude FILTER   exclude tasks matching FILTER')
-    print('  --                     treat all remaning arguments as positional')
+    print('  --                     treat all remaining arguments as positional')
     sys.exit(status)
 
 

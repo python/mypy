@@ -839,7 +839,7 @@ For single nodes, processing is simple.  If the node was cached, we
 deserialize the cache data and fix up cross-references.  Otherwise, we
 do semantic analysis followed by type checking.  We also handle (c)
 above; if a module has valid cache data *but* any of its
-dependendencies was processed from source, then the module should be
+dependencies was processed from source, then the module should be
 processed from source.
 
 A relatively simple optimization (outside SCCs) we might do in the

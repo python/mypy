@@ -497,7 +497,7 @@ main: note: In class "A":
 -- ------------------------------------------------
 
 
-[case testSubclassingGenenericABCWithDeepHierarchy]
+[case testSubclassingGenericABCWithDeepHierarchy]
 from typing import Any, TypeVar, Generic
 from abc import abstractmethod
 T = TypeVar('T')
@@ -525,7 +525,7 @@ class D: pass
 main:7: error: Incompatible types in assignment (expression has type "A", variable has type I[D])
 main: note: In class "A":
 
-[case testSubclassingGenenericABCWithDeepHierarchy2]
+[case testSubclassingGenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
 from abc import abstractmethod
 T = TypeVar('T')

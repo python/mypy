@@ -368,7 +368,7 @@ class ExpressionChecker:
                 # See also github issues #462 and #360.
                 ret_type = NoneTyp()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
-        # Only substite non-None and non-erased types.
+        # Only substitute non-None and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
             if isinstance(arg, NoneTyp) or has_erased_component(arg):
@@ -1643,7 +1643,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
 
     Return a similarity level:
       0: no match
-      1: actual is compatible, but only using type promitions (e.g. int vs float)
+      1: actual is compatible, but only using type promotions (e.g. int vs float)
       2: actual is compatible without type promotions (e.g. int vs object)
 
     The distinction is important in cases where multiple overload items match. We want
@@ -1651,7 +1651,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     """
     # Replace type variables with their upper bounds. Overloading
     # resolution is based on runtime behavior which erases type
-    # parameters, so no need to handle type variables occuring within
+    # parameters, so no need to handle type variables occurring within
     # a type.
     if isinstance(actual, TypeVarType):
         actual = actual.erase_to_union_or_bound()

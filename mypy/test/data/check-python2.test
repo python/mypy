@@ -29,7 +29,7 @@ s = A() / 1
 s = ''
 s = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testStrUnicodeCompatiblity]
+[case testStrUnicodeCompatibility]
 import typing
 def f(x: unicode) -> None: pass
 f('')

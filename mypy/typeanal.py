@@ -270,7 +270,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     Perform these operations:
 
      * Report error for invalid type argument counts, such as List[x, y].
-     * Make implicit Any type argumenents explicit my modifying types
+     * Make implicit Any type arguments explicit my modifying types
        in-place. For example, modify Foo into Foo[Any] if Foo expects a single
        type argument.
      * If a type variable has a value restriction, ensure that the value is

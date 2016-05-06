@@ -719,7 +719,7 @@ class Block(Node):
 
 
 class ExpressionStmt(Node):
-    """An expression as a statament, such as print(s)."""
+    """An expression as a statement, such as print(s)."""
     expr = None  # type: Node
 
     def __init__(self, expr: Node) -> None:

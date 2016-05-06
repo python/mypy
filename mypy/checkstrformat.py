@@ -33,7 +33,7 @@ class ConversionSpecifier:
 
 
 class StringFormatterChecker:
-    """String interplation/formatter type checker.
+    """String interpolation/formatter type checker.
 
     This class works closely together with checker.ExpressionChecker.
     """

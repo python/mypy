@@ -463,7 +463,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     inst_type = map_instance_to_supertype(inst_type, super_info)
     # Finally expand the type variables in type with those in the previously
     # constructed type. Note that both type and inst_type may have type
-    # variables, but in type they are interpreterd in supertype context while
+    # variables, but in type they are interpreted in supertype context while
     # in inst_type they are interpreted in subtype context. This works even if
     # the names of type variables in supertype and subtype overlap.
     return expand_type_by_instance(typ, inst_type)

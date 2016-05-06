@@ -959,7 +959,7 @@ a = None # type: Any
 '%*.*f' % (4, 2, 3.14)
 [builtins fixtures/primitives.py]
 
-[case testStringInterpolationFlagsAndLengthModifers]
+[case testStringInterpolationFlagsAndLengthModifiers]
 '%04hd' % 1
 '%-.4ld' % 1
 '%+*Ld' % (1, 1)

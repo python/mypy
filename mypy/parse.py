@@ -1285,7 +1285,7 @@ class Parser:
         # that in expr.
         s = self.current_str()
         if s == '(':
-            # Parerenthesised expression or cast.
+            # Parenthesised expression or cast.
             expr = self.parse_parentheses()
         elif s == '[':
             expr = self.parse_list_expr()

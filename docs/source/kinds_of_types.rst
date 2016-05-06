@@ -156,7 +156,7 @@ values, in callable types. These cover the vast majority of uses of
 callable types, but sometimes this isn't quite enough. Mypy recognizes
 a special form ``Callable[..., T]`` (with a literal ``...``) which can
 be used in less typical cases. It is compatible with arbitrary
-callable objects that return a type compatible with ``T``, independend
+callable objects that return a type compatible with ``T``, independent
 of the number, types or kinds of arguments. Mypy lets you call such
 callable values with arbitrary arguments, without any checking -- in
 this respect they are treated similar to a ``(*args: Any, **kwargs:
