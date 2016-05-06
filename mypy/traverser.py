@@ -21,10 +21,10 @@ T = TypeVar('T')
 class TraverserVisitor(NodeVisitor[T], Generic[T]):
     """A parse tree visitor that traverses the parse tree during visiting.
 
-    It does not peform any actions outside the travelsal. Subclasses
+    It does not peform any actions outside the traversal. Subclasses
     should override visit methods to perform actions during
-    travelsal. Calling the superclass method allows reusing the
-    travelsal implementation.
+    traversal. Calling the superclass method allows reusing the
+    traversal implementation.
     """
 
     # Visit methods
