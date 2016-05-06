@@ -328,7 +328,7 @@ class SemanticAnalyzer(NodeVisitor):
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?
 
-        We reject straight redefinitions of functions, as they are usuallly
+        We reject straight redefinitions of functions, as they are usually
         a programming error. For example:
 
         . def f(): ...
