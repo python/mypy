@@ -1651,7 +1651,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     """
     # Replace type variables with their upper bounds. Overloading
     # resolution is based on runtime behavior which erases type
-    # parameters, so no need to handle type variables occuring within
+    # parameters, so no need to handle type variables occurring within
     # a type.
     if isinstance(actual, TypeVarType):
         actual = actual.erase_to_union_or_bound()
