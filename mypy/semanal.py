@@ -427,7 +427,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_local(defn, defn)
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
-        """Analyze a propery defined using multiple methods (e.g., using @x.setter).
+        """Analyze a property defined using multiple methods (e.g., using @x.setter).
 
         Assume that the first method (@property) has already been analyzed.
         """
