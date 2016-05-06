@@ -38,7 +38,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
         # Keep track of the first different line.
         first_diff = -1
 
-        # Display only this many first characers of identical lines.
+        # Display only this many first characters of identical lines.
         width = 75
 
         for i in range(num_skip_start, len(expected) - num_skip_end):
