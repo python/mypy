@@ -11,7 +11,7 @@ def replace_type_vars(typ: Type, func_tvars: bool = True) -> Type:
 
 
 class ReplaceTypeVarsVisitor(TypeTranslator):
-    # Only override type variable handling; otherwise perform an indentity
+    # Only override type variable handling; otherwise perform an identity
     # transformation.
 
     func_tvars = False
