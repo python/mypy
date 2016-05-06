@@ -103,7 +103,7 @@ def got_result(future: 'Future[str]') -> None:
 loop = asyncio.get_event_loop() # type: AbstractEventLoop
 future = asyncio.Future()  # type: Future[str]
 asyncio.Task(slow_operation(future))  # Here create a task with the function. (The Task need a Future[T] as first argument)
-future.add_done_callback(got_result)  # and assignt the callback to the future
+future.add_done_callback(got_result)  # and assign the callback to the future
 try:
     loop.run_forever()
 finally:
