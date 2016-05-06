@@ -454,7 +454,7 @@ main:5: error: Generic type is prohibited as a runtime expression (use a type al
 -- ------------------------------
 
 
-[case testMultipleAsssignmentWithLists]
+[case testMultipleAssignmentWithLists]
 from typing import List
 class A: pass
 class B: pass
@@ -506,7 +506,7 @@ class tuple: pass
 class function: pass
 class str: pass
 
-[case testMultipleAsssignmentWithIterable]
+[case testMultipleAssignmentWithIterable]
 from typing import Iterable, TypeVar
 a = None  # type: int
 b = None  # type: str
