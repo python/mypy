@@ -796,7 +796,7 @@ class VarianceTests(BaseTestCase):
                           typing.MutableSequence[Employee])
 
     def test_covariance_tuple(self):
-        # Check covariace for Tuple (which are really special cases).
+        # Check covariance for Tuple (which are really special cases).
         self.assertIsSubclass(Tuple[Manager], Tuple[Employee])
         self.assertNotIsSubclass(Tuple[Employee], Tuple[Manager])
         # And pairwise.
