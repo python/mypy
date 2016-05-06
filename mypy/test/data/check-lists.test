@@ -17,7 +17,7 @@ class C: pass
 [builtins fixtures/list.py]
 [out]
 
-[case testNestedListAssignmenToTuple]
+[case testNestedListAssignmentToTuple]
 from typing import List
 a, b, c = None, None, None # type: (A, B, C)
 
