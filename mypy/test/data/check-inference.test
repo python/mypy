@@ -1711,7 +1711,7 @@ a2 = C() if f() else B()
 a2.foo()
 
 [case testUnificationMultipleInheritanceAmbiguous]
-# Show that join_instances_via_supertype() breakes ties using the first base class.
+# Show that join_instances_via_supertype() breaks ties using the first base class.
 class A1: pass
 class B1:
     def foo1(self): pass
