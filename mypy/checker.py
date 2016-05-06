@@ -938,7 +938,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if name in nodes.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
                     method = '__' + name[3:]
-                    # An inplace overator method such as __iadd__ might not be
+                    # An inplace operator method such as __iadd__ might not be
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
