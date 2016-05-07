@@ -1531,6 +1531,11 @@ from typing import Callable, Any
 
 def foo(f: Callable) -> bool:
     return f()
+
+def f1() -> bool:
+    return False
+
+foo(f1)
 [builtins fixtures/bool.py]
 
 [case testFunctionNestedWithinWith]
