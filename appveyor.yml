@@ -1,0 +1,19 @@
+environment:
+  matrix:
+  - PYTHON: C:\\Python33
+  - PYTHON: C:\\Python34
+  - PYTHON: C:\\Python35
+  - PYTHON: C:\\Python33-x64
+  - PYTHON: C:\\Python34-x64
+  - PYTHON: C:\\Python35-x64
+install:
+  - "git submodule update --init typeshed"
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;C:\\Python27;%PATH%"
+  - "REN C:\\Python27\\python.exe python2.exe"
+  - "python --version"
+  - "python2 --version"
+build_script:
+  - "pip install -r test-requirements.txt"
+  - "python setup.py install"
+test_script:
+- cmd: python runtests.py -v
