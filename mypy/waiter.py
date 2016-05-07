@@ -31,27 +31,11 @@ class LazySubprocess:
         self.end_time = None  # type: float
 
     def start(self) -> None:
-        self.outfile = tempfile.NamedTemporaryFile()
+        self.outfile = tempfile.TemporaryFile()
         self.start_time = time.time()
         self.process = Popen(self.args, cwd=self.cwd, env=self.env,
                              stdout=self.outfile, stderr=STDOUT)
         self.pid = self.process.pid
-
-    def handle_exit_status(self, status: int) -> None:
-        """Update process exit status received via an external os.waitpid() call."""
-        # Inlined subprocess._handle_exitstatus, it's not a public API.
-        # TODO(jukka): I'm not quite sure why this is implemented like this.
-        self.end_time = time.time()
-        process = self.process
-        assert process.returncode is None
-        if os.WIFSIGNALED(status):
-            process.returncode = -os.WTERMSIG(status)
-        elif os.WIFEXITED(status):
-            process.returncode = os.WEXITSTATUS(status)
-        else:
-            # Should never happen
-            raise RuntimeError("Unknown child exit status!")
-        assert process.returncode is not None
 
     def wait(self) -> int:
         return self.process.wait()
@@ -60,13 +44,10 @@ class LazySubprocess:
         return self.process.returncode
 
     def read_output(self) -> str:
-        with open(self.outfile.name, 'rb') as file:
-            # Assume it's ascii to avoid unicode headaches (and portability issues).
-            return file.read().decode('ascii')
-
-    def cleanup(self) -> None:
-        self.outfile.close()
-        assert not os.path.exists(self.outfile.name)
+        file = self.outfile
+        file.seek(0)
+        # Assume it's ascii to avoid unicode headaches (and portability issues).
+        return file.read().decode('ascii')
 
     @property
     def elapsed_time(self) -> float:
@@ -178,16 +159,24 @@ class Waiter:
         name2 = re.sub('( .*?) .*', r'\1', name)  # First two words.
         self.times2[name2] = elapsed_time + self.times2.get(name2, 0)
 
+    def _poll_current(self) -> Tuple[int, int]:
+        while True:
+            time.sleep(.25)
+            for pid in self.current:
+                cmd = self.current[pid][1]
+                code = cmd.process.poll()
+                if code is not None:
+                    cmd.end_time = time.time()
+                    return pid, code
+
     def _wait_next(self) -> Tuple[List[str], int, int]:
         """Wait for a single task to finish.
 
         Return tuple (list of failed tasks, number test cases, number of failed tests).
         """
-        pid, status = os.waitpid(-1, 0)
+        pid, status = self._poll_current()
         num, cmd = self.current.pop(pid)
         name = cmd.name
-
-        cmd.handle_exit_status(status)
 
         self._record_time(cmd.name, cmd.elapsed_time)
 
@@ -223,7 +212,6 @@ class Waiter:
 
         # Get task output.
         output = cmd.read_output()
-        cmd.cleanup()
         num_tests, num_tests_failed = parse_test_stats_from_output(output, fail_type)
 
         if fail_type is not None or self.verbosity >= 1:
