@@ -120,6 +120,7 @@ class NodeFixer(NodeVisitor[None]):
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
             value.accept(self.type_fixer)
+        tv.upper_bound.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
         if self.current_info is not None:
