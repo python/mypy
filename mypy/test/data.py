@@ -65,6 +65,8 @@ def parse_test_cases(
             tcout = []  # type: List[str]
             if i < len(p) and p[i].id == 'out':
                 tcout = p[i].data
+                if p[i].arg == 'pathfix':
+                    tcout = [s.replace('/', os.path.sep) for s in tcout]
                 ok = True
                 i += 1
             elif optional_out:
