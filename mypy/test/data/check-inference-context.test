@@ -678,6 +678,29 @@ class A: pass
 [builtins fixtures/list.py]
 [out]
 
+[case testFunctionReferenceAndHigherOrderFunction]
+from typing import TypeVar, Callable, List, Any
+t = TypeVar('t')
+s = TypeVar('s')
+u = TypeVar('u', str, int)
+def apply(func: Callable[[t], s], arg: t) -> s: pass
+def f(x: t) -> List[t]: pass
+def g(x: u) -> List[u]: pass
+
+a = '0'
+a1 = apply(f, a)
+a1() # E: List[str] not callable
+a2 = apply(g, a)
+a2() # E: List[str] not callable
+b = '0' # type: Any
+b1 = apply(f, b)
+b1() # E: List[Any] not callable
+c = [1]
+# The error below is not great--the real issue is that c is not a valid argument to g.
+# Important thing is that the call is rejected.
+c1 = apply(g, c) # E: Argument 1 to "apply" has incompatible type Callable[[u], List[u]]; expected Callable[[List[int]], List[u]]
+[builtins fixtures/list.py]
+
 [case testChainedAssignmentInferenceContexts]
 from typing import List
 i = None # type: List[int]

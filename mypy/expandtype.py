@@ -57,8 +57,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
-        # Should not get here.
-        raise RuntimeError()
+        return t
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types(t.args)

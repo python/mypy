@@ -27,7 +27,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
-from mypy.subtypes import is_subtype, is_equivalent
+from mypy.subtypes import is_subtype, is_equivalent, unify_generic_callable
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
@@ -327,7 +327,20 @@ class ExpressionChecker:
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
                 if arg_kinds[ai] not in (nodes.ARG_STAR, nodes.ARG_STAR2):
-                    res[ai] = self.accept(args[ai], callee.arg_types[i])
+                    callee_arg_type = callee.arg_types[i]
+                    arg_type = self.accept(args[ai], callee_arg_type)
+                    if (isinstance(arg_type, CallableType) and
+                            isinstance(callee_arg_type, CallableType)):
+                        # The argument is a function and might be generic.
+                        # Specialize its type variables as necessary to
+                        # match the expected argument type.
+                        unified_type = unify_generic_callable(
+                            arg_type, callee_arg_type, False)
+                        if unified_type is not None:
+                            arg_type = unified_type
+                        # If unified_type is None, leave the type alone;
+                        # we'll probably produce an error soon.
+                    res[ai] = arg_type
 
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
