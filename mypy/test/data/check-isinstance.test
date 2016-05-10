@@ -824,3 +824,13 @@ def f(x: object):
     y = 0 # type: int
     y = x
 [builtins fixtures/isinstance.py]
+
+[case testIsinstanceOfGenericClassRetainsParameters]
+from typing import List, Union
+def f(x: Union[List[int], str]) -> None:
+    if isinstance(x, list):
+        x[0]()
+[builtins fixtures/isinstancelist.py]
+[out]
+main: note: In function "f":
+main:4: error: "int" not callable
