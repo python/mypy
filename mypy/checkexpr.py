@@ -1299,6 +1299,14 @@ class ExpressionChecker:
 
         arg_kinds = [arg.kind for arg in e.arguments]
 
+        if callable_ctx.is_ellipsis_args:
+            # Fill in Any arguments to match the arguments of the lambda.
+            callable_ctx = callable_ctx.copy_modified(
+                is_ellipsis_args=False,
+                arg_types=[AnyType()] * len(arg_kinds),
+                arg_kinds=arg_kinds
+            )
+
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
