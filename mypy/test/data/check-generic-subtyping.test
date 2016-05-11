@@ -235,9 +235,45 @@ class A:
 class B(A):
     def f(self, x: S, y: T) -> None: pass
 class C(A):
-    def f(self, x: T, y: T) -> None: pass # E: Argument 2 of "f" incompatible with supertype "A"
+    # Okay, because T = object allows any type for the arguments.
+    def f(self, x: T, y: T) -> None: pass
+
+[case testOverrideGenericMethodInNonGenericClassLists]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A:
+    def f(self, x: List[T], y: List[S]) -> None: pass
+class B(A):
+    def f(self, x: List[S], y: List[T]) -> None: pass
+class C(A):
+    def f(self, x: List[T], y: List[T]) -> None: pass # E: Signature of "f" incompatible with supertype "A"
+[builtins fixtures/list.py]
 [out]
 main: note: In class "C":
+
+[case testOverrideGenericMethodInNonGenericClassGeneralize]
+from typing import TypeVar
+
+T = TypeVar('T')
+T1 = TypeVar('T1', bound=str)
+S = TypeVar('S')
+
+class A:
+    def f(self, x: int, y: S) -> None: pass
+class B(A):
+    def f(self, x: T, y: S) -> None: pass
+class C(A):
+    def f(self, x: T, y: str) -> None: pass
+class D(A):
+    def f(self, x: T1, y: S) -> None: pass # TODO: This error could be more specific.
+[out]
+main: note: In class "C":
+main:12: error: Argument 2 of "f" incompatible with supertype "A"
+main: note: In class "D":
+main:14: error: Signature of "f" incompatible with supertype "A"
 
 
 -- Inheritance from generic types with implicit dynamic supertype

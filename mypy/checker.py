@@ -988,42 +988,54 @@ class TypeChecker(NodeVisitor[Type]):
                      only used for generating error messages.
           supertype: The name of the supertype.
         """
-        if (isinstance(override, Overloaded) or
-                isinstance(original, Overloaded) or
-                len(cast(CallableType, override).arg_types) !=
-                len(cast(CallableType, original).arg_types) or
-                cast(CallableType, override).min_args !=
-                cast(CallableType, original).min_args):
-            # Use boolean variable to clarify code.
-            fail = False
-            if not is_subtype(override, original):
-                fail = True
-            elif (not isinstance(original, Overloaded) and
-                  isinstance(override, Overloaded) and
-                  name in nodes.reverse_op_methods.keys()):
-                # Operator method overrides cannot introduce overloading, as
-                # this could be unsafe with reverse operator methods.
-                fail = True
-            if fail:
+        # Use boolean variable to clarify code.
+        fail = False
+        if not is_subtype(override, original):
+            fail = True
+        elif (not isinstance(original, Overloaded) and
+              isinstance(override, Overloaded) and
+              name in nodes.reverse_op_methods.keys()):
+            # Operator method overrides cannot introduce overloading, as
+            # this could be unsafe with reverse operator methods.
+            fail = True
+
+        if fail:
+            emitted_msg = False
+            if (isinstance(override, CallableType) and
+                    isinstance(original, CallableType) and
+                    len(override.arg_types) == len(original.arg_types) and
+                    override.min_args == original.min_args):
+                # Give more detailed messages for the common case of both
+                # signatures having the same number of arguments and no
+                # overloads.
+
+                # override might have its own generic function type
+                # variables. If an argument or return type of override
+                # does not have the correct subtyping relationship
+                # with the original type even after these variables
+                # are erased, then it is definitely an incompatiblity.
+
+                override_ids = override.type_var_ids()
+
+                def erase_override(t: Type) -> Type:
+                    return erase_typevars(t, ids_to_erase=override_ids)
+
+                for i in range(len(override.arg_types)):
+                    if not is_subtype(original.arg_types[i],
+                                      erase_override(override.arg_types[i])):
+                        self.msg.argument_incompatible_with_supertype(
+                            i + 1, name, name_in_super, supertype, node)
+                        emitted_msg = True
+
+                if not is_subtype(erase_override(override.ret_type),
+                                  original.ret_type):
+                    self.msg.return_type_incompatible_with_supertype(
+                        name, name_in_super, supertype, node)
+                    emitted_msg = True
+
+            if not emitted_msg:
+                # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
-                    name, name_in_super, supertype, node)
-            return
-        else:
-            # Give more detailed messages for the common case of both
-            # signatures having the same number of arguments and no
-            # overloads.
-
-            coverride = cast(CallableType, override)
-            coriginal = cast(CallableType, original)
-
-            for i in range(len(coverride.arg_types)):
-                if not is_subtype(coriginal.arg_types[i],
-                                  coverride.arg_types[i]):
-                    self.msg.argument_incompatible_with_supertype(
-                        i + 1, name, name_in_super, supertype, node)
-
-            if not is_subtype(coverride.ret_type, coriginal.ret_type):
-                self.msg.return_type_incompatible_with_supertype(
                     name, name_in_super, supertype, node)
 
     def visit_class_def(self, defn: ClassDef) -> Type:
