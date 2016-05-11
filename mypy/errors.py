@@ -159,7 +159,12 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
         """
-        type = self.type_name[-1]
+        type = ''
+        try:
+            type = self.type_name[-1]
+        except IndexError:
+            pass
+
         if len(self.function_or_member) > 2:
             type = None  # Omit type context if nested function
         if file is None:
