@@ -100,15 +100,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_void(self, left: Void) -> bool:
         return isinstance(self.right, Void)
 
-    def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        return not isinstance(self.right, Void)
-
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experimental.STRICT_OPTIONAL:
             # TODO(ddfisher): what about Unions?
+            print("OMG")
             return isinstance(self.right, NoneTyp)
         else:
             return not isinstance(self.right, Void)
+
+    def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
+        return not isinstance(self.right, Void)
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         return True

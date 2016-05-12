@@ -258,7 +258,7 @@ class MessageBuilder:
         elif isinstance(typ, Void):
             return 'None'
         elif isinstance(typ, NoneTyp):
-            return 'builtins.None'
+            return 'None'
         elif isinstance(typ, AnyType):
             return '"Any"'
         elif isinstance(typ, DeletedType):

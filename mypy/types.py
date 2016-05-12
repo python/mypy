@@ -847,6 +847,10 @@ class TypeVisitor(Generic[T]):
     def visit_none_type(self, t: NoneTyp) -> T:
         pass
 
+    @abstractmethod
+    def visit_uninhabited_type(self, t: UninhabitedType) -> T:
+        pass
+
     def visit_erased_type(self, t: ErasedType) -> T:
         raise self._notimplemented_helper()
 
@@ -911,6 +915,9 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        return t
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
@@ -998,6 +1005,9 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_none_type(self, t):
         # Fully qualify to make this distinct from the None value.
         return "builtins.None"
+
+    def visit_uninhabited_type(self, t):
+        return "<uninhabited>"
 
     def visit_erased_type(self, t):
         return "<Erased>"
@@ -1138,6 +1148,9 @@ class TypeQuery(TypeVisitor[bool]):
         return self.default
 
     def visit_void(self, t: Void) -> bool:
+        return self.default
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return self.default
 
     def visit_none_type(self, t: NoneTyp) -> bool:

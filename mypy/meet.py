@@ -141,6 +141,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return ErrorType()
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        # TODO(ddfisher): should behave different with strict optional
+        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+            return t
+        else:
+            return ErrorType()
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             return t
         else:
