@@ -9,7 +9,7 @@ from typing import Tuple, List, Dict, Set
 
 from mypy import build
 import mypy.myunit  # for mutable globals (ick!)
-from mypy.build import BuildSource
+from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import Suite, AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
@@ -86,6 +86,7 @@ class TypeCheckSuite(Suite):
             shutil.rmtree(dn)
 
     def run_test_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
+        find_module_clear_caches()
         pyversion = testcase_pyversion(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
