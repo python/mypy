@@ -1,3 +1,5 @@
+from typing import Optional, Container
+
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
@@ -96,13 +98,20 @@ class GenericTypeEraser(TypeTranslator):
         return Instance(t.type, [], t.line)
 
 
-def erase_typevars(t: Type) -> Type:
-    """Replace all type variables in a type with any."""
-    return t.accept(TypeVarEraser())
+def erase_typevars(t: Type, ids_to_erase: Optional[Container[int]] = None) -> Type:
+    """Replace all type variables in a type with any,
+    or just the ones in the provided collection.
+    """
+    return t.accept(TypeVarEraser(ids_to_erase))
 
 
 class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
+    def __init__(self, ids_to_erase: Optional[Container[int]]) -> None:
+        self.ids_to_erase = ids_to_erase
+
     def visit_type_var(self, t: TypeVarType) -> Type:
+        if self.ids_to_erase is not None and t.id not in self.ids_to_erase:
+            return t
         return AnyType()
