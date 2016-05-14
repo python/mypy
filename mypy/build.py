@@ -522,10 +522,51 @@ find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], str]
 # in the last component.
 find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 
+# Cache directory listings.  We assume that while one os.listdir()
+# call may be more expensive than one os.stat() call, a small number
+# of os.stat() calls is quickly more expensive than caching the
+# os.listdir() outcome, and the advantage of the latter is that it
+# gives us the case-correct filename on Windows and Mac.
+find_module_listdir_cache = {}  # type: Dict[str, Optional[List[str]]]
+
 
 def find_module_clear_caches():
     find_module_cache.clear()
     find_module_dir_cache.clear()
+    find_module_listdir_cache.clear()
+
+
+def list_dir(path: str) -> Optional[List[str]]:
+    """Return a cached directory listing.
+
+    Returns None if the path doesn't exist or isn't a directory.
+    """
+    if path in find_module_listdir_cache:
+        return find_module_listdir_cache[path]
+    try:
+        res = os.listdir(path)
+    except OSError:
+        res = None
+    find_module_listdir_cache[path] = res
+    return res
+
+
+def is_file(path: str) -> bool:
+    """Return whether path exists and is a file.
+
+    On case-insensitive filesystems (like Mac or Windows) this returns
+    False if the case of the path's last component does not exactly
+    match the case found in the filesystem.
+    """
+    head, tail = os.path.split(path)
+    if not tail:
+        return False
+    names = list_dir(head)
+    if not names:
+        return False
+    if tail not in names:
+        return False
+    return os.path.isfile(path)
 
 
 def find_module(id: str, lib_path: Iterable[str]) -> str:
@@ -560,9 +601,9 @@ def find_module(id: str, lib_path: Iterable[str]) -> str:
             base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
-                if not os.path.isfile(path):
+                if not is_file(path):
                     path = base_path + sepinit + extension
-                if os.path.isfile(path) and verify_module(id, path):
+                if is_file(path) and verify_module(id, path):
                     return path
         return None
 
@@ -1401,7 +1442,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
         if len(scc) == 1:
-            manager.log("Processing SCC sigleton (%s) as %s" % (" ".join(scc), fresh_msg))
+            manager.log("Processing SCC singleton (%s) as %s" % (" ".join(scc), fresh_msg))
         else:
             manager.log("Processing SCC of size %d (%s) as %s" %
                         (len(scc), " ".join(scc), fresh_msg))
