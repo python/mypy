@@ -74,6 +74,19 @@ def takes_int(i: int):
 takes_int(SomeIntEnum.x)
 takes_int(2)
 
+[case testIntEnum_functionReturningIntEnum]
+from enum import IntEnum
+class SomeIntEnum(IntEnum):
+    x = 1
+def returns_some_int_enum() -> SomeIntEnum:
+    return SomeIntEnum.x
+an_int = 1
+an_int = returns_some_int_enum()
+
+an_enum = SomeIntEnum.x
+an_enum = returns_some_int_enum()
+[out]
+
 [case testEnumMethods]
 from enum import Enum
 
