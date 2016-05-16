@@ -1725,6 +1725,8 @@ class TypeInfo(SymbolNode):
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     abstract_attributes = None  # type: List[str]
+    # Classes inheriting from Enum shadow their true members with a __getattr__, so we
+    # have to treat them as a special case.
     is_enum = False
     # If true, any unknown attributes should have type 'Any' instead
     # of generating a type error.  This would be true if there is a

@@ -41,17 +41,38 @@ x = E.x
 [out]
 _program.py:7: error: Incompatible types in assignment (expression has type "E", variable has type "int")
 
-[case testIntEnum]
+[case testIntEnum_assignToIntVariable]
 from enum import IntEnum
 class N(IntEnum):
     x = 1
     y = 1
 n = 1
-n = N.x
+n = N.x  # Subclass of int, so it's okay
 s = ''
 s = N.y
 [out]
-_program.py:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+_program.py:8: error: Incompatible types in assignment (expression has type "N", variable has type "str")
+
+[case testIntEnum_functionTakingIntEnum]
+from enum import IntEnum
+class SomeIntEnum(IntEnum):
+    x = 1
+def takes_some_int_enum(n: SomeIntEnum):
+    pass
+takes_some_int_enum(SomeIntEnum.x)
+takes_some_int_enum(1)  # Error
+takes_some_int_enum(SomeIntEnum(1))  # How to deal with the above
+[out]
+_program.py:7: error: Argument 1 to "takes_some_int_enum" has incompatible type "int"; expected "SomeIntEnum"
+
+[case testIntEnum_functionTakingInt]
+from enum import IntEnum
+class SomeIntEnum(IntEnum):
+    x = 1
+def takes_int(i: int):
+    pass
+takes_int(SomeIntEnum.x)
+takes_int(2)
 
 [case testEnumMethods]
 from enum import Enum
