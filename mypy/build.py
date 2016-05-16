@@ -828,10 +828,14 @@ def write_cache(id: str, path: str, tree: MypyFile,
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
-    # TODO: On Windows, os.rename() may not be atomic, and we could
-    # use os.replace().  However that's new in Python 3.3.
-    os.rename(data_json_tmp, data_json)
-    os.rename(meta_json_tmp, meta_json)
+    # TODO: This is a temporary change until Python 3.2 support is dropped, see #1504
+    # os.rename will raise an exception rather than replace files on Windows
+    try:
+        replace = os.replace
+    except AttributeError:
+        replace = os.rename
+    replace(data_json_tmp, data_json)
+    replace(meta_json_tmp, meta_json)
 
 
 """Dependency manager.
