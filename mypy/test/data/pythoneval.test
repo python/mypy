@@ -1163,3 +1163,51 @@ _T = TypeVar('_T')
 def f(iterable): # type: (Iterable[_T]) -> Iterator[List[_T]]
     grouped = itertools.groupby(enumerate(iterable), lambda pair: pair[0] // 2)
     return ([elem for _, elem in group] for _, group in grouped)
+
+[case testReModuleBytes]
+# Regression tests for various overloads in the re module -- bytes version
+import re
+bre = b'a+'
+bpat = re.compile(bre)
+bpat = re.compile(bpat)
+re.search(bre, b'').groups()
+re.search(bre, u'') # Error
+re.search(bpat, b'').groups()
+re.search(bpat, u'') # Error
+# match(), split(), findall(), finditer() are much the same, so skip those.
+# sub(), subn() have more overloads and we are checking these:
+re.sub(bre, b'', b'') + b''
+re.sub(bpat, b'', b'') + b''
+re.sub(bre, lambda m: b'', b'') + b''
+re.sub(bpat, lambda m: b'', b'') + b''
+re.subn(bre, b'', b'')[0] + b''
+re.subn(bpat, b'', b'')[0] + b''
+re.subn(bre, lambda m: b'', b'')[0] + b''
+re.subn(bpat, lambda m: b'', b'')[0] + b''
+[out]
+_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:9: error: Cannot infer type argument 1 of "search"
+
+[case testReModuleString]
+# Regression tests for various overloads in the re module -- string version
+import re
+sre = 'a+'
+spat = re.compile(sre)
+spat = re.compile(spat)
+re.search(sre, '').groups()
+re.search(sre, b'') # Error
+re.search(spat, '').groups()
+re.search(spat, b'') # Error
+# match(), split(), findall(), finditer() are much the same, so skip those.
+# sus(), susn() have more overloads and we are checking these:
+re.sub(sre, '', '') + ''
+re.sub(spat, '', '') + ''
+re.sub(sre, lambda m: '', '') + ''
+re.sub(spat, lambda m: '', '') + ''
+re.subn(sre, '', '')[0] + ''
+re.subn(spat, '', '')[0] + ''
+re.subn(sre, lambda m: '', '')[0] + ''
+re.subn(spat, lambda m: '', '')[0] + ''
+[out]
+_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:9: error: Cannot infer type argument 1 of "search"
