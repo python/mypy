@@ -64,6 +64,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
             raise
     else:
         tree = ASTConverter(pyversion=pyversion,
+                            is_stub=is_stub_file,
                             custom_typing_module=custom_typing_module,
                             ).visit(ast)
         tree.path = fnam
@@ -100,11 +101,15 @@ def find(f: Callable[[T], bool], seq: Sequence[T]) -> T:
 
 
 class ASTConverter(ast35.NodeTransformer):
-    def __init__(self, pyversion: Tuple[int, int], custom_typing_module: str = None) -> None:
+    def __init__(self,
+                 pyversion: Tuple[int, int],
+                 is_stub: bool,
+                 custom_typing_module: str = None) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
         self.pyversion = pyversion
+        self.is_stub = is_stub
         self.custom_typing_module = custom_typing_module
 
     def generic_visit(self, node: ast35.AST) -> None:
@@ -644,16 +649,31 @@ class ASTConverter(ast35.NodeTransformer):
 
         raise RuntimeError('num not implemented for ' + str(type(n.n)))
 
-    # Str(string s) -- need to specify raw, unicode, etc?
+    # Str(string s)
     @with_line
     def visit_Str(self, n: ast35.Str) -> Node:
-        return StrExpr(n.s)
+        if self.pyversion[0] >= 3 or self.is_stub:
+            # Hack: assume all string literals in Python 2 stubs are normal
+            # strs (i.e. not unicode).  All stubs are parsed with the Python 3
+            # parser, which causes unprefixed string literals to be interpreted
+            # as unicode instead of bytes.  This hack is generally okay,
+            # because mypy considers str literals to be compatible with
+            # unicode.
+            return StrExpr(n.s)
+        else:
+            return UnicodeExpr(n.s)
 
     # Bytes(bytes s)
     @with_line
     def visit_Bytes(self, n: ast35.Bytes) -> Node:
-        # TODO: this is kind of hacky
-        return BytesExpr(str(n.s)[2:-1])
+        # The following line is a bit hacky, but is the best way to maintain
+        # compatibility with how mypy currently parses the contents of bytes literals.
+        contents = str(n.s)[2:-1]
+
+        if self.pyversion[0] >= 3:
+            return BytesExpr(contents)
+        else:
+            return StrExpr(contents)
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: ast35.NameConstant) -> Node:
