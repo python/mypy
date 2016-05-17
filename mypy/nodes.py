@@ -961,6 +961,17 @@ class IntExpr(Node):
         return visitor.visit_int_expr(self)
 
 
+# How mypy uses StrExpr, BytesExpr, and UnicodeExpr:
+# In Python 2 mode:
+# b'x', 'x' -> StrExpr
+# u'x' -> UnicodeExpr
+# BytesExpr is unused
+#
+# In Python 3 mode:
+# b'x' -> BytesExpr
+# 'x', u'x' -> StrExpr
+# UnicodeExpr is unused
+
 class StrExpr(Node):
     """String literal"""
 

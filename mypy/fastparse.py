@@ -649,7 +649,7 @@ class ASTConverter(ast35.NodeTransformer):
 
         raise RuntimeError('num not implemented for ' + str(type(n.n)))
 
-    # Str(string s) -- need to specify raw, unicode, etc?
+    # Str(string s)
     @with_line
     def visit_Str(self, n: ast35.Str) -> Node:
         if self.pyversion[0] >= 3 or self.is_stub:
@@ -666,11 +666,14 @@ class ASTConverter(ast35.NodeTransformer):
     # Bytes(bytes s)
     @with_line
     def visit_Bytes(self, n: ast35.Bytes) -> Node:
-        # TODO: this is kind of hacky
+        # The following line is a bit hacky, but is the best way to maintain
+        # compatibility with how mypy currently parses the contents of bytes literals.
+        contents = str(n.s)[2:-1]
+
         if self.pyversion[0] >= 3:
-            return BytesExpr(str(n.s)[2:-1])
+            return BytesExpr(contents)
         else:
-            return StrExpr(str(n.s)[2:-1])
+            return StrExpr(contents)
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: ast35.NameConstant) -> Node:
