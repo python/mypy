@@ -103,7 +103,7 @@ def find(f: Callable[[T], bool], seq: Sequence[T]) -> T:
 class ASTConverter(ast35.NodeTransformer):
     def __init__(self,
                  pyversion: Tuple[int, int],
-                 is_stub,
+                 is_stub: bool,
                  custom_typing_module: str = None) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
