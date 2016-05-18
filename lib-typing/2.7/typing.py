@@ -911,8 +911,6 @@ def _next_in_mro(cls):
 class GenericMeta(TypingMeta, abc.ABCMeta):
     """Metaclass for generic types."""
 
-    __extra__ = None
-
     def __new__(cls, name, bases, namespace,
                 tvars=None, args=None, origin=None, extra=None):
         self = super(GenericMeta, cls).__new__(cls, name, bases, namespace)
@@ -960,10 +958,7 @@ class GenericMeta(TypingMeta, abc.ABCMeta):
         self.__parameters__ = tvars
         self.__args__ = args
         self.__origin__ = origin
-        if extra is not None:
-            self.__extra__ = extra
-        # Else __extra__ is inherited, eventually from the
-        # (meta-)class default above.
+        self.__extra__ = namespace.get('__extra__')
         # Speed hack (https://github.com/python/typing/issues/196).
         self.__next_in_mro__ = _next_in_mro(self)
         return self
@@ -1289,6 +1284,7 @@ class _ProtocolMeta(GenericMeta):
                             attr != '__next_in_mro__' and
                             attr != '__parameters__' and
                             attr != '__origin__' and
+                            attr != '__extra__' and
                             attr != '__module__'):
                         attrs.add(attr)
 
@@ -1414,10 +1410,12 @@ class ByteString(Sequence[int]):
     pass
 
 
+ByteString.register(str)
 ByteString.register(bytearray)
 
 
 class List(list, MutableSequence[T]):
+    __extra__ = list
 
     def __new__(cls, *args, **kwds):
         if _geqv(cls, List):
@@ -1427,6 +1425,7 @@ class List(list, MutableSequence[T]):
 
 
 class Set(set, MutableSet[T]):
+    __extra__ = set
 
     def __new__(cls, *args, **kwds):
         if _geqv(cls, Set):
@@ -1452,6 +1451,7 @@ class _FrozenSetMeta(GenericMeta):
 class FrozenSet(frozenset, AbstractSet[T_co]):
     __metaclass__ = _FrozenSetMeta
     __slots__ = ()
+    __extra__ = frozenset
 
     def __new__(cls, *args, **kwds):
         if _geqv(cls, FrozenSet):
@@ -1479,6 +1479,7 @@ class ValuesView(MappingView[VT_co]):
 
 
 class Dict(dict, MutableMapping[KT, VT]):
+    __extra__ = dict
 
     def __new__(cls, *args, **kwds):
         if _geqv(cls, Dict):
@@ -1488,6 +1489,7 @@ class Dict(dict, MutableMapping[KT, VT]):
 
 
 class DefaultDict(collections.defaultdict, MutableMapping[KT, VT]):
+    __extra__ = collections.defaultdict
 
     def __new__(cls, *args, **kwds):
         if _geqv(cls, DefaultDict):
