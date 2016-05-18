@@ -67,7 +67,11 @@ from mypy.nodes import (
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
-from mypy.errors import Errors, report_internal_error
+from mypy.errors import (
+    Errors,
+    Severity,
+    report_internal_error,
+)
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
@@ -2239,7 +2243,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
-        self.errors.report(ctx.get_line(), msg, severity='note')
+        self.errors.report(ctx.get_line(), msg, severity=Severity.NOTE)
 
     def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
         if fullname in obsolete_name_mapping:

@@ -28,7 +28,12 @@ from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
                         SymbolTableNode, MODULE_REF)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
-from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.errors import (
+    CompileError,
+    Errors,
+    Severity,
+    report_internal_error,
+)
 from mypy import fixup
 from mypy.report import Reports
 from mypy import defaults
@@ -460,15 +465,15 @@ class BuildManager:
                 (self.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
             self.errors.report(
                 line, "No library stub file for standard library module '{}'".format(id))
-            self.errors.report(line, stub_msg, severity='note', only_once=True)
+            self.errors.report(line, stub_msg, severity=Severity.NOTE, only_once=True)
         elif moduleinfo.is_third_party_module(id):
             self.errors.report(line, "No library stub file for module '{}'".format(id))
-            self.errors.report(line, stub_msg, severity='note', only_once=True)
+            self.errors.report(line, stub_msg, severity=Severity.NOTE, only_once=True)
         else:
             self.errors.report(line, "Cannot find module named '{}'".format(id))
             self.errors.report(line, '(Perhaps setting MYPYPATH '
                                      'or using the "--silent-imports" flag would help)',
-                               severity='note', only_once=True)
+                               severity=Severity.NOTE, only_once=True)
 
     def report_file(self, file: MypyFile) -> None:
         if self.source_set.is_source(file):
@@ -1115,11 +1120,11 @@ class State:
         manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
         manager.errors.report(-1, "Ancestor package '%s' silently ignored" % (id,),
-                              severity='note', only_once=True)
+                              severity=Severity.NOTE, only_once=True)
         manager.errors.report(-1, "(Using --silent-imports, submodule passed on command line)",
-                              severity='note', only_once=True)
+                              severity=Severity.NOTE, only_once=True)
         manager.errors.report(-1, "(This note brought to you by --almost-silent)",
-                              severity='note', only_once=True)
+                              severity=Severity.NOTE, only_once=True)
 
     def skipping_module(self, id: str, path: str) -> None:
         assert self.caller_state, (id, path)
@@ -1129,11 +1134,11 @@ class State:
         manager.errors.set_file(self.caller_state.xpath)
         line = self.caller_line
         manager.errors.report(line, "Import of '%s' silently ignored" % (id,),
-                              severity='note')
+                              severity=Severity.NOTE)
         manager.errors.report(line, "(Using --silent-imports, module not passed on command line)",
-                              severity='note', only_once=True)
+                              severity=Severity.NOTE, only_once=True)
         manager.errors.report(line, "(This note courtesy of --almost-silent)",
-                              severity='note', only_once=True)
+                              severity=Severity.NOTE, only_once=True)
         manager.errors.set_import_context(save_import_context)
 
     def add_ancestors(self) -> None:

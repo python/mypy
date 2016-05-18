@@ -8,7 +8,7 @@ import difflib
 
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 
-from mypy.errors import Errors
+from mypy.errors import Errors, Severity
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
     Overloaded, FunctionLike, DeletedType
@@ -137,18 +137,18 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Context, severity: str, file: str = None) -> None:
+    def report(self, msg: str, context: Context, severity: Severity, file: str = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line(), msg.strip(), severity=severity, file=file)
 
     def fail(self, msg: str, context: Context, file: str = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file)
+        self.report(msg, context, Severity.ERROR, file=file)
 
     def note(self, msg: str, context: Context, file: str = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'note', file=file)
+        self.report(msg, context, Severity.NOTE, file=file)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
