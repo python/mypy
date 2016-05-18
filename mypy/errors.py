@@ -161,7 +161,7 @@ class Errors:
             line: line number of error
             message: message to report
             blocker: if True, don't continue analysis after this error
-            severity: 'error', 'note' or 'warning'
+            severity: a level of severity, as defined in the Severity enum
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
         """
