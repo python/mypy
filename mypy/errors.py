@@ -1,3 +1,4 @@
+from enum import Enum
 import os
 import os.path
 import sys
@@ -8,6 +9,10 @@ from typing import Tuple, List, TypeVar, Set
 
 T = TypeVar('T')
 
+class Severity(Enum):
+    WARNING = "warning"
+    ERROR = "error"
+    NOTE = "note"
 
 class ErrorInfo:
     """Representation of a single error message."""
@@ -28,8 +33,8 @@ class ErrorInfo:
     # The line number related to this error within file.
     line = 0     # -1 if unknown
 
-    # Either 'error' or 'note'.
-    severity = ''
+    # The severity of this error.
+    severity = Severity.NOTE
 
     # The error message.
     message = ''
@@ -41,7 +46,7 @@ class ErrorInfo:
     only_once = False
 
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
-                 function_or_member: str, line: int, severity: str, message: str,
+                 function_or_member: str, line: int, severity: Severity, message: str,
                  blocker: bool, only_once: bool) -> None:
         self.import_ctx = import_ctx
         self.file = file
@@ -148,14 +153,15 @@ class Errors:
         self.import_ctx = ctx[:]
 
     def report(self, line: int, message: str, blocker: bool = False,
-               severity: str = 'error', file: str = None, only_once: bool = False) -> None:
+               severity: Severity = Severity.ERROR, file: str = None,
+               only_once: bool = False) -> None:
         """Report message at the given line using the current error context.
 
         Args:
             line: line number of error
             message: message to report
             blocker: if True, don't continue analysis after this error
-            severity: 'error', 'note' or 'warning'
+            severity: a level of severity, as defined in the Severity enum
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
         """
@@ -279,7 +285,7 @@ class Errors:
                     result.append((e.file, -1, 'note',
                                    'In class "{}":'.format(e.type)))
 
-            result.append((e.file, e.line, e.severity, e.message))
+            result.append((e.file, e.line, e.severity.value, e.message))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
