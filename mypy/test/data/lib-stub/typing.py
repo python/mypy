@@ -59,3 +59,6 @@ class Generator(Iterator[T], Generic[T, U, V]):
 class Sequence(Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
+
+class Type(Generic[T]):
+    def __call__(self, *a, **k) -> T: pass
