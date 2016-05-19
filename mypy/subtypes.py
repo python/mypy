@@ -3,7 +3,7 @@ from typing import cast, List, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
-    PartialType, DeletedType, is_named_instance
+    PartialType, DeletedType, is_named_instance, UninhabitedType
 )
 import mypy.applytype
 import mypy.constraints
@@ -108,6 +108,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return not isinstance(self.right, Void)
 
+    def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
+        return True
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         return True

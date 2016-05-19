@@ -5,7 +5,7 @@ from typing import cast, List
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
-    UnionType, FunctionLike, Overloaded, PartialType, DeletedType
+    UnionType, FunctionLike, Overloaded, PartialType, DeletedType, UninhabitedType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
@@ -111,6 +111,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return self.s
             else:
                 return self.default(self.s)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
+        return self.s
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         if not isinstance(self.s, Void):
@@ -324,9 +327,10 @@ def join_type_list(types: List[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible. A better approach
-        # would be to use a special bottom type.
+        # would be to use a special bottom type, which we do when strict Optional
+        # checking is enabled.
         if experimental.STRICT_OPTIONAL:
-            return Void()
+            return UninhabitedType()
         else:
             return NoneTyp()
     joined = types[0]

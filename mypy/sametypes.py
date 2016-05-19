@@ -2,7 +2,8 @@ from typing import Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded, PartialType, DeletedType
+    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded, PartialType, DeletedType,
+    UninhabitedType
 )
 
 
@@ -68,6 +69,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_none_type(self, left: NoneTyp) -> bool:
         return isinstance(self.right, NoneTyp)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return isinstance(self.right, UninhabitedType)
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         # Should not get here.

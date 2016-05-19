@@ -1,7 +1,7 @@
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    PartialType, DeletedType, TypeTranslator, TypeList
+    PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType
 )
 
 
@@ -38,6 +38,9 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        return t
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
