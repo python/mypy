@@ -5,10 +5,12 @@ from typing import cast, List
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
-    UnionType, FunctionLike, Overloaded, PartialType, DeletedType, UninhabitedType
+    UnionType, FunctionLike, Overloaded, PartialType, DeletedType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
+
+from mypy import experimental
 
 
 def join_simple(declaration: Type, s: Type, t: Type) -> Type:
@@ -16,9 +18,6 @@ def join_simple(declaration: Type, s: Type, t: Type) -> Type:
 
     if isinstance(s, AnyType):
         return s
-
-    if isinstance(s, NoneTyp) and not isinstance(t, Void):
-        return t
 
     if isinstance(s, ErasedType):
         return t
@@ -56,9 +55,6 @@ def join_types(s: Type, t: Type) -> Type:
     """
     if isinstance(s, AnyType):
         return s
-
-    if isinstance(s, NoneTyp) and not isinstance(t, Void):
-        return t
 
     if isinstance(s, ErasedType):
         return t
@@ -105,17 +101,16 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return ErrorType()
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        # TODO(ddfisher): should behave differently with strict optional
-        if not isinstance(self.s, Void):
-            return self.s
+        if experimental.STRICT_OPTIONAL:
+            if isinstance(self.s, NoneTyp):
+                return t
+            else:
+                return self.default(self.s)
         else:
-            return self.default(self.s)
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
-        if not isinstance(self.s, Void):
-            return self.s
-        else:
-            return self.default(self.s)
+            if not isinstance(self.s, Void):
+                return self.s
+            else:
+                return self.default(self.s)
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         if not isinstance(self.s, Void):
@@ -330,7 +325,10 @@ def join_type_list(types: List[Type]) -> Type:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible. A better approach
         # would be to use a special bottom type.
-        return NoneTyp()
+        if experimental.STRICT_OPTIONAL:
+            return Void()
+        else:
+            return NoneTyp()
     joined = types[0]
     for t in types[1:]:
         joined = join_types(joined, t)

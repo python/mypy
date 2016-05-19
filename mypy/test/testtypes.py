@@ -11,7 +11,7 @@ from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, ErrorType, Overloaded, UninhabitedType
+    Instance, NoneTyp, ErrorType, Overloaded
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
@@ -103,7 +103,7 @@ class TypeOpsSuite(Suite):
     # expand_type
 
     def test_trivial_expand(self):
-        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.uninhab,
+        for t in (self.fx.a, self.fx.o, self.fx.t, self.fx.void, self.fx.nonet,
                   self.tuple(self.fx.a),
                   self.callable([], self.fx.a, self.fx.a), self.fx.anyt):
             self.assert_expand(t, [], t)
@@ -135,7 +135,7 @@ class TypeOpsSuite(Suite):
     # replace_type_vars
 
     def test_trivial_replace(self):
-        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.uninhab,
+        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
                   self.tuple(self.fx.a),
                   self.callable([], self.fx.a, self.fx.a), self.fx.anyt,
                   self.fx.err):
@@ -154,7 +154,7 @@ class TypeOpsSuite(Suite):
     # erase_type
 
     def test_trivial_erase(self):
-        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.uninhab,
+        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
                   self.fx.anyt, self.fx.err):
             self.assert_erase(t, t)
 
@@ -545,8 +545,8 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.a, self.fx.o, self.fx.a)
         self.assert_meet(self.fx.a, self.fx.b, self.fx.b)
         self.assert_meet(self.fx.b, self.fx.o, self.fx.b)
-        self.assert_meet(self.fx.a, self.fx.d, UninhabitedType())
-        self.assert_meet(self.fx.b, self.fx.c, UninhabitedType())
+        self.assert_meet(self.fx.a, self.fx.d, NoneTyp())
+        self.assert_meet(self.fx.b, self.fx.c, NoneTyp())
 
     def test_tuples(self):
         self.assert_meet(self.tuple(), self.tuple(), self.tuple())
@@ -559,10 +559,10 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
-                         UninhabitedType())
+                         NoneTyp())
         self.assert_meet(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
-                         UninhabitedType())
+                         NoneTyp())
 
     def test_function_types(self):
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
@@ -571,15 +571,15 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         UninhabitedType())
+                         NoneTyp())
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         UninhabitedType())
+                         NoneTyp())
 
     def test_type_vars(self):
         self.assert_meet(self.fx.t, self.fx.t, self.fx.t)
         self.assert_meet(self.fx.s, self.fx.s, self.fx.s)
-        self.assert_meet(self.fx.t, self.fx.s, UninhabitedType())
+        self.assert_meet(self.fx.t, self.fx.s, NoneTyp())
 
     def test_void(self):
         self.assert_meet(self.fx.void, self.fx.void, self.fx.void)
@@ -638,29 +638,29 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.ga, self.fx.ga, self.fx.ga)
         self.assert_meet(self.fx.ga, self.fx.o, self.fx.ga)
         self.assert_meet(self.fx.ga, self.fx.gb, self.fx.gb)
-        self.assert_meet(self.fx.ga, self.fx.gd, self.fx.uninhab)
-        self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.uninhab)
+        self.assert_meet(self.fx.ga, self.fx.gd, self.fx.nonet)
+        self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nonet)
 
         self.assert_meet(self.fx.ga, self.fx.nonet, self.fx.nonet)
         self.assert_meet(self.fx.ga, self.fx.anyt, self.fx.ga)
 
         for t in [self.fx.a, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
-            self.assert_meet(t, self.fx.ga, self.fx.uninhab)
+            self.assert_meet(t, self.fx.ga, self.fx.nonet)
 
     def test_generics_with_multiple_args(self):
         self.assert_meet(self.fx.hab, self.fx.hab, self.fx.hab)
         self.assert_meet(self.fx.hab, self.fx.haa, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.had, self.fx.uninhab)
+        self.assert_meet(self.fx.hab, self.fx.had, self.fx.nonet)
         self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.hbb)
 
     def test_generics_with_inheritance(self):
         self.assert_meet(self.fx.gsab, self.fx.gb, self.fx.gsab)
-        self.assert_meet(self.fx.gsba, self.fx.gb, self.fx.uninhab)
+        self.assert_meet(self.fx.gsba, self.fx.gb, self.fx.nonet)
 
     def test_generics_with_inheritance_and_shared_supertype(self):
-        self.assert_meet(self.fx.gsba, self.fx.gs2a, self.fx.uninhab)
-        self.assert_meet(self.fx.gsab, self.fx.gs2a, self.fx.uninhab)
+        self.assert_meet(self.fx.gsba, self.fx.gs2a, self.fx.nonet)
+        self.assert_meet(self.fx.gsab, self.fx.gs2a, self.fx.nonet)
 
     def test_generic_types_and_dynamic(self):
         self.assert_meet(self.fx.gdyn, self.fx.ga, self.fx.ga)
@@ -675,20 +675,20 @@ class MeetSuite(Suite):
 
     def test_meet_interface_types(self):
         self.assert_meet(self.fx.f, self.fx.f, self.fx.f)
-        self.assert_meet(self.fx.f, self.fx.f2, self.fx.uninhab)
+        self.assert_meet(self.fx.f, self.fx.f2, self.fx.nonet)
         self.assert_meet(self.fx.f, self.fx.f3, self.fx.f3)
 
     def test_join_interface_and_class_types(self):
         self.assert_meet(self.fx.o, self.fx.f, self.fx.f)
-        self.assert_meet(self.fx.a, self.fx.f, self.fx.uninhab)
+        self.assert_meet(self.fx.a, self.fx.f, self.fx.nonet)
 
         self.assert_meet(self.fx.e, self.fx.f, self.fx.e)
 
     def test_join_class_types_with_shared_interfaces(self):
         # These have nothing special with respect to meets, unlike joins. These
         # are for completeness only.
-        self.assert_meet(self.fx.e, self.fx.e2, self.fx.uninhab)
-        self.assert_meet(self.fx.e2, self.fx.e3, self.fx.uninhab)
+        self.assert_meet(self.fx.e, self.fx.e2, self.fx.nonet)
+        self.assert_meet(self.fx.e2, self.fx.e3, self.fx.nonet)
 
     def test_meet_with_generic_interfaces(self):
         # TODO fix
@@ -697,7 +697,7 @@ class MeetSuite(Suite):
         fx = InterfaceTypeFixture()
         self.assert_meet(fx.gfa, fx.m1, fx.m1)
         self.assert_meet(fx.gfa, fx.gfa, fx.gfa)
-        self.assert_meet(fx.gfb, fx.m1, fx.uninhab)
+        self.assert_meet(fx.gfb, fx.m1, fx.nonet)
 
     # FIX generic interfaces + ranges
 

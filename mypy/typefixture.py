@@ -6,8 +6,7 @@ It contains class TypeInfos and Type objects.
 from typing import List
 
 from mypy.types import (
-    TypeVarType, AnyType, Void, ErrorType, NoneTyp, Instance, CallableType,
-    TypeVarDef, UninhabitedType
+    TypeVarType, AnyType, Void, ErrorType, NoneTyp, Instance, CallableType, TypeVarDef
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -39,7 +38,6 @@ class TypeFixture:
         self.void = Void()
         self.err = ErrorType()
         self.nonet = NoneTyp()
-        self.uninhab = UninhabitedType()
 
         # Abstract class TypeInfos
 

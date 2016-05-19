@@ -1,9 +1,8 @@
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType
+    PartialType, DeletedType, TypeTranslator, TypeList
 )
-from mypy import experimental
 
 
 def erase_type(typ: Type) -> Type:
@@ -41,9 +40,6 @@ class EraseTypeVisitor(TypeVisitor[Type]):
     def visit_none_type(self, t: NoneTyp) -> Type:
         return t
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        return t
-
     def visit_erased_type(self, t: ErasedType) -> Type:
         # Should not get here.
         raise RuntimeError()
@@ -63,8 +59,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        none_type = NoneTyp() if experimental.STRICT_OPTIONAL else Void()
-        return CallableType([], [], [], none_type, t.fallback)
+        return CallableType([], [], [], Void(), t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         return t.items()[0].accept(self)

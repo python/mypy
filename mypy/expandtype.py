@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List, cast
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
     Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
-    PartialType, DeletedType, UninhabitedType
+    PartialType, DeletedType
 )
 
 
@@ -51,9 +51,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        return t
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
     def visit_deleted_type(self, t: DeletedType) -> Type:

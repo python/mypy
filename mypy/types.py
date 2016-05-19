@@ -211,24 +211,6 @@ class Void(Type):
         assert data['.class'] == 'Void'
         return Void()
 
-class UninhabitedType(Type):
-    """This type has no members.
-    """
-
-    def __init__(self, line: int = -1) -> None:
-        super().__init__(line)
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_uninhabited_type(self)
-
-    def serialize(self) -> JsonDict:
-        return {'.class': 'UninhabitedType'}
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'UninhabitedType':
-        assert data['.class'] == 'UninhabitedType'
-        return UninhabitedType()
-
 
 class NoneTyp(Type):
     """The type of 'None'.
@@ -464,7 +446,10 @@ class CallableType(FunctionLike):
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
         self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
-        self.ret_type = ret_type
+        if isinstance(ret_type, NoneTyp):
+            self.ret_type = Void(line=ret_type.get_line())
+        else:
+            self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
         self.name = name
@@ -708,7 +693,7 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            return UninhabitedType()
+            return Void()
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1) -> Type:
@@ -847,10 +832,6 @@ class TypeVisitor(Generic[T]):
     def visit_none_type(self, t: NoneTyp) -> T:
         pass
 
-    @abstractmethod
-    def visit_uninhabited_type(self, t: UninhabitedType) -> T:
-        pass
-
     def visit_erased_type(self, t: ErasedType) -> T:
         raise self._notimplemented_helper()
 
@@ -915,9 +896,6 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        return t
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
@@ -1005,9 +983,6 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_none_type(self, t):
         # Fully qualify to make this distinct from the None value.
         return "builtins.None"
-
-    def visit_uninhabited_type(self, t):
-        return "<uninhabited>"
 
     def visit_erased_type(self, t):
         return "<Erased>"
@@ -1148,9 +1123,6 @@ class TypeQuery(TypeVisitor[bool]):
         return self.default
 
     def visit_void(self, t: Void) -> bool:
-        return self.default
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return self.default
 
     def visit_none_type(self, t: NoneTyp) -> bool:

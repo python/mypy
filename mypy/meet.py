@@ -3,11 +3,12 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
-    UninhabitedType
+    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType, DeletedType
 )
 from mypy.subtypes import is_subtype
 from mypy.nodes import TypeInfo
+
+from mypy import experimental
 
 # TODO Describe this module.
 
@@ -29,7 +30,10 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
     elif not is_overlapping_types(s, t, use_promotions=True):
-        return UninhabitedType()
+        if experimental.STRICT_OPTIONAL:
+            return Void()
+        else:
+            return NoneTyp()
     else:
         if default_right:
             return t
@@ -109,7 +113,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
-        elif isinstance(self.s, NoneTyp):
+        elif isinstance(self.s, NoneTyp) and not experimental.STRICT_OPTIONAL:
             return self.s
         else:
             return AnyType()
@@ -141,21 +145,22 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return ErrorType()
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        # TODO(ddfisher): should behave different with strict optional
-        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
-            return t
+        if experimental.STRICT_OPTIONAL:
+            if isinstance(self.s, NoneTyp) or (isinstance(self.s, Instance) and
+                                               self.s.type.fullname() == 'builtins.object'):
+                return t
+            else:
+                return ErrorType()
         else:
-            return ErrorType()
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
-        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
-            return t
-        else:
-            return ErrorType()
+            if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+                return t
+            else:
+                return ErrorType()
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             if isinstance(self.s, NoneTyp):
+                # TODO(ddfisher): is this correct?
                 return self.s
             else:
                 return t
@@ -183,7 +188,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                         args.append(self.meet(t.args[i], si.args[i]))
                     return Instance(t.type, args)
                 else:
-                    return UninhabitedType()
+                    if experimental.STRICT_OPTIONAL:
+                        return Void()
+                    else:
+                        return NoneTyp()
             else:
                 if is_subtype(t, self.s):
                     return t
@@ -191,7 +199,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     # See also above comment.
                     return self.s
                 else:
-                    return UninhabitedType()
+                    if experimental.STRICT_OPTIONAL:
+                        return Void()
+                    else:
+                        return NoneTyp()
         else:
             return self.default(self.s)
 
@@ -224,4 +235,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
         else:
-            return UninhabitedType()
+            if experimental.STRICT_OPTIONAL:
+                return Void()
+            else:
+                return NoneTyp()

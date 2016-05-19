@@ -16,7 +16,6 @@ from mypy.errors import CompileError, set_drop_into_pdb
 
 from mypy.version import __version__
 
-
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 

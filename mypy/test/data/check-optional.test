@@ -1,4 +1,4 @@
 -- Tests for strict Optional behavior
 
 [case testNoneMemberOfOptional]
-1 + "str"
+1 + 1
