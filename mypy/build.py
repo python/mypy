@@ -599,10 +599,14 @@ def find_module(id: str, lib_path: Iterable[str]) -> str:
         sepinit = os.sep + '__init__'
         for base_dir in candidate_base_dirs:
             base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+            # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
+            for extension in PYTHON_EXTENSIONS:
+                path = base_path + sepinit + extension
+                if is_file(path) and verify_module(id, path):
+                    return path
+            # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
-                if not is_file(path):
-                    path = base_path + sepinit + extension
                 if is_file(path) and verify_module(id, path):
                     return path
         return None
