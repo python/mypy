@@ -377,7 +377,7 @@ class TypeChecker(NodeVisitor[Type]):
     disallow_untyped_defs = False
     # Should we check untyped function defs?
     check_untyped_defs = False
-    is_typeshed_file = False
+    is_typeshed_stub = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
@@ -418,7 +418,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.weak_opts = file_node.weak_opts
         self.enter_partial_types()
         # gross, but no other clear way to tell
-        self.is_typeshed_file = self.is_stub and 'typeshed' in os.path.normpath(path).split(os.sep)
+        self.is_typeshed_stub = self.is_stub and 'typeshed' in os.path.normpath(path).split(os.sep)
 
         for d in file_node.defs:
             self.accept(d)
@@ -671,7 +671,7 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
 
-                if self.disallow_untyped_defs and not self.is_typeshed_file:
+                if self.disallow_untyped_defs and not self.is_typeshed_stub:
                     # Check for functions with unspecified/not fully specified types.
                     def is_implicit_any(t: Type) -> bool:
                         return isinstance(t, AnyType) and t.implicit
