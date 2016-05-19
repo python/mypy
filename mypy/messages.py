@@ -256,7 +256,7 @@ class MessageBuilder:
             else:
                 return 'union type ({} items)'.format(len(items))
         elif isinstance(typ, Void):
-            return 'Void'
+            return 'None'
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):

@@ -31,6 +31,9 @@ def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     if isinstance(declaration, UnionType):
         return UnionType.make_simplified_union([s, t])
 
+    if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
+        s, t = t, s
+
     value = t.accept(TypeJoinVisitor(s))
 
     if value is None:
@@ -58,6 +61,9 @@ def join_types(s: Type, t: Type) -> Type:
 
     if isinstance(s, ErasedType):
         return t
+
+    if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
+        s, t = t, s
 
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s))

@@ -98,8 +98,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                                    t.line)
             elif fullname == 'builtins.None':
                 if experimental.STRICT_OPTIONAL:
-                    # TODO(ddfisher): make Void if it's a function return type
-                    return NoneTyp()
+                    if t.ret_type:
+                        return Void()
+                    else:
+                        return NoneTyp()
                 else:
                     return Void()
             elif fullname == 'typing.Any':

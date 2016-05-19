@@ -6,6 +6,8 @@ from typing import Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence
 import mypy.nodes
 from mypy.nodes import INVARIANT, SymbolNode
 
+from mypy import experimental
+
 
 T = TypeVar('T')
 
@@ -101,17 +103,21 @@ class UnboundType(Type):
     args = None  # type: List[Type]
     # should this type be wrapped in an Optional?
     optional = False
+    # is this type a return type?
+    ret_type = False
 
     def __init__(self,
                  name: str,
                  args: List[Type] = None,
                  line: int = -1,
-                 optional: bool = False) -> None:
+                 optional: bool = False,
+                 ret_type: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
         self.optional = optional
+        self.ret_type = ret_type
         super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -464,10 +470,7 @@ class CallableType(FunctionLike):
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
         self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
-        if isinstance(ret_type, NoneTyp):
-            self.ret_type = Void(line=ret_type.get_line())
-        else:
-            self.ret_type = ret_type
+        self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
         self.name = name
@@ -711,7 +714,10 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            return UninhabitedType()
+            if experimental.STRICT_OPTIONAL:
+                return UninhabitedType()
+            else:
+                return Void()
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1) -> Type:
