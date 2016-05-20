@@ -307,6 +307,14 @@ class B(A):
     def __new__(cls) -> int:
         return 1
 
+[case testInnerFunctionNotOverriding]
+class A:
+    def f(self) -> int: pass
+
+class B(A):
+    def g(self) -> None:
+        def f(self) -> str: pass
+
 
 -- Constructors
 -- ------------

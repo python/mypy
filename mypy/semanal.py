@@ -468,7 +468,6 @@ class SemanticAnalyzer(NodeVisitor):
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
-                defn.info = self.type
                 defn.type = set_callable_name(defn.type, defn)
         for arg in defn.arguments:
             if arg.initializer:

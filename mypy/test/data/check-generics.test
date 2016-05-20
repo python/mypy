@@ -635,6 +635,20 @@ a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testGenericClassInnerFunctionTypeVariable]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, a: T) -> None:
+        self.a = a
+    def f(self, n: int) -> None:
+        def g(a: T):
+            self.a = a
+        g(self.a)
+        g(n) # E: Argument 1 to "g" has incompatible type "int"; expected "T"
+[out]
+main: note: In member "f" of class "A":
+
 
 -- Callable subtyping with generic functions
 -- -----------------------------------------
