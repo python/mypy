@@ -455,7 +455,7 @@ class A:
 main: note: In function "g":
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main: note: In member "f" of class "A":
-main:8: error: Argument 1 to "g" of "A" has incompatible type "A"; expected "int"
+main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
 [case testMutuallyRecursiveNestedFunctions]
 def f() -> None:
