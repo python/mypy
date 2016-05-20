@@ -1423,7 +1423,7 @@ C(arg=0)
 -- -------
 
 
-[case testTypeCBasic]
+[case testTypeUsingTypeCBasic]
 from typing import Type
 class User: pass
 class ProUser: pass
@@ -1435,7 +1435,7 @@ reveal_type(new_user(ProUser))
 main: note: At top level:
 main:7: error: Revealed type is '__main__.User'
 
-[case testTypeCTypeVar]
+[case testTypeUsingTypeCTypeVar]
 from typing import Type, TypeVar
 class User: pass
 class ProUser: pass

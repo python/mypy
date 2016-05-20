@@ -18,7 +18,7 @@ from mypy.subtypes import satisfies_upper_bound
 from mypy import nodes
 
 
-type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
+type_constructors = {'typing.Tuple', 'typing.Union', 'typing.Callable', 'typing.Type'}
 
 
 def analyze_type_alias(node: Node,
@@ -114,6 +114,12 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return items[0]
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
+            elif fullname == 'typing.Type':
+                if len(t.args) != 1:
+                    self.fail('Type[...] must have exactly one type argument', t)
+                items = self.anal_array(t.args)
+                # Currently Type[t] is just an alias for t.
+                return items[0]
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
                 return sym.type_override
