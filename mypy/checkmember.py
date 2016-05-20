@@ -237,6 +237,10 @@ def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: b
         elif not is_classmethod:
             # Check that self argument has type 'Any' or valid instance type.
             selfarg = item.arg_types[0]
+            # If this is a method of a tuple class, correct for the fact that
+            # we passed to typ.fallback in analyze_member_access. See #1432.
+            if isinstance(selfarg, TupleType):
+                selfarg = selfarg.fallback
             if not subtypes.is_equivalent(selfarg, itype):
                 msg.invalid_method_type(item, context)
         else:

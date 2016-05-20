@@ -173,3 +173,15 @@ MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
 from typing import NamedTuple
 A = NamedTuple('A', [])
 [builtins fixtures/list.py]
+
+[case testNamedTupleProperty]
+from typing import NamedTuple
+A = NamedTuple('A', [('a', int)])
+class B(A):
+    @property
+    def b(self) -> int:
+        return self.a
+class C(B): pass
+B(1).b
+C(2).b
+[builtins fixtures/property.py]
