@@ -769,3 +769,19 @@ class A:
 [file d.py]
 import a
 class D(a.C): pass
+
+[case testPreferPackageOverFile]
+import a
+[file a.py]
+/  # intentional syntax error -- this file shouldn't be parsed
+[file a/__init__.py]
+pass
+[out]
+
+[case testPreferPackageOverFile2]
+from a import x
+[file a.py]
+/  # intentional syntax error -- this file shouldn't be parsed
+[file a/__init__.py]
+x = 0
+[out]

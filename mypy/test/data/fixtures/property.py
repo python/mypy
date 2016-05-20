@@ -13,3 +13,4 @@ property = object() # Dummy definition.
 class int: pass
 class str: pass
 class bytes: pass
+class tuple: pass

@@ -228,12 +228,13 @@ class TypeAnalyser(TypeVisitor[Type]):
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')
         if len(t.args) == 0:
-            # Callable (bare)
+            # Callable (bare). Treat as Callable[..., Any].
             return CallableType([AnyType(), AnyType()],
                                 [nodes.ARG_STAR, nodes.ARG_STAR2],
                                 [None, None],
                                 ret_type=AnyType(),
-                                fallback=fallback)
+                                fallback=fallback,
+                                is_ellipsis_args=True)
         elif len(t.args) == 2:
             ret_type = t.args[1].accept(self)
             if isinstance(t.args[0], TypeList):

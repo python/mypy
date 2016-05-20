@@ -824,3 +824,31 @@ def f(x: object):
     y = 0 # type: int
     y = x
 [builtins fixtures/isinstance.py]
+
+[case testUnionAssertIsinstance]
+from typing import Union
+def f(x: Union[str, int]):
+    assert isinstance(x, int)
+    y = 0 # type: int
+    y = x
+[builtins fixtures/isinstance.py]
+
+[case testAnyAssertIsinstance]
+from typing import Any
+def f(x: Any):
+    assert isinstance(x, int)  # this should narrow x to type int
+    x + "foo"
+[builtins fixtures/isinstance.py]
+[out]
+main: note: In function "f":
+main:4: error: Unsupported left operand type for + ("int")
+
+[case testIsinstanceOfGenericClassRetainsParameters]
+from typing import List, Union
+def f(x: Union[List[int], str]) -> None:
+    if isinstance(x, list):
+        x[0]()
+[builtins fixtures/isinstancelist.py]
+[out]
+main: note: In function "f":
+main:4: error: "int" not callable

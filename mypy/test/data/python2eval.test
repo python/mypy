@@ -395,3 +395,48 @@ b = B()
 print b.x + 1
 [out]
 4
+
+[case testReModuleBytesPython2]
+# Regression tests for various overloads in the re module -- bytes version
+import re
+bre = b'a+'
+bpat = re.compile(bre)
+bpat = re.compile(bpat)
+re.search(bre, b'').groups()
+re.search(bre, u'') # This ought to be an error, but isn't because of bytes->unicode equivalence
+re.search(bpat, b'').groups()
+re.search(bpat, u'') # Error
+# match(), split(), findall(), finditer() are much the same, so skip those.
+# sub(), subn() have more overloads and we are checking these:
+re.sub(bre, b'', b'') + b''
+re.sub(bpat, b'', b'') + b''
+re.sub(bre, lambda m: b'', b'') + b''
+re.sub(bpat, lambda m: b'', b'') + b''
+re.subn(bre, b'', b'')[0] + b''
+re.subn(bpat, b'', b'')[0] + b''
+re.subn(bre, lambda m: b'', b'')[0] + b''
+re.subn(bpat, lambda m: b'', b'')[0] + b''
+[out]
+_program.py:9: error: Cannot infer type argument 1 of "search"
+
+[case testReModuleStringPython2]
+# Regression tests for various overloads in the re module -- string version
+import re
+ure = u'a+'
+upat = re.compile(ure)
+upat = re.compile(upat)
+re.search(ure, u'a').groups()
+re.search(ure, b'') # This ought to be an error, but isn't because of bytes->unicode equivalence
+re.search(upat, u'a').groups()
+re.search(upat, b'') # This ought to be an error, but isn't because of bytes->unicode equivalence
+# match(), split(), findall(), finditer() are much the same, so skip those.
+# sus(), susn() have more overloads and we are checking these:
+re.sub(ure, u'', u'') + u''
+re.sub(upat, u'', u'') + u''
+re.sub(ure, lambda m: u'', u'') + u''
+re.sub(upat, lambda m: u'', u'') + u''
+re.subn(ure, u'', u'')[0] + u''
+re.subn(upat, u'', u'')[0] + u''
+re.subn(ure, lambda m: u'', u'')[0] + u''
+re.subn(upat, lambda m: u'', u'')[0] + u''
+[out]

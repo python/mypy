@@ -1,2 +1,3 @@
 recursive-include lib-typing *.py
 recursive-include scripts *
+recursive-exclude scripts myunit

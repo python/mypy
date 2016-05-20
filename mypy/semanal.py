@@ -127,6 +127,11 @@ TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.bytearray': 'builtins.str',
 })
 
+# Hard coded list of Enum baseclasses.
+ENUM_BASECLASSES = [
+    'enum.Enum',
+    'enum.IntEnum',
+]
 
 # When analyzing a function, should we analyze the whole function in one go, or
 # should we only perform one phase of the analysis? The latter is used for
@@ -463,7 +468,6 @@ class SemanticAnalyzer(NodeVisitor):
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
-                defn.info = self.type
                 defn.type = set_callable_name(defn.type, defn)
         for arg in defn.arguments:
             if arg.initializer:
@@ -756,7 +760,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
             if isinstance(base, Instance):
-                defn.info.is_enum = base.type.fullname() == 'enum.Enum'
+                defn.info.is_enum = self.decide_is_enum(base)
         # Add 'object' as implicit base if there is no other base class.
         if (not defn.base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
@@ -819,6 +823,11 @@ class SemanticAnalyzer(NodeVisitor):
                     worklist.append(base.type)
                     visited.add(base.type)
         return False
+
+    def decide_is_enum(self, instance: Instance) -> bool:
+        """Decide if a TypeInfo should be marked as .is_enum=True"""
+        fullname = instance.type.fullname()
+        return fullname in ENUM_BASECLASSES
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
