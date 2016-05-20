@@ -112,11 +112,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         self.s = s
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        # TODO(ddfisher): understand what's going on here
         if isinstance(self.s, Void) or isinstance(self.s, ErrorType):
             return ErrorType()
         elif isinstance(self.s, NoneTyp):
-            return self.s
+            if experimental.STRICT_OPTIONAL:
+                return AnyType()
+            else:
+                return self.s
         else:
             return AnyType()
 
@@ -163,10 +165,12 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         return t
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
-        # TODO(ddfisher): understand what's going on here
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
             if isinstance(self.s, NoneTyp):
-                return self.s
+                if experimental.STRICT_OPTIONAL:
+                    return t
+                else:
+                    return self.s
             else:
                 return t
         else:

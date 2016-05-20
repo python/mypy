@@ -1443,8 +1443,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
-        if isinstance(init_type, NoneTyp):
-            # TODO(ddfisher): make pass UnboundType to third arg if class variable
+        if isinstance(init_type, (NoneTyp, UninhabitedType)):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
@@ -1547,7 +1546,6 @@ class TypeChecker(NodeVisitor[Type]):
                 typename = type_type.fullname()
                 if typename == 'builtins.dict':
                     # TODO: Don't infer things twice.
-                    # TODO(ddfisher): fixup strict optional stuff
                     key_type = self.accept(lvalue.index)
                     value_type = self.accept(rvalue)
                     full_key_type = UnionType.make_simplified_union([key_type, var.type.inner_types[0]])
