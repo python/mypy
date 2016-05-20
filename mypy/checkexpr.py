@@ -1347,6 +1347,11 @@ class ExpressionChecker:
             if e.expr() not in self.chk.type_map:
                 self.accept(e.expr())
             ret_type = self.chk.type_map[e.expr()]
+            if isinstance(ret_type, NoneTyp):
+                # For "lambda ...: None", just use type from the context.
+                # Important when the context is Callable[..., None] which
+                # really means Void. See #1425.
+                return inferred_type
             return replace_callable_return_type(inferred_type, ret_type)
 
     def infer_lambda_type_using_context(self, e: FuncExpr) -> CallableType:

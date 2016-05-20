@@ -611,6 +611,13 @@ T = TypeVar('T')
 def foo(arg: Callable[..., T]) -> None: pass
 foo(lambda: 1)
 
+[case testLambdaNoneInContext]
+from typing import Callable
+def f(x: Callable[[], None]) -> None: pass
+def g(x: Callable[[], int]) -> None: pass
+f(lambda: None)
+g(lambda: None)
+
 
 -- Overloads + generic functions
 -- -----------------------------
