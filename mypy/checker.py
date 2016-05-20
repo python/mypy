@@ -2347,7 +2347,8 @@ def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
                           weak: bool=False) \
         -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
-    """Find any isinstance checks (within a chain of ands).
+    """Find any isinstance checks (within a chain of ands).  Includes
+    implicit and explicit checks for None.
 
     Return value is a map of variables to their types if the condition
     is true and a map of variables to their types if the condition is false.
@@ -2357,26 +2358,59 @@ def find_isinstance_check(node: Node,
 
     Guaranteed to not return None, None. (But may return {}, {})
     """
+    def split_types(current_type: Optional[Type], type_if_true: Optional[Type], expr: Node) \
+            -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+        if type_if_true:
+            if current_type:
+                if is_proper_subtype(current_type, type_if_true):
+                    return {expr: type_if_true}, None
+                elif not is_overlapping_types(current_type, type_if_true):
+                    return None, {expr: current_type}
+                else:
+                    type_if_false = restrict_subtype_away(current_type, type_if_true)
+                    return {expr: type_if_true}, {expr: type_if_false}
+            else:
+                return {expr: type_if_true}, {}
+        else:
+            # An isinstance check, but we don't understand the type
+            if weak:
+                return {expr: AnyType()}, {expr: vartype}
+            else:
+                return {}, {}
+
+    def is_none(n: Node) -> bool:
+        return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
+
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
-                if type:
-                    elsetype = vartype
-                    if vartype:
-                        if is_proper_subtype(vartype, type):
-                            return {expr: type}, None
-                        elif not is_overlapping_types(vartype, type):
-                            return None, {expr: elsetype}
-                        else:
-                            elsetype = restrict_subtype_away(vartype, type)
-                    return {expr: type}, {expr: elsetype}
-                else:
-                    # An isinstance check, but we don't understand the type
-                    if weak:
-                        return {expr: AnyType()}, {expr: vartype}
+                return split_types(vartype, type, expr)
+    elif (isinstance(node, ComparisonExpr) and any(is_none(n) for n in node.operands)):
+        # Check for `x is None` and `x is not None`.
+        is_not = node.operators == ['is not']
+        if is_not or node.operators == ['is']:
+            if_vars = {}
+            else_vars = {}
+            for expr in node.operands:
+                if expr.literal == LITERAL_TYPE and not is_none(expr):
+                    # This should only be true at most once: there should be
+                    # two elements in node.operands, and at least one of them
+                    # should represent a None.
+                    vartype = type_map[expr]
+                    if_vars, else_vars = split_types(vartype, NoneTyp(), expr)
+                    break
+
+            if is_not:
+                if_vars, else_vars = else_vars, if_vars
+            return if_vars, else_vars
+    elif (isinstance(node, RefExpr)):
+        # The type could be falsy, so we can't deduce anything new about the else branch
+        vartype = type_map[node]
+        _, if_vars = split_types(vartype, NoneTyp(), node)
+        return if_vars, {}
     elif isinstance(node, OpExpr) and node.op == 'and':
         left_if_vars, right_else_vars = find_isinstance_check(
             node.left,

@@ -43,6 +43,50 @@ else:
   g(x)
 [builtins fixtures/isinstance.py]
 
+[case testIfCases]
+from typing import Optional
+def f(a: int) -> None: pass
+def g(a: None) -> None: pass
+x = None  # type:  Optional[int]
+if x:
+  f(x)
+else:
+  g(x)  # E: Argument 1 to "g" has incompatible type "Optional[int]"; expected None
+[builtins fixtures/bool.py]
+
+[case testIfNotCases]
+from typing import Optional
+def f(a: int) -> None: pass
+def g(a: None) -> None: pass
+x = None  # type:  Optional[int]
+if not x:
+  g(x)  # E: Argument 1 to "g" has incompatible type "Optional[int]"; expected None
+else:
+  f(x)
+[builtins fixtures/bool.py]
+
+[case testIsNotNoneCases]
+from typing import Optional
+def f(a: int) -> None: pass
+def g(a: None) -> None: pass
+x = None  # type:  Optional[int]
+if x is not None:
+  f(x)
+else:
+  g(x)
+[builtins fixtures/bool.py]
+
+[case testIsNoneCases]
+from typing import Optional
+def f(a: int) -> None: pass
+def g(a: None) -> None: pass
+x = None  # type:  Optional[int]
+if x is None:
+  g(x)
+else:
+  f(x)
+[builtins fixtures/bool.py]
+
 [case testLambdaReturningNone]
 f = lambda: None
 x = f()
