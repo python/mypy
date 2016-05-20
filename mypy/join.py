@@ -10,7 +10,7 @@ from mypy.types import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
 
-from mypy import experimental
+from mypy import experiments
 
 
 def join_simple(declaration: Type, s: Type, t: Type) -> Type:
@@ -107,7 +107,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return ErrorType()
 
     def visit_none_type(self, t: NoneTyp) -> Type:
-        if experimental.STRICT_OPTIONAL:
+        if experiments.STRICT_OPTIONAL:
             if isinstance(self.s, NoneTyp):
                 return t
             else:
@@ -335,7 +335,7 @@ def join_type_list(types: List[Type]) -> Type:
         # with all variable length tuples, and this makes it possible. A better approach
         # would be to use a special bottom type, which we do when strict Optional
         # checking is enabled.
-        if experimental.STRICT_OPTIONAL:
+        if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
             return NoneTyp()

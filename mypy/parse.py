@@ -37,7 +37,7 @@ from mypy.parsetype import (
     parse_type, parse_types, parse_signature, TypeParseError, parse_str_as_signature
 )
 
-from mypy import experimental
+from mypy import experiments
 
 
 precedence = {
@@ -792,7 +792,7 @@ class Parser:
         return Argument(variable, type, initializer, kind), require_named
 
     def set_type_optional(self, type: Type, initializer: Node) -> None:
-        if not experimental.STRICT_OPTIONAL:
+        if not experiments.STRICT_OPTIONAL:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == 'None'

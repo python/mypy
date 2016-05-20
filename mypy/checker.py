@@ -53,7 +53,7 @@ from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
 
-from mypy import experimental
+from mypy import experiments
 
 
 T = TypeVar('T')
@@ -1190,7 +1190,7 @@ class TypeChecker(NodeVisitor[Type]):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                if experimental.STRICT_OPTIONAL:
+                                if experiments.STRICT_OPTIONAL:
                                     var.type = UnionType.make_simplified_union([rvalue_type, NoneTyp()])
                                 else:
                                     var.type = rvalue_type
@@ -1887,7 +1887,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         self.check_not_void(iterable, expr)
         if isinstance(iterable, TupleType):
-            if experimental.STRICT_OPTIONAL:
+            if experiments.STRICT_OPTIONAL:
                 joined = UninhabitedType()  # type: Type
             else:
                 joined = NoneTyp()
@@ -2316,7 +2316,7 @@ class TypeChecker(NodeVisitor[Type]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if experimental.STRICT_OPTIONAL and cast(PartialType, var.type).type is None:
+                if experiments.STRICT_OPTIONAL and cast(PartialType, var.type).type is None:
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
                 else:

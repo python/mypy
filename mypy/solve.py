@@ -8,7 +8,7 @@ from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
 
-from mypy import experimental
+from mypy import experiments
 
 
 def solve_constraints(vars: List[int], constraints: List[Constraint],
@@ -60,7 +60,7 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
             else:
                 # No constraints for type variable -- type 'None' is the most specific type.
                 if strict:
-                    if experimental.STRICT_OPTIONAL:
+                    if experiments.STRICT_OPTIONAL:
                         candidate = UninhabitedType()
                     else:
                         candidate = NoneTyp()

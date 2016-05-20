@@ -13,7 +13,7 @@ from mypy import messages, sametypes
 from mypy.nodes import CONTRAVARIANT, COVARIANT
 from mypy.maptype import map_instance_to_supertype
 
-from mypy import experimental
+from mypy import experiments
 
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
@@ -101,7 +101,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, Void)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
-        if experimental.STRICT_OPTIONAL:
+        if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
                     (isinstance(self.right, Instance) and
                      self.right.type.fullname() == 'builtins.object'))

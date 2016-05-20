@@ -16,7 +16,7 @@ from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import satisfies_upper_bound
 from mypy import nodes
-from mypy import experimental
+from mypy import experiments
 
 
 type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
@@ -97,7 +97,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                    tvar_expr.variance,
                                    t.line)
             elif fullname == 'builtins.None':
-                if experimental.STRICT_OPTIONAL:
+                if experiments.STRICT_OPTIONAL:
                     if t.ret_type:
                         return Void()
                     else:
@@ -122,7 +122,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
                 items = self.anal_array(t.args)
-                if experimental.STRICT_OPTIONAL:
+                if experiments.STRICT_OPTIONAL:
                     return UnionType.make_simplified_union([items[0], NoneTyp()])
                 else:
                     # Without strict Optional checking Optional[t] is just an alias for t.

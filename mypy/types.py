@@ -6,7 +6,7 @@ from typing import Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence
 import mypy.nodes
 from mypy.nodes import INVARIANT, SymbolNode
 
-from mypy import experimental
+from mypy import experiments
 
 
 T = TypeVar('T')
@@ -714,7 +714,7 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            if experimental.STRICT_OPTIONAL:
+            if experiments.STRICT_OPTIONAL:
                 return UninhabitedType()
             else:
                 return Void()

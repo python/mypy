@@ -19,7 +19,7 @@ from mypy.test.helpers import (
 )
 from mypy.errors import CompileError
 
-from mypy import experimental
+from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
@@ -82,10 +82,10 @@ class TypeCheckSuite(Suite):
             self.run_test_once(testcase, 2)
         elif optional:
             try:
-                experimental.STRICT_OPTIONAL = True
+                experiments.STRICT_OPTIONAL = True
                 self.run_test_once(testcase)
             finally:
-                experimental.STRICT_OPTIONAL = False
+                experiments.STRICT_OPTIONAL = False
         else:
             self.run_test_once(testcase)
 

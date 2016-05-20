@@ -10,7 +10,7 @@ from typing import Optional, Dict, List, Set, Tuple
 from mypy import build
 from mypy import defaults
 from mypy import git
-from mypy import experimental
+from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
 
@@ -252,7 +252,7 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     if args.incremental:
         options.build_flags.append(build.INCREMENTAL)
     if args.strict_optional:
-        experimental.STRICT_OPTIONAL = True
+        experiments.STRICT_OPTIONAL = True
 
     # Set reports.
     for flag, val in vars(args).items():
