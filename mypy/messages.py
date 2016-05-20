@@ -247,14 +247,21 @@ class MessageBuilder:
             else:
                 return 'tuple(length {})'.format(len(items))
         elif isinstance(typ, UnionType):
-            items = []
-            for t in typ.items:
-                items.append(strip_quotes(self.format(t)))
-            s = '"Union[{}]"'.format(', '.join(items))
-            if len(s) < 40:
-                return s
+            # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
+            print_as_optional = (len(typ.items) -
+                                 sum(isinstance(t, NoneTyp) for t in typ.items) == 1)
+            if print_as_optional:
+                rest = [t for t in typ.items if not isinstance(t, NoneTyp)]
+                return '"Optional[{}]"'.format(strip_quotes(self.format(rest[0])))
             else:
-                return 'union type ({} items)'.format(len(items))
+                items = []
+                for t in typ.items:
+                    items.append(strip_quotes(self.format(t)))
+                s = '"Union[{}]"'.format(', '.join(items))
+                if len(s) < 40:
+                    return s
+                else:
+                    return 'union type ({} items)'.format(len(items))
         elif isinstance(typ, Void):
             return 'None'
         elif isinstance(typ, NoneTyp):

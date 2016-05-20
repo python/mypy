@@ -30,7 +30,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
-    UnionType, TypeVarType, PartialType, DeletedType
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -50,6 +50,8 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+
+from mypy import experimental
 
 
 T = TypeVar('T')
@@ -1171,7 +1173,10 @@ class TypeChecker(NodeVisitor[Type]):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                var.type = rvalue_type
+                                if experimental.STRICT_OPTIONAL:
+                                    var.type = UnionType.make_simplified_union([rvalue_type, NoneTyp()])
+                                else:
+                                    var.type = rvalue_type
                             else:
                                 var.type = None
                             del partial_types[var]
@@ -1439,15 +1444,16 @@ class TypeChecker(NodeVisitor[Type]):
 
     def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
         if isinstance(init_type, NoneTyp):
-            partial_type = PartialType(None, name)
+            # TODO(ddfisher): make pass UnboundType to third arg if class variable
+            partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
-            if ((fullname == 'builtins.list' or fullname == 'builtins.set' or
-                 fullname == 'builtins.dict')
-                    and isinstance(init_type.args[0], NoneTyp)
-                    and (fullname != 'builtins.dict' or isinstance(init_type.args[1], NoneTyp))
-                    and isinstance(lvalue, NameExpr)):
-                partial_type = PartialType(init_type.type, name)
+            if (isinstance(lvalue, NameExpr) and
+                    (fullname == 'builtins.list' or
+                     fullname == 'builtins.set' or
+                     fullname == 'builtins.dict') and
+                    all(isinstance(t, (NoneTyp, UninhabitedType)) for t in init_type.args)):
+                partial_type = PartialType(init_type.type, name, init_type.args)
             else:
                 return False
         else:
@@ -1530,8 +1536,8 @@ class TypeChecker(NodeVisitor[Type]):
             self, lvalue: IndexExpr, rvalue: Node) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
         if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
-            var = cast(Var, lvalue.base.node)
-            if var is not None and isinstance(var.type, PartialType):
+            var = lvalue.base.node
+            if isinstance(var.type, PartialType):
                 type_type = var.type.type
                 if type_type is None:
                     return  # The partial type is None.
@@ -1541,12 +1547,15 @@ class TypeChecker(NodeVisitor[Type]):
                 typename = type_type.fullname()
                 if typename == 'builtins.dict':
                     # TODO: Don't infer things twice.
+                    # TODO(ddfisher): fixup strict optional stuff
                     key_type = self.accept(lvalue.index)
                     value_type = self.accept(rvalue)
-                    if is_valid_inferred_type(key_type) and is_valid_inferred_type(value_type):
+                    full_key_type = UnionType.make_simplified_union([key_type, var.type.inner_types[0]])
+                    full_value_type = UnionType.make_simplified_union([value_type, var.type.inner_types[0]])
+                    if is_valid_inferred_type(full_key_type) and is_valid_inferred_type(full_value_type):
                         if not self.current_node_deferred:
                             var.type = self.named_generic_type('builtins.dict',
-                                                               [key_type, value_type])
+                                                               [full_key_type, full_value_type])
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> Type:
@@ -1856,7 +1865,10 @@ class TypeChecker(NodeVisitor[Type]):
 
         self.check_not_void(iterable, expr)
         if isinstance(iterable, TupleType):
-            joined = NoneTyp()  # type: Type
+            if experimental.STRICT_OPTIONAL:
+                joined = UninhabitedType()  # type: Type
+            else:
+                joined = NoneTyp()
             for item in iterable.items:
                 joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
@@ -2282,8 +2294,12 @@ class TypeChecker(NodeVisitor[Type]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                var.type = AnyType()
+                if experimental.STRICT_OPTIONAL and cast(PartialType, var.type).type is None:
+                    # None partial type: assume variable is intended to have type None
+                    var.type = NoneTyp()
+                else:
+                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                    var.type = AnyType()
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):
@@ -2542,6 +2558,8 @@ def is_valid_inferred_type(typ: Type) -> bool:
     Examples of invalid types include the None type or a type with a None component.
     """
     if is_same_type(typ, NoneTyp()):
+        return False
+    if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):
         for arg in typ.args:

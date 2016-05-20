@@ -152,7 +152,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                                                self.s.type.fullname() == 'builtins.object'):
                 return t
             else:
-                return ErrorType()
+                return UninhabitedType()
         else:
             if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
                 return t
