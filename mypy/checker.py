@@ -1184,7 +1184,14 @@ class TypeChecker(NodeVisitor[Type]):
                     # an error will be reported elsewhere.
                     self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
                     return
-                rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
+                if (isinstance(rvalue, NameExpr) and rvalue.fullname == 'builtins.None' and
+                        isinstance(lvalue, NameExpr) and
+                        isinstance(lvalue.node, Var) and
+                        lvalue.node.is_initialized_in_class):
+                    # Allow None's to be assigned to class variables with non-Optional types.
+                    rvalue_type = lvalue_type
+                else:
+                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
                     self.binder.assign_type(lvalue, rvalue_type,

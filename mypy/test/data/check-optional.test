@@ -142,3 +142,19 @@ x = {}
 x["bar"] = 1
 x()  # E: Dict[str, int] not callable
 [builtins fixtures/dict.py]
+
+[case testNoneClassVariable]
+from typing import Optional
+class C:
+    x = None  # type: int
+    def __init__(self) -> None:
+        self.x = 0
+
+[case testNoneClassVariableInInit]
+from typing import Optional
+class C:
+    x = None  # type: int
+    def __init__(self) -> None:
+        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[out]
+main: note: In member "__init__" of class "C":
