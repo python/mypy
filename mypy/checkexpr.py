@@ -5,7 +5,7 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType
+    PartialType, DeletedType, UnboundType, TypeType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -277,8 +277,25 @@ class ExpressionChecker:
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
+        elif isinstance(callee, TypeType):
+            item = self.analyze_type_type(callee.item, context)
+            return self.check_call(item, args, arg_kinds, context, arg_names,
+                                   callable_node, arg_messages)
         else:
             return self.msg.not_callable(callee, context), AnyType()
+
+    def analyze_type_type(self, arg: Type, context: Context) -> Type:
+        """Given the arg from (x: Type[arg]), return the type for x."""
+        if isinstance(arg, AnyType):
+            return AnyType()
+        if isinstance(arg, Instance):
+            return type_object_type(arg.type, self.named_type)
+        if isinstance(arg, UnionType):
+            return UnionType([self.analyze_type_type(item, context) for item in arg.items], arg.line)
+        # XXX Do we need to handle other forms?
+        # XXX Make a nicely formatted error message.
+        self.msg.fail("XXX Bad arg to Type[]", context)
+        return AnyType()
 
     def infer_arg_types_in_context(self, callee: CallableType,
                                    args: List[Node]) -> List[Type]:

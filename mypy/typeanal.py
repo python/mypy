@@ -5,7 +5,7 @@ from typing import Callable, cast, List, Tuple
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, StarType, PartialType,
-    EllipsisType
+    EllipsisType, TypeType
 )
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -118,8 +118,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
                 items = self.anal_array(t.args)
-                # Currently Type[t] is just an alias for t.
-                return items[0]
+                item = items[0]
+                return TypeType(item, t.line)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
                 return sym.type_override
@@ -212,6 +212,9 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
         self.fail("Unexpected '...'", t)
         return AnyType()
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        return TypeType(t.accept(self), t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')
@@ -389,4 +392,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_partial_type(self, t: PartialType) -> None:
+        pass
+
+    def visit_type_type(self, t: TypeType) -> None:
         pass

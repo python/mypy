@@ -410,6 +410,7 @@ class CallableType(FunctionLike):
     # Is this Callable[..., t] (with literal '...')?
     is_ellipsis_args = False
     # Is this callable constructed for the benefit of a classmethod's 'cls' argument?
+    # XXX Need to rename, it's also for Type[C]?
     is_classmethod_class = False
     # Was this type implicitly generated instead of explicitly specified by the user?
     implicit = False
@@ -783,6 +784,30 @@ class EllipsisType(Type):
         return EllipsisType()
 
 
+class TypeType(Type):
+    """For types like Type[User].
+
+    This annotates variables that are class objects, constrained by
+    the type argument.  See PEP 484 for more details.
+    """
+
+    item = None  # type: Type
+
+    def __init__(self, item: Type, line: int = -1) -> None:
+        super().__init__(line)
+        self.item = item
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeType', 'item': self.item.serialize()}
+
+    def deserialize(self, data: JsonDict) -> 'TypeType':
+        assert data['.class'] == 'TypeType'
+        return TypeType(Type.deserialize(data['item']))
+
+
 #
 # Visitor-related classes
 #
@@ -794,9 +819,9 @@ class TypeVisitor(Generic[T]):
     The parameter T is the return type of the visit methods.
     """
 
-    def _notimplemented_helper(self) -> NotImplementedError:
-        return NotImplementedError("Method visit_type_list not implemented in "
-                                   + "'{}'\n".format(type(self).__name__)
+    def _notimplemented_helper(self, name: str) -> NotImplementedError:
+        return NotImplementedError("Method {}.visit_{}() not implemented\n"
+                                   .format(type(self).__name__, name)
                                    + "This is a known bug, track development in "
                                    + "'https://github.com/JukkaL/mypy/issues/730'")
 
@@ -805,10 +830,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_type_list(self, t: TypeList) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('type_list')
 
     def visit_error_type(self, t: ErrorType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('error_type')
 
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
@@ -823,7 +848,7 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_erased_type(self, t: ErasedType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('erased_type')
 
     @abstractmethod
     def visit_deleted_type(self, t: DeletedType) -> T:
@@ -842,14 +867,14 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_overloaded(self, t: Overloaded) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('overloaded')
 
     @abstractmethod
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
     def visit_star_type(self, t: StarType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('star_type')
 
     @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
@@ -860,7 +885,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('ellipsis_type')
+
+    def visit_type_type(self, t: TypeType) -> T:
+        raise self._notimplemented_helper('type_type')
 
 
 class TypeTranslator(TypeVisitor[Type]):
@@ -1059,6 +1087,9 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_ellipsis_type(self, t):
         return '...'
+
+    def visit_type_type(self, t):
+        return 'Type[{}]'.format(t.item.accept(self))
 
     def list_str(self, a):
         """Convert items of an array to strings (pretty-print types)

@@ -1426,20 +1426,21 @@ C(arg=0)
 [case testTypeUsingTypeCBasic]
 from typing import Type
 class User: pass
-class ProUser: pass
-class BasicUser: pass
+class ProUser(User): pass
+class BasicUser(User): pass
 def new_user(user_class: Type[User]) -> User:
     return user_class()
+reveal_type(new_user(User))
 reveal_type(new_user(ProUser))
 [out]
-main: note: At top level:
 main:7: error: Revealed type is '__main__.User'
+main:8: error: Revealed type is '__main__.User'
 
 [case testTypeUsingTypeCTypeVar]
 from typing import Type, TypeVar
 class User: pass
-class ProUser: pass
-class BasicUser: pass
+class ProUser(User): pass
+class BasicUser(user): pass
 U = TypeVar('U', bound=User)
 def new_user(user_class: Type[U]) -> U:
     return user_class()
@@ -1447,3 +1448,18 @@ reveal_type(new_user(ProUser))
 [out]
 main: note: At top level:
 main:8: error: Revealed type is '__main__.ProUser'
+
+[case testTypeUsingTypeCCovariance]
+from typing import Type, TypeVar
+class User: pass
+class ProUser(User): pass
+class BasicUser(user): pass
+U = TypeVar('U', bound=User)
+def new_user(user_class: Type[U]) -> U:
+    return user_class()
+def new_pro_user(user_class: Type[ProUser]):
+    user = new_user(user_class)
+    reveal_type(user)
+[out]
+main: note: At top level:
+main:10: error: Revealed type is '__main__.ProUser'

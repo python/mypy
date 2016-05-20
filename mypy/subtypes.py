@@ -3,7 +3,7 @@ from typing import cast, List, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
-    PartialType, DeletedType, is_named_instance
+    PartialType, DeletedType, TypeType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -145,6 +145,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                        for item in right.items())
         elif isinstance(right, Instance):
             return is_subtype(left.fallback, right)
+        elif isinstance(right, TypeType):
+            # XXX Or left.is_type_obj()?
+            return left.is_concrete_type_obj() and is_subtype(left.ret_type, right.item)
         else:
             return False
 
