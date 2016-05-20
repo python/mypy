@@ -2414,8 +2414,8 @@ def find_isinstance_check(node: Node,
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
         if is_not or node.operators == ['is']:
-            if_vars = {}
-            else_vars = {}
+            if_vars = {}  # type: Dict[Node, Type]
+            else_vars = {}  # type: Dict[Node, Type]
             for expr in node.operands:
                 if expr.literal == LITERAL_TYPE and not is_none(expr):
                     # This should only be true at most once: there should be
