@@ -829,7 +829,7 @@ class Lexer:
         self.pre_whitespace += s
         self.i += len(s)
 
-    type_ignore_exp = re.compile(r'[ \t]*#[ \t]*type:[ \t]*ignore\b')
+    type_ignore_exp = re.compile(r'[ \t]*#[^#]*\btype:[ \t]*ignore\b')
 
     def add_token(self, tok: Token) -> None:
         """Store a token.

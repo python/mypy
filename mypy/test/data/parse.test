@@ -395,6 +395,20 @@ MypyFile:1(
       Block:2(
         PassStmt:3()))))
 
+[case testAdditionalComments]
+x = 0 # additional comment type: int
+y = 0 # type: int; additional comment
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    IntExpr(0)
+    int?)
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(0)
+    int?))
+
 [case testGlobalVarWithType]
 x = 0 # type: int
 y = False # type: bool

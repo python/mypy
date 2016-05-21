@@ -1907,7 +1907,11 @@ class Parser:
             raise ParseError()
         return typ
 
-    annotation_prefix_re = re.compile(r'#\s*type:')
+    # The type comment can either be prefixed by a singular `#`
+    # followed by anything and at least one whitepace character or a
+    # singular `#`.
+    annotation_prefix_re = re.compile(r'(#[^#]*\s+|#)type:')
+    type_annotation_re = re.compile(r'(?:#[^#]*\s+|#)type:([^;]*);{0,1}')
     ignore_prefix_re = re.compile(r'ignore\b')
 
     def parse_type_comment(self, token: Token, signature: bool) -> Type:
@@ -1918,7 +1922,7 @@ class Parser:
         """
         whitespace_or_comments = token.rep().strip()
         if self.annotation_prefix_re.match(whitespace_or_comments):
-            type_as_str = whitespace_or_comments.split(':', 1)[1].strip()
+            type_as_str = self.type_annotation_re.match(whitespace_or_comments).group(1).strip()
             if self.ignore_prefix_re.match(type_as_str):
                 # Actually a "# type: ignore" annotation -> not a type.
                 return None
