@@ -1191,7 +1191,8 @@ class TypeChecker(NodeVisitor[Type]):
                         if partial_types is not None:
                             if not self.current_node_deferred:
                                 if experiments.STRICT_OPTIONAL:
-                                    var.type = UnionType.make_simplified_union([rvalue_type, NoneTyp()])
+                                    var.type = UnionType.make_simplified_union(
+                                        [rvalue_type, NoneTyp()])
                                 else:
                                     var.type = rvalue_type
                             else:
@@ -1572,9 +1573,12 @@ class TypeChecker(NodeVisitor[Type]):
                     # TODO: Don't infer things twice.
                     key_type = self.accept(lvalue.index)
                     value_type = self.accept(rvalue)
-                    full_key_type = UnionType.make_simplified_union([key_type, var.type.inner_types[0]])
-                    full_value_type = UnionType.make_simplified_union([value_type, var.type.inner_types[0]])
-                    if is_valid_inferred_type(full_key_type) and is_valid_inferred_type(full_value_type):
+                    full_key_type = UnionType.make_simplified_union(
+                        [key_type, var.type.inner_types[0]])
+                    full_value_type = UnionType.make_simplified_union(
+                        [value_type, var.type.inner_types[0]])
+                    if (is_valid_inferred_type(full_key_type) and
+                            is_valid_inferred_type(full_value_type)):
                         if not self.current_node_deferred:
                             var.type = self.named_generic_type('builtins.dict',
                                                                [full_key_type, full_value_type])

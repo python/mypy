@@ -217,6 +217,7 @@ class Void(Type):
         assert data['.class'] == 'Void'
         return Void()
 
+
 class UninhabitedType(Type):
     """This type has no members.
     """

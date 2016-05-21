@@ -165,7 +165,8 @@ class ExpressionChecker:
                 if (typename in self.item_args and methodname in self.item_args[typename]
                         and e.arg_kinds == [ARG_POS]):
                     item_type = self.accept(e.args[0])
-                    full_item_type = UnionType.make_simplified_union([item_type, partial_type.inner_types[0]])
+                    full_item_type = UnionType.make_simplified_union(
+                        [item_type, partial_type.inner_types[0]])
                     if mypy.checker.is_valid_inferred_type(full_item_type):
                         var.type = self.chk.named_generic_type(typename, [full_item_type])
                         del partial_types[var]
@@ -176,8 +177,11 @@ class ExpressionChecker:
                     if isinstance(arg_type, Instance):
                         arg_typename = arg_type.type.fullname()
                         if arg_typename in self.container_args[typename][methodname]:
-                            full_item_types = [UnionType.make_simplified_union([item_type, prev_type])
-                                               for item_type, prev_type in zip(arg_type.args, partial_type.inner_types)]
+                            full_item_types = [
+                                UnionType.make_simplified_union([item_type, prev_type])
+                                for item_type, prev_type
+                                in zip(arg_type.args, partial_type.inner_types)
+                            ]
                             if all(mypy.checker.is_valid_inferred_type(item_type)
                                    for item_type in full_item_types):
                                 var.type = self.chk.named_generic_type(typename,
