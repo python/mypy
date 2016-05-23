@@ -225,13 +225,13 @@ class ConditionalTypeBinder:
         else:
             return self.frames[0].get(expr.literal_hash)
 
-    def assign_type(self, expr: Node, type: Type,
+    def assign_type(self, expr: Node,
+                    type: Type,
+                    declared_type: Type,
                     restrict_any: bool = False) -> None:
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
-
-        declared_type = self.get_declaration(expr)
 
         if declared_type is None:
             # Not sure why this happens.  It seems to mainly happen in
@@ -1212,7 +1212,9 @@ class TypeChecker(NodeVisitor[Type]):
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue, rvalue_type,
+                    self.binder.assign_type(lvalue,
+                                            rvalue_type,
+                                            lvalue_type,
                                             self.typing_mode_weak())
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
@@ -1445,7 +1447,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Infer the type of initialized variables from initializer type."""
         if self.typing_mode_weak():
             self.set_inferred_type(name, lvalue, AnyType())
-            self.binder.assign_type(lvalue, init_type, True)
+            self.binder.assign_type(lvalue, init_type, self.binder.get_declaration(lvalue), True)
         elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
@@ -1945,7 +1947,9 @@ class TypeChecker(NodeVisitor[Type]):
             s.expr.accept(self)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type(elt, DeletedType(source=elt.name),
+                    self.binder.assign_type(elt,
+                                            DeletedType(source=elt.name),
+                                            self.binder.get_declaration(elt),
                                             self.typing_mode_weak())
             return None
 
