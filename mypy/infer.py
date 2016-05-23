@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 from mypy.constraints import infer_constraints, infer_constraints_for_callable
-from mypy.types import Type, CallableType
+from mypy.types import Type, TypeVarId, CallableType
 from mypy.solve import solve_constraints
 from mypy.constraints import SUBTYPE_OF
 
@@ -35,7 +35,7 @@ def infer_function_type_arguments(callee_type: CallableType,
     return solve_constraints(type_vars, constraints, strict)
 
 
-def infer_type_arguments(type_var_ids: List[int],
+def infer_type_arguments(type_var_ids: List[TypeVarId],
                          template: Type, actual: Type) -> List[Type]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.

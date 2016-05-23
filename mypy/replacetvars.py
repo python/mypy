@@ -20,7 +20,7 @@ class ReplaceTypeVarsVisitor(TypeTranslator):
         self.func_tvars = func_tvars
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if t.id > 0 or self.func_tvars:
+        if t.is_class_var or self.func_tvars:
             if t.line is not None:
                 return AnyType(t.line)
             else:
@@ -39,7 +39,7 @@ class ReplaceFuncTypeVarsVisitor(TypeTranslator):
         self.target_type = target_type
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if t.id < 0:
+        if t.is_func_var:
             return self.target_type
         else:
             return t

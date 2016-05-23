@@ -32,7 +32,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
-    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType
+    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -920,7 +920,7 @@ class TypeChecker(NodeVisitor[Type]):
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
-        subst = []  # type: List[List[Tuple[int, Type]]]
+        subst = []  # type: List[List[Tuple[TypeVarId, Type]]]
         tvars = typ.variables or []
         tvars = tvars[:]
         if defn.info:
@@ -2524,17 +2524,17 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
         return UnionType(types)
 
 
-def expand_node(defn: Node, map: Dict[int, Type]) -> Node:
+def expand_node(defn: Node, map: Dict[TypeVarId, Type]) -> Node:
     visitor = TypeTransformVisitor(map)
     return defn.accept(visitor)
 
 
-def expand_func(defn: FuncItem, map: Dict[int, Type]) -> FuncItem:
+def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
     return cast(FuncItem, expand_node(defn, map))
 
 
 class TypeTransformVisitor(TransformVisitor):
-    def __init__(self, map: Dict[int, Type]) -> None:
+    def __init__(self, map: Dict[TypeVarId, Type]) -> None:
         super().__init__()
         self.map = map
 

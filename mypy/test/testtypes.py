@@ -111,11 +111,11 @@ class TypeOpsSuite(Suite):
             self.assert_expand(t, [], t)
 
     def test_expand_naked_type_var(self):
-        self.assert_expand(self.fx.t, [(1, self.fx.a)], self.fx.a)
-        self.assert_expand(self.fx.t, [(2, self.fx.a)], self.fx.t)
+        self.assert_expand(self.fx.t, [(self.fx.t.id, self.fx.a)], self.fx.a)
+        self.assert_expand(self.fx.t, [(self.fx.s.id, self.fx.a)], self.fx.t)
 
     def test_expand_basic_generic_types(self):
-        self.assert_expand(self.fx.gt, [(1, self.fx.a)], self.fx.ga)
+        self.assert_expand(self.fx.gt, [(self.fx.t.id, self.fx.a)], self.fx.ga)
 
     # IDEA: Add test cases for
     #   tuple types

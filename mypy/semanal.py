@@ -459,7 +459,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         tvarnodes = self.add_func_type_variables_to_symbol_table(defn)
         next_function_tvar_id = min([self.next_function_tvar_id()] +
-                                    [n.tvar_def.id - 1 for n in tvarnodes])
+                                    [n.tvar_def.id.raw_id - 1 for n in tvarnodes])
         self.next_function_tvar_id_stack.append(next_function_tvar_id)
 
         if defn.type:

@@ -1,7 +1,9 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
-from typing import Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional
+from typing import (
+    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional
+)
 
 import mypy.nodes
 from mypy.nodes import INVARIANT, SymbolNode
@@ -45,20 +47,44 @@ class Type(mypy.nodes.Context):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
+class TypeVarId:
+    # 1, 2, ... for type-related, -1, ... for function-related
+
+    raw_id = 0  # type: int
+
+    def __init__(self, raw_id: int) -> None:
+        self.raw_id = raw_id
+
+    def __repr__(self) -> str:
+        return self.raw_id.__repr__()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, TypeVarId):
+            return self.raw_id == other.raw_id
+        else:
+            return False
+
+    def __ne__(self, other: object) -> bool:
+        return not (self == other)
+
+    def __hash__(self) -> int:
+        return hash(self.raw_id)
+
+
 class TypeVarDef(mypy.nodes.Context):
     """Definition of a single type variable."""
 
     name = ''
-    id = 0
+    id = None  # type: TypeVarId
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
     line = 0
 
-    def __init__(self, name: str, id: int, values: Optional[List[Type]],
+    def __init__(self, name: str, raw_id: int, values: Optional[List[Type]],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1) -> None:
         self.name = name
-        self.id = id
+        self.id = TypeVarId(raw_id)
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
@@ -78,7 +104,7 @@ class TypeVarDef(mypy.nodes.Context):
     def serialize(self) -> JsonDict:
         return {'.class': 'TypeVarDef',
                 'name': self.name,
-                'id': self.id,
+                'id': self.id.raw_id,
                 'values': None if self.values is None else [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
@@ -368,7 +394,7 @@ class TypeVarType(Type):
     """
 
     name = ''  # Name of the type variable (for messages and debugging)
-    id = 0     # 1, 2, ... for type-related, -1, ... for function-related
+    id = None  # type: TypeVarId
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type   # Upper bound for values
     # See comments in TypeVarDef for more about variance.
@@ -385,6 +411,12 @@ class TypeVarType(Type):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
 
+    def is_class_var(self) -> bool:
+        return self.id.raw_id > 0
+
+    def is_func_var(self) -> bool:
+        return self.id.raw_id < 0
+
     def erase_to_union_or_bound(self) -> Type:
         if self.values:
             return UnionType.make_simplified_union(self.values)
@@ -394,7 +426,7 @@ class TypeVarType(Type):
     def serialize(self) -> JsonDict:
         return {'.class': 'TypeVarType',
                 'name': self.name,
-                'id': self.id,
+                'id': self.id.raw_id,
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
@@ -561,8 +593,8 @@ class CallableType(FunctionLike):
     def is_generic(self) -> bool:
         return bool(self.variables)
 
-    def type_var_ids(self) -> List[int]:
-        a = []  # type: List[int]
+    def type_var_ids(self) -> List[TypeVarId]:
+        a = []  # type: List[TypeVarId]
         for tv in self.variables:
             a.append(tv.id)
         return a

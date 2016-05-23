@@ -5,7 +5,7 @@ from typing import List, Optional, cast
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
     Instance, TupleType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
-    UninhabitedType, TypeType, is_named_instance
+    UninhabitedType, TypeType, TypeVarId, is_named_instance
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -23,11 +23,11 @@ class Constraint:
     It can be either T <: type or T :> type (T is a type variable).
     """
 
-    type_var = 0   # Type variable id
-    op = 0         # SUBTYPE_OF or SUPERTYPE_OF
-    target = None  # type: Type
+    type_var = None  # Type variable id
+    op = 0           # SUBTYPE_OF or SUPERTYPE_OF
+    target = None    # type: Type
 
-    def __init__(self, type_var: int, op: int, target: Type) -> None:
+    def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
         self.type_var = type_var
         self.op = op
         self.target = target
