@@ -98,7 +98,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                    t.line)
             elif fullname == 'builtins.None':
                 if experiments.STRICT_OPTIONAL:
-                    if t.ret_type:
+                    if t.is_ret_type:
                         return Void()
                     else:
                         return NoneTyp()

@@ -104,20 +104,20 @@ class UnboundType(Type):
     # should this type be wrapped in an Optional?
     optional = False
     # is this type a return type?
-    ret_type = False
+    is_ret_type = False
 
     def __init__(self,
                  name: str,
                  args: List[Type] = None,
                  line: int = -1,
                  optional: bool = False,
-                 ret_type: bool = False) -> None:
+                 is_ret_type: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
         self.optional = optional
-        self.ret_type = ret_type
+        self.is_ret_type = is_ret_type
         super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:

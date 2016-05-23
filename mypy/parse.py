@@ -485,7 +485,7 @@ class Parser:
                 return None
 
             if typ and isinstance(typ.ret_type, UnboundType):
-                typ.ret_type.ret_type = True
+                typ.ret_type.is_ret_type = True
 
             node = FuncDef(name, args, body, typ)
             node.set_line(def_tok)
