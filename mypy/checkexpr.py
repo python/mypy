@@ -22,7 +22,7 @@ from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.replacetvars import replace_func_type_vars
+from mypy.erasetype import replace_func_type_vars
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments

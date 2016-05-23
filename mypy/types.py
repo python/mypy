@@ -70,6 +70,12 @@ class TypeVarId:
     def __hash__(self) -> int:
         return hash(self.raw_id)
 
+    def is_class_var(self) -> bool:
+        return self.raw_id > 0
+
+    def is_func_var(self) -> bool:
+        return self.raw_id < 0
+
 
 class TypeVarDef(mypy.nodes.Context):
     """Definition of a single type variable."""
@@ -410,12 +416,6 @@ class TypeVarType(Type):
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
-
-    def is_class_var(self) -> bool:
-        return self.id.raw_id > 0
-
-    def is_func_var(self) -> bool:
-        return self.id.raw_id < 0
 
     def erase_to_union_or_bound(self) -> Type:
         if self.values:
