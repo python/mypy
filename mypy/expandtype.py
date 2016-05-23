@@ -95,7 +95,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self))
+        item = t.item.accept(self)
+        return TypeType(item)
 
     def expand_types(self, types: List[Type]) -> List[Type]:
         a = []  # type: List[Type]

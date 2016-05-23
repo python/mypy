@@ -1443,11 +1443,16 @@ class ProUser(User): pass
 class BasicUser(User): pass
 U = TypeVar('U', bound=User)
 def new_user(user_class: Type[U]) -> U:
-    return user_class()
-reveal_type(new_user(ProUser))
+    user = user_class()
+    reveal_type(user)
+    return user
+pro_user = new_user(ProUser)
+reveal_type(pro_user)
 [out]
+main: note: In function "new_user":
+main:8: error: Revealed type is 'U`-1'
 main: note: At top level:
-main:8: error: Revealed type is '__main__.ProUser'
+main:11: error: Revealed type is '__main__.ProUser'
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar

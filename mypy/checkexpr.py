@@ -278,20 +278,35 @@ class ExpressionChecker:
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeType):
-            item = self.analyze_type_type(callee.item, context)
+            item = self.analyze_type_type_callee(callee.item, context)
             return self.check_call(item, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         else:
             return self.msg.not_callable(callee, context), AnyType()
 
-    def analyze_type_type(self, arg: Type, context: Context) -> Type:
-        """Given the arg from (x: Type[arg]), return the type for x."""
-        if isinstance(arg, AnyType):
+    # What's a good name for this method?
+    def analyze_type_type_callee(self, item: Type, context: Context) -> Type:
+        """Analyze the callee X in X(...) where X is Type[item].
+
+        Return a Y that we can pass to check_call(Y, ...).
+        """
+        if isinstance(item, AnyType):
             return AnyType()
-        if isinstance(arg, Instance):
-            return type_object_type(arg.type, self.named_type)
-        if isinstance(arg, UnionType):
-            return UnionType([self.analyze_type_type(item, context) for item in arg.items], arg.line)
+        if isinstance(item, Instance):
+            return type_object_type(item.type, self.named_type)
+        if isinstance(item, UnionType):
+            return UnionType([self.analyze_type_type_callee(item, context)
+                              for item in item.items], item.line)
+        if isinstance(item, TypeVarType):
+            # Pretend we're calling the typevar's upper bound,
+            # i.e. its constructor (a poor approximation for reality,
+            # but better than AnyType...), but replace the return type
+            # with typevar.
+            callee = self.analyze_type_type_callee(item.upper_bound, context)
+            if isinstance(callee, CallableType):
+                callee = callee.copy_modified(ret_type=item)
+            return callee
+
         # XXX Do we need to handle other forms?
         # XXX Make a nicely formatted error message.
         self.msg.fail("XXX Bad arg to Type[]", context)

@@ -967,6 +967,9 @@ class TypeTranslator(TypeVisitor[Type]):
                 raise RuntimeError('CallableType expectected, but got {}'.format(type(new)))
         return Overloaded(items=items)
 
+    def visit_type_type(self, t: TypeType) -> Type:
+        return t
+
 
 class TypeStrVisitor(TypeVisitor[str]):
     """Visitor for pretty-printing types into strings.

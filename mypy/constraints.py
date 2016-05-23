@@ -348,14 +348,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res.extend(infer_constraints(t, AnyType(), self.direction))
         return res
 
-    def visit_overloaded(self, type: Overloaded) -> List[Constraint]:
+    def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
         res = []  # type: List[Constraint]
-        for t in type.items():
+        for t in template.items():
             res.extend(infer_constraints(t, self.actual, self.direction))
         return res
 
-    def visit_type_type(self, type: TypeType) -> List[Constraint]:
-        return []  # XXX What else to do?
+    def visit_type_type(self, template: TypeType) -> List[Constraint]:
+        return infer_constraints(template.item, self.actual, self.direction)
 
 
 def neg_op(op: int) -> int:

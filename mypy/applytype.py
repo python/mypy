@@ -43,6 +43,10 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
             else:
                 msg.incompatible_typevar_value(callable, i + 1, type, context)
 
+        # Translate constructor fn back to class.
+        if isinstance(type, CallableType) and type.is_type_obj():
+            types[i] = type = type.ret_type
+
         upper_bound = callable.variables[i].upper_bound
         if type and not mypy.subtypes.satisfies_upper_bound(type, upper_bound):
             msg.incompatible_typevar_value(callable, i + 1, type, context)
