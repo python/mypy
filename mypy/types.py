@@ -50,7 +50,7 @@ class TypeVarDef(mypy.nodes.Context):
 
     name = ''
     id = 0
-    values = None  # type: Optional[List[Type]]
+    values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
     line = 0
@@ -374,13 +374,12 @@ class TypeVarType(Type):
     # See comments in TypeVarDef for more about variance.
     variance = INVARIANT  # type: int
 
-    def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
-                 variance: int = INVARIANT, line: int = -1) -> None:
-        self.name = name
-        self.id = id
-        self.values = values
-        self.upper_bound = upper_bound
-        self.variance = variance
+    def __init__(self, binder: TypeVarDef, line: int = -1) -> None:
+        self.name = binder.name
+        self.id = binder.id
+        self.values = binder.values
+        self.upper_bound = binder.upper_bound
+        self.variance = binder.variance
         super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -404,11 +403,12 @@ class TypeVarType(Type):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeVarType':
         assert data['.class'] == 'TypeVarType'
-        return TypeVarType(data['name'],
+        tvdef = TypeVarDef(data['name'],
                            data['id'],
                            [Type.deserialize(v) for v in data['values']],
                            Type.deserialize(data['upper_bound']),
                            data['variance'])
+        return TypeVarType(tvdef)
 
 
 class FunctionLike(Type):

@@ -1264,7 +1264,8 @@ class ExpressionChecker:
     def check_list_or_set_expr(self, items: List[Node], fullname: str,
                                tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
-        tv = TypeVarType('T', -1, [], self.chk.object_type())
+        tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+        tv = TypeVarType(tvdef)
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -1272,7 +1273,7 @@ class ExpressionChecker:
             self.chk.named_generic_type(fullname, [tv]),
             self.named_type('builtins.function'),
             name=tag,
-            variables=[TypeVarDef('T', -1, None, self.chk.object_type())])
+            variables=[tvdef])
         return self.check_call(constructor,
                                items,
                                [nodes.ARG_POS] * len(items), context)[0]
@@ -1301,20 +1302,21 @@ class ExpressionChecker:
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         # Translate into type checking a generic function call.
-        tv1 = TypeVarType('KT', -1, [], self.chk.object_type())
-        tv2 = TypeVarType('VT', -2, [], self.chk.object_type())
+        ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
+        vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+        kt = TypeVarType(ktdef)
+        vt = TypeVarType(vtdef)
         # The callable type represents a function like this:
         #
         #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
         constructor = CallableType(
-            [TupleType([tv1, tv2], self.named_type('builtins.tuple'))],
+            [TupleType([kt, vt], self.named_type('builtins.tuple'))],
             [nodes.ARG_STAR],
             [None],
-            self.chk.named_generic_type('builtins.dict', [tv1, tv2]),
+            self.chk.named_generic_type('builtins.dict', [kt, vt]),
             self.named_type('builtins.function'),
             name='<list>',
-            variables=[TypeVarDef('KT', -1, None, self.chk.object_type()),
-                       TypeVarDef('VT', -2, None, self.chk.object_type())])
+            variables=[ktdef, vtdef])
         # Synthesize function arguments.
         args = []  # type: List[Node]
         for key, value in e.items:
@@ -1438,7 +1440,8 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        tv = TypeVarType('T', -1, [], self.chk.object_type())
+        tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+        tv = TypeVarType(tvdef)
         constructor = CallableType(
             [tv],
             [nodes.ARG_POS],
@@ -1446,7 +1449,7 @@ class ExpressionChecker:
             self.chk.named_generic_type(type_name, [tv]),
             self.chk.named_type('builtins.function'),
             name=id_for_messages,
-            variables=[TypeVarDef('T', -1, None, self.chk.object_type())])
+            variables=[tvdef])
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
@@ -1456,17 +1459,18 @@ class ExpressionChecker:
 
         # Infer the type of the list comprehension by using a synthetic generic
         # callable type.
-        key_tv = TypeVarType('KT', -1, [], self.chk.object_type())
-        value_tv = TypeVarType('VT', -2, [], self.chk.object_type())
+        ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
+        vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+        kt = TypeVarType(ktdef)
+        vt = TypeVarType(vtdef)
         constructor = CallableType(
-            [key_tv, value_tv],
+            [kt, vt],
             [nodes.ARG_POS, nodes.ARG_POS],
             [None, None],
-            self.chk.named_generic_type('builtins.dict', [key_tv, value_tv]),
+            self.chk.named_generic_type('builtins.dict', [kt, vt]),
             self.chk.named_type('builtins.function'),
             name='<dictionary-comprehension>',
-            variables=[TypeVarDef('KT', -1, None, self.chk.object_type()),
-                       TypeVarDef('VT', -2, None, self.chk.object_type())])
+            variables=[ktdef, vtdef])
         return self.check_call(constructor,
                                [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 

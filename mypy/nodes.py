@@ -1983,8 +1983,8 @@ class SymbolTableNode:
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
     node = None  # type: Optional[SymbolNode]
-    # Type variable id (for bound type variables only)
-    tvar_id = 0
+    # Type variable definition (for bound type variables only)
+    tvar_def = None  # type: Optional[mypy.types.TypeVarDef]
     # Module id (e.g. "foo.bar") or None
     mod_id = ''
     # If this not None, override the type of the 'node' attribute.
@@ -1997,13 +1997,14 @@ class SymbolTableNode:
     cross_ref = None  # type: Optional[str]
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
-                 typ: 'mypy.types.Type' = None, tvar_id: int = 0,
+                 typ: 'mypy.types.Type' = None,
+                 tvar_def: 'mypy.types.TypeVarDef' = None,
                  module_public: bool = True) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
-        self.tvar_id = tvar_id
+        self.tvar_def = tvar_def
         self.module_public = module_public
 
     @property
@@ -2046,8 +2047,8 @@ class SymbolTableNode:
         data = {'.class': 'SymbolTableNode',
                 'kind': node_kinds[self.kind],
                 }  # type: JsonDict
-        if self.tvar_id:
-            data['tvar_id'] = self.tvar_id
+        if self.tvar_def:
+            data['tvar_def'] = self.tvar_def.serialize()
         if not self.module_public:
             data['module_public'] = False
         if self.kind == MODULE_REF:
@@ -2089,8 +2090,8 @@ class SymbolTableNode:
             if 'type_override' in data:
                 typ = mypy.types.Type.deserialize(data['type_override'])
             stnode = SymbolTableNode(kind, node, typ=typ)
-        if 'tvar_id' in data:
-            stnode.tvar_id = data['tvar_id']
+        if 'tvar_def' in data:
+            stnode.tvar_def = mypy.types.TypeVarDef.deserialize(data['tvar_def'])
         if 'module_public' in data:
             stnode.module_public = data['module_public']
         return stnode

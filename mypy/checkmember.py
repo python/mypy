@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional
+from typing import cast, Callable, List, Dict, Optional
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
@@ -432,20 +432,26 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
 
 def convert_class_tvars_to_func_tvars(callable: CallableType,
                                       num_func_tvars: int) -> CallableType:
-    return cast(CallableType, callable.accept(TvarTranslator(num_func_tvars)))
+    tvar_def_translation = {}  # type: Dict[int, TypeVarDef]
+    for v in callable.variables:
+        if v.id > 0:
+            tvar_def_translation[v.id] = \
+                TypeVarDef(v.name, -v.id - num_func_tvars,
+                           v.values, v.upper_bound, v.variance)
+
+    return cast(CallableType, callable.accept(TvarTranslator(tvar_def_translation)))
 
 
 class TvarTranslator(TypeTranslator):
-    def __init__(self, num_func_tvars: int) -> None:
+    def __init__(self, translation: Dict[int, TypeVarDef]) -> None:
         super().__init__()
-        self.num_func_tvars = num_func_tvars
+        self.translation = translation
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         if t.id < 0:
             return t
         else:
-            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound,
-                               t.variance)
+            return TypeVarType(self.translation[t.id])
 
     def translate_variables(self,
                             variables: List[TypeVarDef]) -> List[TypeVarDef]:
@@ -454,8 +460,7 @@ class TvarTranslator(TypeTranslator):
         items = []  # type: List[TypeVarDef]
         for v in variables:
             if v.id > 0:
-                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        v.values, v.upper_bound, v.variance))
+                items.append(self.translation[v.id])
             else:
                 items.append(v)
         return items
