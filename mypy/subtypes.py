@@ -201,6 +201,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         elif isinstance(right, UnboundType):
             return True
+        elif isinstance(right, TypeType):
+            # All the items must have the same type object status, so
+            # it's sufficient to query only (any) one of them.
+            # XXX Or left.is_type_obj()?
+            return left.is_concrete_type_obj() and is_subtype(left.items()[0].ret_type, right.item)
         else:
             return False
 
@@ -211,6 +216,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
         raise RuntimeError
+
+    def visit_type_type(self, left: TypeType) -> bool:
+        right = self.right
+        if isinstance(right, TypeType):
+            return is_subtype(left.item, right.item)
+        if isinstance(right, CallableType):
+            # XXX Or is_type_obj()?
+            return right.is_concrete_type_obj() and is_subtype(left.item, right.ret_type)
+        # XXX Others? Union, Any, TypeVar
+        return False
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,

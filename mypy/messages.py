@@ -11,7 +11,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
-    Overloaded, FunctionLike, DeletedType
+    Overloaded, FunctionLike, DeletedType, TypeType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -265,6 +265,9 @@ class MessageBuilder:
             return '"Any"'
         elif isinstance(typ, DeletedType):
             return '<deleted>'
+        elif isinstance(typ, TypeType):
+            return 'Type[{}]'.format(
+                strip_quotes(self.format_simple(typ.item, verbosity)))
         elif typ is None:
             raise RuntimeError('Type is None')
         else:

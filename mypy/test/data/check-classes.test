@@ -1440,7 +1440,7 @@ main:8: error: Revealed type is '__main__.User'
 from typing import Type, TypeVar
 class User: pass
 class ProUser(User): pass
-class BasicUser(user): pass
+class BasicUser(User): pass
 U = TypeVar('U', bound=User)
 def new_user(user_class: Type[U]) -> U:
     return user_class()
@@ -1453,13 +1453,34 @@ main:8: error: Revealed type is '__main__.ProUser'
 from typing import Type, TypeVar
 class User: pass
 class ProUser(User): pass
-class BasicUser(user): pass
-U = TypeVar('U', bound=User)
-def new_user(user_class: Type[U]) -> U:
+class BasicUser(User): pass
+def new_user(user_class: Type[User]) -> User:
     return user_class()
 def new_pro_user(user_class: Type[ProUser]):
-    user = new_user(user_class)
-    reveal_type(user)
+    new_user(user_class)
 [out]
-main: note: At top level:
-main:10: error: Revealed type is '__main__.ProUser'
+
+[case testTypeUsingTypeCErrorCovariance]
+from typing import Type, TypeVar
+class User: pass
+def new_user(user_class: Type[User]):
+    return user_class()
+def foo(arg: Type[int]):
+    new_user(arg)
+[out]
+main: note: In function "foo":
+main:6: error: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
+
+[case testTypeUsingTypeCUnionOverload]
+from typing import Type, Union, overload
+class X:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, a: int) -> None: pass
+class Y:
+    def __init__(self) -> None: pass
+def bar(o: Type[Union[X, Y]]): pass
+bar(X)
+bar(Y)
+[out]

@@ -5,7 +5,7 @@ from typing import List, Optional, cast
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
     Instance, TupleType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
-    is_named_instance
+    TypeType, is_named_instance
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -353,6 +353,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         for t in type.items():
             res.extend(infer_constraints(t, self.actual, self.direction))
         return res
+
+    def visit_type_type(self, type: TypeType) -> List[Constraint]:
+        return []  # XXX What else to do?
 
 
 def neg_op(op: int) -> int:

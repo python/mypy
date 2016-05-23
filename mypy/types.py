@@ -1180,6 +1180,9 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_overloaded(self, t: Overloaded) -> bool:
         return self.query_types(t.items())
 
+    def visit_type_type(self, t: TypeType) -> bool:
+        return t.item.accept(self)
+
     def query_types(self, types: Sequence[Type]) -> bool:
         """Perform a query for a list of types.
 
