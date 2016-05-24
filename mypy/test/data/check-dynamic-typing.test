@@ -191,7 +191,7 @@ a = d.foo(a()) # E: "A" not callable
 a = d.x
 a = d.foo(a, a)
 d.x = a
-d.x.y.z
+d.x.y.z  # E: "A" has no attribute "y"
 
 class A: pass
 [out]

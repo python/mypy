@@ -1400,13 +1400,16 @@ main: note: In member "f" of class "A":
 [case testAttributePartiallyInitializedToNoneWithMissingAnnotation]
 class A:
     def f(self) -> None:
-        self.x = None # E: Need type annotation for variable
+        self.x = None
 
     def g(self) -> None:
         self.x = 1
         self.x()
 [out]
 main: note: In member "f" of class "A":
+main:3: error: Need type annotation for variable
+main: note: In member "g" of class "A":
+main:7: error: "int" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
 a = None
