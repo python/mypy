@@ -2403,9 +2403,16 @@ class FirstPass(NodeVisitor):
                 # If the previous symbol is a variable, this should take precedence.
                 self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
+    def visit_while_stmt(self, s: WhileStmt) -> None:
+        s.body.accept(self)
+        if s.else_body:
+            s.else_body.accept(self)
+
     def visit_for_stmt(self, s: ForStmt) -> None:
         self.analyze_lvalue(s.index)
         s.body.accept(self)
+        if s.else_body:
+            s.else_body.accept(self)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
         for n in s.target:

@@ -1523,8 +1523,19 @@ f = g # E: Incompatible types in assignment (expression has type Callable[[Any, 
 [case testFunctionDefinitionWithForStatement]
 for _ in [1]:
     def f(): pass
+else:
+    def g(): pass
 f()
+g()
 [builtins fixtures/list.py]
+
+[case testFunctionDefinitionWithWhileStatement]
+while 1:
+    def f(): pass
+else:
+    def g(): pass
+f()
+g()
 
 [case testBareCallable]
 from typing import Callable, Any
