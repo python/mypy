@@ -5,7 +5,8 @@ from typing import cast, List
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
-    UnionType, FunctionLike, Overloaded, PartialType, DeletedType
+    UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
+    TypeType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
@@ -203,6 +204,13 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         # We only have partial information so we can't decide the join result. We should
         # never get here.
         assert False, "Internal error"
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        if isinstance(self.s, TypeType):
+            return TypeType(self.join(t.item, self.s.item), line=t.line)
+        else:
+            # XXX Should at least try to join Type[] with type
+            return AnyType()
 
     def join(self, s: Type, t: Type) -> Type:
         return join_types(s, t)

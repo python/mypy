@@ -303,11 +303,14 @@ class ExpressionChecker:
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(item.upper_bound, context)
+            # XXX What to do for a generic class?  Maybe just reject.
             if isinstance(callee, CallableType):
                 callee = callee.copy_modified(ret_type=item)
+            # XXX What to do for Overloaded?
             return callee
 
         # XXX Do we need to handle other forms?
+        # XXX Or maybe those should be rejected during semantic analysis.
         # XXX Make a nicely formatted error message.
         self.msg.fail("XXX Bad arg to Type[]", context)
         return AnyType()

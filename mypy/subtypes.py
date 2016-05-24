@@ -146,6 +146,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Instance):
             return is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
+            # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and is_subtype(left.ret_type, right.item)
         else:
             return False
@@ -203,6 +204,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypeType):
             # All the items must have the same type object status, so
             # it's sufficient to query only (any) one of them.
+            # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and is_subtype(left.items()[0].ret_type, right.item)
         else:
             return False
@@ -220,6 +222,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TypeType):
             return is_subtype(left.item, right.item)
         if isinstance(right, CallableType):
+            # This is unsound, we don't check the __init__ signature.
             return right.is_type_obj() and is_subtype(left.item, right.ret_type)
         # XXX Others? Union, Any, TypeVar
         return False

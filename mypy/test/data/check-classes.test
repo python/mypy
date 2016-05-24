@@ -1427,38 +1427,47 @@ C(arg=0)
 from typing import Type
 class User: pass
 class ProUser(User): pass
-class BasicUser(User): pass
 def new_user(user_class: Type[User]) -> User:
     return user_class()
-reveal_type(new_user(User))
-reveal_type(new_user(ProUser))
+reveal_type(new_user(User))  # E: Revealed type is '__main__.User'
+reveal_type(new_user(ProUser))  # E: Revealed type is '__main__.User'
 [out]
-main:7: error: Revealed type is '__main__.User'
-main:8: error: Revealed type is '__main__.User'
 
 [case testTypeUsingTypeCTypeVar]
 from typing import Type, TypeVar
 class User: pass
 class ProUser(User): pass
-class BasicUser(User): pass
 U = TypeVar('U', bound=User)
 def new_user(user_class: Type[U]) -> U:
     user = user_class()
     reveal_type(user)
     return user
 pro_user = new_user(ProUser)
-reveal_type(pro_user)  # XXX Why is this ProUser*?
+reveal_type(pro_user)
 [out]
 main: note: In function "new_user":
-main:8: error: Revealed type is 'U`-1'
+main:7: error: Revealed type is 'U`-1'
 main: note: At top level:
-main:11: error: Revealed type is '__main__.ProUser*'
+main:10: error: Revealed type is '__main__.ProUser*'
+
+[case testTypeUsingTypeCTwoTypeVars]
+from typing import Type, TypeVar
+class User: pass
+class ProUser(User): pass
+class WizUser(ProUser): pass
+U = TypeVar('U', bound=User)
+def new_user(u_c: Type[U]) -> U: pass
+P = TypeVar('P', bound=ProUser)
+def new_pro(pro_c: Type[P]) -> P:
+    return new_user(pro_c)
+wiz = new_pro(WizUser)
+reveal_type(wiz)  # E: Revealed type is '__main__.WizUser*'
+[out]
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar
 class User: pass
 class ProUser(User): pass
-class BasicUser(User): pass
 def new_user(user_class: Type[User]) -> User:
     return user_class()
 def new_pro_user(user_class: Type[ProUser]):
@@ -1471,10 +1480,9 @@ class User: pass
 def new_user(user_class: Type[User]):
     return user_class()
 def foo(arg: Type[int]):
-    new_user(arg)
+    new_user(arg)  # E: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
 [out]
 main: note: In function "foo":
-main:6: error: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
 
 [case testTypeUsingTypeCUnionOverload]
 from typing import Type, Union, overload
@@ -1489,3 +1497,23 @@ def bar(o: Type[Union[X, Y]]): pass
 bar(X)
 bar(Y)
 [out]
+
+[case testTypeUsingTypeCTypeAny]
+from typing import Type, Any
+def foo(arg: Type[Any]):
+    x = arg()
+    reveal_type(x)  # E: Revealed type is 'Any'
+class X: pass
+foo(X)
+[out]
+main: note: In function "foo":
+
+[case testTypeUsingTypeCTypeNoArg]
+from typing import Type
+def foo(arg: Type):
+    x = arg()
+    reveal_type(x)  # E: Revealed type is 'Any'
+class X: pass
+foo(X)
+[out]
+main: note: In function "foo":

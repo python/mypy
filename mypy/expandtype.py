@@ -95,6 +95,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t
 
     def visit_type_type(self, t: TypeType) -> Type:
+        # TODO: Verify that the new item type is valid (instance or
+        # union of instances or Any).  Sadly we can't report errors
+        # here yet.
         item = t.item.accept(self)
         return TypeType(item)
 

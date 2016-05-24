@@ -357,8 +357,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_type_type(self, template: TypeType) -> List[Constraint]:
         if isinstance(self.actual, CallableType) and self.actual.is_type_obj():
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
-        print("XXX Don't know what to do with type %s for template %s" % (self.actual, template))
-        return []  # XXX ???
+        elif isinstance(self.actual, TypeType):
+            return infer_constraints(template.item, self.actual.item, self.direction)
+        else:
+            return []
 
 
 def neg_op(op: int) -> int:

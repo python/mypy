@@ -2,7 +2,8 @@ from typing import Sequence
 
 from mypy.types import (
     Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded, PartialType, DeletedType
+    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList,
+    Overloaded, PartialType, DeletedType, TypeType
 )
 
 
@@ -121,3 +122,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
         # A partial type is not fully defined, so the result is indeterminate. We shouldn't
         # get here.
         raise RuntimeError
+
+    def visit_type_type(self, left: TypeType) -> bool:
+        if isinstance(self.right, TypeType):
+            return is_same_type(left.item, self.right.item)
+        else:
+            return False

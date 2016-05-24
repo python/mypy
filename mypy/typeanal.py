@@ -115,11 +115,13 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
+                if len(t.args) == 0:
+                    return TypeType(AnyType(), line=t.line)
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
                 items = self.anal_array(t.args)
                 item = items[0]
-                return TypeType(item, t.line)
+                return TypeType(item, line=t.line)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
                 return sym.type_override
@@ -214,7 +216,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return AnyType()
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.accept(self), t.line)
+        return TypeType(t.accept(self), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')

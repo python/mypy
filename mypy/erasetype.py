@@ -3,7 +3,7 @@ from typing import Optional, Container
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    PartialType, DeletedType, TypeTranslator, TypeList
+    PartialType, DeletedType, TypeTranslator, TypeList, TypeType
 )
 
 
@@ -71,6 +71,10 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         return AnyType()        # XXX: return underlying type if only one?
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        # XXX No idea if this makes much sense.
+        return TypeType(AnyType(), line=t.line)
 
 
 def erase_generic_types(t: Type) -> Type:

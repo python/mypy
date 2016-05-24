@@ -789,11 +789,34 @@ class TypeType(Type):
 
     This annotates variables that are class objects, constrained by
     the type argument.  See PEP 484 for more details.
+
+    We may encounter expressions whose values are specific classes;
+    those are represented as callables (possibly overloaded)
+    corresponding to the class's constructor's signature and returning
+    an instance of that class.  The difference with Type[C] is that
+    those callables always represent the exact class given as the
+    return type; Type[C] represents any class that's a subclass of C,
+    and C may also be a type variable or a union (or Any).
+
+    Many questions around subtype relationships between Type[C1] and
+    def(...) -> C2 are answered by looking at the subtype
+    relationships between C1 and C2, since Type[] is considered
+    covariant.
+
+    There's an unsolved problem with constructor signatures (also
+    unsolved in PEP 484): calling a variable whose type is Type[C]
+    assumes the constructor signature for C, even though a subclass of
+    C might completely change the constructor signature.  For now we
+    just assume that users of Type[C] are careful not to do that (in
+    the future we might detect when they are violating that
+    assumption).
     """
 
+    # This can't be everything, but it can be a class reference,
+    # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Type, line: int = -1) -> None:
+    def __init__(self, item: Type, *, line: int = -1) -> None:
         super().__init__(line)
         self.item = item
 
@@ -887,8 +910,9 @@ class TypeVisitor(Generic[T]):
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         raise self._notimplemented_helper('ellipsis_type')
 
+    @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
-        raise self._notimplemented_helper('type_type')
+        pass
 
 
 class TypeTranslator(TypeVisitor[Type]):
@@ -968,7 +992,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return t
+        return TypeType(t.item.accept(self), line=t.line)
 
 
 class TypeStrVisitor(TypeVisitor[str]):
