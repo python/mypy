@@ -63,6 +63,7 @@ if not x:
   g(x)  # E: Argument 1 to "g" has incompatible type "Optional[int]"; expected None
 else:
   f(x)
+  x()  # E: "int" not callable
 [builtins fixtures/bool.py]
 
 [case testIsNotNoneCases]
@@ -72,8 +73,10 @@ def g(a: None) -> None: pass
 x = None  # type:  Optional[int]
 if x is not None:
   f(x)
+  x()  # E: "int" not callable
 else:
   g(x)
+  x()  # E: None not callable
 [builtins fixtures/bool.py]
 
 [case testIsNoneCases]
