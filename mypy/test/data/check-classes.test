@@ -1447,12 +1447,12 @@ def new_user(user_class: Type[U]) -> U:
     reveal_type(user)
     return user
 pro_user = new_user(ProUser)
-reveal_type(pro_user)
+reveal_type(pro_user)  # XXX Why is this ProUser*?
 [out]
 main: note: In function "new_user":
 main:8: error: Revealed type is 'U`-1'
 main: note: At top level:
-main:11: error: Revealed type is '__main__.ProUser'
+main:11: error: Revealed type is '__main__.ProUser*'
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar

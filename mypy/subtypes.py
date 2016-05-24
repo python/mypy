@@ -144,8 +144,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return all(is_subtype(left, item, self.check_type_parameter)
                        for item in right.items())
         elif isinstance(right, Instance):
-            if left.is_type_obj():
-                return is_subtype(left.ret_type, right)
             return is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             return left.is_type_obj() and is_subtype(left.ret_type, right.item)
