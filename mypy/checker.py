@@ -2418,7 +2418,8 @@ def find_isinstance_check(node: Node,
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 return split_types(vartype, type, expr)
-    elif (isinstance(node, ComparisonExpr) and any(is_none(n) for n in node.operands)):
+    elif (isinstance(node, ComparisonExpr) and any(is_none(n) for n in node.operands) and
+          experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
         if is_not or node.operators == ['is']:
@@ -2436,7 +2437,7 @@ def find_isinstance_check(node: Node,
             if is_not:
                 if_vars, else_vars = else_vars, if_vars
             return if_vars, else_vars
-    elif (isinstance(node, RefExpr)):
+    elif isinstance(node, RefExpr) and experiments.STRICT_OPTIONAL:
         # The type could be falsy, so we can't deduce anything new about the else branch
         vartype = type_map[node]
         _, if_vars = split_types(vartype, NoneTyp(), node)
