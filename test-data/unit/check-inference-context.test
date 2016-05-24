@@ -748,3 +748,11 @@ def f2(iterable: Iterable[Tuple[str, Any]], **kw: Any) -> None:
     pass
 [builtins fixtures/dict.py]
 [out]
+
+[case testInferenceInGenericFunction]
+from typing import TypeVar, List
+T = TypeVar('T')
+def f(a: T) -> None:
+    l = []  # type: List[T]
+    l.append(a)
+[builtins fixtures/list.py]

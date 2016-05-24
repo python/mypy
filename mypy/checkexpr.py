@@ -4,7 +4,7 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarType, ErasedType, UnionType,
+    TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
@@ -22,7 +22,7 @@ from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.erasetype import replace_func_type_vars
+from mypy.erasetype import replace_meta_vars
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -34,6 +34,7 @@ from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
+from mypy.expandtype import expand_type
 
 from mypy import experiments
 
@@ -234,6 +235,7 @@ class ExpressionChecker:
                 lambda i: self.accept(args[i]))
 
             if callee.is_generic():
+                callee = freshen_generic_callable(callee)
                 callee = self.infer_function_type_arguments_using_context(
                     callee, context)
                 callee = self.infer_function_type_arguments(
@@ -394,12 +396,12 @@ class ExpressionChecker:
         ctx = self.chk.type_context[-1]
         if not ctx:
             return callable
-        # The return type may have references to function type variables that
+        # The return type may have references to type metavariables that
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
         # special ErasedType type. On the other hand, class type variables are
         # valid results.
-        erased_ctx = replace_func_type_vars(ctx, ErasedType())
+        erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
         if isinstance(ret_type, TypeVarType):
             if ret_type.values or (not isinstance(ctx, Instance) or
@@ -1362,7 +1364,7 @@ class ExpressionChecker:
         # they must be considered as indeterminate. We use ErasedType since it
         # does not affect type inference results (it is for purposes like this
         # only).
-        ctx = replace_func_type_vars(ctx, ErasedType())
+        ctx = replace_meta_vars(ctx, ErasedType())
 
         callable_ctx = cast(CallableType, ctx)
 
@@ -1779,3 +1781,14 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         return 2
     # Fall back to a conservative equality check for the remaining kinds of type.
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
+
+
+def freshen_generic_callable(callee: CallableType) -> CallableType:
+    tvdefs = []
+    tvmap = {}  # type: Dict[TypeVarId, Type]
+    for v in callee.variables:
+        tvdef = TypeVarDef.new_unification_variable(v)
+        tvdefs.append(tvdef)
+        tvmap[v.id] = TypeVarType(tvdef)
+
+    return cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)

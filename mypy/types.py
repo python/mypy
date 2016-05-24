@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from typing import (
-    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional
+    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union
 )
 
 import mypy.nodes
@@ -49,18 +49,32 @@ class Type(mypy.nodes.Context):
 
 class TypeVarId:
     # 1, 2, ... for type-related, -1, ... for function-related
-
     raw_id = 0  # type: int
 
-    def __init__(self, raw_id: int) -> None:
+    # Level of the variable in type inference. Currently either 0 for
+    # declared types, or 1 for type inference unification variables.
+    meta_level = 0  # type: int
+
+    # Used for allocating fresh ids
+    next_raw_id = 1  # type: int
+
+    def __init__(self, raw_id: int, meta_level: int = 0) -> None:
         self.raw_id = raw_id
+        self.meta_level = meta_level
+
+    @staticmethod
+    def new(meta_level: int) -> 'TypeVarId':
+        raw_id = TypeVarId.next_raw_id
+        TypeVarId.next_raw_id += 1
+        return TypeVarId(raw_id, meta_level)
 
     def __repr__(self) -> str:
         return self.raw_id.__repr__()
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TypeVarId):
-            return self.raw_id == other.raw_id
+            return (self.raw_id == other.raw_id and
+                    self.meta_level == other.meta_level)
         else:
             return False
 
@@ -68,13 +82,10 @@ class TypeVarId:
         return not (self == other)
 
     def __hash__(self) -> int:
-        return hash(self.raw_id)
+        return hash((self.raw_id, self.meta_level))
 
-    def is_class_var(self) -> bool:
-        return self.raw_id > 0
-
-    def is_func_var(self) -> bool:
-        return self.raw_id < 0
+    def is_meta_var(self) -> bool:
+        return self.meta_level > 0
 
 
 class TypeVarDef(mypy.nodes.Context):
@@ -87,14 +98,22 @@ class TypeVarDef(mypy.nodes.Context):
     variance = INVARIANT  # type: int
     line = 0
 
-    def __init__(self, name: str, raw_id: int, values: Optional[List[Type]],
+    def __init__(self, name: str, id: Union[TypeVarId, int], values: Optional[List[Type]],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1) -> None:
         self.name = name
-        self.id = TypeVarId(raw_id)
+        if isinstance(id, int):
+            id = TypeVarId(id)
+        self.id = id
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
         self.line = line
+
+    @staticmethod
+    def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
+        new_id = TypeVarId.new(meta_level=1)
+        return TypeVarDef(old.name, new_id, old.values,
+                          old.upper_bound, old.variance, old.line)
 
     def get_line(self) -> int:
         return self.line
@@ -108,6 +127,7 @@ class TypeVarDef(mypy.nodes.Context):
             return self.name
 
     def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
         return {'.class': 'TypeVarDef',
                 'name': self.name,
                 'id': self.id.raw_id,
@@ -424,6 +444,7 @@ class TypeVarType(Type):
             return self.upper_bound
 
     def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
         return {'.class': 'TypeVarType',
                 'name': self.name,
                 'id': self.id.raw_id,
