@@ -1517,3 +1517,13 @@ class X: pass
 foo(X)
 [out]
 main: note: In function "foo":
+
+[case testTypeUsingTypeCBuiltinType]
+from typing import Type
+def foo(arg: type): pass
+class X: pass
+def bar(arg: Type[X]):
+    foo(arg)
+foo(X)
+[builtins fixtures/tuple.py]
+[out]
