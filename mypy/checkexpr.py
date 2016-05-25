@@ -306,7 +306,7 @@ class ExpressionChecker:
                     arg_type = self.accept(arg, callee.arg_types[-1])
                 else:
                     arg_type = self.accept(arg)
-            if isinstance(arg_type, ErasedType):
+            if has_erased_component(arg_type):
                 res.append(NoneTyp())
             else:
                 res.append(arg_type)
@@ -464,7 +464,7 @@ class ExpressionChecker:
         # information to infer the argument. Replace them with None values so
         # that they are not applied yet below.
         for i, arg in enumerate(inferred_args):
-            if isinstance(arg, NoneTyp) or isinstance(arg, ErasedType):
+            if isinstance(arg, NoneTyp) or has_erased_component(arg):
                 inferred_args[i] = None
 
         callee_type = cast(CallableType, self.apply_generic_arguments(
@@ -506,7 +506,7 @@ class ExpressionChecker:
         # case assume that all variables have type Any to avoid extra
         # bogus error messages.
         for i, inferred_type in enumerate(inferred_args):
-            if not inferred_type:
+            if not inferred_type or has_erased_component(inferred_type):
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1, context)
