@@ -414,57 +414,15 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str]) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
-    for i, tvar in enumerate(info.defn.type_vars):
-        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound,
-                                    tvar.variance))
-
-    class_variables = variables
-    initvars = init_type.variables
-    variables.extend(initvars)
+    variables.extend(info.defn.type_vars)
+    variables.extend(init_type.variables)
 
     callable_type = init_type.copy_modified(
         ret_type=self_type(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    cc = convert_class_tvars_to_func_tvars(c, class_variables, len(initvars))
-    cc.is_classmethod_class = True
-    return cc
-
-
-def convert_class_tvars_to_func_tvars(callable: CallableType,
-                                      class_variables: List[TypeVarDef],
-                                      num_func_tvars: int) -> CallableType:
-    tvar_def_translation = {}  # type: Dict[TypeVarId, TypeVarDef]
-    for v in class_variables:
-        tvar_def_translation[v.id] = \
-            TypeVarDef(v.name, -v.id.raw_id - num_func_tvars,
-                       v.values, v.upper_bound, v.variance)
-
-    return cast(CallableType, callable.accept(TvarTranslator(tvar_def_translation)))
-
-
-class TvarTranslator(TypeTranslator):
-    def __init__(self, translation: Dict[TypeVarId, TypeVarDef]) -> None:
-        super().__init__()
-        self.translation = translation
-
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        if t.id in self.translation:
-            return TypeVarType(self.translation[t.id])
-        else:
-            return t
-
-    def translate_variables(self,
-                            variables: List[TypeVarDef]) -> List[TypeVarDef]:
-        if not variables:
-            return variables
-        items = []  # type: List[TypeVarDef]
-        for v in variables:
-            if v.id in self.translation:
-                items.append(self.translation[v.id])
-            else:
-                items.append(v)
-        return items
+    c.is_classmethod_class = True
+    return c
 
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,

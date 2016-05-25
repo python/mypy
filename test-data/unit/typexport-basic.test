@@ -550,7 +550,7 @@ def f():
 class A(Generic[T]): pass
 [out]
 CallExpr(4) : Any
-NameExpr(4) : def [T] () -> A[T`-1]
+NameExpr(4) : def [T] () -> A[T`1]
 
 [case testGenericCallInDynamicallyTypedFunction2]
 from typing import TypeVar, Generic
@@ -561,7 +561,7 @@ class A(Generic[T]):
     def __init__(self, x: T) -> None: pass
 [out]
 CallExpr(4) : Any
-NameExpr(4) : def [T] (x: T`-1) -> A[T`-1]
+NameExpr(4) : def [T] (x: T`1) -> A[T`1]
 NameExpr(4) : def () -> Any
 
 [case testGenericCallInDynamicallyTypedFunction3]
