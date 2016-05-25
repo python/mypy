@@ -1527,3 +1527,75 @@ def bar(arg: Type[X]):
 foo(X)
 [builtins fixtures/tuple.py]
 [out]
+
+[case testTypeUsingTypeCClassMethod]
+from typing import Type
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+def process(cls: Type[User]):
+    reveal_type(cls.foo())  # E: Revealed type is 'builtins.int'
+    obj = cls()
+    reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[User] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCClassMethodUnion]
+# Ideally this would work, but not worth the effort; just don't crash
+from typing import Type, Union
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+class ProUser(User): pass
+class BasicUser(User): pass
+def process(cls: Type[Union[BasicUser, ProUser]]):
+    cls.foo()  # E: Type[Union[BasicUser, ProUser]] has no attribute "foo"
+    obj = cls()
+    cls.bar(obj)  # E: Type[Union[BasicUser, ProUser]] has no attribute "bar"
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[Union[BasicUser, ProUser]] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCClassMethodFromTypeVar]
+from typing import Type, TypeVar
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+U = TypeVar('U', bound=User)
+def process(cls: Type[U]):
+    reveal_type(cls.foo())  # E: Revealed type is 'builtins.int'
+    obj = cls()
+    reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[U] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCClassMethodFromTypeVarUnionBound]
+# Ideally this would work, but not worth the effort; just don't crash
+from typing import Type, TypeVar, Union
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+class ProUser(User): pass
+class BasicUser(User): pass
+U = TypeVar('U', bound=Union[ProUser, BasicUser])
+def process(cls: Type[U]):
+    cls.foo()  # E: Type[U] has no attribute "foo"
+    obj = cls()
+    cls.bar(obj)  # E: Type[U] has no attribute "bar"
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[U] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
