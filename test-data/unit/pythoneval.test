@@ -1211,3 +1211,12 @@ re.subn(spat, lambda m: '', '')[0] + ''
 [out]
 _program.py:7: error: Type argument 1 of "search" has incompatible value "object"
 _program.py:9: error: Cannot infer type argument 1 of "search"
+
+[case testListSetitemTuple]
+from typing import List, Tuple
+a = []  # type: List[Tuple[str, int]]
+a[0] = 'x', 1
+a[1] = 2, 'y'
+a[:] = [('z', 3)]
+[out]
+_program.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, str]", target has type "Tuple[str, int]")
