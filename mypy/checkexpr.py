@@ -5,7 +5,7 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType
+    PartialType, DeletedType, UnboundType, UninhabitedType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -378,7 +378,7 @@ class ExpressionChecker:
         # Only substitute non-None and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
-            if isinstance(arg, NoneTyp) or has_erased_component(arg):
+            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -437,7 +437,7 @@ class ExpressionChecker:
                 #       if they shuffle type variables around, as we assume that there is a 1-1
                 #       correspondence with dict type variables. This is a marginal issue and
                 #       a little tricky to fix so it's left unfixed for now.
-                if isinstance(inferred_args[0], NoneTyp):
+                if isinstance(inferred_args[0], (NoneTyp, UninhabitedType)):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not is_subtype(self.named_type('builtins.str'), inferred_args[0]):
                     self.msg.fail(messages.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
@@ -471,7 +471,7 @@ class ExpressionChecker:
         # information to infer the argument. Replace them with None values so
         # that they are not applied yet below.
         for i, arg in enumerate(inferred_args):
-            if isinstance(arg, NoneTyp) or isinstance(arg, ErasedType):
+            if isinstance(arg, (NoneTyp, UninhabitedType)) or isinstance(arg, ErasedType):
                 inferred_args[i] = None
 
         callee_type = cast(CallableType, self.apply_generic_arguments(
@@ -1678,7 +1678,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         actual = actual.erase_to_union_or_bound()
     if isinstance(formal, TypeVarType):
         formal = formal.erase_to_union_or_bound()
-    if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
+    if (isinstance(actual, (NoneTyp, UninhabitedType)) or isinstance(actual, AnyType) or
             isinstance(formal, AnyType) or isinstance(formal, CallableType) or
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
