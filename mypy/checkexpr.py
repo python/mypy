@@ -304,11 +304,12 @@ class ExpressionChecker:
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(item.upper_bound, context)
-            # XXX What to do for a generic class?  Maybe just reject.
-            if isinstance(callee, CallableType):
-                callee = callee.copy_modified(ret_type=item)
-            # XXX What to do for Overloaded?
-            return callee
+            if not isinstance(callee, CallableType):
+                # Might be a union.
+                # XXX What to do for Overloaded?
+                return callee
+            if not callee.is_generic():
+                return callee.copy_modified(ret_type=item)
 
         self.msg.unsupported_type_type(item, context)
         return AnyType()
