@@ -1682,6 +1682,8 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     if isinstance(formal, UnionType):
         return max(overload_arg_similarity(actual, item)
                    for item in formal.items)
+    if isinstance(formal, TupleType):
+        formal = formal.fallback
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
             actual = actual.fallback
