@@ -377,12 +377,13 @@ class TypeChecker(NodeVisitor[Type]):
     disallow_untyped_defs = False
     # Should we check untyped function defs?
     check_untyped_defs = False
+    warn_incomplete_stub = False
     is_typeshed_stub = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                  disallow_untyped_calls=False, disallow_untyped_defs=False,
-                 check_untyped_defs=False) -> None:
+                 check_untyped_defs=False, warn_incomplete_stub=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -407,6 +408,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.disallow_untyped_calls = disallow_untyped_calls
         self.disallow_untyped_defs = disallow_untyped_defs
         self.check_untyped_defs = check_untyped_defs
+        self.warn_incomplete_stub = warn_incomplete_stub
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -671,7 +673,8 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
 
-                if self.disallow_untyped_defs and not self.is_typeshed_stub:
+                show_untyped = not self.is_typeshed_stub or self.warn_incomplete_stub
+                if self.disallow_untyped_defs and show_untyped:
                     # Check for functions with unspecified/not fully specified types.
                     def is_implicit_any(t: Type) -> bool:
                         return isinstance(t, AnyType) and t.implicit

@@ -66,6 +66,8 @@ DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
 # Type check unannotated functions
 CHECK_UNTYPED_DEFS = 'check-untyped-defs'
+# Also check typeshed for missing annotations
+WARN_INCOMPLETE_STUB = 'warn-incomplete-stub'
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
@@ -381,7 +383,8 @@ class BuildManager:
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags,
                                         DISALLOW_UNTYPED_DEFS in self.flags,
-                                        check_untyped_defs)
+                                        check_untyped_defs,
+                                        WARN_INCOMPLETE_STUB in self.flags)
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
