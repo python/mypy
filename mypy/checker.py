@@ -1578,7 +1578,7 @@ class TypeChecker(NodeVisitor[Type]):
                     full_key_type = UnionType.make_simplified_union(
                         [key_type, var.type.inner_types[0]])
                     full_value_type = UnionType.make_simplified_union(
-                        [value_type, var.type.inner_types[0]])
+                        [value_type, var.type.inner_types[1]])
                     if (is_valid_inferred_type(full_key_type) and
                             is_valid_inferred_type(full_value_type)):
                         if not self.current_node_deferred:
@@ -2375,8 +2375,8 @@ class TypeChecker(NodeVisitor[Type]):
 
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
-                          weak: bool=False) \
-        -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+                          weak: bool=False
+                          ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
     """Find any isinstance checks (within a chain of ands).  Includes
     implicit and explicit checks for None.
 
@@ -2388,23 +2388,32 @@ def find_isinstance_check(node: Node,
 
     Guaranteed to not return None, None. (But may return {}, {})
     """
-    def split_types(current_type: Optional[Type], type_if_true: Optional[Type], expr: Node) \
-            -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
-        if type_if_true:
+    def conditional_type_map(expr: Node,
+                             current_type: Optional[Type],
+                             proposed_type: Optional[Type]
+                             ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+        """Takes in an expression, the current type of the expression, and a
+        proposed type of that expression.
+
+        Returns a 2-tuple: The first element is a map from the expression to
+        the proposed type, if the expression can be the proposed type.  The
+        second element is a map from the expression to the type it would hold
+        if it was not the proposed type, if any."""
+        if proposed_type:
             if current_type:
-                if is_proper_subtype(current_type, type_if_true):
-                    return {expr: type_if_true}, None
-                elif not is_overlapping_types(current_type, type_if_true):
+                if is_proper_subtype(current_type, proposed_type):
+                    return {expr: proposed_type}, None
+                elif not is_overlapping_types(current_type, proposed_type):
                     return None, {expr: current_type}
                 else:
-                    type_if_false = restrict_subtype_away(current_type, type_if_true)
-                    return {expr: type_if_true}, {expr: type_if_false}
+                    remaining_type = restrict_subtype_away(current_type, proposed_type)
+                    return {expr: proposed_type}, {expr: remaining_type}
             else:
-                return {expr: type_if_true}, {}
+                return {expr: proposed_type}, {}
         else:
             # An isinstance check, but we don't understand the type
             if weak:
-                return {expr: AnyType()}, {expr: vartype}
+                return {expr: AnyType()}, {expr: current_type}
             else:
                 return {}, {}
 
@@ -2417,7 +2426,7 @@ def find_isinstance_check(node: Node,
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
-                return split_types(vartype, type, expr)
+                return conditional_type_map(expr, vartype, type)
     elif (isinstance(node, ComparisonExpr) and any(is_none(n) for n in node.operands) and
           experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
@@ -2431,7 +2440,7 @@ def find_isinstance_check(node: Node,
                     # two elements in node.operands, and at least one of them
                     # should represent a None.
                     vartype = type_map[expr]
-                    if_vars, else_vars = split_types(vartype, NoneTyp(), expr)
+                    if_vars, else_vars = conditional_type_map(expr, vartype, NoneTyp())
                     break
 
             if is_not:
@@ -2440,7 +2449,7 @@ def find_isinstance_check(node: Node,
     elif isinstance(node, RefExpr) and experiments.STRICT_OPTIONAL:
         # The type could be falsy, so we can't deduce anything new about the else branch
         vartype = type_map[node]
-        _, if_vars = split_types(vartype, NoneTyp(), node)
+        _, if_vars = conditional_type_map(node, vartype, NoneTyp())
         return if_vars, {}
     elif isinstance(node, OpExpr) and node.op == 'and':
         left_if_vars, right_else_vars = find_isinstance_check(
@@ -2623,6 +2632,10 @@ def is_valid_inferred_type(typ: Type) -> bool:
     Examples of invalid types include the None type or a type with a None component.
     """
     if is_same_type(typ, NoneTyp()):
+        # With strict Optional checking, we *may* eventually infer NoneTyp, but
+        # we only do that if we can't infer a specific Optional type.  This
+        # resolution happens in leave_partial_types when we pop a partial types
+        # scope.
         return False
     if is_same_type(typ, UninhabitedType()):
         return False
