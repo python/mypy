@@ -103,13 +103,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
-                    (isinstance(self.right, Instance) and
-                     self.right.type.fullname() == 'builtins.object'))
+                    is_named_instance(self.right, 'builtins.object'))
         else:
             return not isinstance(self.right, Void)
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        return True
+        return not isinstance(self.right, Void)
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         return True

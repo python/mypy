@@ -119,6 +119,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return AnyType()
             else:
                 return self.s
+        elif isinstance(self.s, UninhabitedType):
+            return self.s
         else:
             return AnyType()
 
@@ -162,7 +164,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return ErrorType()
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        return t
+        if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
+            return t
+        else:
+            return ErrorType()
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         if not isinstance(self.s, Void) and not isinstance(self.s, ErrorType):
@@ -171,6 +176,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     return t
                 else:
                     return self.s
+            elif isinstance(self.s, UninhabitedType):
+                return self.s
             else:
                 return t
         else:

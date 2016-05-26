@@ -34,6 +34,9 @@ def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
         s, t = t, s
 
+    if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
+        s, t = t, s
+
     value = t.accept(TypeJoinVisitor(s))
 
     if value is None:
@@ -108,7 +111,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 
     def visit_none_type(self, t: NoneTyp) -> Type:
         if experiments.STRICT_OPTIONAL:
-            if isinstance(self.s, NoneTyp):
+            if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
             else:
                 return self.default(self.s)
@@ -119,7 +122,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return self.default(self.s)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
-        return self.s
+        if not isinstance(self.s, Void):
+            return self.s
+        else:
+            return self.default(self.s)
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
         if not isinstance(self.s, Void):
