@@ -663,7 +663,7 @@ class ExpressionChecker:
         best_match = 0
         for typ in overload.items():
             similarity = self.erased_signature_similarity(arg_types, arg_kinds, arg_names,
-                                                          typ)
+                                                          typ, context=context)
             if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
@@ -702,12 +702,14 @@ class ExpressionChecker:
                 # matching signature, or default to the first one if none
                 # match.
                 for m in match:
-                    if self.match_signature_types(arg_types, arg_kinds, arg_names, m):
+                    if self.match_signature_types(arg_types, arg_kinds, arg_names, m,
+                                                  context=context):
                         return m
                 return match[0]
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
-                                    arg_names: List[str], callee: CallableType) -> int:
+                                    arg_names: List[str], callee: CallableType,
+                                    context: Context) -> int:
         """Determine whether arguments could match the signature at runtime.
 
         Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
@@ -739,14 +741,15 @@ class ExpressionChecker:
 
         try:
             self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                      None, check_arg=check_arg)
+                                      context=context, check_arg=check_arg)
         except Finished:
             pass
 
         return similarity
 
     def match_signature_types(self, arg_types: List[Type], arg_kinds: List[int],
-                              arg_names: List[str], callee: CallableType) -> bool:
+                              arg_names: List[str], callee: CallableType,
+                              context: Context) -> bool:
         """Determine whether arguments types match the signature.
 
         Assume that argument counts are compatible.
@@ -768,7 +771,7 @@ class ExpressionChecker:
                 ok = False
 
         self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                  None, check_arg=check_arg)
+                                  context=context, check_arg=check_arg)
         return ok
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],
