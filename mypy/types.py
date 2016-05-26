@@ -48,14 +48,24 @@ class Type(mypy.nodes.Context):
 
 
 class TypeVarId:
-    # 1, 2, ... for type-related, -1, ... for function-related
+    # A type variable is uniquely identified by its raw id and meta level.
+
+    # For plain variables (type parameters of generic classes and
+    # functions) raw ids are allocated by semantic analysis, using
+    # positive ids 1, 2, ... for generic class parameters and negative
+    # ids -1, ... for generic function type arguments. This convention
+    # is only used to keep type variable ids distinct when allocating
+    # them; the type checker makes no distinction between class and
+    # function type variables.
+
+    # Metavariables are allocated unique ids starting from 1.
     raw_id = 0  # type: int
 
     # Level of the variable in type inference. Currently either 0 for
-    # declared types, or 1 for type inference unification variables.
+    # declared types, or 1 for type inference metavariables.
     meta_level = 0  # type: int
 
-    # Used for allocating fresh ids
+    # Class variable used for allocating fresh ids for metavariables.
     next_raw_id = 1  # type: int
 
     def __init__(self, raw_id: int, meta_level: int = 0) -> None:
