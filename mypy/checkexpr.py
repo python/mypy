@@ -304,12 +304,19 @@ class ExpressionChecker:
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(item.upper_bound, context)
-            if not isinstance(callee, CallableType):
-                # Might be a union.
-                # XXX What to do for Overloaded?
+            if isinstance(callee, CallableType):
+                if callee.is_generic():
+                    callee = None
+                else:
+                    callee = callee.copy_modified(ret_type=item)
+            elif isinstance(callee, Overloaded):
+                if callee.items()[0].is_generic():
+                    callee = None
+                else:
+                    callee = Overloaded([c.copy_modified(ret_type=item)
+                                         for c in callee.items()])
+            if callee:
                 return callee
-            if not callee.is_generic():
-                return callee.copy_modified(ret_type=item)
 
         self.msg.unsupported_type_type(item, context)
         return AnyType()

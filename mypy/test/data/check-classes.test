@@ -1607,3 +1607,20 @@ def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
 [builtins fixtures/tuple.py]
 [out]
 main: note: In function "foo":
+
+[case testTypeUsingTypeCOverloadedClass]
+from typing import Type, TypeVar, overload
+class User:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, arg: int) -> None: pass
+    @classmethod
+    def foo(cls) -> None: pass
+U = TypeVar('U', bound=User)
+def new(uc: Type[U]) -> U:
+    uc.foo()
+    return uc()
+u = new(User)
+[builtins fixtures/classmethod.py]
+[out]
