@@ -14,6 +14,7 @@ from typing import Tuple
 from typing import Callable
 from typing import Generic
 from typing import cast
+from typing import Type
 from typing import NamedTuple
 from typing import IO, TextIO, BinaryIO
 from typing import Pattern, Match
@@ -1108,6 +1109,36 @@ class CollectionsAbcTests(BaseTestCase):
         self.assertIsSubclass(MMA, typing.Mapping)
         self.assertIsSubclass(MMB, typing.Mapping)
         self.assertIsSubclass(MMC, typing.Mapping)
+
+
+class TypeTests(BaseTestCase):
+
+    def test_type_basic(self):
+
+        class User(object): pass
+        class BasicUser(User): pass
+        class ProUser(User): pass
+
+        def new_user(user_class):
+            # type: (Type[User]) -> User
+            return user_class()
+
+        joe = new_user(BasicUser)
+
+    def test_type_typevar(self):
+
+        class User(object): pass
+        class BasicUser(User): pass
+        class ProUser(User): pass
+
+        global U
+        U = TypeVar('U', bound=User)
+
+        def new_user(user_class):
+            # type: (Type[U]) -> U
+            return user_class()
+
+        joe = new_user(BasicUser)
 
 
 class NamedTupleTests(BaseTestCase):
