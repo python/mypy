@@ -831,6 +831,9 @@ class MessageBuilder:
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
 
+    def unsupported_type_type(self, item: Type, context: Context) -> None:
+        self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

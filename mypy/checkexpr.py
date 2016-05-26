@@ -278,7 +278,8 @@ class ExpressionChecker:
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeType):
-            item = self.analyze_type_type_callee(callee.item, context)
+            # Pass the original Type[] as context since that's where errors should go.
+            item = self.analyze_type_type_callee(callee.item, callee)
             return self.check_call(item, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         else:
@@ -309,10 +310,7 @@ class ExpressionChecker:
             # XXX What to do for Overloaded?
             return callee
 
-        # XXX Do we need to handle other forms?
-        # XXX Or maybe those should be rejected during semantic analysis.
-        # XXX Make a nicely formatted error message.
-        self.msg.fail("XXX Bad arg to Type[]", context)
+        self.msg.unsupported_type_type(item, context)
         return AnyType()
 
     def infer_arg_types_in_context(self, callee: CallableType,

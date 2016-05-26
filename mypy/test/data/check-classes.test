@@ -1599,3 +1599,11 @@ def process(cls: Type[U]):
 [builtins fixtures/classmethod.py]
 [out]
 main: note: In function "process":
+
+[case testTypeUsingTypeCErrorUnsupportedType]
+from typing import Type, Tuple
+def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
+    arg()
+[builtins fixtures/tuple.py]
+[out]
+main: note: In function "foo":
