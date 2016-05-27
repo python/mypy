@@ -2435,7 +2435,7 @@ def find_isinstance_check(node: Node,
             if_vars = {}  # type: Dict[Node, Type]
             else_vars = {}  # type: Dict[Node, Type]
             for expr in node.operands:
-                if expr.literal == LITERAL_TYPE and not is_none(expr):
+                if expr.literal == LITERAL_TYPE and not is_none(expr) and expr in type_map:
                     # This should only be true at most once: there should be
                     # two elements in node.operands, and at least one of them
                     # should represent a None.
