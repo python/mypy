@@ -313,7 +313,7 @@ class ExpressionChecker:
                     arg_type = self.accept(arg, callee.arg_types[-1])
                 else:
                     arg_type = self.accept(arg)
-            if isinstance(arg_type, ErasedType):
+            if has_erased_component(arg_type):
                 res.append(NoneTyp())
             else:
                 res.append(arg_type)
@@ -471,7 +471,7 @@ class ExpressionChecker:
         # information to infer the argument. Replace them with None values so
         # that they are not applied yet below.
         for i, arg in enumerate(inferred_args):
-            if isinstance(arg, (NoneTyp, UninhabitedType)) or isinstance(arg, ErasedType):
+            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
 
         callee_type = cast(CallableType, self.apply_generic_arguments(
@@ -513,7 +513,7 @@ class ExpressionChecker:
         # case assume that all variables have type Any to avoid extra
         # bogus error messages.
         for i, inferred_type in enumerate(inferred_args):
-            if not inferred_type:
+            if not inferred_type or has_erased_component(inferred_type):
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(
                     callee_type, i + 1, context)
@@ -670,7 +670,7 @@ class ExpressionChecker:
         best_match = 0
         for typ in overload.items():
             similarity = self.erased_signature_similarity(arg_types, arg_kinds, arg_names,
-                                                          typ)
+                                                          typ, context=context)
             if similarity > 0 and similarity >= best_match:
                 if (match and not is_same_type(match[-1].ret_type,
                                                typ.ret_type) and
@@ -709,12 +709,14 @@ class ExpressionChecker:
                 # matching signature, or default to the first one if none
                 # match.
                 for m in match:
-                    if self.match_signature_types(arg_types, arg_kinds, arg_names, m):
+                    if self.match_signature_types(arg_types, arg_kinds, arg_names, m,
+                                                  context=context):
                         return m
                 return match[0]
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
-                                    arg_names: List[str], callee: CallableType) -> int:
+                                    arg_names: List[str], callee: CallableType,
+                                    context: Context) -> int:
         """Determine whether arguments could match the signature at runtime.
 
         Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
@@ -746,14 +748,15 @@ class ExpressionChecker:
 
         try:
             self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                      None, check_arg=check_arg)
+                                      context=context, check_arg=check_arg)
         except Finished:
             pass
 
         return similarity
 
     def match_signature_types(self, arg_types: List[Type], arg_kinds: List[int],
-                              arg_names: List[str], callee: CallableType) -> bool:
+                              arg_names: List[str], callee: CallableType,
+                              context: Context) -> bool:
         """Determine whether arguments types match the signature.
 
         Assume that argument counts are compatible.
@@ -775,7 +778,7 @@ class ExpressionChecker:
                 ok = False
 
         self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                  None, check_arg=check_arg)
+                                  context=context, check_arg=check_arg)
         return ok
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],

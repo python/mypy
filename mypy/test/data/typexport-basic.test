@@ -890,7 +890,7 @@ class A:
     def f(self): pass
 A.f
 [out]
-MemberExpr(5) : def (self: Any) -> Any
+MemberExpr(5) : def (self: A) -> Any
 
 [case testOverloadedUnboundMethod]
 ## MemberExpr
@@ -914,7 +914,7 @@ class A:
     def f(self, x): pass
 A.f
 [out]
-MemberExpr(8) : Overload(def (self: Any) -> Any, def (self: Any, x: Any) -> Any)
+MemberExpr(8) : Overload(def (self: A) -> Any, def (self: A, x: Any) -> Any)
 
 [case testUnboundMethodWithInheritance]
 ## MemberExpr
@@ -977,7 +977,7 @@ class A(Generic[t]):
     def f(self, x): pass
 A.f(None, None)
 [out]
-MemberExpr(7) : def (self: Any, x: Any) -> Any
+MemberExpr(7) : def (self: A, x: Any) -> Any
 
 [case testGenericMethodOfGenericClass]
 ## MemberExpr
