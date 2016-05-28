@@ -1,0 +1,39 @@
+#file: cashregister.py
+#author: sean  (seanhays@bu.edu)
+#description: demonstrate the accumulator pattern
+#
+#Accumulator patter: a design pattern to calculate a value using an iteraive
+#                   proccess. for example, we could keep a running total, in which
+#                   the total is updated on each iteration of a loop
+#
+#General form the accumulator design pattern
+#initialize an accumulator variable
+# do a loop:
+#   update the accumulator variable
+#use the accumulated value
+#
+#define the main function
+def main():
+
+    numItem = eval(input('How many Items do you have today? '))
+
+
+    #General form the accumulator design pattern
+    #initialize an accumulator variable
+    total = 0 # use any relevant name 
+
+    # do a loop:
+    for i in range (numItem):
+        
+    
+
+    #   update the accumulator variable
+        price = eval(input('What is the price of this item? '))
+        total = total + price
+        
+    #use the accumulated value
+    print('Your total is',total)
+
+#run the main function
+
+main()
