@@ -16,7 +16,8 @@ def parse_test_cases(
         perform: Callable[['DataDrivenTestCase'], None],
         base_path: str = '.',
         optional_out: bool = False,
-        include_path: str = None) -> List['DataDrivenTestCase']:
+        include_path: str = None,
+        native_sep: bool = False) -> List['DataDrivenTestCase']:
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
@@ -65,8 +66,8 @@ def parse_test_cases(
             tcout = []  # type: List[str]
             if i < len(p) and p[i].id == 'out':
                 tcout = p[i].data
-                if p[i].arg == 'pathfix':
-                    tcout = [s.replace('/', os.path.sep) for s in tcout]
+                if native_sep and os.path.sep == '\\':
+                    tcout = [fix_win_path(line) for line in tcout]
                 ok = True
                 i += 1
             elif optional_out:
@@ -293,7 +294,7 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
     return res
 
 
-def expand_errors(input, output, fnam):
+def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
     """Transform comments such as '# E: message' in input.
 
     The result is lines like 'fnam:line: error: message'.
@@ -304,3 +305,17 @@ def expand_errors(input, output, fnam):
         if m:
             severity = 'error' if m.group(1) == 'E' else 'note'
             output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group(2)))
+
+
+def fix_win_path(line: str) -> str:
+    r"""Changes paths to Windows paths in error messages.
+
+    E.g. foo/bar.py -> foo\bar.py.
+    """
+    m = re.match(r'^([\S/]+):(\d+:)?(\s+.*)', line)
+    if not m:
+        return line
+    else:
+        filename, lineno, message = m.groups()
+        return '{}:{}{}'.format(filename.replace('/', '\\'),
+                                lineno or '', message)

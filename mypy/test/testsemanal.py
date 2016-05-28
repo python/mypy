@@ -36,7 +36,10 @@ class SemAnalSuite(Suite):
         c = []
         for f in semanal_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_semanal, test_temp_dir, optional_out=True)
+                                  test_semanal,
+                                  base_path=test_temp_dir,
+                                  optional_out=True,
+                                  native_sep=True)
         return c
 
 
