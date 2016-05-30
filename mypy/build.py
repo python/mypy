@@ -839,14 +839,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
-    # TODO: This is a temporary change until Python 3.2 support is dropped, see #1504
-    # os.rename will raise an exception rather than replace files on Windows
-    try:
-        replace = os.replace
-    except AttributeError:
-        replace = os.rename
-    replace(data_json_tmp, data_json)
-    replace(meta_json_tmp, meta_json)
+    os.replace(data_json_tmp, data_json)
+    os.replace(meta_json_tmp, meta_json)
 
 
 """Dependency manager.
