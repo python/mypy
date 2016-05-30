@@ -678,3 +678,20 @@ def f(x: int) -> None: pass
 def f(x: B) -> str: pass # E: Overloaded function signatures 2 and 3 overlap with incompatible return types
 @overload
 def f(x: A) -> int: pass
+
+[case testOverloadWithTupleMatchingTypeVar]
+from typing import TypeVar, Generic, Tuple, overload
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    @overload
+    def f(self, arg: T) -> None:
+        pass
+    @overload
+    def f(self, arg: T, default: int) -> None:
+        pass
+
+b = A()  # type: A[Tuple[int, int]]
+b.f((0, 0))
+b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
