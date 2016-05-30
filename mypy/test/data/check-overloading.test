@@ -678,3 +678,20 @@ def f(x: int) -> None: pass
 def f(x: B) -> str: pass # E: Overloaded function signatures 2 and 3 overlap with incompatible return types
 @overload
 def f(x: A) -> int: pass
+
+[case testOverloadTuple]
+from typing import overload, Tuple
+@overload
+def f(x: int, y: Tuple[str, ...]) -> None: pass
+@overload
+def f(x: int, y: str) -> None: pass
+f(1, ('2', '3'))
+f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected Tuple[str, ...]
+f(1, ('2',))
+f(1, '2')
+f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected Tuple[str, ...]
+x = ('2', '3')  # type: Tuple[str, ...]
+f(1, x)
+y = (2, 3)  # type: Tuple[int, ...]
+f(1, y) # E: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected Tuple[str, ...]
+[builtins fixtures/tuple.py]
