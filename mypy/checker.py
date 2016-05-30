@@ -204,7 +204,7 @@ class ConditionalTypeBinder:
         """
         result = self.frames.pop()
 
-        options = self.frames_on_escape.pop(len(self.frames) - 1, [])
+        options = self.frames_on_escape.pop(len(self.frames) - 1, [])  # type: List[Frame]
         if canskip:
             options.append(self.frames[-1])
         if fallthrough:
