@@ -14,9 +14,3 @@ install:
 
 script:
   - python runtests.py -v
-
-notifications:
-  irc:
-    channels:
-      - "chat.freenode.net#python-mypy"
-    use_notice: true
