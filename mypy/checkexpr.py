@@ -95,12 +95,13 @@ class ExpressionChecker:
                     result = AnyType()
         elif isinstance(node, FuncDef):
             # Reference to a global function.
-            result = function_type(node, self.named_type('builtins.function'))
+            result = function_type(self.chk.check_untyped_defs, node,
+                                   self.named_type('builtins.function'))
         elif isinstance(node, OverloadedFuncDef):
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = type_object_type(node, self.named_type)
+            result = type_object_type(self.chk.check_untyped_defs, node, self.named_type)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
             result = self.named_type('builtins.module')
@@ -270,8 +271,9 @@ class ExpressionChecker:
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                         False, False, self.named_type, self.not_ready_callback,
-                                         self.msg)
+                                                  False, False, self.chk.check_untyped_defs,
+                                                  self.named_type, self.not_ready_callback,
+                                                  self.msg)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -805,7 +807,7 @@ class ExpressionChecker:
         else:
             # This is a reference to a non-module attribute.
             return analyze_member_access(e.name, self.accept(e.expr), e,
-                                         is_lvalue, False,
+                                         is_lvalue, False, self.chk.check_untyped_defs,
                                          self.named_type, self.not_ready_callback, self.msg)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
@@ -815,7 +817,8 @@ class ExpressionChecker:
         """
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False,
-                                     self.named_type, self.not_ready_callback, self.msg)
+                                     self.chk.check_untyped_defs, self.named_type,
+                                     self.not_ready_callback, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -953,7 +956,8 @@ class ExpressionChecker:
         Return tuple (result type, inferred operator method type).
         """
         method_type = analyze_member_access(method, base_type, context, False, False,
-                                            self.named_type, self.not_ready_callback, local_errors)
+                                            self.chk.check_untyped_defs, self.named_type,
+                                            self.not_ready_callback, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -1340,8 +1344,8 @@ class ExpressionChecker:
                         return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True,
-                                                 self.named_type, self.not_ready_callback,
-                                                 self.msg, base)
+                                                 self.chk.check_untyped_defs, self.named_type,
+                                                 self.not_ready_callback, self.msg, base)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()

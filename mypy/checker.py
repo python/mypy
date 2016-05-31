@@ -2338,10 +2338,11 @@ class TypeChecker(NodeVisitor[Type]):
         return iterable.args[0]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
-        return function_type(func, self.named_type('builtins.function'))
+        return function_type(self.check_untyped_defs, func, self.named_type('builtins.function'))
 
     def method_type(self, func: FuncBase) -> FunctionLike:
-        return method_type_with_fallback(func, self.named_type('builtins.function'))
+        return method_type_with_fallback(self.check_untyped_defs,
+                                         func, self.named_type('builtins.function'))
 
 
 def find_isinstance_check(node: Node,
