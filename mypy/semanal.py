@@ -127,11 +127,8 @@ TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.bytearray': 'builtins.str',
 })
 
-# Hard coded list of Enum baseclasses.
-ENUM_BASECLASSES = [
-    'enum.Enum',
-    'enum.IntEnum',
-]
+# Hard coded name of Enum baseclasses.
+ENUM_BASECLASS = 'enum.Enum'
 
 # When analyzing a function, should we analyze the whole function in one go, or
 # should we only perform one phase of the analysis? The latter is used for
@@ -832,8 +829,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def decide_is_enum(self, instance: Instance) -> bool:
         """Decide if a TypeInfo should be marked as .is_enum=True"""
-        fullname = instance.type.fullname()
-        return fullname in ENUM_BASECLASSES
+        if not instance.type.mro:
+            return False
+        return any(t._fullname == ENUM_BASECLASS for t in instance.type.mro)
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
