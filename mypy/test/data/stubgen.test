@@ -81,6 +81,14 @@ from typing import Any
 
 x = ...  # type: Any
 
+[case testMultipleVariable]
+x = y = 1
+[out]
+from typing import Any
+
+x = ...  # type: Any
+y = ...  # type: Any
+
 [case testClassVariable]
 class C:
     x = 1
