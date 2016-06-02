@@ -2209,11 +2209,7 @@ class SemanticAnalyzer(NodeVisitor):
     def check_no_global(self, n: str, ctx: Context,
                         is_func: bool = False) -> None:
         if n in self.globals:
-            if is_func and isinstance(self.globals[n].node, FuncDef):
-                self.fail(("Name '{}' already defined (overload variants "
-                           "must be next to each other)").format(n), ctx)
-            else:
-                self.name_already_defined(n, ctx)
+            self.name_already_defined(n, ctx)
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
