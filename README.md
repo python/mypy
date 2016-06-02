@@ -115,6 +115,16 @@ In Windows, the script is generally installed in
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
 
+### Working with `virtualenv`
+
+If you are using [`virtualenv`](https://virtualenv.pypa.io/en/stable/),
+make sure you are running a python3 environment. Installing via `pip3`
+in a v2 environment will not configure the environment to run installed
+modules from the command line.
+
+    $ python3 -m pip install virtualenv
+    $ python3 -m virtualenv env
+
 
 Quick start for contributing to mypy
 ------------------------------------
