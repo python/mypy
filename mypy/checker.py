@@ -1839,7 +1839,8 @@ class TypeChecker(NodeVisitor[Type]):
         self.fail('Unsupported exception', n)
         return AnyType()
 
-    def check_for_function_like_exception_type(self, type: Type, context: Context) -> Type:
+    def check_for_function_like_exception_type(self, type: Type,
+                                               context: Context) -> Optional[Type]:
         if not isinstance(type, FunctionLike):
             return None
 
