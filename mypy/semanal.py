@@ -831,7 +831,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Decide if a TypeInfo should be marked as .is_enum=True"""
         if not instance.type.mro:
             return False
-        return any(t._fullname == ENUM_BASECLASS for t in instance.type.mro)
+        return any(t.fullname() == ENUM_BASECLASS for t in instance.type.mro)
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
