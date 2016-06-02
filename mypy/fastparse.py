@@ -67,13 +67,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
         tree.path = fnam
         tree.is_stub = is_stub_file
         return tree
-    except SyntaxError as e:
-        if errors:
-            errors.set_file('<input>' if fnam is None else fnam)
-            errors.report(e.lineno, e.msg)  # type: ignore
-        else:
-            raise
-    except TypeCommentParseError as e:
+    except (SyntaxError, TypeCommentParseError) as e:
         if errors:
             errors.set_file('<input>' if fnam is None else fnam)
             errors.report(e.lineno, e.msg)  # type: ignore
