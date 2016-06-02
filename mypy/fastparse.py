@@ -41,6 +41,7 @@ U = TypeVar('U')
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
+
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
           custom_typing_module: str = None) -> MypyFile:
@@ -78,7 +79,6 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
             errors.report(e.lineno, e.msg)  # type: ignore
         else:
             raise
-
 
     return MypyFile([],
                     [],
@@ -813,6 +813,6 @@ class TypeConverter(ast35.NodeTransformer):
 
 
 class TypeCommentParseError(Exception):
-    def __init__(self, msg: str, lineno: int):
+    def __init__(self, msg: str, lineno: int) -> None:
         self.msg = msg
         self.lineno = lineno
