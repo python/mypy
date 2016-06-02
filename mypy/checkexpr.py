@@ -1140,9 +1140,8 @@ class ExpressionChecker:
         end = None  # type: int
         stride = None  # type:int
 
-        ok = False
-
         if slic.begin_index:
+            ok = False
             if isinstance(slic.begin_index, IntExpr):
                 begin = slic.begin_index.value
                 ok = True
@@ -1153,7 +1152,14 @@ class ExpressionChecker:
                         begin = -1 * operand.value
                         ok = True
 
+            if not ok:
+                self.chk.fail(
+                    messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
+                    slic.begin_index)
+                return AnyType()
+
         if slic.end_index:
+            ok = False
             if isinstance(slic.end_index, IntExpr):
                 end = slic.end_index.value
                 ok = True
@@ -1164,7 +1170,14 @@ class ExpressionChecker:
                         end = -1 * operand.value
                         ok = True
 
+            if not ok:
+                self.chk.fail(
+                    messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
+                    slic.end_index)
+                return AnyType()
+
         if slic.stride:
+            ok = False
             if isinstance(slic.stride, IntExpr):
                 stride = slic.stride.value
                 ok = True
@@ -1175,12 +1188,14 @@ class ExpressionChecker:
                         stride = -1 * operand.value
                         ok = True
 
-        if ok:
-            return TupleType(left_type.items[begin:end:stride], left_type.fallback,
+            if not ok:
+                self.chk.fail(
+                    messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
+                    slic.stride)
+                return AnyType()
+
+        return TupleType(left_type.items[begin:end:stride], left_type.fallback,
                     left_type.line, left_type.implicit)
-        else:
-            self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.stride)
-            return AnyType()
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
