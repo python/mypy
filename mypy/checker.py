@@ -1839,18 +1839,39 @@ class TypeChecker(NodeVisitor[Type]):
         self.fail('Unsupported exception', n)
         return AnyType()
 
+    def check_for_function_like_exception_type(self, type: Type, context: Context) -> Type:
+        if not isinstance(type, FunctionLike):
+            return None
+
+        item = type.items()[0]
+        ret = item.ret_type
+        if (is_subtype(ret, self.named_type('builtins.BaseException'))
+                and item.is_type_obj()):
+            return ret
+        else:
+            self.fail(messages.INVALID_EXCEPTION_TYPE, context)
+            return AnyType()
+
     def check_exception_type(self, type: Type, context: Context) -> Type:
-        if isinstance(type, FunctionLike):
-            item = type.items()[0]
-            ret = item.ret_type
-            if (is_subtype(ret, self.named_type('builtins.BaseException'))
-                    and item.is_type_obj()):
-                return ret
-            else:
-                self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-                return AnyType()
+        ret = self.check_for_function_like_exception_type(type, context)
+        if ret is not None:
+            return ret
         elif isinstance(type, AnyType):
             return AnyType()
+        elif isinstance(type, TupleType):
+            t = None  # type: Type
+            for item in type.items:
+                tt = self.check_for_function_like_exception_type(item, context)
+
+                if tt is None:
+                    tt = AnyType()
+                    break
+
+                if t:
+                    t = join_types(t, tt)
+                else:
+                    t = tt
+            return t
         else:
             self.fail(messages.INVALID_EXCEPTION_TYPE, context)
             return AnyType()
