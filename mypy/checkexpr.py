@@ -1136,30 +1136,51 @@ class ExpressionChecker:
             return result
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr):
-        begin = 0
-        end = len(left_type.items)
-        stride = 1
+        begin = None  # type: int
+        end = None  # type: int
+        stride = None  # type:int
+
+        ok = False
+
         if slic.begin_index:
             if isinstance(slic.begin_index, IntExpr):
                 begin = slic.begin_index.value
-            else:
-                self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.begin_index)
-                return AnyType()
+                ok = True
+            elif isinstance(slic.begin_index, UnaryExpr):
+                if slic.begin_index.op == '-':
+                    operand = slic.begin_index.expr
+                    if isinstance(operand, IntExpr):
+                        begin = -1 * operand.value
+                        ok = True
+
         if slic.end_index:
             if isinstance(slic.end_index, IntExpr):
                 end = slic.end_index.value
-            else:
-                self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.end_index)
-                return AnyType()
+                ok = True
+            elif isinstance(slic.end_index, UnaryExpr):
+                if slic.end_index.op == '-':
+                    operand = slic.end_index.expr
+                    if isinstance(operand, IntExpr):
+                        end = -1 * operand.value
+                        ok = True
+
         if slic.stride:
             if isinstance(slic.stride, IntExpr):
                 stride = slic.stride.value
-            else:
-                self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.stride)
-                return AnyType()
+                ok = True
+            elif isinstance(slic.stride, UnaryExpr):
+                if slic.stride.op == '-':
+                    operand = slic.stride.expr
+                    if isinstance(operand, IntExpr):
+                        stride = -1 * operand.value
+                        ok = True
 
-        return TupleType(left_type.items[begin:end:stride], left_type.fallback,
+        if ok:
+            return TupleType(left_type.items[begin:end:stride], left_type.fallback,
                     left_type.line, left_type.implicit)
+        else:
+            self.chk.fail(messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL, slic.stride)
+            return AnyType()
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
