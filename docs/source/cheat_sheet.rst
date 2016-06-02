@@ -46,6 +46,7 @@ language represents various common types in Python 2.
    # This is how you annotate a function definition
    def stringify(num):
        # type: (int) -> str
+       """Your function docstring goes here after the type definition."""
        return str(num)
 
    # And here's how you specify multiple arguments
