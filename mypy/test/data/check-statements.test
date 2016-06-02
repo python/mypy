@@ -577,6 +577,18 @@ except (E1, E2, int) as e3: # E: Exception type must be derived from BaseExcepti
     pass
 [builtins fixtures/exception.py]
 
+[case testExceptWithMultipleTypes3]
+import typing
+class E1(BaseException): pass
+class E1_1(E1): pass
+class E1_2(E1): pass
+try: pass
+except (E1, E1_1, E1_2) as e1:
+    reveal_type(e1) # E: Revealed type is '__main__.E1'
+except (E1_1, E1_2) as e2:
+    reveal_type(e2) # E: Revealed type is '__main__.E1'
+[builtins fixtures/exception.py]
+
 [case testReuseTryExceptionVariable]
 import typing
 class E1(BaseException): pass
@@ -624,18 +636,18 @@ except BaseException() as b: pass # E: Exception type must be derived from BaseE
 import typing
 def exc() -> BaseException: pass
 class E1(BaseException): pass
-class E2(E1): pass
-class E3(E1): pass
+class E1_1(E1): pass
+class E1_2(E1): pass
 
-exs1 = (E1, E2)
+exs1 = (E1, E1_2)
 try: pass
 except exs1 as e1:
     reveal_type(e1) # E: Revealed type is '__main__.E1'
 
-exs3 = (E2, E3)
+exs2 = (E1_1, E1_2)
 try: pass
-except exs3 as e3:
-    reveal_type(e3) # E: Revealed type is '__main__.E1'
+except exs2 as e2:
+    reveal_type(e2) # E: Revealed type is '__main__.E1'
 [builtins fixtures/exception.py]
 
 [case testInvalidTupleValueAsExceptionType]
@@ -643,7 +655,6 @@ import typing
 def exc() -> BaseException: pass
 class E1(BaseException): pass
 class E2(E1): pass
-class E3(E1): pass
 
 exs1 = (E1, E2, int)
 try: pass
