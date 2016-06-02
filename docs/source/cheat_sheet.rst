@@ -91,8 +91,15 @@ language represents various common types in Python 2.
        return [str(x) for x in iterator_of_ints]
    f(range(1, 3))
 
+
+   from typing import Tuple
+   def f(my_tuple):
+       # type: (Tuple[int, int]) -> int
+       return sum([val for val in my_tuple])
+   f((1, 2))
+
+
    # TODO: Add Generator example
 
    # TODO: Add typevar example
 
-   # TODO: Add Tuple example
