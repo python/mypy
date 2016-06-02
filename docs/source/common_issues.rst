@@ -165,3 +165,21 @@ messages. More powerful type inference strategies often have complex
 and difficult-to-predict failure modes and could result in very
 confusing error messages. The tradeoff is that you as a programmer
 sometimes have to give the type checker a little help.
+
+Displaying the type of an expression
+------------------------------------
+
+You can use ``reveal_type(expr)`` to ask mypy to display the inferred
+static type of an expression. This can be useful when you don't quite
+understand how mypy handles a particlar piece of code. Example:
+
+.. code-block:: python
+
+   reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
+
+.. note::
+
+   ``reveal_type`` is only understood by mypy and doesn't exist
+   in Python, if you try to run your program. You'll have to remove
+   any ``reveal_type`` calls before you can run your code.
+   ``reveal_type`` is always available and you don't need to import it.
