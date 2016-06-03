@@ -440,7 +440,7 @@ class MessageBuilder:
                 else:
                     msg = '{} (expression has type {}, target has type {})'
                     arg_type_str, callee_type_str = self.format_distinctly(arg_type,
-                                                                           callee.arg_types[n-1])
+                                                                           callee.arg_types[n - 1])
                     self.fail(msg.format(INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                          arg_type_str, callee_type_str),
                               context)
