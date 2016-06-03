@@ -305,7 +305,7 @@ class SemanticAnalyzer(NodeVisitor):
                             defn.original_def = cast(FuncDef, original_def)
                         else:
                             # Report error.
-                            self.check_no_global(defn.name(), defn, True)
+                            self.check_no_global(defn.name(), defn)
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
                 # Postpone this function (for the second phase).
                 self.postponed_functions_stack[-1].append(defn)
@@ -2207,9 +2207,13 @@ class SemanticAnalyzer(NodeVisitor):
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
     def check_no_global(self, n: str, ctx: Context,
-                        is_func: bool = False) -> None:
+                        is_overloaded_func: bool = False) -> None:
         if n in self.globals:
-            self.name_already_defined(n, ctx)
+            if is_overloaded_func and isinstance(self.globals[n].node, OverloadedFuncDef):
+                self.fail(("Overload variants of '{}' "
+                           "must be next to each other)").format(n), ctx)
+            else:
+                self.name_already_defined(n, ctx)
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
@@ -2348,12 +2352,12 @@ class FirstPass(NodeVisitor):
                 func.original_def = cast(FuncDef, original_def)
             else:
                 # Report error.
-                sem.check_no_global(func.name(), func, True)
+                sem.check_no_global(func.name(), func)
         else:
             sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        self.sem.check_no_global(func.name(), func)
+        self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
         self.sem.globals[func.name()] = SymbolTableNode(GDEF, func,
                                                         self.sem.cur_mod_id)

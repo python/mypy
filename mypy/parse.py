@@ -892,7 +892,8 @@ class Parser:
             fdef = cast(Decorator, s)
             n = fdef.func.name()
             if (isinstance(stmt[-1], OverloadedFuncDef) and
-                    (cast(OverloadedFuncDef, stmt[-1])).name() == n):
+                    (cast(OverloadedFuncDef, stmt[-1])).name() == n and
+                    any(d.name == 'overload' for d in fdef.decorators)):
                 (cast(OverloadedFuncDef, stmt[-1])).items.append(fdef)
                 return True
         return False
