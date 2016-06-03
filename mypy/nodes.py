@@ -308,7 +308,7 @@ class OverloadedFuncDef(FuncBase):
         self.set_line(items[0].line)
 
     def name(self) -> str:
-        return self.items[1].func.name()
+        return self.items[0].func.name()
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
