@@ -1,10 +1,15 @@
-Mypy syntax cheat sheet
-=======================
+Mypy syntax cheat sheet (Python 2)
+==================================
 
 This document is a quick cheat sheet showing how the PEP-484 type
 language represents various common types in Python 2.
 
-# document the cool print type feature of mypy here.
+.. note::
+
+   Technically many of the type annotations shown below are redundant,
+   because mypy can derive them from the type of the expression.  So
+   many of the examples have a dual purpose: show how to write the
+   annotation, and show the inferred types.
 
 .. code-block:: python
 
@@ -16,6 +21,10 @@ language represents various common types in Python 2.
    x = 1.0 # type: float
    x = "test" # type: str
    x = u"test" # type: unicode
+
+   # Print an error message giving the type of x (it's also a runtime
+   # error, so don't leave it in)
+   reveal_type(x)
 
    # For collections, the name of the type is capitalized, and the
    # name of the type in the collection is in brackets.
@@ -112,4 +121,4 @@ language represents various common types in Python 2.
            """Returns 'str1' repeated 'num' times."""
            return num * str1
 
-   x = MyClass() # In this case the inferred type is 'MyClass'
+   x = MyClass() # type: MyClass
