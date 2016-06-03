@@ -140,8 +140,13 @@ the builtins contains a definition like this for ``chr``:
 
     def chr(code: int) -> str: ...
 
-In stubs we don't care about the function bodies, so we use an
-ellipsis instead. That ``...`` is three literal dots!
+In stub files we don't care about the function bodies. `pass <https://docs.python.org/3/tutorial/controlflow.html#pass-statements>`_ statements, the built-in
+`Ellipsis <https://docs.python.org/3/library/constants.html#Ellipsis>`_ constant, or the short-form literal of Ellipsis (just three dots: ``...``) can be used interchangeably to make the stub files valid python. The short-form literal is the most succinct.
+
+.. _library-stubs-missing:
+
+Missing Stub Files
+******************
 
 Mypy complains if it can't find a stub (or a real module) for a
 library module that you import. You can create a stub easily; here is
