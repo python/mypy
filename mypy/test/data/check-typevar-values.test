@@ -70,9 +70,9 @@ def g(x: AB) -> AB:
     return x.g() # Error
 [out]
 main: note: In function "f":
-main:10: error: Incompatible return value type: expected __main__.B*, got __main__.A
+main:10: error: Incompatible return value type (got "A", expected "B")
 main: note: In function "g":
-main:12: error: Incompatible return value type: expected __main__.A*, got __main__.B
+main:12: error: Incompatible return value type (got "B", expected "A")
 
 [case testTypeInferenceAndTypeVarValues]
 from typing import TypeVar
@@ -88,7 +88,7 @@ def f(x: AB) -> AB:
     if y:
         return y.f()
     else:
-        return y.g() # E: Incompatible return value type: expected __main__.A*, got __main__.B
+        return y.g() # E: Incompatible return value type (got "B", expected "A")
 [out]
 main: note: In function "f":
 
@@ -116,7 +116,7 @@ def g(x: T) -> T:
         return ''
 def h(x: T) -> T:
     if isinstance(x, int):
-        return '' # E: Incompatible return value type: expected builtins.int*, got builtins.str
+        return '' # E: Incompatible return value type (got "str", expected "int")
     return x
 [builtins fixtures/isinstance.py]
 [out]
@@ -132,9 +132,9 @@ def f(x: T) -> T:
         return ''
 def g(x: T) -> T:
     if isinstance(x, int):
-        return '' # E: Incompatible return value type: expected builtins.int*, got builtins.str
+        return '' # E: Incompatible return value type (got "str", expected "int")
     else:
-        return 2  # E: Incompatible return value type: expected builtins.str*, got builtins.int
+        return 2  # E: Incompatible return value type (got "int", expected "str")
     return x
 [builtins fixtures/isinstance.py]
 [out]
@@ -159,7 +159,7 @@ def f(x: T) -> T:
         y = 1
     else:
         y = object()
-    return y # E: Incompatible return value type: expected builtins.str*, got builtins.object
+    return y # E: Incompatible return value type (got "object", expected "str")
 [builtins fixtures/isinstance.py]
 [out]
 main: note: In function "f":
@@ -172,7 +172,7 @@ def f(x: T) -> T:
         y = object()
     else:
         y = ''
-    return y # E: Incompatible return value type: expected builtins.int*, got builtins.object
+    return y # E: Incompatible return value type (got "object", expected "int")
 [builtins fixtures/isinstance.py]
 [out]
 main: note: In function "f":

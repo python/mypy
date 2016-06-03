@@ -1040,7 +1040,7 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible return value type: expected builtins.int, got builtins.str
+main:4: error: Incompatible return value type (got "str", expected "int")
 main:4: error: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
 
 [case testVoidLambda]

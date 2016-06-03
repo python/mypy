@@ -1593,10 +1593,12 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
                     self.check_subtype(
-                        typ, return_type, s,
-                        messages.INCOMPATIBLE_RETURN_VALUE_TYPE
-                        + ": expected {}, got {}".format(return_type, typ)
-                    )
+                        subtype_label='got',
+                        subtype=typ,
+                        supertype_label='expected',
+                        supertype=return_type,
+                        context=s,
+                        msg=messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
                 # Empty returns are valid in Generators with Any typed returns.
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
