@@ -438,7 +438,12 @@ class MessageBuilder:
                 if n == 1:
                     self.invalid_index_type(arg_type, base, context)
                 else:
-                    self.fail(INCOMPATIBLE_TYPES_IN_ASSIGNMENT, context)
+                    msg = '{} (expression has type {}, target has type {})'
+                    arg_type_str, callee_type_str = self.format_distinctly(arg_type,
+                                                                           callee.arg_types[n - 1])
+                    self.fail(msg.format(INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                         arg_type_str, callee_type_str),
+                              context)
                 return
 
             target = 'to {} '.format(name)

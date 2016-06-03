@@ -716,7 +716,7 @@ class C:
     pass
 [out]
 main:3: error: Invalid index type "C" for "A"
-main:4: error: Incompatible types in assignment
+main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
 main:5: error: Unsupported target for indexed assignment
 
 
