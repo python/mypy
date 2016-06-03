@@ -39,9 +39,21 @@ language represents various common types in Python 2.
    # Ideally, one would never use this
    x = confusing_function() # type: ignore
 
+   # This is how you annotate a class with '__init__' constructor and a method.
    class MyClass(object):
-       pass
-   x = MyClass() # type: MyClass
+       """This is where your class docstring goes."""
+
+       def __init__(self):
+           # type: () -> None
+           """Add your constructor stuff here."""
+           pass
+
+       def my_class_method(self, num, str1):
+           # type: (int, str) -> str
+           """Returns 'str1' repeated 'num' times."""
+           return num * str1
+
+   x = MyClass() # In this case the inferred type is 'MyClass'
 
    # This is how you annotate a function definition
    def stringify(num):
