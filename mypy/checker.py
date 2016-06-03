@@ -1833,7 +1833,8 @@ class TypeChecker(NodeVisitor[Type]):
 
         for ttype in test_types:
             if isinstance(ttype, AnyType):
-                return AnyType()
+                all_types.append(ttype)
+                continue
 
             if not isinstance(ttype, FunctionLike):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
