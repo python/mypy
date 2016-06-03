@@ -57,6 +57,10 @@ class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
+class Awaitable(Generic[T]):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, Any, T]: pass
+
 class Sequence(Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass

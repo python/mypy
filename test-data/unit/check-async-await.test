@@ -1,0 +1,57 @@
+-- Tests for async def and await (PEP 492)
+-- ---------------------------------------
+
+[case testAsyncDefPass]
+# options: fast_parser
+async def f() -> int:
+    pass
+[builtins fixtures/async_await.py]
+
+[case testAsyncDefReturn]
+# options: fast_parser
+async def f() -> int:
+    return 0
+reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+[builtins fixtures/async_await.py]
+
+[case testAwaitCoroutine]
+# options: fast_parser
+async def f() -> int:
+    x = await f()
+    return x
+[builtins fixtures/async_await.py]
+
+[case testAwaitGenerator]
+# options: fast_parser
+from typing import Any, Generator
+def g() -> Generator[int, int, int]:
+    x = yield 0
+    return x
+async def f() -> int:
+    x = await g()
+    return x
+[builtins fixtures/async_await.py]
+
+[case testAwaitArgumentError]
+# options: fast_parser
+def g() -> int:
+    return 0
+async def f() -> int:
+    x = await g()
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main: error: Incompatible types in await (actual type "int", expected Awaitable or Generator)
+
+[case testAwaitResultError]
+# options: fast_parser
+async def g() -> int:
+    return 0
+async def f() -> str:
+    x = await g()
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:6: error: Incompatible return value type (got "int", expected "str")

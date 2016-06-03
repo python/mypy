@@ -957,6 +957,10 @@ class Parser:
             stmt = self.parse_exec_stmt()
         else:
             stmt = self.parse_expression_or_assignment()
+        if ts == 'async' and self.current_str() == 'def':
+            self.parse_error_at(self.current(),
+                                reason='Use --fast-parser to parse code using "async def"')
+            raise ParseError()
         if stmt is not None:
             stmt.set_line(t)
         return stmt, is_simple

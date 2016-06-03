@@ -416,6 +416,7 @@ class FuncItem(FuncBase):
     # Is this an overload variant of function with more than one overload variant?
     is_overload = False
     is_generator = False   # Contains a yield statement?
+    is_coroutine = False   # Defined using 'async def'?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     # Variants of function with type variables with values expanded
@@ -1703,6 +1704,46 @@ class PromoteExpr(Expression):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit__promote_expr(self)
+
+
+# PEP 492 nodes: 'await', 'async for', 'async with'.
+# ('async def' is FunDef(..., is_coroutine=True).)
+
+
+class AwaitExpr(Node):
+    """Await expression (await ...)."""
+    # TODO: [de]serialize()
+    # TODO: arg type must be AsyncIterator[E] or Generator[E, ..., ...] (or Iterator[E]?)
+    #       and then the return type is E
+
+    expr = None  # type: Node
+    type = None  # type: Type
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_await_expr(self)
+
+
+class AsyncForStmt(Node):
+    """Asynchronous for statement (async for ...)."""
+    # TODO: constructor
+    # TODO: [de]serialize
+    # TODO: types
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        print("XXX AsyncForStmt.accept")
+
+
+class AsyncWithStmt(Node):
+    """Asynchronous with statement (async with ...)."""
+    # TODO: constructor
+    # TODO: [de]serialize
+    # TODO: types
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        print("XXX AsyncWithStmt.accept")
 
 
 # Constants

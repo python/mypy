@@ -25,6 +25,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
+    AwaitExpr,
     CONTRAVARIANT, COVARIANT
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
@@ -257,12 +258,45 @@ class TypeChecker(NodeVisitor[Type]):
                     self.msg.overloaded_signatures_overlap(i + 1, i + j + 2,
                                                            item.func)
 
+    # Here's the scoop about generators and coroutines.
+    #
+    # There are two kinds of generators: classic generators (functions
+    # with `yield` or `yield from` in the body) and coroutines
+    # (functions declared with `async def`).  The latter are specified
+    # in PEP 492 and only available in Python >= 3.5.
+    #
+    # Classic generators can be parameterized with three types:
+    # - ty is the yield type (the type of y in `yield y`)
+    # - ts is the type receive by yield (the type of s in `s = yield`)
+    # - tr is the return type (the type of r in `return r`)
+    #
+    # A classic generator must define a return type that's either
+    # `Generator[ty, ts, tr]`, Iterator[ty], or Iterable[ty] (or
+    # object or Any).  If ts/tr are not given, both are Any.
+    #
+    # A coroutine must define a return type corresponding to tr; the
+    # other two are fixed: ty is AbstractFuture[tr], ts in Any.  The
+    # "external" return type (seen by the caller) is Awaitable[tr].
+    #
+    # There are several useful methods:
+    #
+    # - is_generator_return_type(t) returns whether t is a Generator,
+    #   Iterator, Iterable, or Awaitable.
+    # - get_generator_yield_type(t) returns ty.
+    # - get_generator_receive_type(t) returns ts.
+    # - get_generator_return_type(t) returns tr.
+
     def is_generator_return_type(self, typ: Type) -> bool:
-        return is_subtype(self.named_generic_type('typing.Generator',
-                                                  [AnyType(), AnyType(), AnyType()]),
-                          typ)
+        """Is `typ` a valid type for  generator?
+
+        True if either Generator or Awaitable is a supertype of `typ`.
+        """
+        gt = self.named_generic_type('typing.Generator', [AnyType(), AnyType(), AnyType()])
+        at = self.named_generic_type('typing.Awaitable', [AnyType()])
+        return is_subtype(gt, typ) or is_subtype(at, typ)
 
     def get_generator_yield_type(self, return_type: Type) -> Type:
+        """Given the declared return type of a generator (t), return the type it yields (ty)."""
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type):
@@ -272,6 +306,8 @@ class TypeChecker(NodeVisitor[Type]):
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
+        elif return_type.type.fullname() == 'typing.Awaitable':
+            return AnyType()  # XXX TODO: AbstractFuture[tr]
         elif return_type.args:
             return return_type.args[0]
         else:
@@ -281,6 +317,7 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
 
     def get_generator_receive_type(self, return_type: Type) -> Type:
+        """Given a declared generator return type (t), return the type its yield receives (ts)."""
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type):
@@ -291,14 +328,22 @@ class TypeChecker(NodeVisitor[Type]):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is the only type which specifies the type of values it can receive.
-            return return_type.args[1]
+            # Generator is one of the two types which specify the type of values it can receive.
+            if len(return_type.args) == 3:
+                return return_type.args[1]
+            else:
+                return AnyType()
+        elif return_type.type.fullname() == 'typing.Awaitable':
+            # Generator is one of the two types which specify the type of values it can receive.
+            # According to the stub this is always `Any`.
+            return AnyType()
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.
             return Void()
 
     def get_generator_return_type(self, return_type: Type) -> Type:
+        """Given the declared return type of a generator (t), return the type it returns (tr)."""
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type):
@@ -309,9 +354,19 @@ class TypeChecker(NodeVisitor[Type]):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is the only type which specifies the type of values it returns into
-            # `yield from` expressions.
-            return return_type.args[2]
+            # Generator is one of the two types which specify the type of values it returns into
+            # `yield from` expressions (using a `return` statements).
+            if len(return_type.args) == 3:
+                return return_type.args[2]
+            else:
+                return AnyType()
+        elif return_type.type.fullname() == 'typing.Awaitable':
+            # Awaitable is the other type which specifies the type of values it returns into
+            # `yield from` expressions (using `return`).
+            if len(return_type.args) == 1:
+                return return_type.args[0]
+            else:
+                return AnyType()
         else:
             # `return_type` is supertype of Generator, so callers won't be able to see the return
             # type when used in a `yield from` expression.
@@ -1908,6 +1963,31 @@ class TypeChecker(NodeVisitor[Type]):
                             messages.INCOMPATIBLE_TYPES_IN_YIELD,
                             'actual type', 'expected type')
         return self.get_generator_receive_type(return_type)
+
+    def visit_await_expr(self, e: AwaitExpr) -> Type:
+        any_type = AnyType()
+        awaitable_type = self.named_generic_type('typing.Awaitable', [any_type])
+        generator_type = self.named_generic_type('typing.Generator', [any_type] * 3)
+        # XXX Instead of a union, check for both types separately and produce custom message
+        expected_type = UnionType([awaitable_type, generator_type])
+        actual_type = self.accept(e.expr, expected_type)
+        if isinstance(actual_type, AnyType):
+            return any_type
+        if is_subtype(actual_type, generator_type):
+            if isinstance(actual_type, Instance) and len(actual_type.args) == 3:
+                return actual_type.args[2]
+            else:
+                return any_type  # Must've been unparameterized Generator.
+        elif is_subtype(actual_type, awaitable_type):
+            if isinstance(actual_type, Instance) and len(actual_type.args) == 1:
+                return actual_type.args[0]
+            else:
+                return any_type  # Must've been unparameterized Awaitable.
+        msg = "{} (actual type {}, expected Awaitable or Generator)".format(
+            messages.INCOMPATIBLE_TYPES_IN_AWAIT,
+            self.msg.format(actual_type))
+        self.fail(msg, e)
+        return any_type
 
     #
     # Helpers

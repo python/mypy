@@ -243,6 +243,9 @@ class StrConv(NodeVisitor[str]):
     def visit_yield_expr(self, o):
         return self.dump([o.expr], o)
 
+    def visit_await_expr(self, o):
+        return self.dump([o.expr], o)
+
     def visit_del_stmt(self, o):
         return self.dump([o.expr], o)
 
