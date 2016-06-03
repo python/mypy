@@ -1103,7 +1103,7 @@ MyDDict(dict)[0]
 [out]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for "dict"
-_program.py:9: error: Incompatible types in assignment
+_program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
 _program.py:23: error: Invalid index type "str" for "dict"
 
