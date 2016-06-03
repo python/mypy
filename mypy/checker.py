@@ -1828,11 +1828,11 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(type, AnyType):
             return type
 
-        all_types = [] # type: List[Type]
-        test_types = type.items if isinstance(type, TupleType) else [ type ]
+        all_types = []  # type: List[Type]
+        test_types = type.items if isinstance(type, TupleType) else [type]
 
         for ttype in test_types:
-            except_type = None # type: Optional[Type]
+            except_type = None  # type: Optional[Type]
 
             if isinstance(ttype, FunctionLike):
                 item = ttype.items()[0]
