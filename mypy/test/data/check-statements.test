@@ -629,6 +629,8 @@ except (NotBaseDerived, E2) as e5:  # E: Exception type must be derived from Bas
     pass
 except (NotBaseDerived, E1, E2) as e6:  # E: Exception type must be derived from BaseException
     pass
+except (E1, E2, NotBaseDerived) as e6:  # E: Exception type must be derived from BaseException
+    pass
 [builtins fixtures/exception.py]
 
 [case testReuseTryExceptionVariable]
