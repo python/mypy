@@ -392,6 +392,32 @@ class B: pass
 x = A()
 y = B()
 
+[case testExportedValuesInImportAll]
+import typing
+from m import *
+_ = a
+_ = b
+_ = c
+_ = d
+_ = e
+_ = f # E: Name 'f' is not defined
+_ = _g # E: Name '_g' is not defined
+[file m.py]
+__all__ = ['a']
+__all__ += ('b',)
+__all__.append('c')
+__all__.extend(('d', 'e'))
+
+a = b = c = d = e = f = _g = 1
+[builtins fixtures/module.py]
+
+[case testAllMustBeSequenceStr]
+import typing
+__all__ = [1, 2, 3]
+[builtins fixtures/module.py]
+[out]
+main: error: Type of __all__ must be Sequence[str], not List[int]
+
 [case testEllipsisInitializerInStubFileWithType]
 import m
 m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
