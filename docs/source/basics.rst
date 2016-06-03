@@ -140,8 +140,7 @@ the builtins contains a definition like this for ``chr``:
 
     def chr(code: int) -> str: ...
 
-In stub files we don't care about the function bodies. `pass <https://docs.python.org/3/tutorial/controlflow.html#pass-statements>`_ statements, the built-in
-`Ellipsis <https://docs.python.org/3/library/constants.html#Ellipsis>`_ constant, or the short-form literal of Ellipsis (just three dots: ``...``) can be used interchangeably to make the stub files valid python. The short-form literal is the most succinct.
+In stub files we don't care about the function bodies. `pass <https://docs.python.org/3/tutorial/controlflow.html#pass-statements>`_ statements, or the three dot literal (ie. `...`) of `Ellipsis <https://docs.python.org/3/library/constants.html#Ellipsis>`_ can be used interchangeably to make the stub files valid python. 
 
 .. _library-stubs-missing:
 
