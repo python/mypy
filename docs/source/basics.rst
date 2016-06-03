@@ -140,10 +140,8 @@ the builtins contains a definition like this for ``chr``:
 
     def chr(code: int) -> str: ...
 
-The stub files, being for annotation-purposes only, don't include
-redundant information about a function. In the example above, the
-three dot literal (ie. ``...``) is used to make the stub files valid 
-python.  The pass statement can be used as an alternative to ``...``. 
+In stub files we don't care about the function bodies, so we use 
+an ellipsis instead.  That ``...`` is three literal dots!
 
 Mypy complains if it can't find a stub (or a real module) for a
 library module that you import. You can create a stub easily; here is
