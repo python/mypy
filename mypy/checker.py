@@ -1832,20 +1832,18 @@ class TypeChecker(NodeVisitor[Type]):
         test_types = type.items if isinstance(type, TupleType) else [type]
 
         for ttype in test_types:
-            except_type = None  # type: Optional[Type]
-
-            if isinstance(ttype, FunctionLike):
-                item = ttype.items()[0]
-                ret_type = item.ret_type
-                if (is_subtype(ret_type, self.named_type('builtins.BaseException'))
-                        and item.is_type_obj()):
-                    except_type = ret_type
-
-            if except_type is None:
+            if not isinstance(ttype, FunctionLike):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 
-            all_types.append(except_type)
+            item = ttype.items()[0]
+            ret_type = item.ret_type
+            if not (is_subtype(ret_type, self.named_type('builtins.BaseException'))
+                    and item.is_type_obj()):
+                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                return AnyType()
+
+            all_types.append(ret_type)
 
         return UnionType.make_simplified_union(all_types)
 
