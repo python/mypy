@@ -153,40 +153,18 @@ Types in stub files
 
 Recall the introductory note about the usage of stub files (See :ref:`library-stubs`) 
 as an alternative approach to annotate types.  Stub files are valid
-python 3 files, which mirror the python modules, but omit the 
-the business logic of variable initialization, function bodies and
-default arguments.  
-
-The Ellipsis literal ``...`` or pass statement is used to articulate the
-omission, in the stub file.
-
-An example of variable instantiation omission:
+Python 3 files, which mirror the python modules but leave out the 
+runtime logic like variable initialization, function bodies and
+default arguments.  For example:
 
 .. code-block:: python
 
     x = ... # type: int
-
-An example of function body omission:
-
-.. code-block:: python
-
     def afunc(code: str) -> int: ...
-
-An example of default argument omission:
-
-.. code-block:: python
-
     def afunc(a: int, b: int=...) -> int: pass
 
-Since stub files may be incomplete, the following can be included to indicate
-to the type checker the annotations for the un-annotated.
-
-.. code-block:: python
-
-    def __getattr__(name) -> Any: ...
-
+The literal ``...`` is all that's necessary!
 
 .. note::
 
-   The cases discussed above should not be confused with the uses of ``...``
-   in Type defintion, for instance ``Callable[...]``.
+    The ``...`` is also used with a different meaning in the :ref:`Callable <callable-types>` and :ref:`Tuple <tuple-types>` types.
