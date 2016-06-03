@@ -573,6 +573,24 @@ except (E1, E2) as e1:
 except (E2, E1) as e2:
     a = e2 # type: E1
     b = e2 # type: E2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E2")
+except (E1, E2, int) as e3: # E: Exception type must be derived from BaseException
+    pass
+[builtins fixtures/exception.py]
+
+[case testExceptWithMultipleTypes3]
+import typing
+class E1(BaseException): pass
+class E1_1(E1): pass
+class E1_2(E1): pass
+try: pass
+except (E1, E1_1, E1_2) as e1:
+    x = e1 # type: E1
+    y = e1 # type: E1_1 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_1")
+    z = e1 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_2")
+except (E1_1, E1_2) as e2:
+    a = e2 # type: E1
+    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
+    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
 [builtins fixtures/exception.py]
 
 [case testReuseTryExceptionVariable]
@@ -616,6 +634,39 @@ def exc() -> BaseException: pass
 try: pass
 except exc as e: pass             # E: Exception type must be derived from BaseException
 except BaseException() as b: pass # E: Exception type must be derived from BaseException
+[builtins fixtures/exception.py]
+
+[case testTupleValueAsExceptionType]
+import typing
+def exc() -> BaseException: pass
+class E1(BaseException): pass
+class E1_1(E1): pass
+class E1_2(E1): pass
+
+exs1 = (E1, E1_1, E1_2)
+try: pass
+except exs1 as e1:
+    x = e1 # type: E1
+    y = e1 # type: E1_1 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_1")
+    z = e1 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_2")
+
+exs2 = (E1_1, E1_2)
+try: pass
+except exs2 as e2:
+    a = e2 # type: E1
+    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
+    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
+[builtins fixtures/exception.py]
+
+[case testInvalidTupleValueAsExceptionType]
+import typing
+def exc() -> BaseException: pass
+class E1(BaseException): pass
+class E2(E1): pass
+
+exs1 = (E1, E2, int)
+try: pass
+except exs1 as e: pass # E: Exception type must be derived from BaseException
 [builtins fixtures/exception.py]
 
 [case testOverloadedExceptionType]

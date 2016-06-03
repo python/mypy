@@ -28,7 +28,7 @@ from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
                         SymbolTableNode, MODULE_REF)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
-from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
 from mypy import fixup
 from mypy.report import Reports
 from mypy import defaults
@@ -683,6 +683,10 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
                 encoding = _encoding
 
         source_bytearray.extend(f.read())
+        try:
+            source_bytearray.decode(encoding)
+        except LookupError as lookuperr:
+            raise DecodeError(str(lookuperr))
         return source_bytearray.decode(encoding)
 
 
@@ -1215,7 +1219,7 @@ class State:
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
-                except UnicodeDecodeError as decodeerr:
+                except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
             self.tree = manager.parse_file(self.id, self.xpath, source)

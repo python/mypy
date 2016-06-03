@@ -1782,7 +1782,7 @@ class TypeChecker(NodeVisitor[Type]):
         for i in range(len(s.handlers)):
             self.binder.push_frame()
             if s.types[i]:
-                t = self.exception_type(s.types[i])
+                t = self.visit_except_handler_test(s.types[i])
                 if s.vars[i]:
                     # To support local variables, we make this a definition line,
                     # causing assignment to set the variable's type.
@@ -1822,38 +1822,30 @@ class TypeChecker(NodeVisitor[Type]):
         if s.finally_body:
             self.accept(s.finally_body)
 
-    def exception_type(self, n: Node) -> Type:
-        if isinstance(n, TupleExpr):
-            t = None  # type: Type
-            for item in n.items:
-                tt = self.exception_type(item)
-                if t:
-                    t = join_types(t, tt)
-                else:
-                    t = tt
-            return t
-        else:
-            # A single exception type; should evaluate to a type object type.
-            type = self.accept(n)
-            return self.check_exception_type(type, n)
-        self.fail('Unsupported exception', n)
-        return AnyType()
+    def visit_except_handler_test(self, n: Node) -> Type:
+        """Type check an exception handler test clause."""
+        type = self.accept(n)
+        if isinstance(type, AnyType):
+            return type
 
-    def check_exception_type(self, type: Type, context: Context) -> Type:
-        if isinstance(type, FunctionLike):
-            item = type.items()[0]
-            ret = item.ret_type
-            if (is_subtype(ret, self.named_type('builtins.BaseException'))
-                    and item.is_type_obj()):
-                return ret
-            else:
-                self.fail(messages.INVALID_EXCEPTION_TYPE, context)
+        all_types = []  # type: List[Type]
+        test_types = type.items if isinstance(type, TupleType) else [type]
+
+        for ttype in test_types:
+            if not isinstance(ttype, FunctionLike):
+                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
-        elif isinstance(type, AnyType):
-            return AnyType()
-        else:
-            self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-            return AnyType()
+
+            item = ttype.items()[0]
+            ret_type = item.ret_type
+            if not (is_subtype(ret_type, self.named_type('builtins.BaseException'))
+                    and item.is_type_obj()):
+                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                return AnyType()
+
+            all_types.append(ret_type)
+
+        return UnionType.make_simplified_union(all_types)
 
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
