@@ -140,7 +140,10 @@ the builtins contains a definition like this for ``chr``:
 
     def chr(code: int) -> str: ...
 
-In stub files we don't care about the function bodies. `pass <https://docs.python.org/3/tutorial/controlflow.html#pass-statements>`_ statements, or the three dot literal (ie. ``...``) of `Ellipsis <https://docs.python.org/3/library/constants.html#Ellipsis>`_ can be used interchangeably to make the stub files valid python. 
+The stub files, being for annotation-purposes only, don't include
+redundant information about a function. In the example above, the
+three dot literal (ie. ``...``) is used to make the stub files valid 
+python.  The pass statement can be used as an alternative to ``...``. 
 
 .. _library-stubs-missing:
 
