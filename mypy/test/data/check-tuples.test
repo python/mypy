@@ -169,9 +169,11 @@ b = t1[(0)] # E: Incompatible types in assignment (expression has type "A", vari
 
 a = t1[0]
 b = t1[1]
+b = t1[-1]
 a = t1[(0)]
 x = t3[0:3] # type (A, B, C)
 y = t3[0:5:2] # type (A, C, E)
+x = t3[:-2] # type (A, B, C)
 
 class A: pass
 class B: pass
