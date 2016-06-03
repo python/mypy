@@ -314,8 +314,8 @@ class B: pass
 a, b = None, None # type: (A, B)
 aa, bb = None, None # type: (AA, BB)
 
-a[a], b[b] = a, bb   # E: Incompatible types in assignment
-a[a], b[b] = aa, b   # E: Incompatible types in assignment
+a[a], b[b] = a, bb   # E: Incompatible types in assignment (expression has type "A", target has type "AA")
+a[a], b[b] = aa, b   # E: Incompatible types in assignment (expression has type "B", target has type "BB")
 a[aa], b[b] = aa, bb # E: Invalid index type "AA" for "A"
 a[a], b[bb] = aa, bb # E: Invalid index type "BB" for "B"
 a[a], b[b] = aa, bb

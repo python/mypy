@@ -311,7 +311,7 @@ class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
-main:7: error: Incompatible types in assignment
+main:7: error: Incompatible types in assignment (expression has type "B", target has type "C")
 main:8: error: Invalid index type "C" for "A"
 
 [case testOperatorAssignmentWithIndexLvalue2]
@@ -490,7 +490,7 @@ from typing import List
 a = None # type: List[A]
 b = None # type: List[int]
 
-a[1], b[1] = a # E: Incompatible types in assignment
+a[1], b[1] = a # E: Incompatible types in assignment (expression has type "A", target has type "int")
 a[1], a[2] = a
 
 class A: pass
