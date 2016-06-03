@@ -17,7 +17,7 @@ search path. Use ``pip install typing`` to install the module (this also
 works for Python 3).
 
 The example below illustrates Python 2 function type annotation
-syntax. This is also valid in Python 3 mode:
+syntax. This syntax is also valid in Python 3 mode.
 
 .. code-block:: python
 
@@ -29,28 +29,48 @@ syntax. This is also valid in Python 3 mode:
     class Example:
         def method(self, lst, opt=0, *args, **kwargs):
             # type: (List[str], int, *str, **bool) -> int
+            """Docstring comes after type comment."""
             ...
 
-Here are more specifics:
+Important details
+-----------------
 
-- You should include types for arguments with default values in the
-  annotation. The ``opt`` argument of ``method`` above is an example
-  of this.
+It's worth going through these carefully to avoid surprises:
+
+- You don't provide an annotation for the ``self`` / ``cls`` variable of
+  methods.
+
+- Docstring always comes *after* the type comment.
 
 - For ``*args`` and ``**kwargs`` the type should be prefixed with
   ``*`` or ``**``, respectively. Again, the above example illustrates
   this.
 
-- The type syntax for variables is the same as for Python 3.
-
 - Things like ``Any`` must be imported from ``typing``, even if they
   are only used in comments.
 
-- You don't provide an annotation for the ``self``/``cls`` variable of
-  methods.
+- In Python 2 mode ``str`` is implicitly promoted to ``unicode``, similar
+  to how ``int`` is compatible with ``float``. This is unlike ``bytes`` and
+  ``str`` in Python 3, which are incompatible. ``bytes`` in Python 2 is
+  equivalent to ``str``. (This might change in the future.)
+
+.. note::
+
+    Currently there's no support for splitting an annotation to multiple
+    lines. This will likely change in the future. (PEP 484 already defines
+    the syntax to use; we just have to implement it.)
+
+Additional notes
+----------------
+
+- You should include types for arguments with default values in the
+  annotation. The ``opt`` argument of ``method`` in the example at the
+  beginning of this section is an example of this.
 
 - The annotation can be on the same line as the function header or on
   the following line.
+
+- The type syntax for variables is the same as for Python 3.
 
 - You don't need to use string literal escapes for forward references
   within comments.
@@ -58,14 +78,3 @@ Here are more specifics:
 - Mypy uses a separate set of library stub files in `typeshed
   <http://github.com/python/typeshed>`_ for Python 2. Library support
   may vary between Python 2 and Python 3.
-
-- In Python 2 mode ``str`` is implicitly promoted to ``unicode``, similar
-  to how ``int`` is compatible with ``float``. This is unlike ``bytes`` and
-  ``str`` in Python 3, which are incompatible. ``bytes`` in Python 2 is
-  equivalent to ``str``.
-
-.. note::
-
-    Currently there's no support for splitting an annotation to multiple
-    lines. This will likely change in the future. (PEP 484 already defines
-    the syntax to use; we just have to implement it.)
