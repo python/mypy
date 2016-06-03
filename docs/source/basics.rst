@@ -145,11 +145,6 @@ redundant information about a function. In the example above, the
 three dot literal (ie. ``...``) is used to make the stub files valid 
 python.  The pass statement can be used as an alternative to ``...``. 
 
-.. _library-stubs-missing:
-
-Missing Stub Files
-******************
-
 Mypy complains if it can't find a stub (or a real module) for a
 library module that you import. You can create a stub easily; here is
 an overview:
