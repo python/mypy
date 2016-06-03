@@ -147,3 +147,14 @@ to be annotated with a starred type:
     p, q, *rs = 1, 2  # type: int, int, *List[int]
 
 Here, the type of ``rs`` is set to ``List[int]``.
+
+Stub Files usage of Ellipsis
+****************************
+
+Similar to how functions can be annoted with stub files, so can variables. 
+The stub files don't include business logic, so they can use
+the Ellipsis literal ``...`` instead:
+
+.. code-block:: python
+
+    x = ... # type: int
