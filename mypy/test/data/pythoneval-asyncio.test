@@ -302,7 +302,7 @@ loop.close()
 
 [out]
 _program.py: note: In function "compute":
-_program.py:9: error: Incompatible return value type: expected builtins.int, got builtins.str
+_program.py:9: error: Incompatible return value type (got "str", expected "int")
 
 [case testErrorSetFutureDifferentInternalType]
 from typing import Generator, Any
@@ -428,7 +428,7 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py: note: In function "h3":
-_program.py:18: error: Incompatible return value type: expected asyncio.futures.Future[asyncio.futures.Future[asyncio.futures.Future[builtins.int]]], got asyncio.futures.Future[asyncio.futures.Future[builtins.int]]
+_program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[...])
 
 [case testErrorOneLessFutureInReturnType]
 import typing
@@ -463,7 +463,7 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py: note: In function "h3":
-_program.py:18: error: Incompatible return value type: expected asyncio.futures.Future[builtins.int], got asyncio.futures.Future[asyncio.futures.Future[builtins.int]]
+_program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[int])
 
 [case testErrorAssignmentDifferentType]
 import typing

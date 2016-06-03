@@ -130,7 +130,7 @@ def k(x: TA) -> B:
 main: note: In function "g2":
 main:16: error: Type argument 1 of "h" has incompatible value "TA"
 main: note: In function "k":
-main:21: error: Incompatible return value type: expected __main__.B, got TA`-1
+main:21: error: Incompatible return value type (got "TA", expected "B")
 
 
 [case testBoundMethodUsage]

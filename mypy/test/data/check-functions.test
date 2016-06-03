@@ -428,9 +428,9 @@ class A: pass
 class B: pass
 [out]
 main: note: In function "g":
-main:4: error: Incompatible return value type: expected __main__.B, got __main__.A
+main:4: error: Incompatible return value type (got "A", expected "B")
 main: note: In function "f":
-main:6: error: Incompatible return value type: expected __main__.A, got __main__.B
+main:6: error: Incompatible return value type (got "B", expected "A")
 
 [case testDynamicallyTypedNestedFunction]
 import typing
@@ -1432,7 +1432,7 @@ def f(x, y):
       int: The sum.
     """
     v = realtypes(x, y) # E: Argument 2 to "realtypes" has incompatible type "object"; expected "int"
-    return v # E: Incompatible return value type: expected builtins.int, got builtins.str
+    return v # E: Incompatible return value type (got "str", expected "int")
 [out]
 main: note: In function "f":
 
