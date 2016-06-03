@@ -1141,54 +1141,24 @@ class ExpressionChecker:
         stride = None  # type:int
 
         if slic.begin_index:
-            ok = False
-            if isinstance(slic.begin_index, IntExpr):
-                begin = slic.begin_index.value
-                ok = True
-            elif isinstance(slic.begin_index, UnaryExpr):
-                if slic.begin_index.op == '-':
-                    operand = slic.begin_index.expr
-                    if isinstance(operand, IntExpr):
-                        begin = -1 * operand.value
-                        ok = True
-
-            if not ok:
+            begin = self._get_value(slic.begin_index)
+            if begin is None:
                 self.chk.fail(
                     messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
                     slic.begin_index)
                 return AnyType()
 
         if slic.end_index:
-            ok = False
-            if isinstance(slic.end_index, IntExpr):
-                end = slic.end_index.value
-                ok = True
-            elif isinstance(slic.end_index, UnaryExpr):
-                if slic.end_index.op == '-':
-                    operand = slic.end_index.expr
-                    if isinstance(operand, IntExpr):
-                        end = -1 * operand.value
-                        ok = True
-
-            if not ok:
+            end = self._get_value(slic.end_index)
+            if end is None:
                 self.chk.fail(
                     messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
                     slic.end_index)
                 return AnyType()
 
         if slic.stride:
-            ok = False
-            if isinstance(slic.stride, IntExpr):
-                stride = slic.stride.value
-                ok = True
-            elif isinstance(slic.stride, UnaryExpr):
-                if slic.stride.op == '-':
-                    operand = slic.stride.expr
-                    if isinstance(operand, IntExpr):
-                        stride = -1 * operand.value
-                        ok = True
-
-            if not ok:
+            stride = self._get_value(slic.stride)
+            if stride is None:
                 self.chk.fail(
                     messages.TUPLE_SLICE_MUST_BE_AN_INT_LITERAL,
                     slic.stride)
@@ -1196,6 +1166,16 @@ class ExpressionChecker:
 
         return TupleType(left_type.items[begin:end:stride], left_type.fallback,
                     left_type.line, left_type.implicit)
+
+    def _get_value(self, index: Node) -> Optional[int]:
+        if isinstance(index, IntExpr):
+            return index.value
+        elif isinstance(index, UnaryExpr):
+            if index.op == '-':
+                operand = index.expr
+                if isinstance(operand, IntExpr):
+                    return -1 * operand.value
+        return None
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""

@@ -156,7 +156,6 @@ t3 = None # type: Tuple[A, B, C, D, E]
 a, b = None, None # type: (A, B)
 x = None # type: Tuple[A, B, C]
 y = None # type: Tuple[A, C, E]
-z = None # type: Tuple[A, B, C, D]
 n = 0
 
 a = t1[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -170,10 +169,11 @@ b = t1[(0)] # E: Incompatible types in assignment (expression has type "A", vari
 
 a = t1[0]
 b = t1[1]
+b = t1[-1]
 a = t1[(0)]
 x = t3[0:3] # type (A, B, C)
 y = t3[0:5:2] # type (A, C, E)
-z = t3[:-1] # type (A, B, C, D)
+x = t3[:-2] # type (A, B, C)
 
 class A: pass
 class B: pass
