@@ -94,9 +94,9 @@ language represents various common types in Python 2.
        return sum([val for val in my_tuple])
    f((1, 2))
 
-   from typing import Generator
+   from typing import Iterator
    def f(n):
-       # type: (int) -> Generator
+       # type: (int) -> Iterator[int]
        i = 0
        while i < n:
            yield i
