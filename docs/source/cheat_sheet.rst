@@ -39,10 +39,6 @@ language represents various common types in Python 2.
    # Ideally, one would never use this
    x = confusing_function() # type: ignore
 
-   class MyClass(object):
-       pass
-   x = MyClass() # type: MyClass
-
    # This is how you annotate a function definition
    def stringify(num):
        # type: (int) -> str
@@ -55,11 +51,11 @@ language represents various common types in Python 2.
        return num1 + num2
 
    # Add type annotations for kwargs as though they were positional args
-   def f(myclass_element, my_float=3.5):
-       # type: (MyClass, float) -> float
-       return my_float + 3.5
+   def f(num1, my_float=3.5):
+       # type: (int, float) -> float
+       return num1 + my_float
    # This is how you annotate a function value
-   x = f # type: Callable[[MyClass, float], float]
+   x = f # type: Callable[[int, float], float]
 
    # Use Optional[Type] for objects that could be None
    def f(input_str=None):
@@ -98,8 +94,22 @@ language represents various common types in Python 2.
        return sum([val for val in my_tuple])
    f((1, 2))
 
-
    # TODO: Add Generator example
 
    # TODO: Add typevar example
 
+   # This is how you annotate a class with '__init__' constructor and a method.
+   class MyClass(object):
+       """This is where your class docstring goes."""
+
+       def __init__(self):
+           # type: () -> None
+           """Add your constructor stuff here."""
+           pass
+
+       def my_class_method(self, num, str1):
+           # type: (int, str) -> str
+           """Returns 'str1' repeated 'num' times."""
+           return num * str1
+
+   x = MyClass() # In this case the inferred type is 'MyClass'
