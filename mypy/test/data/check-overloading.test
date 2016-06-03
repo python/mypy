@@ -91,12 +91,6 @@ class A:
   def f(self, x: 'B') -> 'B': pass
 class B: pass
 
-[case testNonConsecutiveOverloads]
-from typing import Any
-def f() -> None: pass
-def g() -> None: pass
-def f(x: Any) -> None: pass # E: Name 'f' already defined (overload variants must be next to each other)
-
 [case testOverloadsWithDifferentArgumentCounts]
 from typing import overload
 a, b = None, None # type: (A, B)
