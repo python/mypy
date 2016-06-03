@@ -103,7 +103,14 @@ language represents various common types in Python 2.
        return sum([val for val in my_tuple])
    f((1, 2))
 
-   # TODO: Add Generator example
+   from typing import Iterator
+   def f(n):
+       # type: (int) -> Iterator[int]
+       i = 0
+       while i < n:
+           yield i
+           i += 1
+   f(5)
 
    # TODO: Add typevar example
 
