@@ -584,9 +584,13 @@ class E1_1(E1): pass
 class E1_2(E1): pass
 try: pass
 except (E1, E1_1, E1_2) as e1:
-    reveal_type(e1) # E: Revealed type is '__main__.E1'
+    x = e1 # type: E1
+    y = e1 # type: E1_1 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_1")
+    z = e1 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_2")
 except (E1_1, E1_2) as e2:
-    reveal_type(e2) # E: Revealed type is '__main__.E1'
+    a = e2 # type: E1
+    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
+    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
 [builtins fixtures/exception.py]
 
 [case testReuseTryExceptionVariable]
@@ -639,15 +643,19 @@ class E1(BaseException): pass
 class E1_1(E1): pass
 class E1_2(E1): pass
 
-exs1 = (E1, E1_2)
+exs1 = (E1, E1_1, E1_2)
 try: pass
 except exs1 as e1:
-    reveal_type(e1) # E: Revealed type is '__main__.E1'
+    x = e1 # type: E1
+    y = e1 # type: E1_1 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_1")
+    z = e1 # type: E1_2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E1_2")
 
 exs2 = (E1_1, E1_2)
 try: pass
 except exs2 as e2:
-    reveal_type(e2) # E: Revealed type is '__main__.E1'
+    a = e2 # type: E1
+    b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
+    c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
 [builtins fixtures/exception.py]
 
 [case testInvalidTupleValueAsExceptionType]
