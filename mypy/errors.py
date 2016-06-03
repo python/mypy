@@ -346,6 +346,13 @@ class CompileError(Exception):
         self.use_stdout = use_stdout
 
 
+class DecodeError(Exception):
+    """Exception raised when a file cannot be decoded due to an unknown encoding type.
+
+    Essentially a wrapper for the LookupError raised by `bytearray.decode`
+    """
+
+
 def remove_path_prefix(path: str, prefix: str) -> str:
     """If path starts with prefix, return copy of path with the prefix removed.
     Otherwise, return path. If path is None, return None.
