@@ -1827,13 +1827,15 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_except_handler_test(self, n: Node) -> Type:
         """Type check an exception handler test clause."""
         type = self.accept(n)
-        if isinstance(type, AnyType):
-            return type
 
         all_types = []  # type: List[Type]
         test_types = type.items if isinstance(type, TupleType) else [type]
 
         for ttype in test_types:
+            if isinstance(ttype, AnyType):
+                all_types.append(ttype)
+                continue
+
             if not isinstance(ttype, FunctionLike):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()

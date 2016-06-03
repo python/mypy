@@ -598,6 +598,39 @@ except (E1_1, E1_2) as e2:
     c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
 [builtins fixtures/exception.py]
 
+[case testExceptWithAnyTypes]
+from typing import Any
+
+E1 = None  # type: Any
+class E2(BaseException): pass
+class NotBaseDerived: pass
+
+try:
+    pass
+except BaseException as e1:
+    reveal_type(e1)  # E: Revealed type is 'builtins.BaseException'
+except (E1, BaseException) as e2:
+    reveal_type(e2)  # E: Revealed type is 'Any'
+except (E1, E2) as e3:
+    reveal_type(e3)  # E: Revealed type is 'Any'
+except (E1, E2, BaseException) as e4:
+    reveal_type(e4)  # E: Revealed type is 'Any'
+
+try: pass
+except E1 as e1:
+    reveal_type(e1)  # E: Revealed type is 'Any'
+except E2 as e2:
+    reveal_type(e2)  # E: Revealed type is '__main__.E2'
+except NotBaseDerived as e3:  # E: Exception type must be derived from BaseException
+    pass
+except (NotBaseDerived, E1) as e4:  # E: Exception type must be derived from BaseException
+    pass
+except (NotBaseDerived, E2) as e5:  # E: Exception type must be derived from BaseException
+    pass
+except (NotBaseDerived, E1, E2) as e6:  # E: Exception type must be derived from BaseException
+    pass
+[builtins fixtures/exception.py]
+
 [case testReuseTryExceptionVariable]
 import typing
 class E1(BaseException): pass
