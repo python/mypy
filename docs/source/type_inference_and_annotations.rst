@@ -148,13 +148,45 @@ to be annotated with a starred type:
 
 Here, the type of ``rs`` is set to ``List[int]``.
 
-Stub Files usage of Ellipsis
-****************************
+Types in stub files
+*******************
 
-Similar to how functions can be annoted with stub files, so can variables. 
-The stub files don't include business logic, so they can use
-the Ellipsis literal ``...`` instead:
+Recall the introductory note about the usage of stub files (See :ref:`library-stubs`) 
+as an alternative approach to annotate types.  Stub files are valid
+python 3 files, which mirror the python modules, but omit the 
+the business logic of variable initialization, function bodies and
+default arguments.  
+
+The Ellipsis literal ``...`` or pass statement is used to articulate the
+omission, in the stub file.
+
+An example of variable instantiation omission:
 
 .. code-block:: python
 
     x = ... # type: int
+
+An example of function body omission:
+
+.. code-block:: python
+
+    def afunc(code: str) -> int: ...
+
+An example of default argument omission:
+
+.. code-block:: python
+
+    def afunc(a: int, b: int=...) -> int: pass
+
+Since stub files may be incomplete, the following can be included to indicate
+to the type checker the annotations for the un-annotated.
+
+.. code-block:: python
+
+    def __getattr__(name) -> Any: ...
+
+
+.. note::
+
+   The cases discussed above should not be confused with the uses of ``...``
+   in Type defintion, for instance ``Callable[...]``.
