@@ -97,8 +97,13 @@ language represents various common types in Python 2.
        return sum([val for val in my_tuple])
    f((1, 2))
 
-
-   # TODO: Add Generator example
+   from typing import
+   def f(n):
+       # type: (int) -> Generator
+       i = 0
+       while i < n:
+           yield i
+           i += 1
 
    # TODO: Add typevar example
 
