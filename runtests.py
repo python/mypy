@@ -155,7 +155,7 @@ def add_basic(driver: Driver) -> None:
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
     driver.add_flake8('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
-    # driver.add_mypy('fast-parse', '--fast-parse', 'samples/hello.py')
+    driver.add_mypy('fast-parse', '--fast-parse', 'samples/hello.py')
 
 
 def add_selftypecheck(driver: Driver) -> None:
@@ -184,10 +184,7 @@ def add_imports(driver: Driver) -> None:
         mod = file_to_module(f)
         if '.test.data.' in mod:
             continue
-        # Don't check the importability of the fastparse module because it
-        # requires typed_ast which may not be available (but which we don't
-        # want to have an explicit dependency on yet)
-        if not mod.endswith('.__main__') and not mod.endswith('.fastparse'):
+        if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
         driver.add_flake8('module %s' % mod, f)
 
