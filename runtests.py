@@ -213,6 +213,11 @@ def add_pythoneval(driver: Driver) -> None:
                           '-m', 'mypy.test.testpythoneval', *driver.arglist)
 
 
+def add_pythonevalall(driver: Driver) -> None:
+    driver.add_python_mod('eval-test-all', 'mypy.myunit',
+                          '-m', 'mypy.test.testevalall', *driver.arglist)
+
+
 def add_cmdline(driver: Driver) -> None:
     driver.add_python_mod('cmdline-test', 'mypy.myunit',
                           '-m', 'mypy.test.testcmdline', *driver.arglist)
