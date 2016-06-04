@@ -137,7 +137,7 @@ base classes using the ``abc.ABCMeta`` metaclass and the
 
    class B(A):
        def foo(self, x: int) -> None: ...
-       def bar(self -> str:
+       def bar(self) -> str:
            return 'x'
 
    a = A() # Error: A is abstract
