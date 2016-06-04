@@ -222,6 +222,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.check_untyped_defs = check_untyped_defs
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
+        self.all_exports = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -249,6 +250,11 @@ class SemanticAnalyzer(NodeVisitor):
             remove_imported_names_from_symtable(self.globals, 'builtins')
 
         self.errors.set_ignored_lines(set())
+
+        if '__all__' in self.globals:
+            for name, g in self.globals.items():
+                if name not in self.all_exports:
+                    g.module_public = False
 
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -1069,6 +1075,11 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
 
+        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
+                isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(*s.rvalue.items)
+
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
         # For now, type aliases only work at the top level of a module.
@@ -1622,6 +1633,9 @@ class SemanticAnalyzer(NodeVisitor):
                                        s: OperatorAssignmentStmt) -> None:
         s.lvalue.accept(self)
         s.rvalue.accept(self)
+        if (isinstance(s.lvalue, NameExpr) and s.lvalue.name == '__all__' and
+                s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(*s.rvalue.items)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
@@ -1836,6 +1850,17 @@ class SemanticAnalyzer(NodeVisitor):
             # Normal call expression.
             for a in expr.args:
                 a.accept(self)
+
+            if (isinstance(expr.callee, MemberExpr) and
+                    isinstance(expr.callee.expr, NameExpr) and
+                    expr.callee.expr.name == '__all__' and
+                    expr.callee.expr.kind == GDEF and
+                    expr.callee.name in ('append', 'extend')):
+                if expr.callee.name == 'append' and expr.args:
+                    self.add_exports(expr.args[0])
+                elif (expr.callee.name == 'extend' and expr.args and
+                        isinstance(expr.args[0], (ListExpr, TupleExpr))):
+                    self.add_exports(*expr.args[0].items)
 
     def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
         """Translate 'dict(x=y, ...)' to {'x': y, ...}.
@@ -2205,6 +2230,11 @@ class SemanticAnalyzer(NodeVisitor):
             self.name_already_defined(name, ctx)
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
+
+    def add_exports(self, *exps: Node) -> None:
+        for exp in exps:
+            if isinstance(exp, StrExpr):
+                self.all_exports.add(exp.value)
 
     def check_no_global(self, n: str, ctx: Context,
                         is_func: bool = False) -> None:
