@@ -2588,7 +2588,9 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType, CallableType]:
     inst = Instance(typ, tv)
     if typ.is_callable:
         call_def = typ.get_method('__call__')
-        return method_type_with_fallback(call_def, inst)
+        callable_cpy = method_type_with_fallback(call_def, inst)
+        callable_cpy.fallback = inst
+        return callable_cpy
     elif typ.tuple_type is None:
         return inst
     else:
