@@ -1,0 +1,25 @@
+[case testFastParseSyntaxError]
+# flags: fast-parser
+1 +  # E: invalid syntax
+
+[case testFastParseTypeCommentSyntaxError]
+# flags: fast-parser
+x = None # type: a : b  # E: syntax error in type comment
+
+[case testFastParseInvalidTypeComment]
+# flags: fast-parser
+x = None # type: a + b  # E: invalid type comment
+
+-- Function type comments are attributed to the function def line.
+-- This happens in both parsers.
+[case testFastParseFunctionAnnotationSyntaxError]
+# flags: fast-parser
+def f():  # E: syntax error in type comment
+  # type: None -> None
+  pass
+
+[case testFastParseInvalidFunctionAnnotation]
+# flags: fast-parser
+def f():  # E: invalid type comment
+  # type: (a + b) -> None
+  pass
