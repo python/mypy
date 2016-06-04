@@ -108,6 +108,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
+                    return AnyType()
                 items = self.anal_array(t.args)
                 # Currently Optional[t] is just an alias for t.
                 return items[0]
