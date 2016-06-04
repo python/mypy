@@ -63,7 +63,8 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
-    INVARIANT, UNBOUND_IMPORTED
+    INVARIANT, UNBOUND_IMPORTED,
+    method_type_with_fallback
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -562,7 +563,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.calculate_abstract_status(defn.info)
         self.setup_type_promotion(defn)
-
+        self.check_is_callable(defn)
         self.leave_class()
         self.unbind_class_type_vars()
 
@@ -1387,6 +1388,14 @@ class SemanticAnalyzer(NodeVisitor):
         node.kind = GDEF   # TODO locally defined namedtuple
         # TODO call.analyzed
         node.node = named_tuple
+
+    def check_is_callable(self, class_def: ClassDef) -> None:
+        """Set is_callable in TypeInfo of class_def by checking whether class has a __call__
+        method
+        """
+        has_call = class_def.info.get_method('__call__')
+        if has_call:
+            class_def.info.is_callable = True
 
     def check_namedtuple(self, node: Node, var_name: str = None) -> TypeInfo:
         """Check if a call defines a namedtuple.
@@ -2566,7 +2575,7 @@ class ThirdPass(TraverserVisitor[None]):
         return Instance(cast(TypeInfo, sym.node), args or [])
 
 
-def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
+def self_type(typ: TypeInfo) -> Union[Instance, TupleType, CallableType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
@@ -2577,7 +2586,10 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
                           typ.defn.type_vars[i].upper_bound,
                           typ.defn.type_vars[i].variance))
     inst = Instance(typ, tv)
-    if typ.tuple_type is None:
+    if typ.is_callable:
+        call_def = typ.get_method('__call__')
+        return method_type_with_fallback(call_def, inst)
+    elif typ.tuple_type is None:
         return inst
     else:
         return TupleType(typ.tuple_type.items, inst)

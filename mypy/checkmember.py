@@ -88,7 +88,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         # Class attribute.
         # TODO super?
         ret_type = typ.items()[0].ret_type
-        if isinstance(ret_type, TupleType):
+        if isinstance(ret_type, (TupleType, CallableType)):
             ret_type = ret_type.fallback
         if isinstance(ret_type, Instance):
             result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
@@ -458,7 +458,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     """
     # Create the type of self in subtype, of form t[a1, ...].
     inst_type = self_type(sub_info)
-    if isinstance(inst_type, TupleType):
+    if isinstance(inst_type, (TupleType, CallableType)):
         inst_type = inst_type.fallback
     # Map the type of self to supertype. This gets us a description of the
     # supertype type variables in terms of subtype variables, i.e. t[t1, ...]
