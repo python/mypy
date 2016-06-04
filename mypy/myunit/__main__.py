@@ -12,6 +12,7 @@ from mypy.myunit import main
 # fix that problem by fixing up the path to be absolute here.
 import os.path
 import mypy
-mypy.__path__ = [os.path.abspath(p) for p in mypy.__path__]
+# User-defined packages always have __path__ attributes, but mypy doesn't know that.
+mypy.__path__ = [os.path.abspath(p) for p in mypy.__path__]  # type: ignore
 
 main()
