@@ -222,7 +222,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.check_untyped_defs = check_untyped_defs
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
-        self.all_exports = set() # type: Set[str]
+        self.all_exports = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -1076,8 +1076,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_namedtuple_definition(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
-            s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
-            isinstance(s.rvalue, (ListExpr, TupleExpr))):
+                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
+                isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(*s.rvalue.items)
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
@@ -1634,8 +1634,8 @@ class SemanticAnalyzer(NodeVisitor):
         s.lvalue.accept(self)
         s.rvalue.accept(self)
         if (isinstance(s.lvalue, NameExpr) and s.lvalue.name == '__all__' and
-            s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
-             self.add_exports(*s.rvalue.items)
+                s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(*s.rvalue.items)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
@@ -1852,14 +1852,14 @@ class SemanticAnalyzer(NodeVisitor):
                 a.accept(self)
 
             if (isinstance(expr.callee, MemberExpr) and
-                isinstance(expr.callee.expr, NameExpr) and
-                expr.callee.expr.name == '__all__' and
-                expr.callee.expr.kind == GDEF and
-                expr.callee.name in ('append', 'extend')):
+                    isinstance(expr.callee.expr, NameExpr) and
+                    expr.callee.expr.name == '__all__' and
+                    expr.callee.expr.kind == GDEF and
+                    expr.callee.name in ('append', 'extend')):
                 if expr.callee.name == 'append' and expr.args:
                     self.add_exports(expr.args[0])
                 elif (expr.callee.name == 'extend' and expr.args and
-                      isinstance(expr.args[0], (ListExpr, TupleExpr))):
+                        isinstance(expr.args[0], (ListExpr, TupleExpr))):
                     self.add_exports(*expr.args[0].items)
 
     def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
