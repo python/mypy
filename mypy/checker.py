@@ -1935,7 +1935,11 @@ class TypeChecker(NodeVisitor[Type]):
         # Process decorators from the inside out.
         for i in range(len(e.decorators)):
             n = len(e.decorators) - 1 - i
-            dec = self.accept(e.decorators[n])
+            d = e.decorators[n]
+            if isinstance(d, NameExpr) and d.fullname == 'typing.overload':
+                self.fail('Single overload definition, multiple required', e)
+                continue
+            dec = self.accept(d)
             temp = self.temp_node(sig)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)
