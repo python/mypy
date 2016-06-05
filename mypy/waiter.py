@@ -62,7 +62,7 @@ class LazySubprocess:
     def read_output(self) -> str:
         with open(self.outfile.name, 'rb') as file:
             # Assume it's ascii to avoid unicode headaches (and portability issues).
-            return file.read().decode('ascii')
+            return file.read().decode('utf-8')
 
     def cleanup(self) -> None:
         self.outfile.close()
