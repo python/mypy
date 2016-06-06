@@ -151,20 +151,22 @@ Here, the type of ``rs`` is set to ``List[int]``.
 Types in stub files
 *******************
 
-Recall the introductory note about the usage of stub files (See :ref:`library-stubs`) 
-as an alternative approach to annotate types.  Stub files are valid
-Python 3 files, which mirror the python modules but leave out the 
-runtime logic like variable initialization, function bodies and
-default arguments.  For example:
+:ref:`Stub files <library-stubs>` are written in normal Python 3
+syntax, but generally leaving out runtime logic like variable
+initializers, function bodies, and default arguments, replacing them
+with ellipses.
+
+In this example, each ellipsis ``...`` is literally written in the
+stub file as three dots:
 
 .. code-block:: python
 
-    x = ... # type: int
+    x = ...  # type: int
     def afunc(code: str) -> int: ...
-    def afunc(a: int, b: int=...) -> int: pass
-
-The literal ``...`` is all that's necessary!
+    def afunc(a: int, b: int=...) -> int: ...
 
 .. note::
 
-    The ``...`` is also used with a different meaning in the :ref:`Callable <callable-types>` and :ref:`Tuple <tuple-types>` types.
+    The ellipsis ``...`` is also used with a different meaning in
+    :ref:`callable types <callable-types>` and :ref:`tuple types
+    <tuple-types>`.
