@@ -83,8 +83,8 @@ Functions
            i += 1
 
 
-What to do when puzzled
-***********************
+When you're puzzled or when things are complicated
+**************************************************
 
 .. code-block:: python
 
@@ -98,17 +98,30 @@ What to do when puzzled
    # Use Union when something could be one of a few types.
    x = [3, 5, "test", "fun"] # type: List[Union[int, str]]
 
-   # Use Any if you don't know the type of something.
+   # Use Any if you don't know the type of something or it's too
+   # dynamic to write a type for.
    x = mystery_function() # type: Any
 
-   # Use `ignore` if you want to have something not be type-checked,
-   # to suppress mypy warnings for a given line.
-   # Ideally, one would never use this.
-   x = confusing_function() # type: ignore
+   # Use `ignore` to suppress type-checking on a given line, when your
+   # code confuses mypy or runs into an outright bug in mypy.
+   # Good practice is to comment every `ignore` with a bug link
+   # (in mypy, typeshed, or your own code) or an explanation of the issue.
+   x = confusing_function() # type: ignore # https://github.com/python/mypy/issues/1167
+
+   # TODO: explain cast
+
+   # TODO: explain "Need type annotation for variable" when
+   # initializing with None or an empty container
 
 
-Standard duck types / ABCs
-**************************
+Standard duck types
+*******************
+
+In typical Python code, many functions that can take a list or a dict
+as an argument only need their argument to be somehow "list-like" or
+"dict-like".  A specific meaning of "list-like" or "dict-like" (or
+something-else-like) is called a "duck type", and several duck types
+that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
@@ -165,4 +178,8 @@ Other stuff
    from typing import Match
    x = re.match(r'[0-9]+', "15") # type: Match[str]
 
-   # TODO: Add typevar example
+   # TODO: add typing.IO: e.g., sys.stdout has type IO[str]
+
+   # TODO: add TypeVar and a simple generic function
+
+   # TODO: add AnyStr (and mention up next to strings)
