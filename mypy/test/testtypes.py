@@ -11,7 +11,7 @@ from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, ErrorType, Overloaded
+    Instance, NoneTyp, ErrorType, Overloaded, TypeType,
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
@@ -176,6 +176,10 @@ class TypeOpsSuite(Suite):
     def test_erase_with_type_object(self):
         self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b),
                           self.fx.callable_type(self.fx.void))
+
+    def test_erase_with_type_type(self):
+        self.assert_erase(self.fx.type_a, self.fx.type_a)
+        self.assert_erase(self.fx.type_t, TypeType(AnyType()))
 
     def assert_erase(self, orig, result):
         assert_equal(str(erase_type(orig)), str(result))

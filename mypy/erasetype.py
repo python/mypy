@@ -18,6 +18,7 @@ def erase_type(typ: Type) -> Type:
       B[X] -> B[Any]
       Tuple[A, B] -> tuple
       Callable[...] -> Callable[[], None]
+      Type[X] -> Type[Any]
     """
 
     return typ.accept(EraseTypeVisitor())
@@ -73,8 +74,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return AnyType()        # XXX: return underlying type if only one?
 
     def visit_type_type(self, t: TypeType) -> Type:
-        # XXX No idea if this makes much sense.
-        return TypeType(AnyType(), line=t.line)
+        return TypeType(t.item.accept(self), line=t.line)
 
 
 def erase_generic_types(t: Type) -> Type:
