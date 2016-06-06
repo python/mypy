@@ -321,7 +321,12 @@ class Parser:
                 if is_simple:
                     self.expect_break()
                 if defn is not None:
-                    if not self.try_combine_overloads(defn, defs):
+                    if self.try_combine_overloads(defn, defs):
+                        pass
+                    elif (isinstance(defn, Decorator) and defn.decorators and
+                          any(d.name == 'overload' for d in defn.decorators)):
+                        defs.append(OverloadedFuncDef([defn]))
+                    else:
                         defs.append(defn)
             except ParseError:
                 pass
@@ -867,7 +872,12 @@ class Parser:
                     if is_simple:
                         self.expect_break()
                     if stmt is not None:
-                        if not self.try_combine_overloads(stmt, stmt_list):
+                        if self.try_combine_overloads(stmt, stmt_list):
+                            pass
+                        elif (isinstance(stmt, Decorator) and stmt.decorators and
+                              any(d.name == 'overload' for d in stmt.decorators)):
+                            stmt_list.append(OverloadedFuncDef([stmt]))
+                        else:
                             stmt_list.append(stmt)
                 except ParseError:
                     pass
@@ -881,12 +891,9 @@ class Parser:
         if isinstance(s, Decorator) and stmt:
             fdef = cast(Decorator, s)
             n = fdef.func.name()
-            if (isinstance(stmt[-1], Decorator) and
-                    (cast(Decorator, stmt[-1])).func.name() == n):
-                stmt[-1] = OverloadedFuncDef([cast(Decorator, stmt[-1]), fdef])
-                return True
-            elif (isinstance(stmt[-1], OverloadedFuncDef) and
-                    (cast(OverloadedFuncDef, stmt[-1])).name() == n):
+            if (isinstance(stmt[-1], OverloadedFuncDef) and
+                    (cast(OverloadedFuncDef, stmt[-1])).name() == n and
+                    any(d.name == 'overload' for d in fdef.decorators)):
                 (cast(OverloadedFuncDef, stmt[-1])).items.append(fdef)
                 return True
         return False
