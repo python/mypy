@@ -2238,9 +2238,15 @@ class SemanticAnalyzer(NodeVisitor):
                 self.all_exports.add(exp.value)
 
     def check_no_global(self, n: str, ctx: Context,
-                        is_func: bool = False) -> None:
+                        is_overloaded_func: bool = False) -> None:
         if n in self.globals:
-            self.name_already_defined(n, ctx)
+            prev_is_overloaded = isinstance(self.globals[n], OverloadedFuncDef)
+            if is_overloaded_func and prev_is_overloaded:
+                self.fail("Nonconsecutive overload {} found".format(n), ctx)
+            elif prev_is_overloaded:
+                self.fail("Definition of '{}' missing 'overload'".format(n), ctx)
+            else:
+                self.name_already_defined(n, ctx)
 
     def name_not_defined(self, name: str, ctx: Context) -> None:
         message = "Name '{}' is not defined".format(name)
@@ -2379,12 +2385,12 @@ class FirstPass(NodeVisitor):
                 func.original_def = cast(FuncDef, original_def)
             else:
                 # Report error.
-                sem.check_no_global(func.name(), func, True)
+                sem.check_no_global(func.name(), func)
         else:
             sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        self.sem.check_no_global(func.name(), func)
+        self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
         self.sem.globals[func.name()] = SymbolTableNode(GDEF, func,
                                                         self.sem.cur_mod_id)
