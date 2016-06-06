@@ -30,7 +30,9 @@ class TransformSuite(Suite):
         c = []
         for f in self.transform_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_transform, test_temp_dir)
+                                  test_transform,
+                                  base_path=test_temp_dir,
+                                  native_sep=True)
         return c
 
 

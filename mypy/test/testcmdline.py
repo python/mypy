@@ -29,7 +29,10 @@ class PythonEvaluationSuite(Suite):
         c = []  # type: List[DataDrivenTestCase]
         for f in cmdline_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_python_evaluation, test_temp_dir, True)
+                                  test_python_evaluation,
+                                  base_path=test_temp_dir,
+                                  optional_out=True,
+                                  native_sep=True)
         return c
 
 
