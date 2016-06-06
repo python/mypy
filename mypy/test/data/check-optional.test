@@ -34,60 +34,47 @@ f(x)  # E: Argument 1 to "f" has incompatible type "Optional[int]"; expected "in
 
 [case testIsinstanceCases]
 from typing import Optional
-def f(a: int) -> None: pass
-def g(a: None) -> None: pass
 x = None  # type:  Optional[int]
 if isinstance(x, int):
-  f(x)
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
 else:
-  g(x)
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
 [builtins fixtures/isinstance.py]
 
 [case testIfCases]
 from typing import Optional
-def f(a: int) -> None: pass
-def g(a: None) -> None: pass
 x = None  # type:  Optional[int]
 if x:
-  f(x)
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
 else:
-  g(x)  # E: Argument 1 to "g" has incompatible type "Optional[int]"; expected None
+  reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [builtins fixtures/bool.py]
 
 [case testIfNotCases]
 from typing import Optional
-def f(a: int) -> None: pass
-def g(a: None) -> None: pass
 x = None  # type:  Optional[int]
 if not x:
-  g(x)  # E: Argument 1 to "g" has incompatible type "Optional[int]"; expected None
+  reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
-  f(x)
-  x()  # E: "int" not callable
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/bool.py]
 
 [case testIsNotNoneCases]
 from typing import Optional
-def f(a: int) -> None: pass
-def g(a: None) -> None: pass
 x = None  # type:  Optional[int]
 if x is not None:
-  f(x)
-  x()  # E: "int" not callable
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
 else:
-  g(x)
-  x()  # E: None not callable
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
 [builtins fixtures/bool.py]
 
 [case testIsNoneCases]
 from typing import Optional
-def f(a: int) -> None: pass
-def g(a: None) -> None: pass
 x = None  # type:  Optional[int]
 if x is None:
-  g(x)
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
 else:
-  f(x)
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/bool.py]
 
 [case testLambdaReturningNone]
@@ -159,5 +146,15 @@ class C:
     x = None  # type: int
     def __init__(self) -> None:
         self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[out]
+main: note: In member "__init__" of class "C":
+
+[case testMultipleAssignmentNoneClassVariableInInit]
+from typing import Optional
+class C:
+    x, y = None, None  # type: int, str
+    def __init__(self) -> None:
+        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
 [out]
 main: note: In member "__init__" of class "C":
