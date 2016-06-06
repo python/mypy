@@ -1214,7 +1214,7 @@ class TypeChecker(NodeVisitor[Type]):
                     # an error will be reported elsewhere.
                     self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
                     return
-                if (isinstance(rvalue, NameExpr) and rvalue.fullname == 'builtins.None' and
+                if (is_literal_none(rvalue) and
                         isinstance(lvalue, NameExpr) and
                         isinstance(lvalue.node, Var) and
                         lvalue.node.is_initialized_in_class):
@@ -2385,6 +2385,40 @@ class TypeChecker(NodeVisitor[Type]):
         return method_type_with_fallback(func, self.named_type('builtins.function'))
 
 
+def conditional_type_map(expr: Node,
+                            current_type: Optional[Type],
+                            proposed_type: Optional[Type],
+                            *,
+                            weak: bool = False
+                            ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+    """Takes in an expression, the current type of the expression, and a
+    proposed type of that expression.
+
+    Returns a 2-tuple: The first element is a map from the expression to
+    the proposed type, if the expression can be the proposed type.  The
+    second element is a map from the expression to the type it would hold
+    if it was not the proposed type, if any."""
+    if proposed_type:
+        if current_type:
+            if is_proper_subtype(current_type, proposed_type):
+                return {expr: proposed_type}, None
+            elif not is_overlapping_types(current_type, proposed_type):
+                return None, {expr: current_type}
+            else:
+                remaining_type = restrict_subtype_away(current_type, proposed_type)
+                return {expr: proposed_type}, {expr: remaining_type}
+        else:
+            return {expr: proposed_type}, {}
+    else:
+        # An isinstance check, but we don't understand the type
+        if weak:
+            return {expr: AnyType()}, {expr: current_type}
+        else:
+            return {}, {}
+
+def is_literal_none(n: Node) -> bool:
+    return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
+
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
                           weak: bool=False
@@ -2400,46 +2434,14 @@ def find_isinstance_check(node: Node,
 
     Guaranteed to not return None, None. (But may return {}, {})
     """
-    def conditional_type_map(expr: Node,
-                             current_type: Optional[Type],
-                             proposed_type: Optional[Type]
-                             ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
-        """Takes in an expression, the current type of the expression, and a
-        proposed type of that expression.
-
-        Returns a 2-tuple: The first element is a map from the expression to
-        the proposed type, if the expression can be the proposed type.  The
-        second element is a map from the expression to the type it would hold
-        if it was not the proposed type, if any."""
-        if proposed_type:
-            if current_type:
-                if is_proper_subtype(current_type, proposed_type):
-                    return {expr: proposed_type}, None
-                elif not is_overlapping_types(current_type, proposed_type):
-                    return None, {expr: current_type}
-                else:
-                    remaining_type = restrict_subtype_away(current_type, proposed_type)
-                    return {expr: proposed_type}, {expr: remaining_type}
-            else:
-                return {expr: proposed_type}, {}
-        else:
-            # An isinstance check, but we don't understand the type
-            if weak:
-                return {expr: AnyType()}, {expr: current_type}
-            else:
-                return {}, {}
-
-    def is_none(n: Node) -> bool:
-        return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
-
     if isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
-                return conditional_type_map(expr, vartype, type)
-    elif (isinstance(node, ComparisonExpr) and any(is_none(n) for n in node.operands) and
+                return conditional_type_map(expr, vartype, type, weak=weak)
+    elif (isinstance(node, ComparisonExpr) and any(is_literal_none(n) for n in node.operands) and
           experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
@@ -2447,12 +2449,12 @@ def find_isinstance_check(node: Node,
             if_vars = {}  # type: Dict[Node, Type]
             else_vars = {}  # type: Dict[Node, Type]
             for expr in node.operands:
-                if expr.literal == LITERAL_TYPE and not is_none(expr) and expr in type_map:
+                if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
                     # This should only be true at most once: there should be
                     # two elements in node.operands, and at least one of them
                     # should represent a None.
                     vartype = type_map[expr]
-                    if_vars, else_vars = conditional_type_map(expr, vartype, NoneTyp())
+                    if_vars, else_vars = conditional_type_map(expr, vartype, NoneTyp(), weak=weak)
                     break
 
             if is_not:
@@ -2461,7 +2463,7 @@ def find_isinstance_check(node: Node,
     elif isinstance(node, RefExpr) and experiments.STRICT_OPTIONAL:
         # The type could be falsy, so we can't deduce anything new about the else branch
         vartype = type_map[node]
-        _, if_vars = conditional_type_map(node, vartype, NoneTyp())
+        _, if_vars = conditional_type_map(node, vartype, NoneTyp(), weak=weak)
         return if_vars, {}
     elif isinstance(node, OpExpr) and node.op == 'and':
         left_if_vars, right_else_vars = find_isinstance_check(
