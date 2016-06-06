@@ -13,14 +13,6 @@ f(1)
 f('')
 f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
 
-[case testOptionalTypeAlias]
-from typing import Optional
-O = Optional[int]
-def f(x: O) -> None: pass
-f(1)
-f(None)
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "int"
-
 [case testTupleTypeAlias]
 from typing import Tuple
 T = Tuple[int, str]

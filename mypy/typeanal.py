@@ -18,8 +18,7 @@ from mypy.subtypes import satisfies_upper_bound
 from mypy import nodes
 
 
-type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Optional',
-                     'typing.Callable']
+type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
 
 
 def analyze_type_alias(node: Node,
