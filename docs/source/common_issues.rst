@@ -165,3 +165,65 @@ messages. More powerful type inference strategies often have complex
 and difficult-to-predict failure modes and could result in very
 confusing error messages. The tradeoff is that you as a programmer
 sometimes have to give the type checker a little help.
+
+Displaying the type of an expression
+------------------------------------
+
+You can use ``reveal_type(expr)`` to ask mypy to display the inferred
+static type of an expression. This can be useful when you don't quite
+understand how mypy handles a particlar piece of code. Example:
+
+.. code-block:: python
+
+   reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
+
+.. note::
+
+   ``reveal_type`` is only understood by mypy and doesn't exist
+   in Python, if you try to run your program. You'll have to remove
+   any ``reveal_type`` calls before you can run your code.
+   ``reveal_type`` is always available and you don't need to import it.
+
+Import cycles
+-------------
+
+An import cycle occurs where module A imports module B and module B
+imports module A (perhaps indirectly, e.g. ``A -> B -> C -> A``).
+Sometimes in order to add type annotations you have to add extra
+imports to a module and those imports cause cycles that didn't exist
+before.  If those cycles become a problem when running your program,
+there's a trick: if the import is only needed for type annotations in
+forward references (string literals) or comments, you can write the
+imports inside ``if False:`` so that they are not executed at runtime.
+The reason this works is that mypy (currently) does not analyze
+unreachable code like this.  Example:
+
+File ``foo.py``:
+
+.. code-block:: python
+
+   from typing import List
+
+   if False:
+       import bar
+
+   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
+       return [arg]
+
+File ``bar.py``:
+
+.. code-block:: python
+
+   from typing import List
+   from foo import listify
+
+   class BarClass:
+       def listifyme(self) -> 'List[BarClass]':
+           return listify(self)
+
+.. note::
+
+   It is possible that in the future, mypy will change its dead code
+   analysis and this trick will stop working.  We will then offer an
+   alternative, e.g. a constant defined by the ``typing`` module that
+   is ``False`` at runtime but ``True`` while type checking.

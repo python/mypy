@@ -38,6 +38,9 @@ except ImportError:
 T = TypeVar('T')
 U = TypeVar('U')
 
+TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
+TYPE_COMMENT_AST_ERROR = 'invalid type comment'
+
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
@@ -56,13 +59,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
         else:
             ast2 = ast27.parse(source, fnam, 'exec')
             ast = conversions.py2to3(ast2)
-    except SyntaxError as e:
-        if errors:
-            errors.set_file('<input>' if fnam is None else fnam)
-            errors.report(e.lineno, e.msg)  # type: ignore
-        else:
-            raise
-    else:
+
         tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,
                             custom_typing_module=custom_typing_module,
@@ -70,6 +67,12 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
         tree.path = fnam
         tree.is_stub = is_stub_file
         return tree
+    except (SyntaxError, TypeCommentParseError) as e:
+        if errors:
+            errors.set_file('<input>' if fnam is None else fnam)
+            errors.report(e.lineno, e.msg)
+        else:
+            raise
 
     return MypyFile([],
                     [],
@@ -79,9 +82,13 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
 
 def parse_type_comment(type_comment: str, line: int) -> Type:
-    typ = ast35.parse(type_comment, '<type_comment>', 'eval')
-    assert isinstance(typ, ast35.Expression)
-    return TypeConverter(line=line).visit(typ.body)
+    try:
+        typ = ast35.parse(type_comment, '<type_comment>', 'eval')
+    except SyntaxError:
+        raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, line)
+    else:
+        assert isinstance(typ, ast35.Expression)
+        return TypeConverter(line=line).visit(typ.body)
 
 
 def with_line(f: Callable[[Any, T], U]) -> Callable[[Any, T], U]:
@@ -239,7 +246,10 @@ class ASTConverter(ast35.NodeTransformer):
         arg_names = [arg.variable.name() for arg in args]
         arg_types = None  # type: List[Type]
         if n.type_comment is not None:
-            func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
+            try:
+                func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
+            except SyntaxError:
+                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno)
             assert isinstance(func_type_ast, ast35.FunctionType)
             # for ellipsis arg
             if (len(func_type_ast.argtypes) == 1 and
@@ -741,7 +751,7 @@ class TypeConverter(ast35.NodeTransformer):
         self.line = line
 
     def generic_visit(self, node: ast35.AST) -> None:
-        raise RuntimeError('Type node not implemented: ' + str(type(node)))
+        raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line)
 
     def visit_NoneType(self, n: Any) -> Type:
         return None
@@ -794,3 +804,9 @@ class TypeConverter(ast35.NodeTransformer):
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast35.List) -> Type:
         return TypeList(self.visit_list(n.elts), line=self.line)
+
+
+class TypeCommentParseError(Exception):
+    def __init__(self, msg: str, lineno: int) -> None:
+        self.msg = msg
+        self.lineno = lineno

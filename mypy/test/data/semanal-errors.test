@@ -1344,11 +1344,11 @@ main:1: note: (Stub files are from https://github.com/python/typeshed)
 
 [case testMissingStubForTwoModules]
 import tabnanny
-import tkinter
+import xdrlib
 [out]
 main:1: error: No library stub file for standard library module 'tabnanny'
 main:1: note: (Stub files are from https://github.com/python/typeshed)
-main:2: error: No library stub file for standard library module 'tkinter'
+main:2: error: No library stub file for standard library module 'xdrlib'
 
 [case testListComprehensionSpecialScoping]
 class A:

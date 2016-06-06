@@ -572,6 +572,7 @@ import m
 [file m.pyi]
 from typing import Tuple
 class A(Tuple[int, str]): pass
+[builtins fixtures/tuple.py]
 [out]
 MypyFile:1(
   Import:1(m))
@@ -583,7 +584,7 @@ MypyFile:1(
     TupleType(
       Tuple[builtins.int, builtins.str])
     BaseType(
-      builtins.tuple)
+      builtins.tuple[Any])
     PassStmt:2()))
 
 [case testBaseClassFromIgnoredModule]

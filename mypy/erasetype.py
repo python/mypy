@@ -70,7 +70,7 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.items()[0].accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return t.fallback
+        return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return AnyType()        # XXX: return underlying type if only one?

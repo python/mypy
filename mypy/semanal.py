@@ -222,6 +222,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.check_untyped_defs = check_untyped_defs
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
+        self.all_exports = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -249,6 +250,11 @@ class SemanticAnalyzer(NodeVisitor):
             remove_imported_names_from_symtable(self.globals, 'builtins')
 
         self.errors.set_ignored_lines(set())
+
+        if '__all__' in self.globals:
+            for name, g in self.globals.items():
+                if name not in self.all_exports:
+                    g.module_public = False
 
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -1069,6 +1075,11 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
 
+        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
+                isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(*s.rvalue.items)
+
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
         # For now, type aliases only work at the top level of a module.
@@ -1622,6 +1633,9 @@ class SemanticAnalyzer(NodeVisitor):
                                        s: OperatorAssignmentStmt) -> None:
         s.lvalue.accept(self)
         s.rvalue.accept(self)
+        if (isinstance(s.lvalue, NameExpr) and s.lvalue.name == '__all__' and
+                s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
+            self.add_exports(*s.rvalue.items)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
@@ -1836,6 +1850,17 @@ class SemanticAnalyzer(NodeVisitor):
             # Normal call expression.
             for a in expr.args:
                 a.accept(self)
+
+            if (isinstance(expr.callee, MemberExpr) and
+                    isinstance(expr.callee.expr, NameExpr) and
+                    expr.callee.expr.name == '__all__' and
+                    expr.callee.expr.kind == GDEF and
+                    expr.callee.name in ('append', 'extend')):
+                if expr.callee.name == 'append' and expr.args:
+                    self.add_exports(expr.args[0])
+                elif (expr.callee.name == 'extend' and expr.args and
+                        isinstance(expr.args[0], (ListExpr, TupleExpr))):
+                    self.add_exports(*expr.args[0].items)
 
     def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
         """Translate 'dict(x=y, ...)' to {'x': y, ...}.
@@ -2206,12 +2231,19 @@ class SemanticAnalyzer(NodeVisitor):
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
+    def add_exports(self, *exps: Node) -> None:
+        for exp in exps:
+            if isinstance(exp, StrExpr):
+                self.all_exports.add(exp.value)
+
     def check_no_global(self, n: str, ctx: Context,
-                        is_func: bool = False) -> None:
+                        is_overloaded_func: bool = False) -> None:
         if n in self.globals:
-            if is_func and isinstance(self.globals[n].node, FuncDef):
-                self.fail(("Name '{}' already defined (overload variants "
-                           "must be next to each other)").format(n), ctx)
+            prev_is_overloaded = isinstance(self.globals[n], OverloadedFuncDef)
+            if is_overloaded_func and prev_is_overloaded:
+                self.fail("Nonconsecutive overload {} found".format(n), ctx)
+            elif prev_is_overloaded:
+                self.fail("Definition of '{}' missing 'overload'".format(n), ctx)
             else:
                 self.name_already_defined(n, ctx)
 
@@ -2352,12 +2384,12 @@ class FirstPass(NodeVisitor):
                 func.original_def = cast(FuncDef, original_def)
             else:
                 # Report error.
-                sem.check_no_global(func.name(), func, True)
+                sem.check_no_global(func.name(), func)
         else:
             sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        self.sem.check_no_global(func.name(), func)
+        self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
         self.sem.globals[func.name()] = SymbolTableNode(GDEF, func,
                                                         self.sem.cur_mod_id)

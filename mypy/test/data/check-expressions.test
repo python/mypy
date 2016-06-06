@@ -716,7 +716,7 @@ class C:
     pass
 [out]
 main:3: error: Invalid index type "C" for "A"
-main:4: error: Incompatible types in assignment
+main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
 main:5: error: Unsupported target for indexed assignment
 
 
@@ -1040,7 +1040,7 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible return value type: expected builtins.int, got builtins.str
+main:4: error: Incompatible return value type (got "str", expected "int")
 main:4: error: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
 
 [case testVoidLambda]

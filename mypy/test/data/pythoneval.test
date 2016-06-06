@@ -16,7 +16,7 @@ import re
 from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
 def check(o, t):
-    rep = re.sub('0x[0-9a-f]+', '0x...', repr(o))
+    rep = re.sub('0x[0-9a-fA-F]+', '0x...', repr(o))
     rep = rep.replace('sequenceiterator', 'str_iterator')
     trep = str(t).replace('_abcoll.Sized', 'collections.abc.Sized')
     print(rep, trep, isinstance(o, t))
@@ -1103,7 +1103,7 @@ MyDDict(dict)[0]
 [out]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for "dict"
-_program.py:9: error: Incompatible types in assignment
+_program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
 _program.py:23: error: Invalid index type "str" for "dict"
 

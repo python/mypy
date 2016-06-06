@@ -28,7 +28,7 @@ from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
                         SymbolTableNode, MODULE_REF)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
-from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
 from mypy import fixup
 from mypy.report import Reports
 from mypy import defaults
@@ -66,6 +66,8 @@ DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
 DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
 # Type check unannotated functions
 CHECK_UNTYPED_DEFS = 'check-untyped-defs'
+# Also check typeshed for missing annotations
+WARN_INCOMPLETE_STUB = 'warn-incomplete-stub'
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
@@ -381,7 +383,8 @@ class BuildManager:
                                         self.pyversion,
                                         DISALLOW_UNTYPED_CALLS in self.flags,
                                         DISALLOW_UNTYPED_DEFS in self.flags,
-                                        check_untyped_defs)
+                                        check_untyped_defs,
+                                        WARN_INCOMPLETE_STUB in self.flags)
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
@@ -683,6 +686,10 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
                 encoding = _encoding
 
         source_bytearray.extend(f.read())
+        try:
+            source_bytearray.decode(encoding)
+        except LookupError as lookuperr:
+            raise DecodeError(str(lookuperr))
         return source_bytearray.decode(encoding)
 
 
@@ -832,10 +839,14 @@ def write_cache(id: str, path: str, tree: MypyFile,
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
-    # TODO: On Windows, os.rename() may not be atomic, and we could
-    # use os.replace().  However that's new in Python 3.3.
-    os.rename(data_json_tmp, data_json)
-    os.rename(meta_json_tmp, meta_json)
+    # TODO: This is a temporary change until Python 3.2 support is dropped, see #1504
+    # os.rename will raise an exception rather than replace files on Windows
+    try:
+        replace = os.replace
+    except AttributeError:
+        replace = os.rename
+    replace(data_json_tmp, data_json)
+    replace(meta_json_tmp, meta_json)
 
 
 """Dependency manager.
@@ -1215,7 +1226,7 @@ class State:
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
-                except UnicodeDecodeError as decodeerr:
+                except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
             self.tree = manager.parse_file(self.id, self.xpath, source)

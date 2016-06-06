@@ -311,7 +311,7 @@ class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
-main:7: error: Incompatible types in assignment
+main:7: error: Incompatible types in assignment (expression has type "B", target has type "C")
 main:8: error: Invalid index type "C" for "A"
 
 [case testOperatorAssignmentWithIndexLvalue2]
@@ -387,7 +387,7 @@ def f(s: S, t: T) -> p[T, A]:
     s = t           # E: Incompatible types in assignment (expression has type "T", variable has type "S")
     p_s_a = None  # type: p[S, A]
     if s:
-        return p_s_a # E: Incompatible return value type: expected __main__.p[T`-2, __main__.A], got __main__.p[S`-1, __main__.A]
+        return p_s_a # E: Incompatible return value type (got p[S, A], expected p[T, A])
     b = t # type: T
     c = s # type: S
     p_t_a = None  # type: p[T, A]
@@ -406,10 +406,10 @@ class A(Generic[T]):
         s = t # E: Incompatible types in assignment (expression has type "T", variable has type "S")
         p_s_s = None  # type: p[S, S]
         if s:
-            return p_s_s # E: Incompatible return value type: expected __main__.p[S`-1, T`1], got __main__.p[S`-1, S`-1]
+            return p_s_s # E: Incompatible return value type (got p[S, S], expected p[S, T])
         p_t_t = None  # type: p[T, T]
         if s:
-            return p_t_t # E: Incompatible return value type: expected __main__.p[S`-1, T`1], got __main__.p[T`1, T`1]
+            return p_t_t # E: Incompatible return value type (got p[T, T], expected p[S, T])
         t = t
         s = s
         p_s_t = None  # type: p[S, T]
@@ -490,7 +490,7 @@ from typing import List
 a = None # type: List[A]
 b = None # type: List[int]
 
-a[1], b[1] = a # E: Incompatible types in assignment
+a[1], b[1] = a # E: Incompatible types in assignment (expression has type "A", target has type "int")
 a[1], a[2] = a
 
 class A: pass

@@ -1434,7 +1434,7 @@ MypyFile:1(
 [case testInvalidOptionalType]
 from typing import Optional
 x = 1  # type: Optional[int, str]  # E: Optional[...] must have exactly one type argument
-y = 1  # type: Optional[x]  # E: Invalid type "__main__.x"
+y = 1  # type: Optional  # E: Optional[...] must have exactly one type argument
 [out]
 
 [case testCoAndContravariantTypeVar]

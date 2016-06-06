@@ -112,8 +112,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     node = self.lookup_fqn_func('builtins.tuple')
                     info = cast(TypeInfo, node.node)
                     return Instance(info, [t.args[0].accept(self)], t.line)
-                return TupleType(self.anal_array(t.args),
-                                 self.builtin_type('builtins.tuple'))
+                return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
                 items = [item for item in items if not isinstance(item, Void)]
@@ -121,6 +120,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
+                    return AnyType()
                 items = self.anal_array(t.args)
                 if experiments.STRICT_OPTIONAL:
                     return UnionType.make_simplified_union([items[0], NoneTyp()])
@@ -209,7 +209,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         if star_count > 1:
             self.fail('At most one star type allowed in a tuple', t)
             return AnyType()
-        fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple')
+        fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple', [AnyType()])
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_star_type(self, t: StarType) -> Type:
@@ -275,10 +275,13 @@ class TypeAnalyser(TypeVisitor[Type]):
                                 vd.line))
         return a
 
-    def builtin_type(self, fully_qualified_name: str) -> Instance:
+    def builtin_type(self, fully_qualified_name: str, args: List[Type] = None) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
         info = cast(TypeInfo, node.node)
-        return Instance(info, [])
+        return Instance(info, args or [])
+
+    def tuple_type(self, items: List[Type]) -> TupleType:
+        return TupleType(items, fallback=self.builtin_type('builtins.tuple', [AnyType()]))
 
 
 class TypeAnalyserPass3(TypeVisitor[None]):

@@ -602,7 +602,7 @@ f4 = lambda x: x # type: Callable[..., int]
 g = lambda x: 1 # type: Callable[..., str]
 [builtins fixtures/dict.py]
 [out]
-main:6: error: Incompatible return value type: expected builtins.str, got builtins.int
+main:6: error: Incompatible return value type (got "int", expected "str")
 main:6: error: Incompatible types in assignment (expression has type Callable[[Any], int], variable has type Callable[..., str])
 
 [case testEllipsisContextForLambda2]

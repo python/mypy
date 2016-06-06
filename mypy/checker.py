@@ -206,7 +206,7 @@ class ConditionalTypeBinder:
         """
         result = self.frames.pop()
 
-        options = self.frames_on_escape.pop(len(self.frames) - 1, [])
+        options = self.frames_on_escape.pop(len(self.frames) - 1, [])  # type: List[Frame]
         if canskip:
             options.append(self.frames[-1])
         if fallthrough:
@@ -379,12 +379,13 @@ class TypeChecker(NodeVisitor[Type]):
     disallow_untyped_defs = False
     # Should we check untyped function defs?
     check_untyped_defs = False
+    warn_incomplete_stub = False
     is_typeshed_stub = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                  disallow_untyped_calls=False, disallow_untyped_defs=False,
-                 check_untyped_defs=False) -> None:
+                 check_untyped_defs=False, warn_incomplete_stub=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -409,6 +410,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.disallow_untyped_calls = disallow_untyped_calls
         self.disallow_untyped_defs = disallow_untyped_defs
         self.check_untyped_defs = check_untyped_defs
+        self.warn_incomplete_stub = warn_incomplete_stub
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -432,6 +434,15 @@ class TypeChecker(NodeVisitor[Type]):
 
         self.errors.set_ignored_lines(set())
         self.current_node_deferred = False
+
+        all_ = self.globals.get('__all__')
+        if all_ is not None and all_.type is not None:
+            seq_str = self.named_generic_type('typing.Sequence',
+                                              [self.named_type('builtins.str')])
+            if not is_subtype(all_.type, seq_str):
+                str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
+                self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
+                          all_.node)
 
     def check_second_pass(self):
         """Run second pass of type checking which goes through deferred nodes."""
@@ -673,7 +684,8 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                               item.type)
 
-                if self.disallow_untyped_defs and not self.is_typeshed_stub:
+                show_untyped = not self.is_typeshed_stub or self.warn_incomplete_stub
+                if self.disallow_untyped_defs and show_untyped:
                     # Check for functions with unspecified/not fully specified types.
                     def is_implicit_any(t: Type) -> bool:
                         return isinstance(t, AnyType) and t.implicit
@@ -1613,10 +1625,12 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
                     self.check_subtype(
-                        typ, return_type, s,
-                        messages.INCOMPATIBLE_RETURN_VALUE_TYPE
-                        + ": expected {}, got {}".format(return_type, typ)
-                    )
+                        subtype_label='got',
+                        subtype=typ,
+                        supertype_label='expected',
+                        supertype=return_type,
+                        context=s,
+                        msg=messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
                 # Empty returns are valid in Generators with Any typed returns.
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
@@ -1802,7 +1816,7 @@ class TypeChecker(NodeVisitor[Type]):
         for i in range(len(s.handlers)):
             self.binder.push_frame()
             if s.types[i]:
-                t = self.exception_type(s.types[i])
+                t = self.visit_except_handler_test(s.types[i])
                 if s.vars[i]:
                     # To support local variables, we make this a definition line,
                     # causing assignment to set the variable's type.
@@ -1842,38 +1856,32 @@ class TypeChecker(NodeVisitor[Type]):
         if s.finally_body:
             self.accept(s.finally_body)
 
-    def exception_type(self, n: Node) -> Type:
-        if isinstance(n, TupleExpr):
-            t = None  # type: Type
-            for item in n.items:
-                tt = self.exception_type(item)
-                if t:
-                    t = join_types(t, tt)
-                else:
-                    t = tt
-            return t
-        else:
-            # A single exception type; should evaluate to a type object type.
-            type = self.accept(n)
-            return self.check_exception_type(type, n)
-        self.fail('Unsupported exception', n)
-        return AnyType()
+    def visit_except_handler_test(self, n: Node) -> Type:
+        """Type check an exception handler test clause."""
+        type = self.accept(n)
 
-    def check_exception_type(self, type: Type, context: Context) -> Type:
-        if isinstance(type, FunctionLike):
-            item = type.items()[0]
-            ret = item.ret_type
-            if (is_subtype(ret, self.named_type('builtins.BaseException'))
-                    and item.is_type_obj()):
-                return ret
-            else:
-                self.fail(messages.INVALID_EXCEPTION_TYPE, context)
+        all_types = []  # type: List[Type]
+        test_types = type.items if isinstance(type, TupleType) else [type]
+
+        for ttype in test_types:
+            if isinstance(ttype, AnyType):
+                all_types.append(ttype)
+                continue
+
+            if not isinstance(ttype, FunctionLike):
+                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
-        elif isinstance(type, AnyType):
-            return AnyType()
-        else:
-            self.fail(messages.INVALID_EXCEPTION_TYPE, context)
-            return AnyType()
+
+            item = ttype.items()[0]
+            ret_type = item.ret_type
+            if not (is_subtype(ret_type, self.named_type('builtins.BaseException'))
+                    and item.is_type_obj()):
+                self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                return AnyType()
+
+            all_types.append(ret_type)
+
+        return UnionType.make_simplified_union(all_types)
 
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
@@ -1966,7 +1974,11 @@ class TypeChecker(NodeVisitor[Type]):
         # Process decorators from the inside out.
         for i in range(len(e.decorators)):
             n = len(e.decorators) - 1 - i
-            dec = self.accept(e.decorators[n])
+            d = e.decorators[n]
+            if isinstance(d, NameExpr) and d.fullname == 'typing.overload':
+                self.fail('Single overload definition, multiple required', e)
+                continue
+            dec = self.accept(d)
             temp = self.temp_node(sig)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e)

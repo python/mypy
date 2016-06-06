@@ -308,7 +308,7 @@ class OverloadedFuncDef(FuncBase):
         self.set_line(items[0].line)
 
     def name(self) -> str:
-        return self.items[1].func.name()
+        return self.items[0].func.name()
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -2140,14 +2140,8 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         for arg in fdef.arguments:
             names.append(arg.variable.name())
 
-        if fdef.is_method() and not fdef.is_static and not fdef.is_class:
-            self_arg = [mypy.types.Instance(func.info, [])]  # type: List[mypy.types.Type]
-            arg_types = self_arg + ([mypy.types.AnyType()] * (len(fdef.arguments) - 1))
-        else:
-            arg_types = [mypy.types.AnyType()] * len(fdef.arguments)
-
         return mypy.types.CallableType(
-            arg_types,
+            [mypy.types.AnyType()] * len(fdef.arguments),
             [arg.kind for arg in fdef.arguments],
             names,
             mypy.types.AnyType(),

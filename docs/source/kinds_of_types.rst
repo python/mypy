@@ -94,6 +94,8 @@ The ``Any`` type is discussed in more detail in section :ref:`dynamic_typing`.
   This makes it easier to migrate legacy Python code to mypy, as
   mypy won't complain about dynamically typed functions.
 
+.. _tuple-types:
+
 Tuple types
 ***********
 
@@ -131,6 +133,8 @@ purpose. Example:
    ``Tuple[...]`` is not valid as a base class outside stub files. This is a
    limitation of the ``typing`` module. One way to work around
    this is to use a named tuple as a base class (see section :ref:`named-tuples`).
+
+.. _callable-types:
 
 Callable types (and lambdas)
 ****************************

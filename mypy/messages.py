@@ -81,6 +81,7 @@ RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
 ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
     'Keyword argument only valid with "str" key type in call to "dict"'
+ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
 
 
 class MessageBuilder:
@@ -445,7 +446,12 @@ class MessageBuilder:
                 if n == 1:
                     self.invalid_index_type(arg_type, base, context)
                 else:
-                    self.fail(INCOMPATIBLE_TYPES_IN_ASSIGNMENT, context)
+                    msg = '{} (expression has type {}, target has type {})'
+                    arg_type_str, callee_type_str = self.format_distinctly(arg_type,
+                                                                           callee.arg_types[n - 1])
+                    self.fail(msg.format(INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                         arg_type_str, callee_type_str),
+                              context)
                 return
 
             target = 'to {} '.format(name)

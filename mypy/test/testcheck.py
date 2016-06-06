@@ -59,6 +59,7 @@ files = [
     'check-incremental.test',
     'check-bound.test',
     'check-optional.test',
+    'check-fastparse.test',
 ]
 
 
@@ -162,7 +163,8 @@ class TypeCheckSuite(Suite):
         for line in a:
             m = re.match(r'([^\s:]+):\d+: error:', line)
             if m:
-                hits.add(m.group(1))
+                p = m.group(1).replace('/', os.path.sep)
+                hits.add(p)
         return hits
 
     def find_module_files(self) -> Dict[str, str]:

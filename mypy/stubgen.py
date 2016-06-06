@@ -330,29 +330,34 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return base_types
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        lvalue = o.lvalues[0]
-        if isinstance(lvalue, NameExpr) and self.is_namedtuple(o.rvalue):
-            self.process_namedtuple(lvalue, o.rvalue)
-            return
-        if isinstance(lvalue, TupleExpr):
-            items = lvalue.items
-        elif isinstance(lvalue, ListExpr):
-            items = lvalue.items
-        else:
-            items = [lvalue]
-        sep = False
-        found = False
-        for item in items:
-            if isinstance(item, NameExpr):
-                init = self.get_init(item.name)
-                if init:
-                    found = True
-                    if not sep and not self._indent and self._state not in (EMPTY, VAR):
-                        init = '\n' + init
-                        sep = True
-                    self.add(init)
-                    self.record_name(item.name)
-        if found:
+        foundl = []
+
+        for lvalue in o.lvalues:
+            if isinstance(lvalue, NameExpr) and self.is_namedtuple(o.rvalue):
+                self.process_namedtuple(lvalue, o.rvalue)
+                continue
+            if isinstance(lvalue, TupleExpr):
+                items = lvalue.items
+            elif isinstance(lvalue, ListExpr):
+                items = lvalue.items
+            else:
+                items = [lvalue]
+            sep = False
+            found = False
+            for item in items:
+                if isinstance(item, NameExpr):
+                    init = self.get_init(item.name)
+                    if init:
+                        found = True
+                        if not sep and not self._indent and \
+                           self._state not in (EMPTY, VAR):
+                            init = '\n' + init
+                            sep = True
+                        self.add(init)
+                        self.record_name(item.name)
+            foundl.append(found)
+
+        if all(foundl):
             self._state = VAR
 
     def is_namedtuple(self, expr: Node) -> bool:

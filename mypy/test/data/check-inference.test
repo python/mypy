@@ -1598,7 +1598,7 @@ def f() -> None:
     x = {}
     x[1] = y
     g(x) # E: Argument 1 to "g" has incompatible type Dict[int, str]; expected Dict[str, int]
-    x[1] = 1 # E: Incompatible types in assignment
+    x[1] = 1 # E: Incompatible types in assignment (expression has type "int", target has type "str")
     x[1] = ''
 y = ''
 [builtins fixtures/dict.py]
