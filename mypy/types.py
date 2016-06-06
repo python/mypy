@@ -220,6 +220,16 @@ class Void(Type):
 
 class UninhabitedType(Type):
     """This type has no members.
+
+    This type is almost the bottom type, except it is not a subtype of Void.
+    With strict Optional checking, it is the only common subtype between all
+    other types, which allows `meet` to be well defined.  Without strict
+    Optional checking, NoneTyp fills this role.
+
+    In general, for any type T that isn't Void:
+        join(UninhabitedType, T) = T
+        meet(UninhabitedType, T) = UninhabitedType
+        is_subtype(UninhabitedType, T) = True
     """
 
     def __init__(self, line: int = -1) -> None:
@@ -240,14 +250,19 @@ class UninhabitedType(Type):
 class NoneTyp(Type):
     """The type of 'None'.
 
-    This is only used internally during type inference.  Programs
-    cannot declare a variable of this type, and the type checker
-    refuses to infer this type for a variable. However, subexpressions
-    often have this type. Note that this is not used as the result
-    type when calling a function with a void type, even though
-    semantically such a function returns a None value; the void type
-    is used instead so that we can report an error if the caller tries
-    to do anything with the return value.
+    Without strict Optional checking:
+        This is only used internally during type inference.  Programs
+        cannot declare a variable of this type, and the type checker
+        refuses to infer this type for a variable. However, subexpressions
+        often have this type. Note that this is not used as the result
+        type when calling a function with a void type, even though
+        semantically such a function returns a None value; the void type
+        is used instead so that we can report an error if the caller tries
+        to do anything with the return value.
+
+    With strict Optional checking:
+        This type can be written by users as 'None', except as the return value
+        of a function, where 'None' means Void.
     """
 
     def __init__(self, line: int = -1) -> None:
