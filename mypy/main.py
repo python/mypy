@@ -149,6 +149,9 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                         " or with incomplete type annotations")
     parser.add_argument('--check-untyped-defs', action='store_true',
                         help="type check the interior of functions without type annotations")
+    parser.add_argument('--warn-incomplete-stub', action='store_true',
+                        help="warn if missing type annotation in typeshed, only relevant with"
+                        " --check-untyped-defs enabled")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
@@ -242,6 +245,9 @@ def process_options() -> Tuple[List[BuildSource], Options]:
 
     if args.check_untyped_defs:
         options.build_flags.append(build.CHECK_UNTYPED_DEFS)
+
+    if args.warn_incomplete_stub:
+        options.build_flags.append(build.WARN_INCOMPLETE_STUB)
 
     # experimental
     if args.fast_parser:
