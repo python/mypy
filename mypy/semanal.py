@@ -1052,14 +1052,15 @@ class SemanticAnalyzer(NodeVisitor):
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
             s.type = self.anal_type(s.type, allow_tuple_literal)
         else:
-            # For simple assignments, allow binding type aliases.
+            # For simple assignments at top level, allow binding type aliases.
             if (s.type is None and len(s.lvalues) == 1 and
-                    isinstance(s.lvalues[0], NameExpr)):
+                    isinstance(s.lvalues[0], NameExpr) and
+                    not self.is_func_scope() and not self.type):
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.fail)
-                if res and (not isinstance(res, Instance) or cast(Instance, res).args):
+                if res:
                     # TODO: What if this gets reassigned?
                     name = cast(NameExpr, s.lvalues[0])
                     node = self.lookup(name.name, name)
