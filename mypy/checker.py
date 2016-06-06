@@ -2386,11 +2386,11 @@ class TypeChecker(NodeVisitor[Type]):
 
 
 def conditional_type_map(expr: Node,
-                            current_type: Optional[Type],
-                            proposed_type: Optional[Type],
-                            *,
-                            weak: bool = False
-                            ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+                         current_type: Optional[Type],
+                         proposed_type: Optional[Type],
+                         *,
+                         weak: bool = False
+                         ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
     """Takes in an expression, the current type of the expression, and a
     proposed type of that expression.
 
@@ -2416,8 +2416,10 @@ def conditional_type_map(expr: Node,
         else:
             return {}, {}
 
+
 def is_literal_none(n: Node) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
+
 
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
