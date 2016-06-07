@@ -1668,10 +1668,19 @@ class User:
 U = TypeVar('U', bound=User)
 def new(uc: Type[U]) -> U:
     uc.foo()
+    u = uc()
+    u.foo()
+    u = uc(0)
+    u.foo()
+    u = uc('')
+    u.foo(0)
     return uc()
 u = new(User)
 [builtins fixtures/classmethod.py]
 [out]
+main: note: In function "new":
+main:16: error: No overload variant of "User" matches argument types [builtins.str]
+main:17: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
 from typing import TypeVar, Type
