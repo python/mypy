@@ -219,7 +219,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return t
         else:
-            return NoneTyp()
+            return self.default(self.s)
 
     def meet(self, s, t):
         return meet_types(s, t)

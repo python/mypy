@@ -213,7 +213,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
             return self.s
         else:
-            return AnyType()
+            return self.default(self.s)
 
     def join(self, s: Type, t: Type) -> Type:
         return join_types(s, t)
