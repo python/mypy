@@ -410,7 +410,6 @@ class CallableType(FunctionLike):
     # Is this Callable[..., t] (with literal '...')?
     is_ellipsis_args = False
     # Is this callable constructed for the benefit of a classmethod's 'cls' argument?
-    # XXX Need to rename, it's also for Type[C]?
     is_classmethod_class = False
     # Was this type implicitly generated instead of explicitly specified by the user?
     implicit = False
