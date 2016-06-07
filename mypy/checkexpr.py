@@ -285,7 +285,6 @@ class ExpressionChecker:
         else:
             return self.msg.not_callable(callee, context), AnyType()
 
-    # What's a good name for this method?
     def analyze_type_type_callee(self, item: Type, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
 
