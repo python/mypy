@@ -6,7 +6,6 @@ from typing import List, Dict, Tuple
 
 from mypy import defaults
 from mypy.myunit import AssertionFailure
-from mypy.test import config
 from mypy.test.data import DataDrivenTestCase
 
 
@@ -191,7 +190,7 @@ def clean_up(a: List[str]) -> List[str]:
     """
     res = []
     for s in a:
-        prefix = config.PREFIX + os.sep
+        prefix = os.sep
         ss = s
         for p in prefix, prefix.replace(os.sep, '/'):
             if p != '/' and p != '//' and p != '\\' and p != '\\\\':

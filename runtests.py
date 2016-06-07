@@ -155,7 +155,7 @@ def add_basic(driver: Driver) -> None:
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
     driver.add_flake8('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
-    driver.add_mypy('fast-parse', '--fast-parse', 'samples/hello.py')
+    driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
 
 
 def add_selftypecheck(driver: Driver) -> None:
@@ -182,8 +182,6 @@ def add_imports(driver: Driver) -> None:
     # because of *implicit* imports from other modules.
     for f in find_files('mypy', suffix='.py'):
         mod = file_to_module(f)
-        if '.test.data.' in mod:
-            continue
         if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
         driver.add_flake8('module %s' % mod, f)
@@ -235,7 +233,7 @@ def add_stubs(driver: Driver) -> None:
 def add_stdlibsamples(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
-        stdlibsamples_dir = join(driver.cwd, 'stdlib-samples', version)
+        stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', version)
         modules = []  # type: List[str]
         for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
             module = file_to_module(f[len(stdlibsamples_dir) + 1:])
@@ -248,7 +246,7 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 
 def add_samples(driver: Driver) -> None:
-    for f in find_files('samples', suffix='.py'):
+    for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
         if 'codec' in f:
             cwd, bf = os.path.dirname(f), os.path.basename(f)
             bf = bf[:-len('.py')]
