@@ -142,6 +142,9 @@ class TypeFixture:
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
 
         self.type_a = TypeType(self.a)
+        self.type_b = TypeType(self.b)
+        self.type_c = TypeType(self.c)
+        self.type_d = TypeType(self.d)
         self.type_t = TypeType(self.t)
 
     # Helper methods

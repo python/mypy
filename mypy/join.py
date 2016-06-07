@@ -131,6 +131,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return join_instances(t, self.s)
         elif isinstance(self.s, FunctionLike):
             return join_types(t, self.s.fallback)
+        elif isinstance(self.s, TypeType):
+            return join_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -208,8 +210,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_type_type(self, t: TypeType) -> Type:
         if isinstance(self.s, TypeType):
             return TypeType(self.join(t.item, self.s.item), line=t.line)
+        elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
+            return self.s
         else:
-            # XXX Should at least try to join Type[] with type
             return AnyType()
 
     def join(self, s: Type, t: Type) -> Type:

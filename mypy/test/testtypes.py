@@ -179,7 +179,7 @@ class TypeOpsSuite(Suite):
 
     def test_erase_with_type_type(self):
         self.assert_erase(self.fx.type_a, self.fx.type_a)
-        self.assert_erase(self.fx.type_t, TypeType(AnyType()))
+        self.assert_erase(self.fx.type_t, TypeType(self.fx.anyt))
 
     def assert_erase(self, orig, result):
         assert_equal(str(erase_type(orig)), str(result))
@@ -494,6 +494,15 @@ class JoinSuite(Suite):
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_type, self.fx.type_type,
                          self.fx.type_type)
+
+    def test_type_type(self):
+        self.assert_join(self.fx.type_a, self.fx.type_b, self.fx.type_a)
+        self.assert_join(self.fx.type_b, TypeType(self.fx.anyt), TypeType(self.fx.anyt))
+        self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
+        self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
+        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType(self.fx.o))
+        self.assert_join(self.fx.type_type, TypeType(self.fx.anyt), self.fx.type_type)
+        self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
 
     # There are additional test cases in check-inference.test.
 
