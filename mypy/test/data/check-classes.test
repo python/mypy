@@ -1550,7 +1550,10 @@ bar(Y)
 from typing import Type, Any
 def foo(arg: Type[Any]):
     x = arg()
+    x = arg(0)
+    x = arg('', ())
     reveal_type(x)  # E: Revealed type is 'Any'
+    x.foo
 class X: pass
 foo(X)
 [out]
@@ -1687,3 +1690,36 @@ from typing import TypeVar, Type
 class B: pass
 T = TypeVar('T', bound=Type[B])
 def f(a: T): pass
+[out]
+
+[case testTypeUsingTypeCTuple]
+from typing import Type, Tuple
+def f(a: Type[Tuple[int, int]]):
+    a()
+[out]
+main: note: In function "f":
+main:2: error: Unsupported type Type["Tuple[int, int]"]
+
+[case testTypeUsingTypeCNamedTuple]
+from typing import Type, NamedTuple
+N = NamedTuple('N', [('x', int), ('y', int)])
+def f(a: Type[N]):
+    a()
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+main:3: error: Unsupported type Type["N"]
+
+[case testTypeUsingTypeCJoin]
+from typing import Type
+class B: pass
+class C(B): pass
+class D(B): pass
+def foo(c: Type[C], d: Type[D]) -> None:
+    x = [c, d]
+    reveal_type(x)
+
+[builtins fixtures/list.py]
+[out]
+main: note: In function "foo":
+main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
