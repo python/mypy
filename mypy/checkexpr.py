@@ -35,6 +35,7 @@ from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 
+from mypy import experiments
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -1697,10 +1698,13 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         actual = actual.erase_to_union_or_bound()
     if isinstance(formal, TypeVarType):
         formal = formal.erase_to_union_or_bound()
-    if (isinstance(actual, (NoneTyp, UninhabitedType)) or isinstance(actual, AnyType) or
+    if (isinstance(actual, UninhabitedType) or isinstance(actual, AnyType) or
             isinstance(formal, AnyType) or isinstance(formal, CallableType) or
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
+        return 2
+    if not experiments.STRICT_OPTIONAL and isinstance(actual, NoneTyp):
+        # NoneTyp matches anything if we're not doing strict Optional checking
         return 2
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)

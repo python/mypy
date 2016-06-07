@@ -94,6 +94,10 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
                    for item in s.items)
+    if experiments.STRICT_OPTIONAL:
+        if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
+            # NoneTyp does not overlap with other non-Union types under strict Optional checking
+            return False
     # We conservatively assume that non-instance, non-union types can overlap any other
     # types.
     return True

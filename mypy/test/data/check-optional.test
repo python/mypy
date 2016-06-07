@@ -158,3 +158,12 @@ class C:
         self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
 [out]
 main: note: In member "__init__" of class "C":
+
+[case testOverloadWithNone]
+from typing import overload
+@overload
+def f(x: None) -> str: pass
+@overload
+def f(x: int) -> int: pass
+reveal_type(f(None))  # E: Revealed type is 'builtins.str'
+reveal_type(f(0))  # E: Revealed type is 'builtins.int'
