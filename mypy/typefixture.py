@@ -146,6 +146,7 @@ class TypeFixture:
         self.type_c = TypeType(self.c)
         self.type_d = TypeType(self.d)
         self.type_t = TypeType(self.t)
+        self.type_any = TypeType(self.anyt)
 
     # Helper methods
 

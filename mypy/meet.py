@@ -185,6 +185,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     return self.s
                 else:
                     return NoneTyp()
+        elif isinstance(self.s, TypeType):
+            return meet_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -210,9 +212,13 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         if isinstance(self.s, TypeType):
-            return TypeType(self.meet(t.item, self.s.item), line=t.line)
+            typ = self.meet(t.item, self.s.item)
+            if not isinstance(typ, NoneTyp):
+                typ = TypeType(typ, line=t.line)
+            return typ
+        elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
+            return t
         else:
-            # XXX Other cases, e.g. type <--> Type[]?
             return NoneTyp()
 
     def meet(self, s, t):
