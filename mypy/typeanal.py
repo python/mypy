@@ -216,7 +216,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return AnyType()
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.accept(self), line=t.line)
+        return TypeType(t.item.accept(self), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')

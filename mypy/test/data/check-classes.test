@@ -1624,3 +1624,9 @@ def new(uc: Type[U]) -> U:
 u = new(User)
 [builtins fixtures/classmethod.py]
 [out]
+
+[case testTypeUsingTypeCInUpperBound]
+from typing import TypeVar, Type
+class B: pass
+T = TypeVar('T', bound=Type[B])
+def f(a: T): pass

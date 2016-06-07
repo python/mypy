@@ -227,7 +227,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance) and right.type.fullname() == 'builtins.type':
             # Treat builtins.type the same as Type[Any].
             return True
-        # XXX Others? Union, Any, TypeVar
         return False
 
 
