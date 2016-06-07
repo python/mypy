@@ -1,5 +1,4 @@
-"""Tests for the mypy parser
-"""
+"""Tests for the mypy parser."""
 
 import os.path
 
