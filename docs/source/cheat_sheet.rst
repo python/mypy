@@ -1,7 +1,7 @@
 Mypy syntax cheat sheet (Python 2)
 ==================================
 
-This document is a quick cheat sheet showing how the PEP 484 type
+This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
 language represents various common types in Python 2.
 
 .. note::
