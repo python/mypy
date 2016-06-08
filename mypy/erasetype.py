@@ -3,7 +3,7 @@ from typing import Optional, Container
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    PartialType, DeletedType, TypeTranslator, TypeList
+    PartialType, DeletedType, TypeTranslator, TypeList, TypeType
 )
 
 
@@ -18,6 +18,7 @@ def erase_type(typ: Type) -> Type:
       B[X] -> B[Any]
       Tuple[A, B] -> tuple
       Callable[...] -> Callable[[], None]
+      Type[X] -> Type[Any]
     """
 
     return typ.accept(EraseTypeVisitor())
@@ -71,6 +72,9 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_union_type(self, t: UnionType) -> Type:
         return AnyType()        # XXX: return underlying type if only one?
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        return TypeType(t.item.accept(self), line=t.line)
 
 
 def erase_generic_types(t: Type) -> Type:

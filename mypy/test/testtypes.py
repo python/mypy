@@ -11,7 +11,7 @@ from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, ErrorType, Overloaded
+    Instance, NoneTyp, ErrorType, Overloaded, TypeType,
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.replacetvars import replace_type_vars
@@ -176,6 +176,10 @@ class TypeOpsSuite(Suite):
     def test_erase_with_type_object(self):
         self.assert_erase(self.fx.callable_type(self.fx.a, self.fx.b),
                           self.fx.callable_type(self.fx.void))
+
+    def test_erase_with_type_type(self):
+        self.assert_erase(self.fx.type_a, self.fx.type_a)
+        self.assert_erase(self.fx.type_t, self.fx.type_any)
 
     def assert_erase(self, orig, result):
         assert_equal(str(erase_type(orig)), str(result))
@@ -491,6 +495,15 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.type_type, self.fx.type_type,
                          self.fx.type_type)
 
+    def test_type_type(self):
+        self.assert_join(self.fx.type_a, self.fx.type_b, self.fx.type_a)
+        self.assert_join(self.fx.type_b, self.fx.type_any, self.fx.type_any)
+        self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
+        self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
+        self.assert_join(self.fx.type_c, self.fx.type_d, TypeType(self.fx.o))
+        self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
+        self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
+
     # There are additional test cases in check-inference.test.
 
     # TODO: Function types + varargs and default args.
@@ -678,13 +691,13 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.f, self.fx.f2, self.fx.nonet)
         self.assert_meet(self.fx.f, self.fx.f3, self.fx.f3)
 
-    def test_join_interface_and_class_types(self):
+    def test_meet_interface_and_class_types(self):
         self.assert_meet(self.fx.o, self.fx.f, self.fx.f)
         self.assert_meet(self.fx.a, self.fx.f, self.fx.nonet)
 
         self.assert_meet(self.fx.e, self.fx.f, self.fx.e)
 
-    def test_join_class_types_with_shared_interfaces(self):
+    def test_meet_class_types_with_shared_interfaces(self):
         # These have nothing special with respect to meets, unlike joins. These
         # are for completeness only.
         self.assert_meet(self.fx.e, self.fx.e2, self.fx.nonet)
@@ -698,6 +711,15 @@ class MeetSuite(Suite):
         self.assert_meet(fx.gfa, fx.m1, fx.m1)
         self.assert_meet(fx.gfa, fx.gfa, fx.gfa)
         self.assert_meet(fx.gfb, fx.m1, fx.nonet)
+
+    def test_type_type(self):
+        self.assert_meet(self.fx.type_a, self.fx.type_b, self.fx.type_b)
+        self.assert_meet(self.fx.type_b, self.fx.type_any, self.fx.type_b)
+        self.assert_meet(self.fx.type_b, self.fx.type_type, self.fx.type_b)
+        self.assert_meet(self.fx.type_b, self.fx.type_c, self.fx.nonet)
+        self.assert_meet(self.fx.type_c, self.fx.type_d, self.fx.nonet)
+        self.assert_meet(self.fx.type_type, self.fx.type_any, self.fx.type_any)
+        self.assert_meet(self.fx.type_b, self.fx.anyt, self.fx.type_b)
 
     # FIX generic interfaces + ranges
 

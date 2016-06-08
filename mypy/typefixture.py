@@ -6,7 +6,8 @@ It contains class TypeInfos and Type objects.
 from typing import List
 
 from mypy.types import (
-    TypeVarType, AnyType, Void, ErrorType, NoneTyp, Instance, CallableType, TypeVarDef
+    TypeVarType, AnyType, Void, ErrorType, NoneTyp, Instance, CallableType, TypeVarDef,
+    TypeType,
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -139,6 +140,13 @@ class TypeFixture:
 
         self.lsta = Instance(self.std_listi, [self.a])  # List[A]
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
+
+        self.type_a = TypeType(self.a)
+        self.type_b = TypeType(self.b)
+        self.type_c = TypeType(self.c)
+        self.type_d = TypeType(self.d)
+        self.type_t = TypeType(self.t)
+        self.type_any = TypeType(self.anyt)
 
     # Helper methods
 

@@ -5,6 +5,7 @@ class object:
 
 class type:
     def __init__(self, x) -> None: pass
+    def mro(self) -> typing.Any: pass
 
 class function: pass
 

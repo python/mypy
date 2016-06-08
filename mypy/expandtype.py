@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List, cast
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
     Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
-    PartialType, DeletedType
+    PartialType, DeletedType, TypeType
 )
 
 
@@ -93,6 +93,13 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        # TODO: Verify that the new item type is valid (instance or
+        # union of instances or Any).  Sadly we can't report errors
+        # here yet.
+        item = t.item.accept(self)
+        return TypeType(item)
 
     def expand_types(self, types: List[Type]) -> List[Type]:
         a = []  # type: List[Type]

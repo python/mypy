@@ -15,6 +15,7 @@ Callable = 0
 builtinclass = 0
 _promote = 0
 NamedTuple = 0
+Type = 0
 no_type_check = 0
 
 # Type aliases.

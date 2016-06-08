@@ -3,7 +3,8 @@ from typing import cast, List
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType, DeletedType
+    Instance, CallableType, TupleType, ErasedType, TypeList,
+    UnionType, PartialType, DeletedType, TypeType
 )
 from mypy.subtypes import is_subtype
 from mypy.nodes import TypeInfo
@@ -184,6 +185,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                     return self.s
                 else:
                     return NoneTyp()
+        elif isinstance(self.s, TypeType):
+            return meet_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -206,6 +209,17 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_partial_type(self, t: PartialType) -> Type:
         # We can't determine the meet of partial types. We should never get here.
         assert False, 'Internal error'
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        if isinstance(self.s, TypeType):
+            typ = self.meet(t.item, self.s.item)
+            if not isinstance(typ, NoneTyp):
+                typ = TypeType(typ, line=t.line)
+            return typ
+        elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
+            return t
+        else:
+            return self.default(self.s)
 
     def meet(self, s, t):
         return meet_types(s, t)

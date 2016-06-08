@@ -4,7 +4,8 @@ from typing import cast, Callable, List, Optional
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
-    Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType, DeletedType, NoneTyp
+    Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType,
+    DeletedType, NoneTyp, TypeType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, function_type, Decorator, OverloadedFuncDef
@@ -113,6 +114,23 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
         return AnyType()
+    elif isinstance(typ, TypeType):
+        # Similar to FunctionLike + is_type_obj() above.
+        item = None
+        if isinstance(typ.item, Instance):
+            item = typ.item
+        elif isinstance(typ.item, TypeVarType):
+            if isinstance(typ.item.upper_bound, Instance):
+                item = typ.item.upper_bound
+        if item:
+            result = analyze_class_attribute_access(item, name, node, is_lvalue,
+                                                    builtin_type, not_ready_callback, msg)
+            if result:
+                return result
+        fallback = builtin_type('builtins.type')
+        return analyze_member_access(name, fallback, node, is_lvalue, is_super,
+                                     builtin_type, not_ready_callback, msg,
+                                     report_type=report_type)
     return msg.has_no_attr(report_type, name, node)
 
 

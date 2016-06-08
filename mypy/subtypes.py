@@ -3,7 +3,7 @@ from typing import cast, List, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
-    PartialType, DeletedType, is_named_instance
+    PartialType, DeletedType, TypeType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -145,6 +145,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                        for item in right.items())
         elif isinstance(right, Instance):
             return is_subtype(left.fallback, right)
+        elif isinstance(right, TypeType):
+            # This is unsound, we don't check the __init__ signature.
+            return left.is_type_obj() and is_subtype(left.ret_type, right.item)
         else:
             return False
 
@@ -198,6 +201,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         elif isinstance(right, UnboundType):
             return True
+        elif isinstance(right, TypeType):
+            # All the items must have the same type object status, so
+            # it's sufficient to query only (any) one of them.
+            # This is unsound, we don't check the __init__ signature.
+            return left.is_type_obj() and is_subtype(left.items()[0].ret_type, right.item)
         else:
             return False
 
@@ -208,6 +216,20 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
         raise RuntimeError
+
+    def visit_type_type(self, left: TypeType) -> bool:
+        right = self.right
+        if isinstance(right, TypeType):
+            return is_subtype(left.item, right.item)
+        if isinstance(right, CallableType):
+            # This is unsound, we don't check the __init__ signature.
+            return right.is_type_obj() and is_subtype(left.item, right.ret_type)
+        if (isinstance(right, Instance) and
+                right.type.fullname() in ('builtins.type', 'builtins.object')):
+            # Treat builtins.type the same as Type[Any];
+            # treat builtins.object the same as Any.
+            return True
+        return False
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
