@@ -395,3 +395,90 @@ item types:
     Point = NamedTuple('Point', [('x', int),
                                  ('y', int)])
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
+
+.. _type-of-class:
+
+The type of class objects
+*************************
+
+(Freely after `PEP 484
+<https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.)
+
+Sometimes you want to talk about class objects that inherit from a
+given class.  This can be spelled as ``Type[C]`` where ``C`` is a
+class.  In other words, when ``C`` is the name of a class, using ``C``
+to annotate an argument declares that the argument is an instance of
+``C`` (or of a subclass of ``C``), but using ``Type[C]`` as an
+argument annotation declares that the argument is a class object
+deriving from ``C`` (or ``C`` itself).
+
+For example, assume the following classes:
+
+.. code-block:: python
+
+   class User:
+       # Defines fields like name, email
+
+   class BasicUser(User):
+       def upgrade(self):
+           """Upgrade to Pro"""
+
+   class ProUser(User):
+       def pay(self):
+           """Pay bill"""
+
+Note that ``ProUser`` doesn't inherit from ``BasicUser``.
+
+Here's a function that creates an instance of one of these classes if
+you pass it the right class object:
+
+.. code-block:: python
+
+   def new_user(user_class):
+       user = user_class()
+       # (Here we could write the user object to a database)
+       return user
+
+How would we annotate this function?  Without ``Type[]`` the best we
+could do would be:
+
+.. code-block:: python
+
+   def new_user(user_class: type) -> User:
+       # Same  implementation as before
+
+This seems reasonable, except that in the following example, mypy
+doesn't see that the ``buyer`` variable has type ``ProUser``:
+
+.. code-block:: python
+
+   buyer = new_user(ProUser)
+   buyer.pay()  # Rejected, not a method on User
+
+However, using ``Type[]`` and a type variable with an upper bound (see
+:ref:`type-variable-upper-bound`) we can do better:
+
+.. code-block:: python
+
+   U = TypeVar('U', bound=User)
+
+   def new_user(user_class: Type[U]) -> U:
+       # Same  implementation as before
+
+Now mypy will infer the correct type of the result when we call
+``new_user()`` with a specific subclass of ``User``:
+
+.. code-block:: python
+
+   beginner = new_user(BasicUser)  # Inferred type is BasicUser
+   beginner.upgrade()  # OK
+
+.. note::
+
+   The value corresponding to ``Type[C]`` must be an actual class
+   object that's a subtype of ``C``.  Its constructor must be
+   compatible with the constructor of ``C``.  If ``C`` is a type
+   variable, its upper bound must be a ``Type[]`` construct.
+
+For more details about ``Type[]`` see `PEP 484
+<https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.
