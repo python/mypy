@@ -478,7 +478,7 @@ Now mypy will infer the correct type of the result when we call
    The value corresponding to ``Type[C]`` must be an actual class
    object that's a subtype of ``C``.  Its constructor must be
    compatible with the constructor of ``C``.  If ``C`` is a type
-   variable, its upper bound must be a ``Type[]`` construct.
+   variable, its upper bound must be a class object.
 
 For more details about ``Type[]`` see `PEP 484
 <https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.
