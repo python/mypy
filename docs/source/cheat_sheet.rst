@@ -1,3 +1,5 @@
+.. _cheat-sheet-py2:
+
 Mypy syntax cheat sheet (Python 2)
 ==================================
 

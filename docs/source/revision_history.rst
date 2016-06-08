@@ -3,8 +3,19 @@ Revision history
 
 List of major changes to this document:
 
+- June 2016
+    Publish ``mypy-lang`` version 0.4.2 on PyPI.
+
+    Add :ref:`type-of-class`.
+
+    Add :ref:`cheat-sheet-py2`.
+
+    Add :ref:`reveal-type`.
+
 - May 2016
     Publish ``mypy-lang`` version 0.4 on PyPI.
+
+    Add :ref:`type-variable-upper-bound`.
 
     Document :ref:`command-line`.
 
