@@ -738,15 +738,16 @@ class SemanticAnalyzer(NodeVisitor):
         related to the base classes: defn.info.bases, defn.info.mro, and
         miscellaneous others (at least tuple_type, fallback_to_any, and is_enum.)
         """
+
         base_types = []
         for base_expr in defn.base_type_exprs:
-            # The base class is originally an expression; convert it to a type.
             try:
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
                 defn.info.mro = []
                 return
+
             if isinstance(base, TupleType):
                 if defn.info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
@@ -755,6 +756,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if (not self.is_stub_file and not defn.info.is_named_tuple and
                         base.type.fullname() == 'builtins.tuple'):
                     self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
+
             if isinstance(base, Instance):
                 base_types.append(base)
             elif isinstance(base, TupleType):
@@ -771,11 +773,14 @@ class SemanticAnalyzer(NodeVisitor):
                 # print('analyze', 'unbound', base, base_expr)
                 # assert False
                 pass
+
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
             base_types.insert(0, obj)
+
         defn.info.bases = base_types
+
         # Calculate the MRO. It might be incomplete at this point if
         # the bases of defn include classes imported from other
         # modules in an import loop. We'll recompute it in ThirdPass.
