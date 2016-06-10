@@ -103,3 +103,18 @@ Color.m2('')
 [out]
 _program.py:11: error: Argument 1 to "m" of "Color" has incompatible type "str"; expected "int"
 _program.py:12: error: Argument 1 to "m2" of "Color" has incompatible type "str"; expected "int"
+
+[case testIntEnum_ExtendedIntEnum_functionTakingExtendedIntEnum]
+from enum import IntEnum
+class ExtendedIntEnum(IntEnum):
+    pass
+class SomeExtIntEnum(ExtendedIntEnum):
+    x = 1
+
+def takes_int(i: int):
+    pass
+takes_int(SomeExtIntEnum.x)
+
+def takes_some_ext_int_enum(s: SomeExtIntEnum):
+    pass
+takes_some_ext_int_enum(SomeExtIntEnum.x)
