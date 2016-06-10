@@ -3,7 +3,7 @@ from typing import cast, List, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
-    PartialType, DeletedType, TypeType, is_named_instance
+    PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -12,6 +12,8 @@ import mypy.constraints
 from mypy import messages, sametypes
 from mypy.nodes import CONTRAVARIANT, COVARIANT
 from mypy.maptype import map_instance_to_supertype
+
+from mypy import experiments
 
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
@@ -99,6 +101,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, Void)
 
     def visit_none_type(self, left: NoneTyp) -> bool:
+        if experiments.STRICT_OPTIONAL:
+            return (isinstance(self.right, NoneTyp) or
+                    is_named_instance(self.right, 'builtins.object'))
+        else:
+            return not isinstance(self.right, Void)
+
+    def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
         return not isinstance(self.right, Void)
 
     def visit_erased_type(self, left: ErasedType) -> bool:

@@ -8,7 +8,7 @@ from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         LDEF, MDEF, GDEF, MODULE_REF)
 from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
                         TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-                        TypeType)
+                        UninhabitedType, TypeType)
 from mypy.visitor import NodeVisitor
 
 
@@ -180,6 +180,9 @@ class TypeFixer(TypeVisitor[None]):
         pass  # Nothing to descend into.
 
     def visit_none_type(self, o: Any) -> None:
+        pass  # Nothing to descend into.
+
+    def visit_uninhabited_type(self, o: Any) -> None:
         pass  # Nothing to descend into.
 
     def visit_partial_type(self, o: Any) -> None:

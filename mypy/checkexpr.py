@@ -5,7 +5,7 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, TypeType
+    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -35,6 +35,7 @@ from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 
+from mypy import experiments
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
@@ -154,19 +155,21 @@ class ExpressionChecker:
             var = cast(Var, e.callee.expr.node)
             partial_types = self.chk.find_partial_types(var)
             if partial_types is not None and not self.chk.current_node_deferred:
-                partial_type_type = cast(PartialType, var.type).type
-                if partial_type_type is None:
+                partial_type = cast(PartialType, var.type)
+                if partial_type.type is None:
                     # A partial None type -> can't infer anything.
                     return
-                typename = partial_type_type.fullname()
+                typename = partial_type.type.fullname()
                 methodname = e.callee.name
                 # Sometimes we can infer a full type for a partial List, Dict or Set type.
                 # TODO: Don't infer argument expression twice.
                 if (typename in self.item_args and methodname in self.item_args[typename]
                         and e.arg_kinds == [ARG_POS]):
                     item_type = self.accept(e.args[0])
-                    if mypy.checker.is_valid_inferred_type(item_type):
-                        var.type = self.chk.named_generic_type(typename, [item_type])
+                    full_item_type = UnionType.make_simplified_union(
+                        [item_type, partial_type.inner_types[0]])
+                    if mypy.checker.is_valid_inferred_type(full_item_type):
+                        var.type = self.chk.named_generic_type(typename, [full_item_type])
                         del partial_types[var]
                 elif (typename in self.container_args
                       and methodname in self.container_args[typename]
@@ -175,10 +178,15 @@ class ExpressionChecker:
                     if isinstance(arg_type, Instance):
                         arg_typename = arg_type.type.fullname()
                         if arg_typename in self.container_args[typename][methodname]:
+                            full_item_types = [
+                                UnionType.make_simplified_union([item_type, prev_type])
+                                for item_type, prev_type
+                                in zip(arg_type.args, partial_type.inner_types)
+                            ]
                             if all(mypy.checker.is_valid_inferred_type(item_type)
-                                   for item_type in arg_type.args):
+                                   for item_type in full_item_types):
                                 var.type = self.chk.named_generic_type(typename,
-                                                                       list(arg_type.args))
+                                                                       list(full_item_types))
                                 del partial_types[var]
 
     def check_call_expr_with_callee_type(self, callee_type: Type,
@@ -411,7 +419,7 @@ class ExpressionChecker:
         # Only substitute non-None and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
-            if isinstance(arg, NoneTyp) or has_erased_component(arg):
+            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -470,7 +478,7 @@ class ExpressionChecker:
                 #       if they shuffle type variables around, as we assume that there is a 1-1
                 #       correspondence with dict type variables. This is a marginal issue and
                 #       a little tricky to fix so it's left unfixed for now.
-                if isinstance(inferred_args[0], NoneTyp):
+                if isinstance(inferred_args[0], (NoneTyp, UninhabitedType)):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not is_subtype(self.named_type('builtins.str'), inferred_args[0]):
                     self.msg.fail(messages.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
@@ -504,7 +512,7 @@ class ExpressionChecker:
         # information to infer the argument. Replace them with None values so
         # that they are not applied yet below.
         for i, arg in enumerate(inferred_args):
-            if isinstance(arg, NoneTyp) or has_erased_component(arg):
+            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
 
         callee_type = cast(CallableType, self.apply_generic_arguments(
@@ -1730,10 +1738,13 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         actual = actual.erase_to_union_or_bound()
     if isinstance(formal, TypeVarType):
         formal = formal.erase_to_union_or_bound()
-    if (isinstance(actual, NoneTyp) or isinstance(actual, AnyType) or
+    if (isinstance(actual, UninhabitedType) or isinstance(actual, AnyType) or
             isinstance(formal, AnyType) or isinstance(formal, CallableType) or
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
+        return 2
+    if not experiments.STRICT_OPTIONAL and isinstance(actual, NoneTyp):
+        # NoneTyp matches anything if we're not doing strict Optional checking
         return 2
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)

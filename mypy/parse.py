@@ -37,6 +37,8 @@ from mypy.parsetype import (
     parse_type, parse_types, parse_signature, TypeParseError, parse_str_as_signature
 )
 
+from mypy import experiments
+
 
 precedence = {
     '**': 16,
@@ -482,6 +484,9 @@ class Parser:
             if is_error:
                 return None
 
+            if typ and isinstance(typ.ret_type, UnboundType):
+                typ.ret_type.is_ret_type = True
+
             node = FuncDef(name, args, body, typ)
             node.set_line(def_tok)
             if typ is not None:
@@ -782,7 +787,17 @@ class Parser:
             else:
                 kind = nodes.ARG_POS
 
+        self.set_type_optional(type, initializer)
+
         return Argument(variable, type, initializer, kind), require_named
+
+    def set_type_optional(self, type: Type, initializer: Node) -> None:
+        if not experiments.STRICT_OPTIONAL:
+            return
+        # Indicate that type should be wrapped in an Optional if arg is initialized to None.
+        optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
+        if isinstance(type, UnboundType):
+            type.optional = optional
 
     def parse_parameter_annotation(self) -> Node:
         if self.current_str() == ':':

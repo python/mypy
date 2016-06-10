@@ -19,6 +19,7 @@ from mypy.test.helpers import (
 )
 from mypy.errors import CompileError
 
+from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
@@ -57,6 +58,7 @@ files = [
     'check-flags.test',
     'check-incremental.test',
     'check-bound.test',
+    'check-optional.test',
     'check-fastparse.test',
 ]
 
@@ -72,12 +74,19 @@ class TypeCheckSuite(Suite):
 
     def run_test(self, testcase: DataDrivenTestCase) -> None:
         incremental = 'Incremental' in testcase.name.lower() or 'incremental' in testcase.file
+        optional = 'optional' in testcase.file
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
             self.clear_cache()
             self.run_test_once(testcase, 1)
             self.run_test_once(testcase, 2)
+        elif optional:
+            try:
+                experiments.STRICT_OPTIONAL = True
+                self.run_test_once(testcase)
+            finally:
+                experiments.STRICT_OPTIONAL = False
         else:
             self.run_test_once(testcase)
 

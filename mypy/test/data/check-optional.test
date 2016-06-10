@@ -1,0 +1,169 @@
+-- Tests for strict Optional behavior
+
+[case testImplicitNoneType]
+x = None
+x()  # E: None not callable
+
+[case testExplicitNoneType]
+x = None  # type: None
+x()  # E: None not callable
+
+[case testNoneMemberOfOptional]
+from typing import Optional
+x = None  # type: Optional[int]
+
+[case testTypeMemberOfOptional]
+from typing import Optional
+x = 0  # type: Optional[int]
+
+[case testNoneNotMemberOfType]
+x = None  # type: int
+[out]
+main:1: error: Incompatible types in assignment (expression has type None, variable has type "int")
+
+[case testTypeNotMemberOfNone]
+x = 0  # type: None
+[out]
+main:1: error: Incompatible types in assignment (expression has type "int", variable has type None)
+
+[case testOptionalNotMemberOfType]
+from typing import Optional
+def f(a: int) -> None: pass
+x = None  # type:  Optional[int]
+f(x)  # E: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
+
+[case testIsinstanceCases]
+from typing import Optional
+x = None  # type:  Optional[int]
+if isinstance(x, int):
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
+else:
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
+[builtins fixtures/isinstance.py]
+
+[case testIfCases]
+from typing import Optional
+x = None  # type:  Optional[int]
+if x:
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
+else:
+  reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/bool.py]
+
+[case testIfNotCases]
+from typing import Optional
+x = None  # type:  Optional[int]
+if not x:
+  reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+else:
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/bool.py]
+
+[case testIsNotNoneCases]
+from typing import Optional
+x = None  # type:  Optional[int]
+if x is not None:
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
+else:
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
+[builtins fixtures/bool.py]
+
+[case testIsNoneCases]
+from typing import Optional
+x = None  # type:  Optional[int]
+if x is None:
+  reveal_type(x)  # E: Revealed type is 'builtins.None'
+else:
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/bool.py]
+
+[case testLambdaReturningNone]
+f = lambda: None
+x = f()
+
+[case testFunctionStillVoid]
+def f() -> None: pass
+f()
+x = f()  # E: "f" does not return a value
+
+[case testNoneArgumentType]
+def f(x: None) -> None: pass
+f(None)
+
+[case testInferOptionalFromDefaultNone]
+def f(x: int = None) -> None:
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
+[case testInferOptionalType]
+x = None
+x = 1
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testInferOptionalTypeFromOptional]
+from typing import Optional
+y = None  # type: Optional[int]
+x = None
+x = y
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testInferOptionalListType]
+x = [None]
+x.append(1)
+reveal_type(x)  # E: Revealed type is 'builtins.list[Union[builtins.int, builtins.None]]'
+[builtins fixtures/list.py]
+
+[case testInferNonOptionalListType]
+x = []
+x.append(1)
+x()  # E: List[int] not callable
+[builtins fixtures/list.py]
+
+[case testInferOptionalDictKeyValueTypes]
+x = {None: None}
+x["bar"] = 1
+reveal_type(x)  # E: Revealed type is 'builtins.dict[Union[builtins.str, builtins.None], Union[builtins.int, builtins.None]]'
+[builtins fixtures/dict.py]
+
+[case testInferNonOptionalDictType]
+x = {}
+x["bar"] = 1
+x()  # E: Dict[str, int] not callable
+[builtins fixtures/dict.py]
+
+[case testNoneClassVariable]
+from typing import Optional
+class C:
+    x = None  # type: int
+    def __init__(self) -> None:
+        self.x = 0
+
+[case testNoneClassVariableInInit]
+from typing import Optional
+class C:
+    x = None  # type: int
+    def __init__(self) -> None:
+        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[out]
+main: note: In member "__init__" of class "C":
+
+[case testMultipleAssignmentNoneClassVariableInInit]
+from typing import Optional
+class C:
+    x, y = None, None  # type: int, str
+    def __init__(self) -> None:
+        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
+[out]
+main: note: In member "__init__" of class "C":
+
+[case testOverloadWithNone]
+from typing import overload
+@overload
+def f(x: None) -> str: pass
+@overload
+def f(x: int) -> int: pass
+reveal_type(f(None))  # E: Revealed type is 'builtins.str'
+reveal_type(f(0))  # E: Revealed type is 'builtins.int'

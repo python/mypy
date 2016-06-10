@@ -232,7 +232,7 @@ NameExpr(6) : A
 NameExpr(6) : A
 MemberExpr(7) : A
 MemberExpr(7) : A
-MemberExpr(7) : Any
+MemberExpr(7) : A
 NameExpr(7) : A
 NameExpr(7) : A
 

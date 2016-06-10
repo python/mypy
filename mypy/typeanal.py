@@ -5,7 +5,7 @@ from typing import Callable, cast, List, Tuple
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, StarType, PartialType,
-    EllipsisType, TypeType
+    EllipsisType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -16,6 +16,7 @@ from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.subtypes import satisfies_upper_bound
 from mypy import nodes
+from mypy import experiments
 
 
 type_constructors = {'typing.Tuple', 'typing.Union', 'typing.Callable', 'typing.Type'}
@@ -73,6 +74,11 @@ class TypeAnalyser(TypeVisitor[Type]):
         self.fail = fail_func
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
+        if t.optional:
+            t.optional = False
+            # We don't need to worry about double-wrapping Optionals or
+            # wrapping Anys: Union simplification will take care of that.
+            return UnionType.make_simplified_union([self.visit_unbound_type(t), NoneTyp()])
         sym = self.lookup(t.name, t)
         if sym is not None:
             if sym.node is None:
@@ -91,7 +97,13 @@ class TypeAnalyser(TypeVisitor[Type]):
                                    tvar_expr.variance,
                                    t.line)
             elif fullname == 'builtins.None':
-                return Void()
+                if experiments.STRICT_OPTIONAL:
+                    if t.is_ret_type:
+                        return Void()
+                    else:
+                        return NoneTyp()
+                else:
+                    return Void()
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
@@ -110,8 +122,11 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
                 items = self.anal_array(t.args)
-                # Currently Optional[t] is just an alias for t.
-                return items[0]
+                if experiments.STRICT_OPTIONAL:
+                    return UnionType.make_simplified_union([items[0], NoneTyp()])
+                else:
+                    # Without strict Optional checking Optional[t] is just an alias for t.
+                    return items[0]
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
@@ -170,6 +185,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        return t
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
     def visit_deleted_type(self, t: DeletedType) -> Type:
@@ -382,6 +400,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_none_type(self, t: NoneTyp) -> None:
+        pass
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> None:
         pass
 
     def visit_deleted_type(self, t: DeletedType) -> None:

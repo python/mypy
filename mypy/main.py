@@ -10,6 +10,7 @@ from typing import Optional, Dict, List, Set, Tuple
 from mypy import build
 from mypy import defaults
 from mypy import git
+from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
 
@@ -156,6 +157,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
+    parser.add_argument('--strict-optional', action='store_true',
+                        help="enable experimental strict Optional checks")
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
@@ -254,6 +257,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
         options.build_flags.append(build.FAST_PARSER)
     if args.incremental:
         options.build_flags.append(build.INCREMENTAL)
+    if args.strict_optional:
+        experiments.STRICT_OPTIONAL = True
 
     # Set reports.
     for flag, val in vars(args).items():

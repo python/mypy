@@ -32,7 +32,7 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
-    UnionType, TypeVarType, PartialType, DeletedType
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -52,6 +52,8 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_simple, join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+
+from mypy import experiments
 
 
 T = TypeVar('T')
@@ -223,13 +225,13 @@ class ConditionalTypeBinder:
         else:
             return self.frames[0].get(expr.literal_hash)
 
-    def assign_type(self, expr: Node, type: Type,
+    def assign_type(self, expr: Node,
+                    type: Type,
+                    declared_type: Type,
                     restrict_any: bool = False) -> None:
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
-
-        declared_type = self.get_declaration(expr)
 
         if declared_type is None:
             # Not sure why this happens.  It seems to mainly happen in
@@ -1200,7 +1202,11 @@ class TypeChecker(NodeVisitor[Type]):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                var.type = rvalue_type
+                                if experiments.STRICT_OPTIONAL:
+                                    var.type = UnionType.make_simplified_union(
+                                        [rvalue_type, NoneTyp()])
+                                else:
+                                    var.type = rvalue_type
                             else:
                                 var.type = None
                             del partial_types[var]
@@ -1208,10 +1214,19 @@ class TypeChecker(NodeVisitor[Type]):
                     # an error will be reported elsewhere.
                     self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
                     return
-                rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
+                if (is_literal_none(rvalue) and
+                        isinstance(lvalue, NameExpr) and
+                        isinstance(lvalue.node, Var) and
+                        lvalue.node.is_initialized_in_class):
+                    # Allow None's to be assigned to class variables with non-Optional types.
+                    rvalue_type = lvalue_type
+                else:
+                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue, rvalue_type,
+                    self.binder.assign_type(lvalue,
+                                            rvalue_type,
+                                            lvalue_type,
                                             self.typing_mode_weak())
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
@@ -1444,7 +1459,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Infer the type of initialized variables from initializer type."""
         if self.typing_mode_weak():
             self.set_inferred_type(name, lvalue, AnyType())
-            self.binder.assign_type(lvalue, init_type, True)
+            self.binder.assign_type(lvalue, init_type, self.binder.get_declaration(lvalue), True)
         elif isinstance(init_type, Void):
             self.check_not_void(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
@@ -1467,16 +1482,16 @@ class TypeChecker(NodeVisitor[Type]):
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
-        if isinstance(init_type, NoneTyp):
-            partial_type = PartialType(None, name)
+        if isinstance(init_type, (NoneTyp, UninhabitedType)):
+            partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname()
-            if ((fullname == 'builtins.list' or fullname == 'builtins.set' or
-                 fullname == 'builtins.dict')
-                    and isinstance(init_type.args[0], NoneTyp)
-                    and (fullname != 'builtins.dict' or isinstance(init_type.args[1], NoneTyp))
-                    and isinstance(lvalue, NameExpr)):
-                partial_type = PartialType(init_type.type, name)
+            if (isinstance(lvalue, NameExpr) and
+                    (fullname == 'builtins.list' or
+                     fullname == 'builtins.set' or
+                     fullname == 'builtins.dict') and
+                    all(isinstance(t, (NoneTyp, UninhabitedType)) for t in init_type.args)):
+                partial_type = PartialType(init_type.type, name, init_type.args)
             else:
                 return False
         else:
@@ -1559,8 +1574,8 @@ class TypeChecker(NodeVisitor[Type]):
             self, lvalue: IndexExpr, rvalue: Node) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
         if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
-            var = cast(Var, lvalue.base.node)
-            if var is not None and isinstance(var.type, PartialType):
+            var = lvalue.base.node
+            if isinstance(var.type, PartialType):
                 type_type = var.type.type
                 if type_type is None:
                     return  # The partial type is None.
@@ -1572,10 +1587,15 @@ class TypeChecker(NodeVisitor[Type]):
                     # TODO: Don't infer things twice.
                     key_type = self.accept(lvalue.index)
                     value_type = self.accept(rvalue)
-                    if is_valid_inferred_type(key_type) and is_valid_inferred_type(value_type):
+                    full_key_type = UnionType.make_simplified_union(
+                        [key_type, var.type.inner_types[0]])
+                    full_value_type = UnionType.make_simplified_union(
+                        [value_type, var.type.inner_types[1]])
+                    if (is_valid_inferred_type(full_key_type) and
+                            is_valid_inferred_type(full_value_type)):
                         if not self.current_node_deferred:
                             var.type = self.named_generic_type('builtins.dict',
-                                                               [key_type, value_type])
+                                                               [full_key_type, full_value_type])
                         del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> Type:
@@ -1881,7 +1901,10 @@ class TypeChecker(NodeVisitor[Type]):
 
         self.check_not_void(iterable, expr)
         if isinstance(iterable, TupleType):
-            joined = NoneTyp()  # type: Type
+            if experiments.STRICT_OPTIONAL:
+                joined = UninhabitedType()  # type: Type
+            else:
+                joined = NoneTyp()
             for item in iterable.items:
                 joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
@@ -1932,7 +1955,9 @@ class TypeChecker(NodeVisitor[Type]):
             s.expr.accept(self)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type(elt, DeletedType(source=elt.name),
+                    self.binder.assign_type(elt,
+                                            DeletedType(source=elt.name),
+                                            self.binder.get_declaration(elt),
                                             self.typing_mode_weak())
             return None
 
@@ -2311,8 +2336,12 @@ class TypeChecker(NodeVisitor[Type]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
-                var.type = AnyType()
+                if experiments.STRICT_OPTIONAL and cast(PartialType, var.type).type is None:
+                    # None partial type: assume variable is intended to have type None
+                    var.type = NoneTyp()
+                else:
+                    self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                    var.type = AnyType()
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         for partial_types in reversed(self.partial_types):
@@ -2356,11 +2385,48 @@ class TypeChecker(NodeVisitor[Type]):
         return method_type_with_fallback(func, self.named_type('builtins.function'))
 
 
+def conditional_type_map(expr: Node,
+                         current_type: Optional[Type],
+                         proposed_type: Optional[Type],
+                         *,
+                         weak: bool = False
+                         ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+    """Takes in an expression, the current type of the expression, and a
+    proposed type of that expression.
+
+    Returns a 2-tuple: The first element is a map from the expression to
+    the proposed type, if the expression can be the proposed type.  The
+    second element is a map from the expression to the type it would hold
+    if it was not the proposed type, if any."""
+    if proposed_type:
+        if current_type:
+            if is_proper_subtype(current_type, proposed_type):
+                return {expr: proposed_type}, None
+            elif not is_overlapping_types(current_type, proposed_type):
+                return None, {expr: current_type}
+            else:
+                remaining_type = restrict_subtype_away(current_type, proposed_type)
+                return {expr: proposed_type}, {expr: remaining_type}
+        else:
+            return {expr: proposed_type}, {}
+    else:
+        # An isinstance check, but we don't understand the type
+        if weak:
+            return {expr: AnyType()}, {expr: current_type}
+        else:
+            return {}, {}
+
+
+def is_literal_none(n: Node) -> bool:
+    return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
+
+
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
-                          weak: bool=False) \
-        -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
-    """Find any isinstance checks (within a chain of ands).
+                          weak: bool=False
+                          ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+    """Find any isinstance checks (within a chain of ands).  Includes
+    implicit and explicit checks for None.
 
     Return value is a map of variables to their types if the condition
     is true and a map of variables to their types if the condition is false.
@@ -2376,20 +2442,31 @@ def find_isinstance_check(node: Node,
             if expr.literal == LITERAL_TYPE:
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
-                if type:
-                    elsetype = vartype
-                    if vartype:
-                        if is_proper_subtype(vartype, type):
-                            return {expr: type}, None
-                        elif not is_overlapping_types(vartype, type):
-                            return None, {expr: elsetype}
-                        else:
-                            elsetype = restrict_subtype_away(vartype, type)
-                    return {expr: type}, {expr: elsetype}
-                else:
-                    # An isinstance check, but we don't understand the type
-                    if weak:
-                        return {expr: AnyType()}, {expr: vartype}
+                return conditional_type_map(expr, vartype, type, weak=weak)
+    elif (isinstance(node, ComparisonExpr) and any(is_literal_none(n) for n in node.operands) and
+          experiments.STRICT_OPTIONAL):
+        # Check for `x is None` and `x is not None`.
+        is_not = node.operators == ['is not']
+        if is_not or node.operators == ['is']:
+            if_vars = {}  # type: Dict[Node, Type]
+            else_vars = {}  # type: Dict[Node, Type]
+            for expr in node.operands:
+                if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
+                    # This should only be true at most once: there should be
+                    # two elements in node.operands, and at least one of them
+                    # should represent a None.
+                    vartype = type_map[expr]
+                    if_vars, else_vars = conditional_type_map(expr, vartype, NoneTyp(), weak=weak)
+                    break
+
+            if is_not:
+                if_vars, else_vars = else_vars, if_vars
+            return if_vars, else_vars
+    elif isinstance(node, RefExpr) and experiments.STRICT_OPTIONAL:
+        # The type could be falsy, so we can't deduce anything new about the else branch
+        vartype = type_map[node]
+        _, if_vars = conditional_type_map(node, vartype, NoneTyp(), weak=weak)
+        return if_vars, {}
     elif isinstance(node, OpExpr) and node.op == 'and':
         left_if_vars, right_else_vars = find_isinstance_check(
             node.left,
@@ -2571,6 +2648,12 @@ def is_valid_inferred_type(typ: Type) -> bool:
     Examples of invalid types include the None type or a type with a None component.
     """
     if is_same_type(typ, NoneTyp()):
+        # With strict Optional checking, we *may* eventually infer NoneTyp, but
+        # we only do that if we can't infer a specific Optional type.  This
+        # resolution happens in leave_partial_types when we pop a partial types
+        # scope.
+        return False
+    if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):
         for arg in typ.args:

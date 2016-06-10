@@ -6,6 +6,8 @@ from typing import Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence
 import mypy.nodes
 from mypy.nodes import INVARIANT, SymbolNode
 
+from mypy import experiments
+
 
 T = TypeVar('T')
 
@@ -99,12 +101,23 @@ class UnboundType(Type):
 
     name = ''
     args = None  # type: List[Type]
+    # should this type be wrapped in an Optional?
+    optional = False
+    # is this type a return type?
+    is_ret_type = False
 
-    def __init__(self, name: str, args: List[Type] = None, line: int = -1) -> None:
+    def __init__(self,
+                 name: str,
+                 args: List[Type] = None,
+                 line: int = -1,
+                 optional: bool = False,
+                 is_ret_type: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
+        self.optional = optional
+        self.is_ret_type = is_ret_type
         super().__init__(line)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -205,17 +218,51 @@ class Void(Type):
         return Void()
 
 
+class UninhabitedType(Type):
+    """This type has no members.
+
+    This type is almost the bottom type, except it is not a subtype of Void.
+    With strict Optional checking, it is the only common subtype between all
+    other types, which allows `meet` to be well defined.  Without strict
+    Optional checking, NoneTyp fills this role.
+
+    In general, for any type T that isn't Void:
+        join(UninhabitedType, T) = T
+        meet(UninhabitedType, T) = UninhabitedType
+        is_subtype(UninhabitedType, T) = True
+    """
+
+    def __init__(self, line: int = -1) -> None:
+        super().__init__(line)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_uninhabited_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'UninhabitedType'}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'UninhabitedType':
+        assert data['.class'] == 'UninhabitedType'
+        return UninhabitedType()
+
+
 class NoneTyp(Type):
     """The type of 'None'.
 
-    This is only used internally during type inference.  Programs
-    cannot declare a variable of this type, and the type checker
-    refuses to infer this type for a variable. However, subexpressions
-    often have this type. Note that this is not used as the result
-    type when calling a function with a void type, even though
-    semantically such a function returns a None value; the void type
-    is used instead so that we can report an error if the caller tries
-    to do anything with the return value.
+    Without strict Optional checking:
+        This is only used internally during type inference.  Programs
+        cannot declare a variable of this type, and the type checker
+        refuses to infer this type for a variable. However, subexpressions
+        often have this type. Note that this is not used as the result
+        type when calling a function with a void type, even though
+        semantically such a function returns a None value; the void type
+        is used instead so that we can report an error if the caller tries
+        to do anything with the return value.
+
+    With strict Optional checking:
+        This type can be written by users as 'None', except as the return value
+        of a function, where 'None' means Void.
     """
 
     def __init__(self, line: int = -1) -> None:
@@ -683,7 +730,10 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            return Void()
+            if experiments.STRICT_OPTIONAL:
+                return UninhabitedType()
+            else:
+                return Void()
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1) -> Type:
@@ -754,10 +804,15 @@ class PartialType(Type):
     # None for the 'None' partial type; otherwise a generic class
     type = None  # type: Optional[mypy.nodes.TypeInfo]
     var = None  # type: mypy.nodes.Var
+    inner_types = None  # type: List[Type]
 
-    def __init__(self, type: Optional['mypy.nodes.TypeInfo'], var: 'mypy.nodes.Var') -> None:
+    def __init__(self,
+                 type: Optional['mypy.nodes.TypeInfo'],
+                 var: 'mypy.nodes.Var',
+                 inner_types: List[Type]) -> None:
         self.type = type
         self.var = var
+        self.inner_types = inner_types
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_partial_type(self)
@@ -869,6 +924,10 @@ class TypeVisitor(Generic[T]):
     def visit_none_type(self, t: NoneTyp) -> T:
         pass
 
+    @abstractmethod
+    def visit_uninhabited_type(self, t: UninhabitedType) -> T:
+        pass
+
     def visit_erased_type(self, t: ErasedType) -> T:
         raise self._notimplemented_helper('erased_type')
 
@@ -937,6 +996,9 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
+        return t
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         return t
 
     def visit_erased_type(self, t: ErasedType) -> Type:
@@ -1025,8 +1087,11 @@ class TypeStrVisitor(TypeVisitor[str]):
         return 'void'
 
     def visit_none_type(self, t):
-        # Include quotes to make this distinct from the None value.
-        return "'None'"
+        # Fully qualify to make this distinct from the None value.
+        return "builtins.None"
+
+    def visit_uninhabited_type(self, t):
+        return "<uninhabited>"
 
     def visit_erased_type(self, t):
         return "<Erased>"
@@ -1170,6 +1235,9 @@ class TypeQuery(TypeVisitor[bool]):
         return self.default
 
     def visit_void(self, t: Void) -> bool:
+        return self.default
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return self.default
 
     def visit_none_type(self, t: NoneTyp) -> bool:
