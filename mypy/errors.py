@@ -2,8 +2,9 @@ import os
 import os.path
 import sys
 import traceback
+from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set
+from typing import Tuple, List, TypeVar, Set, Dict, Optional
 
 
 T = TypeVar('T')
@@ -79,8 +80,11 @@ class Errors:
     # Stack of short names of current functions or members (or None).
     function_or_member = None  # type: List[str]
 
-    # Ignore errors on these lines.
-    ignored_lines = None  # type: Set[int]
+    # Ignore errors on these lines of each file.
+    ignored_lines = None  # type: Dict[str, Set[int]]
+
+    # Lines on which an error was actually ignored.
+    used_ignored_lines = None  # type: Dict[str, Set[int]]
 
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
@@ -90,7 +94,8 @@ class Errors:
         self.import_ctx = []
         self.type_name = [None]
         self.function_or_member = [None]
-        self.ignored_lines = set()
+        self.ignored_lines = OrderedDict()
+        self.used_ignored_lines = defaultdict(set)
         self.only_once_messages = set()
 
     def copy(self) -> 'Errors':
@@ -109,13 +114,26 @@ class Errors:
             prefix += os.sep
         self.ignore_prefix = prefix
 
-    def set_file(self, file: str) -> None:
-        """Set the path of the current file."""
+    def simplify_path(self, file: str) -> str:
         file = os.path.normpath(file)
-        self.file = remove_path_prefix(file, self.ignore_prefix)
+        return remove_path_prefix(file, self.ignore_prefix)
 
-    def set_ignored_lines(self, ignored_lines: Set[int]) -> None:
-        self.ignored_lines = ignored_lines
+    def set_file(self, file: str, ignored_lines: Set[int] = None) -> None:
+        """Set the path of the current file."""
+        # The path will be simplified later, in render_messages. That way
+        #  * 'file' is always a key that uniquely identifies a source file
+        #    that mypy read (simplified paths might not be unique); and
+        #  * we only have to simplify in one place, while still supporting
+        #    reporting errors for files other than the one currently being
+        #    processed.
+        self.file = file
+
+    def set_file_ignored_lines(self, file: str, ignored_lines: Set[int] = None) -> None:
+        self.ignored_lines[file] = ignored_lines
+
+    def mark_file_ignored_lines_used(self, file: str, used_ignored_lines: Set[int] = None
+                                     ) -> None:
+        self.used_ignored_lines[file] |= used_ignored_lines
 
     def push_function(self, name: str) -> None:
         """Set the current function or member short name (it can be None)."""
@@ -170,14 +188,24 @@ class Errors:
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        if info.line in self.ignored_lines:
+        if info.file in self.ignored_lines and info.line in self.ignored_lines[info.file]:
             # Annotation requests us to ignore all errors on this line.
+            self.used_ignored_lines[info.file].add(info.line)
             return
         if info.only_once:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
         self.error_info.append(info)
+
+    def generate_unused_ignore_notes(self) -> None:
+        for file, ignored_lines in self.ignored_lines.items():
+            for line in ignored_lines - self.used_ignored_lines[file]:
+                # Don't use report since add_error_info will ignore the error!
+                info = ErrorInfo(self.import_context(), file, None, None,
+                                 line, 'note', "unused 'type: ignore' comment",
+                                 False, False)
+                self.error_info.append(info)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
@@ -254,32 +282,34 @@ class Errors:
                     result.append((None, -1, 'note', fmt.format(path, line)))
                     i -= 1
 
+            file = self.simplify_path(e.file)
+
             # Report context within a source file.
             if (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((e.file, -1, 'note', 'At top level:'))
+                        result.append((file, -1, 'note', 'At top level:'))
                     else:
-                        result.append((e.file, -1, 'note', 'In class "{}":'.format(
+                        result.append((file, -1, 'note', 'In class "{}":'.format(
                             e.type)))
                 else:
                     if e.type is None:
-                        result.append((e.file, -1, 'note',
+                        result.append((file, -1, 'note',
                                        'In function "{}":'.format(
                                            e.function_or_member)))
                     else:
-                        result.append((e.file, -1, 'note',
+                        result.append((file, -1, 'note',
                                        'In member "{}" of class "{}":'.format(
                                            e.function_or_member, e.type)))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((e.file, -1, 'note', 'At top level:'))
+                    result.append((file, -1, 'note', 'At top level:'))
                 else:
-                    result.append((e.file, -1, 'note',
+                    result.append((file, -1, 'note',
                                    'In class "{}":'.format(e.type)))
 
-            result.append((e.file, e.line, e.severity, e.message))
+            result.append((file, e.line, e.severity, e.message))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member

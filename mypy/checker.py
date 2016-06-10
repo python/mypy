@@ -420,7 +420,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
-        self.errors.set_ignored_lines(file_node.ignored_lines)
         self.globals = file_node.names
         self.weak_opts = file_node.weak_opts
         self.enter_partial_types()
@@ -435,7 +434,6 @@ class TypeChecker(NodeVisitor[Type]):
         if self.deferred_nodes:
             self.check_second_pass()
 
-        self.errors.set_ignored_lines(set())
         self.current_node_deferred = False
 
         all_ = self.globals.get('__all__')
@@ -1525,7 +1523,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         We implement this here by giving x a valid type (Any).
         """
-        if context.get_line() in self.errors.ignored_lines:
+        if context.get_line() in self.errors.ignored_lines[self.errors.file]:
             self.set_inferred_type(var, lvalue, AnyType())
 
     def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:

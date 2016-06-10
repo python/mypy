@@ -70,6 +70,8 @@ CHECK_UNTYPED_DEFS = 'check-untyped-defs'
 WARN_INCOMPLETE_STUB = 'warn-incomplete-stub'
 # Warn about casting an expression to its inferred type
 WARN_REDUNDANT_CASTS = 'warn-redundant-casts'
+# Warn about unused '# type: ignore' comments
+WARN_UNUSED_IGNORES = 'warn-unused-ignores'
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
@@ -456,9 +458,26 @@ class BuildManager:
                      custom_typing_module=self.custom_typing_module,
                      fast_parser=FAST_PARSER in self.flags)
         tree._fullname = id
+
+        # We don't want to warn about 'type: ignore' comments on
+        # imports, but we're about to modify tree.imports, so grab
+        # these first.
+        import_lines = set(node.line for node in tree.imports)
+
+        # Skip imports that have been ignored (so that we can ignore a C extension module without
+        # stub, for example), except for 'from x import *', because we wouldn't be able to
+        # determine which names should be defined unless we process the module. We can still
+        # ignore errors such as redefinitions when using the latter form.
+        imports = [node for node in tree.imports
+                   if node.line not in tree.ignored_lines or isinstance(node, ImportAll)]
+        tree.imports = imports
+
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
+
+        self.errors.set_file_ignored_lines(path, tree.ignored_lines)
+        self.errors.mark_file_ignored_lines_used(path, import_lines)
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
@@ -1088,8 +1107,7 @@ class State:
                     suppress_message = ((SILENT_IMPORTS in manager.flags and
                                         ALMOST_SILENT not in manager.flags) or
                                         (caller_state.tree is not None and
-                                         (caller_line in caller_state.tree.ignored_lines or
-                                          'import' in caller_state.tree.weak_opts)))
+                                         'import' in caller_state.tree.weak_opts))
                     if not suppress_message:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
@@ -1333,6 +1351,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
+    if WARN_UNUSED_IGNORES in manager.flags:
+        manager.errors.generate_unused_ignore_notes()
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
