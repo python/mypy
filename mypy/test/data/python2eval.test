@@ -399,25 +399,25 @@ print b.x + 1
 [case testReModuleBytesPython2]
 # Regression tests for various overloads in the re module -- bytes version
 import re
-bre = b'a+'
-bpat = re.compile(bre)
-bpat = re.compile(bpat)
-re.search(bre, b'').groups()
-re.search(bre, u'') # This ought to be an error, but isn't because of bytes->unicode equivalence
-re.search(bpat, b'').groups()
-re.search(bpat, u'') # Error
-# match(), split(), findall(), finditer() are much the same, so skip those.
-# sub(), subn() have more overloads and we are checking these:
-re.sub(bre, b'', b'') + b''
-re.sub(bpat, b'', b'') + b''
-re.sub(bre, lambda m: b'', b'') + b''
-re.sub(bpat, lambda m: b'', b'') + b''
-re.subn(bre, b'', b'')[0] + b''
-re.subn(bpat, b'', b'')[0] + b''
-re.subn(bre, lambda m: b'', b'')[0] + b''
-re.subn(bpat, lambda m: b'', b'')[0] + b''
+if False:
+    bre = b'a+'
+    bpat = re.compile(bre)
+    bpat = re.compile(bpat)
+    re.search(bre, b'').groups()
+    re.search(bre, u'')
+    re.search(bpat, b'').groups()
+    re.search(bpat, u'')
+    # match(), split(), findall(), finditer() are much the same, so skip those.
+    # sub(), subn() have more overloads and we are checking these:
+    re.sub(bre, b'', b'') + b''
+    re.sub(bpat, b'', b'') + b''
+    re.sub(bre, lambda m: b'', b'') + b''
+    re.sub(bpat, lambda m: b'', b'') + b''
+    re.subn(bre, b'', b'')[0] + b''
+    re.subn(bpat, b'', b'')[0] + b''
+    re.subn(bre, lambda m: b'', b'')[0] + b''
+    re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testReModuleStringPython2]
 # Regression tests for various overloads in the re module -- string version
