@@ -838,6 +838,53 @@ class EllipsisType(Type):
         return EllipsisType()
 
 
+class TypeType(Type):
+    """For types like Type[User].
+
+    This annotates variables that are class objects, constrained by
+    the type argument.  See PEP 484 for more details.
+
+    We may encounter expressions whose values are specific classes;
+    those are represented as callables (possibly overloaded)
+    corresponding to the class's constructor's signature and returning
+    an instance of that class.  The difference with Type[C] is that
+    those callables always represent the exact class given as the
+    return type; Type[C] represents any class that's a subclass of C,
+    and C may also be a type variable or a union (or Any).
+
+    Many questions around subtype relationships between Type[C1] and
+    def(...) -> C2 are answered by looking at the subtype
+    relationships between C1 and C2, since Type[] is considered
+    covariant.
+
+    There's an unsolved problem with constructor signatures (also
+    unsolved in PEP 484): calling a variable whose type is Type[C]
+    assumes the constructor signature for C, even though a subclass of
+    C might completely change the constructor signature.  For now we
+    just assume that users of Type[C] are careful not to do that (in
+    the future we might detect when they are violating that
+    assumption).
+    """
+
+    # This can't be everything, but it can be a class reference,
+    # a generic class instance, a union, Any, a type variable...
+    item = None  # type: Type
+
+    def __init__(self, item: Type, *, line: int = -1) -> None:
+        super().__init__(line)
+        self.item = item
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypeType', 'item': self.item.serialize()}
+
+    def deserialize(self, data: JsonDict) -> 'TypeType':
+        assert data['.class'] == 'TypeType'
+        return TypeType(Type.deserialize(data['item']))
+
+
 #
 # Visitor-related classes
 #
@@ -849,9 +896,9 @@ class TypeVisitor(Generic[T]):
     The parameter T is the return type of the visit methods.
     """
 
-    def _notimplemented_helper(self) -> NotImplementedError:
-        return NotImplementedError("Method visit_type_list not implemented in "
-                                   + "'{}'\n".format(type(self).__name__)
+    def _notimplemented_helper(self, name: str) -> NotImplementedError:
+        return NotImplementedError("Method {}.visit_{}() not implemented\n"
+                                   .format(type(self).__name__, name)
                                    + "This is a known bug, track development in "
                                    + "'https://github.com/JukkaL/mypy/issues/730'")
 
@@ -860,10 +907,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_type_list(self, t: TypeList) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('type_list')
 
     def visit_error_type(self, t: ErrorType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('error_type')
 
     @abstractmethod
     def visit_any(self, t: AnyType) -> T:
@@ -882,7 +929,7 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_erased_type(self, t: ErasedType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('erased_type')
 
     @abstractmethod
     def visit_deleted_type(self, t: DeletedType) -> T:
@@ -901,14 +948,14 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_overloaded(self, t: Overloaded) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('overloaded')
 
     @abstractmethod
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
     def visit_star_type(self, t: StarType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('star_type')
 
     @abstractmethod
     def visit_union_type(self, t: UnionType) -> T:
@@ -919,7 +966,11 @@ class TypeVisitor(Generic[T]):
         pass
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
-        raise self._notimplemented_helper()
+        raise self._notimplemented_helper('ellipsis_type')
+
+    @abstractmethod
+    def visit_type_type(self, t: TypeType) -> T:
+        pass
 
 
 class TypeTranslator(TypeVisitor[Type]):
@@ -1000,6 +1051,9 @@ class TypeTranslator(TypeVisitor[Type]):
             else:
                 raise RuntimeError('CallableType expectected, but got {}'.format(type(new)))
         return Overloaded(items=items)
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        return TypeType(t.item.accept(self), line=t.line)
 
 
 class TypeStrVisitor(TypeVisitor[str]):
@@ -1125,6 +1179,9 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_ellipsis_type(self, t):
         return '...'
 
+    def visit_type_type(self, t):
+        return 'Type[{}]'.format(t.item.accept(self))
+
     def list_str(self, a):
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
@@ -1216,6 +1273,9 @@ class TypeQuery(TypeVisitor[bool]):
 
     def visit_overloaded(self, t: Overloaded) -> bool:
         return self.query_types(t.items())
+
+    def visit_type_type(self, t: TypeType) -> bool:
+        return t.item.accept(self)
 
     def query_types(self, types: Sequence[Type]) -> bool:
         """Perform a query for a list of types.

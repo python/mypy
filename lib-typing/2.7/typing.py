@@ -20,9 +20,10 @@ __all__ = [
     'Callable',
     'Generic',
     'Optional',
+    'Tuple',
+    'Type',
     'TypeVar',
     'Union',
-    'Tuple',
 
     # ABCs (from collections.abc).
     'AbstractSet',  # collections.abc.Set.
@@ -60,10 +61,12 @@ __all__ = [
     'AnyStr',
     'cast',
     'get_type_hints',
+    'NewType',
     'no_type_check',
     'no_type_check_decorator',
     'overload',
     'Text',
+    'TYPE_CHECKING',
 ]
 
 # The pseudo-submodules 're' and 'io' are part of the public
@@ -300,7 +303,7 @@ def _type_check(arg, msg):
         return type(None)
     if isinstance(arg, basestring):
         arg = _ForwardRef(arg)
-    if not isinstance(arg, (type, _TypeAlias)):
+    if not isinstance(arg, (type, _TypeAlias)) and not callable(arg):
         raise TypeError(msg + " Got %.100r." % (arg,))
     return arg
 
@@ -454,6 +457,7 @@ class TypeVar(TypingMeta):
 
 
 # Some unconstrained type variables.  These are used by the container types.
+# (These are not for export.)
 T = TypeVar('T')  # Any type.
 KT = TypeVar('KT')  # Key type.
 VT = TypeVar('VT')  # Value type.
@@ -463,6 +467,7 @@ VT_co = TypeVar('VT_co', covariant=True)  # Value type covariant containers.
 T_contra = TypeVar('T_contra', contravariant=True)  # Ditto contravariant.
 
 # A useful type variable with constraints.  This represents string types.
+# (This one *is* for export!)
 AnyStr = TypeVar('AnyStr', bytes, unicode)
 
 
@@ -508,7 +513,10 @@ class UnionMeta(TypingMeta):
             if isinstance(t1, _TypeAlias):
                 # _TypeAlias is not a real class.
                 continue
-            if any(issubclass(t1, t2)
+            if not isinstance(t1, type):
+                assert callable(t1)  # A callable might sneak through.
+                continue
+            if any(isinstance(t2, type) and issubclass(t1, t2)
                    for t2 in all_params - {t1} if not isinstance(t2, TypeVar)):
                 all_params.remove(t1)
         # It's not a union if there's only one type left.
@@ -694,6 +702,8 @@ class TupleMeta(TypingMeta):
             params = [_type_repr(p) for p in self.__tuple_params__]
             if self.__tuple_use_ellipsis__:
                 params.append('...')
+            if not params:
+                params.append('()')
             r += '[%s]' % (
                 ', '.join(params))
         return r
@@ -1518,6 +1528,37 @@ class Generator(Iterator[T_co], Generic[T_co, T_contra, V_co]):
         return super(Generator, cls).__new__(cls, *args, **kwds)
 
 
+# Internal type variable used for Type[].
+CT = TypeVar('CT', covariant=True, bound=type)
+
+
+# This is not a real generic class.  Don't use outside annotations.
+class Type(type, Generic[CT]):
+    """A special construct usable to annotate class objects.
+
+    For example, suppose we have the following classes::
+
+      class User: ...  # Abstract base for User classes
+      class BasicUser(User): ...
+      class ProUser(User): ...
+      class TeamUser(User): ...
+
+    And a function that takes a class argument that's a subclass of
+    User and returns an instance of the corresponding class::
+
+      U = TypeVar('U', bound=User)
+      def new_user(user_class: Type[U]) -> U:
+          user = user_class()
+          # (Here we could write the user object to a database)
+          return user
+
+      joe = new_user(BasicUser)
+
+    At this point the type checker knows that joe has type BasicUser.
+    """
+    __extra__ = type
+
+
 def NamedTuple(typename, fields):
     """Typed version of namedtuple.
 
@@ -1545,8 +1586,41 @@ def NamedTuple(typename, fields):
     return cls
 
 
+def NewType(name, tp):
+    """NewType creates simple unique types with almost zero
+    runtime overhead. NewType(name, tp) is considered a subtype of tp
+    by static type checkers. At runtime, NewType(name, tp) returns
+    a dummy function that simply returns its argument. Usage::
+
+        UserId = NewType('UserId', int)
+
+        def name_by_id(user_id):
+            # type: (UserId) -> str
+            ...
+
+        UserId('user')          # Fails type check
+
+        name_by_id(42)          # Fails type check
+        name_by_id(UserId(42))  # OK
+
+        num = UserId(5) + 1     # type: int
+    """
+
+    def new_type(x):
+        return x
+
+    # Some versions of Python 2 complain because of making all strings unicode
+    new_type.__name__ = str(name)
+    new_type.__supertype__ = tp
+    return new_type
+
+
 # Python-version-specific alias (Python 2: unicode; Python 3: str)
 Text = unicode
+
+
+# Constant that's True when type checking, but False here.
+TYPE_CHECKING = False
 
 
 class IO(Generic[AnyStr]):

@@ -5,7 +5,7 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, UninhabitedType
+    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -285,8 +285,48 @@ class ExpressionChecker:
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
+        elif isinstance(callee, TypeType):
+            # Pass the original Type[] as context since that's where errors should go.
+            item = self.analyze_type_type_callee(callee.item, callee)
+            return self.check_call(item, args, arg_kinds, context, arg_names,
+                                   callable_node, arg_messages)
         else:
             return self.msg.not_callable(callee, context), AnyType()
+
+    def analyze_type_type_callee(self, item: Type, context: Context) -> Type:
+        """Analyze the callee X in X(...) where X is Type[item].
+
+        Return a Y that we can pass to check_call(Y, ...).
+        """
+        if isinstance(item, AnyType):
+            return AnyType()
+        if isinstance(item, Instance):
+            return type_object_type(item.type, self.named_type)
+        if isinstance(item, UnionType):
+            return UnionType([self.analyze_type_type_callee(item, context)
+                              for item in item.items], item.line)
+        if isinstance(item, TypeVarType):
+            # Pretend we're calling the typevar's upper bound,
+            # i.e. its constructor (a poor approximation for reality,
+            # but better than AnyType...), but replace the return type
+            # with typevar.
+            callee = self.analyze_type_type_callee(item.upper_bound, context)
+            if isinstance(callee, CallableType):
+                if callee.is_generic():
+                    callee = None
+                else:
+                    callee = callee.copy_modified(ret_type=item)
+            elif isinstance(callee, Overloaded):
+                if callee.items()[0].is_generic():
+                    callee = None
+                else:
+                    callee = Overloaded([c.copy_modified(ret_type=item)
+                                         for c in callee.items()])
+            if callee:
+                return callee
+
+        self.msg.unsupported_type_type(item, context)
+        return AnyType()
 
     def infer_arg_types_in_context(self, callee: CallableType,
                                    args: List[Node]) -> List[Type]:

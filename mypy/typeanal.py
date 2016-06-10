@@ -5,7 +5,7 @@ from typing import Callable, cast, List, Tuple
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
     Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, StarType, PartialType,
-    EllipsisType, UninhabitedType
+    EllipsisType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -19,7 +19,7 @@ from mypy import nodes
 from mypy import experiments
 
 
-type_constructors = ['typing.Tuple', 'typing.Union', 'typing.Callable']
+type_constructors = {'typing.Tuple', 'typing.Union', 'typing.Callable', 'typing.Type'}
 
 
 def analyze_type_alias(node: Node,
@@ -129,6 +129,14 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return items[0]
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
+            elif fullname == 'typing.Type':
+                if len(t.args) == 0:
+                    return TypeType(AnyType(), line=t.line)
+                if len(t.args) != 1:
+                    self.fail('Type[...] must have exactly one type argument', t)
+                items = self.anal_array(t.args)
+                item = items[0]
+                return TypeType(item, line=t.line)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
                 return sym.type_override
@@ -224,6 +232,9 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
         self.fail("Unexpected '...'", t)
         return AnyType()
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        return TypeType(t.item.accept(self), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')
@@ -404,4 +415,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_partial_type(self, t: PartialType) -> None:
+        pass
+
+    def visit_type_type(self, t: TypeType) -> None:
         pass

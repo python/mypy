@@ -166,6 +166,8 @@ and difficult-to-predict failure modes and could result in very
 confusing error messages. The tradeoff is that you as a programmer
 sometimes have to give the type checker a little help.
 
+.. _reveal-type:
+
 Displaying the type of an expression
 ------------------------------------
 

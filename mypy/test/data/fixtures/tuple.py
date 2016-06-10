@@ -7,7 +7,9 @@ Tco = TypeVar('Tco', covariant=True)
 class object:
     def __init__(self): pass
 
-class type: pass
+class type:
+    def __init__(self, *a) -> None: pass
+    def __call__(self, *a) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
     def __getitem__(self, x: int) -> Tco: pass
 class function: pass

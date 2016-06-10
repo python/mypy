@@ -1418,3 +1418,308 @@ C(0)
 C(arg=0)
 [out]
 
+
+-- Type[C]
+-- -------
+
+
+[case testTypeUsingTypeCBasic]
+from typing import Type
+class User: pass
+class ProUser(User): pass
+def new_user(user_class: Type[User]) -> User:
+    return user_class()
+reveal_type(new_user(User))  # E: Revealed type is '__main__.User'
+reveal_type(new_user(ProUser))  # E: Revealed type is '__main__.User'
+[out]
+
+[case testTypeUsingTypeCDefaultInit]
+from typing import Type
+class B:
+    pass
+def f(A: Type[B]) -> None:
+    A(0)  # E: Too many arguments for "B"
+    A()
+[out]
+main: note: In function "f":
+
+[case testTypeUsingTypeCInitWithArg]
+from typing import Type
+class B:
+    def __init__(self, a: int) -> None: pass
+def f(A: Type[B]) -> None:
+    A(0)
+    A()  # E: Too few arguments for "B"
+[out]
+main: note: In function "f":
+
+[case testTypeUsingTypeCTypeVar]
+from typing import Type, TypeVar
+class User: pass
+class ProUser(User): pass
+U = TypeVar('U', bound=User)
+def new_user(user_class: Type[U]) -> U:
+    user = user_class()
+    reveal_type(user)
+    return user
+pro_user = new_user(ProUser)
+reveal_type(pro_user)
+[out]
+main: note: In function "new_user":
+main:7: error: Revealed type is 'U`-1'
+main: note: At top level:
+main:10: error: Revealed type is '__main__.ProUser*'
+
+[case testTypeUsingTypeCTypeVarDefaultInit]
+from typing import Type, TypeVar
+class B:
+    pass
+T = TypeVar('T', bound=B)
+def f(A: Type[T]) -> None:
+    A()
+    A(0)  # E: Too many arguments for "B"
+[out]
+main: note: In function "f":
+
+[case testTypeUsingTypeCTypeVarWithInit]
+from typing import Type, TypeVar
+class B:
+    def __init__(self, a: int) -> None: pass
+T = TypeVar('T', bound=B)
+def f(A: Type[T]) -> None:
+    A()  # E: Too few arguments for "B"
+    A(0)
+[out]
+main: note: In function "f":
+
+[case testTypeUsingTypeCTwoTypeVars]
+from typing import Type, TypeVar
+class User: pass
+class ProUser(User): pass
+class WizUser(ProUser): pass
+U = TypeVar('U', bound=User)
+def new_user(u_c: Type[U]) -> U: pass
+P = TypeVar('P', bound=ProUser)
+def new_pro(pro_c: Type[P]) -> P:
+    return new_user(pro_c)
+wiz = new_pro(WizUser)
+reveal_type(wiz)
+def error(u_c: Type[U]) -> P:
+    return new_pro(u_c)  # Error here, see below
+[out]
+main:11: error: Revealed type is '__main__.WizUser*'
+main: note: In function "error":
+main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
+main:13: error: Incompatible return value type (got "U", expected "P")
+
+[case testTypeUsingTypeCCovariance]
+from typing import Type, TypeVar
+class User: pass
+class ProUser(User): pass
+def new_user(user_class: Type[User]) -> User:
+    return user_class()
+def new_pro_user(user_class: Type[ProUser]):
+    new_user(user_class)
+[out]
+
+[case testTypeUsingTypeCErrorCovariance]
+from typing import Type, TypeVar
+class User: pass
+def new_user(user_class: Type[User]):
+    return user_class()
+def foo(arg: Type[int]):
+    new_user(arg)  # E: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
+[out]
+main: note: In function "foo":
+
+[case testTypeUsingTypeCUnionOverload]
+from typing import Type, Union, overload
+class X:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, a: int) -> None: pass
+class Y:
+    def __init__(self) -> None: pass
+def bar(o: Type[Union[X, Y]]): pass
+bar(X)
+bar(Y)
+[out]
+
+[case testTypeUsingTypeCTypeAny]
+from typing import Type, Any
+def foo(arg: Type[Any]):
+    x = arg()
+    x = arg(0)
+    x = arg('', ())
+    reveal_type(x)  # E: Revealed type is 'Any'
+    x.foo
+class X: pass
+foo(X)
+[out]
+main: note: In function "foo":
+
+[case testTypeUsingTypeCTypeNoArg]
+from typing import Type
+def foo(arg: Type):
+    x = arg()
+    reveal_type(x)  # E: Revealed type is 'Any'
+class X: pass
+foo(X)
+[out]
+main: note: In function "foo":
+
+[case testTypeUsingTypeCBuiltinType]
+from typing import Type
+def foo(arg: type): pass
+class X: pass
+def bar(arg: Type[X]):
+    foo(arg)
+foo(X)
+[builtins fixtures/tuple.py]
+[out]
+
+[case testTypeUsingTypeCClassMethod]
+from typing import Type
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+def process(cls: Type[User]):
+    reveal_type(cls.foo())  # E: Revealed type is 'builtins.int'
+    obj = cls()
+    reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[User] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCClassMethodUnion]
+# Ideally this would work, but not worth the effort; just don't crash
+from typing import Type, Union
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+class ProUser(User): pass
+class BasicUser(User): pass
+def process(cls: Type[Union[BasicUser, ProUser]]):
+    cls.foo()  # E: Type[Union[BasicUser, ProUser]] has no attribute "foo"
+    obj = cls()
+    cls.bar(obj)  # E: Type[Union[BasicUser, ProUser]] has no attribute "bar"
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[Union[BasicUser, ProUser]] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCClassMethodFromTypeVar]
+from typing import Type, TypeVar
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+U = TypeVar('U', bound=User)
+def process(cls: Type[U]):
+    reveal_type(cls.foo())  # E: Revealed type is 'builtins.int'
+    obj = cls()
+    reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[U] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCClassMethodFromTypeVarUnionBound]
+# Ideally this would work, but not worth the effort; just don't crash
+from typing import Type, TypeVar, Union
+class User:
+    @classmethod
+    def foo(cls) -> int: pass
+    def bar(self) -> int: pass
+class ProUser(User): pass
+class BasicUser(User): pass
+U = TypeVar('U', bound=Union[ProUser, BasicUser])
+def process(cls: Type[U]):
+    cls.foo()  # E: Type[U] has no attribute "foo"
+    obj = cls()
+    cls.bar(obj)  # E: Type[U] has no attribute "bar"
+    cls.mro()  # Defined in class type
+    cls.error  # E: Type[U] has no attribute "error"
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "process":
+
+[case testTypeUsingTypeCErrorUnsupportedType]
+from typing import Type, Tuple
+def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
+    arg()
+[builtins fixtures/tuple.py]
+[out]
+main: note: In function "foo":
+
+[case testTypeUsingTypeCOverloadedClass]
+from typing import Type, TypeVar, overload
+class User:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, arg: int) -> None: pass
+    @classmethod
+    def foo(cls) -> None: pass
+U = TypeVar('U', bound=User)
+def new(uc: Type[U]) -> U:
+    uc.foo()
+    u = uc()
+    u.foo()
+    u = uc(0)
+    u.foo()
+    u = uc('')
+    u.foo(0)
+    return uc()
+u = new(User)
+[builtins fixtures/classmethod.py]
+[out]
+main: note: In function "new":
+main:16: error: No overload variant of "User" matches argument types [builtins.str]
+main:17: error: Too many arguments for "foo" of "User"
+
+[case testTypeUsingTypeCInUpperBound]
+from typing import TypeVar, Type
+class B: pass
+T = TypeVar('T', bound=Type[B])
+def f(a: T): pass
+[out]
+
+[case testTypeUsingTypeCTuple]
+from typing import Type, Tuple
+def f(a: Type[Tuple[int, int]]):
+    a()
+[out]
+main: note: In function "f":
+main:2: error: Unsupported type Type["Tuple[int, int]"]
+
+[case testTypeUsingTypeCNamedTuple]
+from typing import Type, NamedTuple
+N = NamedTuple('N', [('x', int), ('y', int)])
+def f(a: Type[N]):
+    a()
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+main:3: error: Unsupported type Type["N"]
+
+[case testTypeUsingTypeCJoin]
+from typing import Type
+class B: pass
+class C(B): pass
+class D(B): pass
+def foo(c: Type[C], d: Type[D]) -> None:
+    x = [c, d]
+    reveal_type(x)
+
+[builtins fixtures/list.py]
+[out]
+main: note: In function "foo":
+main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'

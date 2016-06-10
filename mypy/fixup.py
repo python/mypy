@@ -8,7 +8,7 @@ from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         LDEF, MDEF, GDEF, MODULE_REF)
 from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
                         TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-                        UninhabitedType)
+                        UninhabitedType, TypeType)
 from mypy.visitor import NodeVisitor
 
 
@@ -217,6 +217,9 @@ class TypeFixer(TypeVisitor[None]):
 
     def visit_void(self, o: Any) -> None:
         pass  # Nothing to descend into.
+
+    def visit_type_type(self, t: TypeType) -> None:
+        t.item.accept(self)
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str) -> SymbolNode:
