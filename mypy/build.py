@@ -393,12 +393,13 @@ class BuildManager:
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
-                                     file: MypyFile) -> List[Tuple[str, int]]:
+                                     file: MypyFile) -> List[Tuple[int, str, int]]:
         """Find all reachable import statements in a file.
 
-        Return list of tuples (module id, import line number) for all modules
-        imported in file.
+        Return list of tuples (priority, module id, import line number)
+        for all modules imported in file; lower numbers == higher priority.
         """
+
         def correct_rel_imp(imp: Union[ImportFrom, ImportAll]) -> str:
             """Function to correct for relative imports."""
             file_id = file.fullname()
@@ -413,12 +414,12 @@ class BuildManager:
 
             return new_id
 
-        res = []  # type: List[Tuple[str, int]]
+        res = []  # type: List[Tuple[int, str, int]]
         for imp in file.imports:
             if not imp.is_unreachable:
                 if isinstance(imp, Import):
                     for id, _ in imp.ids:
-                        res.append((id, imp.line))
+                        res.append((0, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
@@ -427,7 +428,7 @@ class BuildManager:
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
-                            res.append((sub_id, imp.line))
+                            res.append((0, sub_id, imp.line))
                         else:
                             all_are_submodules = False
                     # If all imported names are submodules, don't add
@@ -436,9 +437,10 @@ class BuildManager:
                     # cur_id is also a dependency, and we should
                     # insert it *before* any submodules.
                     if not all_are_submodules:
-                        res.insert(pos, ((cur_id, imp.line)))
+                        res.insert(pos, ((0, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
-                    res.append((correct_rel_imp(imp), imp.line))
+                    res.append((0, correct_rel_imp(imp), imp.line))
+        ##print(file.fullname(), res)
         return res
 
     def is_module(self, id: str) -> bool:
@@ -1250,7 +1252,7 @@ class State:
         dependencies = []
         suppressed = []
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
-        for id, line in manager.all_imported_modules_in_file(self.tree):
+        for pri, id, line in manager.all_imported_modules_in_file(self.tree):
             if id == self.id:
                 continue
             # Omit missing modules, as otherwise we could not type-check
