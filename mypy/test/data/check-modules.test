@@ -61,7 +61,7 @@ class Bad: pass
 
 [case testImportWithinBlock]
 import typing
-if 0:
+if None:
     import m
     m.a = m.b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     m.a = m.a
