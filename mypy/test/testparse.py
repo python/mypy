@@ -1,6 +1,4 @@
-"""Tests for the mypy parser
-
-Test case descriptions are in files test/data/parse[-errors].test."""
+"""Tests for the mypy parser."""
 
 import os.path
 

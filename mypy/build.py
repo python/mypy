@@ -169,8 +169,10 @@ def build(sources: List[BuildSource],
 
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
-        # debug).
-        lib_path.insert(0, os.path.join(os.path.dirname(__file__), 'test', 'data', 'lib-stub'))
+        # debug).  This is a test-only feature, so assume our files are laid out
+        # as in the source tree.
+        root_dir = os.path.dirname(os.path.dirname(__file__))
+        lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
     else:
         for source in sources:
             if source.path:
