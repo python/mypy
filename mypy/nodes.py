@@ -627,8 +627,6 @@ class ClassDef(Node):
     type_vars = None  # type: List[mypy.types.TypeVarDef]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs = None  # type: List[Node]
-    # Semantically analyzed base types, derived from base_type_exprs during semantic analysis
-    base_types = None  # type: List[mypy.types.Instance]
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''
     decorators = None  # type: List[Node]
@@ -645,7 +643,6 @@ class ClassDef(Node):
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
-        self.base_types = []  # Not yet semantically analyzed --> don't know base types
         self.metaclass = metaclass
         self.decorators = []
 
@@ -661,7 +658,6 @@ class ClassDef(Node):
                 'name': self.name,
                 'fullname': self.fullname,
                 'type_vars': [v.serialize() for v in self.type_vars],
-                'base_types': [t.serialize() for t in self.base_types],
                 'metaclass': self.metaclass,
                 'is_builtinclass': self.is_builtinclass,
                 }
@@ -675,7 +671,6 @@ class ClassDef(Node):
                        metaclass=data['metaclass'],
                        )
         res.fullname = data['fullname']
-        res.base_types = [mypy.types.Instance.deserialize(t) for t in data['base_types']]
         res.is_builtinclass = data['is_builtinclass']
         return res
 

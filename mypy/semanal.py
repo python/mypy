@@ -732,7 +732,13 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
-        """Analyze and set up base classes."""
+        """Analyze and set up base classes.
+
+        This computes several attributes on the corresponding TypeInfo defn.info
+        related to the base classes: defn.info.bases, defn.info.mro, and
+        miscellaneous others (at least tuple_type, fallback_to_any, and is_enum.)
+        """
+        base_types = []
         for base_expr in defn.base_type_exprs:
             # The base class is originally an expression; convert it to a type.
             try:
@@ -750,7 +756,7 @@ class SemanticAnalyzer(NodeVisitor):
                         base.type.fullname() == 'builtins.tuple'):
                     self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
             if isinstance(base, Instance):
-                defn.base_types.append(base)
+                base_types.append(base)
             elif isinstance(base, TupleType):
                 assert False, "Internal error: Unexpected TupleType base class"
             elif isinstance(base, AnyType):
@@ -760,10 +766,10 @@ class SemanticAnalyzer(NodeVisitor):
             elif not isinstance(base, UnboundType):
                 self.fail('Invalid base class', base_expr)
         # Add 'object' as implicit base if there is no other base class.
-        if (not defn.base_types and defn.fullname != 'builtins.object'):
+        if (not base_types and defn.fullname != 'builtins.object'):
             obj = self.object_type()
-            defn.base_types.insert(0, obj)
-        defn.info.bases = defn.base_types
+            base_types.insert(0, obj)
+        defn.info.bases = base_types
         # Calculate the MRO. It might be incomplete at this point if
         # the bases of defn include classes imported from other
         # modules in an import loop. We'll recompute it in ThirdPass.
