@@ -739,45 +739,35 @@ class SemanticAnalyzer(NodeVisitor):
         miscellaneous others (at least tuple_type, fallback_to_any, and is_enum.)
         """
 
-        base_types = []
+        base_types = []  # type: List[Instance]
         for base_expr in defn.base_type_exprs:
             try:
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
-                defn.info.mro = []
-                return
+                defn.info.fallback_to_any = True
+                continue
 
             if isinstance(base, TupleType):
                 if defn.info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
-                defn.info.tuple_type = base
-                base = base.fallback
-                if (not self.is_stub_file and not defn.info.is_named_tuple and
-                        base.type.fullname() == 'builtins.tuple'):
+                if (not self.is_stub_file
+                        and not defn.info.is_named_tuple
+                        and base.fallback.type.fullname() == 'builtins.tuple'):
                     self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
-
-            if isinstance(base, Instance):
+                defn.info.tuple_type = base
+                base_types.append(base.fallback)
+            elif isinstance(base, Instance):
                 base_types.append(base)
-            elif isinstance(base, TupleType):
-                assert False, "Internal error: Unexpected TupleType base class"
             elif isinstance(base, AnyType):
-                # We don't know anything about the base class. Make any unknown attributes
-                # have type 'Any'.
                 defn.info.fallback_to_any = True
-            elif not isinstance(base, UnboundType):
-                self.fail('Invalid base class', base_expr)
             else:
-                # TODO(gregprice) why is this not an error?  We're ignoring this base class --
-                # seems doomed to produce some kind of wrong result.
-                # print('analyze', 'unbound', base, base_expr)
-                # assert False
-                pass
+                self.fail('Invalid base class', base_expr)
+                defn.info.fallback_to_any = True
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
-            obj = self.object_type()
-            base_types.insert(0, obj)
+            base_types.append(self.object_type())
 
         defn.info.bases = base_types
 
