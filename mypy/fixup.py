@@ -250,7 +250,7 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
             return stnode
         node = stnode.node
         assert isinstance(node, TypeInfo)
-        names = cast(TypeInfo, node).names
+        names = node.names
 
 
 def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -> None:
@@ -278,4 +278,4 @@ def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -
             stnode.node = info
             return
         assert isinstance(node, TypeInfo)
-        names = cast(TypeInfo, node).names
+        names = node.names

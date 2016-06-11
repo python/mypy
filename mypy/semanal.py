@@ -302,7 +302,7 @@ class SemanticAnalyzer(NodeVisitor):
                         original_def = symbol.node
                         if self.is_conditional_func(original_def, defn):
                             # Conditional function definition -- multiple defs are ok.
-                            defn.original_def = cast(FuncDef, original_def)
+                            defn.original_def = original_def
                         else:
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
@@ -695,7 +695,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_typevar_declaration(self, t: Type) -> Optional[List[Tuple[str, TypeVarExpr]]]:
         if not isinstance(t, UnboundType):
             return None
-        unbound = cast(UnboundType, t)
+        unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is None or sym.node is None:
             return None
@@ -714,7 +714,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_unbound_tvar(self, t: Type) -> Tuple[str, TypeVarExpr]:
         if not isinstance(t, UnboundType):
             return None
-        unbound = cast(UnboundType, t)
+        unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
             return unbound.name, cast(TypeVarExpr, sym.node)
@@ -1054,7 +1054,7 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.fail)
                 if res and (not isinstance(res, Instance) or cast(Instance, res).args):
                     # TODO: What if this gets reassigned?
-                    name = cast(NameExpr, s.lvalues[0])
+                    name = s.lvalues[0]
                     node = self.lookup(name.name, name)
                     node.kind = TYPE_ALIAS
                     node.type_override = res
@@ -1212,8 +1212,8 @@ class SemanticAnalyzer(NodeVisitor):
         """Does memberexpr to refer to an attribute of self?"""
         if not isinstance(memberexpr.expr, NameExpr):
             return False
-        node = (cast(NameExpr, memberexpr.expr)).node
-        return isinstance(node, Var) and (cast(Var, node)).is_self
+        node = memberexpr.expr.node
+        return isinstance(node, Var) and node.is_self
 
     def check_lvalue_validity(self, node: Node, ctx: Context) -> None:
         if isinstance(node, (TypeInfo, TypeVarExpr)):
@@ -1307,10 +1307,10 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         if not isinstance(s.rvalue, CallExpr):
             return None
-        call = cast(CallExpr, s.rvalue)
+        call = s.rvalue
         if not isinstance(call.callee, RefExpr):
             return None
-        callee = cast(RefExpr, call.callee)
+        callee = call.callee
         if callee.fullname != 'typing.TypeVar':
             return None
         return call
@@ -1405,10 +1405,10 @@ class SemanticAnalyzer(NodeVisitor):
         """
         if not isinstance(node, CallExpr):
             return None
-        call = cast(CallExpr, node)
+        call = node
         if not isinstance(call.callee, RefExpr):
             return None
-        callee = cast(RefExpr, call.callee)
+        callee = call.callee
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
@@ -2588,7 +2588,7 @@ class ThirdPass(TraverserVisitor[None]):
         names = self.modules['builtins']
         sym = names.names[name]
         assert isinstance(sym.node, TypeInfo)
-        return Instance(cast(TypeInfo, sym.node), args or [])
+        return Instance(sym.node, args or [])
 
 
 def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:

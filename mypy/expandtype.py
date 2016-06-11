@@ -70,7 +70,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVarType) -> Type:
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
-            inst = cast(Instance, repl)
+            inst = repl
             # Return copy of instance with type erasure flag on.
             return Instance(inst.type, inst.args, inst.line, True)
         else:

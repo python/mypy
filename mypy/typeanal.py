@@ -152,7 +152,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return AnyType()
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
-            info = cast(TypeInfo, sym.node)
+            info = sym.node
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args),
                                  Instance(info, [AnyType()], t.line),

@@ -137,7 +137,7 @@ class StringFormatterChecker:
                                        replacements: Node) -> None:
         dict_with_only_str_literal_keys = (isinstance(replacements, DictExpr) and
                                           all(isinstance(k, (StrExpr, BytesExpr))
-                                              for k, v in cast(DictExpr, replacements).items))
+                                              for k, v in replacements.items))
         if dict_with_only_str_literal_keys:
             mapping = {}  # type: Dict[str, Type]
             for k, v in cast(DictExpr, replacements).items:

@@ -867,7 +867,7 @@ class Parser:
             if allow_type:
                 cur = self.current()
                 if type is None and isinstance(cur, StrLit):
-                    ds = docstring.parse_docstring(cast(StrLit, cur).parsed())
+                    ds = docstring.parse_docstring(cur.parsed())
                     if ds and False:  # TODO: Enable when this is working.
                         try:
                             type = parse_str_as_signature(ds.as_type_str(), cur.line)
@@ -894,15 +894,13 @@ class Parser:
 
     def try_combine_overloads(self, s: Node, stmt: List[Node]) -> bool:
         if isinstance(s, Decorator) and stmt:
-            fdef = cast(Decorator, s)
+            fdef = s
             n = fdef.func.name()
-            if (isinstance(stmt[-1], Decorator) and
-                    (cast(Decorator, stmt[-1])).func.name() == n):
-                stmt[-1] = OverloadedFuncDef([cast(Decorator, stmt[-1]), fdef])
+            if isinstance(stmt[-1], Decorator) and stmt[-1].func.name() == n:
+                stmt[-1] = OverloadedFuncDef([stmt[-1], fdef])
                 return True
-            elif (isinstance(stmt[-1], OverloadedFuncDef) and
-                    (cast(OverloadedFuncDef, stmt[-1])).name() == n):
-                (cast(OverloadedFuncDef, stmt[-1])).items.append(fdef)
+            elif isinstance(stmt[-1], OverloadedFuncDef) and stmt[-1].name() == n:
+                stmt[-1].items.append(fdef)
                 return True
         return False
 
@@ -1450,7 +1448,7 @@ class Parser:
             items[0] = self.parse_generator_expr(items[0])
         self.expect(']')
         if len(items) == 1 and isinstance(items[0], GeneratorExpr):
-            return ListComprehension(cast(GeneratorExpr, items[0]))
+            return ListComprehension(items[0])
         else:
             expr = ListExpr(items)
             return expr
@@ -1698,7 +1696,7 @@ class Parser:
         self.expect('.')
         name = self.expect_type(Name)
         if (isinstance(expr, CallExpr) and isinstance(expr.callee, NameExpr)
-                and cast(NameExpr, expr.callee).name == 'super'):
+                and expr.callee.name == 'super'):
             # super() expression
             node = SuperExpr(name.string)  # type: Node
         else:
