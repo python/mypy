@@ -380,12 +380,14 @@ class TypeChecker(NodeVisitor[Type]):
     # Should we check untyped function defs?
     check_untyped_defs = False
     warn_incomplete_stub = False
+    warn_redundant_casts = False
     is_typeshed_stub = False
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                  disallow_untyped_calls=False, disallow_untyped_defs=False,
-                 check_untyped_defs=False, warn_incomplete_stub=False) -> None:
+                 check_untyped_defs=False, warn_incomplete_stub=False,
+                 warn_redundant_casts=False) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -411,6 +413,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.disallow_untyped_defs = disallow_untyped_defs
         self.check_untyped_defs = check_untyped_defs
         self.warn_incomplete_stub = warn_incomplete_stub
+        self.warn_redundant_casts = warn_redundant_casts
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""

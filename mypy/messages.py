@@ -841,6 +841,9 @@ class MessageBuilder:
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)
 
+    def redundant_cast(self, typ: Type, context: Context) -> None:
+        self.note('Redundant cast to {}'.format(self.format(typ)), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""
