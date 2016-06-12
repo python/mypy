@@ -9,7 +9,7 @@ python:
   # - "pypy3"
 
 install:
-  - pip install -r test-requirements.txt
+  - pip install -r requirements-testing.txt
   - python setup.py install
 
 script:
