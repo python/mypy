@@ -4,18 +4,16 @@ import os.path
 import re
 import shutil
 import sys
+import pytest
 
 from typing import Tuple, List, Dict, Set
 
 from mypy import build
-import mypy.myunit  # for mutable globals (ick!)
 from mypy.build import BuildSource, find_module_clear_caches
-from mypy.myunit import Suite, AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
-    testcase_pyversion, update_testcase_output,
+    normalize_error_messages, testcase_pyversion, update_testcase_output,
 )
 from mypy.errors import CompileError
 
@@ -61,14 +59,35 @@ files = [
 ]
 
 
-class TypeCheckSuite(Suite):
+@pytest.fixture(scope='function')
+def test(request):
+    test = request.function.test
+    test.set_up()
+    request.addfinalizer(test.tear_down)
+    return test
 
-    def cases(self) -> List[DataDrivenTestCase]:
+
+class TestTypeCheck:
+    @classmethod
+    def setup_tests(cls):
         c = []  # type: List[DataDrivenTestCase]
         for f in files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  self.run_test, test_temp_dir, True)
-        return c
+                                  cls.run_test, test_temp_dir, True)
+        for test in c:
+            def func(self, test):
+                test.run(self)
+            if test.is_skip:
+                func = pytest.mark.skip(reason='Test ends with -skip')(func)
+            if 'FastParse' in test.name and not test.is_skip:
+                try:
+                    import mypy.fastparse
+                except SystemExit:
+                    func = pytest.mark.skip(
+                        reason='You must install the typed_ast package in ' \
+                               'order to run this test')(func)
+            func.test = test
+            setattr(cls, test.name, func)
 
     def run_test(self, testcase: DataDrivenTestCase) -> None:
         incremental = 'Incremental' in testcase.name.lower() or 'incremental' in testcase.file
@@ -122,13 +141,12 @@ class TypeCheckSuite(Suite):
             a = e.messages
         a = normalize_error_messages(a)
 
-        if output != a and mypy.myunit.UPDATE_TESTCASES:
+        if output != a and pytest.config.getoption('UPDATE_TESTCASES'):
             update_testcase_output(testcase, a, mypy.myunit.APPEND_TESTCASES)
 
-        assert_string_arrays_equal(
-            output, a,
+        assert output == a, \
             'Invalid type checker output ({}, line {})'.format(
-                testcase.file, testcase.line))
+                testcase.file, testcase.line)
 
         if incremental and res:
             self.verify_cache(module_name, program_name, a, res.manager)
@@ -146,8 +164,8 @@ class TypeCheckSuite(Suite):
         modules.update({module_name: program_name})
         missing_paths = self.find_missing_cache_files(modules, manager)
         if missing_paths != error_paths:
-            raise AssertionFailure("cache data discrepancy %s != %s" %
-                                   (missing_paths, error_paths))
+            assert False, "cache data discrepancy %s != %s" % \
+                            (missing_paths, error_paths)
 
     def find_error_paths(self, a: List[str]) -> Set[str]:
         hits = set()
@@ -209,3 +227,5 @@ class TypeCheckSuite(Suite):
             return m.group(1).split()
         else:
             return []
+
+TestTypeCheck.setup_tests()

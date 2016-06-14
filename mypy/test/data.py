@@ -6,14 +6,14 @@ import re
 from os import remove, rmdir
 import shutil
 
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
 
 def parse_test_cases(
         path: str,
-        perform: Callable[['DataDrivenTestCase'], None],
+        perform: Callable[[Any, 'DataDrivenTestCase'], None],
         base_path: str = '.',
         optional_out: bool = False,
         include_path: str = None,
@@ -88,23 +88,26 @@ def parse_test_cases(
     return out
 
 
-class DataDrivenTestCase(TestCase):
+class DataDrivenTestCase:
+    name = None # type: str
     input = None  # type: List[str]
     output = None  # type: List[str]
 
     file = ''
     line = 0
 
-    perform = None  # type: Callable[['DataDrivenTestCase'], None]
+    perform = None  # type: Callable[[Any, 'DataDrivenTestCase'], None]
 
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
+    is_skip = False # type: bool
+
     def __init__(self, name, input, output, file, line, lastline,
                  perform, files):
-        super().__init__(name)
+        self.name = name
         self.input = input
         self.output = output
         self.lastline = lastline
@@ -112,9 +115,9 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
+        self.is_skip = self.name.endswith('-skip')
 
     def set_up(self) -> None:
-        super().set_up()
         self.clean_up = []
         for path, content in self.files:
             dir = os.path.dirname(path)
@@ -137,11 +140,9 @@ class DataDrivenTestCase(TestCase):
             os.mkdir(dir)
             return dirs
 
-    def run(self):
-        if self.name.endswith('-skip'):
-            raise SkipTestCaseException()
-        else:
-            self.perform(self)
+    def run(self, obj: Any):
+        assert not self.is_skip
+        self.perform(obj, self)
 
     def tear_down(self) -> None:
         # First remove files.
@@ -172,7 +173,6 @@ class DataDrivenTestCase(TestCase):
                     if path.startswith('tmp/') and os.path.isdir(path):
                         shutil.rmtree(path)
                     raise
-        super().tear_down()
 
 
 class TestItem:
