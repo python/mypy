@@ -74,8 +74,11 @@ class SameTypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, UninhabitedType)
 
     def visit_erased_type(self, left: ErasedType) -> bool:
-        # Should not get here.
-        raise RuntimeError()
+        # We can get here when isinstance is used inside a lambda
+        # whose type is being inferred. In any event, we have no reason
+        # to think that an ErasedType will end up being the same as
+        # any other type, even another ErasedType.
+        return False
 
     def visit_deleted_type(self, left: DeletedType) -> bool:
         return isinstance(self.right, DeletedType)
