@@ -163,9 +163,7 @@ class TestTypeCheck:
         modules = self.find_module_files()
         modules.update({module_name: program_name})
         missing_paths = self.find_missing_cache_files(modules, manager)
-        if missing_paths != error_paths:
-            assert False, "cache data discrepancy %s != %s" % \
-                            (missing_paths, error_paths)
+        assert missing_paths == error_paths, 'cache data discrepancy'
 
     def find_error_paths(self, a: List[str]) -> Set[str]:
         hits = set()
