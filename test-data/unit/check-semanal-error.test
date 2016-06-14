@@ -52,7 +52,7 @@ A().x = '' # E: Incompatible types in assignment (expression has type "str", var
 X = 1
 class A(X): # E
     x = 1
-A().foo(1) # E
+A().foo(1)
 A().x = '' # E
 [out]
 main:2: error: Invalid type "__main__.X"
