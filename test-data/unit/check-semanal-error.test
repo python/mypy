@@ -50,10 +50,15 @@ A().x = '' # E: Incompatible types in assignment (expression has type "str", var
 
 [case testInvalidBaseClass2]
 X = 1
-class A(X): # E: Invalid type "__main__.X"
+class A(X): # E
     x = 1
-A().foo(1) # E: "A" has no attribute "foo"
-A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A().foo(1)
+A().x = '' # E
+[out]
+main:2: error: Invalid type "__main__.X"
+main:2: error: Invalid base class
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 
 [case testInvalidNumberOfTypeArgs]
 from typing import TypeVar
