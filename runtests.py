@@ -39,11 +39,12 @@ import os
 class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
-            arglist: List[str], verbosity: int, parallel_limit: int,
-            xfail: List[str]) -> None:
+            arglist: List[str], testarglist: List[str], verbosity: int,
+            parallel_limit: int, xfail: List[str]) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.arglist = arglist
+        self.testarglist = testarglist
         self.verbosity = verbosity
         self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail)
         self.versions = get_versions()
@@ -188,6 +189,8 @@ def add_imports(driver: Driver) -> None:
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
         driver.add_flake8('module %s' % mod, f)
 
+def add_pytest(driver: Driver) -> None:
+    driver.add_python_mod('pytest', 'pytest', *driver.testarglist)
 
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
@@ -265,7 +268,8 @@ def usage(status: int) -> None:
     print('Run mypy tests. If given no arguments, run all tests.')
     print()
     print('Examples:')
-    print('  %s unit-test  (run unit tests only)' % sys.argv[0])
+    print('  %s pytest     (run pytest only)')
+    print('  %s unit-test  (run unit tests and pytest only)' % sys.argv[0])
     print('  %s unit-test -a "*tuple*"' % sys.argv[0])
     print('       (run all unit tests with "tuple" in test name)')
     print()
@@ -276,6 +280,7 @@ def usage(status: int) -> None:
     print('  -jN                    run N tasks at once (default: one per CPU)')
     print('  -a, --argument ARG     pass an argument to myunit tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
+    print('  -t, --test-arg ARG     pass an argument to pytest')
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
     print('  -x, --exclude FILTER   exclude tasks matching FILTER')
@@ -306,13 +311,15 @@ def main() -> None:
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
+    testarglist = [] # type: List[str]
     list_only = False
     dirty_stubs = False
 
     allow_opts = True
     curlist = whitelist
     for a in sys.argv[1:]:
-        if curlist is not arglist and allow_opts and a.startswith('-'):
+        if (curlist is not arglist and curlist is not testarglist and
+            allow_opts and a.startswith('-')):
             if curlist is not whitelist:
                 break
             if a == '--':
@@ -330,6 +337,8 @@ def main() -> None:
                 curlist = blacklist
             elif a == '-a' or a == '--argument':
                 curlist = arglist
+            elif a == '-t' or a == '--test-args':
+                curlist = testarglist
             elif a == '-l' or a == '--list':
                 list_only = True
             elif a == '-f' or a == '--dirty-stubs':
@@ -349,8 +358,12 @@ def main() -> None:
     if not whitelist:
         whitelist.append('')
 
+    if 'unit-test' in whitelist and 'pytest' not in whitelist:
+        whitelist.append('pytest')
+
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[])
+            testarglist=testarglist, verbosity=verbosity,
+            parallel_limit=parallel_limit, xfail=[])
 
     if not dirty_stubs:
         git.verify_git_integrity_or_abort(driver.cwd)
@@ -365,6 +378,7 @@ def main() -> None:
     add_basic(driver)
     add_selftypecheck(driver)
     add_myunit(driver)
+    add_pytest(driver)
     add_imports(driver)
     add_stubs(driver)
     add_stdlibsamples(driver)
