@@ -110,8 +110,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
                     node = self.lookup_fqn_func('builtins.tuple')
-                    info = cast(TypeInfo, node.node)
-                    return Instance(info, [t.args[0].accept(self)], t.line)
+                    tuple_info = cast(TypeInfo, node.node)
+                    return Instance(tuple_info, [t.args[0].accept(self)], t.line)
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
@@ -152,7 +152,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return AnyType()
                 self.fail('Invalid type "{}"'.format(name), t)
                 return t
-            info = cast(TypeInfo, sym.node)
+            info = sym.node  # type: TypeInfo
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 return TupleType(self.anal_array(t.args),
                                  Instance(info, [AnyType()], t.line),

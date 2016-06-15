@@ -51,7 +51,6 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         if method:
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
-                method = cast(OverloadedFuncDef, method)
                 return analyze_var(name, method.items[0].var, typ, info, node, is_lvalue, msg,
                                    not_ready_callback)
             if is_lvalue:
@@ -204,7 +203,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # Class-level function objects and classmethods become bound
                 # methods: the former to the instance, the latter to the
                 # class.
-                functype = cast(FunctionLike, t)
+                functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
                 signature = method_type(functype)
                 if var.is_property:

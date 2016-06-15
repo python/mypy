@@ -88,8 +88,7 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         self.line = o.line
         if (isinstance(o.rvalue, nodes.CallExpr) and
-            isinstance(cast(nodes.CallExpr, o.rvalue).analyzed,
-                       nodes.TypeVarExpr)):
+                isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):
             # Type variable definition -- not a real assignment.
             return
         if o.type:
@@ -256,7 +255,7 @@ class HasAnyQuery2(HasAnyQuery):
 
 
 def is_generic(t: Type) -> bool:
-    return isinstance(t, Instance) and bool(cast(Instance, t).args)
+    return isinstance(t, Instance) and bool(t.args)
 
 
 def is_complex(t: Type) -> bool:

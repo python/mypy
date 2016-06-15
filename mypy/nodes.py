@@ -2138,7 +2138,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
 def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     if func.type:
         assert isinstance(func.type, mypy.types.FunctionLike)
-        return cast(mypy.types.FunctionLike, func.type)
+        return func.type
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an ordinary function.
