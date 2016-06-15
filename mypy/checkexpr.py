@@ -1231,6 +1231,8 @@ class ExpressionChecker:
         """Type check a cast expression."""
         source_type = self.accept(expr.expr, context=AnyType())
         target_type = expr.type
+        if self.chk.warn_redundant_casts and is_same_type(source_type, target_type):
+            self.msg.redundant_cast(target_type, expr)
         if not self.is_valid_cast(source_type, target_type):
             self.msg.invalid_cast(target_type, source_type, expr)
         return target_type

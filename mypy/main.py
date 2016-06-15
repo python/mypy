@@ -153,6 +153,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     parser.add_argument('--warn-incomplete-stub', action='store_true',
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
+    parser.add_argument('--warn-redundant-casts', action='store_true',
+                        help="warn about casting an expression to its inferred type")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
@@ -251,6 +253,8 @@ def process_options() -> Tuple[List[BuildSource], Options]:
 
     if args.warn_incomplete_stub:
         options.build_flags.append(build.WARN_INCOMPLETE_STUB)
+    if args.warn_redundant_casts:
+        options.build_flags.append(build.WARN_REDUNDANT_CASTS)
 
     # experimental
     if args.fast_parser:

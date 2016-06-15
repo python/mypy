@@ -1,0 +1,36 @@
+-- Test cases for warning generation.
+
+-- Redundant casts
+-- ---------------
+
+[case testRedundantCast]
+# flags: warn-redundant-casts
+from typing import cast
+a = 1
+b = cast(str, a)
+c = cast(int, a)
+[out]
+main:5: note: Redundant cast to "int"
+
+[case testRedundantCastWithIsinstance]
+# flags: warn-redundant-casts
+from typing import cast, Union
+x = 1  # type: Union[int, str]
+if isinstance(x, str):
+    cast(str, x)
+[builtins fixtures/isinstance.py]
+[out]
+main:5: note: Redundant cast to "str"
+
+[case testCastToSuperclassNotRedundant]
+# flags: warn-redundant-casts
+from typing import cast, TypeVar, List
+T = TypeVar('T')
+def add(xs: List[T], ys: List[T]) -> List[T]: pass
+class A: pass
+class B(A): pass
+a = A()
+b = B()
+# Without the cast, the following line would fail to type check.
+c = add([cast(A, b)], [a])
+[builtins fixtures/list.py]
