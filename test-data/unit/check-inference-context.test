@@ -748,3 +748,27 @@ def f2(iterable: Iterable[Tuple[str, Any]], **kw: Any) -> None:
     pass
 [builtins fixtures/dict.py]
 [out]
+
+[case testInferenceInGenericFunction]
+from typing import TypeVar, List
+T = TypeVar('T')
+def f(a: T) -> None:
+    l = []  # type: List[T]
+    l.append(a)
+    l.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "T"
+[builtins fixtures/list.py]
+[out]
+main: note: In function "f":
+
+[case testInferenceInGenericClass]
+from typing import TypeVar, Generic, List
+S = TypeVar('S')
+T = TypeVar('T')
+class A(Generic[S]):
+    def f(self, a: T, b: S) -> None:
+        l = []  # type: List[T]
+        l.append(a)
+        l.append(b) # E: Argument 1 to "append" of "list" has incompatible type "S"; expected "T"
+[builtins fixtures/list.py]
+[out]
+main: note: In member "f" of class "A":

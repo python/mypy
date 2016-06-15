@@ -459,7 +459,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         tvarnodes = self.add_func_type_variables_to_symbol_table(defn)
         next_function_tvar_id = min([self.next_function_tvar_id()] +
-                                    [n.tvar_id - 1 for n in tvarnodes])
+                                    [n.tvar_def.id.raw_id - 1 for n in tvarnodes])
         self.next_function_tvar_id_stack.append(next_function_tvar_id)
 
         if defn.type:
@@ -516,7 +516,7 @@ class SemanticAnalyzer(NodeVisitor):
                 name = item.name
                 if name in names:
                     self.name_already_defined(name, defn)
-                node = self.bind_type_var(name, item.id, defn)
+                node = self.bind_type_var(name, item, defn)
                 nodes.append(node)
                 names.add(name)
         return nodes
@@ -527,11 +527,11 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return set(self.type.type_vars)
 
-    def bind_type_var(self, fullname: str, id: int,
+    def bind_type_var(self, fullname: str, tvar_def: TypeVarDef,
                      context: Context) -> SymbolTableNode:
         node = self.lookup_qualified(fullname, context)
         node.kind = BOUND_TVAR
-        node.tvar_id = id
+        node.tvar_def = tvar_def
         return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
@@ -863,10 +863,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
-        vars = info.type_vars
         nodes = []  # type: List[SymbolTableNode]
-        for index, var in enumerate(vars, 1):
-            node = self.bind_type_var(var, index, info)
+        for var, binder in zip(info.type_vars, info.defn.type_vars):
+            node = self.bind_type_var(var, binder, info)
             nodes.append(node)
         return nodes
 
@@ -2598,10 +2597,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     """
     tv = []  # type: List[Type]
     for i in range(len(typ.type_vars)):
-        tv.append(TypeVarType(typ.type_vars[i], i + 1,
-                          typ.defn.type_vars[i].values,
-                          typ.defn.type_vars[i].upper_bound,
-                          typ.defn.type_vars[i].variance))
+        tv.append(TypeVarType(typ.defn.type_vars[i]))
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst

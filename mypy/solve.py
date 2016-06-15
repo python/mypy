@@ -2,7 +2,7 @@
 
 from typing import List, Dict
 
-from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, UninhabitedType
+from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
@@ -11,7 +11,7 @@ from mypy.subtypes import is_subtype
 from mypy import experiments
 
 
-def solve_constraints(vars: List[int], constraints: List[Constraint],
+def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
                       strict=True) -> List[Type]:
     """Solve type constraints.
 
@@ -23,7 +23,7 @@ def solve_constraints(vars: List[int], constraints: List[Constraint],
     pick AnyType.
     """
     # Collect a list of constraints for each type variable.
-    cmap = {}  # type: Dict[int, List[Constraint]]
+    cmap = {}  # type: Dict[TypeVarId, List[Constraint]]
     for con in constraints:
         a = cmap.get(con.type_var, [])  # type: List[Constraint]
         a.append(con)

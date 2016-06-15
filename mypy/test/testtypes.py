@@ -14,7 +14,6 @@ from mypy.types import (
     Instance, NoneTyp, ErrorType, Overloaded, TypeType,
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
-from mypy.replacetvars import replace_type_vars
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.typefixture import TypeFixture, InterfaceTypeFixture
 
@@ -111,11 +110,11 @@ class TypeOpsSuite(Suite):
             self.assert_expand(t, [], t)
 
     def test_expand_naked_type_var(self):
-        self.assert_expand(self.fx.t, [(1, self.fx.a)], self.fx.a)
-        self.assert_expand(self.fx.t, [(2, self.fx.a)], self.fx.t)
+        self.assert_expand(self.fx.t, [(self.fx.t.id, self.fx.a)], self.fx.a)
+        self.assert_expand(self.fx.t, [(self.fx.s.id, self.fx.a)], self.fx.t)
 
     def test_expand_basic_generic_types(self):
-        self.assert_expand(self.fx.gt, [(1, self.fx.a)], self.fx.ga)
+        self.assert_expand(self.fx.gt, [(self.fx.t.id, self.fx.a)], self.fx.ga)
 
     # IDEA: Add test cases for
     #   tuple types
@@ -131,25 +130,6 @@ class TypeOpsSuite(Suite):
         exp = expand_type(orig, lower_bounds)
         # Remove erased tags (asterisks).
         assert_equal(str(exp).replace('*', ''), str(result))
-
-    # replace_type_vars
-
-    def test_trivial_replace(self):
-        for t in (self.fx.a, self.fx.o, self.fx.void, self.fx.nonet,
-                  self.tuple(self.fx.a),
-                  self.callable([], self.fx.a, self.fx.a), self.fx.anyt,
-                  self.fx.err):
-            self.assert_replace(t, t)
-
-    def test_replace_type_var(self):
-        self.assert_replace(self.fx.t, self.fx.anyt)
-
-    def test_replace_generic_instance(self):
-        self.assert_replace(self.fx.ga, self.fx.ga)
-        self.assert_replace(self.fx.gt, self.fx.gdyn)
-
-    def assert_replace(self, orig, result):
-        assert_equal(str(replace_type_vars(orig)), str(result))
 
     # erase_type
 

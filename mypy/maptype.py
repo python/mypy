@@ -2,7 +2,7 @@ from typing import Dict, List, cast
 
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import Type, Instance, AnyType
+from mypy.types import Type, TypeVarId, Instance, AnyType
 
 
 def map_instance_to_supertype(instance: Instance,
@@ -82,7 +82,7 @@ def map_instance_to_direct_supertypes(instance: Instance,
         return [Instance(supertype, [AnyType()] * len(supertype.type_vars))]
 
 
-def instance_to_type_environment(instance: Instance) -> Dict[int, Type]:
+def instance_to_type_environment(instance: Instance) -> Dict[TypeVarId, Type]:
     """Given an Instance, produce the resulting type environment for type
     variables bound by the Instance's class definition.
 
@@ -92,5 +92,4 @@ def instance_to_type_environment(instance: Instance) -> Dict[int, Type]:
     arguments.  The type variables are mapped by their `id`.
 
     """
-    # Type variables bound by a class have `id` of 1, 2, etc.
-    return {i + 1: instance.args[i] for i in range(len(instance.args))}
+    return {binder.id: arg for binder, arg in zip(instance.type.defn.type_vars, instance.args)}

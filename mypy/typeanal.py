@@ -91,11 +91,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
-                tvar_expr = cast(TypeVarExpr, sym.node)
-                return TypeVarType(t.name, sym.tvar_id, tvar_expr.values,
-                                   tvar_expr.upper_bound,
-                                   tvar_expr.variance,
-                                   t.line)
+                assert sym.tvar_def is not None
+                return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
                 if experiments.STRICT_OPTIONAL:
                     if t.is_ret_type:
@@ -280,7 +277,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = []  # type: List[TypeVarDef]
         for vd in var_defs:
-            a.append(TypeVarDef(vd.name, vd.id, self.anal_array(vd.values),
+            a.append(TypeVarDef(vd.name, vd.id.raw_id, self.anal_array(vd.values),
                                 vd.upper_bound.accept(self),
                                 vd.variance,
                                 vd.line))

@@ -1,7 +1,7 @@
-from typing import Optional, Container
+from typing import Optional, Container, Callable
 
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp,
+    Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp, TypeVarId,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
     PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
 )
@@ -105,20 +105,30 @@ class GenericTypeEraser(TypeTranslator):
         return Instance(t.type, [], t.line)
 
 
-def erase_typevars(t: Type, ids_to_erase: Optional[Container[int]] = None) -> Type:
+def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
     """Replace all type variables in a type with any,
     or just the ones in the provided collection.
     """
-    return t.accept(TypeVarEraser(ids_to_erase))
+    def erase_id(id: TypeVarId) -> bool:
+        if ids_to_erase is None:
+            return True
+        return id in ids_to_erase
+    return t.accept(TypeVarEraser(erase_id, AnyType()))
+
+
+def replace_meta_vars(t: Type, target_type: Type) -> Type:
+    """Replace unification variables in a type with the target type."""
+    return t.accept(TypeVarEraser(lambda id: id.is_meta_var(), target_type))
 
 
 class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
-    def __init__(self, ids_to_erase: Optional[Container[int]]) -> None:
-        self.ids_to_erase = ids_to_erase
+    def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+        self.erase_id = erase_id
+        self.replacement = replacement
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        if self.ids_to_erase is not None and t.id not in self.ids_to_erase:
-            return t
-        return AnyType()
+        if self.erase_id(t.id):
+            return self.replacement
+        return t

@@ -1,9 +1,9 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional
+from typing import cast, Callable, List, Dict, Optional
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
+    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarId, TypeVarDef,
     Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType,
     DeletedType, NoneTyp, TypeType
 )
@@ -413,51 +413,15 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str]) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
-    for i, tvar in enumerate(info.defn.type_vars):
-        variables.append(TypeVarDef(tvar.name, i + 1, tvar.values, tvar.upper_bound,
-                                    tvar.variance))
-
-    initvars = init_type.variables
-    variables.extend(initvars)
+    variables.extend(info.defn.type_vars)
+    variables.extend(init_type.variables)
 
     callable_type = init_type.copy_modified(
         ret_type=self_type(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    cc = convert_class_tvars_to_func_tvars(c, len(initvars))
-    cc.is_classmethod_class = True
-    return cc
-
-
-def convert_class_tvars_to_func_tvars(callable: CallableType,
-                                      num_func_tvars: int) -> CallableType:
-    return cast(CallableType, callable.accept(TvarTranslator(num_func_tvars)))
-
-
-class TvarTranslator(TypeTranslator):
-    def __init__(self, num_func_tvars: int) -> None:
-        super().__init__()
-        self.num_func_tvars = num_func_tvars
-
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        if t.id < 0:
-            return t
-        else:
-            return TypeVarType(t.name, -t.id - self.num_func_tvars, t.values, t.upper_bound,
-                               t.variance)
-
-    def translate_variables(self,
-                            variables: List[TypeVarDef]) -> List[TypeVarDef]:
-        if not variables:
-            return variables
-        items = []  # type: List[TypeVarDef]
-        for v in variables:
-            if v.id > 0:
-                items.append(TypeVarDef(v.name, -v.id - self.num_func_tvars,
-                                        v.values, v.upper_bound, v.variance))
-            else:
-                items.append(v)
-        return items
+    c.is_classmethod_class = True
+    return c
 
 
 def map_type_from_supertype(typ: Type, sub_info: TypeInfo,

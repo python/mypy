@@ -3,11 +3,11 @@ from typing import Dict, Tuple, List, cast
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
     Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
-    PartialType, DeletedType, UninhabitedType, TypeType
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId
 )
 
 
-def expand_type(typ: Type, env: Dict[int, Type]) -> Type:
+def expand_type(typ: Type, env: Dict[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
@@ -16,23 +16,24 @@ def expand_type(typ: Type, env: Dict[int, Type]) -> Type:
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
-    """Substitute type variables in type using values from an Instance."""
+    """Substitute type variables in type using values from an Instance.
+    Type variables are considered to be bound by the class declaration."""
 
     if instance.args == []:
         return typ
     else:
-        variables = {}  # type: Dict[int, Type]
-        for i in range(len(instance.args)):
-            variables[i + 1] = instance.args[i]
+        variables = {}  # type: Dict[TypeVarId, Type]
+        for binder, arg in zip(instance.type.defn.type_vars, instance.args):
+            variables[binder.id] = arg
         return expand_type(typ, variables)
 
 
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = None  # type: Dict[int, Type]  # TypeVar id -> TypeVar value
+    variables = None  # type: Dict[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(self, variables: Dict[int, Type]) -> None:
+    def __init__(self, variables: Dict[TypeVarId, Type]) -> None:
         self.variables = variables
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
