@@ -4,7 +4,6 @@ import os.path
 import re
 import shutil
 import sys
-import pytest
 
 from typing import Tuple, List, Dict, Set
 
@@ -14,6 +13,7 @@ from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import (
     normalize_error_messages, testcase_pyversion, update_testcase_output,
+    PytestSuite, test
 )
 from mypy.errors import CompileError
 
@@ -59,35 +59,14 @@ files = [
 ]
 
 
-@pytest.fixture(scope='function')
-def test(request):
-    test = request.function.test
-    test.set_up()
-    request.addfinalizer(test.tear_down)
-    return test
-
-
-class TestTypeCheck:
+class TestTypeCheck(PytestSuite):
     @classmethod
-    def setup_tests(cls):
+    def cases(cls):
         c = []  # type: List[DataDrivenTestCase]
         for f in files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   cls.run_test, test_temp_dir, True)
-        for test in c:
-            def func(self, test):
-                test.run(self)
-            if test.is_skip:
-                func = pytest.mark.skip(reason='Test ends with -skip')(func)
-            if 'FastParse' in test.name and not test.is_skip:
-                try:
-                    import mypy.fastparse
-                except SystemExit:
-                    func = pytest.mark.skip(
-                        reason='You must install the typed_ast package in ' \
-                               'order to run this test')(func)
-            func.test = test
-            setattr(cls, test.name, func)
+        return c
 
     def run_test(self, testcase: DataDrivenTestCase) -> None:
         incremental = 'Incremental' in testcase.name.lower() or 'incremental' in testcase.file

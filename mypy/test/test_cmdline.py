@@ -14,7 +14,7 @@ from typing import Tuple, List, Dict, Set
 from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import PytestSuite, test
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -23,9 +23,9 @@ python3_path = sys.executable
 cmdline_files = ['cmdline.test']
 
 
-class PythonEvaluationSuite(Suite):
-
-    def cases(self) -> List[DataDrivenTestCase]:
+class TestPythonEvaluation(PytestSuite):
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
         for f in cmdline_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
@@ -36,7 +36,7 @@ class PythonEvaluationSuite(Suite):
         return c
 
 
-def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+def test_python_evaluation(obj: None, testcase: DataDrivenTestCase) -> None:
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
@@ -58,9 +58,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
-    assert_string_arrays_equal(testcase.output, out,
-                               'Invalid output ({}, line {})'.format(
-                                   testcase.file, testcase.line))
+    assert testcase.output == out, 'Invalid output ({}, line {})'.format(
+                                        testcase.file, testcase.line)
 
 
 def parse_args(line: str) -> List[str]:
@@ -78,3 +77,5 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
+
+TestPythonEvaluation.setup_tests() # MUST come after def of test_python_evaluation.

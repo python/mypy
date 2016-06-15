@@ -189,8 +189,10 @@ def add_imports(driver: Driver) -> None:
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
         driver.add_flake8('module %s' % mod, f)
 
+
 def add_pytest(driver: Driver) -> None:
     driver.add_python_mod('pytest', 'pytest', *driver.testarglist)
+
 
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
@@ -199,10 +201,9 @@ def add_myunit(driver: Driver) -> None:
             # myunit is Python3 only.
             driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
             driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
-        elif mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
-            # Run Python evaluation integration tests and command-line
-            # parsing tests separately since they are much slower than
-            # proper unit tests.
+        elif mod == 'mypy.test.testpythoneval':
+            # Run Python evaluation integration tests separately since they are #
+            # much slower than proper unit tests.
             pass
         else:
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
@@ -211,11 +212,6 @@ def add_myunit(driver: Driver) -> None:
 def add_pythoneval(driver: Driver) -> None:
     driver.add_python_mod('eval-test', 'mypy.myunit',
                           '-m', 'mypy.test.testpythoneval', *driver.arglist)
-
-
-def add_cmdline(driver: Driver) -> None:
-    driver.add_python_mod('cmdline-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testcmdline', *driver.arglist)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -311,7 +307,7 @@ def main() -> None:
     whitelist = []  # type: List[str]
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
-    testarglist = [] # type: List[str]
+    testarglist = []  # type: List[str]
     list_only = False
     dirty_stubs = False
 
@@ -319,7 +315,7 @@ def main() -> None:
     curlist = whitelist
     for a in sys.argv[1:]:
         if (curlist is not arglist and curlist is not testarglist and
-            allow_opts and a.startswith('-')):
+                allow_opts and a.startswith('-')):
             if curlist is not whitelist:
                 break
             if a == '--':
@@ -374,7 +370,6 @@ def main() -> None:
     driver.prepend_path('PYTHONPATH', [join(driver.cwd, 'lib-typing', v) for v in driver.versions])
 
     add_pythoneval(driver)
-    add_cmdline(driver)
     add_basic(driver)
     add_selftypecheck(driver)
     add_myunit(driver)

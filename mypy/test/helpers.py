@@ -1,6 +1,7 @@
 import sys
 import re
 import os
+import pytest
 
 from typing import List, Dict, Tuple
 
@@ -284,3 +285,32 @@ def normalize_error_messages(messages: List[str]) -> List[str]:
     for m in messages:
         a.append(m.replace(os.sep, '/'))
     return a
+
+
+@pytest.fixture(scope='function')
+def test(request):
+    test = request.function.test
+    test.set_up()
+    request.addfinalizer(test.tear_down)
+    return test
+
+
+class PytestSuite:
+    """Assists in setting up data-driven test cases for pytest."""
+    @classmethod
+    def setup_tests(cls):
+        c = cls.cases()  # type: List[DataDrivenTestCase]
+        for test in c:
+            def func(self, test):
+                test.run(self)
+            if test.is_skip:
+                func = pytest.mark.skip(reason='Test ends with -skip')(func)
+            if 'FastParse' in test.name and not test.is_skip:
+                try:
+                    import mypy.fastparse
+                except SystemExit:
+                    func = pytest.mark.skip(
+                        reason='You must install the typed_ast package in ' \
+                               'order to run this test')(func)
+            func.test = test
+            setattr(cls, test.name, func)
