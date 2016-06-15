@@ -6,9 +6,9 @@ from typing import Dict, List
 
 from mypy import build
 from mypy.build import BuildSource
-from mypy.myunit import Suite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
+    PytestSuite
 )
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -31,19 +31,20 @@ semanal_files = ['semanal-basic.test',
                  'semanal-python2.test']
 
 
-class SemAnalSuite(Suite):
-    def cases(self):
+class SemAnalSuite(PytestSuite):
+    @classmethod
+    def cases(cls):
         c = []
         for f in semanal_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_semanal,
+                                  semanal_tests,
                                   base_path=test_temp_dir,
                                   optional_out=True,
                                   native_sep=True)
         return c
 
 
-def test_semanal(testcase):
+def semanal_tests(obj, testcase):
     """Perform a semantic analysis test case.
 
     The testcase argument contains a description of the test case
@@ -88,17 +89,19 @@ def test_semanal(testcase):
 semanal_error_files = ['semanal-errors.test']
 
 
-class SemAnalErrorSuite(Suite):
-    def cases(self):
+class SemAnalErrorSuite(PytestSuite):
+    @classmethod
+    def cases(cls):
         # Read test cases from test case description files.
         c = []
         for f in semanal_error_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_semanal_error, test_temp_dir, optional_out=True)
+                                  semanal_error_tests, test_temp_dir,
+                                  optional_out=True)
         return c
 
 
-def test_semanal_error(testcase):
+def semanal_error_tests(obj, testcase):
     """Perform a test case."""
 
     try:
@@ -124,12 +127,13 @@ def test_semanal_error(testcase):
 semanal_symtable_files = ['semanal-symtable.test']
 
 
-class SemAnalSymtableSuite(Suite):
-    def cases(self):
+class SemAnalSymtableSuite(PytestSuite):
+    @classmethod
+    def cases(cls):
         c = []
         for f in semanal_symtable_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  self.run_test, test_temp_dir)
+                                  cls.run_test, test_temp_dir)
         return c
 
     def run_test(self, testcase):
@@ -163,13 +167,14 @@ class SemAnalSymtableSuite(Suite):
 semanal_typeinfo_files = ['semanal-typeinfo.test']
 
 
-class SemAnalTypeInfoSuite(Suite):
-    def cases(self):
+class SemAnalTypeInfoSuite(PytestSuite):
+    @classmethod
+    def cases(cls):
         """Test case descriptions"""
         c = []
         for f in semanal_typeinfo_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  self.run_test, test_temp_dir)
+                                  cls.run_test, test_temp_dir)
         return c
 
     def run_test(self, testcase):
