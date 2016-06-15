@@ -790,6 +790,8 @@ y = C() # type: A
 
 if isinstance(x, B) and isinstance(y, int):
     1() # type checking skipped
+if isinstance(y, int) and isinstance(x, B):
+    1() # type checking skipped
 [builtins fixtures/isinstancelist.py]
 
 [case testReturnWithCallExprAndIsinstance]

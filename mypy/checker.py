@@ -2388,12 +2388,15 @@ class TypeChecker(NodeVisitor[Type]):
         return method_type_with_fallback(func, self.named_type('builtins.function'))
 
 
+TypeMap = Dict[Node, Type]
+
+
 def conditional_type_map(expr: Node,
                          current_type: Optional[Type],
                          proposed_type: Optional[Type],
                          *,
                          weak: bool = False
-                         ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+                         ) -> Tuple[Optional[TypeMap], Optional[TypeMap]]:
     """Takes in an expression, the current type of the expression, and a
     proposed type of that expression.
 
@@ -2422,6 +2425,16 @@ def conditional_type_map(expr: Node,
 
 def is_literal_none(n: Node) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
+
+
+def and_conditional_maps(m1: Optional[TypeMap], m2: Optional[TypeMap]) -> Optional[TypeMap]:
+    if m1 is None or m2 is None:
+        # One of the branches can never occur.
+        return None
+    # Both branches are possible; combine the information.
+    result = m1.copy()
+    result.update(m2)
+    return result
 
 
 def find_isinstance_check(node: Node,
@@ -2482,16 +2495,9 @@ def find_isinstance_check(node: Node,
             type_map,
             weak,
         )
-        if left_if_vars:
-            if right_if_vars is not None:
-                left_if_vars.update(right_if_vars)
-            else:
-                left_if_vars = None
-        else:
-            left_if_vars = right_if_vars
 
         # Make no claim about the types in else
-        return left_if_vars, {}
+        return and_conditional_maps(left_if_vars, right_if_vars), {}
     elif isinstance(node, UnaryExpr) and node.op == 'not':
         left, right = find_isinstance_check(node.expr, type_map, weak)
         return right, left
