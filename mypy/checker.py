@@ -2388,6 +2388,22 @@ class TypeChecker(NodeVisitor[Type]):
         return method_type_with_fallback(func, self.named_type('builtins.function'))
 
 
+# Data structure returned by find_isinstance_check representing
+# information learned from the truth or falsehood of a condition.  The
+# dict maps nodes representing expressions like 'a[0].x' to their
+# refined types under the assumption that the condition has a
+# particular truth value. A value of None means that the condition can
+# never have that truth value.
+
+# NB: The keys of this dict are nodes in the original source program,
+# which are compared by reference equality--effectively, being *the
+# same* expression of the program, not just two identical expressions
+# (such as two references to the same variable). TODO: it would
+# probably be better to have the dict keyed by the nodes' literal_hash
+# field instead.
+
+# NB: This should be `TypeMap = Optional[Dict[Node, Type]]`!
+# But see https://github.com/python/mypy/issues/1637
 TypeMap = Dict[Node, Type]
 
 
@@ -2396,7 +2412,7 @@ def conditional_type_map(expr: Node,
                          proposed_type: Optional[Type],
                          *,
                          weak: bool = False
-                         ) -> Tuple[Optional[TypeMap], Optional[TypeMap]]:
+                         ) -> Tuple[TypeMap, TypeMap]:
     """Takes in an expression, the current type of the expression, and a
     proposed type of that expression.
 
@@ -2427,20 +2443,54 @@ def is_literal_none(n: Node) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
-def and_conditional_maps(m1: Optional[TypeMap], m2: Optional[TypeMap]) -> Optional[TypeMap]:
+def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
+    """Calculate what information we can learn from the truth of (e1 and e2)
+    in terms of the information that we can learn from the truth of e1 and
+    the truth of e2.
+    """
+
     if m1 is None or m2 is None:
-        # One of the branches can never occur.
+        # One of the conditions can never be true.
         return None
-    # Both branches are possible; combine the information.
-    result = m1.copy()
-    result.update(m2)
+    # Both conditions can be true; combine the information. Anything
+    # we learn from either conditions's truth is valid. If the same
+    # expression's type is refined by both conditions, we somewhat
+    # arbitrarily give precedence to m2. (In the future, we could use
+    # an intersection type.)
+    result = m2.copy()
+    m2_keys = set(n2.literal_hash for n2 in m2)
+    for n1 in m1:
+        if n1.literal_hash not in m2_keys:
+            result[n1] = m1[n1]
+    return result
+
+
+def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
+    """Calculate what information we can learn from the truth of (e1 or e2)
+    in terms of the information that we can learn from the truth of e1 and
+    the truth of e2.
+    """
+
+    if m1 is None:
+        return m2
+    if m2 is None:
+        return m1
+    # Both conditions can be true. Combine information about
+    # expressions whose type is refined by both conditions. (We do not
+    # learn anything about expressions whose type is refined by only
+    # one condition.)
+    result = {}
+    for n1 in m1:
+        for n2 in m2:
+            if n1.literal_hash == n2.literal_hash:
+                result[n1] = UnionType.make_simplified_union([m1[n1], m2[n2]])
     return result
 
 
 def find_isinstance_check(node: Node,
                           type_map: Dict[Node, Type],
                           weak: bool=False
-                          ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
+                          ) -> Tuple[TypeMap, TypeMap]:
     """Find any isinstance checks (within a chain of ands).  Includes
     implicit and explicit checks for None.
 
@@ -2484,7 +2534,7 @@ def find_isinstance_check(node: Node,
         _, if_vars = conditional_type_map(node, vartype, NoneTyp(), weak=weak)
         return if_vars, {}
     elif isinstance(node, OpExpr) and node.op == 'and':
-        left_if_vars, right_else_vars = find_isinstance_check(
+        left_if_vars, left_else_vars = find_isinstance_check(
             node.left,
             type_map,
             weak,
@@ -2496,8 +2546,27 @@ def find_isinstance_check(node: Node,
             weak,
         )
 
-        # Make no claim about the types in else
-        return and_conditional_maps(left_if_vars, right_if_vars), {}
+        # (e1 and e2) is true if both e1 and e2 are true,
+        # and false if at least one of e1 and e2 is false.
+        return (and_conditional_maps(left_if_vars, right_if_vars),
+                or_conditional_maps(left_else_vars, right_else_vars))
+    elif isinstance(node, OpExpr) and node.op == 'or':
+        left_if_vars, left_else_vars = find_isinstance_check(
+            node.left,
+            type_map,
+            weak,
+        )
+
+        right_if_vars, right_else_vars = find_isinstance_check(
+            node.right,
+            type_map,
+            weak,
+        )
+
+        # (e1 or e2) is true if at least one of e1 or e2 is true,
+        # and false if both e1 and e2 are false.
+        return (or_conditional_maps(left_if_vars, right_if_vars),
+                and_conditional_maps(left_else_vars, right_else_vars))
     elif isinstance(node, UnaryExpr) and node.op == 'not':
         left, right = find_isinstance_check(node.expr, type_map, weak)
         return right, left
