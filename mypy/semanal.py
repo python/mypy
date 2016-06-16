@@ -82,6 +82,7 @@ from mypy.parsetype import parse_type
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy import defaults
+from mypy.options import Options
 
 
 T = TypeVar('T')
@@ -172,8 +173,6 @@ class SemanticAnalyzer(NodeVisitor):
     tvar_stack = None  # type: List[List[SymbolTableNode]]
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
-    # Do lightweight type checking
-    lightweight_type_check = False  # type: bool
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -197,9 +196,7 @@ class SemanticAnalyzer(NodeVisitor):
     def __init__(self,
                  lib_path: List[str],
                  errors: Errors,
-                 pyversion: Tuple[int, int],
-                 check_untyped_defs: bool,
-                 lightweight_type_check: bool = False) -> None:
+                 options: Options) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -218,9 +215,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
-        self.pyversion = pyversion
-        self.check_untyped_defs = check_untyped_defs
-        self.lightweight_type_check = lightweight_type_check
+        self.options = options
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
@@ -659,7 +654,7 @@ class SemanticAnalyzer(NodeVisitor):
                     # _promote class decorator (undocumented faeture).
                     promote_target = analyzed.type
         if not promote_target:
-            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.pyversion[0] >= 3
+            promotions = (TYPE_PROMOTIONS_PYTHON3 if self.options.python_version[0] >= 3
                           else TYPE_PROMOTIONS_PYTHON2)
             if defn.fullname in promotions:
                 promote_target = self.named_type_or_none(promotions[defn.fullname])
@@ -1086,9 +1081,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
-        if self.weak_opts or not self.lightweight_type_check or self.function_stack:
+        if self.weak_opts or self.options.semantic_analysis_only or self.function_stack:
             # Skip this if any weak options are set.
-            # Also skip if lightweight type check not requested.
+            # Also skip if we're only doing the semantic analysis pass.
             # This is mostly to avoid breaking unit tests.
             # Also skip inside a function; this is to avoid confusing
             # the code that handles dead code due to isinstance()
@@ -1692,7 +1687,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'continue' outside loop", s, True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
+        infer_reachability_of_if_statement(s, pyversion=self.options.python_version)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
@@ -2287,14 +2282,14 @@ class SemanticAnalyzer(NodeVisitor):
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         if (not serious and
-                not self.check_untyped_defs and
+                not self.options.check_untyped_defs and
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
         self.errors.report(ctx.get_line(), msg, blocker=blocker)
 
     def note(self, msg: str, ctx: Context) -> None:
-        if (not self.check_untyped_defs and
+        if (not self.options.check_untyped_defs and
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
@@ -2321,7 +2316,7 @@ class FirstPass(NodeVisitor):
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
-        self.pyversion = sem.pyversion
+        self.pyversion = sem.options.python_version
 
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.

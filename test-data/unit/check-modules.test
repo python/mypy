@@ -727,7 +727,7 @@ tmp/bar.py:1: error: Module has no attribute 'B'
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main
 [file main.py]
-# flags: silent-imports almost-silent
+# options: silent_imports almost_silent
 import mod
 [file mod.py]
 [builtins fixtures/module.py]
@@ -739,7 +739,7 @@ tmp/main.py:2: note: (This note courtesy of --almost-silent)
 [case testAncestorSuppressedWhileAlmostSilent]
 # cmd: mypy -m foo.bar
 [file foo/bar.py]
-# flags: silent-imports almost-silent
+# options: silent_imports almost_silent
 [file foo/__init__.py]
 [builtins fixtures/module.py]
 [out]
@@ -750,7 +750,7 @@ tmp/foo/bar.py: note: (This note brought to you by --almost-silent)
 [case testStubImportNonStubWhileSilent]
 # cmd: mypy -m main
 [file main.py]
-# flags: silent-imports
+# options: silent_imports
 from stub import x # Permitted
 from other import y # Disallowed
 x + '' # Error here

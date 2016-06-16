@@ -3,8 +3,9 @@
 from typing import AbstractSet, Dict, Set
 
 from mypy.myunit import Suite, assert_equal
-from mypy.build import BuildManager, State, TYPE_CHECK
+from mypy.build import BuildManager, State
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
+from mypy.options import Options
 
 
 class GraphSuite(Suite):
@@ -34,13 +35,10 @@ class GraphSuite(Suite):
         manager = BuildManager(
             data_dir='',
             lib_path=[],
-            target=TYPE_CHECK,
-            pyversion=(3, 5),
-            flags=[],
             ignore_prefix='',
-            custom_typing_module='',
             source_set=None,
-            reports=None)
+            reports=None,
+            options=Options())
         return manager
 
     def test_sorted_components(self) -> None:

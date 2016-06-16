@@ -53,6 +53,7 @@ from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
 from mypy.binder import ConditionalTypeBinder
+from mypy.options import Options
 
 from mypy import experiments
 
@@ -75,8 +76,6 @@ class TypeChecker(NodeVisitor[Type]):
     Type check mypy source files that have been semantically analyzed.
     """
 
-    # Target Python version
-    pyversion = defaults.PYTHON3_VERSION
     # Are we type checking a stub?
     is_stub = False
     # Error message reporter
@@ -113,28 +112,17 @@ class TypeChecker(NodeVisitor[Type]):
     # Have we deferred the current function? If yes, don't infer additional
     # types during this pass within the function.
     current_node_deferred = False
-    # This makes it an error to call an untyped function from a typed one
-    disallow_untyped_calls = False
-    # This makes it an error to define an untyped or partially-typed function
-    disallow_untyped_defs = False
-    # Should we check untyped function defs?
-    check_untyped_defs = False
-    warn_incomplete_stub = False
-    warn_redundant_casts = False
     is_typeshed_stub = False
+    options = None  # type: Options
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile],
-                 pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                 disallow_untyped_calls=False, disallow_untyped_defs=False,
-                 check_untyped_defs=False, warn_incomplete_stub=False,
-                 warn_redundant_casts=False) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
-        self.pyversion = pyversion
+        self.options = options
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
         self.binder = ConditionalTypeBinder()
@@ -148,11 +136,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.deferred_nodes = []
         self.pass_num = 0
         self.current_node_deferred = False
-        self.disallow_untyped_calls = disallow_untyped_calls
-        self.disallow_untyped_defs = disallow_untyped_defs
-        self.check_untyped_defs = check_untyped_defs
-        self.warn_incomplete_stub = warn_incomplete_stub
-        self.warn_redundant_casts = warn_redundant_casts
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -437,8 +420,8 @@ class TypeChecker(NodeVisitor[Type]):
                         self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                                   item.type)
 
-                    show_untyped = not self.is_typeshed_stub or self.warn_incomplete_stub
-                    if self.disallow_untyped_defs and show_untyped:
+                    show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
+                    if self.options.disallow_untyped_defs and show_untyped:
                         # Check for functions with unspecified/not fully specified types.
                         def is_implicit_any(t: Type) -> bool:
                             return isinstance(t, AnyType) and t.implicit
@@ -468,7 +451,7 @@ class TypeChecker(NodeVisitor[Type]):
                         self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
                     # Python 2 generators aren't allowed to return values.
-                    if (self.pyversion[0] == 2 and
+                    if (self.options.python_version[0] == 2 and
                             isinstance(typ.ret_type, Instance) and
                             typ.ret_type.type.fullname() == 'typing.Generator'):
                         if not (isinstance(typ.ret_type.args[2], Void)
@@ -1515,7 +1498,7 @@ class TypeChecker(NodeVisitor[Type]):
                     # Good!
                     return
                 # Else fall back to the checks below (which will fail).
-        if isinstance(typ, TupleType) and self.pyversion[0] == 2:
+        if isinstance(typ, TupleType) and self.options.python_version[0] == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
@@ -1584,7 +1567,7 @@ class TypeChecker(NodeVisitor[Type]):
 
                         # Unfortunately, this doesn't let us detect usage before the
                         # try/except block.
-                        if self.pyversion[0] >= 3:
+                        if self.options.python_version[0] >= 3:
                             source = s.vars[i].name
                         else:
                             source = ('(exception variable "{}", which we do not accept outside'
@@ -1655,7 +1638,7 @@ class TypeChecker(NodeVisitor[Type]):
             method = echk.analyze_external_member_access('__iter__', iterable,
                                                          expr)
             iterator = echk.check_call(method, [], [], expr)[0]
-            if self.pyversion[0] >= 3:
+            if self.options.python_version[0] >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
@@ -2006,7 +1989,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_map[node] = typ
 
     def typing_mode_none(self) -> bool:
-        if self.is_dynamic_function() and not self.check_untyped_defs:
+        if self.is_dynamic_function() and not self.options.check_untyped_defs:
             return not self.weak_opts
         elif self.function_stack:
             return False
@@ -2014,7 +1997,7 @@ class TypeChecker(NodeVisitor[Type]):
             return False
 
     def typing_mode_weak(self) -> bool:
-        if self.is_dynamic_function() and not self.check_untyped_defs:
+        if self.is_dynamic_function() and not self.options.check_untyped_defs:
             return bool(self.weak_opts)
         elif self.function_stack:
             return False
@@ -2022,7 +2005,7 @@ class TypeChecker(NodeVisitor[Type]):
             return 'global' in self.weak_opts
 
     def typing_mode_full(self) -> bool:
-        if self.is_dynamic_function() and not self.check_untyped_defs:
+        if self.is_dynamic_function() and not self.options.check_untyped_defs:
             return False
         elif self.function_stack:
             return True

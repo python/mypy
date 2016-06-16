@@ -1,36 +1,36 @@
 [case testUnannotatedFunction]
-# flags: disallow-untyped-defs
+# options: disallow_untyped_defs
 def f(x): pass
 [out]
 main: note: In function "f":
 main:2: error: Function is missing a type annotation
 
 [case testUnannotatedArgument]
-# flags: disallow-untyped-defs
+# options: disallow_untyped_defs
 def f(x) -> int: pass
 [out]
 main: note: In function "f":
 main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testNoArgumentFunction]
-# flags: disallow-untyped-defs
+# options: disallow_untyped_defs
 def f() -> int: pass
 [out]
 
 [case testUnannotatedReturn]
-# flags: disallow-untyped-defs
+# options: disallow_untyped_defs
 def f(x: int): pass
 [out]
 main: note: In function "f":
 main:2: error: Function is missing a return type annotation
 
 [case testLambda]
-# flags: disallow-untyped-defs
+# options: disallow_untyped_defs
 lambda x: x
 [out]
 
 [case testUntypedDef]
-# flags: disallow-untyped-defs
+# options: disallow_untyped_defs
 def f():
     1 + "str"
 [out]

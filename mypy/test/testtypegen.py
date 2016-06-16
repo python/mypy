@@ -15,6 +15,7 @@ from mypy.util import short_type
 from mypy.nodes import NameExpr, TypeVarExpr, CallExpr
 from mypy.traverser import TraverserVisitor
 from mypy.errors import CompileError
+from mypy.options import Options
 
 
 class TypeExportSuite(Suite):
@@ -36,9 +37,10 @@ class TypeExportSuite(Suite):
                 mask = '(' + line[2:].strip() + ')$'
 
             src = '\n'.join(testcase.input)
-            result = build.build(target=build.TYPE_CHECK,
-                                 sources=[BuildSource('main', None, src)],
-                                 flags=[build.TEST_BUILTINS],
+            options = Options()
+            options.use_builtins_fixtures = True
+            result = build.build(sources=[BuildSource('main', None, src)],
+                                 options=options,
                                  alt_lib_path=config.test_temp_dir)
             a = result.errors
             map = result.types

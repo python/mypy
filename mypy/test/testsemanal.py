@@ -14,6 +14,7 @@ from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
 from mypy.nodes import TypeInfo
+from mypy.options import Options
 
 
 # Semantic analyzer test cases: dump parse tree
@@ -29,6 +30,13 @@ semanal_files = ['semanal-basic.test',
                  'semanal-abstractclasses.test',
                  'semanal-namedtuple.test',
                  'semanal-python2.test']
+
+
+def get_semanal_options():
+    options = Options()
+    options.use_builtins_fixtures = True
+    options.semantic_analysis_only = True
+    return options
 
 
 class SemAnalSuite(Suite):
@@ -52,10 +60,10 @@ def test_semanal(testcase):
 
     try:
         src = '\n'.join(testcase.input)
-        result = build.build(target=build.SEMANTIC_ANALYSIS,
-                             sources=[BuildSource('main', None, src)],
-                             pyversion=testfile_pyversion(testcase.file),
-                             flags=[build.TEST_BUILTINS],
+        options = get_semanal_options()
+        options.python_version = testfile_pyversion(testcase.file)
+        result = build.build(sources=[BuildSource('main', None, src)],
+                             options=options,
                              alt_lib_path=test_temp_dir)
         a = result.errors
         if a:
@@ -103,9 +111,8 @@ def test_semanal_error(testcase):
 
     try:
         src = '\n'.join(testcase.input)
-        res = build.build(target=build.SEMANTIC_ANALYSIS,
-                          sources=[BuildSource('main', None, src)],
-                          flags=[build.TEST_BUILTINS],
+        res = build.build(sources=[BuildSource('main', None, src)],
+                          options=get_semanal_options(),
                           alt_lib_path=test_temp_dir)
         a = res.errors
         assert a, 'No errors reported in {}, line {}'.format(testcase.file, testcase.line)
@@ -137,9 +144,8 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            result = build.build(target=build.SEMANTIC_ANALYSIS,
-                                 sources=[BuildSource('main', None, src)],
-                                 flags=[build.TEST_BUILTINS],
+            result = build.build(sources=[BuildSource('main', None, src)],
+                                 options=get_semanal_options(),
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = result.errors
@@ -177,9 +183,8 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            result = build.build(target=build.SEMANTIC_ANALYSIS,
-                                 sources=[BuildSource('main', None, src)],
-                                 flags=[build.TEST_BUILTINS],
+            result = build.build(sources=[BuildSource('main', None, src)],
+                                 options=get_semanal_options(),
                                  alt_lib_path=test_temp_dir)
             a = result.errors
             if a:

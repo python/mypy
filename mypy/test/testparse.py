@@ -11,6 +11,7 @@ from mypy.test.data import parse_test_cases
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
+from mypy.options import Options
 
 
 class ParserSuite(Suite):
@@ -31,14 +32,18 @@ def test_parser(testcase):
 
     The argument contains the description of the test case.
     """
+    options = Options()
 
     if testcase.file.endswith('python2.test'):
-        pyversion = defaults.PYTHON2_VERSION
+        options.python_version = defaults.PYTHON2_VERSION
     else:
-        pyversion = defaults.PYTHON3_VERSION
+        options.python_version = defaults.PYTHON3_VERSION
 
     try:
-        n = parse(bytes('\n'.join(testcase.input), 'ascii'), pyversion=pyversion, fnam='main')
+        n = parse(bytes('\n'.join(testcase.input), 'ascii'),
+                  fnam='main',
+                  errors=None,
+                  options=options)
         a = str(n).split('\n')
     except CompileError as e:
         a = e.messages
@@ -63,7 +68,7 @@ class ParseErrorSuite(Suite):
 def test_parse_error(testcase):
     try:
         # Compile temporary file. The test file contains non-ASCII characters.
-        parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME)
+        parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, None, Options())
         raise AssertionFailure('No errors reported')
     except CompileError as e:
         # Verify that there was a compile error and that the error messages

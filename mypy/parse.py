@@ -36,6 +36,7 @@ from mypy.types import Type, CallableType, AnyType, UnboundType
 from mypy.parsetype import (
     parse_type, parse_types, parse_signature, TypeParseError, parse_str_as_signature
 )
+from mypy.options import Options
 
 from mypy import experiments
 
@@ -70,30 +71,30 @@ op_comp = set([
 none = Token('')  # Empty token
 
 
-def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None,
-          fast_parser: bool = False) -> MypyFile:
+def parse(source: Union[str, bytes],
+          fnam: str,
+          errors: Errors,
+          options: Options) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
     on failure. Otherwise, use the errors object to report parse errors.
 
-    The pyversion (major, minor) argument determines the Python syntax variant.
+    The python_version (major, minor) option determines the Python syntax variant.
     """
-    if fast_parser:
+    if options.fast_parser:
         import mypy.fastparse
         return mypy.fastparse.parse(source,
                                     fnam=fnam,
                                     errors=errors,
-                                    pyversion=pyversion,
-                                    custom_typing_module=custom_typing_module)
+                                    pyversion=options.python_version,
+                                    custom_typing_module=options.custom_typing_module)
 
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     parser = Parser(fnam,
                     errors,
-                    pyversion,
-                    custom_typing_module,
+                    options.python_version,
+                    options.custom_typing_module,
                     is_stub_file=is_stub_file)
     tree = parser.parse(source)
     tree.path = fnam
@@ -2021,7 +2022,9 @@ if __name__ == '__main__':
         s = open(fnam, 'rb').read()
         errors = Errors()
         try:
-            tree = parse(s, fnam, pyversion=pyversion)
+            options = Options()
+            options.python_version = pyversion
+            tree = parse(s, fnam, None, options=options)
             if not quiet:
                 print(tree)
         except CompileError as e:

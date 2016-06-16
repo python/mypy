@@ -13,6 +13,7 @@ from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
 from mypy.nodes import TypeInfo
 from mypy.treetransform import TransformVisitor
+from mypy.options import Options
 
 
 class TransformSuite(Suite):
@@ -41,10 +42,12 @@ def test_transform(testcase):
 
     try:
         src = '\n'.join(testcase.input)
-        result = build.build(target=build.SEMANTIC_ANALYSIS,
-                             sources=[BuildSource('main', None, src)],
-                             pyversion=testfile_pyversion(testcase.file),
-                             flags=[build.TEST_BUILTINS],
+        options = Options()
+        options.use_builtins_fixtures = True
+        options.semantic_analysis_only = True
+        options.python_version = testfile_pyversion(testcase.file)
+        result = build.build(sources=[BuildSource('main', None, src)],
+                             options=options,
                              alt_lib_path=test_temp_dir)
         a = result.errors
         if a:
