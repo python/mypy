@@ -319,4 +319,4 @@ class PytestSuite:
                         reason='You must install the typed_ast package in ' \
                                'order to run this test')(func)
             func.test = test
-            setattr(cls, test.name, func)
+            setattr(cls, test.name.replace('test', 'test_', 1), func)
