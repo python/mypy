@@ -8,6 +8,7 @@ import shutil
 
 from typing import Callable, List, Tuple, Any
 
+from mypy.myunit import TestCase, SkipTestCaseException
 
 def parse_test_cases(
         path: str,
@@ -86,7 +87,7 @@ def parse_test_cases(
     return out
 
 
-class DataDrivenTestCase:
+class DataDrivenTestCase(TestCase):
     name = None # type: str
     input = None  # type: List[str]
     output = None  # type: List[str]
@@ -105,6 +106,7 @@ class DataDrivenTestCase:
 
     def __init__(self, name, input, output, file, line, lastline,
                  perform, files):
+        super().__init__(name)
         self.name = name
         self.input = input
         self.output = output
@@ -116,6 +118,7 @@ class DataDrivenTestCase:
         self.is_skip = self.name.endswith('-skip')
 
     def set_up(self) -> None:
+        super().set_up()
         self.clean_up = []
         for path, content in self.files:
             dir = os.path.dirname(path)
@@ -138,9 +141,19 @@ class DataDrivenTestCase:
             os.mkdir(dir)
             return dirs
 
-    def run(self, obj: Any):
-        assert not self.is_skip
-        self.perform(obj, self)
+    def run(self, obj: Any = None):
+        if obj is None:
+            # XXX: The unit tests are being converted over to pytest. Due to
+            # modifications requires to make BOTH run at the moment, this branch
+            # is necessary. It should be removed once all the tests relying on
+            # DataDrivenTestCase are converted to pytest.
+            if self.is_skip:
+                raise SkipTestCaseException()
+            else:
+                self.perform(self)
+        else:
+            assert not self.is_skip
+            self.perform(obj, self)
 
     def tear_down(self) -> None:
         # First remove files.
@@ -171,6 +184,7 @@ class DataDrivenTestCase:
                     if path.startswith('tmp/') and os.path.isdir(path):
                         shutil.rmtree(path)
                     raise
+        super().tear_down()
 
 
 class TestItem:

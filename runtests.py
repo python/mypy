@@ -205,7 +205,8 @@ def add_myunit(driver: Driver) -> None:
             # Run Python evaluation integration tests separately since they are #
             # much slower than proper unit tests.
             pass
-        else:
+        elif not 'test_' in mod:
+            # Modules containing `test_` have been ported to pytest.
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
 
 
