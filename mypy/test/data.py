@@ -158,10 +158,12 @@ class DataDrivenTestCase(TestCase):
     def tear_down(self) -> None:
         # First remove files.
         for is_dir, path in reversed(self.clean_up):
-            if not is_dir:
+            if not is_dir and os.path.exists(path):
                 remove(path)
         # Then remove directories.
         for is_dir, path in reversed(self.clean_up):
+            if not os.path.exists(path):
+                continue
             if is_dir:
                 pycache = os.path.join(path, '__pycache__')
                 if os.path.isdir(pycache):

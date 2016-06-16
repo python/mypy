@@ -7,8 +7,7 @@ from typing import Dict, List
 from mypy import build
 from mypy.build import BuildSource
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
-    PytestSuite
+    normalize_error_messages, testfile_pyversion, PytestSuite, test
 )
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -31,7 +30,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-python2.test']
 
 
-class SemAnalSuite(PytestSuite):
+class TestSemAnal(PytestSuite):
     @classmethod
     def cases(cls):
         c = []
@@ -78,10 +77,11 @@ def semanal_tests(obj, testcase):
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
-    assert_string_arrays_equal(
-        testcase.output, a,
+    assert testcase.output == a, \
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
-                                                                testcase.line))
+                                                                testcase.line)
+
+TestSemAnal.setup_tests()
 
 # Semantic analyzer error test cases
 
@@ -89,7 +89,7 @@ def semanal_tests(obj, testcase):
 semanal_error_files = ['semanal-errors.test']
 
 
-class SemAnalErrorSuite(PytestSuite):
+class TestSemAnalError(PytestSuite):
     @classmethod
     def cases(cls):
         # Read test cases from test case description files.
@@ -116,9 +116,11 @@ def semanal_error_tests(obj, testcase):
         # Verify that there was a compile error and that the error messages
         # are equivalent.
         a = e.messages
-    assert_string_arrays_equal(
-        testcase.output, normalize_error_messages(a),
-        'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
+    assert testcase.output == normalize_error_messages(a), \
+        'Invalid compiler output ({}, line {})'.format(testcase.file,
+                                                       testcase.line)
+
+TestSemAnalError.setup_tests()
 
 
 # SymbolNode table export test cases
@@ -127,7 +129,7 @@ def semanal_error_tests(obj, testcase):
 semanal_symtable_files = ['semanal-symtable.test']
 
 
-class SemAnalSymtableSuite(PytestSuite):
+class TestSemAnalSymtable(PytestSuite):
     @classmethod
     def cases(cls):
         c = []
@@ -156,10 +158,11 @@ class SemAnalSymtableSuite(PytestSuite):
                         a.append('  ' + s)
         except CompileError as e:
             a = e.messages
-        assert_string_arrays_equal(
-            testcase.output, a,
+        assert testcase.output == a, \
             'Invalid semantic analyzer output ({}, line {})'.format(
-                testcase.file, testcase.line))
+                testcase.file, testcase.line)
+
+TestSemAnalSymtable.setup_tests()
 
 
 # Type info export test cases
@@ -167,7 +170,7 @@ class SemAnalSymtableSuite(PytestSuite):
 semanal_typeinfo_files = ['semanal-typeinfo.test']
 
 
-class SemAnalTypeInfoSuite(PytestSuite):
+class TestSemAnalTypeInfo(PytestSuite):
     @classmethod
     def cases(cls):
         """Test case descriptions"""
@@ -201,10 +204,11 @@ class SemAnalTypeInfoSuite(PytestSuite):
             a = str(typeinfos).split('\n')
         except CompileError as e:
             a = e.messages
-        assert_string_arrays_equal(
-            testcase.output, a,
+        assert testcase.output == a, \
             'Invalid semantic analyzer output ({}, line {})'.format(
-                testcase.file, testcase.line))
+                testcase.file, testcase.line)
+
+TestSemAnalTypeInfo.setup_tests()
 
 
 class TypeInfoMap(Dict[str, TypeInfo]):
