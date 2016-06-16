@@ -299,6 +299,12 @@ class PytestSuite:
     """Assists in setting up data-driven test cases for pytest."""
     @classmethod
     def setup_tests(cls):
+        """
+        Sets up the child class's test case. The child must have a method
+        `cases` that returns a list of `DataDrivenTestCase`s. This method will
+        load the data-driven test cases and use setattr to assign it to the
+        class, which will allow pytest to recognize the test.
+        """
         c = cls.cases()  # type: List[DataDrivenTestCase]
         for test in c:
             def func(self, test):
