@@ -1651,11 +1651,11 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         if self.loop_depth == 0:
-            self.fail("'break' outside loop", s, True)
+            self.fail("'break' outside loop", s, True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         if self.loop_depth == 0:
-            self.fail("'continue' outside loop", s, True)
+            self.fail("'continue' outside loop", s, True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion)
@@ -1783,7 +1783,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
-            self.fail("'yield from' outside function", e)
+            self.fail("'yield from' outside function", e, True, blocker=True)
         else:
             self.function_stack[-1].is_generator = True
         if e.expr:
@@ -2036,7 +2036,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail("'yield' outside function", expr)
+            self.fail("'yield' outside function", expr, True, blocker=True)
         else:
             self.function_stack[-1].is_generator = True
         if expr.expr:
@@ -2250,13 +2250,14 @@ class SemanticAnalyzer(NodeVisitor):
     def name_already_defined(self, name: str, ctx: Context) -> None:
         self.fail("Name '{}' already defined".format(name), ctx)
 
-    def fail(self, msg: str, ctx: Context, serious: bool = False) -> None:
+    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
         if (not serious and
                 not self.check_untyped_defs and
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
-        self.errors.report(ctx.get_line(), msg)
+        self.errors.report(ctx.get_line(), msg, blocker=blocker)
 
     def note(self, msg: str, ctx: Context) -> None:
         if (not self.check_untyped_defs and
