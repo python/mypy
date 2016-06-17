@@ -731,6 +731,12 @@ x = B() # type: A
 
 if isinstance(x, B) and x.flag:
     pass
+if isinstance(x, B) or x.flag: # E: "A" has no attribute "flag"
+    pass
+if not isinstance(x, B) or x.flag:
+    pass
+if not isinstance(x, B) and x.flag: # E: "A" has no attribute "flag"
+    pass
 [builtins fixtures/isinstancelist.py]
 [case testIsinstanceExpression]
 class A:

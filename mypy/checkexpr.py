@@ -1080,16 +1080,19 @@ class ExpressionChecker:
         left_type = self.accept(e.left, ctx)
 
         if e.op == 'and':
-            # else_map unused
-            if_map, else_map = \
+            right_map, _ = \
+                mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
+                                                   self.chk.typing_mode_weak())
+        elif e.op == 'or':
+            _, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         else:
-            if_map = None
+            right_map = None
 
         self.chk.binder.push_frame()
-        if if_map:
-            for var, type in if_map.items():
+        if right_map:
+            for var, type in right_map.items():
                 self.chk.binder.push(var, type)
 
         right_type = self.accept(e.right, left_type)
