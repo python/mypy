@@ -304,6 +304,9 @@ class PytestSuite:
         `cases` that returns a list of `DataDrivenTestCase`s. This method will
         load the data-driven test cases and use setattr to assign it to the
         class, which will allow pytest to recognize the test.
+
+        Note that this method **must** be run after the definition of any
+        functions used by PytestSuite.cases.
         """
         c = cls.cases()  # type: List[DataDrivenTestCase]
         for test in c:
@@ -317,7 +320,7 @@ class PytestSuite:
                     import mypy.fastparse
                 except SystemExit:
                     func = pytest.mark.skip(
-                        reason='You must install the typed_ast package in ' \
+                        reason='You must install the typed_ast package in '
                                'order to run this test')(func)
             func.test = test
             setattr(cls, test.name, func)

@@ -10,6 +10,7 @@ from typing import Callable, List, Tuple, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
+
 def parse_test_cases(
         path: str,
         perform: Callable[[Any, 'DataDrivenTestCase'], None],
@@ -88,7 +89,7 @@ def parse_test_cases(
 
 
 class DataDrivenTestCase(TestCase):
-    name = None # type: str
+    name = None  # type: str
     input = None  # type: List[str]
     output = None  # type: List[str]
 
@@ -102,7 +103,7 @@ class DataDrivenTestCase(TestCase):
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
-    is_skip = False # type: bool
+    is_skip = False
 
     def __init__(self, name, input, output, file, line, lastline,
                  perform, files):

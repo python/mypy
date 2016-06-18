@@ -59,7 +59,7 @@ def python_evaluation_test(obj: None, testcase: DataDrivenTestCase) -> None:
     os.remove(program_path)
     # Compare actual output to expected.
     assert testcase.output == out, 'Invalid output ({}, line {})'.format(
-                                        testcase.file, testcase.line)
+        testcase.file, testcase.line)
 
 
 def parse_args(line: str) -> List[str]:
@@ -78,4 +78,4 @@ def parse_args(line: str) -> List[str]:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
 
-TestPythonEvaluation.setup_tests() # MUST come after def of test_python_evaluation.
+TestPythonEvaluation.setup_tests()
