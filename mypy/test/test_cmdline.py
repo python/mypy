@@ -29,14 +29,14 @@ class TestPythonEvaluation(PytestSuite):
         c = []  # type: List[DataDrivenTestCase]
         for f in cmdline_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_python_evaluation,
+                                  python_evaluation_test,
                                   base_path=test_temp_dir,
                                   optional_out=True,
                                   native_sep=True)
         return c
 
 
-def test_python_evaluation(obj: None, testcase: DataDrivenTestCase) -> None:
+def python_evaluation_test(obj: None, testcase: DataDrivenTestCase) -> None:
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)

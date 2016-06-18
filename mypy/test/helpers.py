@@ -309,6 +309,7 @@ class PytestSuite:
         for test in c:
             def func(self, test):
                 test.run(self)
+            func.is_test_attr = True
             if test.is_skip:
                 func = pytest.mark.skip(reason='Test ends with -skip')(func)
             if 'FastParse' in test.name and not test.is_skip:
@@ -319,4 +320,5 @@ class PytestSuite:
                         reason='You must install the typed_ast package in ' \
                                'order to run this test')(func)
             func.test = test
-            setattr(cls, test.name.replace('test', 'test_', 1), func)
+            setattr(cls, test.name, func)
+            # setattr(cls, test.name.replace('test', 'test_', 1), func)
