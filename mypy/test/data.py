@@ -96,7 +96,7 @@ class DataDrivenTestCase(TestCase):
     file = ''
     line = 0
 
-    perform = None  # type: Callable[[Any, 'DataDrivenTestCase'], None]
+    perform = None  # type: Callable[..., None]
 
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]

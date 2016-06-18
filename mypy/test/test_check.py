@@ -5,7 +5,7 @@ import re
 import shutil
 import sys
 import mypy
-import pytest
+import pytest  # type: ignore
 
 from typing import Tuple, List, Dict, Set
 

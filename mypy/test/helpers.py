@@ -1,7 +1,7 @@
 import sys
 import re
 import os
-import pytest
+import pytest  # type: ignore
 
 from typing import List, Dict, Tuple
 
