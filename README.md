@@ -193,6 +193,13 @@ pass inferior arguments via `-a`:
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
 
+Mypy is currently in the process of converting its tests from myunit to pytest.
+Some of the tests, such as `test_check`, have already been converted. To run
+these, you must use pytest instead, and use `-k` instead of `-a`:
+
+    $ ./runtests.py pytest -t -k -t NestedListAssignment
+    $ py.test -k NestedListAssignment
+
 You can also run the type checker for manual testing without
 installing anything by setting up the Python module search path
 suitably (the lib-typing/3.2 path entry is not needed for Python 3.5
