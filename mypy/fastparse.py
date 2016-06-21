@@ -176,7 +176,7 @@ class ASTConverter(ast35.NodeTransformer):
     def as_block(self, stmts: List[ast35.stmt], lineno: int) -> Block:
         b = None
         if stmts:
-            b = Block(self.visit_list(stmts))
+            b = Block(self.fix_function_overloads(self.visit_list(stmts)))
             b.set_line(lineno)
         return b
 
@@ -353,7 +353,7 @@ class ASTConverter(ast35.NodeTransformer):
             metaclass = self.stringify_name(metaclass_arg.value)
 
         cdef = ClassDef(n.name,
-                        Block(self.fix_function_overloads(self.visit_list(n.body))),
+                        self.as_block(n.body, n.lineno),
                         None,
                         self.visit_list(n.bases),
                         metaclass=metaclass)

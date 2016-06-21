@@ -23,3 +23,22 @@ def f():  # E: syntax error in type comment
 def f():  # E: invalid type comment
   # type: (a + b) -> None
   pass
+
+[case testFastParseProperty]
+# flags: fast-parser
+class C:
+  @property
+  def x(self) -> str: pass
+  @x.setter
+  def x(self, value: str) -> None: pass
+[builtins fixtures/property.py]
+
+[case testFastParseConditionalProperty]
+# flags: fast-parser
+class C:
+  if 1:
+    @property
+    def x(self) -> str: pass
+    @x.setter
+    def x(self, value: str) -> None: pass
+[builtins fixtures/property.py]
