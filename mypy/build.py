@@ -329,9 +329,15 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('flags', Optional[List[str]]),  # build flags
                         ('dep_prios', List[int]),
                         ])
-# NOTE: dependencies + suppressed == all unreachable imports;
+# NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
 # --silent-imports or simply not found.
+
+
+# Priorities used for imports.  (Here, top-level includes inside a class.)
+PRI_HIGH = 5  # top-level "from X import blah"
+PRI_MED = 10  # top-level "import X"
+PRI_LOW = 20  # either form inside a function
 
 
 class BuildManager:
@@ -419,8 +425,9 @@ class BuildManager:
         for imp in file.imports:
             if not imp.is_unreachable:
                 if isinstance(imp, Import):
+                    pri = PRI_MED if imp.is_top_level else PRI_LOW
                     for id, _ in imp.ids:
-                        res.append((0, id, imp.line))
+                        res.append((pri, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
@@ -438,10 +445,12 @@ class BuildManager:
                     # cur_id is also a dependency, and we should
                     # insert it *before* any submodules.
                     if not all_are_submodules:
-                        res.insert(pos, ((0, cur_id, imp.line)))
+                        pri = PRI_HIGH if imp.is_top_level else PRI_LOW
+                        res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
-                    res.append((0, correct_rel_imp(imp), imp.line))
-        ##print(file.fullname(), res)
+                    pri = PRI_HIGH if imp.is_top_level else PRI_LOW
+                    res.append((pri, correct_rel_imp(imp), imp.line))
+
         return res
 
     def is_module(self, id: str) -> bool:
