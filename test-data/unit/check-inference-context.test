@@ -618,6 +618,22 @@ def g(x: Callable[[], int]) -> None: pass
 f(lambda: None)
 g(lambda: None)
 
+[case testIsinstanceInInferredLambda]
+from typing import TypeVar, Callable
+T = TypeVar('T')
+S = TypeVar('S')
+class A: pass
+class B(A): pass
+class C(A): pass
+def f(func: Callable[[T], S], *z: T, r: S = None) -> S: pass
+f(lambda x: 0 if isinstance(x, B) else 1) # E: Cannot infer type argument 1 of "f"
+f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
+f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
+f( # E: Argument 1 to "f" has incompatible type Callable[[A], A]; expected Callable[[A], B]
+    lambda x: B() if isinstance(x, B) else x, # E: Incompatible return value type (got "A", expected "B")
+    A(), r=B())
+[builtins fixtures/isinstance.py]
+
 
 -- Overloads + generic functions
 -- -----------------------------
