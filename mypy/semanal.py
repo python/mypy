@@ -2414,12 +2414,14 @@ class FirstPass(NodeVisitor):
         # We can't bind module names during the first pass, as the target module might be
         # unprocessed. However, we add dummy unbound imported names to the symbol table so
         # that we at least know that the name refers to a module.
+        node.is_top_level = True
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
                 self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_import(self, node: Import) -> None:
+        node.is_top_level = True
         # This is similar to visit_import_from -- see the comment there.
         for id, as_id in node.ids:
             imported_id = as_id or id
@@ -2428,6 +2430,9 @@ class FirstPass(NodeVisitor):
             else:
                 # If the previous symbol is a variable, this should take precedence.
                 self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        node.is_top_level = True
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.body.accept(self)
