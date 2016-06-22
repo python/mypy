@@ -1090,14 +1090,12 @@ class ExpressionChecker:
         else:
             right_map = None
 
-        self.chk.binder.push_frame()
-        if right_map:
-            for var, type in right_map.items():
-                self.chk.binder.push(var, type)
+        with self.chk.binder.frame_context():
+            if right_map:
+                for var, type in right_map.items():
+                    self.chk.binder.push(var, type)
 
-        right_type = self.accept(e.right, left_type)
-
-        self.chk.binder.pop_frame()
+            right_type = self.accept(e.right, left_type)
 
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
@@ -1490,14 +1488,13 @@ class ExpressionChecker:
         """Check the for_comp part of comprehensions. That is the part from 'for':
         ... for x in y if z
         """
-        self.chk.binder.push_frame()
-        for index, sequence, conditions in zip(e.indices, e.sequences,
-                                               e.condlists):
-            sequence_type = self.chk.analyze_iterable_item_type(sequence)
-            self.chk.analyze_index_variables(index, sequence_type, e)
-            for condition in conditions:
-                self.accept(condition)
-        self.chk.binder.pop_frame()
+        with self.chk.binder.frame_context():
+            for index, sequence, conditions in zip(e.indices, e.sequences,
+                                                   e.condlists):
+                sequence_type = self.chk.analyze_iterable_item_type(sequence)
+                self.chk.analyze_index_variables(index, sequence_type, e)
+                for condition in conditions:
+                    self.accept(condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
@@ -1536,7 +1533,7 @@ class ExpressionChecker:
 
     def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
                             node: Node, context: Optional[Type]) -> Type:
-        with self.chk.binder:
+        with self.chk.binder.frame_context():
             if map:
                 for var, type in map.items():
                     self.chk.binder.push(var, type)

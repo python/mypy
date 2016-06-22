@@ -67,7 +67,32 @@ def min_with_None_large(x: T, y: T) -> T:
 
 
 class Frame(Dict[Any, Type]):
-    pass
+    """Frame for the ConditionalTypeBinder.
+
+    Frames actually in the binder must have
+    binder.frames[i].parent == binder.frames[i-1].
+
+    options_on_return represents a list of possible frames that we
+    will incorporate next time we are the top frame (e.g. frames from
+    the end of each if/elif/else block).
+    """
+
+    changed = False
+
+    def __init__(self, parent: 'Frame' = None) -> None:
+        super().__init__()
+        self.parent = parent
+        self.options_on_return = []  # type: List[Frame]
+
+    def add_exit_option(self, frame: 'Frame') -> None:
+        """When this frame __exit__'s, its parent may have state `frame`.
+
+        So self.add_exit_option(self) means that you can fall through
+        to the outer frame, and self.add_exit_option(self.parent)
+        means that the parent is allowed to continue unchanged by what
+        happened in this frame.
+        """
+        self.parent.options_on_return.append(frame)
 
 
 class Key(AnyType):
@@ -81,12 +106,12 @@ class ConditionalTypeBinder:
         self.frames = []  # type: List[Frame]
         # The first frame is special: it's the declared types of variables.
         self.frames.append(Frame())
+        # We want a second frame that we can update.
+        self.frames.append(Frame())
         # Set of other keys to invalidate if a key is changed.
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
         # Set of keys with dependencies added already.
         self._added_dependencies = set()  # type: Set[Key]
-
-        self.frames_on_escape = {}  # type: Dict[int, List[Frame]]
 
         self.try_frames = set()  # type: Set[int]
         self.loop_frames = []  # type: List[int]
@@ -105,10 +130,26 @@ class ConditionalTypeBinder:
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 
-    def push_frame(self) -> Frame:
-        d = Frame()
-        self.frames.append(d)
-        return d
+    def push_frame(self, canskip: bool = False, fallthrough: bool = False) -> Frame:
+        """Push a new frame into the binder.
+
+        If canskip, then allow types to skip all the inner frame
+        blocks.  That is, changes that happened in the inner frames
+        are not necessarily reflected in the outer frame (for example,
+        an if block that may be skipped).
+
+        If fallthrough, then allow types to escape from the inner
+        frame to the resulting frame.  That is, the state of types at
+        the end of the last frame are allowed to fall through into the
+        enclosing frame.
+        """
+        f = Frame(self.frames[-1])
+        self.frames.append(f)
+        if canskip:
+            f.add_exit_option(f.parent)
+        if fallthrough:
+            f.add_exit_option(f)
+        return f
 
     def _push(self, key: Key, type: Type, index: int=-1) -> None:
         self._add_dependencies(key)
@@ -187,34 +228,20 @@ class ConditionalTypeBinder:
                 result = True
         return result
 
-    def pop_frame(self, canskip=True, fallthrough=False) -> Tuple[bool, Frame]:
-        """Pop a frame.
+    def pop_frame(self) -> Frame:
+        """Pop a frame and return it.
 
-        If canskip, then allow types to skip all the inner frame
-        blocks.  That is, changes that happened in the inner frames
-        are not necessarily reflected in the outer frame (for example,
-        an if block that may be skipped).
-
-        If fallthrough, then allow types to escape from the inner
-        frame to the resulting frame.  That is, the state of types at
-        the end of the last frame are allowed to fall through into the
-        enclosing frame.
-
-        Return whether the newly innermost frame was modified since it
-        was last on top, and what it would be if the block had run to
-        completion.
+        frame.changed represents whether the newly innermost frame was
+        modified since it was last on top.
         """
         result = self.frames.pop()
 
-        options = self.frames_on_escape.pop(len(self.frames) - 1, [])  # type: List[Frame]
-        if canskip:
-            options.append(self.frames[-1])
-        if fallthrough:
-            options.append(result)
+        options = self.frames[-1].options_on_return
+        self.frames[-1].options_on_return = []
 
-        changed = self.update_from_options(options)
+        result.changed = self.update_from_options(options)
 
-        return (changed, result)
+        return result
 
     def get_declaration(self, expr: Any) -> Type:
         if hasattr(expr, 'node') and isinstance(expr.node, Var):
@@ -292,19 +319,35 @@ class ConditionalTypeBinder:
             for k in f:
                 new_frame[k] = f[k]
 
-        self.frames_on_escape.setdefault(index, []).append(new_frame)
+        self.frames[index].options_on_return.append(new_frame)
 
-    def push_loop_frame(self):
+    def push_loop_frame(self) -> None:
         self.loop_frames.append(len(self.frames) - 1)
 
-    def pop_loop_frame(self):
+    def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
 
-    def __enter__(self) -> None:
-        self.push_frame()
+    def frame_context(self, canskip: bool = False,
+                      fallthrough: bool = False) -> 'FrameContextManager':
+        return FrameContextManager(self, canskip, fallthrough)
+
+
+class FrameContextManager:
+    """This is a context manager returned by binder.frame_context().
+
+    Pushes a frame on __enter__, pops it on __exit__.
+    """
+    def __init__(self, binder: ConditionalTypeBinder, canskip: bool,
+                 fallthrough: bool) -> None:
+        self.binder = binder
+        self.canskip = canskip
+        self.fallthrough = fallthrough
+
+    def __enter__(self) -> Frame:
+        return self.binder.push_frame(self.canskip, self.fallthrough)
 
     def __exit__(self, *args: Any) -> None:
-        self.pop_frame()
+        self.binder.pop_frame()
 
 
 def meet_frames(*frames: Frame) -> Frame:
@@ -398,7 +441,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
         self.binder = ConditionalTypeBinder()
-        self.binder.push_frame()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
         self.type_context = []
@@ -488,15 +530,13 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             return typ
 
-    def accept_in_frame(self, node: Node, type_context: Type = None,
-                        repeat_till_fixed: bool = False) -> Type:
-        """Type check a node in the given type context in a new frame of inferred types."""
+    def accept_till_fixed(self, node: Node) -> Type:
+        """Repeatedly type check a node until the frame doesn't change."""
         while True:
-            self.binder.push_frame()
-            answer = self.accept(node, type_context)
-            changed, _ = self.binder.pop_frame(True, True)
-            self.breaking_out = False
-            if not repeat_till_fixed or not changed:
+            with self.binder.frame_context(True, False) as frame:
+                answer = self.accept(node)
+                self.option_if_not_breaking(frame, frame)
+            if not frame.changed:
                 return answer
 
     #
@@ -668,97 +708,96 @@ class TypeChecker(NodeVisitor[Type]):
         for item, typ in self.expand_typevars(defn, typ):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
-            self.binder.push_frame()
-            defn.expanded.append(item)
+            with self.binder.frame_context():
+                defn.expanded.append(item)
 
-            # We may be checking a function definition or an anonymous
-            # function. In the first case, set up another reference with the
-            # precise type.
-            if isinstance(item, FuncDef):
-                fdef = item
-            else:
-                fdef = None
+                # We may be checking a function definition or an anonymous
+                # function. In the first case, set up another reference with the
+                # precise type.
+                if isinstance(item, FuncDef):
+                    fdef = item
+                else:
+                    fdef = None
 
-            if fdef:
-                # Check if __init__ has an invalid, non-None return type.
-                if (fdef.info and fdef.name() == '__init__' and
-                        not isinstance(typ.ret_type, Void) and
-                        not self.dynamic_funcs[-1]):
-                    self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
-                              item.type)
+                if fdef:
+                    # Check if __init__ has an invalid, non-None return type.
+                    if (fdef.info and fdef.name() == '__init__' and
+                            not isinstance(typ.ret_type, Void) and
+                            not self.dynamic_funcs[-1]):
+                        self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
+                                  item.type)
 
-                show_untyped = not self.is_typeshed_stub or self.warn_incomplete_stub
-                if self.disallow_untyped_defs and show_untyped:
-                    # Check for functions with unspecified/not fully specified types.
-                    def is_implicit_any(t: Type) -> bool:
-                        return isinstance(t, AnyType) and t.implicit
+                    show_untyped = not self.is_typeshed_stub or self.warn_incomplete_stub
+                    if self.disallow_untyped_defs and show_untyped:
+                        # Check for functions with unspecified/not fully specified types.
+                        def is_implicit_any(t: Type) -> bool:
+                            return isinstance(t, AnyType) and t.implicit
 
-                    if fdef.type is None:
-                        self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
-                    elif isinstance(fdef.type, CallableType):
-                        if is_implicit_any(fdef.type.ret_type):
-                            self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
-                        if any(is_implicit_any(t) for t in fdef.type.arg_types):
-                            self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
+                        if fdef.type is None:
+                            self.fail(messages.FUNCTION_TYPE_EXPECTED, fdef)
+                        elif isinstance(fdef.type, CallableType):
+                            if is_implicit_any(fdef.type.ret_type):
+                                self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                            if any(is_implicit_any(t) for t in fdef.type.arg_types):
+                                self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
 
-            if name in nodes.reverse_op_method_set:
-                self.check_reverse_op_method(item, typ, name)
-            elif name == '__getattr__':
-                self.check_getattr_method(typ, defn)
+                if name in nodes.reverse_op_method_set:
+                    self.check_reverse_op_method(item, typ, name)
+                elif name == '__getattr__':
+                    self.check_getattr_method(typ, defn)
 
-            # Refuse contravariant return type variable
-            if isinstance(typ.ret_type, TypeVarType):
-                if typ.ret_type.variance == CONTRAVARIANT:
-                    self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
-                         typ.ret_type)
+                # Refuse contravariant return type variable
+                if isinstance(typ.ret_type, TypeVarType):
+                    if typ.ret_type.variance == CONTRAVARIANT:
+                        self.fail(messages.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
+                             typ.ret_type)
 
-            # Check that Generator functions have the appropriate return type.
-            if defn.is_generator:
-                if not self.is_generator_return_type(typ.ret_type):
-                    self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+                # Check that Generator functions have the appropriate return type.
+                if defn.is_generator:
+                    if not self.is_generator_return_type(typ.ret_type):
+                        self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
-                # Python 2 generators aren't allowed to return values.
-                if (self.pyversion[0] == 2 and
-                        isinstance(typ.ret_type, Instance) and
-                        typ.ret_type.type.fullname() == 'typing.Generator'):
-                    if not (isinstance(typ.ret_type.args[2], Void)
-                            or isinstance(typ.ret_type.args[2], AnyType)):
-                        self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
+                    # Python 2 generators aren't allowed to return values.
+                    if (self.pyversion[0] == 2 and
+                            isinstance(typ.ret_type, Instance) and
+                            typ.ret_type.type.fullname() == 'typing.Generator'):
+                        if not (isinstance(typ.ret_type.args[2], Void)
+                                or isinstance(typ.ret_type.args[2], AnyType)):
+                            self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
-            # Push return type.
-            self.return_types.append(typ.ret_type)
+                # Push return type.
+                self.return_types.append(typ.ret_type)
 
-            # Store argument types.
-            for i in range(len(typ.arg_types)):
-                arg_type = typ.arg_types[i]
+                # Store argument types.
+                for i in range(len(typ.arg_types)):
+                    arg_type = typ.arg_types[i]
 
-                # Refuse covariant parameter type variables
-                if isinstance(arg_type, TypeVarType):
-                    if arg_type.variance == COVARIANT:
-                        self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
-                                  arg_type)
+                    # Refuse covariant parameter type variables
+                    if isinstance(arg_type, TypeVarType):
+                        if arg_type.variance == COVARIANT:
+                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
+                                      arg_type)
 
-                if typ.arg_kinds[i] == nodes.ARG_STAR:
-                    # builtins.tuple[T] is typing.Tuple[T, ...]
-                    arg_type = self.named_generic_type('builtins.tuple',
-                                                       [arg_type])
-                elif typ.arg_kinds[i] == nodes.ARG_STAR2:
-                    arg_type = self.named_generic_type('builtins.dict',
-                                                       [self.str_type(),
-                                                        arg_type])
-                item.arguments[i].variable.type = arg_type
+                    if typ.arg_kinds[i] == nodes.ARG_STAR:
+                        # builtins.tuple[T] is typing.Tuple[T, ...]
+                        arg_type = self.named_generic_type('builtins.tuple',
+                                                           [arg_type])
+                    elif typ.arg_kinds[i] == nodes.ARG_STAR2:
+                        arg_type = self.named_generic_type('builtins.dict',
+                                                           [self.str_type(),
+                                                            arg_type])
+                    item.arguments[i].variable.type = arg_type
 
-            # Type check initialization expressions.
-            for arg in item.arguments:
-                init = arg.initialization_statement
-                if init:
-                    self.accept(init)
+                # Type check initialization expressions.
+                for arg in item.arguments:
+                    init = arg.initialization_statement
+                    if init:
+                        self.accept(init)
 
-            # Clear out the default assignments from the binder
-            self.binder.pop_frame()
-            self.binder.push_frame()
             # Type check body in a new scope.
-            self.accept_in_frame(item.body)
+            with self.binder.frame_context():
+                self.accept(item.body)
+                self.breaking_out = False
 
             self.return_types.pop()
 
@@ -1067,8 +1106,8 @@ class TypeChecker(NodeVisitor[Type]):
         self.enter_partial_types()
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
-        self.binder.push_frame()
-        self.accept(defn.defs)
+        with self.binder.frame_context():
+            self.accept(defn.defs)
         self.binder = old_binder
         self.check_multiple_inheritance(typ)
         self.leave_partial_types()
@@ -1675,76 +1714,62 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         broken = True
-        ending_frames = []  # type: List[Frame]
-        clauses_frame = self.binder.push_frame()
-        for e, b in zip(s.expr, s.body):
-            t = self.accept(e)
-            self.check_not_void(t, e)
-            if_map, else_map = find_isinstance_check(
-                e, self.type_map,
-                self.typing_mode_weak()
-            )
-            if if_map is None:
-                # The condition is always false
-                # XXX should issue a warning?
-                pass
+        with self.binder.frame_context() as clauses_frame:
+            for e, b in zip(s.expr, s.body):
+                t = self.accept(e)
+                self.check_not_void(t, e)
+                if_map, else_map = find_isinstance_check(
+                    e, self.type_map,
+                    self.typing_mode_weak()
+                )
+                if if_map is None:
+                    # The condition is always false
+                    # XXX should issue a warning?
+                    pass
+                else:
+                    # Only type check body if the if condition can be true.
+                    with self.binder.frame_context() as frame:
+                        if if_map:
+                            for var, type in if_map.items():
+                                self.binder.push(var, type)
+
+                        self.accept(b)
+                    broken = self.option_if_not_breaking(clauses_frame, frame) and broken
+
+                    if else_map:
+                        for var, type in else_map.items():
+                            self.binder.push(var, type)
+                if else_map is None:
+                    # The condition is always true => remaining elif/else blocks
+                    # can never be reached.
+
+                    # Might also want to issue a warning
+                    # print("Warning: isinstance always true")
+                    if broken:
+                        self.breaking_out = True
+                        return None
+                    break
             else:
-                # Only type check body if the if condition can be true.
-                self.binder.push_frame()
-                if if_map:
-                    for var, type in if_map.items():
-                        self.binder.push(var, type)
+                if s.else_body:
+                    self.accept(s.else_body)
 
-                self.accept(b)
-                _, frame = self.binder.pop_frame()
-                if not self.breaking_out:
-                    broken = False
-                    ending_frames.append(meet_frames(clauses_frame, frame))
+                    if self.breaking_out and broken:
+                        return None
 
-                self.breaking_out = False
+                    self.option_if_not_breaking(clauses_frame, clauses_frame)
 
-                if else_map:
-                    for var, type in else_map.items():
-                        self.binder.push(var, type)
-            if else_map is None:
-                # The condition is always true => remaining elif/else blocks
-                # can never be reached.
-
-                # Might also want to issue a warning
-                # print("Warning: isinstance always true")
-                if broken:
-                    self.binder.pop_frame()
-                    self.breaking_out = True
-                    return None
-                break
-        else:
-            if s.else_body:
-                self.accept(s.else_body)
-
-                if self.breaking_out and broken:
-                    self.binder.pop_frame()
-                    return None
-
-                if not self.breaking_out:
-                    ending_frames.append(clauses_frame)
-
-                self.breaking_out = False
-            else:
-                ending_frames.append(clauses_frame)
-
-        self.binder.pop_frame()
-        self.binder.update_from_options(ending_frames)
+                else:
+                    clauses_frame.add_exit_option(clauses_frame)
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
-        self.binder.push_frame()
-        self.binder.push_loop_frame()
-        self.accept_in_frame(IfStmt([s.expr], [s.body], None),
-                             repeat_till_fixed=True)
-        self.binder.pop_loop_frame()
-        if s.else_body:
-            self.accept(s.else_body)
-        self.binder.pop_frame(False, True)
+        with self.binder.frame_context(fallthrough=True):
+            with self.binder.frame_context(fallthrough=True):
+                self.binder.push_loop_frame()
+                self.accept_till_fixed(IfStmt([s.expr], [s.body], None))
+                self.binder.pop_loop_frame()
+                if s.else_body:
+                    self.accept(s.else_body)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> Type:
@@ -1805,56 +1830,57 @@ class TypeChecker(NodeVisitor[Type]):
                            self.named_type('builtins.BaseException'), s,
                            messages.INVALID_EXCEPTION)
 
+    def option_if_not_breaking(self, outer_frame: Frame, inner_frame: Frame) -> bool:
+        broken = self.breaking_out
+        self.breaking_out = False
+        if not broken:
+            outer_frame.add_exit_option(inner_frame)
+        return broken
+
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        completed_frames = []  # type: List[Frame]
-        self.binder.push_frame()
-        self.binder.try_frames.add(len(self.binder.frames) - 2)
-        self.accept(s.body)
-        self.binder.try_frames.remove(len(self.binder.frames) - 2)
-        self.breaking_out = False
-        changed, frame_on_completion = self.binder.pop_frame()
-        completed_frames.append(frame_on_completion)
+        with self.binder.frame_context() as outer_try_frame:
+            with self.binder.frame_context() as try_frame:
+                self.binder.try_frames.add(len(self.binder.frames) - 2)
+                self.accept(s.body)
+                self.binder.try_frames.remove(len(self.binder.frames) - 2)
+                self.option_if_not_breaking(outer_try_frame, try_frame)
 
-        for i in range(len(s.handlers)):
-            self.binder.push_frame()
-            if s.types[i]:
-                t = self.visit_except_handler_test(s.types[i])
-                if s.vars[i]:
-                    # To support local variables, we make this a definition line,
-                    # causing assignment to set the variable's type.
-                    s.vars[i].is_def = True
-                    self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
-            self.accept(s.handlers[i])
-            if s.vars[i]:
-                # Exception variables are deleted in python 3 but not python 2.
-                # But, since it's bad form in python 2 and the type checking
-                # wouldn't work very well, we delete it anyway.
+            for i in range(len(s.handlers)):
+                with self.binder.frame_context() as except_frame:
+                    if s.types[i]:
+                        t = self.visit_except_handler_test(s.types[i])
+                        if s.vars[i]:
+                            # To support local variables, we make this a definition line,
+                            # causing assignment to set the variable's type.
+                            s.vars[i].is_def = True
+                            self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
+                    self.accept(s.handlers[i])
+                    if s.vars[i]:
+                        # Exception variables are deleted in python 3 but not python 2.
+                        # But, since it's bad form in python 2 and the type checking
+                        # wouldn't work very well, we delete it anyway.
 
-                # Unfortunately, this doesn't let us detect usage before the
-                # try/except block.
-                if self.pyversion[0] >= 3:
-                    source = s.vars[i].name
-                else:
-                    source = ('(exception variable "{}", which we do not accept '
-                              'outside except: blocks even in python 2)'.format(s.vars[i].name))
-                var = cast(Var, s.vars[i].node)
-                var.type = DeletedType(source=source)
-                self.binder.cleanse(s.vars[i])
+                        # Unfortunately, this doesn't let us detect usage before the
+                        # try/except block.
+                        if self.pyversion[0] >= 3:
+                            source = s.vars[i].name
+                        else:
+                            source = ('(exception variable "{}", which we do not accept outside'
+                                      'except: blocks even in python 2)'.format(s.vars[i].name))
+                        var = cast(Var, s.vars[i].node)
+                        var.type = DeletedType(source=source)
+                        self.binder.cleanse(s.vars[i])
 
-            self.breaking_out = False
-            changed, frame_on_completion = self.binder.pop_frame()
-            completed_frames.append(frame_on_completion)
+                self.option_if_not_breaking(outer_try_frame, except_frame)
 
-        # Do the else block similar to the way we do except blocks.
-        if s.else_body:
-            self.binder.push_frame()
-            self.accept(s.else_body)
-            self.breaking_out = False
-            changed, frame_on_completion = self.binder.pop_frame()
-            completed_frames.append(frame_on_completion)
-
-        self.binder.update_from_options(completed_frames)
+            # Do the else block similar to the way we do except blocks.
+            if s.else_body:
+                with self.binder.frame_context() as else_frame:
+                    self.accept(s.else_body)
+                    self.option_if_not_breaking(outer_try_frame, else_frame)
+            else:
+                outer_try_frame.add_exit_option(outer_try_frame)
 
         if s.finally_body:
             self.accept(s.finally_body)
@@ -1890,13 +1916,13 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a for statement."""
         item_type = self.analyze_iterable_item_type(s.expr)
         self.analyze_index_variables(s.index, item_type, s)
-        self.binder.push_frame()
-        self.binder.push_loop_frame()
-        self.accept_in_frame(s.body, repeat_till_fixed=True)
-        self.binder.pop_loop_frame()
-        if s.else_body:
-            self.accept(s.else_body)
-        self.binder.pop_frame(False, True)
+        with self.binder.frame_context(True, True):
+            with self.binder.frame_context(True, True):
+                self.binder.push_loop_frame()
+                self.accept_till_fixed(s.body)
+                self.binder.pop_loop_frame()
+                if s.else_body:
+                    self.accept(s.else_body)
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
