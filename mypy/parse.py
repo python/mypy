@@ -176,13 +176,7 @@ class Parser:
         defs = self.parse_defs()
         weak_opts = self.weak_opts()
         self.expect_type(Eof)
-        # Skip imports that have been ignored (so that we can ignore a C extension module without
-        # stub, for example), except for 'from x import *', because we wouldn't be able to
-        # determine which names should be defined unless we process the module. We can still
-        # ignore errors such as redefinitions when using the latter form.
-        imports = [node for node in self.imports
-                   if node.line not in self.ignored_lines or isinstance(node, ImportAll)]
-        node = MypyFile(defs, imports, is_bom, self.ignored_lines,
+        node = MypyFile(defs, self.imports, is_bom, self.ignored_lines,
                         weak_opts=weak_opts)
         return node
 
