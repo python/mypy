@@ -340,6 +340,17 @@ class ConditionalTypeBinder:
 
     def frame_context(self, fall_through: bool = False,
                       clear_breaking: bool = False) -> 'FrameContextManager':
+        """Return a context manager that pushes/pops frames on enter/exit.
+
+        If fall_through, then allow types to escape from the inner
+        frame to the resulting frame.  That is, the state of types at
+        the end of the last frame are allowed to fall through into the
+        enclosing frame.
+
+        If clear_breaking, then on __exit__ the manager will clear the
+        breaking_out flag, and if it was not set, will allow the frame
+        to escape to its grandparent.
+        """
         return FrameContextManager(self, fall_through, clear_breaking)
 
 
