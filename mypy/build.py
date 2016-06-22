@@ -338,6 +338,7 @@ CacheMeta = NamedTuple('CacheMeta',
 PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
+PRI_ALL = 99  # include all priorities
 
 
 class BuildManager:
@@ -1273,7 +1274,7 @@ class State:
         priorities = {}  # type: Dict[str, int]  # id -> priority
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for pri, id, line in manager.all_imported_modules_in_file(self.tree):
-            priorities.setdefault(id, pri)
+            priorities[id] = min(pri, priorities.get(id, PRI_LOW))
             if id == self.id:
                 continue
             # Omit missing modules, as otherwise we could not type-check
@@ -1344,7 +1345,7 @@ class State:
 
     def write_cache(self) -> None:
         if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
-            dep_prios = [self.priorities.get(dep, 0) for dep in self.dependencies]
+            dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             write_cache(self.id, self.path, self.tree,
                         list(self.dependencies), list(self.suppressed),
                         dep_prios,
@@ -1414,18 +1415,15 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     # dependencies) to roots (those from which everything else can be
     # reached).
     for ascc in sccs:
-        # Sort the SCC's nodes in *reverse* order or encounter.
-        # This is a heuristic for handling import cycles.
+        # Order the SCC's nodes using a heuristic.
         # Note that ascc is a set, and scc is a list.
-        scc = sorted(ascc, key=lambda id: -graph[id].order)
-        # If builtins is in the list, move it last.  (This is a bit of
-        # a hack, but it's necessary because the builtins module is
-        # part of a small cycle involving at least {builtins, abc,
-        # typing}.  Of these, builtins must be processed last or else
-        # some builtin objects will be incompletely processed.)
-        if 'builtins' in ascc:
-            scc.remove('builtins')
-            scc.append('builtins')
+        scc = order_ascc(graph, ascc)
+        if manager.flags.count(VERBOSE) >= 2:
+            for id in scc:
+                manager.trace("Priorities for %s:" % id,
+                              " ".join("%s:%d" % (x, graph[id].priorities[x])
+                                       for x in graph[id].dependencies
+                                       if x in ascc and x in graph[id].priorities))
         # Because the SCCs are presented in topological sort order, we
         # don't need to look at dependencies recursively for staleness
         # -- the immediate dependencies are sufficient.
@@ -1452,7 +1450,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
             newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
-            if manager.flags.count(VERBOSE) >= 2:  # Dump all mtimes for extreme debugging.
+            if manager.flags.count(VERBOSE) >= 3:  # Dump all mtimes for extreme debugging.
                 all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
                 for id in all_ids:
                     if id in scc:
@@ -1492,6 +1490,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_stale_scc(graph, scc)
 
 
+def order_ascc(graph: Graph, ascc: Set[str]) -> List[str]:
+    """Come up with the ideal processing order within an SCC."""
+    if len(ascc) == 1:
+        return [s for s in ascc]
+    pri_spread = set()
+    for id in ascc:
+        state = graph[id]
+        for dep in state.dependencies:
+            if dep in ascc:
+                pri_spread.add(state.priorities.get(dep, PRI_HIGH))
+    if len(pri_spread) == 1:
+        # The dependencies are homogeneous -- order by global order.
+        return sorted(ascc, key=lambda id: -graph[id].order)
+    pri_max = max(pri_spread)
+    sccs = sorted_components(graph, ascc, pri_max)
+    # The recursion is bounded by the len(pri_spread) check above.
+    return [s for ss in sccs for s in order_ascc(graph, ss)]    
+
+
 def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
     """Process the modules in one SCC from their cached data."""
     for id in scc:
@@ -1523,7 +1540,9 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].write_cache()
 
 
-def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
+def sorted_components(graph: Graph,
+                      vertices: Optional[Set[str]] = None,
+                      pri_max: int = PRI_ALL) -> List[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 
     The sort order is from leaves (nodes without dependencies) to
@@ -1533,9 +1552,9 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     dependencies that aren't present in graph.keys() are ignored.
     """
     # Compute SCCs.
-    vertices = set(graph)
-    edges = {id: [dep for dep in st.dependencies if dep in graph]
-             for id, st in graph.items()}
+    if vertices is None:
+        vertices = set(graph)
+    edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
     sccs = list(strongly_connected_components(vertices, edges))
     # Topsort.
     sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
@@ -1543,7 +1562,7 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
     for scc in sccs:
         deps = set()  # type: Set[AbstractSet[str]]
         for id in scc:
-            deps.update(sccsmap[x] for x in graph[id].dependencies if x in graph)
+            deps.update(sccsmap[x] for x in deps_filtered(graph, vertices, id, pri_max))
         data[frozenset(scc)] = deps
     res = []
     for ready in topsort(data):
@@ -1558,6 +1577,16 @@ def sorted_components(graph: Graph) -> List[AbstractSet[str]]:
         res.extend(sorted(ready,
                           key=lambda scc: -min(graph[id].order for id in scc)))
     return res
+
+
+def deps_filtered(graph: Graph, vertices: Set[str], id: str, pri_max: int) -> List[str]:
+    """Filter dependencies for id with pri < pri_max."""
+    if id not in vertices:
+        return []
+    state = graph[id]
+    return [dep
+            for dep in state.dependencies
+            if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max]
 
 
 def strongly_connected_components(vertices: Set[str],
