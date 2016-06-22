@@ -89,14 +89,26 @@ class Frame(Dict[Any, Type]):
         self.parent = parent
         self.options_on_return = []  # type: List[Frame]
 
-    def add_exit_option(self, frame: 'Frame') -> None:
+    def add_exit_option(self, frame: 'Frame', follow_parents: bool = False) -> None:
         """When this frame __exit__'s, its parent may have state `frame`.
 
         So self.add_exit_option(self) means that you can fall through
         to the outer frame, and self.add_exit_option(self.parent)
         means that the parent is allowed to continue unchanged by what
         happened in this frame.
+
+        If follow_parents is True, then frame must be a descendent of
+        self, and we collapse the frame before adding it as an option.
         """
+        if follow_parents:
+            frame_list = []
+            while frame is not self:
+                frame_list.append(frame)
+                frame = frame.parent
+            frame_list.append(self)
+            frame = Frame()
+            for f in frame_list[::-1]:
+                frame.update(f)
         self.parent.options_on_return.append(frame)
 
 
@@ -326,12 +338,7 @@ class ConditionalTypeBinder:
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
-        new_frame = Frame()
-        for f in self.frames[index + 1:]:
-            for k in f:
-                new_frame[k] = f[k]
-
-        self.frames[index].options_on_return.append(new_frame)
+        self.frames[index + 1].add_exit_option(self.frames[-1], True)
 
     def push_loop_frame(self) -> None:
         self.loop_frames.append(len(self.frames) - 1)
@@ -340,7 +347,7 @@ class ConditionalTypeBinder:
         self.loop_frames.pop()
 
     def frame_context(self, canskip: bool = False, fallthrough: bool = False,
-                      clear_breaking: bool=False) -> 'FrameContextManager':
+                      clear_breaking: bool = False) -> 'FrameContextManager':
         return FrameContextManager(self, canskip, fallthrough, clear_breaking)
 
 
@@ -364,7 +371,7 @@ class FrameContextManager:
         if self.clear_breaking:
             self.binder.breaking_out = False
             if not f.broken:
-                f.parent.add_exit_option(f)
+                f.parent.add_exit_option(f, follow_parents=True)
 
 
 def meet_frames(*frames: Frame) -> Frame:
@@ -672,6 +679,8 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 # Function definition overrides a variable initialized via assignment.
                 orig_type = defn.original_def.type
+                # XXX This can be None, as happens in
+                # test_testcheck_TypeCheckSuite.testRedefinedFunctionInTryWithElse
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.
@@ -1740,7 +1749,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         broken = True
-        with self.binder.frame_context() as clauses_frame:
+        with self.binder.frame_context():
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
                 self.check_not_void(t, e)
@@ -1775,19 +1784,14 @@ class TypeChecker(NodeVisitor[Type]):
                         self.binder.breaking_out = True
                         return None
                     break
-            else:
-                if s.else_body:
-                    with self.binder.frame_context(clear_breaking=True) as frame:
+            else:  # Didn't break => can't prove one of the conditions is always true
+                with self.binder.frame_context(clear_breaking=True) as frame:
+                    if s.else_body:
                         self.accept(s.else_body)
-
-                    broken = broken and frame.broken
-
-                    if broken:
-                        self.binder.breaking_out = True
-                        return None
-
-                else:
-                    clauses_frame.add_exit_option(clauses_frame)
+                broken = broken and frame.broken
+                if broken:
+                    self.binder.breaking_out = True
+                    return None
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
@@ -1854,11 +1858,13 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
-        with self.binder.frame_context() as outer_try_frame:
-            with self.binder.frame_context(clear_breaking=True):
+        with self.binder.frame_context():
+            with self.binder.frame_context(fallthrough=True, clear_breaking=True):
                 self.binder.try_frames.add(len(self.binder.frames) - 2)
                 self.accept(s.body)
                 self.binder.try_frames.remove(len(self.binder.frames) - 2)
+                if s.else_body:
+                    self.accept(s.else_body)
 
             for i in range(len(s.handlers)):
                 with self.binder.frame_context(clear_breaking=True):
@@ -1885,13 +1891,6 @@ class TypeChecker(NodeVisitor[Type]):
                         var = cast(Var, s.vars[i].node)
                         var.type = DeletedType(source=source)
                         self.binder.cleanse(s.vars[i])
-
-            # Do the else block similar to the way we do except blocks.
-            if s.else_body:
-                with self.binder.frame_context(clear_breaking=True):
-                    self.accept(s.else_body)
-            else:
-                outer_try_frame.add_exit_option(outer_try_frame)
 
         if s.finally_body:
             self.accept(s.finally_body)
