@@ -220,7 +220,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
-        self.errors.set_ignored_lines(file_node.ignored_lines)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
@@ -242,8 +241,6 @@ class SemanticAnalyzer(NodeVisitor):
 
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
-
-        self.errors.set_ignored_lines(set())
 
         if '__all__' in self.globals:
             for name, g in self.globals.items():
@@ -2477,9 +2474,7 @@ class ThirdPass(TraverserVisitor[None]):
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
-        self.errors.set_ignored_lines(file_node.ignored_lines)
         self.accept(file_node)
-        self.errors.set_ignored_lines(set())
 
     def accept(self, node: Node) -> None:
         try:

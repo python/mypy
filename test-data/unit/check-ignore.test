@@ -184,3 +184,14 @@ def bar(x: Base[str, str]) -> None: pass
 bar(Child())
 [out]
 main:19: error: Argument 1 to "bar" has incompatible type "Child"; expected Base[str, str]
+
+[case testTypeIgnoreLineNumberWithinFile]
+import m
+pass # type: ignore
+m.f(kw=1)
+[file m.py]
+pass
+def f() -> None: pass
+[out]
+main:3: error: Unexpected keyword argument "kw" for "f"
+tmp/m.py:2: note: "f" defined here
