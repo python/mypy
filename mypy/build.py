@@ -1418,6 +1418,14 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # Order the SCC's nodes using a heuristic.
         # Note that ascc is a set, and scc is a list.
         scc = order_ascc(graph, ascc)
+        # If builtins is in the list, move it last.  (This is a bit of
+        # a hack, but it's necessary because the builtins module is
+        # part of a small cycle involving at least {builtins, abc,
+        # typing}.  Of these, builtins must be processed last or else
+        # some builtin objects will be incompletely processed.)
+        if 'builtins' in ascc:
+            scc.remove('builtins')
+            scc.append('builtins')
         if manager.flags.count(VERBOSE) >= 2:
             for id in scc:
                 manager.trace("Priorities for %s:" % id,
