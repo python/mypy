@@ -4,9 +4,10 @@ import itertools
 import contextlib
 import os
 import os.path
+from contextlib import contextmanager
 
 from typing import (
-    Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
+    Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -327,31 +328,16 @@ class ConditionalTypeBinder:
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
 
-    def frame_context(self, fall_through: int = 0) -> 'FrameContextManager':
+    @contextmanager
+    def frame_context(self, fall_through: int = 0) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
         If fall_through > 0, then on __exit__ the manager will clear the
         breaking_out flag, and if it was not set, will allow the frame
         to escape to its ancestor `fall_through` levels higher.
         """
-        return FrameContextManager(self, fall_through)
-
-
-class FrameContextManager:
-    """This is a context manager returned by binder.frame_context().
-
-    Pushes a frame on __enter__, pops it on __exit__.
-    """
-    def __init__(self, binder: ConditionalTypeBinder,
-                 fall_through: int) -> None:
-        self.binder = binder
-        self.fall_through = fall_through
-
-    def __enter__(self) -> Frame:
-        return self.binder.push_frame()
-
-    def __exit__(self, *args: Any) -> None:
-        self.binder.pop_frame(self.fall_through)
+        yield self.push_frame()
+        self.pop_frame(fall_through)
 
 
 # A node which is postponed to be type checked during the next pass.
