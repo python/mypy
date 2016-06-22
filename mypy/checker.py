@@ -102,10 +102,9 @@ class Frame(Dict[Any, Type]):
         """
         if follow_parents:
             frame_list = []
-            while frame is not self:
+            while frame is not self.parent:
                 frame_list.append(frame)
                 frame = frame.parent
-            frame_list.append(self)
             frame = Frame()
             for f in frame_list[::-1]:
                 frame.update(f)
@@ -150,13 +149,8 @@ class ConditionalTypeBinder:
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 
-    def push_frame(self, canskip: bool = False, fallthrough: bool = False) -> Frame:
+    def push_frame(self, fallthrough: bool = False) -> Frame:
         """Push a new frame into the binder.
-
-        If canskip, then allow types to skip all the inner frame
-        blocks.  That is, changes that happened in the inner frames
-        are not necessarily reflected in the outer frame (for example,
-        an if block that may be skipped).
 
         If fallthrough, then allow types to escape from the inner
         frame to the resulting frame.  That is, the state of types at
@@ -165,8 +159,6 @@ class ConditionalTypeBinder:
         """
         f = Frame(self.frames[-1])
         self.frames.append(f)
-        if canskip:
-            f.add_exit_option(f.parent)
         if fallthrough:
             f.add_exit_option(f)
         return f
@@ -346,9 +338,9 @@ class ConditionalTypeBinder:
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
 
-    def frame_context(self, canskip: bool = False, fallthrough: bool = False,
+    def frame_context(self, fallthrough: bool = False,
                       clear_breaking: bool = False) -> 'FrameContextManager':
-        return FrameContextManager(self, canskip, fallthrough, clear_breaking)
+        return FrameContextManager(self, fallthrough, clear_breaking)
 
 
 class FrameContextManager:
@@ -356,15 +348,14 @@ class FrameContextManager:
 
     Pushes a frame on __enter__, pops it on __exit__.
     """
-    def __init__(self, binder: ConditionalTypeBinder, canskip: bool,
+    def __init__(self, binder: ConditionalTypeBinder,
                  fallthrough: bool, clear_breaking: bool) -> None:
         self.binder = binder
-        self.canskip = canskip
         self.fallthrough = fallthrough
         self.clear_breaking = clear_breaking
 
     def __enter__(self) -> Frame:
-        return self.binder.push_frame(self.canskip, self.fallthrough)
+        return self.binder.push_frame(self.fallthrough)
 
     def __exit__(self, *args: Any) -> None:
         f = self.binder.pop_frame()
@@ -557,16 +548,22 @@ class TypeChecker(NodeVisitor[Type]):
 
         Then check the else_body.
         """
-        with self.binder.frame_context(fallthrough=True):
+        # The outer frame accumulates the results of all iterations
+        with self.binder.frame_context(fallthrough=True) as outer_frame:
             self.binder.push_loop_frame()
             while True:
-                with self.binder.frame_context(canskip=True) as frame:
+                outer_frame.options_on_return.append(outer_frame)  # We may skip each iteration
+
+                with self.binder.frame_context() as inner_frame:
                     self.accept(body)
+                    # We do this instead of clear_breaking because there isn't a third frame
+                    # between outer_frame and inner_frame.
                     if not self.binder.breaking_out:
-                        frame.add_exit_option(frame)
+                        inner_frame.add_exit_option(inner_frame)
                     else:
                         self.binder.breaking_out = False
-                if not frame.changed:
+
+                if not inner_frame.changed:
                     break
             self.binder.pop_loop_frame()
             if else_body:
