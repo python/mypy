@@ -149,17 +149,17 @@ class ConditionalTypeBinder:
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 
-    def push_frame(self, fallthrough: bool = False) -> Frame:
+    def push_frame(self, fall_through: bool = False) -> Frame:
         """Push a new frame into the binder.
 
-        If fallthrough, then allow types to escape from the inner
+        If fall_through, then allow types to escape from the inner
         frame to the resulting frame.  That is, the state of types at
         the end of the last frame are allowed to fall through into the
         enclosing frame.
         """
         f = Frame(self.frames[-1])
         self.frames.append(f)
-        if fallthrough:
+        if fall_through:
             f.add_exit_option(f)
         return f
 
@@ -338,9 +338,9 @@ class ConditionalTypeBinder:
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
 
-    def frame_context(self, fallthrough: bool = False,
+    def frame_context(self, fall_through: bool = False,
                       clear_breaking: bool = False) -> 'FrameContextManager':
-        return FrameContextManager(self, fallthrough, clear_breaking)
+        return FrameContextManager(self, fall_through, clear_breaking)
 
 
 class FrameContextManager:
@@ -349,13 +349,13 @@ class FrameContextManager:
     Pushes a frame on __enter__, pops it on __exit__.
     """
     def __init__(self, binder: ConditionalTypeBinder,
-                 fallthrough: bool, clear_breaking: bool) -> None:
+                 fall_through: bool, clear_breaking: bool) -> None:
         self.binder = binder
-        self.fallthrough = fallthrough
+        self.fall_through = fall_through
         self.clear_breaking = clear_breaking
 
     def __enter__(self) -> Frame:
-        return self.binder.push_frame(self.fallthrough)
+        return self.binder.push_frame(self.fall_through)
 
     def __exit__(self, *args: Any) -> None:
         f = self.binder.pop_frame()
@@ -549,7 +549,7 @@ class TypeChecker(NodeVisitor[Type]):
         Then check the else_body.
         """
         # The outer frame accumulates the results of all iterations
-        with self.binder.frame_context(fallthrough=True) as outer_frame:
+        with self.binder.frame_context(fall_through=True) as outer_frame:
             self.binder.push_loop_frame()
             while True:
                 outer_frame.options_on_return.append(outer_frame)  # We may skip each iteration
@@ -1856,7 +1856,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
         with self.binder.frame_context():
-            with self.binder.frame_context(fallthrough=True, clear_breaking=True):
+            with self.binder.frame_context(fall_through=True, clear_breaking=True):
                 self.binder.try_frames.add(len(self.binder.frames) - 2)
                 self.accept(s.body)
                 self.binder.try_frames.remove(len(self.binder.frames) - 2)
