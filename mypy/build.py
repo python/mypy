@@ -1498,7 +1498,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_stale_scc(graph, scc)
 
 
-def order_ascc(graph: Graph, ascc: Set[str]) -> List[str]:
+def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
     """Come up with the ideal processing order within an SCC."""
     if len(ascc) == 1:
         return [s for s in ascc]
@@ -1507,14 +1507,16 @@ def order_ascc(graph: Graph, ascc: Set[str]) -> List[str]:
         state = graph[id]
         for dep in state.dependencies:
             if dep in ascc:
-                pri_spread.add(state.priorities.get(dep, PRI_HIGH))
+                pri = state.priorities.get(dep, PRI_HIGH)
+                if pri < pri_max:
+                    pri_spread.add(pri)
     if len(pri_spread) == 1:
-        # The dependencies are homogeneous -- order by global order.
+        # Filtered dependencies are homogeneous -- order by global order.
         return sorted(ascc, key=lambda id: -graph[id].order)
     pri_max = max(pri_spread)
     sccs = sorted_components(graph, ascc, pri_max)
     # The recursion is bounded by the len(pri_spread) check above.
-    return [s for ss in sccs for s in order_ascc(graph, ss)]    
+    return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
 def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
@@ -1549,7 +1551,7 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
 
 
 def sorted_components(graph: Graph,
-                      vertices: Optional[Set[str]] = None,
+                      vertices: Optional[AbstractSet[str]] = None,
                       pri_max: int = PRI_ALL) -> List[AbstractSet[str]]:
     """Return the graph's SCCs, topologically sorted by dependencies.
 
@@ -1587,7 +1589,7 @@ def sorted_components(graph: Graph,
     return res
 
 
-def deps_filtered(graph: Graph, vertices: Set[str], id: str, pri_max: int) -> List[str]:
+def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: int) -> List[str]:
     """Filter dependencies for id with pri < pri_max."""
     if id not in vertices:
         return []
@@ -1597,7 +1599,7 @@ def deps_filtered(graph: Graph, vertices: Set[str], id: str, pri_max: int) -> Li
             if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max]
 
 
-def strongly_connected_components(vertices: Set[str],
+def strongly_connected_components(vertices: AbstractSet[str],
                                   edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
     """Compute Strongly Connected Components of a directed graph.
 
