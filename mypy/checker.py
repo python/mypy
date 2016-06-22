@@ -89,26 +89,21 @@ class Frame(Dict[Any, Type]):
         self.parent = parent
         self.options_on_return = []  # type: List[Frame]
 
-    def add_exit_option(self, frame: 'Frame', follow_parents: bool = False) -> None:
-        """When this frame __exit__'s, its parent may have state `frame`.
+    def add_return_option(self, frame: 'Frame', collapse_ancestry: bool = False) -> None:
+        """When this frame is next visited, it may may have state `frame`.
 
-        So self.add_exit_option(self) means that you can fall through
-        to the outer frame, and self.add_exit_option(self.parent)
-        means that the parent is allowed to continue unchanged by what
-        happened in this frame.
-
-        If follow_parents is True, then frame must be a descendent of
+        If collapse_ancestry is True, then frame must be a descendent of
         self, and we collapse the frame before adding it as an option.
         """
-        if follow_parents:
+        if collapse_ancestry:
             frame_list = []
-            while frame is not self.parent:
+            while frame is not self:
                 frame_list.append(frame)
                 frame = frame.parent
             frame = Frame()
             for f in frame_list[::-1]:
                 frame.update(f)
-        self.parent.options_on_return.append(frame)
+        self.options_on_return.append(frame)
 
 
 class Key(AnyType):
@@ -149,18 +144,10 @@ class ConditionalTypeBinder:
             for elt in cast(Any, key):
                 self._add_dependencies(elt, value)
 
-    def push_frame(self, fall_through: bool = False) -> Frame:
-        """Push a new frame into the binder.
-
-        If fall_through, then allow types to escape from the inner
-        frame to the resulting frame.  That is, the state of types at
-        the end of the last frame are allowed to fall through into the
-        enclosing frame.
-        """
+    def push_frame(self) -> Frame:
+        """Push a new frame into the binder."""
         f = Frame(self.frames[-1])
         self.frames.append(f)
-        if fall_through:
-            f.add_exit_option(f)
         return f
 
     def _push(self, key: Key, type: Type, index: int=-1) -> None:
@@ -240,8 +227,12 @@ class ConditionalTypeBinder:
                 result = True
         return result
 
-    def pop_frame(self) -> Frame:
+    def pop_frame(self, fall_through: int = 0) -> Frame:
         """Pop a frame and return it.
+
+        If fall_through > 0, then on __exit__ the manager will clear the
+        breaking_out flag, and if it was not set, will allow the frame
+        to escape to its ancestor `fall_through` levels higher.
 
         frame.changed represents whether the newly innermost frame was
         modified since it was last on top.
@@ -250,12 +241,17 @@ class ConditionalTypeBinder:
         through a construct other than falling off the end.
         """
         result = self.frames.pop()
+        result.broken = self.breaking_out
+
+        if fall_through:
+            if not result.broken:
+                self.frames[-fall_through].add_return_option(result, True)
+            self.breaking_out = False
 
         options = self.frames[-1].options_on_return
         self.frames[-1].options_on_return = []
 
         result.changed = self.update_from_options(options)
-        result.broken = self.breaking_out
 
         return result
 
@@ -330,7 +326,7 @@ class ConditionalTypeBinder:
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
-        self.frames[index + 1].add_exit_option(self.frames[-1], True)
+        self.frames[index].add_return_option(self.frames[-1], True)
 
     def push_loop_frame(self) -> None:
         self.loop_frames.append(len(self.frames) - 1)
@@ -338,20 +334,14 @@ class ConditionalTypeBinder:
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
 
-    def frame_context(self, fall_through: bool = False,
-                      clear_breaking: bool = False) -> 'FrameContextManager':
+    def frame_context(self, fall_through: int = 0) -> 'FrameContextManager':
         """Return a context manager that pushes/pops frames on enter/exit.
 
-        If fall_through, then allow types to escape from the inner
-        frame to the resulting frame.  That is, the state of types at
-        the end of the last frame are allowed to fall through into the
-        enclosing frame.
-
-        If clear_breaking, then on __exit__ the manager will clear the
+        If fall_through > 0, then on __exit__ the manager will clear the
         breaking_out flag, and if it was not set, will allow the frame
-        to escape to its grandparent.
+        to escape to its ancestor `fall_through` levels higher.
         """
-        return FrameContextManager(self, fall_through, clear_breaking)
+        return FrameContextManager(self, fall_through)
 
 
 class FrameContextManager:
@@ -360,20 +350,15 @@ class FrameContextManager:
     Pushes a frame on __enter__, pops it on __exit__.
     """
     def __init__(self, binder: ConditionalTypeBinder,
-                 fall_through: bool, clear_breaking: bool) -> None:
+                 fall_through: int) -> None:
         self.binder = binder
         self.fall_through = fall_through
-        self.clear_breaking = clear_breaking
 
     def __enter__(self) -> Frame:
-        return self.binder.push_frame(self.fall_through)
+        return self.binder.push_frame()
 
     def __exit__(self, *args: Any) -> None:
-        f = self.binder.pop_frame()
-        if self.clear_breaking:
-            self.binder.breaking_out = False
-            if not f.broken:
-                f.parent.add_exit_option(f, follow_parents=True)
+        self.binder.pop_frame(self.fall_through)
 
 
 def meet_frames(*frames: Frame) -> Frame:
@@ -560,20 +545,12 @@ class TypeChecker(NodeVisitor[Type]):
         Then check the else_body.
         """
         # The outer frame accumulates the results of all iterations
-        with self.binder.frame_context(fall_through=True) as outer_frame:
+        with self.binder.frame_context(1) as outer_frame:
             self.binder.push_loop_frame()
             while True:
                 outer_frame.options_on_return.append(outer_frame)  # We may skip each iteration
-
-                with self.binder.frame_context() as inner_frame:
+                with self.binder.frame_context(1) as inner_frame:
                     self.accept(body)
-                    # We do this instead of clear_breaking because there isn't a third frame
-                    # between outer_frame and inner_frame.
-                    if not self.binder.breaking_out:
-                        inner_frame.add_exit_option(inner_frame)
-                    else:
-                        self.binder.breaking_out = False
-
                 if not inner_frame.changed:
                     break
             self.binder.pop_loop_frame()
@@ -838,9 +815,8 @@ class TypeChecker(NodeVisitor[Type]):
                         self.accept(init)
 
             # Type check body in a new scope.
-            with self.binder.frame_context():
+            with self.binder.frame_context(1):
                 self.accept(item.body)
-                self.binder.breaking_out = False
 
             self.return_types.pop()
 
@@ -1771,7 +1747,7 @@ class TypeChecker(NodeVisitor[Type]):
                     pass
                 else:
                     # Only type check body if the if condition can be true.
-                    with self.binder.frame_context(clear_breaking=True) as frame:
+                    with self.binder.frame_context(2) as frame:
                         if if_map:
                             for var, type in if_map.items():
                                 self.binder.push(var, type)
@@ -1793,7 +1769,7 @@ class TypeChecker(NodeVisitor[Type]):
                         return None
                     break
             else:  # Didn't break => can't prove one of the conditions is always true
-                with self.binder.frame_context(clear_breaking=True) as frame:
+                with self.binder.frame_context(2) as frame:
                     if s.else_body:
                         self.accept(s.else_body)
                 broken = broken and frame.broken
@@ -1868,16 +1844,15 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a try statement."""
         broken = True
         with self.binder.frame_context():
-            with self.binder.frame_context(fall_through=True, clear_breaking=True) as frame:
+            with self.binder.frame_context(2) as frame:
                 self.binder.try_frames.add(len(self.binder.frames) - 2)
                 self.accept(s.body)
                 self.binder.try_frames.remove(len(self.binder.frames) - 2)
                 if s.else_body:
                     self.accept(s.else_body)
             broken = broken and frame.broken
-
             for i in range(len(s.handlers)):
-                with self.binder.frame_context(clear_breaking=True) as frame:
+                with self.binder.frame_context(2) as frame:
                     if s.types[i]:
                         t = self.visit_except_handler_test(s.types[i])
                         if s.vars[i]:
