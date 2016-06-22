@@ -94,3 +94,25 @@ def f(a,        # type: A
 [builtins fixtures/dict.py]
 [out]
 main: note: In function "f":
+
+[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
+# flags: fast-parser
+def f(*, # type: int  # E: bare * has associated type comment
+      x  # type: str
+      ):
+      # type: (...) -> int
+    pass
+[builtins fixtures/dict.py]
+[out]
+
+[case testFastParsePerArgumentAnnotationsWithReturnAndBareStar]
+# flags: fast-parser
+def f(*,
+      x  # type: str
+      ):
+      # type: (...) -> int
+    reveal_type(x) # E: Revealed type is 'builtins.str'
+    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
