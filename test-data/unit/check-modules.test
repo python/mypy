@@ -811,3 +811,35 @@ from a import x
 [file a/__init__.py]
 x = 0
 [out]
+
+
+-- Test stability under import cycles
+-- ----------------------------------
+
+-- The two tests are identical except one main has 'import x' and the other 'import y'
+
+[case testImportCycleStability1]
+import x
+[file x.py]
+class Base:
+    attr = 'x'
+def foo():
+    import y
+[file y.py]
+import x
+class Sub(x.Base):
+    attr = x.Base.attr
+[out]
+
+[case testImportCycleStability2]
+import y
+[file x.py]
+class Base:
+    attr = 'x'
+def foo():
+    import y
+[file y.py]
+import x
+class Sub(x.Base):
+    attr = x.Base.attr
+[out]
