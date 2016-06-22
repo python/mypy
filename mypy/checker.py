@@ -59,13 +59,6 @@ from mypy import experiments
 T = TypeVar('T')
 
 
-def min_with_None_large(x: T, y: T) -> T:
-    """Return min(x, y) but with  a < None for all variables a that are not None"""
-    if x is None:
-        return y
-    return min(x, x if y is None else y)
-
-
 class Frame(Dict[Any, Type]):
     """Frame for the ConditionalTypeBinder.
 
@@ -359,17 +352,6 @@ class FrameContextManager:
 
     def __exit__(self, *args: Any) -> None:
         self.binder.pop_frame(self.fall_through)
-
-
-def meet_frames(*frames: Frame) -> Frame:
-    answer = Frame()
-    for f in frames:
-        for key in f:
-            if key in answer:
-                answer[key] = meet_simple(answer[key], f[key])
-            else:
-                answer[key] = f[key]
-    return answer
 
 
 # A node which is postponed to be type checked during the next pass.
