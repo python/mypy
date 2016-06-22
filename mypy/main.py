@@ -160,6 +160,8 @@ def process_options(args: List[str],
                         " --check-untyped-defs enabled")
     parser.add_argument('--warn-redundant-casts', action='store_true',
                         help="warn about casting an expression to its inferred type")
+    parser.add_argument('--warn-no-return', action='store_true',
+                        help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
     parser.add_argument('--hide-error-context', action='store_true',

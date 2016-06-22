@@ -19,7 +19,7 @@ from mypy.nodes import (
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
+    LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
@@ -611,10 +611,30 @@ class TypeChecker(NodeVisitor[Type]):
             # Type check body in a new scope.
             with self.binder.top_frame_context():
                 self.accept(item.body)
+                unreachable = self.binder.is_unreachable()
+
+            if (self.options.warn_no_return and not unreachable
+                    and not isinstance(self.return_types[-1], (Void, AnyType))
+                    and not defn.is_generator):
+                # Control flow fell off the end of a function that was
+                # declared to return a non-None type.
+                # Allow functions that are entirely pass/Ellipsis.
+                if self.is_trivial_body(defn.body):
+                    pass
+                else:
+                    self.msg.note(messages.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def is_trivial_body(self, block: Block) -> bool:
+        if len(block.body) != 1:
+            return False
+        stmt = block.body[0]
+        return (isinstance(stmt, PassStmt) or
+                (isinstance(stmt, ExpressionStmt) and
+                 isinstance(stmt.expr, EllipsisExpr)))
 
     def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
                                 method: str) -> None:

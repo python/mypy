@@ -23,6 +23,7 @@ from mypy.nodes import (
 # that do not have any parameters.
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'
+MISSING_RETURN_STATEMENT = 'Missing return statement'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
 RETURN_VALUE_EXPECTED = 'Return value expected'
 BOOLEAN_VALUE_EXPECTED = 'Boolean value expected'
