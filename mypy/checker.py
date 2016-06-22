@@ -75,9 +75,14 @@ class Frame(Dict[Any, Type]):
     options_on_return represents a list of possible frames that we
     will incorporate next time we are the top frame (e.g. frames from
     the end of each if/elif/else block).
+
+    After a frame is complete, 'changed' represents whether anything
+    changed during the procedure, so a loop should be re-run.
+    'breaking' represents whether frame was necessarily breaking out.
     """
 
     changed = False
+    broken = False
 
     def __init__(self, parent: 'Frame' = None) -> None:
         super().__init__()
@@ -112,6 +117,9 @@ class ConditionalTypeBinder:
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
         # Set of keys with dependencies added already.
         self._added_dependencies = set()  # type: Set[Key]
+
+        # Set to True on return/break/raise, False on blocks that can block any of them
+        self.breaking_out = False
 
         self.try_frames = set()  # type: Set[int]
         self.loop_frames = []  # type: List[int]
@@ -233,6 +241,9 @@ class ConditionalTypeBinder:
 
         frame.changed represents whether the newly innermost frame was
         modified since it was last on top.
+
+        frame.broken represents whether we always leave this frame
+        through a construct other than falling off the end.
         """
         result = self.frames.pop()
 
@@ -240,6 +251,7 @@ class ConditionalTypeBinder:
         self.frames[-1].options_on_return = []
 
         result.changed = self.update_from_options(options)
+        result.broken = self.breaking_out
 
         return result
 
@@ -327,9 +339,9 @@ class ConditionalTypeBinder:
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
 
-    def frame_context(self, canskip: bool = False,
-                      fallthrough: bool = False) -> 'FrameContextManager':
-        return FrameContextManager(self, canskip, fallthrough)
+    def frame_context(self, canskip: bool = False, fallthrough: bool = False,
+                      clear_breaking: bool=False) -> 'FrameContextManager':
+        return FrameContextManager(self, canskip, fallthrough, clear_breaking)
 
 
 class FrameContextManager:
@@ -338,16 +350,21 @@ class FrameContextManager:
     Pushes a frame on __enter__, pops it on __exit__.
     """
     def __init__(self, binder: ConditionalTypeBinder, canskip: bool,
-                 fallthrough: bool) -> None:
+                 fallthrough: bool, clear_breaking: bool) -> None:
         self.binder = binder
         self.canskip = canskip
         self.fallthrough = fallthrough
+        self.clear_breaking = clear_breaking
 
     def __enter__(self) -> Frame:
         return self.binder.push_frame(self.canskip, self.fallthrough)
 
     def __exit__(self, *args: Any) -> None:
-        self.binder.pop_frame()
+        f = self.binder.pop_frame()
+        if self.clear_breaking:
+            self.binder.breaking_out = False
+            if not f.broken:
+                f.parent.add_exit_option(f)
 
 
 def meet_frames(*frames: Frame) -> Frame:
@@ -400,8 +417,6 @@ class TypeChecker(NodeVisitor[Type]):
     dynamic_funcs = None  # type: List[bool]
     # Stack of functions being type checked
     function_stack = None  # type: List[FuncItem]
-    # Set to True on return/break/raise, False on blocks that can block any of them
-    breaking_out = False
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
     # Stack of collections of variables with partial types
@@ -533,9 +548,12 @@ class TypeChecker(NodeVisitor[Type]):
     def accept_till_fixed(self, node: Node) -> Type:
         """Repeatedly type check a node until the frame doesn't change."""
         while True:
-            with self.binder.frame_context(True, False) as frame:
+            with self.binder.frame_context(canskip=True) as frame:
                 answer = self.accept(node)
-                self.option_if_not_breaking(frame, frame)
+                if not self.binder.breaking_out:
+                    frame.add_exit_option(frame)
+                else:
+                    self.binder.breaking_out = False
             if not frame.changed:
                 return answer
 
@@ -797,7 +815,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Type check body in a new scope.
             with self.binder.frame_context():
                 self.accept(item.body)
-                self.breaking_out = False
+                self.binder.breaking_out = False
 
             self.return_types.pop()
 
@@ -1203,7 +1221,7 @@ class TypeChecker(NodeVisitor[Type]):
             return None
         for s in b.body:
             self.accept(s)
-            if self.breaking_out:
+            if self.binder.breaking_out:
                 break
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
@@ -1645,7 +1663,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_return_stmt(self, s: ReturnStmt) -> Type:
         """Type check a return statement."""
-        self.breaking_out = True
+        self.binder.breaking_out = True
         if self.is_within_function():
             if self.function_stack[-1].is_generator:
                 return_type = self.get_generator_return_type(self.return_types[-1])
@@ -1728,13 +1746,13 @@ class TypeChecker(NodeVisitor[Type]):
                     pass
                 else:
                     # Only type check body if the if condition can be true.
-                    with self.binder.frame_context() as frame:
+                    with self.binder.frame_context(clear_breaking=True) as frame:
                         if if_map:
                             for var, type in if_map.items():
                                 self.binder.push(var, type)
 
                         self.accept(b)
-                    broken = self.option_if_not_breaking(clauses_frame, frame) and broken
+                    broken = broken and frame.broken
 
                     if else_map:
                         for var, type in else_map.items():
@@ -1746,17 +1764,19 @@ class TypeChecker(NodeVisitor[Type]):
                     # Might also want to issue a warning
                     # print("Warning: isinstance always true")
                     if broken:
-                        self.breaking_out = True
+                        self.binder.breaking_out = True
                         return None
                     break
             else:
                 if s.else_body:
-                    self.accept(s.else_body)
+                    with self.binder.frame_context(clear_breaking=True) as frame:
+                        self.accept(s.else_body)
 
-                    if self.breaking_out and broken:
+                    broken = broken and frame.broken
+
+                    if broken:
+                        self.binder.breaking_out = True
                         return None
-
-                    self.option_if_not_breaking(clauses_frame, clauses_frame)
 
                 else:
                     clauses_frame.add_exit_option(clauses_frame)
@@ -1764,12 +1784,11 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
         with self.binder.frame_context(fallthrough=True):
-            with self.binder.frame_context(fallthrough=True):
-                self.binder.push_loop_frame()
-                self.accept_till_fixed(IfStmt([s.expr], [s.body], None))
-                self.binder.pop_loop_frame()
-                if s.else_body:
-                    self.accept(s.else_body)
+            self.binder.push_loop_frame()
+            self.accept_till_fixed(IfStmt([s.expr], [s.body], None))
+            self.binder.pop_loop_frame()
+            if s.else_body:
+                self.accept(s.else_body)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> Type:
@@ -1800,7 +1819,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Type:
         """Type check a raise statement."""
-        self.breaking_out = True
+        self.binder.breaking_out = True
         if s.expr:
             self.type_check_raise(s.expr, s)
         if s.from_expr:
@@ -1830,24 +1849,16 @@ class TypeChecker(NodeVisitor[Type]):
                            self.named_type('builtins.BaseException'), s,
                            messages.INVALID_EXCEPTION)
 
-    def option_if_not_breaking(self, outer_frame: Frame, inner_frame: Frame) -> bool:
-        broken = self.breaking_out
-        self.breaking_out = False
-        if not broken:
-            outer_frame.add_exit_option(inner_frame)
-        return broken
-
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
         with self.binder.frame_context() as outer_try_frame:
-            with self.binder.frame_context() as try_frame:
+            with self.binder.frame_context(clear_breaking=True):
                 self.binder.try_frames.add(len(self.binder.frames) - 2)
                 self.accept(s.body)
                 self.binder.try_frames.remove(len(self.binder.frames) - 2)
-                self.option_if_not_breaking(outer_try_frame, try_frame)
 
             for i in range(len(s.handlers)):
-                with self.binder.frame_context() as except_frame:
+                with self.binder.frame_context(clear_breaking=True):
                     if s.types[i]:
                         t = self.visit_except_handler_test(s.types[i])
                         if s.vars[i]:
@@ -1872,13 +1883,10 @@ class TypeChecker(NodeVisitor[Type]):
                         var.type = DeletedType(source=source)
                         self.binder.cleanse(s.vars[i])
 
-                self.option_if_not_breaking(outer_try_frame, except_frame)
-
             # Do the else block similar to the way we do except blocks.
             if s.else_body:
-                with self.binder.frame_context() as else_frame:
+                with self.binder.frame_context(clear_breaking=True):
                     self.accept(s.else_body)
-                    self.option_if_not_breaking(outer_try_frame, else_frame)
             else:
                 outer_try_frame.add_exit_option(outer_try_frame)
 
@@ -1917,12 +1925,11 @@ class TypeChecker(NodeVisitor[Type]):
         item_type = self.analyze_iterable_item_type(s.expr)
         self.analyze_index_variables(s.index, item_type, s)
         with self.binder.frame_context(True, True):
-            with self.binder.frame_context(True, True):
-                self.binder.push_loop_frame()
-                self.accept_till_fixed(s.body)
-                self.binder.pop_loop_frame()
-                if s.else_body:
-                    self.accept(s.else_body)
+            self.binder.push_loop_frame()
+            self.accept_till_fixed(s.body)
+            self.binder.pop_loop_frame()
+            if s.else_body:
+                self.accept(s.else_body)
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
@@ -2107,12 +2114,12 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_member_expr(e)
 
     def visit_break_stmt(self, s: BreakStmt) -> Type:
-        self.breaking_out = True
+        self.binder.breaking_out = True
         self.binder.allow_jump(self.binder.loop_frames[-1] - 1)
         return None
 
     def visit_continue_stmt(self, s: ContinueStmt) -> Type:
-        self.breaking_out = True
+        self.binder.breaking_out = True
         self.binder.allow_jump(self.binder.loop_frames[-1])
         return None
 

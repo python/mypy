@@ -461,10 +461,12 @@ def foo() -> None:
         return
     else:
         pass
-    y = x + 'asdad'
+    y = x + 'asdad' # E: Unsupported operand types for + (likely involving Union)
 
 foo()
 [builtins fixtures/isinstancelist.py]
+[out]
+main: note: In function "foo":
 [case testIsInstanceBadBreak]
 from typing import Union
 
