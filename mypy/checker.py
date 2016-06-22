@@ -545,17 +545,25 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             return typ
 
-    def accept_till_fixed(self, node: Node) -> Type:
-        """Repeatedly type check a node until the frame doesn't change."""
-        while True:
-            with self.binder.frame_context(canskip=True) as frame:
-                answer = self.accept(node)
-                if not self.binder.breaking_out:
-                    frame.add_exit_option(frame)
-                else:
-                    self.binder.breaking_out = False
-            if not frame.changed:
-                return answer
+    def accept_loop(self, body: Node, else_body: Node = None) -> Type:
+        """Repeatedly type check a loop body until the frame doesn't change.
+
+        Then check the else_body.
+        """
+        with self.binder.frame_context(fallthrough=True):
+            self.binder.push_loop_frame()
+            while True:
+                with self.binder.frame_context(canskip=True) as frame:
+                    self.accept(body)
+                    if not self.binder.breaking_out:
+                        frame.add_exit_option(frame)
+                    else:
+                        self.binder.breaking_out = False
+                if not frame.changed:
+                    break
+            self.binder.pop_loop_frame()
+            if else_body:
+                self.accept(else_body)
 
     #
     # Definitions
@@ -1783,12 +1791,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
-        with self.binder.frame_context(fallthrough=True):
-            self.binder.push_loop_frame()
-            self.accept_till_fixed(IfStmt([s.expr], [s.body], None))
-            self.binder.pop_loop_frame()
-            if s.else_body:
-                self.accept(s.else_body)
+        self.accept_loop(IfStmt([s.expr], [s.body], None), s.else_body)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> Type:
@@ -1924,12 +1927,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check a for statement."""
         item_type = self.analyze_iterable_item_type(s.expr)
         self.analyze_index_variables(s.index, item_type, s)
-        with self.binder.frame_context(True, True):
-            self.binder.push_loop_frame()
-            self.accept_till_fixed(s.body)
-            self.binder.pop_loop_frame()
-            if s.else_body:
-                self.accept(s.else_body)
+        self.accept_loop(s.body, s.else_body)
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""

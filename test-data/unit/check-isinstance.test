@@ -650,7 +650,7 @@ else:
 x + 1      # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.py]
 
-[case testModifyLoop4]
+[case testModifyLoopWhile4]
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -669,6 +669,34 @@ else:
 x + 'a'
 x = 1
 while 1:
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    if 1:
+        x = 'a'
+        continue
+else:
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x = 'a'
+x + 'a'
+[builtins fixtures/isinstancelist.py]
+[case testModifyLoopFor4]
+from typing import Union
+
+def foo() -> Union[int, str]: pass
+
+x = foo()
+x = 1
+
+for y in [1]:
+    x + 1
+    if 1:
+        x = 'a'
+        break
+else:
+    x + 1
+    x = 'a'
+x + 'a'
+x = 1
+for y in [1]:
     x + 1 # E: Unsupported operand types for + (likely involving Union)
     if 1:
         x = 'a'
