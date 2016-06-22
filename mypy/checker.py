@@ -1866,16 +1866,18 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
+        broken = True
         with self.binder.frame_context():
-            with self.binder.frame_context(fall_through=True, clear_breaking=True):
+            with self.binder.frame_context(fall_through=True, clear_breaking=True) as frame:
                 self.binder.try_frames.add(len(self.binder.frames) - 2)
                 self.accept(s.body)
                 self.binder.try_frames.remove(len(self.binder.frames) - 2)
                 if s.else_body:
                     self.accept(s.else_body)
+            broken = broken and frame.broken
 
             for i in range(len(s.handlers)):
-                with self.binder.frame_context(clear_breaking=True):
+                with self.binder.frame_context(clear_breaking=True) as frame:
                     if s.types[i]:
                         t = self.visit_except_handler_test(s.types[i])
                         if s.vars[i]:
@@ -1899,9 +1901,12 @@ class TypeChecker(NodeVisitor[Type]):
                         var = cast(Var, s.vars[i].node)
                         var.type = DeletedType(source=source)
                         self.binder.cleanse(s.vars[i])
+                broken = broken and frame.broken
 
         if s.finally_body:
             self.accept(s.finally_body)
+        if broken:
+            self.binder.breaking_out = True
 
     def visit_except_handler_test(self, n: Node) -> Type:
         """Type check an exception handler test clause."""

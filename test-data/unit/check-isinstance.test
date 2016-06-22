@@ -837,6 +837,17 @@ while 1:
     x = 'a'           # Note: no error because unreachable code
 [builtins fixtures/isinstancelist.py]
 
+[case testUnreachableCode2]
+x = 1
+while 1:
+    try:
+        pass
+    except:
+        continue
+    else:
+        continue
+    x + 'a'
+[builtins fixtures/isinstance.py]
 
 [case testIsinstanceAnd]
 class A:
