@@ -580,6 +580,14 @@ def foo() -> None:
         return
     y = x + 'asdad'
 
+def bar() -> None:
+    x = 1 # type: Union[int, str]
+    if isinstance(x, int):
+        return
+    else:
+        pass
+    y = x + 'asdad'
+
 foo()
 [builtins fixtures/isinstancelist.py]
 [case testIsInstanceBadBreak]

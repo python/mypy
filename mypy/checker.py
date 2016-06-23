@@ -734,7 +734,7 @@ class TypeChecker(NodeVisitor[Type]):
                         self.accept(init)
 
             # Type check body in a new scope.
-            with self.binder.frame_context(1):
+            with self.binder.frame_context():
                 self.accept(item.body)
 
             self.return_types.pop()
