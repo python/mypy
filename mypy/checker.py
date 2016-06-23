@@ -69,7 +69,25 @@ class Key(AnyType):
 
 
 class ConditionalTypeBinder:
-    """Keep track of conditional types of variables."""
+    """Keep track of conditional types of variables.
+
+    NB: Variables are tracked by literal expression, so it is possible
+    to confuse the binder; for example,
+
+    ```
+    class A:
+        a = None          # type: Union[int, str]
+    x = A()
+    lst = [x]
+    reveal_type(x.a)      # Union[int, str]
+    x.a = 1
+    reveal_type(x.a)      # int
+    reveal_type(lst[0].a) # Union[int, str]
+    lst[0].a = 'a'
+    reveal_type(x.a)      # int
+    reveal_type(lst[0].a) # str
+    ```
+    """
 
     def __init__(self) -> None:
         # The set of frames currently used.  These map
@@ -88,10 +106,13 @@ class ConditionalTypeBinder:
         # Whenever a new key (e.g. x.a.b) is added, we update this
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
 
-        # Set to True on return/break/raise, False on blocks that can block any of them
+        # breaking_out is set to True on return/break/continue/raise
+        # It is cleared on pop_frame() and placed in last_pop_breaking_out
+        # Lines of code after breaking_out = True are unreachable and not
+        # typechecked.
         self.breaking_out = False
 
-        # Whether the last pop changed the top frame on exit
+        # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
         # Whether the last pop was necessarily breaking out, and couldn't fall through
         self.last_pop_breaking_out = False
