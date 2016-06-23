@@ -1701,6 +1701,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         broken = True
+        # This frame records the knowledge from previous if/elif clauses not being taken.
         with self.binder.frame_context():
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
@@ -1811,6 +1812,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
         broken = True
+        # This frame records the possible states that exceptions can leave variables in
         with self.binder.frame_context():
             with self.binder.frame_context(2) as frame:
                 self.binder.try_frames.add(len(self.binder.frames) - 2)
