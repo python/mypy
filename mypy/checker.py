@@ -63,6 +63,7 @@ T = TypeVar('T')
 class Frame(Dict[Any, Type]):
     pass
 
+
 class Key(AnyType):
     pass
 
@@ -78,8 +79,8 @@ class ConditionalTypeBinder:
 
         # For frames higher in the stack, we record the set of
         # Frames that can escape there
-        self.options_on_return = [] # type: List[List[Frame]]
-        
+        self.options_on_return = []  # type: List[List[Frame]]
+
         # Maps expr.literal_hash] to get_declaration(expr)
         # for every expr stored in the binder
         self.declarations = Frame()
@@ -181,9 +182,7 @@ class ConditionalTypeBinder:
     def pop_frame(self, fall_through: int = 0) -> Frame:
         """Pop a frame and return it.
 
-        If fall_through > 0, then on __exit__ the manager will clear the
-        breaking_out flag, and if it was not set, will allow the frame
-        to escape to its ancestor `fall_through` levels higher.
+        See frame_context() for documentation of fall_through.
         """
         if fall_through and not self.breaking_out:
             self.allow_jump(-fall_through)
@@ -276,7 +275,7 @@ class ConditionalTypeBinder:
         self.options_on_return[index].append(frame)
 
     def push_loop_frame(self) -> None:
-        self.loop_frames.append(len(self.frames)-1)
+        self.loop_frames.append(len(self.frames) - 1)
 
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
@@ -285,9 +284,8 @@ class ConditionalTypeBinder:
     def frame_context(self, fall_through: int = 0) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
-        If fall_through > 0, then on __exit__ the manager will clear the
-        breaking_out flag, and if it was not set, will allow the frame
-        to escape to its ancestor `fall_through` levels higher.
+        If fall_through > 0, then it will allow the frame to escape to
+        its ancestor `fall_through` levels higher.
         """
         yield self.push_frame()
         self.pop_frame(fall_through)
