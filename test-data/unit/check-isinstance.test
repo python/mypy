@@ -484,7 +484,20 @@ while 1:
         y = h.pet.paws + 1
         z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstancelist.py]
+[case testIsInstanceSubClassReset]
+class A: pass
+class B(A): b=1
 
+class C:
+    a = A()
+
+x = C()
+x.a.b                   # E: "A" has no attribute "b"
+if isinstance(x.a, B):
+    x.a.b
+    x = C()
+    x.a.b               # E: "A" has no attribute "b"
+[builtins fixtures/isinstance.py]
 [case testIsinstanceTuple]
 from typing import Union
 
