@@ -184,23 +184,6 @@ class ConditionalTypeBinder:
 
         return changed
 
-    def update_expand(self, frame: Frame, index: int = -1) -> bool:
-        """Update frame to include another one, if that other one is larger than the current value.
-
-        Return whether anything changed."""
-        result = False
-
-        for key in frame:
-            old_type = self._get(key, index)
-            if old_type is None:
-                continue
-            replacement = join_simple(self.declarations[key], old_type, frame[key])
-
-            if not is_same_type(replacement, old_type):
-                self._push(key, replacement, index)
-                result = True
-        return result
-
     def pop_frame(self, fall_through: int = 0) -> Frame:
         """Pop a frame and return it.
 
