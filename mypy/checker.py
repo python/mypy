@@ -83,20 +83,19 @@ class Frame(Dict[Any, Type]):
         self.parent = parent
         self.options_on_return = []  # type: List[Frame]
 
-    def add_return_option(self, frame: 'Frame', collapse_ancestry: bool = False) -> None:
+    def add_return_option(self, frame: 'Frame') -> None:
         """When this frame is next visited, it may may have state `frame`.
 
-        If collapse_ancestry is True, then frame must be a descendent of
-        self, and we collapse the frame before adding it as an option.
+        The frame must be a descendent of self, and we incorporate every
+        intermediate frame.
         """
-        if collapse_ancestry:
-            frame_list = []
-            while frame is not self:
-                frame_list.append(frame)
-                frame = frame.parent
-            frame = Frame()
-            for f in frame_list[::-1]:
-                frame.update(f)
+        frame_list = []
+        while frame is not self:
+            frame_list.append(frame)
+            frame = frame.parent
+        frame = Frame()
+        for f in frame_list[::-1]:
+            frame.update(f)
         self.options_on_return.append(frame)
 
 
@@ -239,7 +238,7 @@ class ConditionalTypeBinder:
 
         if fall_through:
             if not result.broken:
-                self.frames[-fall_through].add_return_option(result, True)
+                self.frames[-fall_through].add_return_option(result)
             self.breaking_out = False
 
         options = self.frames[-1].options_on_return
@@ -320,7 +319,7 @@ class ConditionalTypeBinder:
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
-        self.frames[index].add_return_option(self.frames[-1], True)
+        self.frames[index].add_return_option(self.frames[-1])
 
     def push_loop_frame(self) -> None:
         self.loop_frames.append(len(self.frames) - 1)
