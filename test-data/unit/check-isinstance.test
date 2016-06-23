@@ -279,6 +279,78 @@ while 1:
         x = B()
     x.z
 [builtins fixtures/exception.py]
+[case testUnionTryFinally]
+class A: pass
+class B(A): b = 1
+
+x = A()
+x = B()
+try:
+    x = A()
+    x.b # E: "A" has no attribute "b"
+    x = B()
+finally:
+    x.b  # E: "A" has no attribute "b"
+x.b
+[case testUnionTryFinally2]
+class A: pass
+class B(A): b = 1
+
+x = A()
+x = B()
+try:
+    x = A()
+    x = B()
+except:
+    pass
+finally:
+    pass
+x.b      # E: "A" has no attribute "b"
+[case testUnionTryFinally3]
+class A: pass
+class B(A): b = 1
+
+x = A()
+x = B()
+try:
+    x = A()
+    x = B()
+except:
+    pass
+finally:
+    x = B()
+x.b
+[case testUnionTryFinally4]
+class A: pass
+class B(A): b = 1
+
+while 2:
+    x = A()
+    x = B()
+    try:
+        x = A()
+        x = B()
+    except:
+        pass
+    finally:
+        if not isinstance(x, B):
+            break
+    x.b
+[builtins fixtures/isinstancelist.py]
+[case testUnionTryFinally5]
+class A: pass
+class B(A): b = 1
+
+while 2:
+    x = A()
+    try:
+        x = A()
+        x = B()
+    finally:
+        x.b    # E: "A" has no attribute "b"
+        break
+        x.b
+    x.b
 [case testUnionListIsinstance]
 
 from typing import Union, List
