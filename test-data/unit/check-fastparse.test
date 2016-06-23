@@ -42,3 +42,115 @@ class C:
     @x.setter
     def x(self, value: str) -> None: pass
 [builtins fixtures/property.py]
+
+[case testFastParsePerArgumentAnnotations]
+# flags: fast-parser
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+class E: pass
+class F: pass
+def f(a,        # type: A
+      b = None, # type: B
+      *args,    # type: C
+      d = None, # type: D
+      e,        # type: E
+      **kwargs  # type: F
+      ):
+    reveal_type(a)      # E: Revealed type is '__main__.A'
+    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
+    reveal_type(d)      # E: Revealed type is '__main__.D'
+    reveal_type(e)      # E: Revealed type is '__main__.E'
+    reveal_type(kwargs) # E: Revealed type is 'builtins.dict[builtins.str, __main__.F]'
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
+[case testFastParsePerArgumentAnnotationsWithReturn]
+# flags: fast-parser
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+class E: pass
+class F: pass
+def f(a,        # type: A
+      b = None, # type: B
+      *args,    # type: C
+      d = None, # type: D
+      e,        # type: E
+      **kwargs  # type: F
+      ):
+      # type: (...) -> int
+    reveal_type(a)      # E: Revealed type is '__main__.A'
+    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
+    reveal_type(d)      # E: Revealed type is '__main__.D'
+    reveal_type(e)      # E: Revealed type is '__main__.E'
+    reveal_type(kwargs) # E: Revealed type is 'builtins.dict[builtins.str, __main__.F]'
+    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
+[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
+# flags: fast-parser
+def f(*, # type: int  # E: bare * has associated type comment
+      x  # type: str
+      ):
+      # type: (...) -> int
+    pass
+[builtins fixtures/dict.py]
+[out]
+
+[case testFastParsePerArgumentAnnotationsWithReturnAndBareStar]
+# flags: fast-parser
+def f(*,
+      x  # type: str
+      ):
+      # type: (...) -> int
+    reveal_type(x) # E: Revealed type is 'builtins.str'
+    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
+[case testFastParsePerArgumentAnnotations_python2]
+# flags: fast-parser
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+def f(a,        # type: A
+      b = None, # type: B
+      *args     # type: C
+      # kwargs not tested due to lack of 2.7 dict fixtures
+      ):
+    reveal_type(a)      # E: Revealed type is '__main__.A'
+    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":
+
+[case testFastParsePerArgumentAnnotationsWithReturn_python2]
+# flags: fast-parser
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+def f(a,        # type: A
+      b = None, # type: B
+      *args     # type: C
+      # kwargs not tested due to lack of 2.7 dict fixtures
+      ):
+      # type: (...) -> int
+    reveal_type(a)      # E: Revealed type is '__main__.A'
+    reveal_type(b)      # E: Revealed type is '__main__.B'
+    reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
+    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+[builtins fixtures/dict.py]
+[out]
+main: note: In function "f":

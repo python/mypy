@@ -1,8 +1,14 @@
+class Any: pass
+
 class object:
-    def __init__(self) -> None: pass
+    def __init__(self):
+        # type: () -> None
+        pass
 
 class type:
-    def __init__(self, x) -> None: pass
+    def __init__(self, x):
+        # type: (Any) -> None
+        pass
 
 # These are provided here for convenience.
 class int: pass

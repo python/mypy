@@ -254,7 +254,8 @@ class ASTConverter(ast35.NodeTransformer):
             # for ellipsis arg
             if (len(func_type_ast.argtypes) == 1 and
                     isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
-                arg_types = [AnyType() for a in args]
+                arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
+                             for a in args]
             else:
                 arg_types = [a if a is not None else AnyType() for
                             a in TypeConverter(line=n.lineno).visit_list(func_type_ast.argtypes)]
