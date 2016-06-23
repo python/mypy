@@ -98,10 +98,9 @@ class ConditionalTypeBinder:
         # Maps expr.literal_hash] to get_declaration(expr)
         # for every expr stored in the binder
         self.declarations = Frame()
-        # Set of other keys to invalidate if a key is changed.
+        # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
+        # Whenever a new key (e.g. x.a.b) is added, we update this
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
-        # Set of keys with dependencies added already.
-        self._added_dependencies = set()  # type: Set[Key]
 
         # Set to True on return/break/raise, False on blocks that can block any of them
         self.breaking_out = False
@@ -112,15 +111,10 @@ class ConditionalTypeBinder:
     def _add_dependencies(self, key: Key, value: Key = None) -> None:
         if value is None:
             value = key
-            if value in self._added_dependencies:
-                return
-            self._added_dependencies.add(value)
+        else:
+            self.dependencies.setdefault(key, set()).add(value)
         if isinstance(key, tuple):
-            key = cast(Any, key)   # XXX sad
-            if key != value:
-                self.dependencies[key] = set()
-                self.dependencies.setdefault(key, set()).add(value)
-            for elt in cast(Any, key):
+            for elt in key:
                 self._add_dependencies(elt, value)
 
     def push_frame(self) -> Frame:
@@ -130,7 +124,6 @@ class ConditionalTypeBinder:
         return f
 
     def _push(self, key: Key, type: Type, index: int=-1) -> None:
-        self._add_dependencies(key)
         self.frames[index][key] = type
 
     def _get(self, key: Key, index: int=-1) -> Type:
@@ -147,6 +140,7 @@ class ConditionalTypeBinder:
         key = expr.literal_hash
         if key not in self.declarations:
             self.declarations[key] = self.get_declaration(expr)
+            self._add_dependencies(key)
         self._push(key, typ)
 
     def get(self, expr: Node) -> Type:
