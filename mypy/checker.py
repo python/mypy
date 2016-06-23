@@ -192,8 +192,7 @@ class ConditionalTypeBinder:
 
         self.last_pop_changed = self.update_from_options(options)
         self.last_pop_breaking_out = self.breaking_out
-        if fall_through:
-            self.breaking_out = False
+        self.breaking_out = False
 
         return result
 
@@ -1685,18 +1684,15 @@ class TypeChecker(NodeVisitor[Type]):
 
                     # Might also want to issue a warning
                     # print("Warning: isinstance always true")
-                    if breaking_out:
-                        self.binder.breaking_out = True
-                        return None
                     break
             else:  # Didn't break => can't prove one of the conditions is always true
                 with self.binder.frame_context(2):
                     if s.else_body:
                         self.accept(s.else_body)
                 breaking_out = breaking_out and self.binder.last_pop_breaking_out
-                if breaking_out:
-                    self.binder.breaking_out = True
-                    return None
+        if breaking_out:
+            self.binder.breaking_out = True
+        return None
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
