@@ -61,17 +61,7 @@ T = TypeVar('T')
 
 
 class Frame(Dict[Any, Type]):
-    """Frame for the ConditionalTypeBinder.
-
-    options_on_return represents a list of possible frames that we
-    will incorporate next time we are the top frame (e.g. frames from
-    the end of each if/elif/else block).
-    """
-
-    def __init__(self, parent: 'Frame' = None) -> None:
-        super().__init__()
-        self.options_on_return = []  # type: List[Frame]
-
+    pass
 
 class Key(AnyType):
     pass
@@ -85,6 +75,11 @@ class ConditionalTypeBinder:
         # expr.literal_hash -- literals like 'foo.bar' --
         # to types.
         self.frames = [Frame()]
+
+        # For frames higher in the stack, we record the set of
+        # Frames that can escape there
+        self.options_on_return = [] # type: List[List[Frame]]
+        
         # Maps expr.literal_hash] to get_declaration(expr)
         # for every expr stored in the binder
         self.declarations = Frame()
@@ -114,8 +109,9 @@ class ConditionalTypeBinder:
 
     def push_frame(self) -> Frame:
         """Push a new frame into the binder."""
-        f = Frame(self.frames[-1])
+        f = Frame()
         self.frames.append(f)
+        self.options_on_return.append([])
         return f
 
     def _push(self, key: Key, type: Type, index: int=-1) -> None:
@@ -190,18 +186,15 @@ class ConditionalTypeBinder:
         to escape to its ancestor `fall_through` levels higher.
         """
         if fall_through and not self.breaking_out:
-            self.allow_jump(-fall_through - 1)
+            self.allow_jump(-fall_through)
 
         result = self.frames.pop()
+        options = self.options_on_return.pop()
 
+        self.last_pop_changed = self.update_from_options(options)
         self.last_pop_breaking_out = self.breaking_out
         if fall_through:
             self.breaking_out = False
-
-        options = self.frames[-1].options_on_return
-        self.frames[-1].options_on_return = []
-
-        self.last_pop_changed = self.update_from_options(options)
 
         return result
 
@@ -273,13 +266,17 @@ class ConditionalTypeBinder:
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
+        # self.frames and self.options_on_return have different lengths
+        # so make sure the index is positive
+        if index < 0:
+            index += len(self.options_on_return)
         frame = Frame()
         for f in self.frames[index + 1:]:
             frame.update(f)
-        self.frames[index].options_on_return.append(frame)
+        self.options_on_return[index].append(frame)
 
     def push_loop_frame(self) -> None:
-        self.loop_frames.append(len(self.frames) - 1)
+        self.loop_frames.append(len(self.frames)-1)
 
     def pop_loop_frame(self) -> None:
         self.loop_frames.pop()
@@ -472,8 +469,9 @@ class TypeChecker(NodeVisitor[Type]):
         with self.binder.frame_context(1) as outer_frame:
             self.binder.push_loop_frame()
             while True:
-                outer_frame.options_on_return.append(outer_frame)  # We may skip each iteration
                 with self.binder.frame_context(1):
+                    # We may skip each iteration
+                    self.binder.options_on_return[-1].append(outer_frame)
                     self.accept(body)
                 if not self.binder.last_pop_changed:
                     break
