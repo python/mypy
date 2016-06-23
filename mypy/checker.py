@@ -80,23 +80,7 @@ class Frame(Dict[Any, Type]):
 
     def __init__(self, parent: 'Frame' = None) -> None:
         super().__init__()
-        self.parent = parent
         self.options_on_return = []  # type: List[Frame]
-
-    def add_return_option(self, frame: 'Frame') -> None:
-        """When this frame is next visited, it may may have state `frame`.
-
-        The frame must be a descendent of self, and we incorporate every
-        intermediate frame.
-        """
-        frame_list = []
-        while frame is not self:
-            frame_list.append(frame)
-            frame = frame.parent
-        frame = Frame()
-        for f in frame_list[::-1]:
-            frame.update(f)
-        self.options_on_return.append(frame)
 
 
 class Key(AnyType):
@@ -107,11 +91,13 @@ class ConditionalTypeBinder:
     """Keep track of conditional types of variables."""
 
     def __init__(self) -> None:
-        self.frames = []  # type: List[Frame]
-        # The first frame is special: it's the declared types of variables.
-        self.frames.append(Frame())
-        # We want a second frame that we can update.
-        self.frames.append(Frame())
+        # The set of frames currently used.  These map
+        # expr.literal_hash -- literals like 'foo.bar' --
+        # to types.
+        self.frames = [Frame()]
+        # Maps expr.literal_hash] to get_declaration(expr)
+        # for every expr stored in the binder
+        self.declarations = Frame()
         # Set of other keys to invalidate if a key is changed.
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
         # Set of keys with dependencies added already.
@@ -159,7 +145,8 @@ class ConditionalTypeBinder:
         if not expr.literal:
             return
         key = expr.literal_hash
-        self.frames[0][key] = self.get_declaration(expr)
+        if key not in self.declarations:
+            self.declarations[key] = self.get_declaration(expr)
         self._push(key, typ)
 
     def get(self, expr: Node) -> Type:
@@ -189,14 +176,14 @@ class ConditionalTypeBinder:
             if any(x is None for x in resulting_values):
                 continue
 
-            if isinstance(self.frames[0].get(key), AnyType):
+            if isinstance(self.declarations.get(key), AnyType):
                 type = resulting_values[0]
                 if not all(is_same_type(type, t) for t in resulting_values[1:]):
                     type = AnyType()
             else:
                 type = resulting_values[0]
                 for other in resulting_values[1:]:
-                    type = join_simple(self.frames[0][key], type, other)
+                    type = join_simple(self.declarations[key], type, other)
             if not is_same_type(type, current_value):
                 self._push(key, type)
                 changed = True
@@ -213,7 +200,7 @@ class ConditionalTypeBinder:
             old_type = self._get(key, index)
             if old_type is None:
                 continue
-            replacement = join_simple(self.frames[0][key], old_type, frame[key])
+            replacement = join_simple(self.declarations[key], old_type, frame[key])
 
             if not is_same_type(replacement, old_type):
                 self._push(key, replacement, index)
@@ -233,12 +220,13 @@ class ConditionalTypeBinder:
         frame.broken represents whether we always leave this frame
         through a construct other than falling off the end.
         """
+        if fall_through and not self.breaking_out:
+            self.allow_jump(-fall_through - 1)
+
         result = self.frames.pop()
         result.broken = self.breaking_out
 
         if fall_through:
-            if not result.broken:
-                self.frames[-fall_through].add_return_option(result)
             self.breaking_out = False
 
         options = self.frames[-1].options_on_return
@@ -255,7 +243,7 @@ class ConditionalTypeBinder:
                 return None
             return type
         else:
-            return self.frames[0].get(expr.literal_hash)
+            return None
 
     def assign_type(self, expr: Node,
                     type: Type,
@@ -298,8 +286,7 @@ class ConditionalTypeBinder:
     def invalidate_dependencies(self, expr: Node) -> None:
         """Invalidate knowledge of types that include expr, but not expr itself.
 
-        For example, when expr is foo.bar, invalidate foo.bar.baz and
-        foo.bar[0].
+        For example, when expr is foo.bar, invalidate foo.bar.baz.
 
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
@@ -319,7 +306,10 @@ class ConditionalTypeBinder:
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
-        self.frames[index].add_return_option(self.frames[-1])
+        frame = Frame()
+        for f in self.frames[index + 1:]:
+            frame.update(f)
+        self.frames[index].options_on_return.append(frame)
 
     def push_loop_frame(self) -> None:
         self.loop_frames.append(len(self.frames) - 1)
