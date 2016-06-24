@@ -162,7 +162,6 @@ class ConditionalTypeBinder:
 
         self.last_pop_changed = self.update_from_options(options)
         self.last_pop_breaking_out = self.breaking_out
-        self.breaking_out = False
 
         return result
 
@@ -255,6 +254,11 @@ class ConditionalTypeBinder:
 
         If fall_through > 0, then it will allow the frame to escape to
         its ancestor `fall_through` levels higher.
+
+        A simple 'with binder.frame_context(): pass' will change the
+        last_pop_* flags but nothing else.
         """
+        was_breaking_out = self.breaking_out
         yield self.push_frame()
         self.pop_frame(fall_through)
+        self.breaking_out = was_breaking_out

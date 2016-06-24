@@ -908,6 +908,10 @@ def bar() -> None:
 [out]
 main: note: In function "bar":
 
+[case testReturnAndFlow]
+def foo() -> int:
+    return 1 and 2
+    return 'a'
 [case testCastIsinstance]
 from typing import Union
 
