@@ -170,6 +170,8 @@ class SemanticAnalyzer(NodeVisitor):
     bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type variables that were bound by outer classess
     tvar_stack = None  # type: List[List[SymbolTableNode]]
+    # Do weak type checking in this file
+    weak_opts = set()        # type: Set[str]
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -225,6 +227,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
+        self.weak_opts = file_node.weak_opts
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -1076,6 +1079,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
+        if self.weak_opts:
+            # Skip this if any weak options are set.
+            # This is mostly to avoid breaking unit tests.
+            return None
         if isinstance(rvalue, IntExpr):
             return self.named_type_or_none('builtins.int')
         if isinstance(rvalue, FloatExpr):
