@@ -63,6 +63,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
+    IntExpr, FloatExpr, UnicodeExpr,
     INVARIANT, UNBOUND_IMPORTED
 )
 from mypy.visitor import NodeVisitor
@@ -1043,8 +1044,11 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type, allow_tuple_literal)
         else:
             # For simple assignments, allow binding type aliases.
+            # Also set the type if the rvalue is a simple literal.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
+                if s.lvalues[0].is_def:
+                    s.type = self.analyze_simple_literal_type(s.rvalue)
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
@@ -1069,6 +1073,20 @@ class SemanticAnalyzer(NodeVisitor):
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(*s.rvalue.items)
+
+    def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
+        """Return builtins.int if rvalue is an int literal, etc."""
+        if isinstance(rvalue, IntExpr):
+            return self.named_type_or_none('builtins.int')
+        if isinstance(rvalue, FloatExpr):
+            return self.named_type_or_none('builtins.float')
+        if isinstance(rvalue, StrExpr):
+            return self.named_type_or_none('builtins.str')
+        if isinstance(rvalue, BytesExpr):
+            return self.named_type_or_none('builtins.bytes')
+        if isinstance(rvalue, UnicodeExpr):
+            return self.named_type_or_none('builtins.unicode')
+        return None
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
