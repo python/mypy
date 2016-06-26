@@ -795,3 +795,26 @@ class A(Generic[S]):
 [builtins fixtures/list.py]
 [out]
 main: note: In member "f" of class "A":
+
+[case testLambdaInGenericFunction]
+from typing import TypeVar, Callable
+T = TypeVar('T')
+S = TypeVar('S')
+def f(a: T, b: S) -> None:
+    c = lambda x: x  # type: Callable[[T], S]
+[out]
+main: note: In function "f":
+main:5: error: Incompatible return value type (got "T", expected "S")
+main:5: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
+
+[case testLambdaInGenericClass]
+from typing import TypeVar, Callable, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T]):
+    def f(self, b: S) -> None:
+        c = lambda x: x  # type: Callable[[T], S]
+[out]
+main: note: In member "f" of class "A":
+main:6: error: Incompatible return value type (got "T", expected "S")
+main:6: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
