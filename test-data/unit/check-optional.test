@@ -77,6 +77,30 @@ else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/bool.py]
 
+[case testOrCases]
+from typing import Optional
+x = None  # type: Optional[str]
+y1 = x or 'a'
+reveal_type(y1)  # E: Revealed type is 'builtins.str'
+y2 = x or 1
+reveal_type(y2)  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+z1 = 'a' or x
+reveal_type(z1)  # E: Revealed type is 'Union[builtins.str, builtins.None]'
+z2 = 1 or x
+reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
+
+[case testAndCases]
+from typing import Optional
+x = None  # type: Optional[str]
+y1 = x and 'b'
+reveal_type(y1)  # E: Revealed type is 'Union[builtins.None, builtins.str]'
+y2 = x and 1  # x could be '', so...
+reveal_type(y2)  # E: Revealed type is 'Union[builtins.str, builtins.None, builtins.int]'
+z1 = 'b' and x
+reveal_type(z1)  # E: Revealed type is 'Union[builtins.str, builtins.None]'
+z2 = 1 and x
+reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
+
 [case testLambdaReturningNone]
 f = lambda: None
 x = f()

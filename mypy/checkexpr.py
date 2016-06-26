@@ -1077,25 +1077,47 @@ class ExpressionChecker:
         # inference of the right operand so that expressions such as
         # '[1] or []' are inferred correctly.
         ctx = self.chk.type_context[-1]
-        left_type = self.accept(e.left, ctx)
 
+        # The left operand will always be evaluated, so make sure it
+        # type checks unconditionally. (We have to type check it before
+        # calling find_isinstance_check anyways.)
+        ctx = left_type = self.accept(e.left, ctx)
+
+        # If this is an 'and' or 'or' operation, then left_map and right_map
+        # are the typing conditions that must hold for the expression to
+        # evaluate to its left or right operand, respectively.
         if e.op == 'and':
-            right_map, _ = \
+            right_map, left_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         elif e.op == 'or':
-            _, right_map = \
+            left_map, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         else:
-            right_map = None
+            assert False, "check_boolean_op can only process 'and' and 'or' expressions"
 
         with self.chk.binder.frame_context():
-            if right_map:
+            if left_map == {}:
+                # optimization: we learned nothing from
+                # find_isinstance_check, so no need to re-check.
+                # (The old parser generates left-nested 'and' trees
+                # for 'e1 and ... and eN'; fixed in fast parser.)
+                pass
+            elif left_map is not None:
+                for var, type in left_map.items():
+                    self.chk.binder.push(var, type)
+                left_type = self.accept(e.left, ctx)
+            else:
+                left_type = UninhabitedType()
+
+        with self.chk.binder.frame_context():
+            if right_map is not None:
                 for var, type in right_map.items():
                     self.chk.binder.push(var, type)
-
-            right_type = self.accept(e.right, left_type)
+                right_type = self.accept(e.right, ctx)
+            else:
+                right_type = UninhabitedType()
 
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
