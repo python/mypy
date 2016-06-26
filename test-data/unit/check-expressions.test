@@ -1492,4 +1492,4 @@ reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str";
 
 [case testRevealTypeVar]
 reveal_type = 1
-1 + "foo" # E: Unsupported left operand type for + ("int")
+1 + "foo" # E: Unsupported operand types for + ("int" and "str")

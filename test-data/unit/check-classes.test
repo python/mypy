@@ -575,8 +575,9 @@ A.B = None # E: Cannot assign to a type
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
 x = C.x # E: Cannot determine type of 'x'
+def f() -> int: return 1
 class C:
-    x = 1
+    x = f()
 [builtins fixtures/list.py]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue2]

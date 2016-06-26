@@ -120,7 +120,7 @@ main: note: In function "f":
 [case testWeakFunction3]
 # mypy: weak
 def f():
-    1 + 'a' # E: Unsupported left operand type for + ("int")
+    1 + 'a' # E: Unsupported operand types for + ("int" and "str")
 [out]
 main: note: In function "f":
 [case testWeakFunctionCall]

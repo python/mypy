@@ -14,7 +14,9 @@ class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 
-class int: pass
+class int:
+    def __add__(self, other: 'int') -> 'int': pass
 class float: pass
 class bool(int): pass
-class str: pass
+class str:
+    def __add__(self, other: 'str') -> 'str': pass
