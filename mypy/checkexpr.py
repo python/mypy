@@ -1201,7 +1201,7 @@ class ExpressionChecker:
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
-        with self.chk.binder.frame_context():
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if right_map:
                 for var, type in right_map.items():
                     self.chk.binder.push(var, type)
@@ -1645,7 +1645,7 @@ class ExpressionChecker:
                                          type_name: str,
                                          id_for_messages: str) -> Type:
         """Type check a generator expression or a list comprehension."""
-        with self.chk.binder.frame_context():
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(gen)
 
             # Infer the type of the list comprehension by using a synthetic generic
@@ -1665,7 +1665,7 @@ class ExpressionChecker:
 
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
-        with self.chk.binder.frame_context():
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(e)
 
             # Infer the type of the list comprehension by using a synthetic generic
@@ -1739,7 +1739,7 @@ class ExpressionChecker:
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type]) -> Type:
-        with self.chk.binder.frame_context():
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map:
                 for var, type in map.items():
                     self.chk.binder.push(var, type)
