@@ -226,7 +226,132 @@ else:
     x = B()
 x.z
 
+[case testUnionTryExcept3]
+class A: y = A()
+class B(A): z = 1
+x = A()
+x = B()
+try:
+    raise BaseException()
+    x = A()
+except:
+    pass
+x.z
+x = B()
+try:
+    x = A()
+    raise BaseException()
+except:
+    pass
+x.z           # E: "A" has no attribute "z"
+x = B()
+try:
+    pass
+except:
+    x = A()
+    raise BaseException()
+x.z
+try:
+    x = A()
+except:
+    pass
+x.z           # E: "A" has no attribute "z"
+x = B()
+try:
+    pass
+except:
+    x = A()
+x.z           # E: "A" has no attribute "z"
+[builtins fixtures/exception.py]
+[case testUnionTryExcept4]
 
+class A: pass
+class B(A): z = 1
+
+x = A()
+while 1:
+    try:
+        x.z # E: "A" has no attribute "z"
+        x = A()
+    except:
+        x = B()
+    else:
+        x = B()
+    x.z
+[builtins fixtures/exception.py]
+[case testUnionTryFinally]
+class A: pass
+class B(A): b = 1
+
+x = A()
+x = B()
+try:
+    x = A()
+    x.b # E: "A" has no attribute "b"
+    x = B()
+finally:
+    x.b  # E: "A" has no attribute "b"
+x.b
+[case testUnionTryFinally2]
+class A: pass
+class B(A): b = 1
+
+x = A()
+x = B()
+try:
+    x = A()
+    x = B()
+except:
+    pass
+finally:
+    pass
+x.b      # E: "A" has no attribute "b"
+[case testUnionTryFinally3]
+class A: pass
+class B(A): b = 1
+
+x = A()
+x = B()
+try:
+    x = A()
+    x = B()
+except:
+    pass
+finally:
+    x = B()
+x.b
+[case testUnionTryFinally4]
+class A: pass
+class B(A): b = 1
+
+while 2:
+    x = A()
+    x = B()
+    try:
+        x = A()
+        x = B()
+    except:
+        pass
+    finally:
+        x.b     # E: "A" has no attribute "b"
+        if not isinstance(x, B):
+            break
+    x.b
+[builtins fixtures/isinstancelist.py]
+[case testUnionTryFinally5]
+class A: pass
+class B(A): b = 1
+
+while 2:
+    x = A()
+    try:
+        x = A()
+        x = B()
+    finally:
+        x.b    # E: "A" has no attribute "b"
+        break
+        x.b
+    x.b
 [case testUnionListIsinstance]
 
 from typing import Union, List
@@ -255,6 +380,24 @@ def f(x: Union[List[int], List[str], int]) -> None:
 [builtins fixtures/isinstancelist.py]
 [out]
 main: note: In function "f":
+
+[case testUnionListIsinstance2]
+
+from typing import Union, List
+class A: a = 1
+class B: pass
+class C: pass
+
+def g(x: Union[A, B]) -> A: pass
+def h(x: C) -> A: pass
+
+def f(x: Union[A, B, C]) -> None:
+    if isinstance(x, C):
+        x = h(x)
+    else:
+        x = g(x)
+    x.a
+[builtins fixtures/isinstancelist.py]
 
 [case testUnionStrictDefnBasic]
 from typing import Union
@@ -342,7 +485,20 @@ while 1:
         y = h.pet.paws + 1
         z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstancelist.py]
+[case testIsInstanceSubClassReset]
+class A: pass
+class B(A): b=1
 
+class C:
+    a = A()
+
+x = C()
+x.a.b                   # E: "A" has no attribute "b"
+if isinstance(x.a, B):
+    x.a.b
+    x = C()
+    x.a.b               # E: "A" has no attribute "b"
+[builtins fixtures/isinstance.py]
 [case testIsinstanceTuple]
 from typing import Union
 
@@ -420,6 +576,12 @@ if isinstance(h.pet, Dog):
 from typing import Union
 
 def foo() -> None:
+    x = 1 # type: Union[int, str]
+    if isinstance(x, int):
+        return
+    y = x + 'asdad'
+
+def bar() -> None:
     x = 1 # type: Union[int, str]
     if isinstance(x, int):
         return
@@ -602,9 +764,17 @@ while 1:
 else:
     x + 1
 x + 1      # E: Unsupported operand types for + (likely involving Union)
+x = 1
+for y in [1]:
+    x + 1
+    x = 'a'
+    break
+else:
+    x + 1
+x + 1      # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.py]
 
-[case testModifyLoop4]
+[case testModifyLoopWhile4]
 from typing import Union
 
 def foo() -> Union[int, str]: pass
@@ -631,6 +801,62 @@ else:
     x + 1 # E: Unsupported operand types for + (likely involving Union)
     x = 'a'
 x + 'a'
+[builtins fixtures/isinstancelist.py]
+[case testModifyLoopFor4]
+from typing import Union
+
+def foo() -> Union[int, str]: pass
+
+x = foo()
+x = 1
+
+for y in [1]:
+    x + 1
+    if 1:
+        x = 'a'
+        break
+else:
+    x + 1
+    x = 'a'
+x + 'a'
+x = 1
+for y in [1]:
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    if 1:
+        x = 'a'
+        continue
+else:
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x = 'a'
+x + 'a'
+[builtins fixtures/isinstancelist.py]
+[case testModifyNestedLoop]
+from typing import Union
+
+def foo() -> Union[int, str]: pass
+
+x = foo()
+x = 1
+
+for y in [1]:
+    for z in [1]:
+        break
+    else:
+        x = 'a'
+        break
+else:
+    x + 1
+x + 1 # E: Unsupported operand types for + (likely involving Union)
+x = 1
+while 1:
+    while 1:
+        break
+    else:
+        x = 'a'
+        break
+else:
+    x + 1
+x + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.py]
 
 [case testModifyLoopLong]
@@ -682,6 +908,10 @@ def bar() -> None:
 [out]
 main: note: In function "bar":
 
+[case testReturnAndFlow]
+def foo() -> int:
+    return 1 and 2
+    return 'a'
 [case testCastIsinstance]
 from typing import Union
 
@@ -707,6 +937,17 @@ while 1:
     x = 'a'           # Note: no error because unreachable code
 [builtins fixtures/isinstancelist.py]
 
+[case testUnreachableCode2]
+x = 1
+while 1:
+    try:
+        pass
+    except:
+        continue
+    else:
+        continue
+    x + 'a'
+[builtins fixtures/isinstance.py]
 
 [case testIsinstanceAnd]
 class A:
