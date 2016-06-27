@@ -1099,3 +1099,33 @@ def f(x: Union[List[int], str]) -> None:
 [out]
 main: note: In function "f":
 main:4: error: "int" not callable
+
+[case testIsinstanceInWrongOrderInBooleanOp]
+class A:
+    m = 1
+def f(x: object) -> None:
+    if x.m and isinstance(x, A) or False:  # E: "object" has no attribute "m"
+        pass
+[builtins fixtures/isinstance.py]
+[out]
+main: note: In function "f":
+
+[case testIsinstanceAndOr]
+class A:
+    a = None  # type: A
+
+def f(x: object) -> None:
+    b = isinstance(x, A) and x.a or A()
+    reveal_type(b)  # E: Revealed type is '__main__.A'
+[builtins fixtures/isinstance.py]
+[out]
+main: note: In function "f":
+
+[case testLeftNestedAnds]
+one = 1
+assert ((((((((((((((((((((((((((((((one
+        and one) and one) and one) and one) and one) and one) and one)
+        and one) and one) and one) and one) and one) and one) and one)
+        and one) and one) and one) and one) and one) and one) and one)
+        and one) and one) and one) and one) and one) and one) and one)
+        and one) and one)

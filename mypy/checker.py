@@ -2159,7 +2159,8 @@ def find_isinstance_check(node: Node,
                           weak: bool=False
                           ) -> Tuple[Optional[Dict[Node, Type]], Optional[Dict[Node, Type]]]:
     """Find any isinstance checks (within a chain of ands).  Includes
-    implicit and explicit checks for None.
+    implicit and explicit checks for None. `node` must already have
+    been type checked so that its subexpressions have types in type_map.
 
     Return value is a map of variables to their types if the condition
     is true and a map of variables to their types if the condition is false.
