@@ -1031,6 +1031,8 @@ y = C() # type: A
 
 if isinstance(x, B) and isinstance(y, int):
     1() # type checking skipped
+if isinstance(y, int) and isinstance(x, B):
+    1() # type checking skipped
 [builtins fixtures/isinstancelist.py]
 
 [case testReturnWithCallExprAndIsinstance]
@@ -1044,6 +1046,38 @@ def foo(): pass
 [builtins fixtures/isinstancelist.py]
 [out]
 main: note: In function "f":
+
+[case testIsinstanceOr1]
+from typing import Optional
+def f(a: bool, x: object) -> Optional[int]:
+    if a or not isinstance(x, int):
+        return None
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+    return x
+[builtins fixtures/isinstance.py]
+[out]
+main: note: In function "f":
+
+[case testIsinstanceOr2]
+from typing import Optional
+def g(a: bool, x: object) -> Optional[int]:
+    if not isinstance(x, int) or a:
+        return None
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+    return x
+[builtins fixtures/isinstance.py]
+[out]
+main: note: In function "g":
+
+[case testIsinstanceOr3]
+from typing import Optional
+def h(a: bool, x: object) -> Optional[int]:
+    if a or isinstance(x, int):
+        return None
+    return x # E: Incompatible return value type (got "object", expected "int")
+[builtins fixtures/isinstance.py]
+[out]
+main: note: In function "h":
 
 [case testIsinstanceWithOverlappingUnionType]
 from typing import Union
@@ -1099,3 +1133,26 @@ def f(x: Union[List[int], str]) -> None:
 [out]
 main: note: In function "f":
 main:4: error: "int" not callable
+
+[case testIsinstanceOrIsinstance]
+class A: pass
+class B(A):
+    flag = 1
+class C(A):
+    flag = 2
+x1 = A()
+if isinstance(x1, B) or isinstance(x1, C):
+    reveal_type(x1) # E: Revealed type is 'Union[__main__.B, __main__.C]'
+    f = x1.flag  # type: int
+else:
+    reveal_type(x1) # E: Revealed type is '__main__.A'
+    f = 0
+x2 = A()
+if isinstance(x2, A) or isinstance(x2, C):
+    reveal_type(x2) # E: Revealed type is '__main__.A'
+    f = x2.flag # E: "A" has no attribute "flag"
+else:
+    # unreachable
+    1()
+[builtins fixtures/isinstance.py]
+[out]
