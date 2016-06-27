@@ -173,7 +173,7 @@ class SemanticAnalyzer(NodeVisitor):
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
     # Do lightweight type checking
-    lightweight_type_check = False # type: bool
+    lightweight_type_check = False  # type: bool
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
