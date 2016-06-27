@@ -172,6 +172,8 @@ class SemanticAnalyzer(NodeVisitor):
     tvar_stack = None  # type: List[List[SymbolTableNode]]
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
+    # Do lightweight type checking
+    lightweight_type_check = False # type: bool
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -196,7 +198,8 @@ class SemanticAnalyzer(NodeVisitor):
                  lib_path: List[str],
                  errors: Errors,
                  pyversion: Tuple[int, int],
-                 check_untyped_defs: bool) -> None:
+                 check_untyped_defs: bool,
+                 lightweight_type_check: bool = False) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -217,6 +220,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.modules = {}
         self.pyversion = pyversion
         self.check_untyped_defs = check_untyped_defs
+        self.lightweight_type_check = lightweight_type_check
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
@@ -1079,8 +1083,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
-        if self.weak_opts:
+        if self.weak_opts or not self.lightweight_type_check:
             # Skip this if any weak options are set.
+            # Also skip if lightweight type check not requested.
             # This is mostly to avoid breaking unit tests.
             return None
         if isinstance(rvalue, IntExpr):

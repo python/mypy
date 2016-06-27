@@ -391,7 +391,8 @@ class BuildManager:
         check_untyped_defs = CHECK_UNTYPED_DEFS in self.flags
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
                                                   pyversion=pyversion,
-                                                  check_untyped_defs=check_untyped_defs)
+                                                  check_untyped_defs=check_untyped_defs,
+                                                  lightweight_type_check=(target >= TYPE_CHECK))
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors,
