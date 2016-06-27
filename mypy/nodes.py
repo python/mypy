@@ -224,6 +224,7 @@ class MypyFile(SymbolNode):
 class ImportBase(Node):
     """Base class for all import statements."""
     is_unreachable = False
+    is_top_level = False  # Set by semanal.FirstPass
     # If an import replaces existing definitions, we construct dummy assignment
     # statements that assign the imported names to the names in the current scope,
     # for type checking purposes. Example:

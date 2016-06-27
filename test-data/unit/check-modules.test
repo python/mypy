@@ -811,3 +811,39 @@ from a import x
 [file a/__init__.py]
 x = 0
 [out]
+
+
+-- Test stability under import cycles
+-- ----------------------------------
+
+-- The two tests are identical except one main has 'import x' and the other 'import y'.
+-- Previously (before build.order_ascc() was added) one of these would fail because the
+-- imports were processed in the (reverse) order in which the files were encountered.
+
+[case testImportCycleStability1]
+import x
+[file x.py]
+def f() -> str: return ''
+class Base:
+    attr = f()
+def foo():
+    import y
+[file y.py]
+import x
+class Sub(x.Base):
+    attr = x.Base.attr
+[out]
+
+[case testImportCycleStability2]
+import y
+[file x.py]
+def f() -> str: return ''
+class Base:
+    attr = f()
+def foo():
+    import y
+[file y.py]
+import x
+class Sub(x.Base):
+    attr = x.Base.attr
+[out]
