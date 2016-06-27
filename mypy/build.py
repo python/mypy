@@ -335,6 +335,8 @@ CacheMeta = NamedTuple('CacheMeta',
 
 
 # Priorities used for imports.  (Here, top-level includes inside a class.)
+# These are used to determine a more predictable order in which the
+# nodes in an import cycle are processed.
 PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
@@ -434,10 +436,11 @@ class BuildManager:
                     pos = len(res)
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
+                    pri = PRI_MED if imp.is_top_level else PRI_LOW
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
-                            res.append((0, sub_id, imp.line))
+                            res.append((pri, sub_id, imp.line))
                         else:
                             all_are_submodules = False
                     # If all imported names are submodules, don't add
@@ -1274,7 +1277,7 @@ class State:
         priorities = {}  # type: Dict[str, int]  # id -> priority
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for pri, id, line in manager.all_imported_modules_in_file(self.tree):
-            priorities[id] = min(pri, priorities.get(id, PRI_LOW))
+            priorities[id] = min(pri, priorities.get(id, PRI_ALL))
             if id == self.id:
                 continue
             # Omit missing modules, as otherwise we could not type-check
@@ -1499,7 +1502,33 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
-    """Come up with the ideal processing order within an SCC."""
+    """Come up with the ideal processing order within an SCC.
+
+    Using the priorities assigned by all_imported_modules_in_file(),
+    try to reduce the cycle to a DAG, by omitting arcs representing
+    dependencies of lower priority.
+
+    In the simplest case, if we have A <--> B where A has a top-level
+    "import B" (medium priority) but B only has the reverse "import A"
+    inside a function (low priority), we turn the cycle into a DAG by
+    dropping the B --> A arc, which leaves only A --> B.
+
+    If all arcs have the same priority, we fall back to sorting by
+    reverse global order (the order in which modules were first
+    encountered).
+
+    The algorithm is recursive, as follows: when as arcs of different
+    priorities are present, drop all arcs of the lowest priority,
+    identify SCCs in the resulting graph, and apply the algorithm to
+    each SCC thus found.  The recursion is bounded because at each
+    recursion the spread in priorities is (at least) one less.
+
+    In practice there are only a few priority levels (currently
+    N=3) and in the worst case we just carry out the same algorithm
+    for finding SCCs N times.  Thus the complexity is no worse than
+    the complexity of the original SCC-finding algorithm -- see
+    strongly_connected_components() below for a reference.
+    """
     if len(ascc) == 1:
         return [s for s in ascc]
     pri_spread = set()
@@ -1511,7 +1540,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
                 if pri < pri_max:
                     pri_spread.add(pri)
     if len(pri_spread) == 1:
-        # Filtered dependencies are homogeneous -- order by global order.
+        # Filtered dependencies are uniform -- order by global order.
         return sorted(ascc, key=lambda id: -graph[id].order)
     pri_max = max(pri_spread)
     sccs = sorted_components(graph, ascc, pri_max)

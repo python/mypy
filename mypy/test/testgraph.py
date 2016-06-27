@@ -4,7 +4,7 @@ from typing import AbstractSet, Dict, Set
 
 from mypy.myunit import Suite, assert_equal
 from mypy.build import BuildManager, State, TYPE_CHECK
-from mypy.build import topsort, strongly_connected_components, sorted_components
+from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 
 
 class GraphSuite(Suite):
@@ -30,7 +30,7 @@ class GraphSuite(Suite):
                       frozenset({'B', 'C'}),
                       frozenset({'D'})})
 
-    def test_sorted_components(self) -> None:
+    def _make_manager(self):
         manager = BuildManager(
             data_dir='',
             lib_path=[],
@@ -41,9 +41,27 @@ class GraphSuite(Suite):
             custom_typing_module='',
             source_set=None,
             reports=None)
+        return manager
+
+    def test_sorted_components(self) -> None:
+        manager = self._make_manager()
         graph = {'a': State('a', None, 'import b, c', manager),
+                 'd': State('d', None, 'pass', manager),
                  'b': State('b', None, 'import c', manager),
                  'c': State('c', None, 'import b, d', manager),
-                 'd': State('d', None, 'pass', manager)}
+                 }
         res = sorted_components(graph)
         assert_equal(res, [frozenset({'d'}), frozenset({'c', 'b'}), frozenset({'a'})])
+
+    def test_order_ascc(self) -> None:
+        manager = self._make_manager()
+        graph = {'a': State('a', None, 'import b, c', manager),
+                 'd': State('d', None, 'def f(): import a', manager),
+                 'b': State('b', None, 'import c', manager),
+                 'c': State('c', None, 'import b, d', manager),
+                 }
+        res = sorted_components(graph)
+        assert_equal(res, [frozenset({'a', 'd', 'c', 'b'})])
+        ascc = res[0]
+        scc = order_ascc(graph, ascc)
+        assert_equal(scc, ['d', 'c', 'b', 'a'])
