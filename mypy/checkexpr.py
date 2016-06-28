@@ -1191,22 +1191,15 @@ class ExpressionChecker:
         assert e.op in ('and', 'or')  # Checked by visit_op_expr
 
         if e.op == 'and':
-            right_map, left_map = \
-                mypy.checker.find_isinstance_check(e.left, self.chk.type_map)
+            right_map, left_map = self.chk.find_isinstance_check(e.left)
             restricted_left_type = false_only(left_type)
             result_is_left = not left_type.can_be_true
         elif e.op == 'or':
-            left_map, right_map = \
-                mypy.checker.find_isinstance_check(e.left, self.chk.type_map)
+            left_map, right_map = self.chk.find_isinstance_check(e.left)
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
-        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
-            if right_map:
-                for var, type in right_map.items():
-                    self.chk.binder.push(var, type)
-
-            right_type = self.accept(e.right, left_type)
+        right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
         self.check_usable_type(left_type, context)
         self.check_usable_type(right_type, context)
@@ -1712,7 +1705,7 @@ class ExpressionChecker:
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
-        if_map, else_map = mypy.checker.find_isinstance_check(e.cond, self.chk.type_map)
+        if_map, else_map = self.chk.find_isinstance_check(e.cond)
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
@@ -1740,9 +1733,12 @@ class ExpressionChecker:
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
-            if map:
-                for var, type in map.items():
-                    self.chk.binder.push(var, type)
+            if map is None:
+                # We still need to type check node, in case we want to
+                # process it for isinstance checks later
+                self.accept(node, context=context)
+                return UninhabitedType()
+            self.chk.push_type_map(map)
             return self.accept(node, context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:

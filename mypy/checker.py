@@ -244,12 +244,8 @@ class TypeChecker(NodeVisitor[Type]):
                     break
             self.binder.pop_loop_frame()
             if exit_condition:
-                _, else_map = find_isinstance_check(exit_condition, self.type_map)
-                if else_map is None:
-                    self.binder.unreachable()
-                else:
-                    for var, type in else_map.items():
-                        self.binder.push(var, type)
+                _, else_map = self.find_isinstance_check(exit_condition)
+                self.push_type_map(else_map)
             if else_body:
                 self.accept(else_body)
 
@@ -1539,34 +1535,19 @@ class TypeChecker(NodeVisitor[Type]):
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
                 self.check_usable_type(t, e)
-                if_map, else_map = find_isinstance_check(e, self.type_map)
-                if if_map is None:
-                    # The condition is always false
-                    # XXX should issue a warning?
-                    pass
-                else:
-                    # Only type check body if the if condition can be true.
-                    with self.binder.frame_context(can_skip=True, fall_through=2):
-                        if if_map:
-                            for var, type in if_map.items():
-                                self.binder.push(var, type)
+                if_map, else_map = self.find_isinstance_check(e)
 
-                        self.accept(b)
+                # XXX Issue a warning if condition is always False?
+                with self.binder.frame_context(can_skip=True, fall_through=2):
+                    self.push_type_map(if_map)
+                    self.accept(b)
 
-                    if else_map:
-                        for var, type in else_map.items():
-                            self.binder.push(var, type)
-                if else_map is None:
-                    # The condition is always true => remaining elif/else blocks
-                    # can never be reached.
+                # XXX Issue a warning if condition is always True?
+                self.push_type_map(else_map)
 
-                    # Might also want to issue a warning
-                    # print("Warning: isinstance always true")
-                    break
-            else:  # Didn't break => can't prove one of the conditions is always true
-                with self.binder.frame_context(can_skip=False, fall_through=2):
-                    if s.else_body:
-                        self.accept(s.else_body)
+            with self.binder.frame_context(can_skip=False, fall_through=2):
+                if s.else_body:
+                    self.accept(s.else_body)
         return None
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
@@ -1592,13 +1573,9 @@ class TypeChecker(NodeVisitor[Type]):
         self.accept(s.expr)
 
         # If this is asserting some isinstance check, bind that type in the following code
-        true_map, _ = find_isinstance_check(s.expr, self.type_map)
+        true_map, _ = self.find_isinstance_check(s.expr)
 
-        if true_map is None:
-            self.binder.unreachable()
-        else:
-            for var, type in true_map.items():
-                self.binder.push(var, type)
+        self.push_type_map(true_map)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Type:
         """Type check a raise statement."""
@@ -2342,6 +2319,18 @@ class TypeChecker(NodeVisitor[Type]):
 
     def method_type(self, func: FuncBase) -> FunctionLike:
         return method_type_with_fallback(func, self.named_type('builtins.function'))
+
+    # TODO: These next two functions should refer to TypeMap below
+    def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
+                                                            Optional[Dict[Expression, Type]]]:
+        return find_isinstance_check(n, self.type_map)
+
+    def push_type_map(self, type_map: Optional[Dict[Expression, Type]]) -> None:
+        if type_map is None:
+            self.binder.unreachable()
+        else:
+            for expr, type in type_map.items():
+                self.binder.push(expr, type)
 
 
 # Data structure returned by find_isinstance_check representing

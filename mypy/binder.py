@@ -118,7 +118,9 @@ class ConditionalTypeBinder:
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:
-        return self.frames[-1].unreachable
+        # TODO: Copy the value of unreachable into new frames to avoid
+        # this traversal on every statement?
+        return any(f.unreachable for f in self.frames)
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
