@@ -163,7 +163,7 @@ a = 1
 a and a
 a or a
 not a
-[builtins fixtures/bool-simple.py]
+[builtins fixtures/bool.py]
 [out]
 OpExpr(4) : builtins.int
 OpExpr(5) : builtins.int
@@ -176,7 +176,7 @@ a = bool()
 a and a
 a or a
 not a
-[builtins fixtures/bool-simple.py]
+[builtins fixtures/bool.py]
 [out]
 OpExpr(4) : builtins.bool
 OpExpr(5) : builtins.bool
@@ -243,7 +243,7 @@ if a:
   1
 elif not a:
   1
-[builtins fixtures/bool-simple.py]
+[builtins fixtures/bool.py]
 [out]
 NameExpr(3) : builtins.bool
 IntExpr(4) : builtins.int
@@ -256,7 +256,7 @@ IntExpr(6) : builtins.int
 a = None # type: bool
 while a:
   a
-[builtins fixtures/bool-simple.py]
+[builtins fixtures/bool.py]
 [out]
 NameExpr(3) : builtins.bool
 NameExpr(4) : builtins.bool
