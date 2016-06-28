@@ -908,6 +908,42 @@ def bar() -> None:
 [out]
 main: note: In function "bar":
 
+[case testWhileExitCondition1]
+from typing import Union
+x = 1  # type: Union[int, str]
+while isinstance(x, int):
+    if bool():
+        continue
+    x = 'a'
+else:
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstance.pyi]
+
+[case testWhileExitCondition2]
+from typing import Union
+x = 1  # type: Union[int, str]
+while isinstance(x, int):
+    if bool():
+        break
+    x = 'a'
+else:
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/isinstance.pyi]
+
+[case testWhileLinkedList]
+from typing import Union
+LinkedList = Union['Cons', 'Nil']
+class Nil: pass
+class Cons:
+    tail = None  # type: LinkedList
+def last(x: LinkedList) -> Nil:
+    while isinstance(x, Cons):
+        x = x.tail
+    return x
+[builtins fixtures/isinstance.pyi]
+
 [case testReturnAndFlow]
 def foo() -> int:
     return 1 and 2
