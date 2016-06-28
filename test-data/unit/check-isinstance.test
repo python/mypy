@@ -985,6 +985,89 @@ while bool():
     x + 'a'
 [builtins fixtures/isinstance.pyi]
 
+[case testUnreachableWhileTrue]
+def f(x: int) -> None:
+    while True:
+        if x:
+            return
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableAssertFalse]
+def f() -> None:
+    assert False
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableAssertFalse2]
+# flags: --fast-parser
+def f() -> None:
+    # The old parser doesn't understand the syntax below
+    assert False, "hi"
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableReturnOrAssertFalse]
+def f(x: int) -> int:
+    if x:
+        return x
+    else:
+        assert False
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableTryExcept]
+def f() -> None:
+    try:
+        f()
+        return
+    except BaseException:
+        return
+    1()
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableTryExceptElse]
+def f() -> None:
+    try:
+        f()
+    except BaseException:
+        return
+    else:
+        return
+    1()
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableTryReturnFinally1]
+def f() -> None:
+    try:
+        return
+    finally:
+        pass
+    1()
+
+[case testUnreachableTryReturnFinally2]
+def f() -> None:
+    try:
+        pass
+    finally:
+        return
+    1()
+
+[case testUnreachableTryReturnExceptRaise]
+def f() -> None:
+    try:
+        return
+    except:
+        raise
+    1()
+
+[case testUnreachableReturnLambda]
+from typing import Callable
+def g(t: Callable[[int], int]) -> int: pass
+def f() -> int:
+    return g(lambda x: x)
+    1()
+
 [case testIsinstanceAnd]
 class A:
     pass
