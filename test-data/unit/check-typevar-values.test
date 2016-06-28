@@ -145,9 +145,9 @@ from typing import TypeVar
 T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
-        y = 1+0
+        y = 1
     else:
-        y = ''+''
+        y = ''
     return y
 [builtins fixtures/isinstance.py]
 
@@ -156,7 +156,7 @@ from typing import TypeVar
 T = TypeVar('T', int, str)
 def f(x: T) -> T:
     if isinstance(x, int):
-        y = 1+0
+        y = 1
     else:
         y = object()
     return y # E: Incompatible return value type (got "object", expected "str")

@@ -1083,10 +1083,14 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
-        if self.weak_opts or not self.lightweight_type_check:
+        if self.weak_opts or not self.lightweight_type_check or self.function_stack:
             # Skip this if any weak options are set.
             # Also skip if lightweight type check not requested.
             # This is mostly to avoid breaking unit tests.
+            # Also skip inside a function; this is to avoid confusing
+            # the code that handles dead code due to isinstance()
+            # inside type variables with value restrictions (like
+            # AnyStr).
             return None
         if isinstance(rvalue, IntExpr):
             return self.named_type_or_none('builtins.int')
