@@ -146,12 +146,13 @@ def f(): pass
 PY3 = f()
 if PY3:
     pass
-elif 1:
+elif bool():
     import nonexistent
     1 + ''
 else:
     import bad_name
     1 + ''
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testSysVersionInfo_python2]
