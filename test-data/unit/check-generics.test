@@ -188,6 +188,71 @@ main:9: error: Incompatible types in assignment (expression has type A[C, B], va
 main:10: error: Incompatible types in assignment (expression has type A[B, B], variable has type A[B, C])
 
 
+[case testClassMethodOfGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class X(Generic[T,U]):
+    def __init__(self, t: T, u: U) -> None:
+        pass
+
+class A(Generic[T]):
+    @classmethod
+    def f(cls, x: T) -> T:
+        pass
+    @classmethod
+    def g(cls) -> T:
+        pass
+class B(A[X[int, T]], Generic[T]):
+    pass
+class C(B[str]):
+    pass
+
+A.f(3)() # E: "int" not callable
+B.f(3) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected X[int, None]
+B.f(X(3, 4))() # E: X[int, int] not callable
+C.f(X(3, 4)) # E: Argument 2 to "X" has incompatible type "int"; expected "str"
+C.f(X(3, 'a'))() # E: X[int, str] not callable
+
+ga = A.g() # E: Need type annotation for variable
+gb = B.g() # E: Need type annotation for variable
+gc = C.g()
+gc() # E: X[int, str] not callable
+[builtins fixtures/classmethod.py]
+
+[case testStaticMethodOfGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class X(Generic[T,U]):
+    def __init__(self, t: T, u: U) -> None:
+        pass
+
+class A(Generic[T]):
+    @staticmethod
+    def f(x: T) -> T:
+        pass
+    @staticmethod
+    def g() -> T:
+        pass
+class B(A[X[int, T]], Generic[T]):
+    pass
+class C(B[str]):
+    pass
+
+A.f(3)() # E: "int" not callable
+B.f(3) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected X[int, None]
+B.f(X(3, 4))() # E: X[int, int] not callable
+C.f(X(3, 4)) # E: Argument 2 to "X" has incompatible type "int"; expected "str"
+C.f(X(3, 'a'))() # E: X[int, str] not callable
+
+ga = A.g() # E: Need type annotation for variable
+gb = B.g() # E: Need type annotation for variable
+gc = C.g()
+gc() # E: X[int, str] not callable
+[builtins fixtures/staticmethod.py]
+
+
 -- Simple generic type bodies
 -- --------------------------
 
