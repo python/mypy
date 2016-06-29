@@ -1764,8 +1764,8 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
                    for item in actual.items)
     if isinstance(formal, TypeType):
         if isinstance(actual, TypeType):
-            # If both actual and formal are Type[T], and since Type[T] is
-            # covariant, check if actual=Type[A] is a subtype of formal=Type[F].
+            # Since Type[T] is covariant, check if actual = Type[A] is
+            # a subtype of formal = Type[F].
             return overload_arg_similarity(actual.item, formal.item)
         elif isinstance(actual, CallableType) and actual.is_type_obj():
             # Check if the actual is a constructor of some sort.
@@ -1793,9 +1793,7 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             else:
                 return 0
         elif isinstance(actual, TypeType):
-            allowable = {"builtins.object", "builtins.type"}
-            if isinstance(formal, Instance) and formal.type.fullname() in allowable:
-                # Type[T] is always an instance of object or type
+            if formal.type.fullname() in {"builtins.object", "builtins.type"}:
                 return 2
             else:
                 return 0
