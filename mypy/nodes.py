@@ -1769,6 +1769,9 @@ class TypeInfo(SymbolNode):
     # Is this a named tuple type?
     is_named_tuple = False
 
+    # Does this class define __call__?
+    is_callable = False
+
     # Is this a dummy from deserialization?
     is_dummy = False
 
