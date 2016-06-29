@@ -1723,3 +1723,61 @@ def foo(c: Type[C], d: Type[D]) -> None:
 [out]
 main: note: In function "foo":
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
+
+[case testTypeMatchesOverloadedFunctions]
+from typing import Type, overload, cast
+class User: pass
+@overload
+def f(a: object) -> None: pass
+@overload
+def f(a: int) -> None: pass
+f(User)
+f(cast(Type[User], User))
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeMatchesGeneralTypeInOverloadedFunctions]
+from typing import Type, overload, cast
+class User: pass
+@overload
+def f(a: type) -> None: pass
+@overload
+def f(a: int) -> None: pass
+f(User)
+f(cast(Type[User], User))
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testGeneralTypeDoesNotMatchSpecificTypeInOverloadedFunctions]
+from typing import Type, overload, cast
+class User: pass
+@overload
+def f(a: Type[User]) -> None: pass
+@overload
+def f(a: int) -> None: pass
+f(User)
+f(type(User))
+[builtins fixtures/classmethod.py]
+[out]
+main:8: error: No overload variant of "f" matches argument types [builtins.type]
+
+[case testTypeCovarianceWithOverloadedFunctions]
+from typing import Type, overload, cast
+class A: pass
+class B(A): pass
+class C(B): pass
+@overload
+def f(a: Type[B]) -> None: pass
+@overload
+def f(a: int) -> None: pass
+f(A)
+f(B)
+f(C)
+f(cast(Type[A], type(A)))
+f(cast(Type[B], type(B)))
+f(cast(Type[C], type(C)))
+[builtins fixtures/classmethod.py]
+[out]
+main:9: error: No overload variant of "f" matches argument types [def () -> __main__.A]
+main:12: error: No overload variant of "f" matches argument types [Type[__main__.A]]
+
