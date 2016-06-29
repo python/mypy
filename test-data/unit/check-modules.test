@@ -815,12 +815,11 @@ x = 0
 -- Test stability under import cycles
 -- ----------------------------------
 
--- The first two tests are identical except one main has 'import x' and the other 'import y'.
--- Previously (before build.order_ascc() was added) one of these would fail because the
--- imports were processed in the (reverse) order in which the files were encountered.
---
--- The third one isn't fixed by order_ascc(), but is fixed by the lightweight type
--- inference added to semanal.py (analyze_simple_literal_type()).
+-- The first two tests are identical except one main has 'import x'
+-- and the other 'import y'.  Previously (before build.order_ascc()
+-- was added) one of these would fail because the imports were
+-- processed in the (reverse) order in which the files were
+-- encountered.
 
 [case testImportCycleStability1]
 import x
@@ -850,6 +849,10 @@ class Sub(x.Base):
     attr = x.Base.attr
 [out]
 
+-- This case isn't fixed by order_ascc(), but is fixed by the
+-- lightweight type inference added to semanal.py
+-- (analyze_simple_literal_type()).
+
 [case testImportCycleStability3]
 import y
 [file x.py]
@@ -863,3 +866,22 @@ import x
 class Sub(x.Base):
     attr = 0
 [out]
+
+-- This case has a symmetrical cycle, so it doesn't matter in what
+-- order the files are processed.  It depends on the lightweight type
+-- interference.
+
+[case testImportCycleStability4]
+import x
+[file x.py]
+import y
+class C:
+    attr = ''
+def foo() -> int:
+    return y.D.attr
+[file y.py]
+import x
+class D:
+    attr = 0
+def bar() -> str:
+    return x.C.attr
