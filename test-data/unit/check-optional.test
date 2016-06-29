@@ -368,9 +368,6 @@ def lookup_field(name, obj):
         attr = f()
     else:
         attr = None
-[out]
-main: note: In function "lookup_field":
-main:10: error: Need type annotation for variable
 
 [case testTernaryWithNone]
 reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, builtins.None]'

@@ -530,7 +530,7 @@ else:
   object(None) # E: Too many arguments for "object"
 [builtins fixtures/exception.pyi]
 
-[case testRedefinedFunctionInTryWithElse-skip]
+[case testRedefinedFunctionInTryWithElse]
 def f() -> None: pass
 try:
     pass
