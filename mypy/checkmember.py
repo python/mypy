@@ -12,7 +12,7 @@ from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, function_type, Decorator, O
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
-from mypy.nodes import method_type, method_type_with_fallback
+from mypy.nodes import method_callable, method_type, method_type_with_fallback
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
@@ -321,18 +321,9 @@ def analyze_class_attribute_access(itype: Instance,
 def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
                     builtin_type: Callable[[str], Instance]) -> Type:
     if isinstance(t, CallableType):
-        # TODO: Should we propagate type variable values?
-        vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
-                for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
-        arg_types = t.arg_types
-        arg_kinds = t.arg_kinds
-        arg_names = t.arg_names
         if is_classmethod:
-            arg_types = arg_types[1:]
-            arg_kinds = arg_kinds[1:]
-            arg_names = arg_names[1:]
-        return t.copy_modified(arg_types=arg_types, arg_kinds=arg_kinds, arg_names=arg_names,
-                               variables=vars + t.variables)
+            t = method_callable(t)
+        return t.copy_modified(variables=info.defn.type_vars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod,
                                                               builtin_type))
