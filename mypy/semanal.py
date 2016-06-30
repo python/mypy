@@ -63,6 +63,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
+    IntExpr, FloatExpr, UnicodeExpr,
     INVARIANT, UNBOUND_IMPORTED
 )
 from mypy.visitor import NodeVisitor
@@ -169,6 +170,10 @@ class SemanticAnalyzer(NodeVisitor):
     bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type variables that were bound by outer classess
     tvar_stack = None  # type: List[List[SymbolTableNode]]
+    # Do weak type checking in this file
+    weak_opts = set()        # type: Set[str]
+    # Do lightweight type checking
+    lightweight_type_check = False  # type: bool
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -193,7 +198,8 @@ class SemanticAnalyzer(NodeVisitor):
                  lib_path: List[str],
                  errors: Errors,
                  pyversion: Tuple[int, int],
-                 check_untyped_defs: bool) -> None:
+                 check_untyped_defs: bool,
+                 lightweight_type_check: bool = False) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -214,6 +220,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.modules = {}
         self.pyversion = pyversion
         self.check_untyped_defs = check_untyped_defs
+        self.lightweight_type_check = lightweight_type_check
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
@@ -224,6 +231,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
+        self.weak_opts = file_node.weak_opts
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -1043,8 +1051,11 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type, allow_tuple_literal)
         else:
             # For simple assignments, allow binding type aliases.
+            # Also set the type if the rvalue is a simple literal.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
+                if s.lvalues[0].is_def:
+                    s.type = self.analyze_simple_literal_type(s.rvalue)
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
@@ -1069,6 +1080,29 @@ class SemanticAnalyzer(NodeVisitor):
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(*s.rvalue.items)
+
+    def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
+        """Return builtins.int if rvalue is an int literal, etc."""
+        if self.weak_opts or not self.lightweight_type_check or self.function_stack:
+            # Skip this if any weak options are set.
+            # Also skip if lightweight type check not requested.
+            # This is mostly to avoid breaking unit tests.
+            # Also skip inside a function; this is to avoid confusing
+            # the code that handles dead code due to isinstance()
+            # inside type variables with value restrictions (like
+            # AnyStr).
+            return None
+        if isinstance(rvalue, IntExpr):
+            return self.named_type_or_none('builtins.int')
+        if isinstance(rvalue, FloatExpr):
+            return self.named_type_or_none('builtins.float')
+        if isinstance(rvalue, StrExpr):
+            return self.named_type_or_none('builtins.str')
+        if isinstance(rvalue, BytesExpr):
+            return self.named_type_or_none('builtins.bytes')
+        if isinstance(rvalue, UnicodeExpr):
+            return self.named_type_or_none('builtins.unicode')
+        return None
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""

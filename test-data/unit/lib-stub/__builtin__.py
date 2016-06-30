@@ -12,7 +12,10 @@ class type:
 
 # These are provided here for convenience.
 class int: pass
+class float: pass
+
 class str: pass
+class unicode: pass
 
 class tuple: pass
 class function: pass

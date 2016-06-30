@@ -1043,7 +1043,7 @@ f('x') # fail
 [out]
 main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:9: error: Unsupported left operand type for + ("int")
+main:9: error: Unsupported operand types for + ("int" and "str")
 main: note: At top level:
 main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
@@ -1064,7 +1064,7 @@ def top() -> None:
 [out]
 main: note: In function "f":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10: error: Unsupported left operand type for + ("int")
+main:10: error: Unsupported operand types for + ("int" and "str")
 main: note: In function "top":
 main:13: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
@@ -1227,7 +1227,7 @@ A().f('x') # fail
 [out]
 main: note: In member "f" of class "A":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10: error: Unsupported left operand type for + ("int")
+main:10: error: Unsupported operand types for + ("int" and "str")
 main: note: At top level:
 main:13: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
@@ -1272,7 +1272,7 @@ def f(x: Callable[..., int]) -> None:
     x()
     x(1)
     x(z=1)
-    x() + '' # E: Unsupported left operand type for + ("int")
+    x() + '' # E: Unsupported operand types for + ("int" and "str")
 [out]
 main: note: In function "f":
 
@@ -1285,7 +1285,7 @@ def f(x: Callable[..., int]) -> None:
 [case testCastWithCallableAndArbitraryArgs]
 from typing import Callable, cast
 f = cast(Callable[..., int], None)
-f(x=4) + '' # E: Unsupported left operand type for + ("int")
+f(x=4) + '' # E: Unsupported operand types for + ("int" and "str")
 
 [case testCallableWithArbitraryArgsInErrorMessage]
 from typing import Callable

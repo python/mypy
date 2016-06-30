@@ -268,11 +268,11 @@ NameExpr(4) : builtins.bool
 
 [case testInferSingleType]
 import typing
-x = 1
+x = ()
 [builtins fixtures/primitives.py]
 [out]
-IntExpr(2) : builtins.int
-NameExpr(2) : builtins.int
+NameExpr(2) : Tuple[]
+TupleExpr(2) : Tuple[]
 
 [case testInferTwoTypes]
 ## NameExpr
@@ -287,11 +287,11 @@ NameExpr(4) : builtins.int
 [case testInferSingleLocalVarType]
 import typing
 def f() -> None:
-    x = 1
+    x = ()
 [builtins fixtures/primitives.py]
 [out]
-IntExpr(3) : builtins.int
-NameExpr(3) : builtins.int
+NameExpr(3) : Tuple[]
+TupleExpr(3) : Tuple[]
 
 
 -- Basic generics
