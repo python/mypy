@@ -77,7 +77,7 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         s = s.erase_to_union_or_bound()
     if isinstance(t, Instance):
         if isinstance(s, Instance):
-            # Only consider two classes non-disjoint if one is included in the mro
+            # Consider two classes non-disjoint if one is included in the mro
             # of another.
             if use_promotions:
                 # Consider cases like int vs float to be overlapping where
@@ -94,12 +94,19 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if isinstance(s, UnionType):
         return any(is_overlapping_types(t, item)
                    for item in s.items)
+    if isinstance(t, TypeType) and isinstance(s, TypeType):
+        # If both types are TypeType, compare their inner types.
+        return is_overlapping_types(t.item, s.item, use_promotions)
+    elif isinstance(t, TypeType) or isinstance(s, TypeType):
+        # If exactly only one of t or s is a TypeType, we consider
+        # the types to not be overlapping.
+        return False
     if experiments.STRICT_OPTIONAL:
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking
             return False
-    # We conservatively assume that non-instance, non-union types can overlap any other
-    # types.
+    # We conservatively assume that non-instance, non-union, and non-TypeType types can overlap
+    # any other types.
     return True
 
 
