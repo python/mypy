@@ -14,7 +14,7 @@ from mypy.build import BuildSource, find_module_clear_caches
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import (
-    normalize_error_messages, testcase_pyversion, update_testcase_output,
+    normalize_error_messages, pyversion_testcase, update_testcase_output,
     PytestSuite, test
 )
 from mypy.errors import CompileError
@@ -88,7 +88,7 @@ class TestTypeCheck(PytestSuite):
 
     def run_test_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
         find_module_clear_caches()
-        pyversion = testcase_pyversion(testcase.file, testcase.name)
+        pyversion = pyversion_testcase(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
         flags = self.parse_flags(program_text)

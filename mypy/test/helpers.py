@@ -264,18 +264,18 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
     return max(0, num_eq - 4)
 
 
-def testfile_pyversion(path: str) -> Tuple[int, int]:
+def pyversion_testfile(path: str) -> Tuple[int, int]:
     if path.endswith('python2.test'):
         return defaults.PYTHON2_VERSION
     else:
         return defaults.PYTHON3_VERSION
 
 
-def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
+def pyversion_testcase(path: str, testcase_name: str) -> Tuple[int, int]:
     if testcase_name.endswith('python2'):
         return defaults.PYTHON2_VERSION
     else:
-        return testfile_pyversion(path)
+        return pyversion_testfile(path)
 
 
 def normalize_error_messages(messages: List[str]) -> List[str]:
@@ -312,7 +312,6 @@ class PytestSuite:
         for test in c:
             def func(self, test):
                 test.run(self)
-            func.is_test_attr = True
             if test.is_skip:
                 func = pytest.mark.skip(reason='Test ends with -skip')(func)
             if 'FastParse' in test.name and not test.is_skip:

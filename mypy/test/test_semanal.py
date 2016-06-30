@@ -7,7 +7,7 @@ from typing import Dict, List
 from mypy import build
 from mypy.build import BuildSource
 from mypy.test.helpers import (
-    normalize_error_messages, testfile_pyversion, PytestSuite, test
+    normalize_error_messages, pyversion_testfile, PytestSuite, test
 )
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -54,7 +54,7 @@ def semanal_tests(obj, testcase):
         src = '\n'.join(testcase.input)
         result = build.build(target=build.SEMANTIC_ANALYSIS,
                              sources=[BuildSource('main', None, src)],
-                             pyversion=testfile_pyversion(testcase.file),
+                             pyversion=pyversion_testfile(testcase.file),
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = result.errors
