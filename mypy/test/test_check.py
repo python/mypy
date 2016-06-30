@@ -206,5 +206,3 @@ class TestTypeCheck(PytestSuite):
             return m.group(1).split()
         else:
             return []
-
-TestTypeCheck.setup_tests()

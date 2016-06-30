@@ -298,15 +298,15 @@ def test(request):
 class PytestSuite:
     """Assists in setting up data-driven test cases for pytest."""
     @classmethod
-    def setup_tests(cls):
+    def collect_tests(cls):
         """
         Sets up the child class's test case. The child must have a method
         `cases` that returns a list of `DataDrivenTestCase`s. This method will
         load the data-driven test cases and use setattr to assign it to the
         class, which will allow pytest to recognize the test.
 
-        Note that this method **must** be run after the definition of any
-        functions used by PytestSuite.cases.
+        This will be called during test collection (see conftest.py in the root
+        of the repository).
         """
         c = cls.cases()  # type: List[DataDrivenTestCase]
         for test in c:
@@ -314,7 +314,7 @@ class PytestSuite:
                 test.run(self)
             if test.marked_skip:
                 func = pytest.mark.skip(reason='Test ends with -skip')(func)
-            if 'FastParse' in test.name and not test.is_skip:
+            if 'FastParse' in test.name and not test.marked_skip:
                 try:
                     import mypy.fastparse
                 except SystemExit:

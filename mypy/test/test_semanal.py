@@ -81,8 +81,6 @@ def semanal_tests(obj, testcase):
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
                                                                 testcase.line)
 
-TestSemAnal.setup_tests()
-
 # Semantic analyzer error test cases
 
 # Paths to files containing test case descriptions.
@@ -119,8 +117,6 @@ def semanal_error_tests(obj, testcase):
     assert testcase.output == normalize_error_messages(a), \
         'Invalid compiler output ({}, line {})'.format(testcase.file,
                                                        testcase.line)
-
-TestSemAnalError.setup_tests()
 
 
 # SymbolNode table export test cases
@@ -161,8 +157,6 @@ class TestSemAnalSymtable(PytestSuite):
         assert testcase.output == a, \
             'Invalid semantic analyzer output ({}, line {})'.format(
                 testcase.file, testcase.line)
-
-TestSemAnalSymtable.setup_tests()
 
 
 # Type info export test cases
@@ -207,8 +201,6 @@ class TestSemAnalTypeInfo(PytestSuite):
         assert testcase.output == a, \
             'Invalid semantic analyzer output ({}, line {})'.format(
                 testcase.file, testcase.line)
-
-TestSemAnalTypeInfo.setup_tests()
 
 
 class TypeInfoMap(Dict[str, TypeInfo]):

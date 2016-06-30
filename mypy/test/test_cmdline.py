@@ -77,5 +77,3 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
-
-TestPythonEvaluation.setup_tests()
