@@ -1762,6 +1762,9 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)
                    for item in actual.items)
+    if isinstance(formal, UnionType):
+        return max(overload_arg_similarity(actual, item)
+                   for item in formal.items)
     if isinstance(formal, TypeType):
         if isinstance(actual, TypeType):
             # Since Type[T] is covariant, check if actual = Type[A] is
@@ -1769,13 +1772,10 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             return overload_arg_similarity(actual.item, formal.item)
         elif isinstance(actual, CallableType) and actual.is_type_obj():
             # Check if the actual is a constructor of some sort.
-            # TODO: is this unsound, since we don't check the __init__ signature?
+            # Note that this is this unsound, since we don't check the __init__ signature.
             return overload_arg_similarity(actual.ret_type, formal.item)
         else:
             return 0
-    if isinstance(formal, UnionType):
-        return max(overload_arg_similarity(actual, item)
-                   for item in formal.items)
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
             actual = actual.fallback
