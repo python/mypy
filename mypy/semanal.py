@@ -2466,7 +2466,7 @@ class FirstPass(NodeVisitor):
         self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)
 
 
-class ThirdPass(TraverserVisitor[None]):
+class ThirdPass(TraverserVisitor):
     """The third and final pass of semantic analysis.
 
     Check type argument counts and values of generic types, and perform some
