@@ -1731,12 +1731,12 @@ class User: pass
 UserType = User  # type: Type[User]
 
 @overload
-def f(a: object) -> None: pass
+def f(a: object) -> int: pass
 @overload
-def f(a: int) -> None: pass
+def f(a: int) -> str: pass
 
-f(User)
-f(UserType)
+reveal_type(f(User))  # E: Revealed type is 'builtins.int'
+reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
 [builtins fixtures/classmethod.py]
 [out]
 
@@ -1755,6 +1755,7 @@ def f(a: int) -> str:
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
+reveal_type(f(1))  # E: Revealed type is 'builtins.str'
 [builtins fixtures/classmethod.py]
 [out]
 
@@ -1765,8 +1766,8 @@ class User: pass
 UserType = User  # type: Type[User]
 
 @overload
-def f(a: User) -> bool:
-    return True
+def f(a: User) -> User:
+    return User() 
 @overload
 def f(a: Type[User]) -> int:
     return 1
@@ -1776,7 +1777,33 @@ def f(a: int) -> str:
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
-reveal_type(f(User()))  # E: Revealed type is 'builtins.bool'
+reveal_type(f(User()))  # E: Revealed type is '__main__.User'
+reveal_type(f(1))  # E: Revealed type is 'builtins.str'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testMixingTypeTypeInOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: User) -> Type[User]:
+    return User
+@overload
+def f(a: Type[User]) -> User:
+    return a()
+@overload
+def f(a: int) -> Type[User]: 
+    return User
+@overload
+def f(a: str) -> User:
+    return User()
+
+reveal_type(f(User()))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(f(User))  # E: Revealed type is '__main__.User'
+reveal_type(f(3))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(f("hi"))  # E: Revealed type is '__main__.User'
 [builtins fixtures/classmethod.py]
 [out]
 

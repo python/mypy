@@ -67,7 +67,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
 
     TODO: Don't consider tuples always overlapping.
     TODO: Don't consider callables always overlapping.
-    TODO: Don't consider type variables with values always overlapping.
     """
     # Since we are effectively working with the erased types, we only
     # need to handle occurrences of TypeVarType at the top level.
