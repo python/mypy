@@ -312,7 +312,7 @@ class PytestSuite:
         for test in c:
             def func(self, test):
                 test.run(self)
-            if test.is_skip:
+            if test.marked_skip:
                 func = pytest.mark.skip(reason='Test ends with -skip')(func)
             if 'FastParse' in test.name and not test.is_skip:
                 try:

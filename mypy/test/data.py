@@ -13,7 +13,7 @@ from mypy.myunit import TestCase, SkipTestCaseException
 
 def parse_test_cases(
         path: str,
-        perform: Callable[[Any, 'DataDrivenTestCase'], None],
+        perform: Callable[..., None],
         base_path: str = '.',
         optional_out: bool = False,
         include_path: str = None,
@@ -96,6 +96,7 @@ class DataDrivenTestCase(TestCase):
     file = ''
     line = 0
 
+    # NOTE: For info on the ..., see `run`.
     perform = None  # type: Callable[..., None]
 
     # (file path, file content) tuples
@@ -103,7 +104,7 @@ class DataDrivenTestCase(TestCase):
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
-    is_skip = False
+    marked_skip = False
 
     def __init__(self, name, input, output, file, line, lastline,
                  perform, files):
@@ -116,7 +117,7 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
-        self.is_skip = self.name.endswith('-skip')
+        self.marked_skip = self.name.endswith('-skip')
 
     def set_up(self) -> None:
         super().set_up()
@@ -148,12 +149,17 @@ class DataDrivenTestCase(TestCase):
             # modifications requires to make BOTH run at the moment, this branch
             # is necessary. It should be removed once all the tests relying on
             # DataDrivenTestCase are converted to pytest.
-            if self.is_skip:
+            if self.marked_skip:
                 raise SkipTestCaseException()
             else:
                 self.perform(self)
         else:
-            assert not self.is_skip
+            assert not self.marked_skip
+            # Because perform is an unbound method, it needs to be passed it
+            # own self, which is obj. In the future, after all tests are moved
+            # over to pytest, this whole class should probably be generic, to
+            # allow annotating obj. In the mean time, there isn't a cleaner way
+            # to handle this...
             self.perform(obj, self)
 
     def tear_down(self) -> None:
