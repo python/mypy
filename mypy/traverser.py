@@ -1,7 +1,5 @@
 """Generic node traverser visitor"""
 
-from typing import TypeVar, Generic
-
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
@@ -13,9 +11,6 @@ from mypy.nodes import (
     FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
     YieldExpr
 )
-
-
-T = TypeVar('T')
 
 
 class TraverserVisitor(NodeVisitor[None]):
