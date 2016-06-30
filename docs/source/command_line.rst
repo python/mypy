@@ -95,6 +95,53 @@ example::
 will type check that little program (and complain that ``List[int]``
 is not callable).
 
+How imports are found
+*********************
+
+When mypy encounters an `import` statement it tries to find the module
+on the file system, similar to the way Python finds it.
+However, there are some differences.
+
+First, mypy has its own search path.
+This is computed from the following items:
+
+- The ``MYPYPATH`` environment variable
+  (a colon-separated list of directories).
+- The directories containing the sources given on the command line
+  (see below).
+- The relevant directories of the
+  `typeshed <https://github.com/python/typeshed>`_ repo.
+
+For sources given on the command line, the path is adjusted by crawling
+up from the given file or package to the nearest directory that does not
+contain an ``__init__.py`` or ``__init__.pyi`` file.
+
+Second, mypy searches for stub files in addition to regular Python files
+and packages.
+The rules for searching a module ``foo`` are as follows:
+
+- The search looks in each of the directories in the search path
+  (see above) until a match is found.
+- If a package named ``foo`` is found (i.e. a directory
+  ``foo`` containing an ``__init__.py`` or ``__init__.pyi`` file)
+  that's a match.
+- If a stub file named ``foo.pyi`` is found, that's a match.
+- If a Python module named ``foo.py`` is found, that's a match.
+
+These matches are tried in order, so that if multiple matches are found
+in the same directory on the search path
+(e.g. a package and a Python file, or a stub file and a Python file)
+the first one in the above list wins.
+
+In particular, if a Python file and a stub file are both present in the
+same directory on the search path, only the stub file is used.
+(However, if the files are in different directories, the one found
+in the earlier directory is used.)
+
+NOTE: These rules are relevant to the following section too:
+the ``-s`` flag described below is applied _after_ the above algorithm
+has determined which package, stub or module to use.
+
 Following imports or not?
 *************************
 
