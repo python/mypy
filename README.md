@@ -195,7 +195,8 @@ pass inferior arguments via `-a`:
 
 Mypy is currently in the process of converting its tests from myunit to pytest.
 Some of the tests, such as `test_check`, have already been converted. To run
-these, you must use pytest instead, and use `-k` instead of `-a`:
+these individually, you can either use `./runtests.py` but pass options with
+`-t` instead of `-a`, or you can just run `py.test` itself:
 
     $ ./runtests.py pytest -t -k -t NestedListAssignment
     $ py.test -k NestedListAssignment
