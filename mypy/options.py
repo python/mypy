@@ -1,8 +1,7 @@
-import enum
 from mypy import defaults
 
 
-class BuildType(enum.Enum):
+class BuildType:
     STANDARD = 0
     MODULE = 1
     PROGRAM_TEXT = 2
