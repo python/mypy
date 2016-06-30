@@ -4,6 +4,13 @@ Mypy: Optional Static Typing for Python
 [![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
 
 
+Got a question? File an issue!
+------------------------------
+
+We don't have a mailing list; but we are always happy to answer questions
+filed as issues in our [tracker](https://github.com/python/mypy/issues).
+
+
 What is mypy?
 -------------
 
