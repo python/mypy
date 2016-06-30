@@ -1059,7 +1059,7 @@ class State:
                 # search path or the module has not been installed.
                 if caller_state:
                     suppress_message = ((manager.options.silent_imports and
-                                        manager.options.almost_silent) or
+                                        not manager.options.almost_silent) or
                                         (caller_state.tree is not None and
                                          'import' in caller_state.tree.weak_opts))
                     if not suppress_message:
