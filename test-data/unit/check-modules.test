@@ -885,3 +885,45 @@ class D:
     attr = 0
 def bar() -> str:
     return x.C.attr
+
+-- These cases test all supported literal types.
+
+[case testImportCycleStability5]
+import y
+[file x.py]
+class Base:
+    pass
+def foo() -> None:
+    import y
+    i = y.Sub.iattr  # type: int
+    f = y.Sub.fattr  # type: float
+    s = y.Sub.sattr  # type: str
+    b = y.Sub.battr  # type: bytes
+[file y.py]
+import x
+class Sub(x.Base):
+    iattr = 0
+    fattr = 0.0
+    sattr = ''
+    battr = b''
+[out]
+
+[case testImportCycleStability6_python2]
+import y
+[file x.py]
+class Base:
+    pass
+def foo() -> None:
+    import y
+    i = y.Sub.iattr  # type: int
+    f = y.Sub.fattr  # type: float
+    s = y.Sub.sattr  # type: str
+    u = y.Sub.uattr  # type: unicode
+[file y.py]
+import x
+class Sub(x.Base):
+    iattr = 0
+    fattr = 0.0
+    sattr = ''
+    uattr = u''
+[out]
