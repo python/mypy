@@ -543,6 +543,9 @@ class SemanticAnalyzer(NodeVisitor):
         sig = cast(CallableType, fdef.type)
         if len(sig.arg_types) < len(fdef.arguments):
             self.fail('Type signature has too few arguments', fdef)
+            # Add dummy Any arguments to prevent crashes later.
+            extra_anys = [AnyType()] * (len(fdef.arguments) - len(sig.arg_types))
+            sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail('Type signature has too many arguments', fdef)
 
