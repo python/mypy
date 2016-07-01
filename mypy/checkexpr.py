@@ -250,6 +250,11 @@ class ExpressionChecker:
             self.check_argument_types(arg_types, arg_kinds, callee,
                                       formal_to_actual, context,
                                       messages=arg_messages)
+
+            ret_val_is_type_obj = is_equivalent(callee.ret_type, self.named_type('builtins.type'))
+            if callee.is_type_obj() and (len(arg_types) == 1) and ret_val_is_type_obj:
+                callee.ret_type = TypeType(arg_types[0])
+
             if callable_node:
                 # Store the inferred callable type.
                 self.chk.store_type(callable_node, callee)
