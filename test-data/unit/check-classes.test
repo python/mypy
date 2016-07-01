@@ -1724,3 +1724,227 @@ def foo(c: Type[C], d: Type[D]) -> None:
 [out]
 main: note: In function "foo":
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
+
+[case testTypeMatchesOverloadedFunctions]
+from typing import Type, overload, Union
+
+class User: pass
+UserType = User  # type: Type[User]
+
+@overload
+def f(a: object) -> int: pass
+@overload
+def f(a: int) -> str: pass
+
+reveal_type(f(User))  # E: Revealed type is 'builtins.int'
+reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeMatchesGeneralTypeInOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+UserType = User  # type: Type[User]
+
+@overload
+def f(a: type) -> int:
+    return 1
+@overload
+def f(a: int) -> str: 
+    return "a" 
+
+reveal_type(f(User))  # E: Revealed type is 'builtins.int'
+reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
+reveal_type(f(1))  # E: Revealed type is 'builtins.str'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeMatchesSpecificTypeInOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+UserType = User  # type: Type[User]
+
+@overload
+def f(a: User) -> User:
+    return User() 
+@overload
+def f(a: Type[User]) -> int:
+    return 1
+@overload
+def f(a: int) -> str: 
+    return "a" 
+
+reveal_type(f(User))  # E: Revealed type is 'builtins.int'
+reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
+reveal_type(f(User()))  # E: Revealed type is '__main__.User'
+reveal_type(f(1))  # E: Revealed type is 'builtins.str'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testMixingTypeTypeInOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: User) -> Type[User]:
+    return User
+@overload
+def f(a: Type[User]) -> User:
+    return a()
+@overload
+def f(a: int) -> Type[User]: 
+    return User
+@overload
+def f(a: str) -> User:
+    return User()
+
+reveal_type(f(User()))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(f(User))  # E: Revealed type is '__main__.User'
+reveal_type(f(3))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(f("hi"))  # E: Revealed type is '__main__.User'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testGeneralTypeDoesNotMatchSpecificTypeInOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: Type[User]) -> None: pass
+@overload
+def f(a: int) -> None: pass
+
+f(User)
+f(type(User))  # E: No overload variant of "f" matches argument types [builtins.type]
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testNonTypeDoesNotMatchOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: Type[User]) -> None: pass
+@overload
+def f(a: type) -> None: pass
+
+f(3)  # E: No overload variant of "f" matches argument types [builtins.int]
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testInstancesDoNotMatchTypeInOverloadedFunctions]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: Type[User]) -> None: pass
+@overload
+def f(a: int) -> None: pass
+
+f(User)
+f(User())  # E: No overload variant of "f" matches argument types [__main__.User]
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeCovarianceWithOverloadedFunctions]
+from typing import Type, overload
+
+class A: pass
+class B(A): pass
+class C(B): pass
+AType = A  # type: Type[A]
+BType = B  # type: Type[B]
+CType = C  # type: Type[C]
+
+@overload
+def f(a: Type[B]) -> None: pass
+@overload
+def f(a: int) -> None: pass
+
+f(A)  # E: No overload variant of "f" matches argument types [def () -> __main__.A]
+f(B)
+f(C)
+f(AType)  # E: No overload variant of "f" matches argument types [Type[__main__.A]]
+f(BType)
+f(CType)
+[builtins fixtures/classmethod.py]
+[out]
+
+
+[case testOverloadedCovariantTypesFail]
+from typing import Type, overload
+
+class A: pass
+class B(A): pass
+
+@overload
+def f(a: Type[A]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(a: Type[B]) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testDistinctOverloadedCovariantTypesSucceed]
+from typing import Type, overload
+
+class A: pass
+class AChild(A): pass
+class B: pass
+class BChild(B): pass
+
+@overload
+def f(a: Type[A]) -> int: pass 
+@overload
+def f(a: Type[B]) -> str: pass
+@overload
+def f(a: A) -> A: pass
+@overload
+def f(a: B) -> B: pass
+
+reveal_type(f(A))  # E: Revealed type is 'builtins.int'
+reveal_type(f(AChild))  # E: Revealed type is 'builtins.int'
+reveal_type(f(B))  # E: Revealed type is 'builtins.str'
+reveal_type(f(BChild))  # E: Revealed type is 'builtins.str'
+
+reveal_type(f(A()))  # E: Revealed type is '__main__.A'
+reveal_type(f(AChild()))  # E: Revealed type is '__main__.A'
+reveal_type(f(B()))  # E: Revealed type is '__main__.B'
+reveal_type(f(BChild()))  # E: Revealed type is '__main__.B'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeTypeOverlapsWithObjectAndType]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(a: object) -> str: pass
+
+@overload
+def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(a: type) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeOverlapsWithObject]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: type) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(a: object) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+
