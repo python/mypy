@@ -352,6 +352,22 @@ while 2:
         break
         x.b
     x.b
+[case testUnionTryFinally6]
+class A: pass
+class B(A): b = 1
+
+def f() -> int:
+    x = B()  # type: A
+    try:
+        x = B()
+    except:
+        x = A()
+        # An exception could occur here
+        x = B()
+    finally:
+        return x.b # E: "A" has no attribute "b"
+[out]
+main: note: In function "f":
 [case testUnionListIsinstance]
 
 from typing import Union, List

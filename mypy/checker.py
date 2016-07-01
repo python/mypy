@@ -1643,10 +1643,15 @@ class TypeChecker(NodeVisitor[Type]):
         # (by exception, return, break, etc.)
         with self.binder.frame_context(can_skip=False, fall_through=0):
             if s.finally_body:
+                # Not only might the body of the try statement exit abnormally,
+                # but so might an exception handler or else clause. The finally
+                # clause runs in *all* cases, so we need an outer try frame to
+                # catch all intermediate states in case an exception is raised
+                # during an except or else clause.
                 self.binder.try_frames.add(len(self.binder.frames) - 1)
                 self.visit_try_without_finally(s)
                 self.binder.try_frames.remove(len(self.binder.frames) - 1)
-                # First we check finally_body is type safe for all intermediate frames
+                # First we check finally_body is type safe on all abnormal exit paths
                 self.accept(s.finally_body)
             else:
                 self.visit_try_without_finally(s)
