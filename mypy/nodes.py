@@ -132,6 +132,13 @@ class Node(Context):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
+# These are placeholders for a future refactoring; see #1783.
+# For now they serve as (unchecked) documentation of what various
+# fields of Node subtypes are expected to contain.
+Statement = Node
+Expression = Node
+
+
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
 
@@ -148,7 +155,7 @@ class SymbolNode(Node):
         return cast(SymbolNode, super().deserialize(data))
 
 
-class MypyFile(SymbolNode):
+class MypyFile(SymbolNode, Statement):
     """The abstract syntax tree of a single source file."""
 
     # Module name ('__main__' for initial file)
@@ -158,7 +165,7 @@ class MypyFile(SymbolNode):
     # Path to the file (None if not known)
     path = ''
     # Top-level definitions and statements
-    defs = None  # type: List[Node]
+    defs = None  # type: List[Statement]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
@@ -172,7 +179,7 @@ class MypyFile(SymbolNode):
     weak_opts = None  # type: Set[str]
 
     def __init__(self,
-                 defs: List[Node],
+                 defs: List[Statement],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
                  ignored_lines: Set[int] = None,
@@ -221,7 +228,7 @@ class MypyFile(SymbolNode):
         return tree
 
 
-class ImportBase(Node):
+class ImportBase(Statement):
     """Base class for all import statements."""
     is_unreachable = False
     is_top_level = False  # Set by semanal.FirstPass
@@ -298,7 +305,7 @@ class FuncBase(SymbolNode):
         return bool(self.info)
 
 
-class OverloadedFuncDef(FuncBase):
+class OverloadedFuncDef(FuncBase, Statement):
     """A logical node representing all the variants of an overloaded function.
 
     This node has no explicit representation in the source program.
@@ -341,7 +348,7 @@ class Argument(Node):
     """A single argument in a FuncItem."""
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
-            initializer: Optional[Node], kind: int,
+            initializer: Optional[Expression], kind: int,
             initialization_statement: Optional['AssignmentStmt'] = None) -> None:
         self.variable = variable
 
@@ -439,7 +446,7 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-class FuncDef(FuncItem):
+class FuncDef(FuncItem, Statement):
     """Function definition.
 
     This is a non-lambda function defined using 'def'.
@@ -507,18 +514,18 @@ class FuncDef(FuncItem):
         return ret
 
 
-class Decorator(SymbolNode):
+class Decorator(SymbolNode, Statement):
     """A decorated function.
 
     A single Decorator object can include any number of function decorators.
     """
 
-    func = None  # type: FuncDef           # Decorated function
-    decorators = None  # type: List[Node]  # Decorators, at least one  # XXX Not true
-    var = None  # type: Var              # Represents the decorated function obj
+    func = None  # type: FuncDef                # Decorated function
+    decorators = None  # type: List[Expression] # Decorators, at least one  # XXX Not true
+    var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
 
-    def __init__(self, func: FuncDef, decorators: List[Node],
+    def __init__(self, func: FuncDef, decorators: List[Expression],
                  var: 'Var') -> None:
         self.func = func
         self.decorators = decorators
@@ -551,7 +558,7 @@ class Decorator(SymbolNode):
         return dec
 
 
-class Var(SymbolNode):
+class Var(SymbolNode, Statement):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
@@ -619,7 +626,7 @@ class Var(SymbolNode):
         return v
 
 
-class ClassDef(Node):
+class ClassDef(Statement):
     """Class definition"""
 
     name = None  # type: str       # Name of the class without module prefix
@@ -627,10 +634,10 @@ class ClassDef(Node):
     defs = None  # type: Block
     type_vars = None  # type: List[mypy.types.TypeVarDef]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
-    base_type_exprs = None  # type: List[Node]
+    base_type_exprs = None  # type: List[Expression]
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''
-    decorators = None  # type: List[Node]
+    decorators = None  # type: List[Expression]
     # Built-in/extension class? (single implementation inheritance only)
     is_builtinclass = False
 
@@ -638,7 +645,7 @@ class ClassDef(Node):
                  name: str,
                  defs: 'Block',
                  type_vars: List['mypy.types.TypeVarDef'] = None,
-                 base_type_exprs: List[Node] = None,
+                 base_type_exprs: List[Expression] = None,
                  metaclass: str = None) -> None:
         self.name = name
         self.defs = defs
@@ -676,7 +683,7 @@ class ClassDef(Node):
         return res
 
 
-class GlobalDecl(Node):
+class GlobalDecl(Statement):
     """Declaration global x, y, ..."""
 
     names = None  # type: List[str]
@@ -688,7 +695,7 @@ class GlobalDecl(Node):
         return visitor.visit_global_decl(self)
 
 
-class NonlocalDecl(Node):
+class NonlocalDecl(Statement):
     """Declaration nonlocal x, y, ..."""
 
     names = None  # type: List[str]
@@ -700,14 +707,14 @@ class NonlocalDecl(Node):
         return visitor.visit_nonlocal_decl(self)
 
 
-class Block(Node):
-    body = None  # type: List[Node]
+class Block(Statement):
+    body = None  # type: List[Statement]
     # True if we can determine that this block is not executed. For example,
     # this applies to blocks that are protected by something like "if PY3:"
     # when using Python 2.
     is_unreachable = False
 
-    def __init__(self, body: List[Node]) -> None:
+    def __init__(self, body: List[Statement]) -> None:
         self.body = body
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -717,18 +724,18 @@ class Block(Node):
 # Statements
 
 
-class ExpressionStmt(Node):
+class ExpressionStmt(Statement):
     """An expression as a statement, such as print(s)."""
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
 
-class AssignmentStmt(Node):
+class AssignmentStmt(Statement):
     """Assignment statement
     The same node class is used for single assignment, multiple assignment
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
@@ -737,12 +744,12 @@ class AssignmentStmt(Node):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
     """
 
-    lvalues = None  # type: List[Node]
-    rvalue = None  # type: Node
+    lvalues = None  # type: List[Expression]
+    rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
 
-    def __init__(self, lvalues: List[Node], rvalue: Node,
+    def __init__(self, lvalues: List[Expression], rvalue: Expression,
                  type: 'mypy.types.Type' = None) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
@@ -752,14 +759,14 @@ class AssignmentStmt(Node):
         return visitor.visit_assignment_stmt(self)
 
 
-class OperatorAssignmentStmt(Node):
+class OperatorAssignmentStmt(Statement):
     """Operator assignment statement such as x += 1"""
 
     op = ''
-    lvalue = None  # type: Node
-    rvalue = None  # type: Node
+    lvalue = None  # type: Expression
+    rvalue = None  # type: Expression
 
-    def __init__(self, op: str, lvalue: Node, rvalue: Node) -> None:
+    def __init__(self, op: str, lvalue: Expression, rvalue: Expression) -> None:
         self.op = op
         self.lvalue = lvalue
         self.rvalue = rvalue
@@ -768,12 +775,12 @@ class OperatorAssignmentStmt(Node):
         return visitor.visit_operator_assignment_stmt(self)
 
 
-class WhileStmt(Node):
-    expr = None  # type: Node
+class WhileStmt(Statement):
+    expr = None  # type: Expression
     body = None  # type: Block
     else_body = None  # type: Block
 
-    def __init__(self, expr: Node, body: Block, else_body: Block) -> None:
+    def __init__(self, expr: Expression, body: Block, else_body: Block) -> None:
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -782,15 +789,15 @@ class WhileStmt(Node):
         return visitor.visit_while_stmt(self)
 
 
-class ForStmt(Node):
+class ForStmt(Statement):
     # Index variables
-    index = None  # type: Node
+    index = None  # type: Expression
     # Expression to iterate
-    expr = None  # type: Node
+    expr = None  # type: Expression
     body = None  # type: Block
     else_body = None  # type: Block
 
-    def __init__(self, index: Node, expr: Node, body: Block,
+    def __init__(self, index: Expression, expr: Expression, body: Block,
                  else_body: Block) -> None:
         self.index = index
         self.expr = expr
@@ -801,57 +808,57 @@ class ForStmt(Node):
         return visitor.visit_for_stmt(self)
 
 
-class ReturnStmt(Node):
-    expr = None  # type: Node   # Expression or None
+class ReturnStmt(Statement):
+    expr = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
-class AssertStmt(Node):
-    expr = None  # type: Node
+class AssertStmt(Statement):
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
-class DelStmt(Node):
-    expr = None  # type: Node
+class DelStmt(Statement):
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
 
-class BreakStmt(Node):
+class BreakStmt(Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
-class ContinueStmt(Node):
+class ContinueStmt(Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
-class PassStmt(Node):
+class PassStmt(Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
-class IfStmt(Node):
-    expr = None  # type: List[Node]
+class IfStmt(Statement):
+    expr = None  # type: List[Expression]
     body = None  # type: List[Block]
     else_body = None  # type: Block
 
-    def __init__(self, expr: List[Node], body: List[Block],
+    def __init__(self, expr: List[Expression], body: List[Block],
                  else_body: Block) -> None:
         self.expr = expr
         self.body = body
@@ -861,11 +868,11 @@ class IfStmt(Node):
         return visitor.visit_if_stmt(self)
 
 
-class RaiseStmt(Node):
-    expr = None  # type: Node
-    from_expr = None  # type: Node
+class RaiseStmt(Statement):
+    expr = None  # type: Expression
+    from_expr = None  # type: Expression
 
-    def __init__(self, expr: Node, from_expr: Node = None) -> None:
+    def __init__(self, expr: Expression, from_expr: Expression = None) -> None:
         self.expr = expr
         self.from_expr = from_expr
 
@@ -873,15 +880,15 @@ class RaiseStmt(Node):
         return visitor.visit_raise_stmt(self)
 
 
-class TryStmt(Node):
+class TryStmt(Statement):
     body = None  # type: Block                # Try body
-    types = None  # type: List[Node]          # Except type expressions
+    types = None  # type: List[Expression]    # Except type expressions
     vars = None  # type: List[NameExpr]     # Except variable names
     handlers = None  # type: List[Block]      # Except bodies
     else_body = None  # type: Block
     finally_body = None  # type: Block
 
-    def __init__(self, body: Block, vars: List['NameExpr'], types: List[Node],
+    def __init__(self, body: Block, vars: List['NameExpr'], types: List[Expression],
                  handlers: List[Block], else_body: Block,
                  finally_body: Block) -> None:
         self.body = body
@@ -895,12 +902,12 @@ class TryStmt(Node):
         return visitor.visit_try_stmt(self)
 
 
-class WithStmt(Node):
-    expr = None  # type: List[Node]
-    target = None  # type: List[Node]
+class WithStmt(Statement):
+    expr = None  # type: List[Expression]
+    target = None  # type: List[Expression]
     body = None  # type: Block
 
-    def __init__(self, expr: List[Node], target: List[Node],
+    def __init__(self, expr: List[Expression], target: List[Expression],
                  body: Block) -> None:
         self.expr = expr
         self.target = target
@@ -910,15 +917,15 @@ class WithStmt(Node):
         return visitor.visit_with_stmt(self)
 
 
-class PrintStmt(Node):
+class PrintStmt(Statement):
     """Python 2 print statement"""
 
-    args = None  # type: List[Node]
+    args = None  # type: List[Expression]
     newline = False
     # The file-like target object (given using >>).
-    target = None  # type: Optional[Node]
+    target = None  # type: Optional[Expression]
 
-    def __init__(self, args: List[Node], newline: bool, target: Node = None) -> None:
+    def __init__(self, args: List[Expression], newline: bool, target: Expression = None) -> None:
         self.args = args
         self.newline = newline
         self.target = target
@@ -927,14 +934,16 @@ class PrintStmt(Node):
         return visitor.visit_print_stmt(self)
 
 
-class ExecStmt(Node):
+class ExecStmt(Statement):
     """Python 2 exec statement"""
 
-    expr = None  # type: Node
-    variables1 = None  # type: Optional[Node]
-    variables2 = None  # type: Optional[Node]
+    expr = None  # type: Expression
+    variables1 = None  # type: Optional[Expression]
+    variables2 = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Node, variables1: Optional[Node], variables2: Optional[Node]) -> None:
+    def __init__(self, expr: Expression,
+                 variables1: Optional[Expression],
+                 variables2: Optional[Expression]) -> None:
         self.expr = expr
         self.variables1 = variables1
         self.variables2 = variables2
@@ -946,7 +955,7 @@ class ExecStmt(Node):
 # Expressions
 
 
-class IntExpr(Node):
+class IntExpr(Expression):
     """Integer literal"""
 
     value = 0
@@ -971,7 +980,7 @@ class IntExpr(Node):
 # 'x', u'x' -> StrExpr
 # UnicodeExpr is unused
 
-class StrExpr(Node):
+class StrExpr(Expression):
     """String literal"""
 
     value = ''
@@ -985,7 +994,7 @@ class StrExpr(Node):
         return visitor.visit_str_expr(self)
 
 
-class BytesExpr(Node):
+class BytesExpr(Expression):
     """Bytes literal"""
 
     value = ''  # TODO use bytes
@@ -999,7 +1008,7 @@ class BytesExpr(Node):
         return visitor.visit_bytes_expr(self)
 
 
-class UnicodeExpr(Node):
+class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
     value = ''  # TODO use bytes
@@ -1013,7 +1022,7 @@ class UnicodeExpr(Node):
         return visitor.visit_unicode_expr(self)
 
 
-class FloatExpr(Node):
+class FloatExpr(Expression):
     """Float literal"""
 
     value = 0.0
@@ -1027,7 +1036,7 @@ class FloatExpr(Node):
         return visitor.visit_float_expr(self)
 
 
-class ComplexExpr(Node):
+class ComplexExpr(Expression):
     """Complex literal"""
 
     value = 0.0j
@@ -1041,19 +1050,19 @@ class ComplexExpr(Node):
         return visitor.visit_complex_expr(self)
 
 
-class EllipsisExpr(Node):
+class EllipsisExpr(Expression):
     """Ellipsis (...)"""
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_ellipsis(self)
 
 
-class StarExpr(Node):
+class StarExpr(Expression):
     """Star expression"""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
         self.literal = self.expr.literal
         self.literal_hash = ('Star', expr.literal_hash,)
@@ -1065,7 +1074,7 @@ class StarExpr(Node):
         return visitor.visit_star_expr(self)
 
 
-class RefExpr(Node):
+class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
     kind = None  # type: int      # LDEF/GDEF/MDEF/... (None if not available)
@@ -1125,12 +1134,12 @@ class NameExpr(RefExpr):
 class MemberExpr(RefExpr):
     """Member access expression x.y"""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
     name = None  # type: str
     # The variable node related to a definition.
     def_var = None  # type: Var
 
-    def __init__(self, expr: Node, name: str) -> None:
+    def __init__(self, expr: Expression, name: str) -> None:
         self.expr = expr
         self.name = name
         self.literal = self.expr.literal
@@ -1154,24 +1163,24 @@ ARG_NAMED = 3  # type: int
 ARG_STAR2 = 4  # type: int
 
 
-class CallExpr(Node):
+class CallExpr(Expression):
     """Call expression.
 
     This can also represent several special forms that are syntactically calls
     such as cast(...) and None  # type: ....
     """
 
-    callee = None  # type: Node
-    args = None  # type: List[Node]
+    callee = None  # type: Expression
+    args = None  # type: List[Expression]
     arg_kinds = None  # type: List[int]  # ARG_ constants
     # Each name can be None if not a keyword argument.
     arg_names = None  # type: List[str]
     # If not None, the node that represents the meaning of the CallExpr. For
     # cast(...) this is a CastExpr.
-    analyzed = None  # type: Node
+    analyzed = None  # type: Optional[Expression]
 
-    def __init__(self, callee: Node, args: List[Node], arg_kinds: List[int],
-                 arg_names: List[str] = None, analyzed: Node = None) -> None:
+    def __init__(self, callee: Expression, args: List[Expression], arg_kinds: List[int],
+                 arg_names: List[str] = None, analyzed: Expression = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
         self.callee = callee
@@ -1184,41 +1193,41 @@ class CallExpr(Node):
         return visitor.visit_call_expr(self)
 
 
-class YieldFromExpr(Node):
-    expr = None  # type: Node
+class YieldFromExpr(Expression):
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_from_expr(self)
 
 
-class YieldExpr(Node):
-    expr = None  # type: Optional[Node]
+class YieldExpr(Expression):
+    expr = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Optional[Node]) -> None:
+    def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_yield_expr(self)
 
 
-class IndexExpr(Node):
+class IndexExpr(Expression):
     """Index expression x[y].
 
     Also wraps type application such as List[int] as a special form.
     """
 
-    base = None  # type: Node
-    index = None  # type: Node
+    base = None  # type: Expression
+    index = None  # type: Expression
     # Inferred __getitem__ method type
     method_type = None  # type: mypy.types.Type
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
     analyzed = None  # type: Union[TypeApplication, TypeAliasExpr]
 
-    def __init__(self, base: Node, index: Node) -> None:
+    def __init__(self, base: Expression, index: Expression) -> None:
         self.base = base
         self.index = index
         self.analyzed = None
@@ -1231,15 +1240,15 @@ class IndexExpr(Node):
         return visitor.visit_index_expr(self)
 
 
-class UnaryExpr(Node):
+class UnaryExpr(Expression):
     """Unary operation"""
 
     op = ''
-    expr = None  # type: Node
+    expr = None  # type: Expression
     # Inferred operator method type
     method_type = None  # type: mypy.types.Type
 
-    def __init__(self, op: str, expr: Node) -> None:
+    def __init__(self, op: str, expr: Expression) -> None:
         self.op = op
         self.expr = expr
         self.literal = self.expr.literal
@@ -1303,17 +1312,17 @@ normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
 reverse_op_method_set = set(reverse_op_methods.values())
 
 
-class OpExpr(Node):
+class OpExpr(Expression):
     """Binary operation (other than . or [] or comparison operators,
     which have specific nodes)."""
 
     op = ''
-    left = None  # type: Node
-    right = None  # type: Node
+    left = None  # type: Expression
+    right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
     method_type = None  # type: mypy.types.Type
 
-    def __init__(self, op: str, left: Node, right: Node) -> None:
+    def __init__(self, op: str, left: Expression, right: Expression) -> None:
         self.op = op
         self.left = left
         self.right = right
@@ -1324,15 +1333,15 @@ class OpExpr(Node):
         return visitor.visit_op_expr(self)
 
 
-class ComparisonExpr(Node):
+class ComparisonExpr(Expression):
     """Comparison expression (e.g. a < b > c < d)."""
 
     operators = None  # type: List[str]
-    operands = None  # type: List[Node]
+    operands = None  # type: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
     method_types = None  # type: List[mypy.types.Type]
 
-    def __init__(self, operators: List[str], operands: List[Node]) -> None:
+    def __init__(self, operators: List[str], operands: List[Expression]) -> None:
         self.operators = operators
         self.operands = operands
         self.method_types = []
@@ -1344,18 +1353,19 @@ class ComparisonExpr(Node):
         return visitor.visit_comparison_expr(self)
 
 
-class SliceExpr(Node):
+class SliceExpr(Expression):
     """Slice expression (e.g. 'x:y', 'x:', '::2' or ':').
 
     This is only valid as index in index expressions.
     """
 
-    begin_index = None  # type: Node  # May be None
-    end_index = None  # type: Node    # May be None
-    stride = None  # type: Node       # May be None
+    begin_index = None  # type: Optional[Expression]
+    end_index = None  # type: Optional[Expression]
+    stride = None  # type: Optional[Expression]
 
-    def __init__(self, begin_index: Node, end_index: Node,
-                 stride: Node) -> None:
+    def __init__(self, begin_index: Optional[Expression],
+                 end_index: Optional[Expression],
+                 stride: Optional[Expression]) -> None:
         self.begin_index = begin_index
         self.end_index = end_index
         self.stride = stride
@@ -1364,13 +1374,13 @@ class SliceExpr(Node):
         return visitor.visit_slice_expr(self)
 
 
-class CastExpr(Node):
+class CastExpr(Expression):
     """Cast expression cast(type, expr)."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
     type = None  # type: mypy.types.Type
 
-    def __init__(self, expr: Node, typ: 'mypy.types.Type') -> None:
+    def __init__(self, expr: Expression, typ: 'mypy.types.Type') -> None:
         self.expr = expr
         self.type = typ
 
@@ -1378,19 +1388,19 @@ class CastExpr(Node):
         return visitor.visit_cast_expr(self)
 
 
-class RevealTypeExpr(Node):
+class RevealTypeExpr(Expression):
     """Reveal type expression reveal_type(expr)."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_reveal_type_expr(self)
 
 
-class SuperExpr(Node):
+class SuperExpr(Expression):
     """Expression super().name"""
 
     name = ''
@@ -1403,13 +1413,13 @@ class SuperExpr(Node):
         return visitor.visit_super_expr(self)
 
 
-class FuncExpr(FuncItem):
+class FuncExpr(FuncItem, Expression):
     """Lambda expression"""
 
     def name(self) -> str:
         return '<lambda>'
 
-    def expr(self) -> Node:
+    def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
         ret = cast(ReturnStmt, self.body.body[-1])
         return ret.expr
@@ -1418,12 +1428,12 @@ class FuncExpr(FuncItem):
         return visitor.visit_func_expr(self)
 
 
-class ListExpr(Node):
+class ListExpr(Expression):
     """List literal expression [...]."""
 
-    items = None  # type: List[Node]
+    items = None  # type: List[Expression]
 
-    def __init__(self, items: List[Node]) -> None:
+    def __init__(self, items: List[Expression]) -> None:
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
@@ -1433,12 +1443,12 @@ class ListExpr(Node):
         return visitor.visit_list_expr(self)
 
 
-class DictExpr(Node):
+class DictExpr(Expression):
     """Dictionary literal expression {key: value, ...}."""
 
-    items = None  # type: List[Tuple[Node, Node]]
+    items = None  # type: List[Tuple[Expression, Expression]]
 
-    def __init__(self, items: List[Tuple[Node, Node]]) -> None:
+    def __init__(self, items: List[Tuple[Expression, Expression]]) -> None:
         self.items = items
         if all(x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
                for x in items):
@@ -1450,12 +1460,12 @@ class DictExpr(Node):
         return visitor.visit_dict_expr(self)
 
 
-class TupleExpr(Node):
+class TupleExpr(Expression):
     """Tuple literal expression (..., ...)"""
 
-    items = None  # type: List[Node]
+    items = None  # type: List[Expression]
 
-    def __init__(self, items: List[Node]) -> None:
+    def __init__(self, items: List[Expression]) -> None:
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
@@ -1465,12 +1475,12 @@ class TupleExpr(Node):
         return visitor.visit_tuple_expr(self)
 
 
-class SetExpr(Node):
+class SetExpr(Expression):
     """Set literal expression {value, ...}."""
 
-    items = None  # type: List[Node]
+    items = None  # type: List[Expression]
 
-    def __init__(self, items: List[Node]) -> None:
+    def __init__(self, items: List[Expression]) -> None:
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
@@ -1480,16 +1490,16 @@ class SetExpr(Node):
         return visitor.visit_set_expr(self)
 
 
-class GeneratorExpr(Node):
+class GeneratorExpr(Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
-    left_expr = None  # type: Node
-    sequences_expr = None  # type: List[Node]
-    condlists = None  # type: List[List[Node]]
-    indices = None  # type: List[Node]
+    left_expr = None  # type: Expression
+    sequences_expr = None  # type: List[Expression]
+    condlists = None  # type: List[List[Expression]]
+    indices = None  # type: List[Expression]
 
-    def __init__(self, left_expr: Node, indices: List[Node],
-                 sequences: List[Node], condlists: List[List[Node]]) -> None:
+    def __init__(self, left_expr: Expression, indices: List[Expression],
+                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
         self.condlists = condlists
@@ -1499,7 +1509,7 @@ class GeneratorExpr(Node):
         return visitor.visit_generator_expr(self)
 
 
-class ListComprehension(Node):
+class ListComprehension(Expression):
     """List comprehension (e.g. [x + 1 for x in a])"""
 
     generator = None  # type: GeneratorExpr
@@ -1511,7 +1521,7 @@ class ListComprehension(Node):
         return visitor.visit_list_comprehension(self)
 
 
-class SetComprehension(Node):
+class SetComprehension(Expression):
     """Set comprehension (e.g. {x + 1 for x in a})"""
 
     generator = None  # type: GeneratorExpr
@@ -1523,17 +1533,17 @@ class SetComprehension(Node):
         return visitor.visit_set_comprehension(self)
 
 
-class DictionaryComprehension(Node):
+class DictionaryComprehension(Expression):
     """Dictionary comprehension (e.g. {k: v for k, v in a}"""
 
-    key = None  # type: Node
-    value = None  # type: Node
-    sequences_expr = None  # type: List[Node]
-    condlists = None  # type: List[List[Node]]
-    indices = None  # type: List[Node]
+    key = None  # type: Expression
+    value = None  # type: Expression
+    sequences_expr = None  # type: List[Expression]
+    condlists = None  # type: List[List[Expression]]
+    indices = None  # type: List[Expression]
 
-    def __init__(self, key: Node, value: Node, indices: List[Node],
-                 sequences: List[Node], condlists: List[List[Node]]) -> None:
+    def __init__(self, key: Expression, value: Expression, indices: List[Expression],
+                 sequences: List[Expression], condlists: List[List[Expression]]) -> None:
         self.key = key
         self.value = value
         self.sequences = sequences
@@ -1544,14 +1554,14 @@ class DictionaryComprehension(Node):
         return visitor.visit_dictionary_comprehension(self)
 
 
-class ConditionalExpr(Node):
+class ConditionalExpr(Expression):
     """Conditional expression (e.g. x if y else z)"""
 
-    cond = None  # type: Node
-    if_expr = None  # type: Node
-    else_expr = None  # type: Node
+    cond = None  # type: Expression
+    if_expr = None  # type: Expression
+    else_expr = None  # type: Expression
 
-    def __init__(self, cond: Node, if_expr: Node, else_expr: Node) -> None:
+    def __init__(self, cond: Expression, if_expr: Expression, else_expr: Expression) -> None:
         self.cond = cond
         self.if_expr = if_expr
         self.else_expr = else_expr
@@ -1560,25 +1570,25 @@ class ConditionalExpr(Node):
         return visitor.visit_conditional_expr(self)
 
 
-class BackquoteExpr(Node):
+class BackquoteExpr(Expression):
     """Python 2 expression `...`."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_backquote_expr(self)
 
 
-class TypeApplication(Node):
+class TypeApplication(Expression):
     """Type application expr[type, ...]"""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
     types = None  # type: List[mypy.types.Type]
 
-    def __init__(self, expr: Node, types: List['mypy.types.Type']) -> None:
+    def __init__(self, expr: Expression, types: List['mypy.types.Type']) -> None:
         self.expr = expr
         self.types = types
 
@@ -1600,7 +1610,7 @@ COVARIANT = 1  # type: int
 CONTRAVARIANT = 2  # type: int
 
 
-class TypeVarExpr(SymbolNode):
+class TypeVarExpr(SymbolNode, Expression):
     """Type variable expression TypeVar(...)."""
 
     _name = ''
@@ -1655,7 +1665,7 @@ class TypeVarExpr(SymbolNode):
                            data['variance'])
 
 
-class TypeAliasExpr(Node):
+class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
     type = None  # type: mypy.types.Type
@@ -1667,7 +1677,7 @@ class TypeAliasExpr(Node):
         return visitor.visit_type_alias_expr(self)
 
 
-class NamedTupleExpr(Node):
+class NamedTupleExpr(Expression):
     """Named tuple expression namedtuple(...)."""
 
     # The class representation of this named tuple (its tuple_type attribute contains
@@ -1681,7 +1691,7 @@ class NamedTupleExpr(Node):
         return visitor.visit_namedtuple_expr(self)
 
 
-class PromoteExpr(Node):
+class PromoteExpr(Expression):
     """Ducktype class decorator expression _promote(...)."""
 
     type = None  # type: mypy.types.Type
@@ -1696,7 +1706,7 @@ class PromoteExpr(Node):
 # Constants
 
 
-class TempNode(Node):
+class TempNode(Expression):
     """Temporary dummy node used during type checking.
 
     This node is not present in the original program; it is just an artifact
