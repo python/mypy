@@ -98,9 +98,13 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
         # If both types are TypeType, compare their inner types.
         return is_overlapping_types(t.item, s.item, use_promotions)
     elif isinstance(t, TypeType) or isinstance(s, TypeType):
-        # If exactly only one of t or s is a TypeType, we consider
-        # the types to not be overlapping.
-        return False
+        # If exactly only one of t or s is a TypeType, check if one of them
+        # is an `object` or a `type` and otherwise assume no overlap.
+        other = s if isinstance(t, TypeType) else t
+        if isinstance(other, Instance):
+            return other.type.fullname() in {'builtins.object', 'builtins.type'}
+        else:
+            return False
     if experiments.STRICT_OPTIONAL:
         if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
             # NoneTyp does not overlap with other non-Union types under strict Optional checking

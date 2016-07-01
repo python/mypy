@@ -1918,3 +1918,32 @@ reveal_type(f(BChild()))  # E: Revealed type is '__main__.B'
 [builtins fixtures/classmethod.py]
 [out]
 
+[case testTypeTypeOverlapsWithObjectAndType]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(a: object) -> str: pass
+
+@overload
+def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(a: type) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeOverlapsWithObject]
+from typing import Type, overload
+
+class User: pass
+
+@overload
+def f(a: type) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(a: object) -> str: pass
+[builtins fixtures/classmethod.py]
+[out]
+
