@@ -58,6 +58,7 @@ from mypy.nodes import (
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
+from mypy.options import Options as MypyOptions
 
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
@@ -165,8 +166,10 @@ def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
     source = open(path, 'rb').read()
+    options = MypyOptions()
+    options.python_version = pyversion
     try:
-        ast = mypy.parse.parse(source, fnam=path, pyversion=pyversion)
+        ast = mypy.parse.parse(source, fnam=path, errors=None, options=options)
     except mypy.errors.CompileError as e:
         # Syntax error!
         for m in e.messages:

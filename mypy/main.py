@@ -13,25 +13,11 @@ from mypy import git
 from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb
+from mypy.options import Options, BuildType
 
 from mypy.version import __version__
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
-
-
-class Options:
-    """Options collected from flags."""
-
-    def __init__(self) -> None:
-        # Set default options.
-        self.target = build.TYPE_CHECK
-        self.build_flags = []  # type: List[str]
-        self.pyversion = defaults.PYTHON3_VERSION
-        self.custom_typing_module = None  # type: str
-        self.report_dirs = {}  # type: Dict[str, str]
-        self.python_path = False
-        self.dirty_stubs = False
-        self.pdb = False
 
 
 def main(script_path: str) -> None:
@@ -44,18 +30,15 @@ def main(script_path: str) -> None:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
-    sources, options = process_options()
+    sources, options = process_options(sys.argv[1:])
     if options.pdb:
         set_drop_into_pdb(True)
     if not options.dirty_stubs:
         git.verify_git_integrity_or_abort(build.default_data_dir(bin_dir))
     f = sys.stdout
     try:
-        if options.target == build.TYPE_CHECK:
-            res = type_check_only(sources, bin_dir, options)
-            a = res.errors
-        else:
-            raise RuntimeError('unsupported target %d' % options.target)
+        res = type_check_only(sources, bin_dir, options)
+        a = res.errors
     except CompileError as e:
         a = e.messages
         if not e.use_stdout:
@@ -94,20 +77,37 @@ def type_check_only(sources: List[BuildSource],
         bin_dir: str, options: Options) -> BuildResult:
     # Type-check the program and dependencies and translate to Python.
     return build.build(sources=sources,
-                       target=build.TYPE_CHECK,
                        bin_dir=bin_dir,
-                       pyversion=options.pyversion,
-                       custom_typing_module=options.custom_typing_module,
-                       report_dirs=options.report_dirs,
-                       flags=options.build_flags,
-                       python_path=options.python_path)
+                       options=options)
 
 
 FOOTER = """environment variables:
 MYPYPATH     additional module search path"""
 
 
-def process_options() -> Tuple[List[BuildSource], Options]:
+class SplitNamespace:
+    def __init__(self, standard_namespace, alt_namespace, alt_prefix):
+        self.__dict__['_standard_namespace'] = standard_namespace
+        self.__dict__['_alt_namespace'] = alt_namespace
+        self.__dict__['_alt_prefix'] = alt_prefix
+
+    def _get(self):
+        return (self._standard_namespace, self._alt_namespace)
+
+    def __setattr__(self, name, value):
+        if name.startswith(self._alt_prefix):
+            setattr(self._alt_namespace, name[len(self._alt_prefix):], value)
+        else:
+            setattr(self._standard_namespace, name, value)
+
+    def __getattr__(self, name):
+        if name.startswith(self._alt_prefix):
+            return getattr(self._alt_namespace, name[len(self._alt_prefix):])
+        else:
+            return getattr(self._standard_namespace, name)
+
+
+def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     """Process command line arguments.
 
     Return (mypy program path (or None),
@@ -129,8 +129,12 @@ def process_options() -> Tuple[List[BuildSource], Options]:
             raise argparse.ArgumentTypeError(
                 "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
+    # Unless otherwise specified, arguments will be parsed directly onto an
+    # Options object.  Options that require further processing should have
+    # their `dest` prefixed with `special-opts:`, which will cause them to be
+    # parsed into the separate special_opts namespace object.
     parser.add_argument('-v', '--verbose', action='count', help="more verbose messages")
-    parser.add_argument('-V', '--version', action='version',  # type: ignore # see typeshed#124
+    parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
@@ -138,7 +142,7 @@ def process_options() -> Tuple[List[BuildSource], Options]:
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
-    parser.add_argument('--silent', action='store_true',
+    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
                         help="deprecated name for --silent-imports")
     parser.add_argument('--almost-silent', action='store_true',
                         help="like --silent-imports but reports the imports as errors")
@@ -162,141 +166,110 @@ def process_options() -> Tuple[List[BuildSource], Options]:
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
     parser.add_argument('--strict-optional', action='store_true',
+                        dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--use-python-path', action='store_true',
+                        dest='special-opts:use_python_path',
                         help="an anti-pattern")
     parser.add_argument('--stats', action='store_true', help="dump stats")
     parser.add_argument('--inferstats', action='store_true', help="dump type inference stats")
-    parser.add_argument('--custom-typing', metavar='MODULE', help="use a custom typing module")
+    parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
+                        help="use a custom typing module")
 
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
-    report_group.add_argument('--html-report', metavar='DIR')
-    report_group.add_argument('--old-html-report', metavar='DIR')
-    report_group.add_argument('--xslt-html-report', metavar='DIR')
-    report_group.add_argument('--xml-report', metavar='DIR')
-    report_group.add_argument('--txt-report', metavar='DIR')
-    report_group.add_argument('--xslt-txt-report', metavar='DIR')
-    report_group.add_argument('--linecount-report', metavar='DIR')
+    report_group.add_argument('--html-report', metavar='DIR',
+                              dest='special-opts:html_report')
+    report_group.add_argument('--old-html-report', metavar='DIR',
+                              dest='special-opts:old_html_report')
+    report_group.add_argument('--xslt-html-report', metavar='DIR',
+                              dest='special-opts:xslt_html_report')
+    report_group.add_argument('--xml-report', metavar='DIR',
+                              dest='special-opts:xml_report')
+    report_group.add_argument('--txt-report', metavar='DIR',
+                              dest='special-opts:txt_report')
+    report_group.add_argument('--xslt-txt-report', metavar='DIR',
+                              dest='special-opts:xslt_txt_report')
+    report_group.add_argument('--linecount-report', metavar='DIR',
+                              dest='special-opts:linecount_report')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
-    code_group.add_argument('-m', '--module', action='append', dest='modules',
+    code_group.add_argument('-m', '--module', action='append', dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
     # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
     # ignore A (last option wins).  Perhaps -c, -m and -p could just
     # be command-line flags that modify how we interpret self.files?
-    code_group.add_argument('-c', '--command', help="type-check program passed in as string")
-    code_group.add_argument('-p', '--package', help="type-check all files in a directory")
-    code_group.add_argument('files', nargs='*', help="type-check given files or directories")
+    code_group.add_argument('-c', '--command', dest='special-opts:command',
+                            help="type-check program passed in as string")
+    code_group.add_argument('-p', '--package', dest='special-opts:package',
+                            help="type-check all files in a directory")
+    code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
+                            help="type-check given files or directories")
 
-    args = parser.parse_args()
+    options = Options()
+    special_opts = argparse.Namespace()
+    parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
 
     # --use-python-path is no longer supported; explain why.
-    if args.use_python_path:
+    if special_opts.use_python_path:
         parser.error("Sorry, --use-python-path is no longer supported.\n"
                      "If you are trying this because your code depends on a library module,\n"
                      "you should really investigate how to obtain stubs for that module.\n"
                      "See https://github.com/python/mypy/issues/1411 for more discussion."
                      )
+
     # --silent is deprecated; warn about this.
-    if args.silent:
+    if special_opts.silent:
         print("Warning: --silent is deprecated; use --silent-imports",
               file=sys.stderr)
+        options.silent_imports = True
 
     # Check for invalid argument combinations.
-    code_methods = sum(bool(c) for c in [args.modules, args.command, args.package, args.files])
+    code_methods = sum(bool(c) for c in [special_opts.modules,
+                                         special_opts.command,
+                                         special_opts.package,
+                                         special_opts.files])
     if code_methods == 0:
         parser.error("Missing target module, package, files, or command.")
     elif code_methods > 1:
         parser.error("May only specify one of: module, package, files, or command.")
 
-    if args.use_python_path and args.python_version and args.python_version[0] == 2:
-        parser.error('Python version 2 (or --py2) specified, '
-                     'but --use-python-path will search in sys.path of Python 3')
-
-    # Set options.
-    options = Options()
-    options.dirty_stubs = args.dirty_stubs
-    options.python_path = args.use_python_path
-    options.pdb = args.pdb
-    options.custom_typing_module = args.custom_typing
-
     # Set build flags.
-    if args.python_version is not None:
-        options.pyversion = args.python_version
-
-    if args.verbose:
-        options.build_flags.extend(args.verbose * [build.VERBOSE])
-
-    if args.stats:
-        options.build_flags.append(build.DUMP_TYPE_STATS)
-
-    if args.inferstats:
-        options.build_flags.append(build.DUMP_INFER_STATS)
-
-    if args.silent_imports or args.silent:
-        options.build_flags.append(build.SILENT_IMPORTS)
-    if args.almost_silent:
-        options.build_flags.append(build.SILENT_IMPORTS)
-        options.build_flags.append(build.ALMOST_SILENT)
-
-    if args.disallow_untyped_calls:
-        options.build_flags.append(build.DISALLOW_UNTYPED_CALLS)
-
-    if args.disallow_untyped_defs:
-        options.build_flags.append(build.DISALLOW_UNTYPED_DEFS)
-
-    if args.check_untyped_defs:
-        options.build_flags.append(build.CHECK_UNTYPED_DEFS)
-
-    if args.warn_incomplete_stub:
-        options.build_flags.append(build.WARN_INCOMPLETE_STUB)
-    if args.warn_redundant_casts:
-        options.build_flags.append(build.WARN_REDUNDANT_CASTS)
-
-    if args.warn_unused_ignores:
-        options.build_flags.append(build.WARN_UNUSED_IGNORES)
-
-    # experimental
-    if args.fast_parser:
-        options.build_flags.append(build.FAST_PARSER)
-    if args.incremental:
-        options.build_flags.append(build.INCREMENTAL)
-    if args.strict_optional:
+    if special_opts.strict_optional:
         experiments.STRICT_OPTIONAL = True
 
     # Set reports.
-    for flag, val in vars(args).items():
+    for flag, val in vars(special_opts).items():
         if flag.endswith('_report') and val is not None:
             report_type = flag[:-7].replace('_', '-')
             report_dir = val
             options.report_dirs[report_type] = report_dir
 
     # Set target.
-    if args.modules:
-        options.build_flags.append(build.MODULE)
-        targets = [BuildSource(None, m, None) for m in args.modules]
+    if special_opts.modules:
+        options.build_type = BuildType.MODULE
+        targets = [BuildSource(None, m, None) for m in special_opts.modules]
         return targets, options
-    elif args.package:
-        if os.sep in args.package or os.altsep and os.altsep in args.package:
+    elif special_opts.package:
+        if os.sep in special_opts.package or os.altsep and os.altsep in special_opts.package:
             fail("Package name '{}' cannot have a slash in it."
-                 .format(args.package))
-        options.build_flags.append(build.MODULE)
+                 .format(special_opts.package))
+        options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(args.package, lib_path)
+        targets = build.find_modules_recursive(special_opts.package, lib_path)
         if not targets:
-            fail("Can't find package '{}'".format(args.package))
+            fail("Can't find package '{}'".format(special_opts.package))
         return targets, options
-    elif args.command:
-        options.build_flags.append(build.PROGRAM_TEXT)
-        return [BuildSource(None, None, args.command)], options
+    elif special_opts.command:
+        options.build_type = BuildType.PROGRAM_TEXT
+        return [BuildSource(None, None, special_opts.command)], options
     else:
         targets = []
-        for f in args.files:
+        for f in special_opts.files:
             if f.endswith(PY_EXTENSIONS):
                 targets.append(BuildSource(f, crawl_up(f)[1], None))
             elif os.path.isdir(f):

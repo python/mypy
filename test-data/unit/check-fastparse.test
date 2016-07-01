@@ -1,31 +1,31 @@
 [case testFastParseSyntaxError]
-# flags: fast-parser
+# options: fast_parser
 1 +  # E: invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
-# flags: fast-parser
+# options: fast_parser
 x = None # type: a : b  # E: syntax error in type comment
 
 [case testFastParseInvalidTypeComment]
-# flags: fast-parser
+# options: fast_parser
 x = None # type: a + b  # E: invalid type comment
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
-# flags: fast-parser
+# options: fast_parser
 def f():  # E: syntax error in type comment
   # type: None -> None
   pass
 
 [case testFastParseInvalidFunctionAnnotation]
-# flags: fast-parser
+# options: fast_parser
 def f():  # E: invalid type comment
   # type: (a + b) -> None
   pass
 
 [case testFastParseProperty]
-# flags: fast-parser
+# options: fast_parser
 class C:
   @property
   def x(self) -> str: pass
@@ -34,7 +34,7 @@ class C:
 [builtins fixtures/property.py]
 
 [case testFastParseConditionalProperty]
-# flags: fast-parser
+# options: fast_parser
 class C:
   if 1:
     @property
@@ -44,7 +44,7 @@ class C:
 [builtins fixtures/property.py]
 
 [case testFastParsePerArgumentAnnotations]
-# flags: fast-parser
+# options: fast_parser
 class A: pass
 class B: pass
 class C: pass
@@ -69,7 +69,7 @@ def f(a,        # type: A
 main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithReturn]
-# flags: fast-parser
+# options: fast_parser
 class A: pass
 class B: pass
 class C: pass
@@ -96,7 +96,7 @@ def f(a,        # type: A
 main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
-# flags: fast-parser
+# options: fast_parser
 def f(*, # type: int  # E: bare * has associated type comment
       x  # type: str
       ):
@@ -106,7 +106,7 @@ def f(*, # type: int  # E: bare * has associated type comment
 [out]
 
 [case testFastParsePerArgumentAnnotationsWithReturnAndBareStar]
-# flags: fast-parser
+# options: fast_parser
 def f(*,
       x  # type: str
       ):
@@ -118,7 +118,7 @@ def f(*,
 main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotations_python2]
-# flags: fast-parser
+# options: fast_parser
 class A: pass
 class B: pass
 class C: pass
@@ -136,7 +136,7 @@ def f(a,        # type: A
 main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithReturn_python2]
-# flags: fast-parser
+# options: fast_parser
 class A: pass
 class B: pass
 class C: pass

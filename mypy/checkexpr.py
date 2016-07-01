@@ -135,7 +135,7 @@ class ExpressionChecker:
             return self.accept(e.analyzed, self.chk.type_context[-1])
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
-        if (self.chk.disallow_untyped_calls and
+        if (self.chk.options.disallow_untyped_calls and
                 self.chk.typing_mode_full() and
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
@@ -893,7 +893,7 @@ class ExpressionChecker:
 
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check '...'."""
-        if self.chk.pyversion[0] >= 3:
+        if self.chk.options.python_version[0] >= 3:
             return self.named_type('builtins.ellipsis')
         else:
             # '...' is not valid in normal Python 2 code, but it can
@@ -990,7 +990,7 @@ class ExpressionChecker:
         return result
 
     def get_operator_method(self, op: str) -> str:
-        if op == '/' and self.chk.pyversion[0] == 2:
+        if op == '/' and self.chk.options.python_version[0] == 2:
             # TODO also check for "from __future__ import division"
             return '__div__'
         else:
@@ -1062,7 +1062,7 @@ class ExpressionChecker:
                                            self.msg)
 
     def get_reverse_op_method(self, method: str) -> str:
-        if method == '__div__' and self.chk.pyversion[0] == 2:
+        if method == '__div__' and self.chk.options.python_version[0] == 2:
             return '__rdiv__'
         else:
             return nodes.reverse_op_methods[method]
@@ -1232,7 +1232,7 @@ class ExpressionChecker:
         """Type check a cast expression."""
         source_type = self.accept(expr.expr, context=AnyType())
         target_type = expr.type
-        if self.chk.warn_redundant_casts and is_same_type(source_type, target_type):
+        if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
         if not self.is_valid_cast(source_type, target_type):
             self.msg.invalid_cast(target_type, source_type, expr)

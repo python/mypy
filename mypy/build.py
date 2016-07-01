@@ -21,7 +21,7 @@ import time
 from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
-                    NamedTuple, Optional, Set, Tuple, Union)
+                    NamedTuple, Optional, Set, Tuple, Union, Mapping)
 
 from mypy.types import Type
 from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
@@ -35,6 +35,7 @@ from mypy import defaults
 from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
 
@@ -42,36 +43,6 @@ from mypy.stats import dump_type_stats
 # We need to know the location of this file to load data, but
 # until Python 3.4, __file__ is relative.
 __file__ = os.path.realpath(__file__)
-
-
-# Build targets (for selecting compiler passes)
-SEMANTIC_ANALYSIS = 0   # Semantic analysis only
-TYPE_CHECK = 1          # Type check
-
-
-# Build flags
-VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
-MODULE = 'module'                # Build module as a script
-PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
-TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
-DUMP_TYPE_STATS = 'dump-type-stats'
-DUMP_INFER_STATS = 'dump-infer-stats'
-SILENT_IMPORTS = 'silent-imports'  # Silence imports of .py files
-ALMOST_SILENT = 'almost-silent'  # If SILENT_IMPORTS: report silenced imports as errors
-INCREMENTAL = 'incremental'      # Incremental mode: use the cache
-FAST_PARSER = 'fast-parser'      # Use experimental fast parser
-# Disallow calling untyped functions from typed ones
-DISALLOW_UNTYPED_CALLS = 'disallow-untyped-calls'
-# Disallow defining untyped (or incompletely typed) functions
-DISALLOW_UNTYPED_DEFS = 'disallow-untyped-defs'
-# Type check unannotated functions
-CHECK_UNTYPED_DEFS = 'check-untyped-defs'
-# Also check typeshed for missing annotations
-WARN_INCOMPLETE_STUB = 'warn-incomplete-stub'
-# Warn about casting an expression to its inferred type
-WARN_REDUNDANT_CASTS = 'warn-redundant-casts'
-# Warn about unused '# type: ignore' comments
-WARN_UNUSED_IGNORES = 'warn-unused-ignores'
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
@@ -134,14 +105,9 @@ class BuildSourceSet:
 
 
 def build(sources: List[BuildSource],
-          target: int,
+          options: Options,
           alt_lib_path: str = None,
-          bin_dir: str = None,
-          pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-          custom_typing_module: str = None,
-          report_dirs: Dict[str, str] = None,
-          flags: List[str] = None,
-          python_path: bool = False) -> BuildResult:
+          bin_dir: str = None) -> BuildResult:
     """Analyze a program.
 
     A single call to build performs parsing, semantic analysis and optionally
@@ -151,27 +117,22 @@ def build(sources: List[BuildSource],
     otherwise raise CompileError.
 
     Args:
-      target: select passes to perform (a build target constant, e.g. C)
       sources: list of sources to build
+      options: build options
       alt_lib_path: an additional directory for looking up library modules
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
-      pyversion: Python version (major, minor)
-      custom_typing_module: if not None, use this module id as an alias for typing
-      flags: list of build options (e.g. COMPILE_ONLY)
     """
-    report_dirs = report_dirs or {}
-    flags = flags or []
 
     data_dir = default_data_dir(bin_dir)
 
     find_module_clear_caches()
 
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, pyversion, python_path)
+    lib_path = default_lib_path(data_dir, options.python_version)
 
-    if TEST_BUILTINS in flags:
+    if options.use_builtins_fixtures:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).  This is a test-only feature, so assume our files are laid out
         # as in the source tree.
@@ -199,19 +160,18 @@ def build(sources: List[BuildSource],
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
 
-    reports = Reports(data_dir, report_dirs)
+    reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
 
     # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
-    manager = BuildManager(data_dir, lib_path, target,
-                           pyversion=pyversion, flags=flags,
+    manager = BuildManager(data_dir, lib_path,
                            ignore_prefix=os.getcwd(),
-                           custom_typing_module=custom_typing_module,
                            source_set=source_set,
-                           reports=reports)
+                           reports=reports,
+                           options=options)
 
     try:
         dispatch(sources, manager)
@@ -225,7 +185,7 @@ def build(sources: List[BuildSource],
         reports.finish()
 
 
-def default_data_dir(bin_dir: str) -> str:
+def default_data_dir(bin_dir: Optional[str]) -> str:
     """Returns directory containing typeshed directory
 
     Args:
@@ -284,8 +244,7 @@ def mypy_path() -> List[str]:
     return path_env.split(os.pathsep)
 
 
-def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
-        python_path: bool) -> List[str]:
+def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = []  # type: List[str]
@@ -310,12 +269,6 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int],
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
 
-    # Contents of Python's sys.path go last, to prefer the stubs
-    # TODO: To more closely model what Python actually does, builtins should
-    #       go first, then sys.path, then anything in stdlib and third_party.
-    if python_path:
-        path.extend(sys.path)
-
     return path
 
 
@@ -328,7 +281,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
-                        ('flags', Optional[List[str]]),  # build flags
+                        ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
@@ -354,7 +307,6 @@ class BuildManager:
 
     Attributes:
       data_dir:        Mypy data directory (contains stubs)
-      target:          Build target; selects which passes to perform
       lib_path:        Library path for looking up modules
       modules:         Mapping of module ID to MypyFile (shared by the passes)
       semantic_analyzer:
@@ -363,46 +315,28 @@ class BuildManager:
                        Semantic analyzer, pass 3
       type_checker:    Type checker
       errors:          Used for reporting all errors
-      pyversion:       Python version (major, minor)
-      flags:           Build options
+      options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
     """
 
     def __init__(self, data_dir: str,
                  lib_path: List[str],
-                 target: int,
-                 pyversion: Tuple[int, int],
-                 flags: List[str],
                  ignore_prefix: str,
-                 custom_typing_module: str,
                  source_set: BuildSourceSet,
-                 reports: Reports) -> None:
+                 reports: Reports,
+                 options: Options) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = Errors()
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
-        self.target = target
-        self.pyversion = pyversion
-        self.flags = flags
-        self.custom_typing_module = custom_typing_module
         self.source_set = source_set
         self.reports = reports
-        check_untyped_defs = CHECK_UNTYPED_DEFS in self.flags
-        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors,
-                                                  pyversion=pyversion,
-                                                  check_untyped_defs=check_untyped_defs,
-                                                  lightweight_type_check=(target >= TYPE_CHECK))
+        self.options = options
+        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors, options=options)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
-        self.type_checker = TypeChecker(self.errors,
-                                        self.modules,
-                                        self.pyversion,
-                                        DISALLOW_UNTYPED_CALLS in self.flags,
-                                        DISALLOW_UNTYPED_DEFS in self.flags,
-                                        check_untyped_defs,
-                                        WARN_INCOMPLETE_STUB in self.flags,
-                                        WARN_REDUNDANT_CASTS in self.flags)
+        self.type_checker = TypeChecker(self.errors, self.modules, options=options)
         self.missing_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
@@ -470,10 +404,7 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         num_errs = self.errors.num_messages()
-        tree = parse(source, path, self.errors,
-                     pyversion=self.pyversion,
-                     custom_typing_module=self.custom_typing_module,
-                     fast_parser=FAST_PARSER in self.flags)
+        tree = parse(source, path, self.errors, options=self.options)
         tree._fullname = id
 
         # We don't want to warn about 'type: ignore' comments on
@@ -500,8 +431,8 @@ class BuildManager:
     def module_not_found(self, path: str, line: int, id: str) -> None:
         self.errors.set_file(path)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if ((self.pyversion[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
-                (self.pyversion[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
+        if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
+                (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
             self.errors.report(
                 line, "No library stub file for standard library module '{}'".format(id))
             self.errors.report(line, stub_msg, severity='note', only_once=True)
@@ -519,12 +450,12 @@ class BuildManager:
             self.reports.file(file, type_map=self.type_checker.type_map)
 
     def log(self, *message: str) -> None:
-        if VERBOSE in self.flags:
+        if self.options.verbosity >= 1:
             print('%.3f:LOG: ' % (time.time() - self.start_time), *message, file=sys.stderr)
             sys.stderr.flush()
 
     def trace(self, *message: str) -> None:
-        if self.flags.count(VERBOSE) >= 2:
+        if self.options.verbosity >= 2:
             print('%.3f:TRACE:' % (time.time() - self.start_time), *message, file=sys.stderr)
             sys.stderr.flush()
 
@@ -769,7 +700,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json = get_cache_names(id, path, manager.pyversion)
+    meta_json, data_json = get_cache_names(id, path, manager.options.python_version)
     manager.trace('Looking for {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
@@ -789,7 +720,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('data_mtime'),
         data_json,
         meta.get('suppressed', []),
-        meta.get('flags'),
+        meta.get('options'),
         meta.get('dep_prios', []),
     )
     if (m.id != id or m.path != path or
@@ -798,13 +729,13 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         return None
 
     # Ignore cache if generated by an older mypy version.
-    if m.flags is None or len(m.dependencies) != len(m.dep_prios):
+    if m.options is None or len(m.dependencies) != len(m.dep_prios):
         return None
 
-    # Ignore cache if (relevant) flags aren't the same.
-    cached_flags = select_flags_affecting_cache(m.flags)
-    current_flags = select_flags_affecting_cache(manager.flags)
-    if cached_flags != current_flags:
+    # Ignore cache if (relevant) options aren't the same.
+    cached_options = m.options
+    current_options = select_options_affecting_cache(manager.options)
+    if cached_options != current_options:
         return None
 
     # TODO: Share stat() outcome with find_module()
@@ -821,17 +752,17 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     return m
 
 
-def select_flags_affecting_cache(flags: Iterable[str]) -> AbstractSet[str]:
-    return set(flags).intersection(FLAGS_AFFECTING_CACHE)
+def select_options_affecting_cache(options: Options) -> Mapping[str, bool]:
+    return {opt: getattr(options, opt) for opt in OPTIONS_AFFECTING_CACHE}
 
 
-FLAGS_AFFECTING_CACHE = set([
-    SILENT_IMPORTS,
-    ALMOST_SILENT,
-    DISALLOW_UNTYPED_CALLS,
-    DISALLOW_UNTYPED_DEFS,
-    CHECK_UNTYPED_DEFS,
-])
+OPTIONS_AFFECTING_CACHE = [
+    "silent_imports",
+    "almost_silent",
+    "disallow_untyped_calls",
+    "disallow_untyped_defs",
+    "check_untyped_defs",
+]
 
 
 def random_string():
@@ -858,7 +789,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
-    meta_json, data_json = get_cache_names(id, path, manager.pyversion)
+    meta_json, data_json = get_cache_names(id, path, manager.options.python_version)
     manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
     data = tree.serialize()
     parent = os.path.dirname(data_json)
@@ -879,7 +810,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
-            'flags': manager.flags,
+            'options': select_options_affecting_cache(manager.options),
             'dep_prios': dep_prios,
             }
     with open(meta_json_tmp, 'w') as f:
@@ -1093,7 +1024,7 @@ class State:
         self.id = id or '__main__'
         if not path and source is None:
             file_id = id
-            if id == 'builtins' and manager.pyversion[0] == 2:
+            if id == 'builtins' and manager.options.python_version[0] == 2:
                 # The __builtin__ module is called internally by mypy
                 # 'builtins' in Python 2 mode (similar to Python 3),
                 # but the stub file is __builtin__.pyi.  The reason is
@@ -1106,7 +1037,7 @@ class State:
             path = find_module(file_id, manager.lib_path)
             if path:
                 # In silent mode, don't import .py files, except from stubs.
-                if (SILENT_IMPORTS in manager.flags and
+                if (manager.options.silent_imports and
                         path.endswith('.py') and (caller_state or ancestor_for)):
                     # (Never silence builtins, even if it's a .py file;
                     # this can happen in tests!)
@@ -1114,7 +1045,7 @@ class State:
                         not ((caller_state and
                               caller_state.tree and
                               caller_state.tree.is_stub))):
-                        if ALMOST_SILENT in manager.flags:
+                        if manager.options.almost_silent:
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
                             else:
@@ -1127,8 +1058,8 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    suppress_message = ((SILENT_IMPORTS in manager.flags and
-                                        ALMOST_SILENT not in manager.flags) or
+                    suppress_message = ((manager.options.silent_imports and
+                                        not manager.options.almost_silent) or
                                         (caller_state.tree is not None and
                                          'import' in caller_state.tree.weak_opts))
                     if not suppress_message:
@@ -1146,7 +1077,7 @@ class State:
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
-        if path and source is None and INCREMENTAL in manager.flags:
+        if path and source is None and manager.options.incremental:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
         self.add_ancestors()
@@ -1265,7 +1196,7 @@ class State:
             self.source = None  # We won't need it again.
             if self.path and source is None:
                 try:
-                    source = read_with_python_encoding(self.path, manager.pyversion)
+                    source = read_with_python_encoding(self.path, manager.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
@@ -1351,22 +1282,22 @@ class State:
     def semantic_analysis_pass_three(self) -> None:
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
-            if DUMP_TYPE_STATS in self.manager.flags:
+            if self.manager.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
 
     def type_check(self) -> None:
         manager = self.manager
-        if manager.target < TYPE_CHECK:
+        if manager.options.semantic_analysis_only:
             return
         with self.wrap_context():
             manager.type_checker.visit_file(self.tree, self.xpath)
-            if DUMP_INFER_STATS in manager.flags:
+            if manager.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
                                 typemap=manager.type_checker.type_map)
             manager.report_file(self.tree)
 
     def write_cache(self) -> None:
-        if self.path and INCREMENTAL in self.manager.flags and not self.manager.errors.is_errors():
+        if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             write_cache(self.id, self.path, self.tree,
                         list(self.dependencies), list(self.suppressed),
@@ -1382,7 +1313,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
-    if WARN_UNUSED_IGNORES in manager.flags:
+    if manager.options.warn_unused_ignores:
         manager.errors.generate_unused_ignore_notes()
 
 
@@ -1450,7 +1381,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
-        if manager.flags.count(VERBOSE) >= 2:
+        if manager.options.verbosity >= 2:
             for id in scc:
                 manager.trace("Priorities for %s:" % id,
                               " ".join("%s:%d" % (x, graph[id].priorities[x])
@@ -1482,7 +1413,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
             newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
-            if manager.flags.count(VERBOSE) >= 3:  # Dump all mtimes for extreme debugging.
+            if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
                 all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
                 for id in all_ids:
                     if id in scc:

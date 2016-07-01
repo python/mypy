@@ -18,6 +18,7 @@ from mypy.test.helpers import (
     testcase_pyversion, update_testcase_output,
 )
 from mypy.errors import CompileError
+from mypy.options import Options
 
 from mypy import experiments
 
@@ -93,18 +94,22 @@ class TypeCheckSuite(Suite):
 
     def clear_cache(self) -> None:
         dn = build.MYPY_CACHE
+
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
     def run_test_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
         find_module_clear_caches()
-        pyversion = testcase_pyversion(testcase.file, testcase.name)
         program_text = '\n'.join(testcase.input)
-        module_name, program_name, program_text = self.parse_options(program_text)
-        flags = self.parse_flags(program_text)
+        module_name, program_name, program_text = self.parse_module(program_text)
+
+        options = self.parse_options(program_text)
+        options.use_builtins_fixtures = True
+        options.python_version = testcase_pyversion(testcase.file, testcase.name)
+
         output = testcase.output
         if incremental:
-            flags.append(build.INCREMENTAL)
+            options.incremental = True
             if incremental == 1:
                 # In run 1, copy program text to program file.
                 output = []
@@ -121,10 +126,8 @@ class TypeCheckSuite(Suite):
                             shutil.copy(full, target)
         source = BuildSource(program_name, module_name, program_text)
         try:
-            res = build.build(target=build.TYPE_CHECK,
-                              sources=[source],
-                              pyversion=pyversion,
-                              flags=flags + [build.TEST_BUILTINS],
+            res = build.build(sources=[source],
+                              options=options,
                               alt_lib_path=test_temp_dir)
             a = res.errors
         except CompileError as e:
@@ -190,8 +193,8 @@ class TypeCheckSuite(Suite):
                 missing[id] = path
         return set(missing.values())
 
-    def parse_options(self, program_text: str) -> Tuple[str, str, str]:
-        """Return type check options for a test case.
+    def parse_module(self, program_text: str) -> Tuple[str, str, str]:
+        """Return the module and program names for a test case.
 
         The default ('__main__') module name can be overridden by
         using a comment like this in the test case input:
@@ -213,9 +216,11 @@ class TypeCheckSuite(Suite):
         else:
             return '__main__', 'main', program_text
 
-    def parse_flags(self, program_text: str) -> List[str]:
-        m = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+    def parse_options(self, program_text: str) -> Options:
+        options = Options()
+        m = re.search('# options: (.*)$', program_text, flags=re.MULTILINE)
         if m:
-            return m.group(1).split()
-        else:
-            return []
+            options_to_enable = m.group(1).split()
+            for opt in options_to_enable:
+                setattr(options, opt, True)
+        return options
