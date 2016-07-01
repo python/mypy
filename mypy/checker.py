@@ -629,9 +629,16 @@ class TypeChecker(NodeVisitor[Type]):
             self.binder = old_binder
 
     def is_trivial_body(self, block: Block) -> bool:
-        if len(block.body) != 1:
+        body = block.body
+
+        # Skip a docstring
+        if (isinstance(body[0], ExpressionStmt) and
+                isinstance(body[0].expr, StrExpr)):
+            body = block.body[1:]
+
+        if len(body) != 1:
             return False
-        stmt = block.body[0]
+        stmt = body[0]
         return (isinstance(stmt, PassStmt) or
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))

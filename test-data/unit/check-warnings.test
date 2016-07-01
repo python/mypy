@@ -126,3 +126,10 @@ def h() -> int:
 [out]
 main: note: In function "f":
 main:2: note: Missing return statement
+
+[case testNoReturnEmptyBodyWithDocstring]
+def f() -> int:
+    """Return the number of peppers."""
+    # This might be an @abstractmethod, for example
+    pass
+[out]
