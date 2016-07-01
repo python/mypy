@@ -111,7 +111,7 @@ class ConditionalTypeBinder:
             self._add_dependencies(key)
         self._push(key, typ)
 
-    def unreachable(self) -> bool:
+    def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
     def get(self, expr: Union[Expression, Var]) -> Type:
