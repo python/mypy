@@ -133,7 +133,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     # Options object.  Options that require further processing should have
     # their `dest` prefixed with `special-opts:`, which will cause them to be
     # parsed into the separate special_opts namespace object.
-    parser.add_argument('-v', '--verbose', action='count', help="more verbose messages")
+    parser.add_argument('-v', '--verbose', action='count', dest='verbosity',
+                        help="more verbose messages")
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
@@ -174,8 +175,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser.add_argument('--use-python-path', action='store_true',
                         dest='special-opts:use_python_path',
                         help="an anti-pattern")
-    parser.add_argument('--stats', action='store_true', help="dump stats")
-    parser.add_argument('--inferstats', action='store_true', help="dump type inference stats")
+    parser.add_argument('--stats', action='store_true', dest='dump_type_stats', help="dump stats")
+    parser.add_argument('--inferstats', action='store_true', dest='dump_inference_stats',
+                        help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
 
@@ -198,14 +200,15 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                               dest='special-opts:linecount_report')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
-    code_group.add_argument('-m', '--module', action='append', dest='special-opts:modules',
+    code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
+                            dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
     # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
     # ignore A (last option wins).  Perhaps -c, -m and -p could just
     # be command-line flags that modify how we interpret self.files?
-    code_group.add_argument('-c', '--command', dest='special-opts:command',
+    code_group.add_argument('-c', '--command', metavar='PROGRAM_TEXT', dest='special-opts:command',
                             help="type-check program passed in as string")
-    code_group.add_argument('-p', '--package', dest='special-opts:package',
+    code_group.add_argument('-p', '--package', metavar='PACKAGE', dest='special-opts:package',
                             help="type-check all files in a directory")
     code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
                             help="type-check given files or directories")
