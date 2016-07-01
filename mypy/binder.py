@@ -73,7 +73,8 @@ class ConditionalTypeBinder:
         self.last_pop_changed = False
 
         self.try_frames = set()  # type: Set[int]
-        self.loop_frames = []  # type: List[int]
+        self.break_frames = []  # type: List[int]
+        self.continue_frames = []  # type: List[int]
 
     def _add_dependencies(self, key: Key, value: Key = None) -> None:
         if value is None:
@@ -266,14 +267,18 @@ class ConditionalTypeBinder:
                 frame.unreachable = True
         self.options_on_return[index].append(frame)
 
-    def push_loop_frame(self) -> None:
-        self.loop_frames.append(len(self.frames) - 1)
+    def handle_break(self) -> None:
+        self.allow_jump(self.break_frames[-1])
+        self.unreachable()
 
-    def pop_loop_frame(self) -> None:
-        self.loop_frames.pop()
+    def handle_continue(self) -> None:
+        self.allow_jump(self.continue_frames[-1])
+        self.unreachable()
 
     @contextmanager
-    def frame_context(self, *, can_skip: bool, fall_through: int = 1) -> Iterator[Frame]:
+    def frame_context(self, *, can_skip: bool, fall_through: int = 1,
+                      break_frame: int = 0, continue_frame: int = 0,
+                      try_frame: bool = False) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
         If can_skip is True, control flow is allowed to bypass the
@@ -284,13 +289,42 @@ class ConditionalTypeBinder:
         `fall_through` levels higher. Otherwise control flow ends
         at the end of the frame.
 
+        If break_frame > 0, then 'break' statements within this frame
+        will jump out to the frame break_frame levels higher than the
+        frame created by this call to frame_context. Similarly for
+        continue_frame and 'continue' statements.
+
+        If try_frame is true, then execution is allowed to jump at any
+        point within the newly created frame (or its descendents) to
+        its parent (i.e., to the frame that was on top before this
+        call to frame_context).
+
         After the context manager exits, self.last_pop_changed indicates
         whether any types changed in the newly-topmost frame as a result
         of popping this frame.
         """
         assert len(self.frames) > 1
-        yield self.push_frame()
+
+        if break_frame:
+            self.break_frames.append(len(self.frames) - break_frame)
+        if continue_frame:
+            self.continue_frames.append(len(self.frames) - continue_frame)
+        if try_frame:
+            self.try_frames.add(len(self.frames) - 1)
+
+        new_frame = self.push_frame()
+        if try_frame:
+            # An exception may occur immediately
+            self.allow_jump(-1)
+        yield new_frame
         self.pop_frame(can_skip, fall_through)
+
+        if break_frame:
+            self.break_frames.pop()
+        if continue_frame:
+            self.continue_frames.pop()
+        if try_frame:
+            self.try_frames.remove(len(self.frames) - 1)
 
     @contextmanager
     def top_frame_context(self) -> Iterator[Frame]:

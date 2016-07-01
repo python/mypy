@@ -236,13 +236,12 @@ class TypeChecker(NodeVisitor[Type]):
         """
         # The outer frame accumulates the results of all iterations
         with self.binder.frame_context(can_skip=False):
-            self.binder.push_loop_frame()
             while True:
-                with self.binder.frame_context(can_skip=True):
+                with self.binder.frame_context(can_skip=True,
+                                               break_frame=2, continue_frame=1):
                     self.accept(body)
                 if not self.binder.last_pop_changed:
                     break
-            self.binder.pop_loop_frame()
             if exit_condition:
                 _, else_map = self.find_isinstance_check(exit_condition)
                 self.push_type_map(else_map)
@@ -1642,19 +1641,17 @@ class TypeChecker(NodeVisitor[Type]):
         # This one gets all possible states after the try block exited abnormally
         # (by exception, return, break, etc.)
         with self.binder.frame_context(can_skip=False, fall_through=0):
+            # Not only might the body of the try statement exit
+            # abnormally, but so might an exception handler or else
+            # clause. The finally clause runs in *all* cases, so we
+            # need an outer try frame to catch all intermediate states
+            # in case an exception is raised during an except or else
+            # clause. As an optimization, only create the outer try
+            # frame when there actually is a finally clause.
+            self.visit_try_without_finally(s, try_frame=bool(s.finally_body))
             if s.finally_body:
-                # Not only might the body of the try statement exit abnormally,
-                # but so might an exception handler or else clause. The finally
-                # clause runs in *all* cases, so we need an outer try frame to
-                # catch all intermediate states in case an exception is raised
-                # during an except or else clause.
-                self.binder.try_frames.add(len(self.binder.frames) - 1)
-                self.visit_try_without_finally(s)
-                self.binder.try_frames.remove(len(self.binder.frames) - 1)
                 # First we check finally_body is type safe on all abnormal exit paths
                 self.accept(s.finally_body)
-            else:
-                self.visit_try_without_finally(s)
 
         if s.finally_body:
             # Then we try again for the more restricted set of options
@@ -1672,7 +1669,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         return None
 
-    def visit_try_without_finally(self, s: TryStmt) -> None:
+    def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
 
         On entry, the top frame should receive all flow that exits the
@@ -1683,15 +1680,12 @@ class TypeChecker(NodeVisitor[Type]):
         # This frame will run the else block if the try fell through.
         # In that case, control flow continues to the parent of what
         # was the top frame on entry.
-        with self.binder.frame_context(can_skip=False, fall_through=2):
+        with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=try_frame):
             # This frame receives exit via exception, and runs exception handlers
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 # Finally, the body of the try statement
-                with self.binder.frame_context(can_skip=False, fall_through=2):
-                    self.binder.try_frames.add(len(self.binder.frames) - 2)
-                    self.binder.allow_jump(-1)
+                with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=True):
                     self.accept(s.body)
-                    self.binder.try_frames.remove(len(self.binder.frames) - 2)
                 for i in range(len(s.handlers)):
                     with self.binder.frame_context(can_skip=True, fall_through=4):
                         if s.types[i]:
@@ -2022,13 +2016,11 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_member_expr(e)
 
     def visit_break_stmt(self, s: BreakStmt) -> Type:
-        self.binder.allow_jump(self.binder.loop_frames[-1] - 1)
-        self.binder.unreachable()
+        self.binder.handle_break()
         return None
 
     def visit_continue_stmt(self, s: ContinueStmt) -> Type:
-        self.binder.allow_jump(self.binder.loop_frames[-1])
-        self.binder.unreachable()
+        self.binder.handle_continue()
         return None
 
     def visit_int_expr(self, e: IntExpr) -> Type:
