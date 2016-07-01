@@ -416,7 +416,7 @@ class SemanticAnalyzer(NodeVisitor):
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
-            t.append(cast(CallableType, function_type(item.func,
+            t.append(cast(CallableType, function_type(self.check_untyped_defs, item.func,
                                                   self.builtin_type('builtins.function'))))
             if item.func.is_property and i == 0:
                 # This defines a property, probably with a setter and/or deleter.
@@ -849,7 +849,8 @@ class SemanticAnalyzer(NodeVisitor):
     def class_type(self, info: TypeInfo) -> Type:
         # Construct a function type whose fallback is cls.
         from mypy import checkmember  # To avoid import cycle.
-        leading_type = checkmember.type_object_type(info, self.builtin_type)
+        leading_type = checkmember.type_object_type(self.check_untyped_defs,
+                                                    info, self.builtin_type)
         if isinstance(leading_type, Overloaded):
             # Overloaded __init__ is too complex to handle.  Plus it's stubs only.
             return AnyType()
@@ -2510,9 +2511,11 @@ class ThirdPass(TraverserVisitor):
     straightforward type inference.
     """
 
-    def __init__(self, modules: Dict[str, MypyFile], errors: Errors) -> None:
+    def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
+                 check_untyped_defs: bool) -> None:
         self.modules = modules
         self.errors = errors
+        self.check_untyped_defs = check_untyped_defs
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
         self.errors.set_file(fnam)
@@ -2582,7 +2585,8 @@ class ThirdPass(TraverserVisitor):
         if decorator_preserves_type:
             # No non-identity decorators left. We can trivially infer the type
             # of the function here.
-            dec.var.type = function_type(dec.func, self.builtin_type('function'))
+            dec.var.type = function_type(self.check_untyped_defs, dec.func,
+                                         self.builtin_type('function'))
         if dec.decorators:
             if returns_any_if_called(dec.decorators[0]):
                 # The outermost decorator will return Any so we know the type of the
@@ -2592,7 +2596,8 @@ class ThirdPass(TraverserVisitor):
             if sig:
                 # The outermost decorator always returns the same kind of function,
                 # so we know that this is the type of the decoratored function.
-                orig_sig = function_type(dec.func, self.builtin_type('function'))
+                orig_sig = function_type(self.check_untyped_defs, dec.func,
+                                         self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
 

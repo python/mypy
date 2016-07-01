@@ -2137,7 +2137,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return st
 
 
-def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
+def function_type(check_untyped_defs: bool, func: FuncBase,
+                  fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     if func.type:
         assert isinstance(func.type, mypy.types.FunctionLike)
         return func.type
@@ -2152,8 +2153,15 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         for arg in fdef.arguments:
             names.append(arg.variable.name())
 
+        if check_untyped_defs and len(names) > 0 and names[0] == 'self' and\
+           fdef.is_method() and not fdef.is_static and not fdef.is_class:
+            self_arg = [mypy.types.Instance(func.info, [])]  # type: List[mypy.types.Type]
+            arg_types = self_arg + ([mypy.types.AnyType()] * (len(fdef.arguments) - 1))
+        else:
+            arg_types = [mypy.types.AnyType()] * len(fdef.arguments)
+
         return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arguments),
+            arg_types,
             [arg.kind for arg in fdef.arguments],
             names,
             mypy.types.AnyType(),
@@ -2163,10 +2171,10 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         )
 
 
-def method_type_with_fallback(func: FuncBase,
+def method_type_with_fallback(check_untyped_defs: bool, func: FuncBase,
                               fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
     """Return the signature of a method (omit self)."""
-    return method_type(function_type(func, fallback))
+    return method_type(function_type(check_untyped_defs, func, fallback))
 
 
 def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
