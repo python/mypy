@@ -129,9 +129,10 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
             raise argparse.ArgumentTypeError(
                 "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
-    # Unless otherwise specified, arguments will be parsed directly onto an Options object.  Options
-    # that require further processing should have their `dest` prefixed with `special-opts:`, which
-    # will cause them to be parsed into the separate special_opts namespace object.
+    # Unless otherwise specified, arguments will be parsed directly onto an
+    # Options object.  Options that require further processing should have
+    # their `dest` prefixed with `special-opts:`, which will cause them to be
+    # parsed into the separate special_opts namespace object.
     parser.add_argument('-v', '--verbose', action='count', help="more verbose messages")
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
@@ -164,12 +165,14 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
-    parser.add_argument('--strict-optional', action='store_true', dest='special-opts:strict_optional',
+    parser.add_argument('--strict-optional', action='store_true',
+                        dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
-    parser.add_argument('--use-python-path', action='store_true', dest='special-opts:use_python_path',
+    parser.add_argument('--use-python-path', action='store_true',
+                        dest='special-opts:use_python_path',
                         help="an anti-pattern")
     parser.add_argument('--stats', action='store_true', help="dump stats")
     parser.add_argument('--inferstats', action='store_true', help="dump type inference stats")
@@ -179,13 +182,20 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
-    report_group.add_argument('--html-report', metavar='DIR', dest='special-opts:html_report')
-    report_group.add_argument('--old-html-report', metavar='DIR', dest='special-opts:old_html_report')
-    report_group.add_argument('--xslt-html-report', metavar='DIR', dest='special-opts:xslt_html_report')
-    report_group.add_argument('--xml-report', metavar='DIR', dest='special-opts:xml_report')
-    report_group.add_argument('--txt-report', metavar='DIR', dest='special-opts:txt_report')
-    report_group.add_argument('--xslt-txt-report', metavar='DIR', dest='special-opts:xslt_txt_report')
-    report_group.add_argument('--linecount-report', metavar='DIR', dest='special-opts:linecount_report')
+    report_group.add_argument('--html-report', metavar='DIR',
+                              dest='special-opts:html_report')
+    report_group.add_argument('--old-html-report', metavar='DIR',
+                              dest='special-opts:old_html_report')
+    report_group.add_argument('--xslt-html-report', metavar='DIR',
+                              dest='special-opts:xslt_html_report')
+    report_group.add_argument('--xml-report', metavar='DIR',
+                              dest='special-opts:xml_report')
+    report_group.add_argument('--txt-report', metavar='DIR',
+                              dest='special-opts:txt_report')
+    report_group.add_argument('--xslt-txt-report', metavar='DIR',
+                              dest='special-opts:xslt_txt_report')
+    report_group.add_argument('--linecount-report', metavar='DIR',
+                              dest='special-opts:linecount_report')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', dest='special-opts:modules',
