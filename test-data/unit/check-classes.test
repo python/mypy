@@ -1818,8 +1818,10 @@ def f(a: Type[User]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
+def mock() -> type: return User
+
 f(User)
-f(type(User))  # E: No overload variant of "f" matches argument types [builtins.type]
+f(mock())  # E: No overload variant of "f" matches argument types [builtins.type]
 [builtins fixtures/classmethod.py]
 [out]
 
@@ -1946,5 +1948,61 @@ def f(a: type) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap
 @overload
 def f(a: object) -> str: pass
 [builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeConstructorReturnsTypeType]
+class User:
+    @classmethod
+    def test_class_method(cls) -> int: pass
+    @staticmethod
+    def test_static_method() -> str: pass
+    def test_instance_method(self) -> None: pass
+
+u = User()
+
+reveal_type(type(u))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(type(u).test_class_method())  # E: Revealed type is 'builtins.int'
+reveal_type(type(u).test_static_method())  # E: Revealed type is 'builtins.str'
+type(u).test_instance_method()  # E: Too few arguments for "test_instance_method" of "User"
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testObfuscatedTypeConstructorReturnsTypeType]
+from typing import TypeVar
+class User: pass
+
+f1 = type
+
+A = TypeVar('A')
+def f2(func: A) -> A:
+    return func
+
+u = User()
+
+reveal_type(f1(u))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(f2(type)(u))  # E: Revealed type is 'Type[__main__.User]'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testTypeConstructorLookalikeFails]
+class User: pass
+
+def fake1(a: object) -> type:
+    return User
+def fake2(a: int) -> type:
+    return User
+
+reveal_type(type(User()))  # E: Revealed type is 'Type[__main__.User]'
+reveal_type(fake1(User()))  # E: Revealed type is 'builtins.type'
+reveal_type(fake2(3))  # E: Revealed type is 'builtins.type'
+[builtins fixtures/classmethod.py]
+[out]
+
+[case testOtherTypeConstructorsSucceed]
+def foo(self) -> int: return self.attr
+
+User = type('User', (object,), {'foo': foo, 'attr': 3})
+reveal_type(User)  # E: Revealed type is 'builtins.type'
+[builtins fixtures/args.py]
 [out]
 

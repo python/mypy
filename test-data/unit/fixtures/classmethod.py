@@ -9,7 +9,9 @@ class type:
 
 class function: pass
 
-classmethod = object() # Dummy definition.
+# Dummy definitions.
+classmethod = object()
+staticmethod = object()
 
 class int:
     @classmethod
