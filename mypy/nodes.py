@@ -487,6 +487,7 @@ class FuncDef(FuncItem, Statement):
                 'is_property': self.is_property,
                 'is_overload': self.is_overload,
                 'is_generator': self.is_generator,
+                'is_coroutine': self.is_coroutine,
                 'is_static': self.is_static,
                 'is_class': self.is_class,
                 'is_decorated': self.is_decorated,
@@ -508,6 +509,7 @@ class FuncDef(FuncItem, Statement):
         ret.is_property = data['is_property']
         ret.is_overload = data['is_overload']
         ret.is_generator = data['is_generator']
+        ret.is_coroutine = data['is_coroutine']
         ret.is_static = data['is_static']
         ret.is_class = data['is_class']
         ret.is_decorated = data['is_decorated']
@@ -1707,7 +1709,7 @@ class PromoteExpr(Expression):
 
 
 # PEP 492 nodes: 'await', 'async for', 'async with'.
-# ('async def' is FunDef(..., is_coroutine=True).)
+# ('async def' is a FuncDef with is_coroutine = True.)
 
 
 class AwaitExpr(Node):
@@ -1717,7 +1719,6 @@ class AwaitExpr(Node):
     #       and then the return type is E
 
     expr = None  # type: Node
-    type = None  # type: Type
 
     def __init__(self, expr: Node) -> None:
         self.expr = expr
@@ -1728,22 +1729,46 @@ class AwaitExpr(Node):
 
 class AsyncForStmt(Node):
     """Asynchronous for statement (async for ...)."""
-    # TODO: constructor
+    # TODO Maybe just use ForStmt with an extra flag?
     # TODO: [de]serialize
     # TODO: types
 
+    # Index variables
+    index = None  # type: Expression
+    # Expression to iterate
+    expr = None  # type: Expression
+    body = None  # type: Block
+    else_body = None  # type: Block
+
+    def __init__(self, index: Expression, expr: Expression, body: Block,
+                 else_body: Block) -> None:
+        self.index = index
+        self.expr = expr
+        self.body = body
+        self.else_body = else_body
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        print("XXX AsyncForStmt.accept")
+        return visitor.visit_async_for_stmt(self)
 
 
 class AsyncWithStmt(Node):
     """Asynchronous with statement (async with ...)."""
-    # TODO: constructor
+    # TODO Maybe just use WithStmt with an extra flag?
     # TODO: [de]serialize
     # TODO: types
 
+    expr = None  # type: List[Expression]
+    target = None  # type: List[Expression]
+    body = None  # type: Block
+
+    def __init__(self, expr: List[Expression], target: List[Expression],
+                 body: Block) -> None:
+        self.expr = expr
+        self.target = target
+        self.body = body
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        print("XXX AsyncWithStmt.accept")
+        return visitor.visit_async_with_stmt(self)
 
 
 # Constants

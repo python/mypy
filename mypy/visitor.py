@@ -79,6 +79,9 @@ class NodeVisitor(Generic[T]):
     def visit_for_stmt(self, o: 'mypy.nodes.ForStmt') -> T:
         pass
 
+    def visit_async_for_stmt(self, o: 'mypy.nodes.AsyncForStmt') -> T:
+        pass
+
     def visit_return_stmt(self, o: 'mypy.nodes.ReturnStmt') -> T:
         pass
 
@@ -107,6 +110,9 @@ class NodeVisitor(Generic[T]):
         pass
 
     def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> T:
+        pass
+
+    def visit_async_with_stmt(self, o: 'mypy.nodes.AsyncWithStmt') -> T:
         pass
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> T:

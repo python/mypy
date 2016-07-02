@@ -340,7 +340,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_yield_expr(self, node: YieldExpr) -> Node:
         return YieldExpr(self.node(node.expr))
 
-    def visit_await_expr(self, node: AwaitExpr) -> Type:
+    def visit_await_expr(self, node: AwaitExpr) -> Node:
         return AwaitExpr(self.node(node.expr))
 
     def visit_call_expr(self, node: CallExpr) -> Node:

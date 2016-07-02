@@ -779,13 +779,16 @@ class ASTConverter(ast35.NodeTransformer):
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
     def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
-        self.visit_list(n.body)  # XXX
-        return AsyncForStmt()  # XXX
+        return AsyncForStmt(self.visit(n.target),
+                            self.visit(n.iter),
+                            self.as_block(n.body, n.lineno),
+                            self.as_block(n.orelse, n.lineno))
 
     # AsyncWith(withitem* items, stmt* body)
     def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
-        self.visit_list(n.body)  # XXX
-        return AsyncWithStmt()  # XXX
+        return AsyncWithStmt([self.visit(i.context_expr) for i in n.items],
+                             [self.visit(i.optional_vars) for i in n.items],
+                             self.as_block(n.body, n.lineno))
 
 
 class TypeConverter(ast35.NodeTransformer):

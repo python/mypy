@@ -55,3 +55,13 @@ async def f() -> str:
 [out]
 main: note: In function "f":
 main:6: error: Incompatible return value type (got "int", expected "str")
+
+[case testAsyncFor]
+# options: fast_parser
+class C:
+    def __next__(self): return self
+    async def __aiter__(self) -> int: return 0
+async def f() -> None:
+    async for x in C():
+        pass  # TODO: reveal or check type
+[builtins fixtures/async_await.py]

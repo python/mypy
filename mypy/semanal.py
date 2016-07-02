@@ -62,8 +62,9 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase,
     IntExpr, FloatExpr, UnicodeExpr,
+    AwaitExpr, AsyncForStmt, AsyncWithStmt,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED
 )
 from mypy.visitor import NodeVisitor
@@ -314,7 +315,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Second phase of analysis for function.
             self.errors.push_function(defn.name())
             self.analyze_function(defn)
-            if defn.is_coroutine:
+            if defn.is_coroutine and isinstance(defn.type, CallableType):
                 # A coroutine defined as `async def foo(...) -> T: ...`
                 # has external return type `Awaitable[T]`.
                 defn.type = defn.type.copy_modified(
@@ -1686,6 +1687,19 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.visit_block_maybe(s.else_body)
 
+    def visit_async_for_stmt(self, s: AsyncForStmt) -> None:
+        # TODO: type of expr.
+        s.expr.accept(self)
+
+        # Bind index variables and check if they define new names.
+        self.analyze_lvalue(s.index)
+
+        self.loop_depth += 1
+        self.visit_block(s.body)
+        self.loop_depth -= 1
+
+        self.visit_block_maybe(s.else_body)
+
     def visit_break_stmt(self, s: BreakStmt) -> None:
         if self.loop_depth == 0:
             self.fail("'break' outside loop", s, True, blocker=True)
@@ -1719,6 +1733,14 @@ class SemanticAnalyzer(NodeVisitor):
             s.finally_body.accept(visitor)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
+        for e, n in zip(s.expr, s.target):
+            e.accept(self)
+            if n:
+                self.analyze_lvalue(n)
+        self.visit_block(s.body)
+
+    def visit_async_with_stmt(self, s: AsyncWithStmt) -> None:
+        # TODO: Type???
         for e, n in zip(s.expr, s.target):
             e.accept(self)
             if n:
@@ -2490,7 +2512,21 @@ class FirstPass(NodeVisitor):
         if s.else_body:
             s.else_body.accept(self)
 
+    def visit_async_for_stmt(self, s: AsyncForStmt) -> None:
+        # TODO: Type of s.expr
+        self.analyze_lvalue(s.index)
+        s.body.accept(self)
+        if s.else_body:
+            s.else_body.accept(self)
+
     def visit_with_stmt(self, s: WithStmt) -> None:
+        for n in s.target:
+            if n:
+                self.analyze_lvalue(n)
+        s.body.accept(self)
+
+    def visit_async_with_stmt(self, s: AsyncWithStmt) -> None:
+        # TODO: Type ???
         for n in s.target:
             if n:
                 self.analyze_lvalue(n)

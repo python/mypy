@@ -25,7 +25,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr,
+    AwaitExpr, AsyncForStmt, AsyncWithStmt,
     CONTRAVARIANT, COVARIANT
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
@@ -1663,6 +1663,13 @@ class TypeChecker(NodeVisitor[Type]):
         self.analyze_index_variables(s.index, item_type, s)
         self.accept_loop(s.body, s.else_body)
 
+    def visit_async_for_stmt(self, s: AsyncForStmt) -> Type:
+        """Type check an `async for` statement."""
+        # TODO: Type???
+        item_type = self.analyze_iterable_item_type(s.expr)
+        self.analyze_index_variables(s.index, item_type, s)
+        self.accept_loop(s.body, s.else_body)
+
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
         iterable = self.accept(expr)
@@ -1769,6 +1776,19 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> Type:
+        echk = self.expr_checker
+        for expr, target in zip(s.expr, s.target):
+            ctx = self.accept(expr)
+            enter = echk.analyze_external_member_access('__enter__', ctx, expr)
+            obj = echk.check_call(enter, [], [], expr)[0]
+            if target:
+                self.check_assignment(target, self.temp_node(obj, expr))
+            exit = echk.analyze_external_member_access('__exit__', ctx, expr)
+            arg = self.temp_node(AnyType(), expr)
+            echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+        self.accept(s.body)
+
+    def visit_async_with_stmt(self, s: AsyncWithStmt) -> Type:
         echk = self.expr_checker
         for expr, target in zip(s.expr, s.target):
             ctx = self.accept(expr)
