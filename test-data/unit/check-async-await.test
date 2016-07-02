@@ -58,10 +58,12 @@ main:6: error: Incompatible return value type (got "int", expected "str")
 
 [case testAsyncFor]
 # options: fast_parser
-class C:
-    def __next__(self): return self
-    async def __aiter__(self) -> int: return 0
+from typing import AsyncIterator
+class C(AsyncIterator[int]):
+    async def __anext__(self) -> int: return 0
 async def f() -> None:
     async for x in C():
-        pass  # TODO: reveal or check type
+        reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":

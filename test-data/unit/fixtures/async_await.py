@@ -1,5 +1,7 @@
 import typing
+class object:
+    def __init__(self): pass
+class type: pass
 class function: pass
 class int: pass
-class object: pass
 class str: pass

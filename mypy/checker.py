@@ -287,7 +287,7 @@ class TypeChecker(NodeVisitor[Type]):
     # - get_generator_return_type(t) returns tr.
 
     def is_generator_return_type(self, typ: Type) -> bool:
-        """Is `typ` a valid type for  generator?
+        """Is `typ` a valid type for generator?
 
         True if either Generator or Awaitable is a supertype of `typ`.
         """
@@ -1659,9 +1659,36 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_for_stmt(self, s: ForStmt) -> Type:
         """Type check a for statement."""
-        item_type = self.analyze_iterable_item_type(s.expr)
+        if s.is_async:
+            item_type = self.analyze_async_iterable_item_type(s.expr)
+        else:
+            item_type = self.analyze_iterable_item_type(s.expr)
         self.analyze_index_variables(s.index, item_type, s)
         self.accept_loop(s.body, s.else_body)
+
+    def analyze_async_iterable_item_type(self, expr: Node) -> Type:
+        """Analyse async iterable expression and return iterator item type."""
+        iterable = self.accept(expr)
+
+        self.check_not_void(iterable, expr)
+
+        self.check_subtype(iterable,
+                           self.named_generic_type('typing.AsyncIterable',
+                                                   [AnyType()]),
+                           expr, messages.ASYNC_ITERABLE_EXPECTED)
+
+        echk = self.expr_checker
+        method = echk.analyze_external_member_access('__aiter__', iterable, expr)
+        iterator = echk.check_call(method, [], [], expr)[0]
+        method = echk.analyze_external_member_access('__anext__', iterator, expr)
+        awaitable = echk.check_call(method, [], [], expr)[0]
+        method = echk.analyze_external_member_access('__await__', awaitable, expr)
+        generator = echk.check_call(method, [], [], expr)[0]
+        if (isinstance(generator, Instance) and len(generator.args) == 3
+                and generator.type.fullname() == 'typing.Generator'):
+            return generator.args[2]
+        else:
+            return AnyType()
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
