@@ -6,6 +6,8 @@
 Welcome to Mypy documentation!
 ==============================
 
+Mypy is a static type checker for Python.
+
 .. toctree::
    :maxdepth: 2
 
