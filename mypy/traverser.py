@@ -9,7 +9,7 @@ from mypy.nodes import (
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
     FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, AsyncForStmt, AsyncWithStmt,
+    YieldExpr
 )
 
 
@@ -84,13 +84,6 @@ class TraverserVisitor(NodeVisitor[None]):
         if o.else_body:
             o.else_body.accept(self)
 
-    def visit_async_for_stmt(self, o: AsyncForStmt) -> None:
-        o.index.accept(self)
-        o.expr.accept(self)
-        o.body.accept(self)
-        if o.else_body:
-            o.else_body.accept(self)
-
     def visit_return_stmt(self, o: ReturnStmt) -> None:
         if o.expr is not None:
             o.expr.accept(self)
@@ -129,13 +122,6 @@ class TraverserVisitor(NodeVisitor[None]):
             o.finally_body.accept(self)
 
     def visit_with_stmt(self, o: WithStmt) -> None:
-        for i in range(len(o.expr)):
-            o.expr[i].accept(self)
-            if o.target[i] is not None:
-                o.target[i].accept(self)
-        o.body.accept(self)
-
-    def visit_async_with_stmt(self, o: AsyncWithStmt) -> None:
         for i in range(len(o.expr)):
             o.expr[i].accept(self)
             if o.target[i] is not None:

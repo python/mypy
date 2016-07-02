@@ -19,8 +19,7 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr,
-    AwaitExpr
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor

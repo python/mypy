@@ -14,7 +14,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, AsyncForStmt, AsyncWithStmt,
+    AwaitExpr,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -779,16 +779,20 @@ class ASTConverter(ast35.NodeTransformer):
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
     def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
-        return AsyncForStmt(self.visit(n.target),
-                            self.visit(n.iter),
-                            self.as_block(n.body, n.lineno),
-                            self.as_block(n.orelse, n.lineno))
+        r = ForStmt(self.visit(n.target),
+                    self.visit(n.iter),
+                    self.as_block(n.body, n.lineno),
+                    self.as_block(n.orelse, n.lineno))
+        r.is_async = True
+        return r
 
     # AsyncWith(withitem* items, stmt* body)
     def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
-        return AsyncWithStmt([self.visit(i.context_expr) for i in n.items],
-                             [self.visit(i.optional_vars) for i in n.items],
-                             self.as_block(n.body, n.lineno))
+        r = WithStmt([self.visit(i.context_expr) for i in n.items],
+                     [self.visit(i.optional_vars) for i in n.items],
+                     self.as_block(n.body, n.lineno))
+        r.is_async = True
+        return r
 
 
 class TypeConverter(ast35.NodeTransformer):
