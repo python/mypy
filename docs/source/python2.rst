@@ -76,5 +76,5 @@ Additional notes
   within comments.
 
 - Mypy uses a separate set of library stub files in `typeshed
-  <http://github.com/python/typeshed>`_ for Python 2. Library support
+  <https://github.com/python/typeshed>`_ for Python 2. Library support
   may vary between Python 2 and Python 3.

@@ -132,7 +132,7 @@ For example, consider this code:
 Without a library stub, the type checker would have no way of
 inferring the type of ``x`` and checking that the argument to ``chr``
 has a valid type. Mypy incorporates the `typeshed
-<http://github.com/python/typeshed>`_ project, which contains library
+<https://github.com/python/typeshed>`_ project, which contains library
 stubs for the Python builtins and the standard library. The stub for
 the builtins contains a definition like this for ``chr``:
 
