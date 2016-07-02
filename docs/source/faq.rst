@@ -105,9 +105,9 @@ Why not use structural subtyping?
 *********************************
 
 Mypy primarily uses `nominal subtyping
-<http://en.wikipedia.org/wiki/Nominative_type_system>`_ instead of
+<https://en.wikipedia.org/wiki/Nominative_type_system>`_ instead of
 `structural subtyping
-<http://en.wikipedia.org/wiki/Structural_type_system>`_. Some argue
+<https://en.wikipedia.org/wiki/Structural_type_system>`_. Some argue
 that structural subtyping is better suited for languages with duck
 typing such as Python.
 
@@ -176,7 +176,7 @@ mypy programs.
 How is mypy different from Cython?
 **********************************
 
-`Cython <http://www.cython.org>`_ is a variant of Python that supports
+`Cython <http://cython.org/>`_ is a variant of Python that supports
 compilation to CPython C modules. It can give major speedups to
 certain classes of programs compared to CPython, and it provides
 static typing (though this is different from mypy). Mypy differs in
