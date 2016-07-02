@@ -27,6 +27,7 @@ Welcome to Mypy documentation!
    planned_features
    command_line
    faq
+   cheat_sheet
    revision_history
 
 Indices and tables
