@@ -1712,9 +1712,6 @@ class PromoteExpr(Expression):
 
 class AwaitExpr(Node):
     """Await expression (await ...)."""
-    # TODO: [de]serialize()
-    # TODO: arg type must be AsyncIterator[E] or Generator[E, ..., ...] (or Iterator[E]?)
-    #       and then the return type is E
 
     expr = None  # type: Node
 
