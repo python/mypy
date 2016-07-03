@@ -35,6 +35,7 @@ from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
+import mypy.checkexpr
 
 from mypy import experiments
 
@@ -330,7 +331,7 @@ class ExpressionChecker:
         self.msg.unsupported_type_type(item, context)
         return AnyType()
 
-    def infer_arg_types_in_context(self, callee: CallableType,
+    def infer_arg_types_in_context(self, callee: Optional[CallableType],
                                    args: List[Node]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
 
