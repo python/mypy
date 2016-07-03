@@ -251,8 +251,8 @@ class ExpressionChecker:
                                       formal_to_actual, context,
                                       messages=arg_messages)
 
-            if callee.is_type_obj() and (len(arg_types) == 1) and \
-                    is_equivalent(callee.ret_type, self.named_type('builtins.type')):
+            if (callee.is_type_obj() and (len(arg_types) == 1) 
+                    and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
                 callee = callee.copy_modified(ret_type=TypeType(arg_types[0]))
 
             if callable_node:
