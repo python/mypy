@@ -116,21 +116,6 @@ class Node(Context):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
 
-    # NOTE: Can't use @abstractmethod, since many subclasses of Node
-    # don't implement serialize().
-    def serialize(self) -> Any:
-        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Node':
-        classname = data['.class']
-        glo = globals()
-        if classname in glo:
-            cl = glo[classname]
-            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
-                return cl.deserialize(data)
-        raise NotImplementedError('unexpected .class {}'.format(classname))
-
 
 # These are placeholders for a future refactoring; see #1783.
 # For now they serve as (unchecked) documentation of what various
@@ -150,9 +135,20 @@ class SymbolNode(Node):
     @abstractmethod
     def fullname(self) -> str: pass
 
+    # NOTE: Can't use @abstractmethod, since many subclasses of Node
+    # don't implement serialize().
+    def serialize(self) -> Any:
+        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
-        return cast(SymbolNode, super().deserialize(data))
+        classname = data['.class']
+        glo = globals()
+        if classname in glo:
+            cl = glo[classname]
+            if issubclass(cl, cls) and 'deserialize' in cl.__dict__:
+                return cl.deserialize(data)
+        raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
 class MypyFile(SymbolNode, Statement):
@@ -1078,7 +1074,7 @@ class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
     kind = None  # type: int      # LDEF/GDEF/MDEF/... (None if not available)
-    node = None  # type: Node        # Var, FuncDef or TypeInfo that describes this
+    node = None  # type: SymbolNode  # Var, FuncDef or TypeInfo that describes this
     fullname = None  # type: str  # Fully qualified name (or name if not global)
 
     # Does this define a new name with inferred type?
@@ -1124,7 +1120,7 @@ class NameExpr(RefExpr):
         assert data['.class'] == 'NameExpr'
         ret = NameExpr(data['name'])
         ret.kind = data['kind']
-        ret.node = None if data['node'] is None else Node.deserialize(data['node'])
+        ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
         ret.fullname = data['fullname']
         ret.is_def = data['is_def']
         ret.literal = data['literal']

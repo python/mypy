@@ -1778,7 +1778,7 @@ class SemanticAnalyzer(NodeVisitor):
                           "context".format(expr.name), expr)
             else:
                 expr.kind = n.kind
-                expr.node = (cast(Node, n.node))
+                expr.node = n.node
                 expr.fullname = n.fullname
 
     def visit_super_expr(self, expr: SuperExpr) -> None:
