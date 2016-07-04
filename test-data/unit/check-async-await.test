@@ -67,3 +67,15 @@ async def f() -> None:
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "f":
+
+[case testAsyncWith]
+# options: fast_parser
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:
+        reveal_type(x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":

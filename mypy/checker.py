@@ -1684,10 +1684,12 @@ class TypeChecker(NodeVisitor[Type]):
         awaitable = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__await__', awaitable, expr)
         generator = echk.check_call(method, [], [], expr)[0]
+        # XXX TODO Use get_generator_return_type()?
         if (isinstance(generator, Instance) and len(generator.args) == 3
                 and generator.type.fullname() == 'typing.Generator'):
             return generator.args[2]
         else:
+            # XXX TODO What if it's a subclass of Awaitable?
             return AnyType()
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
@@ -1797,15 +1799,32 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_with_stmt(self, s: WithStmt) -> Type:
         echk = self.expr_checker
+        if s.is_async:
+            m_enter = '__aenter__'
+            m_exit = '__aexit__'
+        else:
+            m_enter = '__enter__'
+            m_exit = '__exit__'
         for expr, target in zip(s.expr, s.target):
             ctx = self.accept(expr)
-            enter = echk.analyze_external_member_access('__enter__', ctx, expr)
+            enter = echk.analyze_external_member_access(m_enter, ctx, expr)
             obj = echk.check_call(enter, [], [], expr)[0]
+            if s.is_async:
+                self.check_subtype(obj, self.named_type('typing.Awaitable'), expr)
             if target:
+                if s.is_async:
+                    # XXX TODO What if it's a subclass of Awaitable?
+                    if (isinstance(obj, Instance) and len(obj.args) == 1
+                            and obj.type.fullname() == 'typing.Awaitable'):
+                        obj = obj.args[0]
+                    else:
+                        obj = AnyType()
                 self.check_assignment(target, self.temp_node(obj, expr))
-            exit = echk.analyze_external_member_access('__exit__', ctx, expr)
+            exit = echk.analyze_external_member_access(m_exit, ctx, expr)
             arg = self.temp_node(AnyType(), expr)
-            echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
+            res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+            if s.is_async:
+                self.check_subtype(res, self.named_type('typing.Awaitable'), expr)
         self.accept(s.body)
 
     def visit_print_stmt(self, s: PrintStmt) -> Type:
@@ -2000,12 +2019,14 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(actual_type, AnyType):
             return any_type
         if is_subtype(actual_type, generator_type):
-            if isinstance(actual_type, Instance) and len(actual_type.args) == 3:
+            if (isinstance(actual_type, Instance) and len(actual_type.args) == 3
+                    and actual_type.type.fullname() == 'typing.Generator'):
                 return actual_type.args[2]
             else:
                 return any_type  # Must've been unparameterized Generator.
         elif is_subtype(actual_type, awaitable_type):
-            if isinstance(actual_type, Instance) and len(actual_type.args) == 1:
+            if (isinstance(actual_type, Instance) and len(actual_type.args) == 1
+                    and actual_type.type.fullname() == 'typing.Awaitable'):
                 return actual_type.args[0]
             else:
                 return any_type  # Must've been unparameterized Awaitable.
