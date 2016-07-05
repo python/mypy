@@ -79,3 +79,33 @@ async def f() -> None:
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "f":
+
+[case testNoYieldInAsyncDef]
+# options: fast_parser
+async def f():
+    yield None
+async def g():
+    yield
+async def h():
+    x = yield
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:3: error: 'yield' in async function
+main: note: In function "g":
+main:5: error: 'yield' in async function
+main: note: In function "h":
+main:7: error: 'yield' in async function
+
+[case testNoYieldFromInAsyncDef]
+# options: fast_parser
+async def f():
+    yield from []
+async def g():
+    x = yield from []
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:3: error: 'yield from' in async function
+main: note: In function "g":
+main:5: error: 'yield from' in async function
