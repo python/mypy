@@ -81,3 +81,12 @@ dir/a.py:1: error: Name 'undef' is not defined
 # coding: uft-8
 [out]
 mypy: can't decode file 'a.py': unknown encoding: uft-8
+
+[case testCannotIgnoreDuplicateModule]
+# cmd: mypy one/mod/__init__.py two/mod/__init__.py
+[file one/mod/__init__.py]
+# type: ignore
+[file two/mod/__init__.py]
+# type: ignore
+[out]
+two/mod/__init__.py: error: Duplicate module named 'mod'
