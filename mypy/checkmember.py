@@ -91,10 +91,15 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         if isinstance(ret_type, TupleType):
             ret_type = ret_type.fallback
         if isinstance(ret_type, Instance):
-            result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
-                                                    builtin_type, not_ready_callback, msg)
-            if result:
-                return result
+            if name not in {'__eq__', '__ne__'}:
+                # We skip here so that when mypy sees `type(foo) == type(bar)`, it doesn't try
+                # and typecheck against `foo.__eq__`. This workaround makes sure that mypy falls
+                # through and uses `foo.__class__.__eq__`.instead. See the bug discussed in
+                # https://github.com/python/mypy/pull/1787 for more info.
+                result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
+                                                        builtin_type, not_ready_callback, msg)
+                if result:
+                    return result
             # Look up from the 'type' type.
             return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                          builtin_type, not_ready_callback, msg,
@@ -121,7 +126,8 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
-        if item:
+        if item and name not in {'__eq__', '__ne__'}:
+            # See comment above for why __eq__ and __ne__ are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg)
             if result:
