@@ -188,7 +188,9 @@ class Errors:
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        if info.file in self.ignored_lines and info.line in self.ignored_lines[info.file]:
+        if (info.file in self.ignored_lines and
+                info.line in self.ignored_lines[info.file] and
+                not info.blocker):
             # Annotation requests us to ignore all errors on this line.
             self.used_ignored_lines[info.file].add(info.line)
             return
