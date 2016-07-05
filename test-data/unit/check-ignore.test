@@ -195,3 +195,6 @@ def f() -> None: pass
 [out]
 main:3: error: Unexpected keyword argument "kw" for "f"
 tmp/m.py:2: note: "f" defined here
+
+[case testCannotIgnoreBlockingError]
+yield  # type: ignore  # E: 'yield' outside function
