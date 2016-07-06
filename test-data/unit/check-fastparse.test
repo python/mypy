@@ -154,3 +154,19 @@ def f(a,        # type: A
 [builtins fixtures/dict.py]
 [out]
 main: note: In function "f":
+
+[case testFasterParseTooManyArgumentsAnnotation]
+# options: fast_parser
+def f():  # E: Type signature has too many arguments
+    # type: (int) -> None
+    pass
+[out]
+main: note: In function "f":
+
+[case testFasterParseTooFewArgumentsAnnotation]
+# options: fast_parser
+def f(x):  # E: Type signature has too few arguments
+    # type: () -> None
+    pass
+[out]
+main: note: In function "f":
