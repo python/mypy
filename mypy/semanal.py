@@ -59,7 +59,7 @@ from mypy.nodes import (
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
@@ -1534,9 +1534,13 @@ class SemanticAnalyzer(NodeVisitor):
             var.info = info
             var.type = typ
             symbols[item] = SymbolTableNode(MDEF, var)
-        # Add a __init__ method.
-        init = self.make_namedtuple_init(info, items, types)
+        # Add a __init__, _replace, asdict methods.
+        init = self.make_namedtuple_create('__init__', NoneTyp(), info, items, types, ARG_POS)
         symbols['__init__'] = SymbolTableNode(MDEF, init)
+        replace = self.make_namedtuple_create('_replace', AnyType(), info, items, types, ARG_NAMED, EllipsisType)
+        symbols['_replace'] = SymbolTableNode(MDEF, replace)
+        asdict = self.make_namedtuple_asdict(info)
+        symbols['_asdict'] = SymbolTableNode(MDEF, asdict)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
         info.is_named_tuple = True
         info.mro = [info] + info.tuple_type.fallback.type.mro
@@ -1546,19 +1550,39 @@ class SemanticAnalyzer(NodeVisitor):
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def make_namedtuple_init(self, info: TypeInfo, items: List[str],
-                             types: List[Type]) -> FuncDef:
+    def make_namedtuple_create(self, funcname, ret: Type, info: TypeInfo, items: List[str],
+                             types: List[Type], kind, initializer=None) -> FuncDef:
         args = [self.make_argument(item, type) for item, type in zip(items, types)]
+        for arg in args:
+            if initializer is not None:
+                arg.initializer = initializer
+                arg.kind = kind
         # TODO: Make sure that the self argument name is not visible?
         args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
         arg_kinds = [arg.kind for arg in args]
         signature = CallableType([cast(Type, None)] + types,
                                  arg_kinds,
                                  ['__self'] + items,
-                                 NoneTyp(),
+                                 ret,
                                  self.named_type('__builtins__.function'),
                                  name=info.name())
-        func = FuncDef('__init__',
+        func = FuncDef(funcname,
+                       args,
+                       Block([]),
+                       typ=signature)
+        func.info = info
+        return func
+    
+    def make_namedtuple_asdict(self, info: TypeInfo) -> FuncDef:
+        args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)]
+        arg_kinds = [arg.kind for arg in args]
+        signature = CallableType([cast(Type, None)],
+                                 arg_kinds,
+                                 ['__self'],
+                                 AnyType(),
+                                 self.named_type('__builtins__.function'),
+                                 name=info.name())
+        func = FuncDef('_asdict',
                        args,
                        Block([]),
                        typ=signature)

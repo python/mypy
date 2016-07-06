@@ -185,3 +185,18 @@ class C(B): pass
 B(1).b
 C(2).b
 [builtins fixtures/property.py]
+
+[case testNamedTupleAsDict]
+from collections import namedtuple
+
+X = namedtuple('X', ['x', 'y'])
+x = None  # type: X
+a = x._asdict()
+
+[case testNamedTupleAsDict]
+from collections import namedtuple
+
+X = namedtuple('X', ['x', 'y'])
+x = None  # type: X
+a = x._replace(y=5)
+
