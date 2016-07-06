@@ -1534,13 +1534,20 @@ class SemanticAnalyzer(NodeVisitor):
             var.info = info
             var.type = typ
             symbols[item] = SymbolTableNode(MDEF, var)
-        # Add a __init__, _replace, asdict methods.
-        init = self.make_namedtuple_create('__init__', NoneTyp(), info, items, types, ARG_POS)
+        # Add a __init__, _replace, _asdict methods.
+        init = self.make_namedtuple_create('__init__', info, items, types,
+                                           NoneTyp(), ARG_POS)
         symbols['__init__'] = SymbolTableNode(MDEF, init)
-        replace = self.make_namedtuple_create('_replace', AnyType(), info, items, types, ARG_NAMED, EllipsisType)
+        replace = self.make_namedtuple_create('_replace', info, items, types,
+                                              AnyType(), ARG_NAMED, initializer=EllipsisType)
         symbols['_replace'] = SymbolTableNode(MDEF, replace)
-        asdict = self.make_namedtuple_asdict(info)
+        asdict = self.make_namedtuple_method(info, '_asdict', AnyType())
         symbols['_asdict'] = SymbolTableNode(MDEF, asdict)
+        fields_type = TupleType([self.builtin_type('builtins.str') for _ in items],
+                                self.builtin_type('builtins.tuple'))
+        fields = self.make_namedtuple_method(info, '_fields', fields_type)
+        fields.is_static = True
+        symbols['_fields'] = SymbolTableNode(MDEF, fields)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
         info.is_named_tuple = True
         info.mro = [info] + info.tuple_type.fallback.type.mro
@@ -1550,13 +1557,12 @@ class SemanticAnalyzer(NodeVisitor):
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def make_namedtuple_create(self, funcname, ret: Type, info: TypeInfo, items: List[str],
-                             types: List[Type], kind, initializer=None) -> FuncDef:
-        args = [self.make_argument(item, type) for item, type in zip(items, types)]
-        for arg in args:
-            if initializer is not None:
-                arg.initializer = initializer
-                arg.kind = kind
+    def make_namedtuple_create(self, funcname, info: TypeInfo, items: List[str], types: List[Type],
+                               ret: Type,  kind, initializer=None) -> FuncDef:
+        args = [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
+        return self.make_namedtuple_method(info, funcname, ret, args, types, items)
+    
+    def make_namedtuple_method(self, info: TypeInfo, funcname: str, ret, args=[], types=[], items=[]) -> FuncDef:
         # TODO: Make sure that the self argument name is not visible?
         args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
         arg_kinds = [arg.kind for arg in args]
@@ -1567,22 +1573,6 @@ class SemanticAnalyzer(NodeVisitor):
                                  self.named_type('__builtins__.function'),
                                  name=info.name())
         func = FuncDef(funcname,
-                       args,
-                       Block([]),
-                       typ=signature)
-        func.info = info
-        return func
-    
-    def make_namedtuple_asdict(self, info: TypeInfo) -> FuncDef:
-        args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)]
-        arg_kinds = [arg.kind for arg in args]
-        signature = CallableType([cast(Type, None)],
-                                 arg_kinds,
-                                 ['__self'],
-                                 AnyType(),
-                                 self.named_type('__builtins__.function'),
-                                 name=info.name())
-        func = FuncDef('_asdict',
                        args,
                        Block([]),
                        typ=signature)

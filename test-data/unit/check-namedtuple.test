@@ -193,10 +193,27 @@ X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 a = x._asdict()
 
-[case testNamedTupleAsDict]
+[case testNamedTupleReplace]
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
-a = x._replace(y=5)
+x = x._replace(y=5)
 
+[case testNamedTupleReplaceTyped]
+from typing import NamedTuple
+
+X = NamedTuple('X', [('x', int), ('y', str)])
+x = None  # type: X
+x = x._replace(x=5)
+x = x._replace(y=5)  # E: Argument 1 to X has incompatible type "int"; expected "str"
+
+[case testNamedTupleFields]
+from typing import Tuple
+from collections import namedtuple
+
+X = namedtuple('X', ['x', 'y'])
+x = None  # type: X
+a = None  # type: Tuple[str, str]
+a = x._fields()
+[builtins fixtures/tuple.py]
