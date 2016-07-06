@@ -1545,11 +1545,6 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: refine to OrderedDict[Union[types]]
         asdict = self.make_namedtuple_method('_asdict', info, AnyType())
         symbols['_asdict'] = SymbolTableNode(MDEF, asdict)
-        fields_type = TupleType([self.builtin_type('builtins.str') for _ in items],
-                                self.builtin_type('builtins.tuple'))
-        fields = self.make_namedtuple_method('_fields', info, fields_type)
-        fields.is_static = True
-        symbols['_fields'] = SymbolTableNode(MDEF, fields)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
         info.is_named_tuple = True
         info.mro = [info] + info.tuple_type.fallback.type.mro
