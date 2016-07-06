@@ -83,7 +83,7 @@ known_patterns = [
 
 
 class DocstringTypes(object):
-    def __init__(self):
+    def __init__(self) -> None:
         self.args = OrderedDict()  # type: Dict[str, Optional[str]]
         self.rettype = None  # type: Optional[str]
 
@@ -91,7 +91,7 @@ class DocstringTypes(object):
         return ('(' + ','.join([v or 'Any' for v in self.args.values()]) +
                 ') -> ' + (self.rettype or 'Any'))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return repr({'args': self.args, 'return': self.rettype})
 
 

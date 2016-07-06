@@ -270,10 +270,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         else:
             return self.default(self.s)
 
-    def meet(self, s, t):
+    def meet(self, s: Type, t: Type) -> Type:
         return meet_types(s, t)
 
-    def default(self, typ):
+    def default(self, typ: Type) -> Type:
         if isinstance(typ, UnboundType):
             return AnyType()
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):

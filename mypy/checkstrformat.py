@@ -25,10 +25,10 @@ class ConversionSpecifier:
         self.precision = precision
         self.type = type
 
-    def has_key(self):
+    def has_key(self) -> bool:
         return self.key is not None
 
-    def has_star(self):
+    def has_star(self) -> bool:
         return self.width == '*' or self.precision == '*'
 
 

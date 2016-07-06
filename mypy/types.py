@@ -1131,41 +1131,41 @@ class TypeStrVisitor(TypeVisitor[str]):
      - Represent the NoneTyp type as None.
     """
 
-    def visit_unbound_type(self, t):
+    def visit_unbound_type(self, t: UnboundType)-> str:
         s = t.name + '?'
         if t.args != []:
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_type_list(self, t):
+    def visit_type_list(self, t: TypeList) -> str:
         return '<TypeList {}>'.format(self.list_str(t.items))
 
-    def visit_error_type(self, t):
+    def visit_error_type(self, t: ErrorType) -> str:
         return '<ERROR>'
 
-    def visit_any(self, t):
+    def visit_any(self, t: AnyType) -> str:
         return 'Any'
 
-    def visit_void(self, t):
+    def visit_void(self, t: Void) -> str:
         return 'void'
 
-    def visit_none_type(self, t):
+    def visit_none_type(self, t: NoneTyp) -> str:
         # Fully qualify to make this distinct from the None value.
         return "builtins.None"
 
-    def visit_uninhabited_type(self, t):
+    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
         return "<uninhabited>"
 
-    def visit_erased_type(self, t):
+    def visit_erased_type(self, t: ErasedType) -> str:
         return "<Erased>"
 
-    def visit_deleted_type(self, t):
+    def visit_deleted_type(self, t: DeletedType) -> str:
         if t.source is None:
             return "<Deleted>"
         else:
             return "<Deleted '{}'>".format(t.source)
 
-    def visit_instance(self, t):
+    def visit_instance(self, t: Instance) -> str:
         s = t.type.fullname() if t.type is not None else '<?>'
         if t.erased:
             s += '*'
@@ -1173,7 +1173,7 @@ class TypeStrVisitor(TypeVisitor[str]):
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_type_var(self, t):
+    def visit_type_var(self, t: TypeVarType) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
             return '`{}'.format(t.id)
@@ -1181,7 +1181,7 @@ class TypeStrVisitor(TypeVisitor[str]):
             # Named type variable type.
             return '{}`{}'.format(t.name, t.id)
 
-    def visit_callable_type(self, t):
+    def visit_callable_type(self, t: CallableType) -> str:
         s = ''
         bare_asterisk = False
         for i in range(len(t.arg_types)):
@@ -1210,13 +1210,13 @@ class TypeStrVisitor(TypeVisitor[str]):
 
         return 'def {}'.format(s)
 
-    def visit_overloaded(self, t):
+    def visit_overloaded(self, t: Overloaded) -> str:
         a = []
         for i in t.items():
             a.append(i.accept(self))
         return 'Overload({})'.format(', '.join(a))
 
-    def visit_tuple_type(self, t):
+    def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)
         if t.fallback and t.fallback.type:
             fallback_name = t.fallback.type.fullname()
@@ -1224,11 +1224,11 @@ class TypeStrVisitor(TypeVisitor[str]):
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
 
-    def visit_star_type(self, t):
+    def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)
         return '*{}'.format(s)
 
-    def visit_union_type(self, t):
+    def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
 
@@ -1239,13 +1239,13 @@ class TypeStrVisitor(TypeVisitor[str]):
             return '<partial {}[{}]>'.format(t.type.name(),
                                              ', '.join(['?'] * len(t.type.type_vars)))
 
-    def visit_ellipsis_type(self, t):
+    def visit_ellipsis_type(self, t: EllipsisType) -> str:
         return '...'
 
-    def visit_type_type(self, t):
+    def visit_type_type(self, t: TypeType) -> str:
         return 'Type[{}]'.format(t.item.accept(self))
 
-    def list_str(self, a):
+    def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
         """

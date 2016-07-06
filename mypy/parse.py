@@ -2000,7 +2000,7 @@ if __name__ == '__main__':
     # Parse a file and dump the AST (or display errors).
     import sys
 
-    def usage():
+    def usage() -> None:
         print('Usage: parse.py [--py2] [--quiet] FILE [...]', file=sys.stderr)
         sys.exit(2)
 
