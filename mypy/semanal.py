@@ -64,7 +64,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
     IntExpr, FloatExpr, UnicodeExpr,
-    INVARIANT, UNBOUND_IMPORTED, Expression
+    INVARIANT, UNBOUND_IMPORTED, Expression, EllipsisExpr
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1540,7 +1540,7 @@ class SemanticAnalyzer(NodeVisitor):
         symbols['__init__'] = SymbolTableNode(MDEF, init)
         # TODO: refine return type to type(self)
         replace = self.make_namedtuple_method('_replace', info, AnyType(),
-                       self.make_factory_args(items, types, ARG_NAMED, initializer=EllipsisType))
+                       self.make_factory_args(items, types, ARG_NAMED, initializer=EllipsisExpr()))
         symbols['_replace'] = SymbolTableNode(MDEF, replace)
         # TODO: refine to OrderedDict[Union[types]]
         asdict = self.make_namedtuple_method('_asdict', info, AnyType())
@@ -1557,7 +1557,7 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def make_factory_args(self, items: List[str], types: List[Type],
-                          kind: int, initializer: Expression = None) -> FuncDef:
+                          kind: int, initializer: Expression = None) -> List[Argument]:
         return [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
 
     def make_namedtuple_method(self, funcname: str, info: TypeInfo,
