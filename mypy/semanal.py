@@ -1538,11 +1538,11 @@ class SemanticAnalyzer(NodeVisitor):
         init = self.make_namedtuple_method('__init__', info, NoneTyp(),
                        self.make_factory_args(items, types, ARG_POS))
         symbols['__init__'] = SymbolTableNode(MDEF, init)
-        #TODO: refine return type to type(self)
+        # TODO: refine return type to type(self)
         replace = self.make_namedtuple_method('_replace', info, AnyType(),
                        self.make_factory_args(items, types, ARG_NAMED, initializer=EllipsisType))
         symbols['_replace'] = SymbolTableNode(MDEF, replace)
-        #TODO: refine to OrderedDict[Union[types]]
+        # TODO: refine to OrderedDict[Union[types]]
         asdict = self.make_namedtuple_method('_asdict', info, AnyType())
         symbols['_asdict'] = SymbolTableNode(MDEF, asdict)
         fields_type = TupleType([self.builtin_type('builtins.str') for _ in items],
@@ -1557,9 +1557,9 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def make_factory_args(self, items: List[str], types: List[Type],
-                               kind: int, initializer: Expression = None) -> FuncDef:
+                          kind: int, initializer: Expression = None) -> FuncDef:
         return [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
-    
+
     def make_namedtuple_method(self, funcname: str, info: TypeInfo,
                                ret: Type, args: List[Argument] = []) -> FuncDef:
         types = [cast(Type, None)] + [arg.type_annotation for arg in args]
