@@ -6,7 +6,7 @@ import re
 from os import remove, rmdir
 import shutil
 
-from typing import Callable, List, Tuple, Set
+from typing import Callable, List, Tuple, Set, Optional
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
