@@ -292,8 +292,12 @@ class TypeChecker(NodeVisitor[Type]):
         True if either Generator or Awaitable is a supertype of `typ`.
         """
         gt = self.named_generic_type('typing.Generator', [AnyType(), AnyType(), AnyType()])
+        if is_subtype(gt, typ):
+            return True
+        if self.options.python_version < (3, 5):
+            return False
         at = self.named_generic_type('typing.Awaitable', [AnyType()])
-        return is_subtype(gt, typ) or is_subtype(at, typ)
+        return is_subtype(at, typ)
 
     def get_generator_yield_type(self, return_type: Type) -> Type:
         """Given the declared return type of a generator (t), return the type it yields (ty)."""

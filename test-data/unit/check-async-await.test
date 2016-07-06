@@ -109,3 +109,8 @@ main: note: In function "f":
 main:3: error: 'yield from' in async function
 main: note: In function "g":
 main:5: error: 'yield from' in async function
+
+[case testNoAsyncDefInPY2_python2]
+# options: fast_parser
+async def f():  # E: invalid syntax
+    pass
