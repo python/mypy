@@ -41,7 +41,7 @@ def parse_test_cases(
             i += 1
 
             files = []  # type: List[Tuple[str, str]] # path and contents
-            stale_modules = set(["__main__"])  # type: Set[str]  # module names
+            stale_modules = None  # type: Optional[Set[str]]  # module names
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
@@ -58,8 +58,11 @@ def parse_test_cases(
                         fnam = '__builtin__.py'
                     files.append((os.path.join(base_path, fnam), f.read()))
                     f.close()
-                elif p[i].id in ('expectStale', 'expectstale'):
-                    stale_modules.update({item.strip() for item in p[i].arg.split(',')})
+                elif p[i].id == 'stale':
+                    if p[i].arg is None:
+                        stale_modules = set()
+                    else:
+                        stale_modules = {item.strip() for item in p[i].arg.split(',')}
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
@@ -103,7 +106,7 @@ class DataDrivenTestCase(TestCase):
 
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]
-    expected_stale_modules = None  # type: Set[str]
+    expected_stale_modules = None  # type: Optional[Set[str]]
 
     clean_up = None  # type: List[Tuple[bool, str]]
 

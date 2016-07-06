@@ -5,10 +5,10 @@
 -- The second time it must produce the errors given in the [out] section, if any.
 --
 -- Any files that we expect to be stale and rechecked should be annotated in
--- the [expectStale] section. The test suite will automatically assume that
+-- the [stale] annotation. The test suite will automatically assume that
 -- __main__ is stale so we can avoid constantly having to annotate it.
--- The list of stale files can be in any arbitrary order. You can have multiple
--- [expectStale] annotations per case: the test suite will union them together.
+-- The list of stale files can be in any arbitrary order, or can be left empty
+-- if no files should be stale.
 
 [case testIncrementalEmpty]
 [out]
@@ -21,7 +21,7 @@ def foo():
 [file m.py.next]
 def foo() -> None:
     pass
-[expectStale m]
+[stale m]
 [out]
 
 [case testIncrementalError]
@@ -32,7 +32,7 @@ def foo() -> None:
 [file m.py.next]
 def foo() -> None:
     bar()
-[expectStale m]
+[stale m]
 [out]
 main:1: note: In module imported here:
 tmp/m.py: note: In function "foo":
@@ -53,6 +53,7 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
+[stale]
 [out]
 
 
@@ -74,7 +75,7 @@ def func3() -> None: pass
 [file mod3.py.next]
 def func3() -> int: return 2
 
-[expectStale mod1, mod2, mod3]
+[stale mod1, mod2, mod3]
 [out]
 
 [case testIncrementalSimpleBranchingModules]
@@ -90,9 +91,7 @@ def func() -> None: pass
 [file mod1.py.next]
 def func() -> int: return 1
 
-[file mod2.py.next]
-def func() -> None: pass
-
-[expectStale mod1]
+[stale mod1]
 [out]
+
 

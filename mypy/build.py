@@ -55,7 +55,6 @@ class BuildResult:
       files:   Dictionary from module name to related AST node.
       types:   Dictionary from parse tree node to its inferred type.
       errors:  List of error messages.
-      stale:   Set of stale modules that were rechecked
     """
 
     def __init__(self, manager: 'BuildManager') -> None:
@@ -63,7 +62,6 @@ class BuildResult:
         self.files = manager.modules
         self.types = manager.type_checker.type_map
         self.errors = manager.errors.messages()
-        self.stale = manager.stale_modules
 
 
 class BuildSource:
