@@ -145,6 +145,11 @@ class TypeCheckSuite(Suite):
 
         if incremental and res:
             self.verify_cache(module_name, program_name, a, res.manager)
+            if incremental == 2:
+                assert_string_arrays_equal(
+                    list(sorted(testcase.expected_stale_modules)),
+                    list(sorted(res.stale)),
+                    'Set of stale modules does not match expected set')
 
     def verify_cache(self, module_name: str, program_name: str, a: List[str],
                      manager: build.BuildManager) -> None:
