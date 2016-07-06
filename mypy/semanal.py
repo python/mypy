@@ -64,7 +64,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
     IntExpr, FloatExpr, UnicodeExpr,
-    INVARIANT, UNBOUND_IMPORTED
+    INVARIANT, UNBOUND_IMPORTED, Expression
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1534,18 +1534,20 @@ class SemanticAnalyzer(NodeVisitor):
             var.info = info
             var.type = typ
             symbols[item] = SymbolTableNode(MDEF, var)
-        # Add a __init__, _replace, _asdict methods.
-        init = self.make_namedtuple_create('__init__', info, items, types,
-                                           NoneTyp(), ARG_POS)
+        # Add a __init__, _replace, _asdict methods and _fields static field
+        init = self.make_namedtuple_method('__init__', info, NoneTyp(),
+                       self.make_factory_args(items, types, ARG_POS))
         symbols['__init__'] = SymbolTableNode(MDEF, init)
-        replace = self.make_namedtuple_create('_replace', info, items, types,
-                                              AnyType(), ARG_NAMED, initializer=EllipsisType)
+        # TODO: refine return type to type(self)
+        replace = self.make_namedtuple_method('_replace', info, AnyType(),
+                       self.make_factory_args(items, types, ARG_NAMED, initializer=EllipsisType))
         symbols['_replace'] = SymbolTableNode(MDEF, replace)
-        asdict = self.make_namedtuple_method(info, '_asdict', AnyType())
+        # TODO: refine to OrderedDict[Union[types]]
+        asdict = self.make_namedtuple_method('_asdict', info, AnyType())
         symbols['_asdict'] = SymbolTableNode(MDEF, asdict)
         fields_type = TupleType([self.builtin_type('builtins.str') for _ in items],
                                 self.builtin_type('builtins.tuple'))
-        fields = self.make_namedtuple_method(info, '_fields', fields_type)
+        fields = self.make_namedtuple_method('_fields', info, fields_type)
         fields.is_static = True
         symbols['_fields'] = SymbolTableNode(MDEF, fields)
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
@@ -1554,22 +1556,18 @@ class SemanticAnalyzer(NodeVisitor):
         info.bases = [info.tuple_type.fallback]
         return info
 
-    def make_argument(self, name: str, type: Type) -> Argument:
-        return Argument(Var(name), type, None, ARG_POS)
+    def make_factory_args(self, items: List[str], types: List[Type],
+                          kind: int, initializer: Expression = None) -> FuncDef:
+        return [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
 
-    def make_namedtuple_create(self, funcname, info: TypeInfo, items: List[str], types: List[Type],
-                               ret: Type,  kind, initializer=None) -> FuncDef:
-        args = [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
-        return self.make_namedtuple_method(info, funcname, ret, args, types, items)
-    
-    def make_namedtuple_method(self, info: TypeInfo, funcname: str, ret, args=[], types=[], items=[]) -> FuncDef:
+    def make_namedtuple_method(self, funcname: str, info: TypeInfo,
+                               ret: Type, args: List[Argument] = []) -> FuncDef:
+        types = [cast(Type, None)] + [arg.type_annotation for arg in args]
+        items = ['__self'] + [arg.variable.name() for arg in args]
+        arg_kinds = [ARG_POS] + [arg.kind for arg in args]
         # TODO: Make sure that the self argument name is not visible?
         args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
-        arg_kinds = [arg.kind for arg in args]
-        signature = CallableType([cast(Type, None)] + types,
-                                 arg_kinds,
-                                 ['__self'] + items,
-                                 ret,
+        signature = CallableType(types, arg_kinds, items, ret,
                                  self.named_type('__builtins__.function'),
                                  name=info.name())
         func = FuncDef(funcname,
