@@ -59,7 +59,7 @@ from mypy.nodes import (
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
@@ -1534,17 +1534,15 @@ class SemanticAnalyzer(NodeVisitor):
             var.info = info
             var.type = typ
             symbols[item] = SymbolTableNode(MDEF, var)
-        # Add a __init__, _replace, _asdict methods and _fields static field
-        init = self.make_namedtuple_method('__init__', info, NoneTyp(),
+        # Add __init__, _replace, _asdict methods and _fields static field
+        self.add_namedtuple_method('__init__', symbols, info, NoneTyp(),
                        self.make_factory_args(items, types, ARG_POS))
-        symbols['__init__'] = SymbolTableNode(MDEF, init)
         # TODO: refine return type to type(self)
-        replace = self.make_namedtuple_method('_replace', info, AnyType(),
+        self.add_namedtuple_method('_replace', symbols, info, AnyType(),
                        self.make_factory_args(items, types, ARG_NAMED, initializer=EllipsisExpr()))
-        symbols['_replace'] = SymbolTableNode(MDEF, replace)
         # TODO: refine to OrderedDict[Union[types]]
-        asdict = self.make_namedtuple_method('_asdict', info, AnyType())
-        symbols['_asdict'] = SymbolTableNode(MDEF, asdict)
+        self.add_namedtuple_method('_asdict', symbols, info, AnyType())
+
         info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
         info.is_named_tuple = True
         info.mro = [info] + info.tuple_type.fallback.type.mro
@@ -1555,13 +1553,13 @@ class SemanticAnalyzer(NodeVisitor):
                           kind: int, initializer: Expression = None) -> List[Argument]:
         return [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
 
-    def make_namedtuple_method(self, funcname: str, info: TypeInfo,
-                               ret: Type, args: List[Argument] = []) -> FuncDef:
+    def add_namedtuple_method(self, funcname: str, symbols: SymbolTable, info: TypeInfo,
+                              ret: Type, args: List[Argument] = []) -> None:
         types = [cast(Type, None)] + [arg.type_annotation for arg in args]
-        items = ['__self'] + [arg.variable.name() for arg in args]
-        arg_kinds = [ARG_POS] + [arg.kind for arg in args]
-        # TODO: Make sure that the self argument name is not visible?
         args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
+        items = [arg.variable.name() for arg in args]
+        arg_kinds = [arg.kind for arg in args]
+        # TODO: Make sure that the self argument name is not visible?
         signature = CallableType(types, arg_kinds, items, ret,
                                  self.named_type('__builtins__.function'),
                                  name=info.name())
@@ -1570,7 +1568,7 @@ class SemanticAnalyzer(NodeVisitor):
                        Block([]),
                        typ=signature)
         func.info = info
-        return func
+        symbols[funcname] = SymbolTableNode(MDEF, func)
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = []  # type: List[Type]
