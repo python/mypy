@@ -2015,30 +2015,24 @@ class TypeChecker(NodeVisitor[Type]):
         return self.get_generator_receive_type(return_type)
 
     def visit_await_expr(self, e: AwaitExpr) -> Type:
-        any_type = AnyType()
-        awaitable_type = self.named_generic_type('typing.Awaitable', [any_type])
-        generator_type = self.named_generic_type('typing.Generator', [any_type] * 3)
-        expected_type = UnionType([awaitable_type, generator_type])
+        expected_type = self.type_context[-1]
+        if expected_type is not None:
+            expected_type = self.named_generic_type('typing.Awaitable', [expected_type])
         actual_type = self.accept(e.expr, expected_type)
         if isinstance(actual_type, AnyType):
-            return any_type
-        if is_subtype(actual_type, generator_type):
-            if (isinstance(actual_type, Instance) and len(actual_type.args) == 3
-                    and actual_type.type.fullname() == 'typing.Generator'):
-                return actual_type.args[2]
-            else:
-                return any_type  # Must've been unparameterized Generator.
-        elif is_subtype(actual_type, awaitable_type):
+            return AnyType()
+        awaitable_type = self.named_generic_type('typing.Awaitable', [AnyType()])
+        if is_subtype(actual_type, awaitable_type):
             if (isinstance(actual_type, Instance) and len(actual_type.args) == 1
                     and actual_type.type.fullname() == 'typing.Awaitable'):
                 return actual_type.args[0]
             else:
-                return any_type  # Must've been unparameterized Awaitable.
-        msg = "{} (actual type {}, expected Awaitable or Generator)".format(
+                return AnyType()  # Must've been unparameterized Awaitable.
+        msg = "{} (actual type {}, expected Awaitable)".format(
             messages.INCOMPATIBLE_TYPES_IN_AWAIT,
             self.msg.format(actual_type))
         self.fail(msg, e)
-        return any_type
+        return AnyType()
 
     #
     # Helpers

@@ -21,16 +21,53 @@ async def f() -> int:
     return x
 [builtins fixtures/async_await.py]
 
-[case testAwaitGenerator]
+[case testAwaitDefaultContext]
 # options: fast_parser
-from typing import Any, Generator
-def g() -> Generator[int, int, int]:
-    x = yield 0
-    return x
+from typing import Any, TypeVar
+T = TypeVar('T')
+async def f(x: T) -> T:
+    y = await f(x)
+    reveal_type(y)
+    return y
+[out]
+main: note: In function "f":
+main:6: error: Revealed type is 'T`-1'
+
+[case testAwaitAnyContext]
+# options: fast_parser
+from typing import Any, TypeVar
+T = TypeVar('T')
+async def f(x: T) -> T:
+    y = await f(x)  # type: Any
+    reveal_type(y)
+    return y
+[out]
+main: note: In function "f":
+main:6: error: Revealed type is 'Any'
+
+[case testAwaitExplicitContext]
+# options: fast_parser
+from typing import Any, TypeVar
+T = TypeVar('T')
+async def f(x: T) -> T:
+    y = await f(x)  # type: int
+    reveal_type(y)
+[out]
+main: note: In function "f":
+main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
+main:6: error: Revealed type is 'builtins.int'
+
+[case testAwaitGeneratorError]
+# options: fast_parser
+from typing import Any, Iterator
+def g() -> Iterator[Any]:
+    yield
 async def f() -> int:
     x = await g()
     return x
-[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main: error: Incompatible types in await (actual type Iterator[Any], expected Awaitable)
 
 [case testAwaitArgumentError]
 # options: fast_parser
@@ -42,7 +79,7 @@ async def f() -> int:
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "f":
-main: error: Incompatible types in await (actual type "int", expected Awaitable or Generator)
+main: error: Incompatible types in await (actual type "int", expected Awaitable)
 
 [case testAwaitResultError]
 # options: fast_parser
