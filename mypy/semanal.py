@@ -542,7 +542,7 @@ class SemanticAnalyzer(NodeVisitor):
             extra_anys = [AnyType()] * (len(fdef.arguments) - len(sig.arg_types))
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
-            self.fail('Type signature has too many arguments', fdef)
+            self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
