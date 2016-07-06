@@ -6,7 +6,7 @@ import re
 from os import remove, rmdir
 import shutil
 
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Set, Optional
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
@@ -41,6 +41,7 @@ def parse_test_cases(
             i += 1
 
             files = []  # type: List[Tuple[str, str]] # path and contents
+            stale_modules = None  # type: Optional[Set[str]]  # module names
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
@@ -57,6 +58,11 @@ def parse_test_cases(
                         fnam = '__builtin__.py'
                     files.append((os.path.join(base_path, fnam), f.read()))
                     f.close()
+                elif p[i].id == 'stale':
+                    if p[i].arg is None:
+                        stale_modules = set()
+                    else:
+                        stale_modules = {item.strip() for item in p[i].arg.split(',')}
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
@@ -78,7 +84,8 @@ def parse_test_cases(
                 expand_errors(input, tcout, 'main')
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
-                                        p[i0].line, lastline, perform, files)
+                                        p[i0].line, lastline, perform,
+                                        files, stale_modules)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -99,11 +106,12 @@ class DataDrivenTestCase(TestCase):
 
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]
+    expected_stale_modules = None  # type: Optional[Set[str]]
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self, name, input, output, file, line, lastline,
-                 perform, files):
+                 perform, files, expected_stale_modules):
         super().__init__(name)
         self.input = input
         self.output = output
@@ -112,6 +120,7 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
+        self.expected_stale_modules = expected_stale_modules
 
     def set_up(self) -> None:
         super().set_up()

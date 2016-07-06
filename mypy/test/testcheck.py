@@ -4,6 +4,7 @@ import os.path
 import re
 import shutil
 import sys
+import time
 
 from typing import Tuple, List, Dict, Set
 
@@ -80,8 +81,10 @@ class TypeCheckSuite(Suite):
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
+            # We briefly sleep to make sure file timestamps are distinct.
             self.clear_cache()
             self.run_test_once(testcase, 1)
+            time.sleep(0.1)
             self.run_test_once(testcase, 2)
         elif optional:
             try:
@@ -145,6 +148,11 @@ class TypeCheckSuite(Suite):
 
         if incremental and res:
             self.verify_cache(module_name, program_name, a, res.manager)
+            if testcase.expected_stale_modules is not None and incremental == 2:
+                assert_string_arrays_equal(
+                    list(sorted(testcase.expected_stale_modules)),
+                    list(sorted(res.manager.stale_modules.difference({"__main__"}))),
+                    'Set of stale modules does not match expected set')
 
     def verify_cache(self, module_name: str, program_name: str, a: List[str],
                      manager: build.BuildManager) -> None:

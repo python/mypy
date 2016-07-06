@@ -317,6 +317,7 @@ class BuildManager:
       errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
+      stale_modules:   Set of modules that needed to be rechecked
     """
 
     def __init__(self, data_dir: str,
@@ -338,6 +339,7 @@ class BuildManager:
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors, self.modules, options=options)
         self.missing_modules = set()  # type: Set[str]
+        self.stale_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -1145,6 +1147,7 @@ class State:
     def mark_stale(self) -> None:
         """Throw away the cache data for this file, marking it as stale."""
         self.meta = None
+        self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
         """Raise CompileError if a blocking error is detected."""

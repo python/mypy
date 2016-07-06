@@ -3,6 +3,12 @@
 -- The first time it must pass.
 -- Before it is run the second time, any *.py.next files are copied to *.py.
 -- The second time it must produce the errors given in the [out] section, if any.
+--
+-- Any files that we expect to be stale and rechecked should be annotated in
+-- the [stale] annotation. The test suite will automatically assume that
+-- __main__ is stale so we can avoid constantly having to annotate it.
+-- The list of stale files can be in any arbitrary order, or can be left empty
+-- if no files should be stale.
 
 [case testIncrementalEmpty]
 [out]
@@ -15,6 +21,7 @@ def foo():
 [file m.py.next]
 def foo() -> None:
     pass
+[stale m]
 [out]
 
 [case testIncrementalError]
@@ -25,7 +32,66 @@ def foo() -> None:
 [file m.py.next]
 def foo() -> None:
     bar()
+[stale m]
 [out]
 main:1: note: In module imported here:
 tmp/m.py: note: In function "foo":
 tmp/m.py:2: error: Name 'bar' is not defined
+
+[case testIncrementalSimpleImportSequence]
+import mod1
+mod1.func1()
+
+[file mod1.py]
+import mod2
+def func1() -> None: mod2.func2()
+
+[file mod2.py]
+import mod3
+def func2() -> None: mod3.func3()
+
+[file mod3.py]
+def func3() -> None: pass
+
+[stale]
+[out]
+
+
+[case testIncrementalSimpleImportCascade]
+import mod1
+mod1.func1()
+
+[file mod1.py]
+import mod2
+def func1() -> None: mod2.func2()
+
+[file mod2.py]
+import mod3
+def func2() -> None: mod3.func3()
+
+[file mod3.py]
+def func3() -> None: pass
+
+[file mod3.py.next]
+def func3() -> int: return 2
+
+[stale mod1, mod2, mod3]
+[out]
+
+[case testIncrementalSimpleBranchingModules]
+import mod1
+import mod2
+
+[file mod1.py]
+def func() -> None: pass
+
+[file mod2.py]
+def func() -> None: pass
+
+[file mod1.py.next]
+def func() -> int: return 1
+
+[stale mod1]
+[out]
+
+
