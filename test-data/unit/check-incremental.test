@@ -53,17 +53,6 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
-[file mod1.py.next]
-import mod2
-def func1() -> None: mod2.func2()
-
-[file mod2.py.next]
-import mod3
-def func2() -> None: mod3.func3()
-
-[file mod3.py.next]
-def func3() -> None: pass
-
 [out]
 
 
@@ -81,14 +70,6 @@ def func2() -> None: mod3.func3()
 
 [file mod3.py]
 def func3() -> None: pass
-
-[file mod1.py.next]
-import mod2
-def func1() -> None: mod2.func2()
-
-[file mod2.py.next]
-import mod3
-def func2() -> None: mod3.func3()
 
 [file mod3.py.next]
 def func3() -> int: return 2
