@@ -120,3 +120,22 @@ class Bar:
 [builtins fixtures/module_all.py]
 [stale]
 [out]
+
+[case testIncrementalSubmoduleComplex]
+import parent
+
+[file parent/__init__.py]
+import parent.a
+
+[file parent/a.py]
+import parent.b
+import parent.c
+
+[file parent/b.py]
+import parent.a
+
+[file parent/c.py]
+import parent.a
+
+[builtins fixtures/args.py]
+[out]
