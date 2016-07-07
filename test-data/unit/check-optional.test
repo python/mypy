@@ -189,6 +189,26 @@ def f(a: Optional[T], b: T) -> T:
     return a or b
 [out]
 
+[case testOptionalTypeOrTypeBothOptional]
+from typing import Optional
+def f(a: Optional[int], b: Optional[int]) -> None:
+    reveal_type(a or b)
+def g(a: int, b: Optional[int]) -> None:
+    reveal_type(a or b)
+[out]
+main: note: In function "f":
+main:3: error: Revealed type is 'Union[builtins.int, builtins.None]'
+main: note: In function "g":
+main:5: error: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testOptionalTypeOrTypeComplexUnion]
+from typing import Union
+def f(a: Union[int, str, None]) -> None:
+    reveal_type(a or 'default')
+[out]
+main: note: In function "f":
+main:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
+
 [case testOptionalTypeOrTypeNoTriggerPlain]
 from typing import Optional
 def f(a: Optional[int], b: int) -> int:
