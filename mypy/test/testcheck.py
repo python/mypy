@@ -187,8 +187,11 @@ class TypeCheckSuite(Suite):
             del dnparts[0]
             for file in files:
                 if file.endswith('.py'):
-                    base, ext = os.path.splitext(file)
-                    id = '.'.join(dnparts + [base])
+                    if file == "__init__.py":
+                        id = '.'.join(dnparts)
+                    else:
+                        base, ext = os.path.splitext(file)
+                        id = '.'.join(dnparts + [base])
                     modules[id] = os.path.join(dn, file)
         return modules
 
