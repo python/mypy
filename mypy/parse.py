@@ -1528,7 +1528,7 @@ class Parser:
         expr = SetExpr(items)
         return expr
 
-    def parse_set_comprehension(self, expr: Node):
+    def parse_set_comprehension(self, expr: Node) -> SetComprehension:
         gen = self.parse_generator_expr(expr)
         self.expect('}')
         set_comp = SetComprehension(gen)
@@ -2000,7 +2000,7 @@ if __name__ == '__main__':
     # Parse a file and dump the AST (or display errors).
     import sys
 
-    def usage():
+    def usage() -> None:
         print('Usage: parse.py [--py2] [--quiet] FILE [...]', file=sys.stderr)
         sys.exit(2)
 

@@ -507,7 +507,7 @@ find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 find_module_listdir_cache = {}  # type: Dict[str, Optional[List[str]]]
 
 
-def find_module_clear_caches():
+def find_module_clear_caches() -> None:
     find_module_cache.clear()
     find_module_dir_cache.clear()
     find_module_listdir_cache.clear()
@@ -546,12 +546,11 @@ def is_file(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def find_module(id: str, lib_path: Iterable[str]) -> str:
+def find_module(id: str, lib_path_arg: Iterable[str]) -> str:
     """Return the path of the module source file, or None if not found."""
-    if not isinstance(lib_path, tuple):
-        lib_path = tuple(lib_path)
+    lib_path = tuple(lib_path_arg)
 
-    def find():
+    def find() -> Optional[str]:
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
         # that only once and cache it for when we look for modules like 'foo.bar.blah'
@@ -767,7 +766,7 @@ OPTIONS_AFFECTING_CACHE = [
 ]
 
 
-def random_string():
+def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 

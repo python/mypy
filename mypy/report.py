@@ -64,7 +64,7 @@ class FuncCounterVisitor(TraverserVisitor):
         super().__init__()
         self.counts = [0, 0]
 
-    def visit_func_def(self, defn: FuncDef):
+    def visit_func_def(self, defn: FuncDef) -> None:
         self.counts[defn.type is not None] += 1
 
 

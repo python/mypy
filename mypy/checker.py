@@ -167,7 +167,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-    def check_second_pass(self):
+    def check_second_pass(self) -> None:
         """Run second pass of type checking which goes through deferred nodes."""
         self.pass_num = 1
         for node, type_name in self.deferred_nodes:

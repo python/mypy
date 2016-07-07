@@ -343,6 +343,12 @@ class OverloadedFuncDef(FuncBase, Statement):
 class Argument(Node):
     """A single argument in a FuncItem."""
 
+    variable = None  # type: Var
+    type_annotation = None  # type: Optional[mypy.types.Type]
+    initializater = None  # type: Optional[Expression]
+    kind = None  # type: int
+    initialization_statement = None  # type: Optional[AssignmentStmt]
+
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
             initializer: Optional[Expression], kind: int,
             initialization_statement: Optional['AssignmentStmt'] = None) -> None:
@@ -438,7 +444,7 @@ class FuncItem(FuncBase):
             arg.set_line(self.line)
         return self
 
-    def is_dynamic(self):
+    def is_dynamic(self) -> bool:
         return self.type is None
 
 

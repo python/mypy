@@ -605,7 +605,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
         decorator.accept(self)
 
-    def setup_is_builtinclass(self, defn: ClassDef):
+    def setup_is_builtinclass(self, defn: ClassDef) -> None:
         for decorator in defn.decorators:
             if refers_to_fullname(decorator, 'typing.builtinclass'):
                 defn.is_builtinclass = True

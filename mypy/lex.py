@@ -142,7 +142,7 @@ class LexError(Token):
         self.type = type
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.message:
             return 'LexError(%s)' % self.message
         else:
