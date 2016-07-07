@@ -18,6 +18,7 @@ from mypy.nodes import (
 )
 from mypy.types import Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType
 from mypy import defaults
+from mypy import experiments
 from mypy.errors import Errors
 
 try:
@@ -268,6 +269,9 @@ class ASTConverter(ast35.NodeTransformer):
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
 
+        if isinstance(return_type, UnboundType):
+            return_type.is_ret_type = True
+
         func_type = None
         if any(arg_types) or return_type:
             func_type = CallableType([a if a is not None else AnyType() for a in arg_types],
@@ -295,10 +299,20 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return func_def
 
+    def set_type_optional(self, type: Type, initializer: Node) -> None:
+        if not experiments.STRICT_OPTIONAL:
+            return
+        # Indicate that type should be wrapped in an Optional if arg is initialized to None.
+        optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
+        if isinstance(type, UnboundType):
+            type.optional = optional
+
     def transform_args(self, args: ast35.arguments, line: int) -> List[Argument]:
         def make_argument(arg, default, kind):
             arg_type = TypeConverter(line=line).visit(arg.annotation)
-            return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
+            converted_default = self.visit(default)
+            self.set_type_optional(arg_type, converted_default)
+            return Argument(Var(arg.arg), arg_type, converted_default, kind)
 
         new_args = []
         num_no_defaults = len(args.args) - len(args.defaults)

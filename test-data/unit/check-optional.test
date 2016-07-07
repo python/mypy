@@ -97,6 +97,14 @@ f(None)
 [out]
 main: note: In function "f":
 
+[case testInferOptionalFromDefaultNoneWithFastParser]
+# options: fast_parser
+def f(x: int = None) -> None:
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
 [case testInferOptionalType]
 x = None
 x = 1
