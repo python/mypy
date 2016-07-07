@@ -1097,6 +1097,10 @@ class ExpressionChecker:
                 if len(items) < len(left_type.items):
                     left_type = UnionType.make_simplified_union(items)
 
+            # Special case for `None or T` -- this should infer T.
+            if isinstance(left_type, NoneTyp):
+                left_type = None
+
             _, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
@@ -1110,9 +1114,13 @@ class ExpressionChecker:
 
             right_type = self.accept(e.right, left_type)
 
-        self.check_not_void(left_type, context)
+        if left_type is not None:
+            self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
-        return UnionType.make_simplified_union([left_type, right_type])
+        if left_type is None:
+            return right_type
+        else:
+            return UnionType.make_simplified_union([left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
