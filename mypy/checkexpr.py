@@ -1090,6 +1090,13 @@ class ExpressionChecker:
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         elif e.op == 'or':
+            # Special case for `Optional[T] or T` -- this should infer T.
+            # If the type is a Union containing None, remove the None.
+            if isinstance(left_type, UnionType):
+                items = [i for i in left_type.items if not isinstance(i, NoneTyp)]
+                if len(items) < len(left_type.items):
+                    left_type = UnionType.make_simplified_union(items)
+
             _, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())

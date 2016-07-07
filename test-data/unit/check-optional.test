@@ -175,3 +175,33 @@ def f(x: None) -> str: pass
 def f(x: int) -> int: pass
 reveal_type(f(None))  # E: Revealed type is 'builtins.str'
 reveal_type(f(0))  # E: Revealed type is 'builtins.int'
+
+[case testOptionalTypeOrTypePlain]
+from typing import Optional
+def f(a: Optional[int]) -> int:
+    return a or 0
+[out]
+
+[case testOptionalTypeOrTypeTypeVar]
+from typing import Optional, TypeVar
+T = TypeVar('T')
+def f(a: Optional[T], b: T) -> T:
+    return a or b
+[out]
+
+[case testOptionalTypeOrTypeNoTriggerPlain]
+from typing import Optional
+def f(a: Optional[int], b: int) -> int:
+    return b or a
+[out]
+main: note: In function "f":
+main:3: error: Incompatible return value type (got "Optional[int]", expected "int")
+
+[case testOptionalTypeOrTypeNoTriggerTypeVar]
+from typing import Optional, TypeVar
+T = TypeVar('T')
+def f(a: Optional[T], b: T) -> T:
+    return b or a
+[out]
+main: note: In function "f":
+main:4: error: Incompatible return value type (got "Optional[T]", expected "T")
