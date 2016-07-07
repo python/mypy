@@ -597,16 +597,12 @@ class ASTConverter(ast35.NodeTransformer):
     # ListComp(expr elt, comprehension* generators)
     @with_line
     def visit_ListComp(self, n: ast35.ListComp) -> Node:
-        g = self.visit_GeneratorExp(cast(ast35.GeneratorExp, n))
-        assert isinstance(g, GeneratorExpr)
-        return ListComprehension(g)
+        return ListComprehension(self.visit_GeneratorExp(cast(ast35.GeneratorExp, n)))
 
     # SetComp(expr elt, comprehension* generators)
     @with_line
     def visit_SetComp(self, n: ast35.SetComp) -> Node:
-        g = self.visit_GeneratorExp(cast(ast35.GeneratorExp, n))
-        assert isinstance(g, GeneratorExpr)
-        return SetComprehension(g)
+        return SetComprehension(self.visit_GeneratorExp(cast(ast35.GeneratorExp, n)))
 
     # DictComp(expr key, expr value, comprehension* generators)
     @with_line
