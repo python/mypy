@@ -1058,7 +1058,7 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.fail)
-                if res and (not isinstance(res, Instance) or cast(Instance, res).args):
+                if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
@@ -1410,7 +1410,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
-        lvalue = cast(NameExpr, s.lvalues[0])
+        lvalue = s.lvalues[0]
         name = lvalue.name
         named_tuple = self.check_namedtuple(s.rvalue, name)
         if named_tuple is None:

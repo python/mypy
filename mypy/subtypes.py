@@ -338,7 +338,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
     if msg.is_errors() or not isinstance(applied, CallableType):
         return None
-    return cast(CallableType, applied)
+    return applied
 
 
 def restrict_subtype_away(t: Type, s: Type) -> Type:
