@@ -1528,7 +1528,7 @@ class Parser:
         expr = SetExpr(items)
         return expr
 
-    def parse_set_comprehension(self, expr: Node):
+    def parse_set_comprehension(self, expr: Node) -> SetComprehension:
         gen = self.parse_generator_expr(expr)
         self.expect('}')
         set_comp = SetComprehension(gen)

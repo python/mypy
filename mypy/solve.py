@@ -12,7 +12,7 @@ from mypy import experiments
 
 
 def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
-                      strict=True) -> List[Type]:
+                      strict: bool =True) -> List[Type]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable

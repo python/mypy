@@ -36,8 +36,8 @@ except ImportError:
               ' Python 3.3 and greater.')
     sys.exit(1)
 
-T = TypeVar('T')
-U = TypeVar('U')
+T = TypeVar('T', bound=ast35.AST)
+U = TypeVar('U', bound=Node)
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
@@ -92,9 +92,9 @@ def parse_type_comment(type_comment: str, line: int) -> Type:
         return TypeConverter(line=line).visit(typ.body)
 
 
-def with_line(f: Callable[[Any, T], Node]) -> Callable[[Any, T], Node]:
+def with_line(f: Callable[[Any, T], U]) -> Callable[[Any, T], U]:
     @wraps(f)
-    def wrapper(self, ast: Any) -> Node:
+    def wrapper(self: Any, ast: Any) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno)
         return node
@@ -308,7 +308,7 @@ class ASTConverter(ast35.NodeTransformer):
             type.optional = optional
 
     def transform_args(self, args: ast35.arguments, line: int) -> List[Argument]:
-        def make_argument(arg, default, kind: int) -> Argument:
+        def make_argument(arg: ast35.arg, default: Optional[ast35.expr], kind: int) -> Argument:
             arg_type = TypeConverter(line=line).visit(arg.annotation)
             converted_default = self.visit(default)
             self.set_type_optional(arg_type, converted_default)
@@ -597,13 +597,15 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_ListComp(self, n: ast35.ListComp) -> Node:
         g = self.visit_GeneratorExp(cast(ast35.GeneratorExp, n))
-        return ListComprehension(cast(GeneratorExpr, g))
+        assert isinstance(g, GeneratorExpr)
+        return ListComprehension(g)
 
     # SetComp(expr elt, comprehension* generators)
     @with_line
     def visit_SetComp(self, n: ast35.SetComp) -> Node:
         g = self.visit_GeneratorExp(cast(ast35.GeneratorExp, n))
-        return SetComprehension(cast(GeneratorExpr, g))
+        assert isinstance(g, GeneratorExpr)
+        return SetComprehension(g)
 
     # DictComp(expr key, expr value, comprehension* generators)
     @with_line
@@ -651,7 +653,7 @@ class ASTConverter(ast35.NodeTransformer):
     # keyword = (identifier? arg, expr value)
     @with_line
     def visit_Call(self, n: ast35.Call) -> Node:
-        def is_star2arg(k) -> bool:
+        def is_star2arg(k: Any) -> bool:
             return k.arg is None
 
         arg_types = self.visit_list(

@@ -99,7 +99,7 @@ def wsprefix(s: str) -> str:
     return s[:len(s) - len(s.lstrip())]
 
 
-def scrubtype(typestr: Optional[str], only_known=False) -> Optional[str]:
+def scrubtype(typestr: Optional[str], only_known: bool =False) -> Optional[str]:
     if typestr is None:
         return typestr
 

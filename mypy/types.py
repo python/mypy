@@ -236,7 +236,7 @@ class TypeList(Type):
 class AnyType(Type):
     """The type 'Any'."""
 
-    def __init__(self, implicit=False, line: int = -1) -> None:
+    def __init__(self, implicit: bool = False, line: int = -1) -> None:
         super().__init__(line)
         self.implicit = implicit
 
@@ -538,9 +538,9 @@ class CallableType(FunctionLike):
                  variables: List[TypeVarDef] = None,
                  line: int = -1,
                  is_ellipsis_args: bool = False,
-                 implicit=False,
-                 is_classmethod_class=False,
-                 special_sig=None,
+                 implicit: bool = False,
+                 is_classmethod_class: bool = False,
+                 special_sig: Optional[str] = None,
                  ) -> None:
         if variables is None:
             variables = []

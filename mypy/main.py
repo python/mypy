@@ -86,7 +86,7 @@ MYPYPATH     additional module search path"""
 
 
 class SplitNamespace:
-    def __init__(self, standard_namespace, alt_namespace, alt_prefix) -> None:
+    def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
         self.__dict__['_standard_namespace'] = standard_namespace
         self.__dict__['_alt_namespace'] = alt_namespace
         self.__dict__['_alt_prefix'] = alt_prefix
@@ -121,7 +121,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=help_factory)
 
-    def parse_version(v) -> Tuple[int, int]:
+    def parse_version(v: str) -> Tuple[int, int]:
         m = re.match(r'\A(\d)\.(\d+)\Z', v)
         if m:
             return int(m.group(1)), int(m.group(2))

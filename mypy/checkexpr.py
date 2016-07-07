@@ -1192,7 +1192,7 @@ class ExpressionChecker:
             e.method_type = method_type
             return result
 
-    def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr):
+    def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
         begin = None  # type: int
         end = None  # type: int
         stride = None  # type:int
@@ -1469,7 +1469,7 @@ class ExpressionChecker:
         return self.check_call(constructor,
                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
-    def visit_dictionary_comprehension(self, e: DictionaryComprehension):
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
         self.check_for_comp(e)
 
