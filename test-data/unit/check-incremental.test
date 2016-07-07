@@ -94,4 +94,29 @@ def func() -> int: return 1
 [stale mod1]
 [out]
 
+[case testIncrementalSubmoduleImport]
+from parent.childA import Foo
 
+def func1() -> Foo:
+    return Foo()
+
+[file parent/__init__.py]
+from parent.childA import Foo
+from parent.childB import Bar
+
+__all__ = ['Foo', 'Bar']
+
+[file parent/childA.py]
+import parent
+
+class Foo:
+    def test(self) -> int:
+        return parent.Bar().test()
+
+[file parent/childB.py]
+class Bar:
+    def test(self) -> int: return 3
+
+[builtins fixtures/module_all.py]
+[stale]
+[out]
