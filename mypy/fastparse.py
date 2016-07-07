@@ -36,8 +36,9 @@ except ImportError:
               ' Python 3.3 and greater.')
     sys.exit(1)
 
-T = TypeVar('T', bound=ast35.AST)
+T = TypeVar('T', bound=Union[ast35.expr, ast35.stmt])
 U = TypeVar('U', bound=Node)
+V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
@@ -92,16 +93,16 @@ def parse_type_comment(type_comment: str, line: int) -> Type:
         return TypeConverter(line=line).visit(typ.body)
 
 
-def with_line(f: Callable[[Any, T], U]) -> Callable[[Any, T], U]:
+def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
     @wraps(f)
-    def wrapper(self: Any, ast: Any) -> U:
+    def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno)
         return node
     return wrapper
 
 
-def find(f: Callable[[T], bool], seq: Sequence[T]) -> T:
+def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
     for item in seq:
         if f(item):
             return item
@@ -653,7 +654,7 @@ class ASTConverter(ast35.NodeTransformer):
     # keyword = (identifier? arg, expr value)
     @with_line
     def visit_Call(self, n: ast35.Call) -> Node:
-        def is_star2arg(k: Any) -> bool:
+        def is_star2arg(k: ast35.keyword) -> bool:
             return k.arg is None
 
         arg_types = self.visit_list(
