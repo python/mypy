@@ -2006,3 +2006,44 @@ reveal_type(User)  # E: Revealed type is 'builtins.type'
 [builtins fixtures/args.py]
 [out]
 
+[case testTypeTypeComparisonWorks]
+class User: pass
+
+User == User
+User == type(User())
+type(User()) == User
+type(User()) == type(User())
+
+User != User
+User != type(User())
+type(User()) != User
+type(User()) != type(User())
+
+int == int
+int == type(3)
+type(3) == int
+type(3) == type(3)
+
+int != int
+int != type(3)
+type(3) != int
+type(3) != type(3)
+
+User is User
+User is type(User)
+type(User) is User
+type(User) is type(User)
+
+int is int
+int is type(3)
+type(3) is int
+type(3) is type(3)
+
+int.__eq__(int)
+int.__eq__(3, 4)
+[builtins fixtures/args.py]
+[out]
+main:33: error: Too few arguments for "__eq__" of "int"
+main:33: error: Unsupported operand types for == ("int" and "int")
+
+

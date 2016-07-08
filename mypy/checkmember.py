@@ -8,7 +8,8 @@ from mypy.types import (
     DeletedType, NoneTyp, TypeType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
-from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, function_type, Decorator, OverloadedFuncDef
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, OpExpr, ComparisonExpr
+from mypy.nodes import function_type, Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -23,6 +24,7 @@ def analyze_member_access(name: str,
                           node: Context,
                           is_lvalue: bool,
                           is_super: bool,
+                          is_operator: bool,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder,
@@ -79,20 +81,20 @@ def analyze_member_access(name: str,
     elif isinstance(typ, NoneTyp):
         # The only attribute NoneType has are those it inherits from object
         return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
-                                     is_super, builtin_type, not_ready_callback, msg,
+                                     is_super, is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
-        results = [analyze_member_access(name, subtype, node, is_lvalue,
-                                         is_super, builtin_type, not_ready_callback, msg)
+        results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
+                                         is_operator, builtin_type, not_ready_callback, msg)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
-        return analyze_member_access(name, typ.fallback, node, is_lvalue,
-                                     is_super, builtin_type, not_ready_callback, msg)
+        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback, msg)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -100,24 +102,38 @@ def analyze_member_access(name: str,
         if isinstance(ret_type, TupleType):
             ret_type = ret_type.fallback
         if isinstance(ret_type, Instance):
-            result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
-                                                    builtin_type, not_ready_callback, msg)
-            if result:
-                return result
+            if not is_operator:
+                # When Python sees an operator (eg `3 == 4`), it automatically translates that
+                # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
+                # optimation.
+                #
+                # While it normally it doesn't matter which of the two versions are used, it
+                # does cause inconsistencies when working with classes. For example, translating
+                # `int == int` to `int.__eq__(int)` would not work since `int.__eq__` is meant to
+                # compare two int _instances_. What we really want is `type(int).__eq__`, which
+                # is meant to compare two types or classes.
+                #
+                # This check makes sure that when we encounter an operator, we skip looking up
+                # the corresponding method in the current instance to avoid this edge case.
+                # See https://github.com/python/mypy/pull/1787 for more info.
+                result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
+                                                        builtin_type, not_ready_callback, msg)
+                if result:
+                    return result
             # Look up from the 'type' type.
             return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                         builtin_type, not_ready_callback, msg,
+                                         is_operator, builtin_type, not_ready_callback, msg,
                                          report_type=report_type)
         else:
             assert False, 'Unexpected type {}'.format(repr(ret_type))
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     elif isinstance(typ, TypeVarType):
         return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
-                                     builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
@@ -130,14 +146,15 @@ def analyze_member_access(name: str,
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
-        if item:
+        if item and not is_operator:
+            # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg)
             if result:
                 return result
         fallback = builtin_type('builtins.type')
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
-                                     builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     return msg.has_no_attr(report_type, name, node)
 
