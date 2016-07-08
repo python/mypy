@@ -917,9 +917,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            ltuple = lvalue
-
-            self.check_assignment_to_multiple_lvalues(ltuple.items, rvalue, lvalue,
+            self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, lvalue,
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
@@ -1164,8 +1162,7 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            lv = lvalue
-            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lv.items]
+            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         else:
             lvalue_type = self.accept(lvalue)
