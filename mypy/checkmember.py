@@ -19,11 +19,16 @@ from mypy import messages
 from mypy import subtypes
 
 
-def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
-                          is_super: bool, is_operator: bool,
+def analyze_member_access(name: str,
+                          typ: Type,
+                          node: Context,
+                          is_lvalue: bool,
+                          is_super: bool,
+                          is_operator: bool,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
-                          msg: MessageBuilder, override_info: TypeInfo = None,
+                          msg: MessageBuilder,
+                          override_info: TypeInfo = None,
                           report_type: Type = None) -> Type:
     """Analyse attribute access.
 
@@ -73,6 +78,11 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType()
+    elif isinstance(typ, NoneTyp):
+        # The only attribute NoneType has are those it inherits from object
+        return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
+                                     is_super, builtin_type, not_ready_callback, msg,
+                                     report_type=report_type)
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1

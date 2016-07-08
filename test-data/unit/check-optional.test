@@ -245,3 +245,14 @@ def f(b: T) -> T:
 a = None
 b = "foo"
 reveal_type(a and b)  # E: Revealed type is 'builtins.None'
+
+[case testNoneMatchesObjectInOverload]
+import a
+a.f(None)
+
+[file a.pyi]
+from typing import overload
+@overload
+def f() -> None: ...
+@overload
+def f(o: object) -> None: ...
