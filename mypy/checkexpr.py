@@ -1086,15 +1086,21 @@ class ExpressionChecker:
         left_type = self.accept(e.left, ctx)
 
         if e.op == 'and':
-            right_map, _ = \
+            right_map, left_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         elif e.op == 'or':
-            _, right_map = \
+            left_map, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         else:
+            left_map = None
             right_map = None
+
+        if left_map and e.left in left_map:
+            # The type of expressions in left_map is the type they'll have if
+            # the left operand is the result of the operator.
+            left_type = left_map[e.left]
 
         with self.chk.binder.frame_context():
             if right_map:
@@ -1105,6 +1111,13 @@ class ExpressionChecker:
 
         self.check_not_void(left_type, context)
         self.check_not_void(right_type, context)
+
+        # If either of the type maps is None that means that result cannot happen.
+        # If both of the type maps are None we just have no information.
+        if left_map is not None and right_map is None:
+            return left_type
+        elif left_map is None and right_map is not None:
+            return right_type
         return UnionType.make_simplified_union([left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
