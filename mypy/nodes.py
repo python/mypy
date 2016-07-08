@@ -1306,9 +1306,6 @@ reverse_op_methods = {
 
 normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
 reverse_op_method_set = set(reverse_op_methods.values())
-all_operator_methods = (inplace_operator_methods 
-        | set(op_methods.values()) 
-        | set(reverse_op_methods.values()))
 
 
 class OpExpr(Expression):

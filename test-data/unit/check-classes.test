@@ -2038,7 +2038,12 @@ int is int
 int is type(3)
 type(3) is int
 type(3) is type(3)
+
+int.__eq__(int)
+int.__eq__(3, 4)
 [builtins fixtures/args.py]
 [out]
+main:33: error: Too few arguments for "__eq__" of "int"
+main:33: error: Unsupported operand types for == ("int" and "int")
 
 

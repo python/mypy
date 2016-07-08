@@ -8,7 +8,7 @@ from mypy.types import (
     DeletedType, NoneTyp, TypeType
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
-from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, all_operator_methods
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, OpExpr, ComparisonExpr
 from mypy.nodes import function_type, Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -92,11 +92,20 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         if isinstance(ret_type, TupleType):
             ret_type = ret_type.fallback
         if isinstance(ret_type, Instance):
-            if name not in all_operator_methods:
-                # We skip here so that when mypy sees comparisons like `type(foo) == type(bar)`,
-                # it doesn't try and typecheck against `foo.__eq__`. This workaround makes sure
-                # that mypy falls through and uses `foo.__class__.__eq__`.instead. See the bug
-                # discussed in https://github.com/python/mypy/pull/1787 for more info.
+            if not isinstance(node, (OpExpr, ComparisonExpr)):
+                # When Python sees an operator (eg `3 == 4`), it automatically translates that
+                # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
+                # optimation.
+                #
+                # While it normally it doesn't matter which of the two versions are used, it
+                # does cause inconsistencies when working with classes. For example, translating
+                # `int == int` to `int.__eq__(int)` would not work since `int.__eq__` is meant to
+                # compare two int _instances_. What we really want is `type(int).__eq__`, which
+                # is meant to compare two types or classes.
+                #
+                # This check makes sure that when we encounter an operator, we skip looking up
+                # the corresponding method in the current instance to avoid this edge case.
+                # See https://github.com/python/mypy/pull/1787 for more info.
                 result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
                                                         builtin_type, not_ready_callback, msg)
                 if result:
@@ -127,8 +136,8 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
-        if item and name not in all_operator_methods:
-            # See comment above for why operator methods are skipped
+        if item and not isinstance(node, (OpExpr, ComparisonExpr)):
+            # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg)
             if result:

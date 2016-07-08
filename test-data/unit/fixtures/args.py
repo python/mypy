@@ -21,7 +21,8 @@ class type:
 class tuple(Iterable[Tco], Generic[Tco]): pass
 class dict(Generic[T, S]): pass
 
-class int: pass
+class int:
+    def __eq__(self, o: object) -> bool: pass
 class str: pass
 class bool: pass
 class function: pass
