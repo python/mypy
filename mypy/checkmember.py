@@ -81,7 +81,7 @@ def analyze_member_access(name: str,
     elif isinstance(typ, NoneTyp):
         # The only attribute NoneType has are those it inherits from object
         return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
-                                     is_super, builtin_type, not_ready_callback, msg,
+                                     is_super, is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
