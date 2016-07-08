@@ -411,7 +411,7 @@ class ExpressionChecker:
         ret_type = callable.ret_type
         if isinstance(ret_type, TypeVarType):
             if ret_type.values or (not isinstance(ctx, Instance) or
-                                   not cast(Instance, ctx).args):
+                                   not ctx.args):
                 # The return type is a type variable. If it has values, we can't easily restrict
                 # type inference to conform to the valid values. If it's unrestricted, we could
                 # infer a too general type for the type variable if we use context, and this could
