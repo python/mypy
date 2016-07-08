@@ -1,5 +1,6 @@
 from mypy import defaults
 import pprint
+from typing import Any
 
 
 class BuildType:
@@ -55,11 +56,11 @@ class Options:
         self.fast_parser = False
         self.incremental = False
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))

@@ -5,7 +5,7 @@ import os
 import re
 import sys
 
-from typing import Optional, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -86,21 +86,21 @@ MYPYPATH     additional module search path"""
 
 
 class SplitNamespace:
-    def __init__(self, standard_namespace, alt_namespace, alt_prefix):
+    def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
         self.__dict__['_standard_namespace'] = standard_namespace
         self.__dict__['_alt_namespace'] = alt_namespace
         self.__dict__['_alt_prefix'] = alt_prefix
 
-    def _get(self):
+    def _get(self) -> Tuple[Any, Any]:
         return (self._standard_namespace, self._alt_namespace)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         if name.startswith(self._alt_prefix):
             setattr(self._alt_namespace, name[len(self._alt_prefix):], value)
         else:
             setattr(self._standard_namespace, name, value)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if name.startswith(self._alt_prefix):
             return getattr(self._alt_namespace, name[len(self._alt_prefix):])
         else:
@@ -121,7 +121,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=help_factory)
 
-    def parse_version(v):
+    def parse_version(v: str) -> Tuple[int, int]:
         m = re.match(r'\A(\d)\.(\d+)\Z', v)
         if m:
             return int(m.group(1)), int(m.group(2))

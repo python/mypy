@@ -97,6 +97,14 @@ f(None)
 [out]
 main: note: In function "f":
 
+[case testInferOptionalFromDefaultNoneWithFastParser]
+# options: fast_parser
+def f(x: int = None) -> None:
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
 [case testInferOptionalType]
 x = None
 x = 1
@@ -167,3 +175,73 @@ def f(x: None) -> str: pass
 def f(x: int) -> int: pass
 reveal_type(f(None))  # E: Revealed type is 'builtins.str'
 reveal_type(f(0))  # E: Revealed type is 'builtins.int'
+
+[case testOptionalTypeOrTypePlain]
+from typing import Optional
+def f(a: Optional[int]) -> int:
+    return a or 0
+[out]
+
+[case testOptionalTypeOrTypeTypeVar]
+from typing import Optional, TypeVar
+T = TypeVar('T')
+def f(a: Optional[T], b: T) -> T:
+    return a or b
+[out]
+
+[case testOptionalTypeOrTypeBothOptional]
+from typing import Optional
+def f(a: Optional[int], b: Optional[int]) -> None:
+    reveal_type(a or b)
+def g(a: int, b: Optional[int]) -> None:
+    reveal_type(a or b)
+[out]
+main: note: In function "f":
+main:3: error: Revealed type is 'Union[builtins.int, builtins.None]'
+main: note: In function "g":
+main:5: error: Revealed type is 'Union[builtins.int, builtins.None]'
+
+[case testOptionalTypeOrTypeComplexUnion]
+from typing import Union
+def f(a: Union[int, str, None]) -> None:
+    reveal_type(a or 'default')
+[out]
+main: note: In function "f":
+main:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testOptionalTypeOrTypeNoTriggerPlain]
+from typing import Optional
+def f(a: Optional[int], b: int) -> int:
+    return b or a
+[out]
+main: note: In function "f":
+main:3: error: Incompatible return value type (got "Optional[int]", expected "int")
+
+[case testOptionalTypeOrTypeNoTriggerTypeVar]
+from typing import Optional, TypeVar
+T = TypeVar('T')
+def f(a: Optional[T], b: T) -> T:
+    return b or a
+[out]
+main: note: In function "f":
+main:4: error: Incompatible return value type (got "Optional[T]", expected "T")
+
+[case testNoneOrStringIsString]
+def f() -> str:
+    a = None
+    b = ''
+    return a or b
+[out]
+
+[case testNoneOrTypeVarIsTypeVar]
+from typing import TypeVar
+T = TypeVar('T')
+def f(b: T) -> T:
+    a = None
+    return a or b
+[out]
+
+[case testNoneAndStringIsNone]
+a = None
+b = "foo"
+reveal_type(a and b)  # E: Revealed type is 'builtins.None'

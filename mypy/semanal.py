@@ -542,7 +542,7 @@ class SemanticAnalyzer(NodeVisitor):
             extra_anys = [AnyType()] * (len(fdef.arguments) - len(sig.arg_types))
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
-            self.fail('Type signature has too many arguments', fdef)
+            self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
@@ -605,7 +605,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
         decorator.accept(self)
 
-    def setup_is_builtinclass(self, defn: ClassDef):
+    def setup_is_builtinclass(self, defn: ClassDef) -> None:
         for decorator in defn.decorators:
             if refers_to_fullname(decorator, 'typing.builtinclass'):
                 defn.is_builtinclass = True
