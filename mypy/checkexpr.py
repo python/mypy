@@ -1775,9 +1775,14 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
-    if not experiments.STRICT_OPTIONAL and isinstance(actual, NoneTyp):
-        # NoneTyp matches anything if we're not doing strict Optional checking
-        return 2
+    if isinstance(actual, NoneTyp):
+        if not experiments.STRICT_OPTIONAL:
+            # NoneTyp matches anything if we're not doing strict Optional checking
+            return 2
+        else:
+            # NoneType is a subtype of object
+            if isinstance(formal, Instance) and formal.type.fullname() == "builtins.object":
+                return 2
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)
                    for item in actual.items)
