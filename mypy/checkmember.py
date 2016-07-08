@@ -20,7 +20,7 @@ from mypy import subtypes
 
 
 def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
-                          is_super: bool,
+                          is_super: bool, is_operator: bool,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder, override_info: TypeInfo = None,
@@ -76,15 +76,15 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
-        results = [analyze_member_access(name, subtype, node, is_lvalue,
-                                         is_super, builtin_type, not_ready_callback, msg)
+        results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
+                                         is_operator, builtin_type, not_ready_callback, msg)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
-        return analyze_member_access(name, typ.fallback, node, is_lvalue,
-                                     is_super, builtin_type, not_ready_callback, msg)
+        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback, msg)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -92,7 +92,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         if isinstance(ret_type, TupleType):
             ret_type = ret_type.fallback
         if isinstance(ret_type, Instance):
-            if not isinstance(node, (OpExpr, ComparisonExpr)):
+            if not is_operator:
                 # When Python sees an operator (eg `3 == 4`), it automatically translates that
                 # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
                 # optimation.
@@ -112,18 +112,18 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                     return result
             # Look up from the 'type' type.
             return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                         builtin_type, not_ready_callback, msg,
+                                         is_operator, builtin_type, not_ready_callback, msg,
                                          report_type=report_type)
         else:
             assert False, 'Unexpected type {}'.format(repr(ret_type))
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     elif isinstance(typ, TypeVarType):
         return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
-                                     builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
@@ -136,7 +136,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
-        if item and not isinstance(node, (OpExpr, ComparisonExpr)):
+        if item and not is_operator:
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg)
@@ -144,7 +144,7 @@ def analyze_member_access(name: str, typ: Type, node: Context, is_lvalue: bool,
                 return result
         fallback = builtin_type('builtins.type')
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
-                                     builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback, msg,
                                      report_type=report_type)
     return msg.has_no_attr(report_type, name, node)
 

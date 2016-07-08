@@ -286,8 +286,8 @@ class ExpressionChecker:
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                         False, False, self.named_type, self.not_ready_callback,
-                                         self.msg)
+                                         False, False, False, self.named_type,
+                                         self.not_ready_callback, self.msg)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -861,7 +861,7 @@ class ExpressionChecker:
         else:
             # This is a reference to a non-module attribute.
             return analyze_member_access(e.name, self.accept(e.expr), e,
-                                         is_lvalue, False,
+                                         is_lvalue, False, False,
                                          self.named_type, self.not_ready_callback, self.msg)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
@@ -870,7 +870,7 @@ class ExpressionChecker:
         refer to private definitions. Return the result type.
         """
         # TODO remove; no private definitions in mypy
-        return analyze_member_access(member, base_type, context, False, False,
+        return analyze_member_access(member, base_type, context, False, False, False,
                                      self.named_type, self.not_ready_callback, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
@@ -1008,7 +1008,7 @@ class ExpressionChecker:
 
         Return tuple (result type, inferred operator method type).
         """
-        method_type = analyze_member_access(method, base_type, context, False, False,
+        method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
@@ -1434,7 +1434,7 @@ class ExpressionChecker:
                     if not self.chk.typing_mode_full():
                         return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
-                                                 is_lvalue, True,
+                                                 is_lvalue, True, False,
                                                  self.named_type, self.not_ready_callback,
                                                  self.msg, base)
         else:
