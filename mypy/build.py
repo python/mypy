@@ -369,6 +369,11 @@ class BuildManager:
                 if isinstance(imp, Import):
                     pri = PRI_MED if imp.is_top_level else PRI_LOW
                     for id, _ in imp.ids:
+                        ancestor_parts = id.split(".")[:-1]
+                        ancestors = []
+                        for part in ancestor_parts:
+                            ancestors.append(part)
+                            res.append((PRI_LOW, ".".join(ancestors), imp.line))
                         res.append((pri, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
