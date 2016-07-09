@@ -1976,6 +1976,18 @@ class TypeInfo(SymbolNode):
         return ti
 
 
+class NamedTupleTypeInfo(TypeInfo):
+    is_named_tuple = False
+    def __init__(self, tup, *args):
+        super().__init__(*args)
+        tup.fullname = lambda : '__builtins__.tuple'
+        self.tuple_type = tup
+        self.bases = [tup]
+        self.mro = [self, tup]
+        # self._promote = tup
+        
+
+
 class SymbolTableNode:
     # Kind of node. Possible values:
     #  - LDEF: local definition (of any kind)
