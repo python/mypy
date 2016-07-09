@@ -1,8 +1,9 @@
 [case testNamedTupleUsedAsTuple]
+import typing
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
-x = None  # type: X
+x = X(1, 2)  # type: X   # None does not seem to work for TYPE_ALIAS
 a, b = x
 b = x[0]
 a = x[1]
@@ -190,20 +191,20 @@ C(2).b
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
-x = None  # type: X
+x = X(1, 2)  # type: X
 a = x._asdict()
 
 [case testNamedTupleReplace]
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
-x = None  # type: X
+x = X(1, 2)  # type: X
 x = x._replace(y=5)
 
 [case testNamedTupleReplaceTyped]
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-x = None  # type: X
+x = X(1, 'a')  # type: X
 x = x._replace(x=5)
 x = x._replace(y=5)  # E: Argument 1 to X has incompatible type "int"; expected "str"

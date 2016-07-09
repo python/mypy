@@ -64,7 +64,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
     IntExpr, FloatExpr, UnicodeExpr,
-    INVARIANT, UNBOUND_IMPORTED, Expression, EllipsisExpr
+    INVARIANT, UNBOUND_IMPORTED, Expression, EllipsisExpr, NamedTupleTypeInfo
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1417,7 +1417,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined namedtuple
+        node.kind = TYPE_ALIAS   # TODO locally defined namedtuple
         # TODO call.analyzed
         node.node = named_tuple
 
@@ -1524,34 +1524,28 @@ class SemanticAnalyzer(NodeVisitor):
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
         symbols = SymbolTable()
-        class_def = ClassDef(name, Block([]))
+        tup = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
+        class_def = ClassDef(name, Block([]))        
         class_def.fullname = self.qualified_name(name)
-        info = TypeInfo(symbols, class_def)
+        info = NamedTupleTypeInfo(tup, symbols, class_def)
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
         # Add named tuple items as attributes.
         # TODO: Make them read-only.
-        for item, typ in zip(items, types):
-            var = Var(item)
+        for var in vars:
             var.info = info
-            var.type = typ
-            symbols[item] = SymbolTableNode(MDEF, var)
+            symbols[var.name] = SymbolTableNode(MDEF, var)
         # Add __init__, _replace, _asdict methods and _fields static field
         self.add_namedtuple_method('__init__', symbols, info, NoneTyp(),
-                       self.make_factory_args(items, types, ARG_POS))
-        # TODO: refine return type to type(self)
-        self.add_namedtuple_method('_replace', symbols, info, AnyType(),
-                       self.make_factory_args(items, types, ARG_NAMED, initializer=EllipsisExpr()))
+                       self.make_factory_args(vars, ARG_POS))
+        self.add_namedtuple_method('_replace', symbols, info, Instance(info, []),
+                       self.make_factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         # TODO: refine to OrderedDict[Union[types]]
         self.add_namedtuple_method('_asdict', symbols, info, AnyType())
-
-        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
-        info.is_named_tuple = True
-        info.mro = [info] + info.tuple_type.fallback.type.mro
-        info.bases = [info.tuple_type.fallback]
         return info
 
-    def make_factory_args(self, items: List[str], types: List[Type],
-                          kind: int, initializer: Expression = None) -> List[Argument]:
-        return [Argument(Var(item), type, initializer, kind) for item, type in zip(items, types)]
+    def make_factory_args(self, vars: List[Var], kind: int,
+                          initializer: Expression = None) -> List[Argument]:
+        return [Argument(var, var.type, initializer, kind) for var in vars]
 
     def add_namedtuple_method(self, funcname: str, symbols: SymbolTable, info: TypeInfo,
                               ret: Type, args: List[Argument] = []) -> None:
@@ -2636,11 +2630,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     tv = []  # type: List[Type]
     for i in range(len(typ.type_vars)):
         tv.append(TypeVarType(typ.defn.type_vars[i]))
-    inst = Instance(typ, tv)
-    if typ.tuple_type is None:
-        return inst
-    else:
-        return TupleType(typ.tuple_type.items, inst)
+    return Instance(typ, tv)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
