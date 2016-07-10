@@ -1418,7 +1418,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = TYPE_ALIAS   # TODO locally defined namedtuple
+        node.kind = GDEF   # TODO locally defined namedtuple
         # TODO call.analyzed
         node.node = named_tuple
 
@@ -1525,7 +1525,7 @@ class SemanticAnalyzer(NodeVisitor):
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
         symbols = SymbolTable()
-        tup = NamedTupleType(items, types, self.named_type('__builtins__.tuple', [AnyType()]))
+        tup = NamedTupleType(items, types, self.named_type('__builtins__.tuple', types))
         class_def = ClassDef(name, Block([]))        
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
@@ -1534,7 +1534,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: Make them read-only.
         for var in vars:
             var.info = info
-            symbols[var.name] = SymbolTableNode(MDEF, var)
+            symbols[var.name()] = SymbolTableNode(MDEF, var)
         # Add __init__, _replace, _asdict methods and _fields static field
         self.add_namedtuple_method('__init__', symbols, info, NoneTyp(),
                        self.make_factory_args(vars, ARG_POS))
@@ -2634,10 +2634,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
-    if not typ.is_named_tuple:
-        inst = TupleType(typ.tuple_type.items, inst)
-        return inst
-    return NamedTupleType(typ.tuple_type.names, typ.tuple_type.items, inst)
+    return typ.tuple_type.self_type(inst)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

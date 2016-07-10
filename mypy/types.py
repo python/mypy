@@ -760,13 +760,19 @@ class TupleType(Type):
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
+    def self_type(self, inst: Instance) -> 'TupleType':
+        return TupleType(self.items, inst)
+
 
 class NamedTupleType(TupleType):
-    names = None  # type: List[str]
+    attrs = None  # type: List[str]
 
-    def __init__(self, names: List[str], *args) -> None:
-        self.names = names
+    def __init__(self, attrs: List[str], *args) -> None:
+        self.attrs = attrs
         super().__init__(*args)
+        
+    def self_type(self, inst: Instance) -> 'NamedTupleType':
+        return NamedTupleType(self.attrs, self.items, inst)
 
 
 class StarType(Type):
