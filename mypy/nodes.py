@@ -1982,10 +1982,8 @@ class NamedTupleTypeInfo(TypeInfo):
     def __init__(self, tup: 'mypy.types.NamedTupleType', *args) -> None:
         super().__init__(*args)
         self.tuple_type = tup
-        self.bases = []
-        self.mro = [self]
-        # self._promote = tup
-        
+        self.bases = [tup.fallback]
+        self.mro = [cast(TypeInfo, self)] + tup.fallback.type.mro
 
 
 class SymbolTableNode:
