@@ -72,7 +72,8 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, 
+    NamedTupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
@@ -1524,7 +1525,7 @@ class SemanticAnalyzer(NodeVisitor):
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
         symbols = SymbolTable()
-        tup = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
+        tup = NamedTupleType(items, types, self.named_type('__builtins__.tuple', [AnyType()]))
         class_def = ClassDef(name, Block([]))        
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
@@ -1537,7 +1538,7 @@ class SemanticAnalyzer(NodeVisitor):
         # Add __init__, _replace, _asdict methods and _fields static field
         self.add_namedtuple_method('__init__', symbols, info, NoneTyp(),
                        self.make_factory_args(vars, ARG_POS))
-        self.add_namedtuple_method('_replace', symbols, info, Instance(info, []),
+        self.add_namedtuple_method('_replace', symbols, info, self_type(info),
                        self.make_factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         # TODO: refine to OrderedDict[Union[types]]
         self.add_namedtuple_method('_asdict', symbols, info, AnyType())
@@ -2630,7 +2631,13 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     tv = []  # type: List[Type]
     for i in range(len(typ.type_vars)):
         tv.append(TypeVarType(typ.defn.type_vars[i]))
-    return Instance(typ, tv)
+    inst = Instance(typ, tv)
+    if typ.tuple_type is None:
+        return inst
+    if not typ.is_named_tuple:
+        inst = TupleType(typ.tuple_type.items, inst)
+        return inst
+    return NamedTupleType(typ.tuple_type.names, typ.tuple_type.items, inst)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

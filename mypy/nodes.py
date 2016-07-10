@@ -1977,7 +1977,7 @@ class TypeInfo(SymbolNode):
 
 
 class NamedTupleTypeInfo(TypeInfo):
-    is_named_tuple = False
+    is_named_tuple = True
     def __init__(self, tup, *args):
         super().__init__(*args)
         tup.fullname = lambda : '__builtins__.tuple'

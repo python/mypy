@@ -761,6 +761,14 @@ class TupleType(Type):
                          implicit=data['implicit'])
 
 
+class NamedTupleType(TupleType):
+    names = None  # type: List[str]
+
+    def __init__(self, names: List[str], *args) -> None:
+        self.names = names
+        super().__init__(*args)
+
+
 class StarType(Type):
     """The star type *type_parameter.
 
