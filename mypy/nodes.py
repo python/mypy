@@ -1979,6 +1979,7 @@ class TypeInfo(SymbolNode):
 class NamedTupleTypeInfo(TypeInfo):
     is_named_tuple = True
     bases = None  # type: List[mypy.types.Instance]
+
     def __init__(self, tup: 'mypy.types.NamedTupleType', *args) -> None:
         super().__init__(*args)
         self.tuple_type = tup
