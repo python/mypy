@@ -72,7 +72,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, 
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType,
     NamedTupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
@@ -1528,7 +1528,7 @@ class SemanticAnalyzer(NodeVisitor):
                                   types: List[Type]) -> TypeInfo:
         symbols = SymbolTable()
         tup = NamedTupleType(items, types, self.named_type('__builtins__.tuple', types))
-        class_def = ClassDef(name, Block([]))        
+        class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
         vars = [Var(item, typ) for item, typ in zip(items, types)]

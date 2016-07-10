@@ -770,7 +770,7 @@ class NamedTupleType(TupleType):
     def __init__(self, attrs: List[str], *args) -> None:
         self.attrs = attrs
         super().__init__(*args)
-        
+
     def self_type(self, inst: Instance) -> 'NamedTupleType':
         return NamedTupleType(self.attrs, self.items, inst)
 
