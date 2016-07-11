@@ -769,15 +769,18 @@ class ASTConverter(ast35.NodeTransformer):
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
+    @with_line
     def visit_AsyncFunctionDef(self, n: ast35.AsyncFunctionDef) -> Node:
         return self.do_func_def(n, is_coroutine=True)
 
     # Await(expr value)
+    @with_line
     def visit_Await(self, n: ast35.Await) -> Node:
         v = self.visit(n.value)
         return AwaitExpr(v)
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+    @with_line
     def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
         r = ForStmt(self.visit(n.target),
                     self.visit(n.iter),
@@ -787,6 +790,7 @@ class ASTConverter(ast35.NodeTransformer):
         return r
 
     # AsyncWith(withitem* items, stmt* body)
+    @with_line
     def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
         r = WithStmt([self.visit(i.context_expr) for i in n.items],
                      [self.visit(i.optional_vars) for i in n.items],
