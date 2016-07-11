@@ -76,7 +76,7 @@ class TypeCheckSuite(Suite):
         return c
 
     def run_test(self, testcase: DataDrivenTestCase) -> None:
-        incremental = 'Incremental' in testcase.name.lower() or 'incremental' in testcase.file
+        incremental = 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
         optional = 'optional' in testcase.file
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
@@ -188,6 +188,8 @@ class TypeCheckSuite(Suite):
             for file in files:
                 if file.endswith('.py'):
                     if file == "__init__.py":
+                        # If the file path is `a/b/__init__.py`, exclude the file name
+                        # and make sure the module id is just `a.b`, not `a.b.__init__`.
                         id = '.'.join(dnparts)
                     else:
                         base, ext = os.path.splitext(file)
