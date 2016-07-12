@@ -1527,23 +1527,25 @@ class SemanticAnalyzer(NodeVisitor):
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
         symbols = SymbolTable()
-        tup = NamedTupleType(items, types, self.named_type('__builtins__.tuple', types))
+        tup = NamedTupleType(name, items, types, self.named_type('__builtins__.tuple', types))
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
+        info.attrs = items
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         # Add named tuple items as attributes.
         # TODO: Make them read-only.
         for var in vars:
             var.info = info
             symbols[var.name()] = SymbolTableNode(MDEF, var)
+        this_type = self_type(info)
         # Add __init__, _replace, _asdict methods and _fields static field
-        self.add_namedtuple_method('__init__', symbols, info, NoneTyp(),
-                       self.make_factory_args(vars, ARG_POS))
-        self.add_namedtuple_method('_replace', symbols, info, self_type(info),
-                       self.make_factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
+        self.add_namedtuple_method('_replace', symbols, info, this_type, this_type,
+                                   self.make_factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
+        self.add_namedtuple_method('__init__', symbols, info, this_type, NoneTyp(),
+                                   self.make_factory_args(vars, ARG_NAMED))
         # TODO: refine to OrderedDict[Union[types]]
-        self.add_namedtuple_method('_asdict', symbols, info, AnyType())
+        self.add_namedtuple_method('_asdict', symbols, info, this_type, AnyType(), [])
         return info
 
     def make_factory_args(self, vars: List[Var], kind: int,
@@ -1551,9 +1553,9 @@ class SemanticAnalyzer(NodeVisitor):
         return [Argument(var, var.type, initializer, kind) for var in vars]
 
     def add_namedtuple_method(self, funcname: str, symbols: SymbolTable, info: TypeInfo,
-                              ret: Type, args: List[Argument] = []) -> None:
-        types = [cast(Type, None)] + [arg.type_annotation for arg in args]
-        args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
+                              this_type: Type, ret: Type, args: List[Argument]) -> None:
+        args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
+        types = [arg.type_annotation for arg in args]
         items = [arg.variable.name() for arg in args]
         arg_kinds = [arg.kind for arg in args]
         # TODO: Make sure that the self argument name is not visible?
