@@ -287,6 +287,7 @@ class ASTConverter(ast35.NodeTransformer):
                        func_type)
         if func_type is not None:
             func_type.definition = func_def
+            func_type.line = n.lineno
 
         if n.decorator_list:
             var = Var(func_def.name())
