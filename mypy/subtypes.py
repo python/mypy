@@ -2,7 +2,7 @@ from typing import cast, List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
+    Instance, TypeVarType, CallableType, TupleType, NamedTupleType, UnionType, Overloaded, ErasedType, TypeList,
     PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
@@ -178,17 +178,27 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 iter_type = right.args[0]
                 return all(is_subtype(li, iter_type) for li in left.items)
             return False
+        elif isinstance(right, NamedTupleType) and not isinstance(left, NamedTupleType):
+            return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
-            for i in range(len(left.items)):
-                if not is_subtype(left.items[i], right.items[i], self.check_type_parameter):
+            for l, r in zip(left.items, right.items):
+                if not is_subtype(l, r, self.check_type_parameter):
                     return False
             if not is_subtype(left.fallback, right.fallback, self.check_type_parameter):
                 return False
             return True
         else:
             return False
+
+    def visit_namedtuple_type(self, left: NamedTupleType) -> bool:
+        if isinstance(self.right, NamedTupleType):
+            # left.attrs.issubset(right.attrs) is insufficient
+            # (a: int, b: str) is not subtype of (b: int, a: str)
+            if any(l != r for l, r in zip(left.attrs, self.right.attrs)):
+                return False
+        return self.visit_tuple_type(left)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right

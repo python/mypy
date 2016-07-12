@@ -199,6 +199,16 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 x = x._replace(y=5)
+x = x._replace(z=5)  # E: Unexpected keyword argument "z" for X
+x = x._replace(5)  # E: Too many positional arguments for X
+
+[case testNamedTupleReplaceAsClass]
+from collections import namedtuple
+
+X = namedtuple('X', ['x', 'y'])
+x = None  # type: X
+X._replace(x, x=1, y=2)
+X._replace(x=1, y=2)  # E: Missing positional argument "self" in call to X._replace
 
 [case testNamedTupleReplaceTyped]
 from typing import NamedTuple

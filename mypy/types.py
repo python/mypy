@@ -735,6 +735,7 @@ class TupleType(Type):
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  implicit: bool = False) -> None:
+        #import pdb; pdb.set_trace()
         self.items = items
         self.fallback = fallback
         self.implicit = implicit
@@ -766,13 +767,21 @@ class TupleType(Type):
 
 class NamedTupleType(TupleType):
     attrs = None  # type: List[str]
+    name = None  # type: str
 
-    def __init__(self, attrs: List[str], *args) -> None:
+    def __init__(self, name: str, attrs: List[str], *args, **kwargs) -> None:
         self.attrs = attrs
-        super().__init__(*args)
+        self.name = name
+        super().__init__(*args, **kwargs)
 
     def self_type(self, inst: Instance) -> 'NamedTupleType':
-        return NamedTupleType(self.attrs, self.items, inst)
+        return NamedTupleType(self.name, self.attrs, self.items, inst)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        try:
+            return visitor.visit_namedtuple_type(self)
+        except:
+            return super().accept(visitor)      
 
 
 class StarType(Type):
@@ -1237,6 +1246,10 @@ class TypeStrVisitor(TypeVisitor[str]):
             if fallback_name != 'builtins.tuple':
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
+
+    def visit_namedtuple_type(self, t):
+        s = self.list_str(zip(t.attrs, t.items))
+        return '{}[{}]'.format(t.name, s)
 
     def visit_star_type(self, t):
         s = t.type.accept(self)
