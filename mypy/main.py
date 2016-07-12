@@ -215,7 +215,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
 
     options = Options()
     special_opts = argparse.Namespace()
-    parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
+    namespace = SplitNamespace(options, special_opts, 'special-opts:')
+    parser.parse_args(args, namespace)  # type: ignore
 
     # --use-python-path is no longer supported; explain why.
     if special_opts.use_python_path:

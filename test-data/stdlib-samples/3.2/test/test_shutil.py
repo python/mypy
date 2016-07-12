@@ -442,7 +442,7 @@ class TestShutil(unittest.TestCase):
             self.assertEqual(getattr(file1_stat, 'st_flags'),
                              getattr(file2_stat, 'st_flags'))
 
-    @unittest.skipUnless(zlib, "requires zlib")
+    @unittest.skipUnless(zlib is not None, "requires zlib")
     def test_make_tarball(self) -> None:
         # creating something to tar
         tmpdir = self.mkdtemp()
@@ -505,8 +505,8 @@ class TestShutil(unittest.TestCase):
         base_name = os.path.join(tmpdir2, 'archive')
         return tmpdir, tmpdir2, base_name
 
-    @unittest.skipUnless(zlib, "Requires zlib")
-    @unittest.skipUnless(find_executable('tar') and find_executable('gzip'),
+    @unittest.skipUnless(zlib is not None, "Requires zlib")
+    @unittest.skipUnless((find_executable('tar') and find_executable('gzip')) is not None,
                          'Need the tar command to run')
     def test_tarfile_vs_tar(self) -> None:
         tmpdir, tmpdir2, base_name =  self._create_files()
@@ -560,7 +560,7 @@ class TestShutil(unittest.TestCase):
         tarball = base_name + '.tar'
         self.assertTrue(os.path.exists(tarball))
 
-    @unittest.skipUnless(zlib, "Requires zlib")
+    @unittest.skipUnless(zlib is not None, "Requires zlib")
     @unittest.skipUnless(ZIP_SUPPORT, 'Need zip support to run')
     def test_make_zipfile(self) -> None:
         # creating something to tar
@@ -584,7 +584,7 @@ class TestShutil(unittest.TestCase):
         base_name = os.path.join(tmpdir, 'archive')
         self.assertRaises(ValueError, make_archive, base_name, 'xxx')
 
-    @unittest.skipUnless(zlib, "Requires zlib")
+    @unittest.skipUnless(zlib is not None, "Requires zlib")
     def test_make_archive_owner_group(self) -> None:
         # testing make_archive with owner and group, with various combinations
         # this works even if there's not gid/uid support
@@ -612,7 +612,7 @@ class TestShutil(unittest.TestCase):
         self.assertTrue(os.path.exists(res))
 
 
-    @unittest.skipUnless(zlib, "Requires zlib")
+    @unittest.skipUnless(zlib is not None, "Requires zlib")
     @unittest.skipUnless(UID_GID_SUPPORT, "Requires grp and pwd support")
     def test_tarfile_root_owner(self) -> None:
         tmpdir, tmpdir2, base_name =  self._create_files()
@@ -683,7 +683,7 @@ class TestShutil(unittest.TestCase):
                     diff.append(file_)
         return diff
 
-    @unittest.skipUnless(zlib, "Requires zlib")
+    @unittest.skipUnless(zlib is not None, "Requires zlib")
     def test_unpack_archive(self) -> None:
         formats = ['tar', 'gztar', 'zip']
         if BZ2_SUPPORTED:

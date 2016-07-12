@@ -46,7 +46,7 @@ class TestBasicOps(unittest.TestCase, Generic[RT]):
         for arg in [list(range(3)), {'one': 1}]:
             self.assertRaises(TypeError, self.gen.seed, arg)
         self.assertRaises(TypeError, self.gen.seed, 1, 2, 3, 4)
-        self.assertRaises(TypeError, type(self.gen), [])
+        self.assertRaises(TypeError, type(self.gen), [])  # type: ignore
 
     def test_choice(self) -> None:
         choice = self.gen.choice
