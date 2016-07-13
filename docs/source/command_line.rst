@@ -10,12 +10,15 @@ flag (or its long form ``--help``)::
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--py2] [-s] [--silent]
               [--almost-silent] [--disallow-untyped-calls]
-              [--disallow-untyped-defs] [--check-untyped-defs] [--fast-parser]
-              [-i] [-f] [--pdb] [--use-python-path] [--stats] [--inferstats]
-              [--custom-typing MODULE] [--html-report DIR]
+              [--disallow-untyped-defs] [--check-untyped-defs]
+              [--warn-incomplete-stub] [--warn-redundant-casts]
+              [--warn-unused-ignores] [--fast-parser] [-i] [--cache-dir DIR]
+              [--strict-optional] [-f] [--pdb] [--use-python-path] [--stats]
+              [--inferstats] [--custom-typing MODULE] [--html-report DIR]
               [--old-html-report DIR] [--xslt-html-report DIR]
               [--xml-report DIR] [--txt-report DIR] [--xslt-txt-report DIR]
-              [--linecount-report DIR] [-m MODULES] [-c COMMAND] [-p PACKAGE]
+              [--linecount-report DIR] [-m MODULE] [-c PROGRAM_TEXT]
+              [-p PACKAGE]
               [files [files ...]]
   (etc., too long to show everything here)
 
@@ -217,6 +220,11 @@ Other flags changing what's checked
 ***********************************
 
 Here are some more useful flags:
+
+- ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
+  types and ``None`` values. Without this option, mypy doesn't generally check the
+  use of ``None`` values -- they are valid everywhere. See :ref:`strict_optional` for
+  more about this feature.
 
 - ``--disallow-untyped-calls`` reports an error whenever a function
   with type annotations calls a function defined without annotations.
