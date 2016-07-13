@@ -671,22 +671,21 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
         return source_bytearray.decode(encoding)
 
 
-MYPY_CACHE = '.mypy_cache'
-
-
-def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+def get_cache_names(id: str, path: str, cache_dir: str,
+                    pyversion: Tuple[int, int]) -> Tuple[str, str]:
     """Return the file names for the cache files.
 
     Args:
       id: module ID
       path: module path (used to recognize packages)
+      cache_dir: cache directory
       pyversion: Python version (major, minor)
 
     Returns:
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    prefix = os.path.join(MYPY_CACHE, '%d.%d' % pyversion, *id.split('.'))
+    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
@@ -706,7 +705,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json = get_cache_names(id, path, manager.options.python_version)
+    meta_json, data_json = get_cache_names(
+            id, path, manager.options.cache_dir, manager.options.python_version)
     manager.trace('Looking for {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
@@ -795,7 +795,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
-    meta_json, data_json = get_cache_names(id, path, manager.options.python_version)
+    meta_json, data_json = get_cache_names(
+            id, path, manager.options.cache_dir, manager.options.python_version)
     manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
     data = tree.serialize()
     parent = os.path.dirname(data_json)

@@ -8,7 +8,7 @@ import time
 
 from typing import Tuple, List, Dict, Set
 
-from mypy import build
+from mypy import build, defaults
 import mypy.myunit  # for mutable globals (ick!)
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import Suite, AssertionFailure
@@ -96,7 +96,7 @@ class TypeCheckSuite(Suite):
             self.run_test_once(testcase)
 
     def clear_cache(self) -> None:
-        dn = build.MYPY_CACHE
+        dn = defaults.MYPY_CACHE
 
         if os.path.exists(dn):
             shutil.rmtree(dn)

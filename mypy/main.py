@@ -166,6 +166,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
+    parser.add_argument('--cache-dir', action='store', metavar='DIR',
+                        help="store module cache info in the given folder in incremental mode "
+                        "(defaults to '{}')".format(defaults.MYPY_CACHE))
     parser.add_argument('--strict-optional', action='store_true',
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
