@@ -55,6 +55,7 @@ class Options:
         # -- experimental options --
         self.fast_parser = False
         self.incremental = False
+        self.cache_dir = defaults.MYPY_CACHE
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
