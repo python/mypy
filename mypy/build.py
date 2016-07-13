@@ -706,7 +706,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     """
     # TODO: May need to take more build options into account
     meta_json, data_json = get_cache_names(
-            id, path, manager.options.cache_dir, manager.options.python_version)
+        id, path, manager.options.cache_dir, manager.options.python_version)
     manager.trace('Looking for {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
@@ -796,7 +796,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     mtime = st.st_mtime
     size = st.st_size
     meta_json, data_json = get_cache_names(
-            id, path, manager.options.cache_dir, manager.options.python_version)
+        id, path, manager.options.cache_dir, manager.options.python_version)
     manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
     data = tree.serialize()
     parent = os.path.dirname(data_json)
