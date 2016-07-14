@@ -255,9 +255,6 @@ class TypeJoinVisitor(TypeVisitor[Type]):
 def join_instances(t: Instance, s: Instance) -> Type:
     """Calculate the join of two instance types.
 
-    If allow_interfaces is True, also consider interface-type results for
-    non-interface types.
-
     Return ErrorType if the result is ambiguous.
     """
     if t.type == s.type:
