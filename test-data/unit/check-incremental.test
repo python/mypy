@@ -155,3 +155,33 @@ import parent.a
 [builtins fixtures/args.py]
 [stale]
 [out]
+
+[case testIncrementalReferenceNewFileWithImportFrom]
+from parent import a
+
+[file parent/__init__.py]
+
+[file parent/a.py]
+
+[file parent/a.py.next]
+from parent import b
+
+[file parent/b.py.next]
+
+[stale parent, parent.a, parent.b]
+[out]
+
+[case testIncrementalReferenceExistingFileWithImportFrom]
+from parent import a, b
+
+[file parent/__init__.py]
+
+[file parent/a.py]
+
+[file parent/b.py]
+
+[file parent/a.py.next]
+from parent import b
+
+[stale parent.a]
+[out]

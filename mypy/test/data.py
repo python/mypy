@@ -124,6 +124,7 @@ class DataDrivenTestCase(TestCase):
 
     def set_up(self) -> None:
         super().set_up()
+        encountered_files = set()
         self.clean_up = []
         for path, content in self.files:
             dir = os.path.dirname(path)
@@ -133,6 +134,13 @@ class DataDrivenTestCase(TestCase):
             f.write(content)
             f.close()
             self.clean_up.append((False, path))
+            encountered_files.add(path)
+            if path.endswith(".next"):
+                # Make sure new files introduced in the second run are accounted for
+                renamed_path = path[:-5]
+                if renamed_path not in encountered_files:
+                    encountered_files.add(renamed_path)
+                    self.clean_up.append((False, renamed_path))
 
     def add_dirs(self, dir: str) -> List[str]:
         """Add all subdirectories required to create dir.
