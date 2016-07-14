@@ -281,6 +281,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
+                        ('child_modules', Set[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
                         ])
@@ -726,6 +727,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('data_mtime'),
         data_json,
         meta.get('suppressed', []),
+        set(meta.get('child_modules', set())),
         meta.get('options'),
         meta.get('dep_prios', []),
     )
@@ -749,6 +751,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if st.st_mtime != m.mtime or st.st_size != m.size:
         manager.log('Metadata abandoned because of modified file {}'.format(path))
         return None
+
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
@@ -777,7 +780,7 @@ def random_string() -> str:
 
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
-                dep_prios: List[int],
+                child_modules: List[str], dep_prios: List[int],
                 manager: BuildManager) -> None:
     """Write cache files for a module.
 
@@ -816,6 +819,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
+            'child_modules': child_modules,
             'options': select_options_affecting_cache(manager.options),
             'dep_prios': dep_prios,
             }
@@ -998,6 +1002,9 @@ class State:
     # Parent package, its parent, etc.
     ancestors = None  # type: Optional[List[str]]
 
+    # A list of all direct submodules of a given module
+    child_modules = None  # type: Optional[Set[str]]
+
     # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
 
@@ -1095,11 +1102,13 @@ class State:
             assert len(self.meta.dependencies) == len(self.meta.dep_prios)
             self.priorities = {id: pri
                                for id, pri in zip(self.meta.dependencies, self.meta.dep_prios)}
+            self.child_modules = set(self.meta.child_modules)
             self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
             self.suppressed = []
+            self.child_modules = set()
 
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
         # TODO: Read the path (the __init__.py file) and return
@@ -1146,7 +1155,14 @@ class State:
         # self.meta.dependencies when a dependency is dropped due to
         # suppression by --silent-imports.  However when a suppressed
         # dependency is added back we find out later in the process.
-        return self.meta is not None and self.dependencies == self.meta.dependencies
+        return (self.meta is not None
+                and self.dependencies == self.meta.dependencies
+                and self.child_modules == self.meta.child_modules)
+
+    def has_new_submodules(self) -> bool:
+        """Returns whether this module has any new submodules after it was
+        loaded from a warm cache in incremental mode."""
+        return self.meta is not None and self.child_modules != self.meta.child_modules
 
     def mark_stale(self) -> None:
         """Throw away the cache data for this file, marking it as stale."""
@@ -1307,7 +1323,7 @@ class State:
         if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             write_cache(self.id, self.path, self.tree,
-                        list(self.dependencies), list(self.suppressed),
+                        list(self.dependencies), list(self.suppressed), list(self.child_modules),
                         dep_prios,
                         self.manager)
 
@@ -1365,6 +1381,11 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
+            if dep in st.ancestors and dep in graph:
+                graph[dep].child_modules.add(st.id)
+    for id, g in graph.items():
+        if g.has_new_submodules():
+            g.parse_file()
     return graph
 
 
