@@ -281,7 +281,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
-                        ('child_modules', Set[str]),  # all submodules of the given module
+                        ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
                         ])
@@ -727,7 +727,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('data_mtime'),
         data_json,
         meta.get('suppressed', []),
-        set(meta.get('child_modules', set())),
+        meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
     )
@@ -1157,12 +1157,11 @@ class State:
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.dependencies == self.meta.dependencies
-                and self.child_modules == self.meta.child_modules)
+                and self.child_modules == set(self.meta.child_modules))
 
     def has_new_submodules(self) -> bool:
-        """Returns whether this module has any new submodules after it was
-        loaded from a warm cache in incremental mode."""
-        return self.meta is not None and self.child_modules != self.meta.child_modules
+        """Return if this module has new submodules after being loaded from a warm cache."""
+        return self.meta is not None and self.child_modules != set(self.meta.child_modules)
 
     def mark_stale(self) -> None:
         """Throw away the cache data for this file, marking it as stale."""
