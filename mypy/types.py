@@ -943,7 +943,8 @@ class TypeType(Type):
     def serialize(self) -> JsonDict:
         return {'.class': 'TypeType', 'item': self.item.serialize()}
 
-    def deserialize(self, data: JsonDict) -> 'TypeType':
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeType':
         assert data['.class'] == 'TypeType'
         return TypeType(Type.deserialize(data['item']))
 
