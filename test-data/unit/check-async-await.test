@@ -67,7 +67,7 @@ async def f() -> int:
     return x
 [out]
 main: note: In function "f":
-main: error: Incompatible types in await (actual type Iterator[Any], expected Awaitable)
+main:6: error: Incompatible types in await (actual type Iterator[Any], expected Awaitable)
 
 [case testAwaitArgumentError]
 # options: fast_parser
@@ -79,7 +79,7 @@ async def f() -> int:
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "f":
-main: error: Incompatible types in await (actual type "int", expected Awaitable)
+main:5: error: Incompatible types in await (actual type "int", expected Awaitable)
 
 [case testAwaitResultError]
 # options: fast_parser
