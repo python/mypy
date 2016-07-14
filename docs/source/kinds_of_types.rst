@@ -318,12 +318,14 @@ a type variant that includes ``None``, such as ``Optional[int]``:
 
 .. code-block:: python
 
+   from typing import Optional
+
    def f() -> Optional[int]:
-       return None # OK
+       return None  # OK
 
    def g() -> int:
        ...
-       return None # Error: None not compatible with int
+       return None  # Error: None not compatible with int
 
 Also, most operations will not be allowed on unguarded ``None``
 or ``Optional`` values:
@@ -362,7 +364,7 @@ defined. Thus this code does not work as expected:
 
 .. code-block:: python
 
-   def f(x: A) -> None: # Error: Name A not defined
+   def f(x: A) -> None:  # Error: Name A not defined
        ....
 
    class A:
