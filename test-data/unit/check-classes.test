@@ -1751,8 +1751,8 @@ UserType = User  # type: Type[User]
 def f(a: type) -> int:
     return 1
 @overload
-def f(a: int) -> str: 
-    return "a" 
+def f(a: int) -> str:
+    return "a"
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
@@ -1768,13 +1768,13 @@ UserType = User  # type: Type[User]
 
 @overload
 def f(a: User) -> User:
-    return User() 
+    return User()
 @overload
 def f(a: Type[User]) -> int:
     return 1
 @overload
-def f(a: int) -> str: 
-    return "a" 
+def f(a: int) -> str:
+    return "a"
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
@@ -1795,7 +1795,7 @@ def f(a: User) -> Type[User]:
 def f(a: Type[User]) -> User:
     return a()
 @overload
-def f(a: int) -> Type[User]: 
+def f(a: int) -> Type[User]:
     return User
 @overload
 def f(a: str) -> User:
@@ -1901,7 +1901,7 @@ class B: pass
 class BChild(B): pass
 
 @overload
-def f(a: Type[A]) -> int: pass 
+def f(a: Type[A]) -> int: pass
 @overload
 def f(a: Type[B]) -> str: pass
 @overload
@@ -2046,4 +2046,9 @@ int.__eq__(3, 4)
 main:33: error: Too few arguments for "__eq__" of "int"
 main:33: error: Unsupported operand types for == ("int" and "int")
 
-
+[case testMroSetAfterError]
+class C(str, str):
+    foo = 0
+    bar = foo
+[out]
+main:1: error: Duplicate base class "str"

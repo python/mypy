@@ -778,7 +778,8 @@ class SemanticAnalyzer(NodeVisitor):
         # the bases of defn include classes imported from other
         # modules in an import loop. We'll recompute it in ThirdPass.
         if not self.verify_base_classes(defn):
-            defn.info.mro = []
+            # Give it an MRO consisting of just the class itself and object.
+            defn.info.mro = [defn.info, self.object_type().type]
             return
         calculate_class_mro(defn, self.fail)
         # If there are cyclic imports, we may be missing 'object' in
@@ -804,16 +805,16 @@ class SemanticAnalyzer(NodeVisitor):
         for base in info.bases:
             baseinfo = base.type
             if self.is_base_class(info, baseinfo):
-                self.fail('Cycle in inheritance hierarchy', defn)
+                self.fail('Cycle in inheritance hierarchy', defn, blocker=True)
                 # Clear bases to forcefully get rid of the cycle.
                 info.bases = []
             if baseinfo.fullname() == 'builtins.bool':
                 self.fail("'%s' is not a valid base class" %
-                          baseinfo.name(), defn)
+                          baseinfo.name(), defn, blocker=True)
                 return False
         dup = find_duplicate(info.direct_base_classes())
         if dup:
-            self.fail('Duplicate base class "%s"' % dup.name(), defn)
+            self.fail('Duplicate base class "%s"' % dup.name(), defn, blocker=True)
             return False
         return True
 
