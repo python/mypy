@@ -20,6 +20,15 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
+def entry_point() -> None:
+    script_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'scripts',
+        'mypy'
+    )
+    main(script_path)
+
+
 def main(script_path: str) -> None:
     """Main entry point to the type checker.
 
