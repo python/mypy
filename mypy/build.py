@@ -38,6 +38,7 @@ from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
+from mypy.version import __version__
 
 
 # We need to know the location of this file to load data, but
@@ -1332,7 +1333,7 @@ Graph = Dict[str, State]
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
-    manager.log("Using new dependency manager")
+    manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
