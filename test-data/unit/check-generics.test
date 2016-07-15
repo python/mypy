@@ -851,3 +851,9 @@ def f3(x: A, y: B) -> B: ...
 g = f1
 g = f2
 g = f3
+
+[case testTypeVariableWithContainerAndTuple]
+from typing import TypeVar, Container
+T = TypeVar('T')
+def f(x: Container[T]) -> T: ...
+f((1, 2))
