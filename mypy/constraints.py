@@ -278,6 +278,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return self.infer_against_any(template.args)
         if (isinstance(actual, TupleType) and
             (is_named_instance(template, 'typing.Iterable') or
+             is_named_instance(template, 'typing.Container') or
              is_named_instance(template, 'typing.Sequence') or
              is_named_instance(template, 'typing.Reversible'))
                 and self.direction == SUPERTYPE_OF):
