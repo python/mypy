@@ -111,7 +111,7 @@ def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> List[Tu
 
 
 def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
-    print("Fetching last {} commits (or all, if there are fewer commits then n)".format(n))
+    print("Fetching last {} commits (or all, if there are fewer commits than n)".format(n))
     return get_commits(repo_folder_path, '-{}'.format(n))[0]
 
 
