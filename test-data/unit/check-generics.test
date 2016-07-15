@@ -856,4 +856,4 @@ g = f3
 from typing import TypeVar, Container
 T = TypeVar('T')
 def f(x: Container[T]) -> T: ...
-f((1, 2))
+reveal_type(f((1, 2))) # E: Revealed type is 'builtins.int*'
