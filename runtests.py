@@ -25,12 +25,11 @@ if True:
 
 
 from typing import Dict, List, Optional, Set, Iterable
+import itertools
+import os
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import git, util
-
-import itertools
-import os
 
 
 # Ideally, all tests would be `discover`able so that they can be driven

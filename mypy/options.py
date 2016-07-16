@@ -1,6 +1,7 @@
-from mypy import defaults
 import pprint
 from typing import Any
+
+from mypy import defaults
 
 
 class BuildType:
