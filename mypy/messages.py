@@ -767,7 +767,7 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list("'%s'" % a for a in abstract_attributes[:5])
+        attrs = format_string_list("'%s'" % a for a in abstract_attributes)
         self.fail("Cannot instantiate abstract class '%s' with abstract "
                   "attribute%s %s" % (class_name, plural_s(abstract_attributes),
                                    attrs),
@@ -881,8 +881,10 @@ def format_string_list(s: Iterable[str]) -> str:
     assert len(l) > 0
     if len(l) == 1:
         return l[0]
-    else:
+    elif len(l) <= 5:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
+    else:
+        return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
 
 
 def callable_name(type: CallableType) -> str:
