@@ -10,6 +10,7 @@ if sys.version_info < (3, 2, 0):
     exit(1)
 
 from distutils.core import setup
+
 from mypy.version import __version__
 from mypy import git
 

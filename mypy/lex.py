@@ -7,10 +7,10 @@ This module can be run as a script (lex.py FILE).
 """
 
 import re
+from typing import List, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
 from mypy.util import short_type, find_python_encoding
 from mypy import defaults
-from typing import List, Callable, Dict, Any, Match, Pattern, Set, Union, Tuple
 
 
 class Token:
