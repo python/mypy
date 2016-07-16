@@ -80,31 +80,6 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return TypeType(t.item.accept(self), line=t.line)
 
 
-def erase_generic_types(t: Type) -> Type:
-    """Remove generic type arguments and type variables from a type.
-
-    Replace all types A[...] with simply A, and all type variables
-    with 'Any'.
-    """
-
-    if t:
-        return t.accept(GenericTypeEraser())
-    else:
-        return None
-
-
-class GenericTypeEraser(TypeTranslator):
-    """Implementation of type erasure"""
-
-    # FIX: What about generic function types?
-
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        return AnyType()
-
-    def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, [], t.line)
-
-
 def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
     """Replace all type variables in a type with any,
     or just the ones in the provided collection.
