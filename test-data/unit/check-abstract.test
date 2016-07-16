@@ -181,7 +181,7 @@ class A(metaclass=ABCMeta):
     def i(self): pass
     @abstractmethod
     def j(self): pass
-a = A() # E: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', 'c', 'd', ... and 'j' (5 methods suppressed)
+a = A() # E: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', ... and 'j' (7 methods suppressed)
 [out]
 
 

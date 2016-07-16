@@ -884,7 +884,7 @@ def format_string_list(s: Iterable[str]) -> str:
     elif len(l) <= 5:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
     else:
-        return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:4]), l[-1], len(l) - 5)
+        return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
 
 
 def callable_name(type: CallableType) -> str:
