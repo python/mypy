@@ -3,6 +3,9 @@ import sys
 
 from typing import Any, Optional, Tuple, Sequence, MutableSequence, List
 
+# Type Alia for Signatures
+Sig = Tuple[str, str]
+
 def parse_signature(sig: str) -> Optional[Tuple[str,
                                                 List[str],
                                                 List[str]]]:
@@ -47,7 +50,8 @@ def build_signature(fixed: MutableSequence[str], optional: MutableSequence[str])
     return sig
 
 
-def parse_all_signatures(lines):
+def parse_all_signatures(lines: str) -> Tuple[List[Sig],
+                                              List[Sig]]:
     sigs = []
     class_sigs = []
     for line in lines:
