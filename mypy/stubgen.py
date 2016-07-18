@@ -254,22 +254,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if init_stmt:
                 if kind == ARG_NAMED and '*' not in args:
                     args.append('*')
-                arg = '%s=' % name
                 rvalue = init_stmt.rvalue
+                typename = 'Any'
                 if isinstance(rvalue, IntExpr):
-                    arg += str(rvalue.value)
+                    typename = 'int'
                 elif isinstance(rvalue, StrExpr):
-                    arg += "''"
+                    typename = 'str'
                 elif isinstance(rvalue, BytesExpr):
-                    arg += "b''"
+                    typename = 'bytes'
                 elif isinstance(rvalue, FloatExpr):
-                    arg += "0.0"
+                    typename = 'float'
                 elif isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
-                    arg += '-%s' % rvalue.expr.value
-                elif isinstance(rvalue, NameExpr) and rvalue.name in ('None', 'True', 'False'):
-                    arg += rvalue.name
-                else:
-                    arg += '...'
+                    typename = 'int'
+                elif isinstance(rvalue, NameExpr) and rvalue.name in ('True', 'False'):
+                    typename = 'bool'
+                elif isinstance(rvalue, NameExpr) and rvalue.name == 'None':
+                    self.add_typing_import('Optional')
+                    typename = 'Optional[Any]'
+                arg = '{}: {} = ...'.format(name, typename)
             elif kind == ARG_STAR:
                 arg = '*%s' % name
             elif kind == ARG_STAR2:
