@@ -1,7 +1,7 @@
 import re
 import sys
 
-from typing import Any, Optional, Tuple, Sequence, List
+from typing import Any, Optional, Tuple, Sequence, MutableSequence, List
 
 def parse_signature(sig: str) -> Optional[Tuple[str,
                                                 List[str],
@@ -34,8 +34,8 @@ def parse_signature(sig: str) -> Optional[Tuple[str,
     return (name, fixed, optional)
 
 
-def build_signature(fixed: Sequence[str], optional: Sequence[str]) -> str:
-    args = fixed[:]
+def build_signature(fixed: MutableSequence[str], optional: MutableSequence[str]) -> str:
+    args = fixed
     for arg in optional:
         if arg.startswith('*'):
             args.append(arg)
