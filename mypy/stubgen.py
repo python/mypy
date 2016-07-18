@@ -477,7 +477,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Return the text for the stub."""
         imports = ''
         if self._imports:
-            imports += 'from typing import %s\n' % ", ".join(self._imports)
+            imports += 'from typing import %s\n' % ", ".join(sorted(self._imports))
         if self._import_lines:
             imports += ''.join(self._import_lines)
         if imports and self._output:
