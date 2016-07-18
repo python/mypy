@@ -1643,9 +1643,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
     argument type with the given index.
     """
     ncallee = len(callee_kinds)
-    map = [None] * ncallee  # type: List[List[int]]
-    for i in range(ncallee):
-        map[i] = []
+    map = [[] for i in range(ncallee)]  # type: List[List[int]]
     j = 0
     for i, kind in enumerate(caller_kinds):
         if kind == nodes.ARG_POS:
@@ -1666,7 +1664,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
                         if callee_kinds[j] != nodes.ARG_STAR2:
                             map[j].append(i)
                         else:
-                            raise NotImplementedError()
+                            break
                         j += 1
             else:
                 # Assume that it is an iterable (if it isn't, there will be
