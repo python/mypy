@@ -1,7 +1,7 @@
 import re
 import sys
 
-from typing import Any, Optional, Tuple, Sequence, MutableSequence, List
+from typing import Any, Optional, Tuple, Sequence, MutableSequence, List, MutableMapping
 
 # Type Alia for Signatures
 Sig = Tuple[str, str]
@@ -70,8 +70,8 @@ def parse_all_signatures(lines: str) -> Tuple[List[Sig],
     return sorted(sigs), sorted(class_sigs)
 
 
-def find_unique_signatures(sigs):
-    sig_map = {}
+def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
+    sig_map = {} # type: MutableMapping[str, List[str]]
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
     result = []
