@@ -263,8 +263,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             else:
                 arg = name
             args.append(arg)
+        retname = None
+        if o.name() == '__init__':
+            retname = 'None'
+        retfield = ''
+        if retname is not None:
+            retfield = ' -> ' + retname
+
         self.add(', '.join(args))
-        self.add("): ...\n")
+        self.add("){}: ...\n".format(retfield))
         self._state = FUNC
 
     def visit_decorator(self, o: Decorator) -> None:
