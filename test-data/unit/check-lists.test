@@ -62,3 +62,7 @@ class C: pass
 [builtins fixtures/list.py]
 [out]
 main: note: In function "f":
+
+[case testListContainingStarExpr]
+a = [1, *[2]]  # E: Can use starred expression only as assignment target
+[builtins fixtures/list.py]
