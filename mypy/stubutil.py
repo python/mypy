@@ -3,8 +3,10 @@ import sys
 
 from typing import Any, Optional, Tuple, Sequence, MutableSequence, List, MutableMapping
 
-# Type Alia for Signatures
+
+# Type Alias for Signatures
 Sig = Tuple[str, str]
+
 
 def parse_signature(sig: str) -> Optional[Tuple[str,
                                                 List[str],
@@ -37,7 +39,8 @@ def parse_signature(sig: str) -> Optional[Tuple[str,
     return (name, fixed, optional)
 
 
-def build_signature(fixed: MutableSequence[str], optional: MutableSequence[str]) -> str:
+def build_signature(fixed: MutableSequence[str],
+                    optional: MutableSequence[str]) -> str:
     args = fixed
     for arg in optional:
         if arg.startswith('*'):
@@ -71,7 +74,7 @@ def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
 
 
 def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
-    sig_map = {} # type: MutableMapping[str, List[str]]
+    sig_map = {}  # type: MutableMapping[str, List[str]]
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
     result = []
