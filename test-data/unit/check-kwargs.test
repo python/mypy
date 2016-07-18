@@ -305,3 +305,8 @@ f(**b) # E: Argument 1 to "f" has incompatible type **Dict[str, str]; expected "
 c = {0: 0}
 f(**c) # E: Keywords must be strings
 [builtins fixtures/dict.py]
+
+[case testCallStar2WithStar]
+def f(**k): pass
+f(*(1, 2))  # E: Too many arguments for "f"
+[builtins fixtures/dict.py]
