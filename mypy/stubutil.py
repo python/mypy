@@ -1,8 +1,11 @@
 import re
 import sys
 
+from typing import Any, Optional, Tuple, List
 
-def parse_signature(sig):
+def parse_signature(sig: str) -> Optional[Tuple[str,
+                                                List[str],
+                                                List[str]]]:
     m = re.match(r'([.a-zA-Z0-9_]+)\(([^)]*)\)', sig)
     if not m:
         return None
