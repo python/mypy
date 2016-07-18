@@ -185,3 +185,18 @@ from parent import b
 
 [stale parent.a]
 [out]
+
+[case testIncrementalWithTypeIgnore]
+import a, b
+
+[file a.py]
+import b  # type: ignore
+
+[file b.py]
+import c
+
+[file c.py]
+
+[stale]
+[out]
+
