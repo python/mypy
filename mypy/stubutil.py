@@ -50,8 +50,8 @@ def build_signature(fixed: MutableSequence[str], optional: MutableSequence[str])
     return sig
 
 
-def parse_all_signatures(lines: str) -> Tuple[List[Sig],
-                                              List[Sig]]:
+def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
+                                                        List[Sig]]:
     sigs = []
     class_sigs = []
     for line in lines:
