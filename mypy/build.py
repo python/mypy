@@ -260,6 +260,15 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     # E.g. for Python 3.2, try 3.2/, 3.1/, 3.0/, 3/, 2and3/.
     # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
+        # Add package installed annotations
+        # TODO better find typehints directly via pkg_resources
+        for pkginstalldir in (os.path.join(os.path.expanduser('~'), '.local'),
+                              os.path.join(os.path.sep, 'usr')):
+            subdir = os.path.join('shared', 'typehints', 'python' + v)
+            pkgstubdir = os.path.join(pkginstalldir, subdir)
+            if os.path.isdir(pkgstubdir):
+                path.append(pkgstubdir)
+
         for lib_type in ['stdlib', 'third_party']:
             stubdir = os.path.join(data_dir, 'typeshed', lib_type, v)
             if os.path.isdir(stubdir):
