@@ -661,6 +661,8 @@ class ExpressionChecker:
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
                 arg_type = arg_types[actual]
+                if arg_type is None:
+                    continue  # Some kind of error was already reported.
                 # Check that a *arg is valid as varargs.
                 if (arg_kinds[actual] == nodes.ARG_STAR and
                         not self.is_valid_var_arg(arg_type)):
