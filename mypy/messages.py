@@ -471,7 +471,7 @@ class MessageBuilder:
                 name[0].upper() + name[1:], n,
                 self.format_simple(arg_type), self.format_simple(expected_type))
             # Will add a note if dealing with List[Tuple[K, V]] which might be a Dict[K, V]
-            # TODO: The following is a necesarry condition for a Dict;
+            # TODO: The following is a necessary condition for a Dict;
             # It is still missing a sufficient condition, in which case the message should be
             # changed from a note to a properly formatted error.
             # Also, using a type: ignore for a subclass issue
