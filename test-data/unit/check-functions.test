@@ -182,10 +182,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type ; expected Callable[[Any], Any]
+f([C])  # E: List item 0 has incompatible type ; expected 
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type ; expected Callable[[Any], Any]
+f([D])  # E: List item 0 has incompatible type ; expected 
 [builtins fixtures/list.py]
 
 -- Default argument values
