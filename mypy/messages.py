@@ -474,13 +474,11 @@ class MessageBuilder:
             # TODO: The following is a necesarry condition for a Dict;
             # It is still missing a sufficient condition, in which case the message should be
             # changed from a note to a properly formatted error.
-            # BEGIN: Confusing Conditional due to E129
-            if expected_type.__class__ == TupleType:
-                if (len(expected_type.items) == 2 and
-                    all([i.__class__ == Instance for i in expected_type.items])):
+            if expected_type.__class__ == TupleType and hasattr(expected_type, 'items'):
+                if(len(expected_type.items) == 2 and
+                   all([i.__class__ == Instance for i in expected_type.items])):
                     # Body
                     msg += ' * NOTE: This might be a Dict[K, V] instead of List[Tuple[K, V]]'
-            # END: Confusing Conditional due to E129
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
