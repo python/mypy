@@ -88,7 +88,9 @@ class StringFormatterChecker:
                                       context: Context) -> bool:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)
-        all_have_keys = all(specifier.has_key() for specifier in specifiers)
+        all_have_keys = all(
+            specifier.has_key() or specifier.type == '%' for specifier in specifiers
+        )
 
         if has_key and has_star:
             self.msg.string_interpolation_with_star_and_key(context)
@@ -145,6 +147,9 @@ class StringFormatterChecker:
                 mapping[key_str] = self.accept(v)
 
             for specifier in specifiers:
+                if specifier.type == '%':
+                    # %% is allowed in mappings, no checking is required
+                    continue
                 if specifier.key not in mapping:
                     self.msg.key_not_in_mapping(specifier.key, replacements)
                     return

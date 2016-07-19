@@ -989,6 +989,8 @@ a = None # type: Any
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+'%(a)d %%' % {'a': 1}
+
 [builtins fixtures/dict.py]
 
 [case testStringInterpolationMappingDictTypes]
