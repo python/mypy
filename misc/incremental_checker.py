@@ -7,26 +7,26 @@ to make sure incremental mode is working correctly and efficiently.
 It does so by first running mypy without incremental mode on the specified range
 of commits to find the expected result, then rewinds back to the first commit and
 re-runs mypy on the commits with incremental mode enabled to make sure it returns
-the exact same result despite the files continuously changing.
+the same results.
 
-This script will by default, download and test mypy's repo. So, doing:
+This script will download and test the offical mypy repo by default. Running:
 
     python3 misc/incremental_checker.py last 30
 
-...is equivalent to doing
+is equivalent to running
 
     python3 misc/incremental_checker.py last 30 \\
             --repo_url https://github.com/python/mypy.git \\
             --file-path mypy
 
-You can chose to run this script against a specific commit id, or against the
+You can chose to run this script against a specific commit id or against the
 last n commits.
 
-For example, to run this script against the last 30 commits, do:
+To run this script against the last 30 commits:
 
     python3 misc/incremental_checker.py last 30
 
-To run this script starting from the commit id 2a432b, do:
+To run this script starting from the commit id 2a432b:
 
     python3 misc/incremental_checker.py commit 2a432b
 """
