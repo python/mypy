@@ -460,11 +460,17 @@ class MessageBuilder:
             target = 'to {} '.format(name)
 
         msg = ''
+        try:
+            expected_type = callee.arg_types[m - 1]
+        except IndexError:  # Varargs callees
+            expected_type = callee.arg_types[-1]
+
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
-            msg = '{} item {} has incompatible type {}'.format(
-                name[0].upper() + name[1:], n, self.format_simple(arg_type))
+            msg = '{} item {} has incompatible type {}; expected {}'.format(
+                name[0].upper() + name[1:], n,
+                self.format_simple(arg_type), self.format_simple(expected_type))
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -481,10 +487,6 @@ class MessageBuilder:
             msg = 'Generator has incompatible item type {}'.format(
                 self.format_simple(arg_type))
         else:
-            try:
-                expected_type = callee.arg_types[m - 1]
-            except IndexError:  # Varargs callees
-                expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
