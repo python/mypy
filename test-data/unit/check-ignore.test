@@ -36,7 +36,22 @@ x   # E: Name 'x' is not defined
 import m # type: ignore
 from m import a # type: ignore
 [file m.py]
-+ # A parse error, but we shouldn't even parse m.py
++
+[out]
+main:1: note: In module imported here:
+tmp/m.py:1: error: Parse error before end of line
+
+[case testIgnoreAppliesOnlyToMissing]
+import a # type: ignore
+import b # type: ignore
+reveal_type(a.foo) # E: Revealed type is 'Any'
+reveal_type(b.foo) # E: Revealed type is 'builtins.int'
+a.bar()
+b.bar() # E: Name 'bar' is not defined
+
+[file b.py]
+foo = 3
+
 [out]
 
 [case testIgnoreImportStarFromBadModule]
