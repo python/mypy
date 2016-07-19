@@ -39,9 +39,10 @@ def parse_signature(sig: str) -> Optional[Tuple[str,
     return (name, fixed, optional)
 
 
-def build_signature(fixed: MutableSequence[str],
-                    optional: MutableSequence[str]) -> str:
-    args = fixed
+def build_signature(fixed: Sequence[str],
+                    optional: Sequence[str]) -> str:
+    args = []  # type: MutableSequence[str]
+    args.extend(fixed)
     for arg in optional:
         if arg.startswith('*'):
             args.append(arg)
