@@ -971,6 +971,7 @@ a = None # type: Any
 '%3% %d' % 1
 '%*%' % 1
 '%*% %d' % 1  # E: Not enough arguments for format string
+'%(a)d %%' % {'a': 1}
 [builtins fixtures/primitives.py]
 
 [case testStringInterpolationC]

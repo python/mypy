@@ -78,7 +78,11 @@ class StringFormatterChecker:
         regex = ('%' + key_regex + flags_regex + width_regex +
                  precision_regex + length_mod_regex + type_regex)
         specifiers = []  # type: List[ConversionSpecifier]
-        for parens_key, key, flags, width, precision, type in re.findall(regex, format):
+        for result in re.findall(regex, format):
+            # The following test gets rid of the `%%` literal.
+            if result == ('', '', '', '', '', '%'):
+                continue
+            parens_key, key, flags, width, precision, type = result
             if parens_key == '':
                 key = None
             specifiers.append(ConversionSpecifier(key, flags, width, precision, type))
