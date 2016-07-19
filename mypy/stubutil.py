@@ -1,8 +1,16 @@
 import re
 import sys
 
+from typing import Any, Optional, Tuple, Sequence, MutableSequence, List, MutableMapping
 
-def parse_signature(sig):
+
+# Type Alias for Signatures
+Sig = Tuple[str, str]
+
+
+def parse_signature(sig: str) -> Optional[Tuple[str,
+                                                List[str],
+                                                List[str]]]:
     m = re.match(r'([.a-zA-Z0-9_]+)\(([^)]*)\)', sig)
     if not m:
         return None
@@ -31,8 +39,10 @@ def parse_signature(sig):
     return (name, fixed, optional)
 
 
-def build_signature(fixed, optional):
-    args = fixed[:]
+def build_signature(fixed: Sequence[str],
+                    optional: Sequence[str]) -> str:
+    args = []  # type: MutableSequence[str]
+    args.extend(fixed)
     for arg in optional:
         if arg.startswith('*'):
             args.append(arg)
@@ -44,7 +54,8 @@ def build_signature(fixed, optional):
     return sig
 
 
-def parse_all_signatures(lines):
+def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
+                                                        List[Sig]]:
     sigs = []
     class_sigs = []
     for line in lines:
@@ -63,8 +74,8 @@ def parse_all_signatures(lines):
     return sorted(sigs), sorted(class_sigs)
 
 
-def find_unique_signatures(sigs):
-    sig_map = {}
+def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
+    sig_map = {}  # type: MutableMapping[str, List[str]]
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
     result = []
