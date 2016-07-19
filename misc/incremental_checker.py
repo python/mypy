@@ -22,11 +22,11 @@ is equivalent to running
 You can chose to run this script against a specific commit id or against the
 last n commits.
 
-To run this script against the last 30 commits, run:
+To run this script against the last 30 commits:
 
     python3 misc/incremental_checker.py last 30
 
-To run this script starting from the commit id 2a432b, run:
+To run this script starting from the commit id 2a432b:
 
     python3 misc/incremental_checker.py commit 2a432b
 """
