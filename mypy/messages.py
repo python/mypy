@@ -464,13 +464,19 @@ class MessageBuilder:
             expected_type = callee.arg_types[m - 1]
         except IndexError:  # Varargs callees
             expected_type = callee.arg_types[-1]
-
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
             msg = '{} item {} has incompatible type {}; expected {}'.format(
                 name[0].upper() + name[1:], n,
                 self.format_simple(arg_type), self.format_simple(expected_type))
+            # BEGIN: Confusing Conditional due to E126
+            if (expected_type.__class__.__name__ == 'TupleType' and
+                len(expected_type.items) == 2 and
+                all([i.__class__.__name__ == 'Instance' for i in expected_type.items])):
+                # Body
+                msg += '\n * NOTE: This might be a Dict'
+            # END: Confusing Conditional due to E126
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
