@@ -18,12 +18,15 @@ reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 # options: fast_parser
 async def f() -> int:
     x = await f()
+    reveal_type(x)  # E: Revealed type is 'builtins.int'
     return x
 [builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
 
 [case testAwaitDefaultContext]
 # options: fast_parser
-from typing import Any, TypeVar
+from typing import TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
     y = await f(x)
@@ -47,7 +50,7 @@ main:6: error: Revealed type is 'Any'
 
 [case testAwaitExplicitContext]
 # options: fast_parser
-from typing import Any, TypeVar
+from typing import TypeVar
 T = TypeVar('T')
 async def f(x: T) -> T:
     y = await f(x)  # type: int
@@ -57,7 +60,7 @@ main: note: In function "f":
 main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
 
-[case testAwaitGeneratorError]
+[case testAwaitIteratorError]
 # options: fast_parser
 from typing import Any, Iterator
 def g() -> Iterator[Any]:
@@ -82,6 +85,17 @@ main: note: In function "f":
 main:5: error: Incompatible types in await (actual type "int", expected Awaitable)
 
 [case testAwaitResultError]
+# options: fast_parser
+async def g() -> int:
+    return 0
+async def f() -> str:
+    x = await g()  # type: str
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAwaitReturnError]
 # options: fast_parser
 async def g() -> int:
     return 0
