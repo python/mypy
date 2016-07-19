@@ -470,13 +470,17 @@ class MessageBuilder:
             msg = '{} item {} has incompatible type {}; expected {}'.format(
                 name[0].upper() + name[1:], n,
                 self.format_simple(arg_type), self.format_simple(expected_type))
-            # BEGIN: Confusing Conditional due to E126
-            if (expected_type.__class__.__name__ == 'TupleType' and
-                len(expected_type.items) == 2 and
-                all([i.__class__.__name__ == 'Instance' for i in expected_type.items])):
-                # Body
-                msg += '\n * NOTE: This might be a Dict'
-            # END: Confusing Conditional due to E126
+            # Will add a note if dealing with List[Tuple[K, V]] which might be a Dict[K, V]
+            # TODO: The following is a necesarry condition for a Dict;
+            # It is still missing a sufficient condition, in which case the message should be
+            # changed from a note to a properly formatted error.
+            # BEGIN: Confusing Conditional due to E129
+            if expected_type.__class__ == TupleType:
+                if (len(expected_type.items) == 2 and
+                    all([i.__class__ == Instance for i in expected_type.items])):
+                    # Body
+                    msg += ' * NOTE: This might be a Dict[K, V] instead of List[Tuple[K, V]]'
+            # END: Confusing Conditional due to E129
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
