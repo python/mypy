@@ -47,11 +47,12 @@ import b # type: ignore
 reveal_type(a.foo) # E: Revealed type is 'Any'
 reveal_type(b.foo) # E: Revealed type is 'builtins.int'
 a.bar()
-b.bar() # E: Name 'bar' is not defined
+b.bar() # E: "module" has no attribute "bar"
 
 [file b.py]
 foo = 3
 
+[builtins fixtures/module_all.py]
 [out]
 
 [case testIgnoreImportStarFromBadModule]
