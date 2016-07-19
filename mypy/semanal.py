@@ -874,33 +874,42 @@ class SemanticAnalyzer(NodeVisitor):
         return nodes
 
     def visit_import(self, i: Import) -> None:
+        ignored = i.line in self.cur_mod_node.ignored_lines
         for id, as_id in i.ids:
             if as_id is not None:
-                self.add_module_symbol(id, as_id, module_public=True, context=i)
+                self.add_module_symbol(id, as_id, module_public=True,
+                                       module_ignored=ignored, context=i)
             else:
                 # Modules imported in a stub file without using 'as x' won't get exported when
                 # doing 'from m import *'.
                 module_public = not self.is_stub_file
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
-                                       context=i)
+                                       module_ignored=ignored, context=i)
 
-    def add_module_symbol(self, id: str, as_id: str, module_public: bool,
+    def add_module_symbol(self, id: str, as_id: str, module_public: bool, module_ignored: bool,
                           context: Context) -> None:
         if id in self.modules:
             m = self.modules[id]
-            self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id,
+            kind = UNBOUND_IMPORTED if module_ignored else MODULE_REF
+            self.add_symbol(as_id, SymbolTableNode(kind, m, self.cur_mod_id,
                                                    module_public=module_public), context)
         else:
             self.add_unknown_symbol(as_id, context)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         import_id = self.correct_relative_import(imp)
+        ignored = imp.line in self.cur_mod_node.ignored_lines
         if import_id in self.modules:
             module = self.modules[import_id]
             for id, as_id in imp.names:
                 node = module.names.get(id)
-                if node and node.kind != UNBOUND_IMPORTED:
+                module_public = not self.is_stub_file or as_id is not None
+                if ignored:
+                    symbol = SymbolTableNode(UNBOUND_IMPORTED, None,
+                            self.cur_mod_id, module_public=module_public)
+                    self.add_symbol(as_id or id, symbol, imp)
+                elif node and node.kind != UNBOUND_IMPORTED:
                     node = self.normalize_type_alias(node, imp)
                     if not node:
                         return
@@ -912,7 +921,6 @@ class SemanticAnalyzer(NodeVisitor):
                                 imported_id, existing_symbol, node, imp):
                             continue
                     # 'from m import x as x' exports x in a stub file.
-                    module_public = not self.is_stub_file or as_id is not None
                     symbol = SymbolTableNode(node.kind, node.node,
                                              self.cur_mod_id,
                                              node.type_override,
@@ -956,7 +964,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
         if node.fullname == 'typing.DefaultDict':
-            self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
+            self.add_module_symbol('collections', '__mypy_collections__', False, False, ctx)
             node = self.lookup_qualified('__mypy_collections__.defaultdict', ctx)
         return node
 
