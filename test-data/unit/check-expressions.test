@@ -1214,7 +1214,7 @@ y = '' # E: Incompatible types in assignment (expression has type "str", variabl
 import typing
 x = [1] if None else []
 x = [1]
-x = ['x'] # E: List item 0 has incompatible type "str"
+x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.py]
 
 
@@ -1371,8 +1371,8 @@ def g() -> Iterator[int]:
 [case testDictWithKeywordArgsOnly]
 from typing import Dict, Any
 d1 = dict(a=1, b=2) # type: Dict[str, int]
-d2 = dict(a=1, b='') # type: Dict[str, int] # E: List item 1 has incompatible type "Tuple[str, str]"
-d3 = dict(a=1) # type: Dict[int, int] # E: List item 0 has incompatible type "Tuple[str, int]"
+d2 = dict(a=1, b='') # type: Dict[str, int] # E: List item 1 has incompatible type "Tuple[str, str]"; expected "Tuple[str, int]"
+d3 = dict(a=1) # type: Dict[int, int] # E: List item 0 has incompatible type "Tuple[str, int]"; expected "Tuple[int, int]"
 d4 = dict(a=1, b=1)
 d4.xyz # E: Dict[str, int] has no attribute "xyz"
 d5 = dict(a=1, b='') # type: Dict[str, Any]
@@ -1389,7 +1389,7 @@ dict(undefined) # E: Name 'undefined' is not defined
 from typing import Dict
 d = dict([(1, 'x'), (2, 'y')])
 d() # E: Dict[int, str] not callable
-d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, str]"
+d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, str]"; expected "Tuple[str, str]"
 [builtins fixtures/dict.py]
 
 [case testDictFromIterableAndKeywordArg]
