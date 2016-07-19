@@ -40,7 +40,7 @@ The second line is now fine, since the ignore comment causes the name
 
     The ``# type: ignore`` comment will only assign the implicit ``Any``
     type if mypy cannot find information about that particular module. So,
-    if we did have a stub available for ``frobnicate`` then mypy will
+    if we did have a stub available for ``frobnicate`` then mypy would
     ignore the ``# type: ignore`` comment and typecheck the stub as usual.
 
 Types of empty collections

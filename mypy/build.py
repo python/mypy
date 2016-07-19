@@ -420,7 +420,12 @@ class BuildManager:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
-        # We don't want to warn about 'type: ignore' comments on imports
+        # We don't want to warn about unused 'type: ignore' comments on imports.
+        # That way, if we want to conditionally import a module that is valid
+        # only on one particular platform, we can silence the import so we don't
+        # get spurious error messages when mypy tries checking it. For example,
+        # we might want to conditionally import a Python 2 only module while
+        # checking the file as Python 3.
         import_lines = set(node.line for node in tree.imports)
         self.errors.set_file_ignored_lines(path, tree.ignored_lines)
         self.errors.mark_file_ignored_lines_used(path, import_lines)
