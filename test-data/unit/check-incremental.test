@@ -186,7 +186,7 @@ from parent import b
 [stale parent.a]
 [out]
 
-[case testIncrementalWithTypeIgnore]
+[case testIncrementalWithTypeIgnoreOnDirectImport]
 import a, b
 
 [file a.py]
@@ -200,3 +200,50 @@ import c
 [stale]
 [out]
 
+[case testIncrementalWithTypeIgnoreOnImportFrom]
+import a, b
+
+[file a.py]
+from b import something # type: ignore
+
+[file b.py]
+import c
+something = 3
+
+[file c.py]
+
+[stale]
+[out]
+
+[case testIncrementalWithPartialTypeIgnore]
+import a  # type: ignore
+import a.b
+
+[file a/__init__.py]
+
+[file a/b.py]
+
+[stale]
+[out]
+
+[case testIncrementalAnyIsDifferentFromIgnore]
+import b
+
+[file b.py]
+from typing import Any
+import a.b
+
+[file b.py.next]
+from typing import Any
+
+a = 3  # type: Any
+import a.b
+
+[file a/__init__.py]
+
+[file a/b.py]
+
+[stale b]
+[out]
+main:1: note: In module imported here:
+tmp/b.py:4: error: Name 'a' already defined
