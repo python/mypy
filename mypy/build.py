@@ -416,23 +416,12 @@ class BuildManager:
         tree = parse(source, path, self.errors, options=self.options)
         tree._fullname = id
 
-        # We don't want to warn about 'type: ignore' comments on
-        # imports, but we're about to modify tree.imports, so grab
-        # these first.
-        import_lines = set(node.line for node in tree.imports)
-
-        # Skip imports that have been ignored (so that we can ignore a C extension module without
-        # stub, for example), except for 'from x import *', because we wouldn't be able to
-        # determine which names should be defined unless we process the module. We can still
-        # ignore errors such as redefinitions when using the latter form.
-        imports = [node for node in tree.imports
-                   if node.line not in tree.ignored_lines or isinstance(node, ImportAll)]
-        tree.imports = imports
-
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
+        # We don't want to warn about 'type: ignore' comments on imports
+        import_lines = set(node.line for node in tree.imports)
         self.errors.set_file_ignored_lines(path, tree.ignored_lines)
         self.errors.mark_file_ignored_lines_used(path, import_lines)
         return tree
