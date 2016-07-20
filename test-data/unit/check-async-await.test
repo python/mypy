@@ -60,6 +60,19 @@ main: note: In function "f":
 main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
 
+[case testAwaitGeneratorError]
+# options: fast_parser
+from typing import Any, Generator
+def g() -> Generator[int, None, str]:
+    yield 0
+    return ''
+async def f() -> int:
+    x = await g()
+    return x
+[out]
+main: note: In function "f":
+main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected Awaitable)
+
 [case testAwaitIteratorError]
 # options: fast_parser
 from typing import Any, Iterator
