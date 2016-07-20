@@ -204,3 +204,16 @@ main:5: error: 'yield from' in async function
 # options: fast_parser
 async def f():  # E: invalid syntax
     pass
+
+[case testYieldFromNoAwaitable]
+# options: fast_parser
+from typing import Any, Generator
+async def f() -> str:
+    return ''
+def g() -> Generator[Any, None, str]:
+    x = yield from f()
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "g":
+main:6: error: "yield from" can't be applied to Awaitable[str]

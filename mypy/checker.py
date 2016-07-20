@@ -1883,7 +1883,11 @@ class TypeChecker(NodeVisitor[Type]):
             return self.get_generator_return_type(iter_type, False)
         else:
             # Non-Generators don't return anything from `yield from` expressions.
-            return Void()
+            # However special-case Any (which might be produced by an error).
+            if isinstance(actual_item_type, AnyType):
+                return AnyType()
+            else:
+                return Void()
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
