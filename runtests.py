@@ -274,7 +274,7 @@ def add_samples(driver: Driver) -> None:
                     'import mypy.codec.register, %s' % bf,
                     cwd=cwd)
         else:
-            driver.add_mypy('file %s' % f, f)
+            driver.add_mypy('file %s' % f, f, '--fast-parser')
 
 
 def usage(status: int) -> None:
