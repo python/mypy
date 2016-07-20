@@ -119,6 +119,18 @@ async def f() -> None:
 [out]
 main: note: In function "f":
 
+[case testAsyncForError]
+# options: fast_parser
+from typing import AsyncIterator
+async def f() -> None:
+    async for x in [1]:
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:4: error: AsyncIterable expected
+main:4: error: List[int] has no attribute "__aiter__"
+
 [case testAsyncWith]
 # options: fast_parser
 class C:
@@ -130,6 +142,20 @@ async def f() -> None:
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "f":
+
+[case testAsyncWithError]
+# options: fast_parser
+class C:
+    def __enter__(self) -> int: pass
+    def __exit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
+main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
 
 [case testNoYieldInAsyncDef]
 # options: fast_parser
