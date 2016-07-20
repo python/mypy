@@ -2,9 +2,9 @@
 
 """A simple web crawler."""
 
-# This is cloned from <asyncio>/examples/crawl.py, 
+# This is cloned from <asyncio>/examples/crawl.py,
 # with type annotations added (PEP 484).
-# 
+#
 # TODO: convert to `async def` + `await` (PEP 492).
 
 import argparse
