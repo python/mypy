@@ -81,12 +81,14 @@ def f() -> Generator[int, None, None]:
 [out]
 main: note: In function "f":
 
-[case testReturnInIterator]
+[case testReturnInIteratorError]
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
     return "foo"
 [out]
+main: note: In function "f":
+main:4: error: No return value expected
 
 -- If statement
 -- ------------

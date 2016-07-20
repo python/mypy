@@ -267,7 +267,8 @@ class TypeChecker(NodeVisitor[Type]):
     #
     # Classic generators can be parameterized with three types:
     # - ty is the yield type (the type of y in `yield y`)
-    # - ts is the type receive by yield (the type of s in `s = yield`)
+    # - ts is the type received by yield (the type of s in `s = yield`)
+    #   (it's named `ts` after `send()`, since `tr` is `return`).
     # - tr is the return type (the type of r in `return r`)
     #
     # A classic generator must define a return type that's either
@@ -374,7 +375,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # `return_type` is supertype of Generator, so callers won't be able to see the return
             # type when used in a `yield from` expression.
-            return AnyType()
+            return Void()
 
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
