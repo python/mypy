@@ -416,7 +416,7 @@ class FuncItem(FuncBase):
     # Is this an overload variant of function with more than one overload variant?
     is_overload = False
     is_generator = False   # Contains a yield statement?
-    is_coroutine = False   # Defined using 'async def'?
+    is_coroutine = False   # Defined using 'async def' syntax?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     # Variants of function with type variables with values expanded

@@ -2090,8 +2090,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'await' outside function", expr)
         elif not self.function_stack[-1].is_coroutine:
             self.fail("'await' outside coroutine ('async def')", expr)
-        if expr.expr:
-            expr.expr.accept(self)
+        expr.expr.accept(self)
 
     #
     # Helpers
