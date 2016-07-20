@@ -339,7 +339,7 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 return AnyType()
         elif return_type.type.fullname() == 'typing.Awaitable':
-            # Generator is one of the two types which specify the type of values it can receive.
+            # Awaitable is one of the two types which specify the type of values it can receive.
             # According to the stub this is always `Any`.
             return AnyType()
         else:
