@@ -301,6 +301,7 @@ class TypeChecker(NodeVisitor[Type]):
         Also true it it's *exactly* AwaitableGenerator (modulo type parameters).
         """
         if is_coroutine:
+            # This means we're in Python 3.5 or later.
             at = self.named_generic_type('typing.Awaitable', [AnyType()])
             if is_subtype(at, typ):
                 return True
@@ -308,6 +309,11 @@ class TypeChecker(NodeVisitor[Type]):
             gt = self.named_generic_type('typing.Generator', [AnyType(), AnyType(), AnyType()])
             if is_subtype(gt, typ):
                 return True
+        # Check that AwaitableGenerator exists -- it isn't defined in Python 2:
+        try:
+            self.lookup_qualified('typing.AwaitableGenerator')
+        except KeyError:
+            return False
         agt = self.named_generic_type('typing.AwaitableGenerator', [AnyType()])
         return is_equivalent(typ, agt)
 
