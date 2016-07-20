@@ -287,17 +287,24 @@ class TypeChecker(NodeVisitor[Type]):
     # - get_generator_receive_type(t, c) returns ts.
     # - get_generator_return_type(t, c) returns tr.
 
+    # XXX Describe how AwaitableGenerator fits into this.
+
     def is_generator_return_type(self, typ: Type, is_coroutine: bool) -> bool:
         """Is `typ` a valid type for a generator/coroutine?
 
-        True if either Generator or Awaitable is a supertype of `typ`.
+        True if `typ` is a *supertype* of Generator or Awaitable.
+        Also true it it's *exactly* AwaitableGenerator (modulo type parameters).
         """
         if is_coroutine:
             at = self.named_generic_type('typing.Awaitable', [AnyType()])
-            return is_subtype(at, typ)
+            if is_subtype(at, typ):
+                return True
         else:
             gt = self.named_generic_type('typing.Generator', [AnyType(), AnyType(), AnyType()])
-            return is_subtype(gt, typ)
+            if is_subtype(gt, typ):
+                return True
+        agt = self.named_generic_type('typing.AwaitableGenerator', [AnyType()])
+        return is_equivalent(typ, agt)
 
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it yields (ty)."""
@@ -310,9 +317,10 @@ class TypeChecker(NodeVisitor[Type]):
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
-        elif return_type.type.fullname() == 'typing.Awaitable':
+        elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
             return AnyType()
         elif return_type.args:
+            # It must be Generator.
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             if isinstance(ret_type, NoneTyp):
@@ -339,14 +347,13 @@ class TypeChecker(NodeVisitor[Type]):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is one of the two types which specify the type of values it can receive.
+            # Generator is one of the three types which specify the type of values it can receive.
             if len(return_type.args) == 3:
                 return return_type.args[1]
             else:
                 return AnyType()
-        elif return_type.type.fullname() == 'typing.Awaitable':
-            # Awaitable is one of the two types which specify the type of values it can receive.
-            # According to the stub this is always `Any`.
+        elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
+            # For these it is always Any.
             return AnyType()
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
@@ -374,9 +381,8 @@ class TypeChecker(NodeVisitor[Type]):
                 return return_type.args[2]
             else:
                 return AnyType()
-        elif return_type.type.fullname() == 'typing.Awaitable':
-            # Awaitable is the other type which specifies the type of values it returns into
-            # `yield from` expressions (using `return`).
+        elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
+            # These are the other two.
             if len(return_type.args) == 1:
                 return return_type.args[0]
             else:
@@ -539,6 +545,15 @@ class TypeChecker(NodeVisitor[Type]):
                             typ.ret_type.type.fullname() == 'typing.Generator'):
                         if not isinstance(typ.ret_type.args[2], (Void, NoneTyp, AnyType)):
                             self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
+
+                # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
+                if defn.is_awaitable_coroutine:
+                    # Update the return type to AwaitableGenerator.
+                    # (This doesn't exist in typing.py, only in typing.pyi.)
+                    ret_type = self.get_generator_return_type(typ.ret_type, defn.is_coroutine)
+                    ret_type = self.named_generic_type('typing.AwaitableGenerator', [ret_type])
+                    typ = typ.copy_modified(ret_type=ret_type)
+                    defn.type = typ
 
                 # Push return type.
                 self.return_types.append(typ.ret_type)

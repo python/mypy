@@ -5,7 +5,8 @@
 # This is cloned from <asyncio>/examples/crawl.py,
 # with type annotations added (PEP 484).
 #
-# TODO: convert to `async def` + `await` (PEP 492).
+# This version (crawl2.) has also been converted to use `async def` +
+# `await` (PEP 492).
 
 import argparse
 import asyncio
@@ -16,7 +17,7 @@ import re
 import sys
 import time
 import urllib.parse
-from typing import Any, Generator, IO, Optional, Sequence, Set, Tuple
+from typing import Any, Awaitable, IO, Optional, Sequence, Set, Tuple
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -132,11 +133,11 @@ class ConnectionPool:
         self.queue.clear()
 
     @asyncio.coroutine
-    def get_connection(self, host: str, port: int, ssl: bool) -> Generator[Any, None, 'Connection']:
+    async def get_connection(self, host: str, port: int, ssl: bool) -> 'Connection':
         """Create or reuse a connection."""
         port = port or (443 if ssl else 80)
         try:
-            ipaddrs = yield from self.loop.getaddrinfo(host, port)
+            ipaddrs = await self.loop.getaddrinfo(host, port)
         except Exception as exc:
             self.log(0, 'Exception %r for (%r, %r)' % (exc, host, port))
             raise
@@ -163,7 +164,7 @@ class ConnectionPool:
 
         # Create a new connection.
         conn = Connection(self.log, self, host, port, ssl)
-        yield from conn.connect()
+        await conn.connect()
         self.log(1, '* New connection', conn.key, 'FD =', conn.fileno())
         return conn
 
@@ -253,8 +254,8 @@ class Connection:
         return None
 
     @asyncio.coroutine
-    def connect(self) -> Generator[Any, None, None]:
-        self.reader, self.writer = yield from asyncio.open_connection(
+    async def connect(self) -> None:
+        self.reader, self.writer = await asyncio.open_connection(
             self.host, self.port, ssl=self.ssl)
         peername = self.writer.get_extra_info('peername')
         if peername:
@@ -301,13 +302,13 @@ class Request:
         self.conn = None  # type: Connection
 
     @asyncio.coroutine
-    def connect(self) -> Generator[Any, None, None]:
+    async def connect(self) -> None:
         """Open a connection to the server."""
         self.log(1, '* Connecting to %s:%s using %s for %s' %
                     (self.hostname, self.port,
                      'ssl' if self.ssl else 'tcp',
                      self.url))
-        self.conn = yield from self.pool.get_connection(self.hostname,
+        self.conn = await self.pool.get_connection(self.hostname,
                                                         self.port, self.ssl)
 
     def close(self, recycle: bool = False) -> None:
@@ -319,7 +320,7 @@ class Request:
             self.conn = None
 
     @asyncio.coroutine
-    def putline(self, line: str) -> Generator[Any, None, None]:
+    async def putline(self, line: str) -> None:
         """Write a line to the connection.
 
         Used for the request line and headers.
@@ -328,11 +329,11 @@ class Request:
         self.conn.writer.write(line.encode('latin-1') + b'\r\n')
 
     @asyncio.coroutine
-    def send_request(self) -> Generator[Any, None, None]:
+    async def send_request(self) -> None:
         """Send the request."""
         request_line = '%s %s %s' % (self.method, self.full_path,
                                      self.http_version)
-        yield from self.putline(request_line)
+        await self.putline(request_line)
         # TODO: What if a header is already set?
         self.headers.append(('User-Agent', 'asyncio-example-crawl/0.0'))
         self.headers.append(('Host', self.netloc))
@@ -340,14 +341,14 @@ class Request:
         # self.headers.append(('Accept-Encoding', 'gzip'))
         for key, value in self.headers:
             line = '%s: %s' % (key, value)
-            yield from self.putline(line)
-        yield from self.putline('')
+            await self.putline(line)
+        await self.putline('')
 
     @asyncio.coroutine
-    def get_response(self) -> Generator[Any, None, 'Response']:
+    async def get_response(self) -> 'Response':
         """Receive the response."""
         response = Response(self.log, self.conn.reader)
-        yield from response.read_headers()
+        await response.read_headers()
         return response
 
 
@@ -368,16 +369,16 @@ class Response:
         self.headers = []  # type: List[Tuple[str, str]]  # [('Content-Type', 'text/html')]
 
     @asyncio.coroutine
-    def getline(self) -> Generator[Any, None, str]:
+    async def getline(self) -> str:
         """Read one line from the connection."""
-        line = (yield from self.reader.readline()).decode('latin-1').rstrip()
+        line = (await self.reader.readline()).decode('latin-1').rstrip()
         self.log(2, '<', line)
         return line
 
     @asyncio.coroutine
-    def read_headers(self) -> Generator[Any, None, None]:
+    async def read_headers(self) -> None:
         """Read the response status and the request headers."""
-        status_line = yield from self.getline()
+        status_line = await self.getline()
         status_parts = status_line.split(None, 2)
         if len(status_parts) != 3:
             self.log(0, 'bad status_line', repr(status_line))
@@ -385,7 +386,7 @@ class Response:
         self.http_version, status, self.reason = status_parts
         self.status = int(status)
         while True:
-            header_line = yield from self.getline()
+            header_line = await self.getline()
             if not header_line:
                 break
             # TODO: Continuation lines.
@@ -407,7 +408,7 @@ class Response:
         return default
 
     @asyncio.coroutine
-    def read(self) -> Generator[Any, None, bytes]:
+    async def read(self) -> bytes:
         """Read the response body.
 
         This honors Content-Length and Transfer-Encoding: chunked.
@@ -422,7 +423,7 @@ class Response:
                 self.log(2, 'parsing chunked response')
                 blocks = []
                 while True:
-                    size_header = yield from self.reader.readline()
+                    size_header = await self.reader.readline()
                     if not size_header:
                         self.log(0, 'premature end of chunked response')
                         break
@@ -431,10 +432,10 @@ class Response:
                     size = int(parts[0], 16)
                     if size:
                         self.log(3, 'reading chunk of', size, 'bytes')
-                        block = yield from self.reader.readexactly(size)
+                        block = await self.reader.readexactly(size)
                         assert len(block) == size, (len(block), size)
                         blocks.append(block)
-                    crlf = yield from self.reader.readline()
+                    crlf = await self.reader.readline()
                     assert crlf == b'\r\n', repr(crlf)
                     if not size:
                         break
@@ -443,11 +444,11 @@ class Response:
                             'bytes in', len(blocks), 'blocks')
             else:
                 self.log(3, 'reading until EOF')
-                body = yield from self.reader.read()
+                body = await self.reader.read()
                 # TODO: Should make sure not to recycle the connection
                 # in this case.
         else:
-            body = yield from self.reader.readexactly(nbytes)
+            body = await self.reader.readexactly(nbytes)
         return body
 
 
@@ -490,7 +491,7 @@ class Fetcher:
         self.new_urls = None  # type: Set[str]
 
     @asyncio.coroutine
-    def fetch(self) -> Generator[Any, None, None]:
+    async def fetch(self) -> None:
         """Attempt to fetch the contents of the URL.
 
         If successful, and the data is HTML, extract further links and
@@ -501,10 +502,10 @@ class Fetcher:
             self.request = None
             try:
                 self.request = Request(self.log, self.url, self.crawler.pool)
-                yield from self.request.connect()
-                yield from self.request.send_request()
-                self.response = yield from self.request.get_response()
-                self.body = yield from self.response.read()
+                await self.request.connect()
+                await self.request.send_request()
+                self.response = await self.request.get_response()
+                self.body = await self.response.read()
                 h_conn = self.response.get_header('connection').lower()
                 if h_conn != 'close':
                     self.request.close(recycle=True)
@@ -744,9 +745,9 @@ class Crawler:
         return True
 
     @asyncio.coroutine
-    def crawl(self) -> Generator[Any, None, None]:
+    async def crawl(self) -> None:
         """Run the crawler until all finished."""
-        with (yield from self.termination):
+        with (await self.termination):
             while self.todo or self.busy:
                 if self.todo:
                     url, max_redirect = self.todo.popitem()
@@ -758,23 +759,23 @@ class Crawler:
                     self.busy[url] = fetcher
                     fetcher.task = asyncio.Task(self.fetch(fetcher))
                 else:
-                    yield from self.termination.wait()
+                    await self.termination.wait()
         self.t1 = time.time()
 
     @asyncio.coroutine
-    def fetch(self, fetcher: Fetcher) -> Generator[Any, None, None]:
+    async def fetch(self, fetcher: Fetcher) -> None:
         """Call the Fetcher's fetch(), with a limit on concurrency.
 
         Once this returns, move the fetcher from busy to done.
         """
         url = fetcher.url
-        with (yield from self.governor):
+        with (await self.governor):
             try:
-                yield from fetcher.fetch()  # Fetcher gonna fetch.
+                await fetcher.fetch()  # Fetcher gonna fetch.
             finally:
                 # Force GC of the task, so the error is logged.
                 fetcher.task = None
-        with (yield from self.termination):
+        with (await self.termination):
             self.done[url] = fetcher
             del self.busy[url]
             self.termination.notify()
