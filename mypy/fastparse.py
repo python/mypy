@@ -247,6 +247,12 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_FunctionDef(self, n: ast35.FunctionDef) -> Node:
         return self.do_func_def(n)
 
+    # AsyncFunctionDef(identifier name, arguments args,
+    #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
+    @with_line
+    def visit_AsyncFunctionDef(self, n: ast35.AsyncFunctionDef) -> Node:
+        return self.do_func_def(n, is_coroutine=True)
+
     def do_func_def(self, n: Union[ast35.FunctionDef, ast35.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Node:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
@@ -427,6 +433,16 @@ class ASTConverter(ast35.NodeTransformer):
                        self.as_block(n.body, n.lineno),
                        self.as_block(n.orelse, n.lineno))
 
+    # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+    @with_line
+    def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
+        r = ForStmt(self.visit(n.target),
+                    self.visit(n.iter),
+                    self.as_block(n.body, n.lineno),
+                    self.as_block(n.orelse, n.lineno))
+        r.is_async = True
+        return r
+
     # While(expr test, stmt* body, stmt* orelse)
     @with_line
     def visit_While(self, n: ast35.While) -> Node:
@@ -447,6 +463,15 @@ class ASTConverter(ast35.NodeTransformer):
         return WithStmt([self.visit(i.context_expr) for i in n.items],
                         [self.visit(i.optional_vars) for i in n.items],
                         self.as_block(n.body, n.lineno))
+
+    # AsyncWith(withitem* items, stmt* body)
+    @with_line
+    def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
+        r = WithStmt([self.visit(i.context_expr) for i in n.items],
+                     [self.visit(i.optional_vars) for i in n.items],
+                     self.as_block(n.body, n.lineno))
+        r.is_async = True
+        return r
 
     # Raise(expr? exc, expr? cause)
     @with_line
@@ -633,6 +658,12 @@ class ASTConverter(ast35.NodeTransformer):
                              iters,
                              ifs_list)
 
+    # Await(expr value)
+    @with_line
+    def visit_Await(self, n: ast35.Await) -> Node:
+        v = self.visit(n.value)
+        return AwaitExpr(v)
+
     # Yield(expr? value)
     @with_line
     def visit_Yield(self, n: ast35.Yield) -> Node:
@@ -764,39 +795,6 @@ class ASTConverter(ast35.NodeTransformer):
     # Index(expr value)
     def visit_Index(self, n: ast35.Index) -> Node:
         return self.visit(n.value)
-
-    # PEP 492 nodes: 'async def', 'await', 'async for', 'async with'.
-
-    # AsyncFunctionDef(identifier name, arguments args,
-    #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
-    @with_line
-    def visit_AsyncFunctionDef(self, n: ast35.AsyncFunctionDef) -> Node:
-        return self.do_func_def(n, is_coroutine=True)
-
-    # Await(expr value)
-    @with_line
-    def visit_Await(self, n: ast35.Await) -> Node:
-        v = self.visit(n.value)
-        return AwaitExpr(v)
-
-    # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
-    @with_line
-    def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
-        r = ForStmt(self.visit(n.target),
-                    self.visit(n.iter),
-                    self.as_block(n.body, n.lineno),
-                    self.as_block(n.orelse, n.lineno))
-        r.is_async = True
-        return r
-
-    # AsyncWith(withitem* items, stmt* body)
-    @with_line
-    def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
-        r = WithStmt([self.visit(i.context_expr) for i in n.items],
-                     [self.visit(i.optional_vars) for i in n.items],
-                     self.as_block(n.body, n.lineno))
-        r.is_async = True
-        return r
 
 
 class TypeConverter(ast35.NodeTransformer):
