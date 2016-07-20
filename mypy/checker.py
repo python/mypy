@@ -278,16 +278,21 @@ class TypeChecker(NodeVisitor[Type]):
     # other two are unconstrained.  The "external" return type (seen
     # by the caller) is Awaitable[tr].
     #
+    # In addition, there's the synthetic type AwaitableGenerator: it
+    # inherits from both Awaitable and Generator and can be used both
+    # in `yield from` and in `await`.  This type is set automatically
+    # for functions decorated with `@types.coroutine` or
+    # `@asyncio.coroutine`.  Its single parameter corresponds to tr.
+    #
     # There are several useful methods, each taking a type t and a
     # flag c indicating whether it's for a generator or coroutine:
     #
     # - is_generator_return_type(t, c) returns whether t is a Generator,
-    #   Iterator, Iterable (if not c), or Awaitable (if c).
+    #   Iterator, Iterable (if not c), or Awaitable (if c), or
+    #   AwaitableGenerator (regardless of c).
     # - get_generator_yield_type(t, c) returns ty.
     # - get_generator_receive_type(t, c) returns ts.
     # - get_generator_return_type(t, c) returns tr.
-
-    # XXX Describe how AwaitableGenerator fits into this.
 
     def is_generator_return_type(self, typ: Type, is_coroutine: bool) -> bool:
         """Is `typ` a valid type for a generator/coroutine?
@@ -311,16 +316,17 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type, is_coroutine):
-            # If the function doesn't have a proper Generator (or superclass) return type, anything
-            # is permissible.
+            # If the function doesn't have a proper Generator (or
+            # Awaitable) return type, anything is permissible.
             return AnyType()
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
+            # Awaitable, AwaitableGenerator: ty is Any.
             return AnyType()
         elif return_type.args:
-            # It must be Generator.
+            # Generator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             if isinstance(ret_type, NoneTyp):
@@ -330,9 +336,7 @@ class TypeChecker(NodeVisitor[Type]):
                     return Void()
             return ret_type
         else:
-            # If the function's declared supertype of Generator has no type
-            # parameters (i.e. is `object`), then the yielded values can't
-            # be accessed so any type is acceptable.
+            # object: ty is Any.
             return AnyType()
 
     def get_generator_receive_type(self, return_type: Type, is_coroutine: bool) -> Type:
@@ -340,24 +344,20 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type, is_coroutine):
-            # If the function doesn't have a proper Generator (or superclass) return type, anything
-            # is permissible.
+            # If the function doesn't have a proper Generator (or
+            # Awaitable) return type, anything is permissible.
             return AnyType()
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
-        elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is one of the three types which specify the type of values it can receive.
-            if len(return_type.args) == 3:
-                return return_type.args[1]
-            else:
-                return AnyType()
         elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
-            # For these it is always Any.
+            # Awaitable, AwaitableGenerator: ts is Any.
             return AnyType()
+        elif return_type.type.fullname() == 'typing.Generator' and len(return_type.args) == 3:
+            # Generator: ts is args[1].
+            return return_type.args[1]
         else:
-            # `return_type` is a supertype of Generator, so callers won't be able to send it
-            # values.
+            # Supertype of Generator (Iterator, Iterable, object), ts is None.
             if experiments.STRICT_OPTIONAL:
                 return NoneTyp(is_ret_type=True)
             else:
@@ -368,28 +368,21 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type, is_coroutine):
-            # If the function doesn't have a proper Generator (or superclass) return type, anything
-            # is permissible.
+            # If the function doesn't have a proper Generator (or
+            # Awaitable) return type, anything is permissible.
             return AnyType()
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
-        elif return_type.type.fullname() == 'typing.Generator':
-            # Generator is one of the two types which specify the type of values it returns into
-            # `yield from` expressions (using a `return` statement).
-            if len(return_type.args) == 3:
-                return return_type.args[2]
-            else:
-                return AnyType()
-        elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
-            # These are the other two.
-            if len(return_type.args) == 1:
-                return return_type.args[0]
-            else:
-                return AnyType()
+        elif (return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator')
+              and len(return_type.args) == 1):
+            # Awaitable, AwaitableGenerator: tr is args[0].
+            return return_type.args[0]
+        elif return_type.type.fullname() == 'typing.Generator' and len(return_type.args) == 3:
+            # Generator: tr is args[2].
+            return return_type.args[2]
         else:
-            # `return_type` is supertype of Generator, so callers won't be able to see the return
-            # type when used in a `yield from` expression.
+            # Supertype of Generator (Iterator, Iterable, object): tr is any.
             return AnyType()
 
     def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
