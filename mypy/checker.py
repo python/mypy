@@ -273,7 +273,7 @@ class TypeChecker(NodeVisitor[Type]):
     #
     # A classic generator must define a return type that's either
     # `Generator[ty, ts, tr]`, Iterator[ty], or Iterable[ty] (or
-    # object or Any).  If ts/tr are not given, both are Any.
+    # object or Any).  If ts/tr are not given, both are Void.
     #
     # A coroutine must define a return type corresponding to tr; the
     # other two are unconstrained.  The "external" return type (seen
@@ -1827,7 +1827,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_assignment(target, self.temp_node(obj, expr))
         exit = echk.analyze_external_member_access('__exit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
-        res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+        echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
 
     def visit_print_stmt(self, s: PrintStmt) -> Type:
         for arg in s.args:
