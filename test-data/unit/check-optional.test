@@ -105,9 +105,12 @@ f(None)
 [out]
 main: note: In function "f":
 
-[case testInferOptionalType]
+[case testInferOptionalTypeWithBinder]
 x = None
-x = 1
+if 0:
+  # scope limit binder
+  x = 1
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 
 [case testInferOptionalTypeFromOptional]
