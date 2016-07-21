@@ -11,7 +11,7 @@ from typing import (
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, Var,
+    SymbolTable, Node, MypyFile, Var, Expression,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -1797,34 +1797,37 @@ class TypeChecker(NodeVisitor[Type]):
                     self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> Type:
-        echk = self.expr_checker
-        if s.is_async:
-            m_enter = '__aenter__'
-            m_exit = '__aexit__'
-        else:
-            m_enter = '__enter__'
-            m_exit = '__exit__'
         for expr, target in zip(s.expr, s.target):
-            ctx = self.accept(expr)
-            enter = echk.analyze_external_member_access(m_enter, ctx, expr)
-            obj = echk.check_call(enter, [], [], expr)[0]
             if s.is_async:
-                self.check_subtype(obj, self.named_type('typing.Awaitable'), expr)
-            if target:
-                if s.is_async:
-                    # XXX TODO What if it's a subclass of Awaitable?
-                    if (isinstance(obj, Instance) and len(obj.args) == 1
-                            and obj.type.fullname() == 'typing.Awaitable'):
-                        obj = obj.args[0]
-                    else:
-                        obj = AnyType()
-                self.check_assignment(target, self.temp_node(obj, expr))
-            exit = echk.analyze_external_member_access(m_exit, ctx, expr)
-            arg = self.temp_node(AnyType(), expr)
-            res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
-            if s.is_async:
-                self.check_subtype(res, self.named_type('typing.Awaitable'), expr)
+                self.check_async_with_item(expr, target)
+            else:
+                self.check_with_item(expr, target)
         self.accept(s.body)
+
+    def check_async_with_item(self, expr: Expression, target: Expression) -> None:
+        echk = self.expr_checker
+        ctx = self.accept(expr)
+        enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
+        obj = echk.check_call(enter, [], [], expr)[0]
+        self.check_subtype(obj, self.named_type('typing.Awaitable'), expr)
+        if target:
+            obj = self.get_generator_return_type(obj, True)
+            self.check_assignment(target, self.temp_node(obj, expr))
+        exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
+        arg = self.temp_node(AnyType(), expr)
+        res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+        self.check_subtype(res, self.named_type('typing.Awaitable'), expr)
+
+    def check_with_item(self, expr: Expression, target: Expression) -> None:
+        echk = self.expr_checker
+        ctx = self.accept(expr)
+        enter = echk.analyze_external_member_access('__enter__', ctx, expr)
+        obj = echk.check_call(enter, [], [], expr)[0]
+        if target:
+            self.check_assignment(target, self.temp_node(obj, expr))
+        exit = echk.analyze_external_member_access('__exit__', ctx, expr)
+        arg = self.temp_node(AnyType(), expr)
+        res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
 
     def visit_print_stmt(self, s: PrintStmt) -> Type:
         for arg in s.args:
@@ -2022,11 +2025,7 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         awaitable_type = self.named_generic_type('typing.Awaitable', [AnyType()])
         if is_subtype(actual_type, awaitable_type):
-            if (isinstance(actual_type, Instance) and len(actual_type.args) == 1
-                    and actual_type.type.fullname() == 'typing.Awaitable'):
-                return actual_type.args[0]
-            else:
-                return AnyType()  # Must've been unparameterized Awaitable.
+            return self.get_generator_return_type(actual_type, True)
         msg = "{} (actual type {}, expected Awaitable)".format(
             messages.INCOMPATIBLE_TYPES_IN_AWAIT,
             self.msg.format(actual_type))
