@@ -202,12 +202,17 @@ class Errors:
 
     def generate_unused_ignore_notes(self) -> None:
         for file, ignored_lines in self.ignored_lines.items():
-            for line in ignored_lines - self.used_ignored_lines[file]:
-                # Don't use report since add_error_info will ignore the error!
-                info = ErrorInfo(self.import_context(), file, None, None,
-                                 line, 'note', "unused 'type: ignore' comment",
-                                 False, False)
-                self.error_info.append(info)
+            if not self.is_typeshed_file(file):
+                for line in ignored_lines - self.used_ignored_lines[file]:
+                    # Don't use report since add_error_info will ignore the error!
+                    info = ErrorInfo(self.import_context(), file, None, None,
+                                    line, 'note', "unused 'type: ignore' comment",
+                                    False, False)
+                    self.error_info.append(info)
+
+    def is_typeshed_file(self, file):
+        # gross, but no other clear way to tell
+        return 'typeshed' in os.path.normpath(file).split(os.sep)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
