@@ -48,10 +48,11 @@ a = 'b' # E: Incompatible types in assignment (expression has type "str", variab
 
 [case testUnusedTypeIgnoreImport]
 # options: warn_unused_ignores
-# Never warn about `type: ignore` comments on imports.
 import banana # type: ignore
 import m # type: ignore
 from m import * # type: ignore
 [file m.py]
 pass
 [out]
+main:3: note: unused 'type: ignore' comment
+main:4: note: unused 'type: ignore' comment
