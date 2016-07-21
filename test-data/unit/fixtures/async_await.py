@@ -6,3 +6,4 @@ class function: pass
 class int: pass
 class str: pass
 class list: pass
+class tuple: pass

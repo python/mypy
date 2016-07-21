@@ -379,9 +379,14 @@ class TypeChecker(NodeVisitor[Type]):
 
     def get_awaitable_return_type(self, t: Type, ctx: Context, msg: str) -> Type:
         """Given a type t, verify that it is a subtype of Awaitable[tr] and return tr."""
-        self.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
-                           msg, 'actual type', 'expected type')
-        return self.get_generator_return_type(t, True)
+        if not self.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
+                                  msg, 'actual type', 'expected type'):
+            return AnyType()
+        else:
+            echk = self.expr_checker
+            method = echk.analyze_external_member_access('__await__', t, ctx)
+            generator = echk.check_call(method, [], [], ctx)[0]
+            return self.get_generator_return_type(generator, False)
 
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
@@ -1695,7 +1700,8 @@ class TypeChecker(NodeVisitor[Type]):
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
         awaitable = echk.check_call(method, [], [], expr)[0]
-        return self.get_generator_return_type(awaitable, True)
+        return self.get_awaitable_return_type(awaitable, expr,
+                                              messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
@@ -2039,10 +2045,12 @@ class TypeChecker(NodeVisitor[Type]):
     def check_subtype(self, subtype: Type, supertype: Type, context: Context,
                       msg: str = messages.INCOMPATIBLE_TYPES,
                       subtype_label: str = None,
-                      supertype_label: str = None) -> None:
+                      supertype_label: str = None) -> bool:
         """Generate an error if the subtype is not compatible with
         supertype."""
-        if not is_subtype(subtype, supertype):
+        if is_subtype(subtype, supertype):
+            return True
+        else:
             if isinstance(subtype, Void):
                 self.msg.does_not_return_value(subtype, context)
             else:
@@ -2056,6 +2064,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if extra_info:
                     msg += ' (' + ', '.join(extra_info) + ')'
                 self.fail(msg, context)
+            return False
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no

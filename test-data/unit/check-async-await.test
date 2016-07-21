@@ -18,7 +18,7 @@ reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 # options: fast_parser
 async def f() -> int:
     x = await f()
-    reveal_type(x)  # E: Revealed type is 'builtins.int'
+    reveal_type(x)  # E: Revealed type is 'builtins.int*'
     return x
 [builtins fixtures/async_await.py]
 [out]
@@ -151,7 +151,7 @@ class C:
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
     async with C() as x:
-        reveal_type(x)  # E: Revealed type is 'builtins.int'
+        reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "f":
@@ -265,3 +265,31 @@ def g() -> Generator[Any, None, str]:
 [out]
 main: note: In function "g":
 main:6: error: "yield from" can't be applied to Awaitable[str]
+
+[case testAwaitableSubclass]
+# options: fast_parser
+from typing import Any, AsyncIterator, Awaitable, Generator
+class A(Awaitable[int]):
+    def __await__(self) -> Generator[Any, None, int]:
+        yield
+        return 0
+class C:
+    def __aenter__(self) -> A:
+        return A()
+    def __aexit__(self, *a) -> A:
+        return A()
+class I(AsyncIterator[int]):
+    def __aiter__(self) -> 'I':
+        return self
+    def __anext__(self) -> A:
+        return A()
+async def main() -> None:
+    x = await A()
+    reveal_type(x)  # E: Revealed type is 'builtins.int'
+    async with C() as y:
+        reveal_type(y)  # E: Revealed type is 'builtins.int'
+    async for z in I():
+        reveal_type(z)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "main":
