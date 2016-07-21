@@ -377,6 +377,12 @@ class TypeChecker(NodeVisitor[Type]):
             # type when used in a `yield from` expression.
             return Void()
 
+    def get_awaitable_return_type(self, t: Type, ctx: Context, msg: str) -> Type:
+        """Given a type t, verify that it is a subtype of Awaitable[tr] and return tr."""
+        self.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
+                           msg, 'actual type', 'expected type')
+        return self.get_generator_return_type(t, True)
+
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
@@ -1809,18 +1815,15 @@ class TypeChecker(NodeVisitor[Type]):
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
         obj = echk.check_call(enter, [], [], expr)[0]
-        self.check_subtype(obj, self.named_type('typing.Awaitable'), expr,
-                           messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER,
-                           'actual type', 'expected type')
+        obj = self.get_awaitable_return_type(
+            obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
-            obj = self.get_generator_return_type(obj, True)
             self.check_assignment(target, self.temp_node(obj, expr))
         exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
         res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
-        self.check_subtype(res, self.named_type('typing.Awaitable'), expr,
-                           messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT,
-                           'actual type', 'expected type')
+        self.get_awaitable_return_type(
+            res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
     def check_with_item(self, expr: Expression, target: Expression) -> None:
         echk = self.expr_checker
@@ -2027,14 +2030,7 @@ class TypeChecker(NodeVisitor[Type]):
         actual_type = self.accept(e.expr, expected_type)
         if isinstance(actual_type, AnyType):
             return AnyType()
-        awaitable_type = self.named_generic_type('typing.Awaitable', [AnyType()])
-        if is_subtype(actual_type, awaitable_type):
-            return self.get_generator_return_type(actual_type, True)
-        msg = "{} (actual type {}, expected Awaitable)".format(
-            messages.INCOMPATIBLE_TYPES_IN_AWAIT,
-            self.msg.format(actual_type))
-        self.fail(msg, e)
-        return AnyType()
+        return self.get_awaitable_return_type(actual_type, e, messages.INCOMPATIBLE_TYPES_IN_AWAIT)
 
     #
     # Helpers
