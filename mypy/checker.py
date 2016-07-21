@@ -1809,14 +1809,18 @@ class TypeChecker(NodeVisitor[Type]):
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
         obj = echk.check_call(enter, [], [], expr)[0]
-        self.check_subtype(obj, self.named_type('typing.Awaitable'), expr)
+        self.check_subtype(obj, self.named_type('typing.Awaitable'), expr,
+                           messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER,
+                           'actual type', 'expected type')
         if target:
             obj = self.get_generator_return_type(obj, True)
             self.check_assignment(target, self.temp_node(obj, expr))
         exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
         res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
-        self.check_subtype(res, self.named_type('typing.Awaitable'), expr)
+        self.check_subtype(res, self.named_type('typing.Awaitable'), expr,
+                           messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT,
+                           'actual type', 'expected type')
 
     def check_with_item(self, expr: Expression, target: Expression) -> None:
         echk = self.expr_checker

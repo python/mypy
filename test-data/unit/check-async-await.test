@@ -170,6 +170,54 @@ main: note: In function "f":
 main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
 main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
 
+[case testAsyncWithErrorBadAenter]
+# options: fast_parser
+class C:
+    def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable")
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithErrorBadAenter2]
+# options: fast_parser
+class C:
+    def __aenter__(self) -> None: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:  # E: "__aenter__" of "C" does not return a value
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithErrorBadAexit]
+# options: fast_parser
+class C:
+    async def __aenter__(self) -> int: pass
+    def __aexit__(self, x, y, z) -> int: pass
+async def f() -> None:
+    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable")
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithErrorBadAexit2]
+# options: fast_parser
+class C:
+    async def __aenter__(self) -> int: pass
+    def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x: # E: "__aexit__" of "C" does not return a value
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
 [case testNoYieldInAsyncDef]
 # options: fast_parser
 async def f():
