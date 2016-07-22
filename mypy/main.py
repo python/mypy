@@ -135,6 +135,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     # parsed into the separate special_opts namespace object.
     parser.add_argument('-v', '--verbose', action='count', dest='verbosity',
                         help="more verbose messages")
+    parser.add_argument('-q', '--quieter', action='store_true', dest='quieter',
+                        help="quieter messages")
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
