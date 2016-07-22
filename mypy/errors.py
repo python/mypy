@@ -210,7 +210,7 @@ class Errors:
                                     False, False)
                     self.error_info.append(info)
 
-    def is_typeshed_file(self, file):
+    def is_typeshed_file(self, file: str) -> bool:
         # gross, but no other clear way to tell
         return 'typeshed' in os.path.normpath(file).split(os.sep)
 
