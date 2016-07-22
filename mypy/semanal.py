@@ -1321,7 +1321,8 @@ class SemanticAnalyzer(NodeVisitor):
         if len(call.args) < 1:
             self.fail("Too few arguments for TypeVar()", context)
             return False
-        if not isinstance(call.args[0], (StrExpr, BytesExpr)) or not call.arg_kinds[0] == ARG_POS:
+        if (not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
+                or not call.arg_kinds[0] == ARG_POS):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
         if cast(StrExpr, call.args[0]).value != name:
@@ -1467,13 +1468,14 @@ class SemanticAnalyzer(NodeVisitor):
             return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
         if call.arg_kinds != [ARG_POS, ARG_POS]:
             return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
-        if not isinstance(args[0], (StrExpr, BytesExpr)):
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             return self.fail_namedtuple_arg(
                 "namedtuple() expects a string literal as the first argument", call)
         types = []  # type: List[Type]
         ok = True
         if not isinstance(args[1], ListExpr):
-            if fullname == 'collections.namedtuple' and isinstance(args[1], (StrExpr, BytesExpr)):
+            if (fullname == 'collections.namedtuple'
+                    and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
                 str_expr = cast(StrExpr, args[1])
                 items = str_expr.value.split()
             else:
@@ -1483,7 +1485,8 @@ class SemanticAnalyzer(NodeVisitor):
             listexpr = args[1]
             if fullname == 'collections.namedtuple':
                 # The fields argument contains just names, with implicit Any types.
-                if any(not isinstance(item, (StrExpr, BytesExpr)) for item in listexpr.items):
+                if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
+                       for item in listexpr.items):
                     return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
                                                     call)
                 items = [cast(StrExpr, item).value for item in listexpr.items]
@@ -1504,7 +1507,7 @@ class SemanticAnalyzer(NodeVisitor):
                     return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
                                                     item)
                 name, type_node = item.items
-                if isinstance(name, (StrExpr, BytesExpr)):
+                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
                     items.append(name.value)
                 else:
                     return self.fail_namedtuple_arg("Invalid NamedTuple() field name", item)

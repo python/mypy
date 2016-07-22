@@ -9,6 +9,16 @@ s = u'foo' # E: Incompatible types in assignment (expression has type "unicode",
 s = b'foo'
 [builtins_py2 fixtures/python2.py]
 
+[case testTypeVariableUnicode]
+from typing import TypeVar
+T = TypeVar(u'T')
+
+[case testNamedTuple*sh Unicode]
+from typing import NamedTuple
+from collections import namedtuple
+N = NamedTuple(u'N', [(u'x', int)])
+n = namedtuple(u'n', u'x y')
+
 [case testPrintStatement]
 print ''() # E: "str" not callable
 print 1, 1() # E: "int" not callable
