@@ -293,3 +293,109 @@ async def main() -> None:
 [builtins fixtures/async_await.py]
 [out]
 main: note: In function "main":
+
+[case testYieldTypeCheckInDecoratedCoroutine]
+# options: fast_parser
+from typing import Generator
+from types import coroutine
+@coroutine
+def f() -> Generator[int, str, int]:
+    x = yield 0
+    x = yield ''  # E: Incompatible types in yield (actual type "str", expected type "int")
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+    if x:
+        return 0
+    else:
+        return ''  # E: Incompatible return value type (got "str", expected "int")
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+
+-- The full matrix of coroutine compatibility
+-- ------------------------------------------
+
+[case testFullCoroutineMatrix]
+# options: fast_parser quieter
+from typing import Any, AsyncIterator, Awaitable, Generator, Iterator
+from types import coroutine
+
+# The various things you might try to use in `await` or `yield from`.
+
+def plain_generator() -> Generator[str, None, int]:
+    yield 'a'
+    return 1
+
+async def plain_coroutine() -> int:
+    return 1
+
+@coroutine
+def decorated_generator() -> Generator[str, None, int]:
+    yield 'a'
+    return 1
+
+@coroutine
+async def decorated_coroutine() -> int:
+    return 1
+
+class It(Iterator[str]):
+    def __iter__(self) -> 'It':
+        return self
+    def __next__(self) -> str:
+        return 'a'
+
+def other_iterator() -> It:
+    return It()
+
+class Aw(Awaitable[int]):
+    def __await__(self) -> Generator[str, Any, int]:
+        yield 'a'
+        return 1
+
+def other_coroutine() -> Aw:
+    return Aw()
+
+# The various contexts in which `await` or `yield from` might occur.
+
+def plain_host_generator() -> Generator[str, None, None]:
+    yield 'a'
+    x = 0
+    x = yield from plain_generator()
+    x = yield from plain_coroutine()  # E: "yield from" can't be applied to Awaitable[int]
+    x = yield from decorated_generator()
+    x = yield from decorated_coroutine()  # E: XXX
+    x = yield from other_iterator()
+    x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
+
+@coroutine
+def decorated_host_generator() -> Generator[str, None, None]:
+    yield 'a'
+    x = 0
+    x = yield from plain_generator()
+    x = yield from plain_coroutine()  # XXX OK
+    x = yield from decorated_generator()
+    x = yield from decorated_coroutine()
+    x = yield from other_iterator()
+    x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
+
+async def plain_host_coroutine() -> None:
+    x = 0
+    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
+    x = await plain_coroutine()
+    x = await decorated_generator()
+    x = await decorated_coroutine()
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
+    x = await other_coroutine()
+
+@coroutine
+async def decorated_host_coroutine() -> None:
+    x = 0
+    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
+    x = await plain_coroutine()
+    x = await decorated_generator()
+    x = await decorated_coroutine()
+    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
+    x = await other_coroutine()
+
+[builtins fixtures/async_await.py]
+[out]
