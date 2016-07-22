@@ -89,7 +89,10 @@ class Errors:
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
 
-    def __init__(self) -> None:
+    # Set to True to suppress "In function "foo":" messages.
+    suppress_error_context = False  # type: bool
+
+    def __init__(self, suppress_error_context: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
         self.type_name = [None]
@@ -97,9 +100,10 @@ class Errors:
         self.ignored_lines = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
         self.only_once_messages = set()
+        self.suppress_error_context = suppress_error_context
 
     def copy(self) -> 'Errors':
-        new = Errors()
+        new = Errors(self.suppress_error_context)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -287,7 +291,9 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if (e.function_or_member != prev_function_or_member or
+            if self.suppress_error_context:
+                pass
+            elif (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
