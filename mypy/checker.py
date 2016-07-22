@@ -928,6 +928,7 @@ class TypeChecker(NodeVisitor[Type]):
                         # This doesn't actually provide any additional information -- multiple
                         # None initializers preserve the partial None type.
                         return
+
                     if is_valid_inferred_type(rvalue_type):
                         var = lvalue_type.var
                         partial_types = self.find_partial_types(var)
@@ -941,11 +942,12 @@ class TypeChecker(NodeVisitor[Type]):
                             else:
                                 var.type = None
                             del partial_types[var]
-                    # Try to infer a partial type. No need to check the return value, as
-                    # an error will be reported elsewhere.
-                    self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
-                    return
-                if (is_literal_none(rvalue) and
+                            lvalue_type = var.type
+                    else:
+                        # Try to infer a partial type. No need to check the return value, as
+                        # an error will be reported elsewhere.
+                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                elif (is_literal_none(rvalue) and
                         isinstance(lvalue, NameExpr) and
                         isinstance(lvalue.node, Var) and
                         lvalue.node.is_initialized_in_class):
