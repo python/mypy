@@ -330,7 +330,7 @@ class BuildManager:
                  options: Options) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.quieter)
+        self.errors = Errors(options.suppress_error_context)
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set

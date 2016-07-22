@@ -135,8 +135,6 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     # parsed into the separate special_opts namespace object.
     parser.add_argument('-v', '--verbose', action='count', dest='verbosity',
                         help="more verbose messages")
-    parser.add_argument('-q', '--quieter', action='store_true', dest='quieter',
-                        help="quieter messages")
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
@@ -164,6 +162,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         help="warn about casting an expression to its inferred type")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
+    parser.add_argument('--suppress-error-context', action='store_true',
+                        dest='suppress_error_context',
+                        help="Suppress context notes before errors")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
