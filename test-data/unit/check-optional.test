@@ -105,13 +105,19 @@ f(None)
 [out]
 main: note: In function "f":
 
-[case testInferOptionalTypeWithBinder]
+[case testInferOptionalType]
 x = None
-if 0:
-  # scope limit binder
+if bool():
+  # scope limit assignment
   x = 1
-  reveal_type(x)  # E: Revealed type is 'builtins.int'
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/bool.py]
+
+[case testInferOptionalTypeLocallyBound]
+x = None
+x = 1
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+
 
 [case testInferOptionalTypeFromOptional]
 from typing import Optional
