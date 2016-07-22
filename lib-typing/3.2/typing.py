@@ -160,12 +160,6 @@ class _ForwardRef(TypingMeta):
         return self
 
     def _eval_type(self, globalns, localns):
-        if not isinstance(localns, dict):
-            raise TypeError('ForwardRef localns must be a dict -- got %r' %
-                            (localns,))
-        if not isinstance(globalns, dict):
-            raise TypeError('ForwardRef globalns must be a dict -- got %r' %
-                            (globalns,))
         if not self.__forward_evaluated__:
             if globalns is None and localns is None:
                 globalns = localns = {}
