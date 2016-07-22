@@ -61,7 +61,7 @@ class Awaitable(Generic[T]):
     @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
 
-class AwaitableGenerator(Awaitable[T], Generator[Any, Any, T], Generic[T]):
+class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V]):
     pass
 
 class AsyncIterable(Generic[T]):
