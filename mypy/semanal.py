@@ -781,7 +781,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
             return
-        calculate_class_mro(defn, self.fail)
+        calculate_class_mro(defn, self.fail_blocker)
         # If there are cyclic imports, we may be missing 'object' in
         # the MRO. Fix MRO if needed.
         if defn.info.mro and defn.info.mro[-1].fullname() != 'builtins.object':
@@ -2289,6 +2289,9 @@ class SemanticAnalyzer(NodeVisitor):
             return
         self.errors.report(ctx.get_line(), msg, blocker=blocker)
 
+    def fail_blocker(self, msg: str, ctx: Context) -> None:
+        self.fail(msg, ctx, blocker=True)
+
     def note(self, msg: str, ctx: Context) -> None:
         if (not self.options.check_untyped_defs and
                 self.function_stack and
@@ -2539,7 +2542,7 @@ class ThirdPass(TraverserVisitor):
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
-            calculate_class_mro(tdef, self.fail)
+            calculate_class_mro(tdef, self.fail_blocker)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -2615,8 +2618,11 @@ class ThirdPass(TraverserVisitor):
             analyzer = TypeAnalyserPass3(self.fail)
             type.accept(analyzer)
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
         self.errors.report(ctx.get_line(), msg)
+
+    def fail_blocker(self, msg: str, ctx: Context) -> None:
+        self.fail(msg, ctx, blocker=True)
 
     def builtin_type(self, name: str, args: List[Type] = None) -> Instance:
         names = self.modules['builtins']
