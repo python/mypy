@@ -382,11 +382,11 @@ class TypeChecker(NodeVisitor[Type]):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Awaitable' and len(return_type.args) == 1:
-            # Awaitable, AwaitableGenerator: tr is args[0].
+            # Awaitable: tr is args[0].
             return return_type.args[0]
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
               and len(return_type.args) == 3):
-            # Generator: tr is args[2].
+            # AwaitableGenerator, Generator: tr is args[2].
             return return_type.args[2]
         else:
             # Supertype of Generator (Iterator, Iterable, object): tr is any.
