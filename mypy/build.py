@@ -16,6 +16,7 @@ import contextlib
 import json
 import os
 import os.path
+import site
 import sys
 import time
 from os.path import dirname, basename
@@ -260,10 +261,13 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     # E.g. for Python 3.2, try 3.2/, 3.1/, 3.0/, 3/, 2and3/.
     # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
-        # Add package installed annotations
-        # TODO better find typehints directly via pkg_resources
-        for pkginstalldir in (os.path.join(os.path.expanduser('~'), '.local'),
-                              os.path.join(os.path.sep, 'usr')):
+        # Add package installed annotations.
+        # The idea is to implement the example in PEP 484, where the annotations
+        # are installed under shared/typehints/python. We here search for the
+        # user installation first, then system wide and add it if needed.
+        # The paths are based on https://docs.python.org/3/install
+        # TODO it would be nicer to find typehints directly via pkg_resources
+        for pkginstalldir in (site.USER_BASE, sys.prefix):
             subdir = os.path.join('shared', 'typehints', 'python' + v)
             pkgstubdir = os.path.join(pkginstalldir, subdir)
             if os.path.isdir(pkgstubdir):
