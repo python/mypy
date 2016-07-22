@@ -110,6 +110,9 @@ x = None
 if bool():
   # scope limit assignment
   x = 1
+  # in scope of the assignment, x is an int
+  reveal_type(x)  # E: Revealed type is 'builtins.int'
+# out of scope of the assignment, it's an Optional[int]
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 [builtins fixtures/bool.py]
 
