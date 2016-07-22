@@ -313,7 +313,8 @@ class TypeChecker(NodeVisitor[Type]):
             self.lookup_qualified('typing.AwaitableGenerator')
         except KeyError:
             return False
-        agt = self.named_generic_type('typing.AwaitableGenerator', [AnyType()])
+        agt = self.named_generic_type('typing.AwaitableGenerator',
+                                      [AnyType(), AnyType(), AnyType()])
         return is_equivalent(typ, agt)
 
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
@@ -327,11 +328,11 @@ class TypeChecker(NodeVisitor[Type]):
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
-        elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
-            # Awaitable, AwaitableGenerator: ty is Any.
+        elif return_type.type.fullname() == 'typing.Awaitable':
+            # Awaitable: ty is Any.
             return AnyType()
         elif return_type.args:
-            # Generator, Iterator, or Iterable; ty is args[0].
+            # AwaitableGenerator, Generator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             if isinstance(ret_type, NoneTyp):
@@ -355,10 +356,11 @@ class TypeChecker(NodeVisitor[Type]):
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
-        elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
+        elif return_type.type.fullname() == 'typing.Awaitable':
             # Awaitable, AwaitableGenerator: tc is Any.
             return AnyType()
-        elif return_type.type.fullname() == 'typing.Generator' and len(return_type.args) == 3:
+        elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
+              and len(return_type.args) == 3):
             # Generator: tc is args[1].
             return return_type.args[1]
         else:
@@ -379,11 +381,11 @@ class TypeChecker(NodeVisitor[Type]):
         elif not isinstance(return_type, Instance):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
-        elif (return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator')
-              and len(return_type.args) == 1):
+        elif return_type.type.fullname() == 'typing.Awaitable' and len(return_type.args) == 1:
             # Awaitable, AwaitableGenerator: tr is args[0].
             return return_type.args[0]
-        elif return_type.type.fullname() == 'typing.Generator' and len(return_type.args) == 3:
+        elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
+              and len(return_type.args) == 3):
             # Generator: tr is args[2].
             return return_type.args[2]
         else:
@@ -548,8 +550,12 @@ class TypeChecker(NodeVisitor[Type]):
                 if defn.is_awaitable_coroutine:
                     # Update the return type to AwaitableGenerator.
                     # (This doesn't exist in typing.py, only in typing.pyi.)
-                    ret_type = self.get_generator_return_type(typ.ret_type, defn.is_coroutine)
-                    ret_type = self.named_generic_type('typing.AwaitableGenerator', [ret_type])
+                    t = typ.ret_type
+                    c = defn.is_coroutine
+                    ty = self.get_generator_yield_type(t, c)
+                    tc = self.get_generator_receive_type(t, c)
+                    tr = self.get_generator_return_type(t, c)
+                    ret_type = self.named_generic_type('typing.AwaitableGenerator', [ty, tc, tr])
                     typ = typ.copy_modified(ret_type=ret_type)
                     defn.type = typ
 
