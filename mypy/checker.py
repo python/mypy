@@ -145,8 +145,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.globals = file_node.names
         self.weak_opts = file_node.weak_opts
         self.enter_partial_types()
-        # gross, but no other clear way to tell
-        self.is_typeshed_stub = self.is_stub and 'typeshed' in os.path.normpath(path).split(os.sep)
+        self.is_typeshed_stub = self.errors.is_typeshed_file(path)
 
         for d in file_node.defs:
             self.accept(d)
