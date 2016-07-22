@@ -265,14 +265,13 @@ class TypeChecker(NodeVisitor[Type]):
     # in PEP 492 and only available in Python >= 3.5.
     #
     # Classic generators can be parameterized with three types:
-    # - ty is the yield type (the type of y in `yield y`)
-    # - ts is the type received by yield (the type of s in `s = yield`)
-    #   (it's named `ts` after `send()`, since `tr` is `return`).
-    # - tr is the return type (the type of r in `return r`)
+    # - ty is the Yield type (the type of y in `yield y`)
+    # - tc is the type reCeived by yield (the type of c in `c = yield`).
+    # - tr is the Return type (the type of r in `return r`)
     #
     # A classic generator must define a return type that's either
-    # `Generator[ty, ts, tr]`, Iterator[ty], or Iterable[ty] (or
-    # object or Any).  If ts/tr are not given, both are Void.
+    # `Generator[ty, tc, tr]`, Iterator[ty], or Iterable[ty] (or
+    # object or Any).  If tc/tr are not given, both are Void.
     #
     # A coroutine must define a return type corresponding to tr; the
     # other two are unconstrained.  The "external" return type (seen
@@ -291,7 +290,7 @@ class TypeChecker(NodeVisitor[Type]):
     #   Iterator, Iterable (if not c), or Awaitable (if c), or
     #   AwaitableGenerator (regardless of c).
     # - get_generator_yield_type(t, c) returns ty.
-    # - get_generator_receive_type(t, c) returns ts.
+    # - get_generator_receive_type(t, c) returns tc.
     # - get_generator_return_type(t, c) returns tr.
 
     def is_generator_return_type(self, typ: Type, is_coroutine: bool) -> bool:
@@ -346,7 +345,7 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
 
     def get_generator_receive_type(self, return_type: Type, is_coroutine: bool) -> Type:
-        """Given a declared generator return type (t), return the type its yield receives (ts)."""
+        """Given a declared generator return type (t), return the type its yield receives (tc)."""
         if isinstance(return_type, AnyType):
             return AnyType()
         elif not self.is_generator_return_type(return_type, is_coroutine):
@@ -357,13 +356,13 @@ class TypeChecker(NodeVisitor[Type]):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.type.fullname() in ('typing.Awaitable', 'typing.AwaitableGenerator'):
-            # Awaitable, AwaitableGenerator: ts is Any.
+            # Awaitable, AwaitableGenerator: tc is Any.
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator' and len(return_type.args) == 3:
-            # Generator: ts is args[1].
+            # Generator: tc is args[1].
             return return_type.args[1]
         else:
-            # Supertype of Generator (Iterator, Iterable, object), ts is None.
+            # Supertype of Generator (Iterator, Iterable, object), tc is None.
             if experiments.STRICT_OPTIONAL:
                 return NoneTyp(is_ret_type=True)
             else:
