@@ -363,18 +363,7 @@ def plain_host_generator() -> Generator[str, None, None]:
     x = yield from plain_generator()
     x = yield from plain_coroutine()  # E: "yield from" can't be applied to Awaitable[int]
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: XXX
-    x = yield from other_iterator()
-    x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
-
-@coroutine
-def decorated_host_generator() -> Generator[str, None, None]:
-    yield 'a'
-    x = 0
-    x = yield from plain_generator()
-    x = yield from plain_coroutine()  # XXX OK
-    x = yield from decorated_generator()
-    x = yield from decorated_coroutine()
+    x = yield from decorated_coroutine()  # E: (should error)
     x = yield from other_iterator()
     x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 
@@ -386,6 +375,17 @@ async def plain_host_coroutine() -> None:
     x = await decorated_coroutine()
     x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
     x = await other_coroutine()
+
+@coroutine
+def decorated_host_generator() -> Generator[str, None, None]:
+    yield 'a'
+    x = 0
+    x = yield from plain_generator()
+    x = yield from plain_coroutine()
+    x = yield from decorated_generator()
+    x = yield from decorated_coroutine()
+    x = yield from other_iterator()
+    x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 
 @coroutine
 async def decorated_host_coroutine() -> None:
