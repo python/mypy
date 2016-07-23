@@ -375,7 +375,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # `return_type` is supertype of Generator, so callers won't be able to see the return
             # type when used in a `yield from` expression.
-            return Void()
+            return AnyType()
 
     def get_awaitable_return_type(self, t: Type, ctx: Context, msg: str) -> Type:
         """Given a type t, verify that it is a subtype of Awaitable[tr] and return tr."""
