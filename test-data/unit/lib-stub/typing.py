@@ -26,6 +26,7 @@ Set = 0
 T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')
+S = TypeVar('S')
 
 class Container(Generic[T]):
     @abstractmethod
@@ -61,7 +62,7 @@ class Awaitable(Generic[T]):
     @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
 
-class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V]):
+class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
     pass
 
 class AsyncIterable(Generic[T]):

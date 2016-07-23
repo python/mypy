@@ -314,7 +314,7 @@ class TypeChecker(NodeVisitor[Type]):
         except KeyError:
             return False
         agt = self.named_generic_type('typing.AwaitableGenerator',
-                                      [AnyType(), AnyType(), AnyType()])
+                                      [AnyType(), AnyType(), AnyType(), AnyType()])
         return is_equivalent(typ, agt)
 
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
@@ -360,7 +360,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Awaitable, AwaitableGenerator: tc is Any.
             return AnyType()
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
-              and len(return_type.args) == 3):
+              and len(return_type.args) >= 3):
             # Generator: tc is args[1].
             return return_type.args[1]
         else:
@@ -385,7 +385,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Awaitable: tr is args[0].
             return return_type.args[0]
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
-              and len(return_type.args) == 3):
+              and len(return_type.args) >= 3):
             # AwaitableGenerator, Generator: tr is args[2].
             return return_type.args[2]
         else:
@@ -555,7 +555,8 @@ class TypeChecker(NodeVisitor[Type]):
                     ty = self.get_generator_yield_type(t, c)
                     tc = self.get_generator_receive_type(t, c)
                     tr = self.get_generator_return_type(t, c)
-                    ret_type = self.named_generic_type('typing.AwaitableGenerator', [ty, tc, tr])
+                    ret_type = self.named_generic_type('typing.AwaitableGenerator',
+                                                       [ty, tc, tr, t])
                     typ = typ.copy_modified(ret_type=ret_type)
                     defn.type = typ
 
@@ -1891,6 +1892,11 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_call_expr(e)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
+        # NOTE: Whether `yield from` accepts an `async def` decorated
+        # with `@types.coroutine` (or `@asyncio.coroutine`) depends on
+        # whether the generator containing the `yield from` is itself
+        # thus decorated.  But it accepts a generator regardless of
+        # how it's decorated.
         return_type = self.return_types[-1]
         subexpr_type = self.accept(e.expr, return_type)
         iter_type = None  # type: Type
@@ -1901,6 +1907,8 @@ class TypeChecker(NodeVisitor[Type]):
             iter_type = AnyType()
         elif (isinstance(subexpr_type, Instance) and
                 is_subtype(subexpr_type, self.named_type('typing.Iterable'))):
+            if self.is_async_def(subexpr_type) and not self.has_coroutine_decorator(return_type):
+                self.msg.yield_from_invalid_operand_type(subexpr_type, e)
             iter_method_type = self.expr_checker.analyze_external_member_access(
                 '__iter__',
                 subexpr_type,
@@ -1911,7 +1919,8 @@ class TypeChecker(NodeVisitor[Type]):
             iter_type, _ = self.expr_checker.check_call(iter_method_type, [], [],
                                                         context=generic_generator_type)
         else:
-            self.msg.yield_from_invalid_operand_type(subexpr_type, e)
+            if not (self.is_async_def(subexpr_type) and self.has_coroutine_decorator(return_type)):
+                self.msg.yield_from_invalid_operand_type(subexpr_type, e)
             iter_type = AnyType()
 
         # Check that the iterator's item type matches the type yielded by the Generator function
@@ -1937,6 +1946,16 @@ class TypeChecker(NodeVisitor[Type]):
                     return NoneTyp(is_ret_type=True)
                 else:
                     return Void()
+
+    def has_coroutine_decorator(self, t: Type) -> bool:
+        """Whether t came from a function decorated with `@coroutine`."""
+        return isinstance(t, Instance) and t.type.fullname() == 'typing.AwaitableGenerator'
+
+    def is_async_def(self, t: Type) -> bool:
+        """Whether t came from a function defined using `async def`."""
+        if self.has_coroutine_decorator(t) and len(t.args) >= 4:
+            t = t.args[3]
+        return isinstance(t, Instance) and t.type.fullname() == 'typing.Awaitable'
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
