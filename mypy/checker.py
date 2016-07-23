@@ -1953,7 +1953,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def is_async_def(self, t: Type) -> bool:
         """Whether t came from a function defined using `async def`."""
-        if self.has_coroutine_decorator(t) and len(t.args) >= 4:
+        if (isinstance(t, Instance)
+                and t.type.fullname() == 'typing.AwaitableGenerator'
+                and len(t.args) >= 4):
             t = t.args[3]
         return isinstance(t, Instance) and t.type.fullname() == 'typing.Awaitable'
 
