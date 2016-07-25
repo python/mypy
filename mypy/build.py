@@ -245,6 +245,16 @@ def mypy_path() -> List[str]:
     return path_env.split(os.pathsep)
 
 
+def get_pkg_locations():
+    # The paths are based on https://docs.python.org/3/install
+    yield site.USER_BASE  # default user pkg dir
+    yield sys.prefix  # default system pkg dir
+
+    if sys.platform != 'win32':
+        yield '/usr'
+        yield '/usr/local'
+
+
 def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
@@ -263,11 +273,9 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     for v in versions + [str(pyversion[0]), '2and3']:
         # Add package installed annotations.
         # The idea is to implement the example in PEP 484, where the annotations
-        # are installed under shared/typehints/python. We here search for the
-        # user installation first, then system wide and add it if needed.
-        # The paths are based on https://docs.python.org/3/install
+        # are installed under shared/typehints/python.
         # TODO it would be nicer to find typehints directly via pkg_resources
-        for pkginstalldir in (site.USER_BASE, sys.prefix):
+        for pkginstalldir in get_pkg_locations():
             subdir = os.path.join('shared', 'typehints', 'python' + v)
             pkgstubdir = os.path.join(pkginstalldir, subdir)
             if os.path.isdir(pkgstubdir):
