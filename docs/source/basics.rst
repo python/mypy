@@ -176,6 +176,25 @@ There is more information about creating stubs in the
 The following sections explain the kinds of type annotations you can use
 in your programs and stub files.
 
+Mypy will also look in some default install directory to try to find annotations.
+For example, for UNIX based, with python 3.4, it will try to find it in
+- ``${HOME}/.local/shared/typehints/python3.4/``
+- ``/usr/shared/typehints/python3.4/``
+- ``/usr/local/shared/typehints/python3.4/``
+
+If you want to package stubs for your library, write the ``.pyi`` alongside the
+``.py`` files, and add the next line to your ``setup.py``,
+
+.. code-block:: python
+
+    data_files=[
+        (
+            'shared/typehints/python{}.{}'.format(*sys.version_info[:2]),
+            pathlib.Path(SRC_PATH).glob('**/*.pyi'),
+        ),
+    ],
+
+
 .. note::
 
    You may be tempted to point ``MYPYPATH`` to the standard library or
