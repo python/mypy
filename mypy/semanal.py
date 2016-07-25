@@ -57,7 +57,7 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
@@ -1082,6 +1082,7 @@ class SemanticAnalyzer(NodeVisitor):
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
         self.check_and_set_up_type_alias(s)
+        self.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
 
@@ -1287,6 +1288,93 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             # This has been flagged elsewhere as an error, so just ignore here.
             pass
+
+    def process_newtype_declaration(self, s: AssignmentStmt) -> None:
+        """Check if s declares a NewType; if yes, store it in symbol table."""
+        call = self.get_newtype_declaration(s)
+        if not call:
+            return
+
+        lvalue = cast(NameExpr, s.lvalues[0])
+        name = lvalue.name
+        if not lvalue.is_def:
+            if s.type:
+                self.fail("Cannot declare the type of a newtype variable", s)
+            else:
+                self.fail("Cannot redefine '%s' as a newtype" % name, s)
+            return
+
+        if not self.check_newtype_name(call, name, s) or call.arg_kinds[1] != ARG_POS:
+            return
+
+        value = self.analyze_types(call.args[1:])[0]
+        # TODO: determine if value can actually ever be None
+        assert value is not None
+        assert isinstance(value, Instance)
+
+        # Looks like a valid newtype! Create the corresponding class def...
+        newtype_class_info = self.build_newtype_typeinfo(name, value)
+
+        # ...and add it to the symbol table.
+        node = self.lookup(name, s)
+        node.kind = GDEF  # TODO: locally defined newtype
+        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
+        node.node = newtype_class_info
+
+    def build_newtype_typeinfo(self, name: str, value: Instance) -> TypeInfo:
+        symbols = SymbolTable()
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = self.qualified_name(name)
+        info = TypeInfo(symbols, class_def)
+        info.mro = [info] + value.type.mro
+        info.bases = [value]
+
+        # Add __init__ method
+        args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
+                self.make_argument('item', value)]
+        signature = CallableType(
+                arg_types = [cast(Type, None), value],
+                arg_kinds = [arg.kind for arg in args],
+                arg_names = ['self', 'item'],
+                ret_type = value,
+                fallback = self.named_type('__builtins__.function'),
+                name = info.name())
+        init_func = FuncDef('__init__', args, Block([]), typ=signature)
+        init_func.info = info
+        symbols['__init__'] = SymbolTableNode(MDEF, init_func)
+
+        return info
+
+    def check_newtype_name(self, call: CallExpr, name: str, context: Context) -> bool:
+        args = call.args
+        if len(args) != 2:
+            direction = "few" if len(args) < 2 else "many"
+            self.fail("Too {} arguments for NewType()".format(direction), context)
+            return False
+        if (not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr))
+                or not call.arg_kinds[0] == ARG_POS):
+            self.fail("NewType(...) expects a string literal as first argument", context)
+            return False
+        if cast(StrExpr, call.args[0]).value != name:
+            self.fail("First argument to NewType() does not match variable name", context)
+            return False
+        return True
+
+    def get_newtype_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
+        """Returns the Newtype() call statement if `s` is a newtype declaration
+        or None otherwise."""
+        # TODO: determine if this and get_typevar_declaration should be refactored
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return None
+        if not isinstance(s.rvalue, CallExpr):
+            return None
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return None
+        callee = call.callee
+        if callee.fullname != 'typing.NewType':
+            return None
+        return call
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
@@ -2080,6 +2168,9 @@ class SemanticAnalyzer(NodeVisitor):
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
 
+    def visit_newtype_expr(self, expr: NewTypeExpr) -> None:
+        raise NotImplemented()
+
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
             self.fail("'yield' outside function", expr, True, blocker=True)
@@ -2523,6 +2614,10 @@ class FirstPass(NodeVisitor):
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.sem.analyze_try_stmt(s, self, add_global=True)
+
+    def visit_newtype_expr(self, e: NewTypeExpr) -> None:
+        # TODO: This function can probably be deleted
+        raise NotImplemented()
 
     def analyze_lvalue(self, lvalue: Node, explicit_type: bool = False) -> None:
         self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)

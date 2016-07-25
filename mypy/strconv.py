@@ -433,6 +433,9 @@ class StrConv(NodeVisitor[str]):
     def visit__promote_expr(self, o):
         return 'PromoteExpr:{}({})'.format(o.line, o.type)
 
+    def visit_newtype_expr(self, o):
+        return 'NewTypeExpr:{}({}, {})'.format(o.line, o.fullname(), self.dump([o.value], o))
+
     def visit_func_expr(self, o):
         a = self.func_helper(o)
         return self.dump(a, o)

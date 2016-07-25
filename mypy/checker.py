@@ -20,7 +20,7 @@ from mypy.nodes import (
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, TypeVarExpr, PrintStmt,
+    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
@@ -1977,6 +1977,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
         # TODO: Perhaps return a special type used for type variables only?
+        return AnyType()
+
+    def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
         return AnyType()
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:

@@ -1710,33 +1710,16 @@ class PromoteExpr(Expression):
         return visitor.visit__promote_expr(self)
 
 
-class NewTypeExpr(SymbolNode, Expression):
+class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
 
-    name = ''
-    fullname = ''
-    value = None  # type: mypy.types.Type
+    info = None  # type: TypeInfo
 
-    def __init__(self, name: str, fullname: str, value: 'mypy.type.Type') -> None:
-        self.name = name
-        self.fullname = fullname
-        self.value = value
+    def __init__(self, info: 'TypeInfo') -> None:
+        self.info = info
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
-
-    def serialize(self) -> JsonDict:
-        return {'.class': 'NewTypeExpr',
-                'name': self.name,
-                'fullname': self.fullname,
-                'value': self.value.serialize()}
-
-    @classmethod
-    def deserialize(cls, data, JsonDict) -> 'TypeVarExpr':
-        assert data['.class'] == 'NewTypeExpr'
-        return NewTypeExpr(data['name'],
-                           data['fullname'],
-                           mypy.types.Type.deserialize(data['value']))
 
 
 class AwaitExpr(Node):
