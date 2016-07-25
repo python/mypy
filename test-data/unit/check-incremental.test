@@ -247,3 +247,10 @@ import a.b
 [out]
 main:1: note: In module imported here:
 tmp/b.py:4: error: Name 'a' already defined
+
+[case testIncrementalSilentImportsAndImportsInClass]
+# options: silent_imports
+class MyObject(object):
+    from bar import FooBar
+[stale]
+[out]
