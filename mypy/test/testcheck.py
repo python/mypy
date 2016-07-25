@@ -118,7 +118,6 @@ class TypeCheckSuite(Suite):
                 output = []
                 with open(program_name, 'w') as f:
                     f.write(program_text)
-                    program_text = None
             elif incremental == 2:
                 # In run 2, copy *.py.next files to *.py files.
                 for dn, dirs, files in os.walk(os.curdir):
@@ -127,6 +126,8 @@ class TypeCheckSuite(Suite):
                             full = os.path.join(dn, file)
                             target = full[:-5]
                             shutil.copy(full, target)
+            # Always set to none so we're forced to reread program_name
+            program_text = None
         source = BuildSource(program_name, module_name, program_text)
         try:
             res = build.build(sources=[source],
