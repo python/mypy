@@ -275,9 +275,9 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
         # The idea is to implement the example in PEP 484, where the annotations
         # are installed under shared/typehints/python.
         # TODO it would be nicer to find typehints directly via pkg_resources
+        pkgsubdir = os.path.join('shared', 'typehints', 'python' + v)
         for pkginstalldir in get_pkg_locations():
-            subdir = os.path.join('shared', 'typehints', 'python' + v)
-            pkgstubdir = os.path.join(pkginstalldir, subdir)
+            pkgstubdir = os.path.join(pkginstalldir, pkgsubdir)
             if os.path.isdir(pkgstubdir):
                 path.append(pkgstubdir)
 
