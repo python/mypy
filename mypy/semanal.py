@@ -998,7 +998,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def add_unknown_symbol(self, name: str, context: Context) -> None:
         var = Var(name)
-        var._fullname = self.qualified_name(name)
+        if self.type:
+            var._fullname = self.type.fullname() + "." + name
+        else:
+            var._fullname = self.qualified_name(name)
         var.is_ready = True
         var.type = AnyType()
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
