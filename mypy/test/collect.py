@@ -32,7 +32,8 @@ class MypyDataCase(pytest.Item):
     def runtest(self):
         if self.skip:
             pytest.skip()
-        self.parent.obj().run_case(self.obj)
+        update_data = self.config.getoption('--update-data', False)
+        self.parent.obj(update_data=update_data).run_case(self.obj)
 
     def setup(self):
         self.obj.set_up()

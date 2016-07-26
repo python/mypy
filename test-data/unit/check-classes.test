@@ -19,6 +19,7 @@ class B:
     def bar(self, x: 'B', y: A) -> None: pass
 [out]
 main:5: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
+main:5: error: more!
 main:6: error: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]

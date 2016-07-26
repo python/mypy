@@ -9,7 +9,6 @@ import time
 from typing import Tuple, List, Dict, Set
 
 from mypy import build, defaults
-import mypy.myunit  # for mutable globals (ick!)
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
@@ -68,6 +67,8 @@ files = [
 
 
 class TypeCheckSuite(DataSuite):
+    def __init__(self, *, update_data=False):
+        self.update_data = update_data
 
     @classmethod
     def cases(cls) -> List[DataDrivenTestCase]:
@@ -141,8 +142,8 @@ class TypeCheckSuite(DataSuite):
             a = e.messages
         a = normalize_error_messages(a)
 
-        if output != a and mypy.myunit.UPDATE_TESTCASES:
-            update_testcase_output(testcase, a, mypy.myunit.APPEND_TESTCASES)
+        if output != a and self.update_data:
+            update_testcase_output(testcase, a)
 
         assert_string_arrays_equal(
             output, a,
