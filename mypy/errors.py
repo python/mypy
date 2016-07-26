@@ -418,7 +418,7 @@ def set_drop_into_pdb(flag: bool) -> None:
 def report_internal_error(err: Exception, file: str, line: int) -> None:
     """Display stack trace and file location for an internal error + exit."""
     if drop_into_pdb:
-        import pdb  # type: ignore
+        import pdb
         pdb.post_mortem(sys.exc_info()[2])
     tb = traceback.extract_stack()[:-2]
     tb2 = traceback.extract_tb(sys.exc_info()[2])
