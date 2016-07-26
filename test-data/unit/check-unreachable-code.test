@@ -151,3 +151,63 @@ else:
 reveal_type(foo())  # E: Revealed type is 'builtins.int'
 [builtins fixtures/ops.py]
 [out]
+
+[case testSysVersionInfoSliced]
+import sys
+if sys.version_info[:1] >= (3,):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced2]
+import sys
+if sys.version_info[:2] >= (3, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced3]
+import sys
+if sys.version_info[:] >= (3, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced4]
+import sys
+if sys.version_info[0:2] >= (3, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced5]
+import sys
+if sys.version_info[0:] >= (3,):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced6]
+import sys
+if sys.version_info[1:] >= (5,):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
