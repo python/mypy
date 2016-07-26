@@ -768,6 +768,8 @@ class SemanticAnalyzer(NodeVisitor):
                 defn.info.tuple_type = base
                 base_types.append(base.fallback)
             elif isinstance(base, Instance):
+                if base.type.is_newtype:
+                    self.fail("Cannot subclass NewType", defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 defn.info.fallback_to_any = True
@@ -1387,6 +1389,8 @@ class SemanticAnalyzer(NodeVisitor):
         if call.arg_kinds[1] != ARG_POS:
             self.fail("Argument 2 to NewType(...) must be a positional type", context)
             has_failed = True
+        elif isinstance(value, Instance) and value.type.is_newtype:
+            self.fail("Argument 2 to NewType(...) cannot be another NewType", context)
 
         return None if has_failed else value
 
