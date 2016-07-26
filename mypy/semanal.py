@@ -64,7 +64,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -2785,6 +2785,10 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
+    else:
+        r = consider_sys_version_info(expr, pyversion)
+        if r != TRUTH_VALUE_UNKNOWN:
+            return r
     result = TRUTH_VALUE_UNKNOWN
     if name == 'PY2':
         result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
@@ -2798,6 +2802,116 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
         elif result == ALWAYS_FALSE:
             result = ALWAYS_TRUE
     return result
+
+
+def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
+    """Consider whether expr is a comparison involving sys.version_info.
+
+    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
+    """
+    # Cases supported:
+    # - sys.version_info[<int>] <compare_op> <int>
+    # - sys.version_info[:<int>] <compare_op> <tuple_of_n_ints>
+    # - sys.version_info <compare_op> <tuple_of_1_or_2_ints>
+    #   (in this case <compare_op> must be >, >=, <, <=, but cannot be ==, !=)
+    if not isinstance(expr, ComparisonExpr):
+        return TRUTH_VALUE_UNKNOWN
+    # Let's not yet support chained comparisons.
+    if len(expr.operators) > 1:
+        return TRUTH_VALUE_UNKNOWN
+    op = expr.operators[0]
+    if op not in ('==', '!=', '<=', '>=', '<', '>'):
+        return TRUTH_VALUE_UNKNOWN
+    thing = contains_int_or_tuple_of_ints(expr.operands[1])
+    if thing is None:
+        return TRUTH_VALUE_UNKNOWN
+    index = contains_sys_version_info(expr.operands[0])
+    if isinstance(index, int) and isinstance(thing, int):
+        # sys.version_info[i] <compare_op> k
+        if 0 <= index <= 1:
+            return fixed_comparison(pyversion[index], op, thing)
+        else:
+            return TRUTH_VALUE_UNKNOWN
+    elif isinstance(index, tuple) and isinstance(thing, tuple):
+        lo, hi = cast(Tuple[Optional[int], Optional[int]], index)
+        if lo is None:
+            lo = 0
+        if hi is None:
+            hi = 2
+        if 0 <= lo <= 2:
+            if 0 <= hi <= 2:
+                val = pyversion[lo:hi]
+                if len(val) == len(thing) or op not in ('==', '!='):
+                    return fixed_comparison(val, op, thing)
+    return TRUTH_VALUE_UNKNOWN
+
+
+Targ = TypeVar('Targ', int, Tuple[int, ...])
+
+def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
+    rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
+    if op == '==':
+        return rmap[left == right]
+    if op == '!=':
+        return rmap[left != right]
+    if op == '<=':
+        return rmap[left <= right]
+    if op == '>=':
+        return rmap[left >= right]
+    if op == '<':
+        return rmap[left < right]
+    if op == '>':
+        return rmap[left > right]
+    return TRUTH_VALUE_UNKNOWN
+
+
+def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tuple[int, int]]:
+    if isinstance(expr, IntExpr):
+        return expr.value
+    if isinstance(expr, TupleExpr):
+        if expr.literal == LITERAL_YES:
+            if len(expr.items) == 1:
+                e = expr.items[0]
+                if isinstance(e, IntExpr):
+                    return (e.value,)
+            elif len(expr.items) == 2:
+                e0, e1 = expr.items[0], expr.items[1]
+                if isinstance(e0, IntExpr) and isinstance(e1, IntExpr):
+                    return (e0.value, e1.value)
+    return None
+
+
+def contains_sys_version_info(expr: Node) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
+    if is_exactly_sys_version_info(expr):
+        return (None, None)  # Same as sys.version_info[:]
+    if isinstance(expr, IndexExpr) and is_exactly_sys_version_info(expr.base):
+        index = expr.index
+        if isinstance(index, IntExpr):
+            return index.value
+        if isinstance(index, SliceExpr):
+            if index.stride is not None:
+                if not isinstance(index.stride, IntExpr) or index.stride.value != 1:
+                    return None
+            begin = end = None
+            if index.begin_index is not None:
+                if not isinstance(index.begin_index, IntExpr):
+                    return None
+                begin = index.begin_index.value
+            if index.end_index is not None:
+                if not isinstance(index.end_index, IntExpr):
+                    return None
+                end = index.end_index.value
+            return (begin, end)
+    return None
+
+
+def is_exactly_sys_version_info(expr: Node) -> bool:
+    if isinstance(expr, MemberExpr) and expr.name == 'version_info':
+        if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
+            # TODO: Guard against a local named sys, etc.
+            # (Though later passes will still do most checking.)
+            return True
+    return False
 
 
 def mark_block_unreachable(block: Block) -> None:
