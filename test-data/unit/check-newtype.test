@@ -36,3 +36,101 @@ tcp_packet = TcpPacketId(127, 0)
 [out]
 main:12: error: Too many arguments for "TcpPacketId"
 main:12: error: Argument 1 to "TcpPacketId" has incompatible type "int"; expected "PacketId"
+
+[case testNewTypeBadInitialization]
+from typing import NewType
+
+a = NewType('b', int)
+b = NewType('b', 3)
+c = NewType(2, int)
+foo = "d"
+d = NewType(foo, int)
+e = NewType(name='e', tp=int)
+f = NewType('f', tp=int)
+[out]
+main:3: error: Argument 1 to NewType(...) does not match variable name
+main:4: error: Argument 2 to NewType(...) must be a valid type
+main:5: error: Argument 1 to NewType(...) must be a string literal
+main:7: error: Argument 1 to NewType(...) must be a string literal
+main:8: error: Argument 1 to NewType(...) must be a positional string literal
+main:8: error: Argument 2 to NewType(...) must be a positional type
+main:9: error: Argument 2 to NewType(...) must be a positional type
+
+[case testNewTypeWithCasts]
+from typing import NewType, cast
+UserId = NewType('UserId', int)
+foo = UserId(3)
+foo = cast(UserId, 3)
+foo = cast(UserId, "foo")
+foo = cast(UserId, UserId(4))
+[out]
+
+[case testNewTypeWithCompositeTypes]
+from typing import NewType, Tuple, List
+TwoTuple = NewType('TwoTuple', Tuple[int, str])
+a = TwoTuple((3, "a"))
+b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
+
+UserId = NewType('UserId', int)
+IdList = NewType('IdList', List[UserId])
+
+bad1 = IdList([1])  # E: List item 0 has incompatible type "int"
+
+foo = IdList([])
+foo.append(3)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "UserId"
+foo.append(UserId(3))
+foo.extend([UserId(1), UserId(2), UserId(3)])
+foo.extend(IdList([UserId(1), UserId(2), UserId(3)]))
+bar = IdList([UserId(2)])
+
+#baz = foo + bar
+reveal_type(foo)  # E: Revealed type is '__main__.IdList'
+reveal_type(bar)  # E: Revealed type is '__main__.IdList'
+#reveal_type(baz)  # TODO: Revealed type is 'builtins.list'
+
+[builtins fixtures/tuple.py]
+[out]
+
+[case testNewTypeWithUnions]
+from typing import NewType, Union
+Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got Union[builtins.int, builtins.float])
+
+[out]
+
+[case testNewTypeWithGenerics]
+from typing import TypeVar, Generic, NewType, Any
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+Derived1 = NewType('Derived1', Base[str])
+Derived2 = NewType('Derived2', Base)       # Implicit 'Any'
+Derived3 = NewType('Derived3', Base[Any])  # Explicit 'Any'
+
+Derived1(Base(1))  # E: Argument 1 to "Base" has incompatible type "int"; expected "str"
+Derived1(Base('a'))
+Derived2(Base(1))
+Derived2(Base('a'))
+Derived3(Base(1))
+Derived3(Base('a'))
+[out]
+
+[case testNewTypeInMultipleFiles]
+import a
+import b
+list1 = [a.UserId(1), a.UserId(2)]
+list1.append(b.UserId(3))  # E: Argument 1 to "append" of "list" has incompatible type "b.UserId"; expected "a.UserId"
+
+[file a.py]
+from typing import NewType
+UserId = NewType('UserId', int)
+
+[file b.py]
+from typing import NewType
+UserId = NewType('UserId', int)
+
+[builtins fixtures/list.py]
+[out]

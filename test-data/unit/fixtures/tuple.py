@@ -1,6 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, TypeVar, Generic, Sequence
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, overload
 
 Tco = TypeVar('Tco', covariant=True)
 
@@ -24,3 +24,14 @@ T = TypeVar('T')
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
 
 True = bool()
+
+class list(Iterable[T], Generic[T]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: Iterable[T]) -> None: pass
+    def __iter__(self) -> Iterator[T]: pass
+    def __mul__(self, x: int) -> list[T]: pass
+    def __getitem__(self, x: int) -> T: pass
+    def append(self, x: T) -> None: pass
+    def extend(self, x: Iterable[T]) -> None: pass
