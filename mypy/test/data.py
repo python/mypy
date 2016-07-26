@@ -22,6 +22,10 @@ def parse_test_cases(
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
+
+    NB this function and DataDrivenTestCase are shared between the
+    myunit and pytest codepaths -- if something looks redundant,
+    that's likely the reason.
     """
 
     if not include_path:
@@ -356,8 +360,6 @@ def pytest_addoption(parser):
 def pytest_pycollect_makeitem(collector, name, obj):
     if not isinstance(obj, type) or not issubclass(obj, DataSuite):
         return None
-    #os.write(3, ('collecting: %r %r %r\n' % (collector, name, obj)).encode('utf-8'))
-
     return MypyDataSuite(name, parent=collector)
 
 
