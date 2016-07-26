@@ -272,7 +272,11 @@ class TypeChecker(NodeVisitor[Type]):
             # Same as above, but written as a separate branch so the typechecker can understand.
             return AnyType()
         elif return_type.args:
-            return return_type.args[0]
+            ret_type = return_type.args[0]
+            # TODO not best fix, better have dedicated yield token
+            if isinstance(ret_type, NoneTyp):
+                return Void()
+            return ret_type
         else:
             # If the function's declared supertype of Generator has no type
             # parameters (i.e. is `object`), then the yielded values can't
