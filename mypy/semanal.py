@@ -71,7 +71,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef, Void,
+    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef, TypeType, Void,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
@@ -1294,14 +1294,15 @@ class SemanticAnalyzer(NodeVisitor):
         call = self.get_newtype_declaration(s)
         if not call:
             return
+        call.analyzed = NewTypeExpr(None).set_line(call.line)
 
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
         if not lvalue.is_def:
             if s.type:
-                self.fail("Cannot declare the type of a newtype variable", s)
+                self.fail("Cannot declare the type of a NewType declaration", s)
             else:
-                self.fail("Cannot redefine '%s' as a newtype" % name, s)
+                self.fail("Cannot redefine '%s' as a NewType" % name, s)
             return
 
         underlying_type = self.check_newtype_args(call, name, s)
@@ -1315,7 +1316,7 @@ class SemanticAnalyzer(NodeVisitor):
             base_type = underlying_type
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail_blocker(message.format(underlying_type), s)
+            self.fail(message.format(underlying_type), s)
             return
 
         # Create the corresponding class def...
@@ -1327,7 +1328,10 @@ class SemanticAnalyzer(NodeVisitor):
         call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
         node.node = newtype_class_info
 
-    def build_newtype_typeinfo(self, name: str, underlying_type: Type, base_type: Instance) -> TypeInfo:
+    def build_newtype_typeinfo(self,
+                               name: str,
+                               underlying_type: Type,
+                               base_type: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
 
@@ -1336,6 +1340,8 @@ class SemanticAnalyzer(NodeVisitor):
         info.mro = [info] + base_type.type.mro
         info.bases = [base_type]
         info.is_newtype = True
+        if isinstance(underlying_type, TupleType):
+            info.tuple_type = underlying_type
 
         # Add __init__ method
         args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
@@ -1361,7 +1367,6 @@ class SemanticAnalyzer(NodeVisitor):
             return None
 
         # Check first argument
-        string_types = (StrExpr, BytesExpr, UnicodeExpr)
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
@@ -1376,7 +1381,7 @@ class SemanticAnalyzer(NodeVisitor):
         try:
             value = self.anal_type(expr_to_unanalyzed_type(call.args[1]))
         except TypeTranslationError:
-            self.fail_blocker("Argument 2 to NewType(...) must be a valid type", context)
+            self.fail("Argument 2 to NewType(...) must be a valid type", context)
             return None
 
         if call.arg_kinds[1] != ARG_POS:

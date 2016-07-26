@@ -1713,9 +1713,9 @@ class PromoteExpr(Expression):
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
 
-    info = None  # type: TypeInfo
+    info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, info: 'TypeInfo') -> None:
+    def __init__(self, info: Optional['TypeInfo']) -> None:
         self.info = info
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
