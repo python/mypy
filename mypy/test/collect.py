@@ -21,8 +21,15 @@ class MypyDataSuite(pytest.Class):
 
 class MypyDataCase(pytest.Item):
     def __init__(self, name, parent, obj):
+        self.skip = False
+        if name.endswith('-skip'):
+            self.skip = True
+            name = name[:-len('-skip')]
+
         super().__init__(name, parent)
         self.obj = obj
 
     def runtest(self):
+        if self.skip:
+            pytest.skip()
         self.parent.obj().run_case(self.obj)
