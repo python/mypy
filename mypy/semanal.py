@@ -1333,12 +1333,12 @@ class SemanticAnalyzer(NodeVisitor):
         args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
                 self.make_argument('item', value)]
         signature = CallableType(
-                arg_types = [cast(Type, None), value],
-                arg_kinds = [arg.kind for arg in args],
-                arg_names = ['self', 'item'],
-                ret_type = value,
-                fallback = self.named_type('__builtins__.function'),
-                name = info.name())
+            arg_types = [cast(Type, None), value],
+            arg_kinds = [arg.kind for arg in args],
+            arg_names = ['self', 'item'],
+            ret_type = value,
+            fallback = self.named_type('__builtins__.function'),
+            name = info.name())
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
         symbols['__init__'] = SymbolTableNode(MDEF, init_func)
