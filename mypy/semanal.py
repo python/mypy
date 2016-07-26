@@ -2781,21 +2781,20 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
         if alias.op == 'not':
             expr = alias.expr
             negated = True
+    result = TRUTH_VALUE_UNKNOWN
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
     else:
-        r = consider_sys_version_info(expr, pyversion)
-        if r != TRUTH_VALUE_UNKNOWN:
-            return r
-    result = TRUTH_VALUE_UNKNOWN
-    if name == 'PY2':
-        result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
-    elif name == 'PY3':
-        result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-    elif name == 'MYPY':
-        result = ALWAYS_TRUE
+        result = consider_sys_version_info(expr, pyversion)
+    if result == TRUTH_VALUE_UNKNOWN:
+        if name == 'PY2':
+            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
+        elif name == 'PY3':
+            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
+        elif name == 'MYPY':
+            result = ALWAYS_TRUE
     if negated:
         if result == ALWAYS_TRUE:
             result = ALWAYS_FALSE

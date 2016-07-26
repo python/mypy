@@ -131,3 +131,23 @@ else:
 reveal_type(foo())  # E: Revealed type is 'builtins.int'
 [builtins fixtures/ops.py]
 [out]
+
+[case testSysVersionInfoNegated_python2]
+import sys
+if not (sys.version_info[0] < 3):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # E: Revealed type is 'builtins.str'
+[builtins_py2 fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoNegated]
+import sys
+if not (sys.version_info[0] < 3):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.py]
+[out]
