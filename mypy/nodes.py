@@ -1810,6 +1810,9 @@ class TypeInfo(SymbolNode):
     # Is this a named tuple type?
     is_named_tuple = False
 
+    # Is this a newtype type?
+    is_newtype = False
+
     # Is this a dummy from deserialization?
     is_dummy = False
 
@@ -1986,6 +1989,7 @@ class TypeInfo(SymbolNode):
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'is_named_tuple': self.is_named_tuple,
+                'is_newtype': self.is_newtype
                 }
         return data
 
@@ -2008,6 +2012,7 @@ class TypeInfo(SymbolNode):
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.is_named_tuple = data['is_named_tuple']
+        ti.is_newtype = data['is_newtype']
         return ti
 
 
