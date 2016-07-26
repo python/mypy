@@ -2832,16 +2832,16 @@ def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
         else:
             return TRUTH_VALUE_UNKNOWN
     elif isinstance(index, tuple) and isinstance(thing, tuple):
-        lo, hi = cast(Tuple[Optional[int], Optional[int]], index)
+        # Why doesn't mypy see that index can't be None here?
+        lo, hi = cast(tuple, index)
         if lo is None:
             lo = 0
         if hi is None:
             hi = 2
-        if 0 <= lo <= 2:
-            if 0 <= hi <= 2:
-                val = pyversion[lo:hi]
-                if len(val) == len(thing) or op not in ('==', '!='):
-                    return fixed_comparison(val, op, thing)
+        if 0 <= lo < hi <= 2:
+            val = pyversion[lo:hi]
+            if len(val) == len(thing) or op not in ('==', '!='):
+                return fixed_comparison(val, op, thing)
     return TRUTH_VALUE_UNKNOWN
 
 
@@ -2864,19 +2864,17 @@ def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
     return TRUTH_VALUE_UNKNOWN
 
 
-def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tuple[int, int]]:
+def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
         if expr.literal == LITERAL_YES:
-            if len(expr.items) == 1:
-                e = expr.items[0]
-                if isinstance(e, IntExpr):
-                    return (e.value,)
-            elif len(expr.items) == 2:
-                e0, e1 = expr.items[0], expr.items[1]
-                if isinstance(e0, IntExpr) and isinstance(e1, IntExpr):
-                    return (e0.value, e1.value)
+            thing = []
+            for x in expr.items:
+                if not isinstance(x, IntExpr):
+                    return None
+                thing.append(x.value)
+            return tuple(thing)
     return None
 
 

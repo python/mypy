@@ -211,3 +211,31 @@ else:
 foo() + 0
 [builtins fixtures/ops.py]
 [out]
+
+[case testSysVersionInfoSliced7]
+import sys
+if sys.version_info >= (3, 5):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced8]
+import sys
+if sys.version_info >= (3, 5, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoSliced9]
+import sys
+if sys.version_info[1:] >= (5, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+[builtins fixtures/ops.py]
+[out]
