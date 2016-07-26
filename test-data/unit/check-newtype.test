@@ -215,3 +215,55 @@ c = MyClass.C(3.5)
 main: note: In function "func":
 main:9: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 
+[case testNewTypeTestSubclassingFails]
+from typing import NewType
+class A: pass
+B = NewType('B', A)
+class C(B): pass  # E: Cannot subclass NewType
+[out]
+
+[case testNewTypeOfANewTypeFails]
+from typing import NewType
+A = NewType('A', int)
+B = NewType('B', A)  # E: Argument 2 to NewType(...) cannot be another NewType
+C = A
+D = C
+E = NewType('E', D)  # E: Argument 2 to NewType(...) cannot be another NewType
+[out]
+
+[case testIncrementalWithNewType]
+import m
+
+[file m.py]
+from typing import NewType
+
+UserId = NewType('UserId', int)
+
+def name_by_id(user_id: UserId) -> str:
+    return "foo"
+
+name_by_id(UserId(42))
+
+id = UserId(5)
+num = id + 1
+
+[file m.py.next]
+from typing import NewType
+
+UserId = NewType('UserId', int)
+
+def name_by_id(user_id: UserId) -> str:
+    return "foo"
+
+name_by_id(UserId(42))
+
+id = UserId(5)
+num = id + 1
+
+reveal_type(id)
+reveal_type(num)
+[stale m]
+[out]
+main:1: note: In module imported here:
+tmp/m.py:13: error: Revealed type is 'm.UserId'
+tmp/m.py:14: error: Revealed type is 'builtins.int'
