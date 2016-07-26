@@ -83,10 +83,10 @@ foo.extend([UserId(1), UserId(2), UserId(3)])
 foo.extend(IdList([UserId(1), UserId(2), UserId(3)]))
 bar = IdList([UserId(2)])
 
-#baz = foo + bar
+baz = foo + bar
 reveal_type(foo)  # E: Revealed type is '__main__.IdList'
 reveal_type(bar)  # E: Revealed type is '__main__.IdList'
-#reveal_type(baz)  # TODO: Revealed type is 'builtins.list'
+reveal_type(baz)  # E: Revealed type is 'builtins.list[__main__.UserId*]'
 
 [builtins fixtures/tuple.py]
 [out]
