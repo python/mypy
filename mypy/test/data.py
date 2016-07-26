@@ -6,7 +6,7 @@ import re
 from os import remove, rmdir
 import shutil
 
-import pytest
+import pytest  # type: ignore
 from typing import Callable, List, Tuple, Set, Optional
 
 from mypy.myunit import TestCase, SkipTestCaseException
@@ -370,7 +370,7 @@ class MypyDataSuite(pytest.Class):
 
 
 class MypyDataCase(pytest.Item):
-    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase):
+    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
         self.skip = False
         if name.endswith('-skip'):
             self.skip = True
