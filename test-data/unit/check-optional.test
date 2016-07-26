@@ -253,6 +253,12 @@ def f(b: T) -> T:
     return a or b
 [out]
 
+[case testYieldNothingInFunctionReturningGenerator]
+from typing import Generator
+def f() -> Generator[None, None, None]:
+    yield
+[out]
+
 [case testNoneAndStringIsNone]
 a = None
 b = "foo"

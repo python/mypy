@@ -811,13 +811,6 @@ def f() -> Generator[int, None, None]:
 [builtins fixtures/for.py]
 [out]
 
-[case testYieldNothingInFunctionReturningGenerator]
-from typing import Generator
-def f() -> Generator[None, None, None]:
-    yield
-[builtins fixtures/for.py]
-[out]
-
 [case testYieldInFunctionReturningIterable]
 from typing import Iterable
 def f() -> Iterable[int]:
