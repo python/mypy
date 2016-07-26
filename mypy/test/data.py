@@ -13,7 +13,7 @@ from mypy.myunit import TestCase, SkipTestCaseException
 
 def parse_test_cases(
         path: str,
-        perform: Callable[['DataDrivenTestCase'], None],
+        perform: Optional[Callable[['DataDrivenTestCase'], None]],
         base_path: str = '.',
         optional_out: bool = False,
         include_path: str = None,
@@ -216,6 +216,15 @@ class TestItem:
         self.data = data
         self.file = file
         self.line = line
+
+
+class DataSuite:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
+        return []
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        raise NotImplementedError
 
 
 def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:

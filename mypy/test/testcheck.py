@@ -11,9 +11,9 @@ from typing import Tuple, List, Dict, Set
 from mypy import build, defaults
 import mypy.myunit  # for mutable globals (ick!)
 from mypy.build import BuildSource, find_module_clear_caches
-from mypy.myunit import Suite, AssertionFailure
+from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     testcase_pyversion, update_testcase_output,
@@ -67,16 +67,17 @@ files = [
 ]
 
 
-class TypeCheckSuite(Suite):
+class TypeCheckSuite(DataSuite):
 
-    def cases(self) -> List[DataDrivenTestCase]:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
         c = []  # type: List[DataDrivenTestCase]
         for f in files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  self.run_test, test_temp_dir, True)
+                                  None, test_temp_dir, True)
         return c
 
-    def run_test(self, testcase: DataDrivenTestCase) -> None:
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
         optional = 'optional' in testcase.file
         if incremental:
@@ -84,17 +85,17 @@ class TypeCheckSuite(Suite):
             # Expect success on first run, errors from testcase.output (if any) on second run.
             # We briefly sleep to make sure file timestamps are distinct.
             self.clear_cache()
-            self.run_test_once(testcase, 1)
+            self.run_case_once(testcase, 1)
             time.sleep(0.1)
-            self.run_test_once(testcase, 2)
+            self.run_case_once(testcase, 2)
         elif optional:
             try:
                 experiments.STRICT_OPTIONAL = True
-                self.run_test_once(testcase)
+                self.run_case_once(testcase)
             finally:
                 experiments.STRICT_OPTIONAL = False
         else:
-            self.run_test_once(testcase)
+            self.run_case_once(testcase)
 
     def clear_cache(self) -> None:
         dn = defaults.MYPY_CACHE
@@ -102,7 +103,7 @@ class TypeCheckSuite(Suite):
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
-    def run_test_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
         find_module_clear_caches()
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_module(program_text)
