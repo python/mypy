@@ -161,7 +161,7 @@ class Waiter:
 
     def _poll_current(self) -> Tuple[int, int]:
         while True:
-            time.sleep(.25)
+            time.sleep(.05)
             for pid in self.current:
                 cmd = self.current[pid][1]
                 code = cmd.process.poll()
