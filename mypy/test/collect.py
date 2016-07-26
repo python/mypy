@@ -44,4 +44,14 @@ class MypyDataCase(pytest.Item):
         return self.obj.file, self.obj.line, self.obj.name
 
     def repr_failure(self, excinfo):
-        return "data: {}:{}\n{}".format(self.obj.file, self.obj.line, excinfo.exconly())
+        if excinfo.errisinstance(SystemExit):
+            # We assume that before doing exit() (which raises SystemExit) we've printed
+            # enough context about what happened so that a stack trace is not useful.
+            # In particular, uncaught exceptions during semantic analysis or type checking
+            # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        else:
+            self.parent._prunetraceback(excinfo)
+            excrepr = excinfo.getrepr(style='short')
+
+        return "data: {}:{}\n{}".format(self.obj.file, self.obj.line, excrepr)
