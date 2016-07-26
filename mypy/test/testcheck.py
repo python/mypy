@@ -64,6 +64,7 @@ files = [
     'check-fastparse.test',
     'check-warnings.test',
     'check-async-await.test',
+    'check-newtype.test',
 ]
 
 

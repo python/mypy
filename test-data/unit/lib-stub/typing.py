@@ -73,3 +73,9 @@ class AsyncIterator(AsyncIterable[T], Generic[T]):
 class Sequence(Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
+
+def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
+    def new_type(x):
+        return x
+    return new_type
+
