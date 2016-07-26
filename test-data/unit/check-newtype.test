@@ -71,6 +71,9 @@ TwoTuple = NewType('TwoTuple', Tuple[int, str])
 a = TwoTuple((3, "a"))
 b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
 
+reveal_type(a[0])  # E: Revealed type is 'builtins.int'
+reveal_type(a[1])  # E: Revealed type is 'builtins.str'
+
 UserId = NewType('UserId', int)
 IdList = NewType('IdList', List[UserId])
 
@@ -94,7 +97,6 @@ reveal_type(baz)  # E: Revealed type is 'builtins.list[__main__.UserId*]'
 [case testNewTypeWithUnions]
 from typing import NewType, Union
 Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got Union[builtins.int, builtins.float])
-
 [out]
 
 [case testNewTypeWithGenerics]
@@ -106,6 +108,9 @@ class Base(Generic[T]):
     def __init__(self, item: T) -> None:
         self.item = item
 
+    def getter(self) -> T:
+        return self.item
+
 Derived1 = NewType('Derived1', Base[str])
 Derived2 = NewType('Derived2', Base)       # Implicit 'Any'
 Derived3 = NewType('Derived3', Base[Any])  # Explicit 'Any'
@@ -116,6 +121,9 @@ Derived2(Base(1))
 Derived2(Base('a'))
 Derived3(Base(1))
 Derived3(Base('a'))
+
+reveal_type(Derived1(Base('a')).getter())  # E: Revealed type is 'builtins.str*'
+reveal_type(Derived3(Base('a')).getter())  # E: Revealed type is 'Any'
 [out]
 
 [case testNewTypeInMultipleFiles]
@@ -134,3 +142,76 @@ UserId = NewType('UserId', int)
 
 [builtins fixtures/list.py]
 [out]
+
+[case testNewTypeWithTypeAliases]
+from typing import NewType
+Foo = int
+Bar = NewType('Bar', Foo)
+
+def func1(x: Foo) -> Bar:
+    return Bar(x)
+
+def func2(x: int) -> Bar:
+    return Bar(x)
+
+[out]
+
+[case testNewTypeWithTypeType]
+from typing import NewType, Type
+Foo = NewType('Foo', Type[int])  # E: Argument 2 to NewType(...) must be subclassable (got Type[builtins.int])
+a = Foo(type(3))
+[builtins fixtures/args.py]
+[out]
+
+[case testNewTypeWithTypeVars]
+from typing import NewType, TypeVar, List
+T = TypeVar('T')
+A = NewType('A', T)
+B = NewType('B', List[T])
+[builtins fixtures/list.py]
+[out]
+main:3: error: Invalid type "__main__.T"
+main:3: error: Argument 2 to NewType(...) must be subclassable (got T?)
+main:4: error: Invalid type "__main__.T"
+
+[case testNewTypeRedefiningVariables]
+from typing import NewType
+
+a = 3
+a = NewType('a', int)
+
+b = NewType('b', int)
+b = NewType('b', float)
+
+c = NewType('c', str)   # type: str
+[out]
+main:4: error: Cannot redefine 'a' as a NewType
+main:7: error: Invalid assignment target
+main:7: error: Cannot redefine 'b' as a NewType
+main:9: error: Cannot declare the type of a NewType declaration
+
+[case testNewTypeInLocalScope]
+from typing import NewType
+A = NewType('A', int)
+a = A(3)
+
+def func() -> None:
+    A = NewType('A', str)
+    B = NewType('B', str)
+
+    a = A(3)
+    a = A('xyz')
+    b = B('xyz')
+
+class MyClass:
+    C = NewType('C', float)
+    
+    def foo(self) -> 'MyClass.C':
+        return MyClass.C(3.2)
+
+b = A(3)
+c = MyClass.C(3.5)
+[out]
+main: note: In function "func":
+main:9: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
