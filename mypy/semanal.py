@@ -1304,16 +1304,22 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Cannot redefine '%s' as a newtype" % name, s)
             return
 
-        if not self.check_newtype_name(call, name, s) or call.arg_kinds[1] != ARG_POS:
+        underlying_type = self.check_newtype_args(call, name, s)
+        if underlying_type is None:
             return
 
-        value = self.analyze_types(call.args[1:])[0]
-        # TODO: determine if value can actually ever be None
-        assert value is not None
-        assert isinstance(value, Instance)
+        # Check if class is subtypeable
+        if isinstance(underlying_type, TupleType):
+            base_type = underlying_type.fallback
+        elif isinstance(underlying_type, Instance):
+            base_type = underlying_type
+        else:
+            message = "Argument 2 to NewType(...) must be subclassable (got {})"
+            self.fail_blocker(message.format(underlying_type), s)
+            return
 
-        # Looks like a valid newtype! Create the corresponding class def...
-        newtype_class_info = self.build_newtype_typeinfo(name, value)
+        # Create the corresponding class def...
+        newtype_class_info = self.build_newtype_typeinfo(name, underlying_type, base_type)
 
         # ...and add it to the symbol table.
         node = self.lookup(name, s)
@@ -1321,44 +1327,63 @@ class SemanticAnalyzer(NodeVisitor):
         call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
         node.node = newtype_class_info
 
-    def build_newtype_typeinfo(self, name: str, value: Instance) -> TypeInfo:
-        symbols = SymbolTable()
+    def build_newtype_typeinfo(self, name: str, underlying_type: Type, base_type: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
+
+        symbols = SymbolTable()
         info = TypeInfo(symbols, class_def)
-        info.mro = [info] + value.type.mro
-        info.bases = [value]
+        info.mro = [info] + base_type.type.mro
+        info.bases = [base_type]
+        info.is_newtype = True
 
         # Add __init__ method
         args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
-                self.make_argument('item', value)]
+                self.make_argument('item', underlying_type)]
         signature = CallableType(
-            arg_types = [cast(Type, None), value],
+            arg_types = [cast(Type, None), underlying_type],
             arg_kinds = [arg.kind for arg in args],
             arg_names = ['self', 'item'],
-            ret_type = value,
+            ret_type = underlying_type,
             fallback = self.named_type('__builtins__.function'),
-            name = info.name())
+            name = name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
         symbols['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info
 
-    def check_newtype_name(self, call: CallExpr, name: str, context: Context) -> bool:
+    def check_newtype_args(self, call: CallExpr, name: str, context: Context) -> Type:
+        has_failed = False
         args = call.args
         if len(args) != 2:
-            direction = "few" if len(args) < 2 else "many"
-            self.fail("Too {} arguments for NewType()".format(direction), context)
-            return False
-        if (not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr))
-                or not call.arg_kinds[0] == ARG_POS):
-            self.fail("NewType(...) expects a string literal as first argument", context)
-            return False
-        if cast(StrExpr, call.args[0]).value != name:
-            self.fail("First argument to NewType() does not match variable name", context)
-            return False
-        return True
+            self.fail("NewType(...) expects exactly two arguments", context)
+            return None
+
+        # Check first argument
+        string_types = (StrExpr, BytesExpr, UnicodeExpr)
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+            self.fail("Argument 1 to NewType(...) must be a string literal", context)
+            has_failed = True
+        elif call.arg_kinds[0] != ARG_POS:
+            self.fail("Argument 1 to NewType(...) must be a positional string literal", context)
+            has_failed = True
+        elif cast(StrExpr, call.args[0]).value != name:
+            self.fail("Argument 1 to NewType(...) does not match variable name", context)
+            has_failed = True
+
+        # Check second argument
+        try:
+            value = self.anal_type(expr_to_unanalyzed_type(call.args[1]))
+        except TypeTranslationError:
+            self.fail_blocker("Argument 2 to NewType(...) must be a valid type", context)
+            return None
+
+        if call.arg_kinds[1] != ARG_POS:
+            self.fail("Argument 2 to NewType(...) must be a positional type", context)
+            has_failed = True
+
+        return None if has_failed else value
 
     def get_newtype_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
         """Returns the Newtype() call statement if `s` is a newtype declaration
