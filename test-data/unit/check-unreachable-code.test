@@ -152,7 +152,7 @@ reveal_type(foo())  # E: Revealed type is 'builtins.int'
 [builtins fixtures/ops.py]
 [out]
 
-[case testSysVersionInfoSliced]
+[case testSysVersionInfoSliced1]
 import sys
 if sys.version_info[:1] >= (3,):
     def foo() -> int: return 0
@@ -227,7 +227,7 @@ import sys
 if sys.version_info >= (3, 5, 0):
     def foo() -> int: return 0
 else:
-    def foo() -> str: return ''
+    def foo() -> str: return ''  # E: All conditional function variants must have identical signatures
 [builtins fixtures/ops.py]
 [out]
 
@@ -236,6 +236,36 @@ import sys
 if sys.version_info[1:] >= (5, 0):
     def foo() -> int: return 0
 else:
+    def foo() -> str: return ''  # E: All conditional function variants must have identical signatures
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysPlatform1]
+import sys
+if sys.platform == 'win32':
+    def foo() -> int: return 0
+else:
     def foo() -> str: return ''
+foo() + ''
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysPlatform2]
+import sys
+if sys.platform != 'win32':
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysPlatformNegated]
+import sys
+if not (sys.platform == 'win32'):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
 [builtins fixtures/ops.py]
 [out]

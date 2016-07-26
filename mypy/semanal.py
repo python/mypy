@@ -2843,7 +2843,7 @@ def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
             hi = 2
         if 0 <= lo < hi <= 2:
             val = pyversion[lo:hi]
-            if len(val) == len(thing) or op not in ('==', '!='):
+            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
                 return fixed_comparison(val, op, thing)
     return TRUTH_VALUE_UNKNOWN
 
@@ -2872,7 +2872,7 @@ def consider_sys_platform(expr: Node, platform: str) -> int:
     return fixed_comparison(platform, op, right.value)
 
 
-Targ = TypeVar('Targ', int, Tuple[int, ...])
+Targ = TypeVar('Targ', int, str, Tuple[int, ...])
 
 
 def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
