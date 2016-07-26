@@ -39,3 +39,9 @@ class MypyDataCase(pytest.Item):
 
     def teardown(self):
         self.obj.tear_down()
+
+    def reportinfo(self):
+        return self.obj.file, self.obj.line, self.obj.name
+
+    def repr_failure(self, excinfo):
+        return "data: {}:{}\n{}".format(self.obj.file, self.obj.line, excinfo.exconly())
