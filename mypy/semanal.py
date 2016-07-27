@@ -2856,6 +2856,8 @@ def consider_sys_platform(expr: Node, platform: str) -> int:
     # Cases supported:
     # - sys.platform == 'posix'
     # - sys.platform != 'win32'
+    # TODO: Maybe support e.g.:
+    # - sys.platform.startswith('win')
     if not isinstance(expr, ComparisonExpr):
         return TRUTH_VALUE_UNKNOWN
     # Let's not yet support chained comparisons.
@@ -2931,6 +2933,9 @@ def contains_sys_version_info(expr: Node) -> Union[None, int, Tuple[Optional[int
 
 
 def is_sys_attr(expr: Node, name: str) -> bool:
+    # TODO: This currently doesn't work with code like this:
+    # - import sys as _sys
+    # - from sys import version_info
     if isinstance(expr, MemberExpr) and expr.name == name:
         if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
             # TODO: Guard against a local named sys, etc.
