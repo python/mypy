@@ -1293,25 +1293,21 @@ class SemanticAnalyzer(NodeVisitor):
 
     def process_newtype_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a NewType; if yes, store it in symbol table."""
+        # Extract and check all information from newtype declaration
         call = self.get_newtype_declaration(s)
-        if not call:
+        if call is None:
             return
         call.analyzed = NewTypeExpr(None).set_line(call.line)
 
-        lvalue = cast(NameExpr, s.lvalues[0])
-        name = lvalue.name
-        if not lvalue.is_def:
-            if s.type:
-                self.fail("Cannot declare the type of a NewType declaration", s)
-            else:
-                self.fail("Cannot redefine '%s' as a NewType" % name, s)
+        name = self.get_newtype_name(s)
+        if name is None:
             return
 
         old_type = self.check_newtype_args(call, name, s)
         if old_type is None:
             return
 
-        # Create the corresponding class def if it's subtypeable...
+        # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
             newtype_class_info.tuple_type = old_type
@@ -1322,39 +1318,41 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail(message.format(old_type), s)
             return
 
-        # ...and add it to the symbol table.
+        # If so, add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF  # TODO: locally defined newtype
-        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
+        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
+        node.kind = GDEF
         node.node = newtype_class_info
+        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
 
-    def build_newtype_typeinfo(self,name: str, old_type: Type, base_type: Instance) -> TypeInfo:
-        class_def = ClassDef(name, Block([]))
-        class_def.fullname = self.qualified_name(name)
+    def get_newtype_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
+        """Returns the Newtype() call statement if `s` is a newtype declaration
+        or None otherwise."""
+        # TODO: determine if this and get_typevar_declaration should be refactored
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return None
+        if not isinstance(s.rvalue, CallExpr):
+            return None
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return None
+        callee = call.callee
+        if callee.fullname != 'typing.NewType':
+            return None
+        return call
 
-        symbols = SymbolTable()
-        info = TypeInfo(symbols, class_def)
-        info.mro = [info] + base_type.type.mro
-        info.bases = [base_type]
-        info.is_newtype = True
+    def get_newtype_name(self, s: AssignmentStmt) -> Optional[str]:
+        lvalue = cast(NameExpr, s.lvalues[0])
+        name = lvalue.name
+        if not lvalue.is_def:
+            if s.type:
+                self.fail("Cannot declare the type of a NewType declaration", s)
+            else:
+                self.fail("Cannot redefine '%s' as a NewType" % name, s)
+            return None
+        return name
 
-        # Add __init__ method
-        args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
-                self.make_argument('item', old_type)]
-        signature = CallableType(
-            arg_types = [cast(Type, None), old_type],
-            arg_kinds = [arg.kind for arg in args],
-            arg_names = ['self', 'item'],
-            ret_type = old_type,
-            fallback = self.named_type('__builtins__.function'),
-            name = name)
-        init_func = FuncDef('__init__', args, Block([]), typ=signature)
-        init_func.info = info
-        symbols['__init__'] = SymbolTableNode(MDEF, init_func)
-
-        return info
-
-    def check_newtype_args(self, call: CallExpr, name: str, context: Context) -> Type:
+    def check_newtype_args(self, call: CallExpr, name: str, context: Context) -> Optional[Type]:
         has_failed = False
         args = call.args
         if len(args) != 2:
@@ -1387,21 +1385,31 @@ class SemanticAnalyzer(NodeVisitor):
 
         return None if has_failed else value
 
-    def get_newtype_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
-        """Returns the Newtype() call statement if `s` is a newtype declaration
-        or None otherwise."""
-        # TODO: determine if this and get_typevar_declaration should be refactored
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return None
-        if not isinstance(s.rvalue, CallExpr):
-            return None
-        call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return None
-        callee = call.callee
-        if callee.fullname != 'typing.NewType':
-            return None
-        return call
+    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = self.qualified_name(name)
+
+        symbols = SymbolTable()
+        info = TypeInfo(symbols, class_def)
+        info.mro = [info] + base_type.type.mro
+        info.bases = [base_type]
+        info.is_newtype = True
+
+        # Add __init__ method
+        args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
+                self.make_argument('item', old_type)]
+        signature = CallableType(
+            arg_types = [cast(Type, None), old_type],
+            arg_kinds = [arg.kind for arg in args],
+            arg_names = ['self', 'item'],
+            ret_type = old_type,
+            fallback = self.named_type('__builtins__.function'),
+            name = name)
+        init_func = FuncDef('__init__', args, Block([]), typ=signature)
+        init_func.info = info
+        symbols['__init__'] = SymbolTableNode(MDEF, init_func)
+
+        return info
 
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
