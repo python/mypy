@@ -2202,9 +2202,6 @@ class SemanticAnalyzer(NodeVisitor):
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         expr.type = self.anal_type(expr.type)
 
-    def visit_newtype_expr(self, expr: NewTypeExpr) -> None:
-        raise NotImplemented()
-
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
             self.fail("'yield' outside function", expr, True, blocker=True)
@@ -2648,10 +2645,6 @@ class FirstPass(NodeVisitor):
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.sem.analyze_try_stmt(s, self, add_global=True)
-
-    def visit_newtype_expr(self, e: NewTypeExpr) -> None:
-        # TODO: This function can probably be deleted
-        raise NotImplemented()
 
     def analyze_lvalue(self, lvalue: Node, explicit_type: bool = False) -> None:
         self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)

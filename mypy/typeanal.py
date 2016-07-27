@@ -10,7 +10,7 @@ from mypy.types import (
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, TypeVarExpr, Var, Node,
-    IndexExpr, RefExpr, NewTypeExpr
+    IndexExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
