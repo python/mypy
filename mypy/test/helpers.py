@@ -85,9 +85,8 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
         raise AssertionFailure(msg)
 
 
-def update_testcase_output(testcase: DataDrivenTestCase, output: List[str], append: str) -> None:
+def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    newfile = testcase_path + append
     data_lines = open(testcase_path).read().splitlines()
     test = '\n'.join(data_lines[testcase.line:testcase.lastline])
 
@@ -111,7 +110,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str], appe
 
     data_lines[testcase.line:testcase.lastline] = [test]
     data = '\n'.join(data_lines)
-    with open(newfile, 'w') as f:
+    with open(testcase_path, 'w') as f:
         print(data, file=f)
 
 

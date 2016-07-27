@@ -93,6 +93,13 @@ class Driver:
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
+    def add_pytest(self, name: str, pytest_args: List[str]) -> None:
+        full_name = 'pytest %s' % name
+        if not self.allow(full_name):
+            return
+        args = [sys.executable, '-m', 'pytest'] + pytest_args
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env))
+
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
         if not self.allow(name):
@@ -187,6 +194,16 @@ def add_imports(driver: Driver) -> None:
         driver.add_flake8('module %s' % mod, f)
 
 
+PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
+    'testcheck',
+]]
+
+
+def add_pytest(driver: Driver) -> None:
+    for f in PYTEST_FILES:
+        driver.add_pytest(f, [f] + driver.arglist)
+
+
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
         mod = file_to_module(f)
@@ -198,6 +215,9 @@ def add_myunit(driver: Driver) -> None:
             # Run Python evaluation integration tests and command-line
             # parsing tests separately since they are much slower than
             # proper unit tests.
+            pass
+        elif f in PYTEST_FILES:
+            # This module has been converted to pytest; don't try to use myunit.
             pass
         else:
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
@@ -362,6 +382,7 @@ def main() -> None:
     add_cmdline(driver)
     add_basic(driver)
     add_selftypecheck(driver)
+    add_pytest(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
