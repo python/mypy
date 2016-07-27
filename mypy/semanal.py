@@ -1307,22 +1307,20 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Cannot redefine '%s' as a NewType" % name, s)
             return
 
-        underlying_type = self.check_newtype_args(call, name, s)
-        if underlying_type is None:
+        old_type = self.check_newtype_args(call, name, s)
+        if old_type is None:
             return
 
-        # Check if class is subtypeable
-        if isinstance(underlying_type, TupleType):
-            base_type = underlying_type.fallback
-        elif isinstance(underlying_type, Instance):
-            base_type = underlying_type
+        # Create the corresponding class def if it's subtypeable...
+        if isinstance(old_type, TupleType):
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
+            newtype_class_info.tuple_type = old_type
+        elif isinstance(old_type, Instance):
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
         else:
             message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(underlying_type), s)
+            self.fail(message.format(old_type), s)
             return
-
-        # Create the corresponding class def...
-        newtype_class_info = self.build_newtype_typeinfo(name, underlying_type, base_type)
 
         # ...and add it to the symbol table.
         node = self.lookup(name, s)
@@ -1330,10 +1328,7 @@ class SemanticAnalyzer(NodeVisitor):
         call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
         node.node = newtype_class_info
 
-    def build_newtype_typeinfo(self,
-                               name: str,
-                               underlying_type: Type,
-                               base_type: Instance) -> TypeInfo:
+    def build_newtype_typeinfo(self,name: str, old_type: Type, base_type: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
 
@@ -1342,17 +1337,15 @@ class SemanticAnalyzer(NodeVisitor):
         info.mro = [info] + base_type.type.mro
         info.bases = [base_type]
         info.is_newtype = True
-        if isinstance(underlying_type, TupleType):
-            info.tuple_type = underlying_type
 
         # Add __init__ method
         args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
-                self.make_argument('item', underlying_type)]
+                self.make_argument('item', old_type)]
         signature = CallableType(
-            arg_types = [cast(Type, None), underlying_type],
+            arg_types = [cast(Type, None), old_type],
             arg_kinds = [arg.kind for arg in args],
             arg_names = ['self', 'item'],
-            ret_type = underlying_type,
+            ret_type = old_type,
             fallback = self.named_type('__builtins__.function'),
             name = name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
