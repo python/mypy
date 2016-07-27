@@ -250,6 +250,11 @@ main:8: error: Argument 1 to NewType(...) must be a positional string literal
 main:8: error: Argument 2 to NewType(...) must be a positional type
 main:9: error: Argument 2 to NewType(...) must be a positional type
 
+[case testNewTypeWithAnyFails]
+from typing import NewType, Any
+A = NewType('A', Any)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
+[out]
+
 [case testNewTypeWithUnionsFails]
 from typing import NewType, Union
 Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got Union[builtins.int, builtins.float])
