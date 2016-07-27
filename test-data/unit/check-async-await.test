@@ -316,7 +316,7 @@ main: note: In function "f":
 -- ------------------------------------------
 
 [case testFullCoroutineMatrix]
-# options: fast_parser quieter
+# options: fast_parser suppress_error_context
 from typing import Any, AsyncIterator, Awaitable, Generator, Iterator
 from types import coroutine
 
