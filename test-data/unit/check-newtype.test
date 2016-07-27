@@ -231,6 +231,36 @@ D = C
 E = NewType('E', D)  # E: Argument 2 to NewType(...) cannot be another NewType
 [out]
 
+[case testNewTypeWithNamedTuple]
+from collections import namedtuple
+from typing import NewType, NamedTuple
+
+Vector1 = namedtuple('Vector1', ['x', 'y', 'z'])
+Point1 = NewType('Point1', Vector1)
+p1 = Point1(Vector1(1, 2, 3))
+reveal_type(p1.x)  # E: Revealed type is 'Any'
+reveal_type(p1.y)  # E: Revealed type is 'Any'
+reveal_type(p1.z)  # E: Revealed type is 'Any'
+
+Vector2 = NamedTuple('Vector2', [('x', int), ('y', int), ('z', int)])
+Point2 = NewType('Point2', Vector2)
+p2 = Point2(Vector2(1, 2, 3))
+reveal_type(p2.x)  # E: Revealed type is 'builtins.int'
+reveal_type(p2.y)  # E: Revealed type is 'builtins.int'
+reveal_type(p2.z)  # E: Revealed type is 'builtins.int'
+
+class Vector3:
+    def __init__(self, x: int, y: int, z: int) -> None:
+        self.x = x
+        self.y = y
+        self.z = z
+Point3 = NewType('Point3', Vector3)
+p3 = Point3(Vector3(1, 3, 3))
+reveal_type(p3.x)  # E: Revealed type is 'builtins.int'
+reveal_type(p3.y)  # E: Revealed type is 'builtins.int'
+reveal_type(p3.z)  # E: Revealed type is 'builtins.int'
+[out]
+
 [case testIncrementalWithNewType]
 import m
 
