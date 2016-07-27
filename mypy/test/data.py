@@ -6,7 +6,7 @@ import re
 from os import remove, rmdir
 import shutil
 
-import pytest  # type: ignore
+import pytest  # type: ignore  # no pytest in typeshed
 from typing import Callable, List, Tuple, Set, Optional
 
 from mypy.myunit import TestCase, SkipTestCaseException
