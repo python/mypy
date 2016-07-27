@@ -440,3 +440,11 @@ re.subn(upat, u'', u'')[0] + u''
 re.subn(ure, lambda m: u'', u'')[0] + u''
 re.subn(upat, lambda m: u'', u'')[0] + u''
 [out]
+
+[case testYieldRegressionTypingAwaitable_python2]
+# Make sure we don't reference typing.Awaitable in Python 2 mode.
+def g() -> int:
+    yield
+[out]
+_program.py: note: In function "g":
+_program.py:2: error: The return type of a generator function should be "Generator" or one of its supertypes

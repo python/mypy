@@ -416,6 +416,7 @@ class FuncItem(FuncBase):
     # Is this an overload variant of function with more than one overload variant?
     is_overload = False
     is_generator = False   # Contains a yield statement?
+    is_coroutine = False   # Defined using 'async def' syntax?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     # Variants of function with type variables with values expanded
@@ -486,6 +487,7 @@ class FuncDef(FuncItem, Statement):
                 'is_property': self.is_property,
                 'is_overload': self.is_overload,
                 'is_generator': self.is_generator,
+                'is_coroutine': self.is_coroutine,
                 'is_static': self.is_static,
                 'is_class': self.is_class,
                 'is_decorated': self.is_decorated,
@@ -507,6 +509,7 @@ class FuncDef(FuncItem, Statement):
         ret.is_property = data['is_property']
         ret.is_overload = data['is_overload']
         ret.is_generator = data['is_generator']
+        ret.is_coroutine = data['is_coroutine']
         ret.is_static = data['is_static']
         ret.is_class = data['is_class']
         ret.is_decorated = data['is_decorated']
@@ -798,6 +801,7 @@ class ForStmt(Statement):
     expr = None  # type: Expression
     body = None  # type: Block
     else_body = None  # type: Block
+    is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Expression, expr: Expression, body: Block,
                  else_body: Block) -> None:
@@ -908,6 +912,7 @@ class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Expression]
     body = None  # type: Block
+    is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Expression],
                  body: Block) -> None:
@@ -1703,6 +1708,18 @@ class PromoteExpr(Expression):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit__promote_expr(self)
+
+
+class AwaitExpr(Node):
+    """Await expression (await ...)."""
+
+    expr = None  # type: Node
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_await_expr(self)
 
 
 # Constants

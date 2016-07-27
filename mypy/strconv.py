@@ -199,8 +199,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_for_stmt(self, o):
-        a = [o.index]
-        a.extend([o.expr, o.body])
+        a = []
+        if o.is_async:
+            a.append(('Async', ''))
+        a.extend([o.index, o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
@@ -243,6 +245,9 @@ class StrConv(NodeVisitor[str]):
     def visit_yield_expr(self, o):
         return self.dump([o.expr], o)
 
+    def visit_await_expr(self, o):
+        return self.dump([o.expr], o)
+
     def visit_del_stmt(self, o):
         return self.dump([o.expr], o)
 
@@ -264,6 +269,8 @@ class StrConv(NodeVisitor[str]):
 
     def visit_with_stmt(self, o):
         a = []
+        if o.is_async:
+            a.append(('Async', ''))
         for i in range(len(o.expr)):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:

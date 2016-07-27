@@ -62,16 +62,16 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr,
-    INVARIANT, UNBOUND_IMPORTED
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
+    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef, Void,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
@@ -314,6 +314,13 @@ class SemanticAnalyzer(NodeVisitor):
             # Second phase of analysis for function.
             self.errors.push_function(defn.name())
             self.analyze_function(defn)
+            if defn.is_coroutine and isinstance(defn.type, CallableType):
+                # A coroutine defined as `async def foo(...) -> T: ...`
+                # has external return type `Awaitable[T]`.
+                defn.type = defn.type.copy_modified(
+                    ret_type=Instance(
+                        self.named_type_or_none('typing.Awaitable').type,
+                        [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -1821,7 +1828,10 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.is_func_scope():  # not sure
             self.fail("'yield from' outside function", e, True, blocker=True)
         else:
-            self.function_stack[-1].is_generator = True
+            if self.function_stack[-1].is_coroutine:
+                self.fail("'yield from' in async function", e, True, blocker=True)
+            else:
+                self.function_stack[-1].is_generator = True
         if e.expr:
             e.expr.accept(self)
 
@@ -2074,9 +2084,19 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.is_func_scope():
             self.fail("'yield' outside function", expr, True, blocker=True)
         else:
-            self.function_stack[-1].is_generator = True
+            if self.function_stack[-1].is_coroutine:
+                self.fail("'yield' in async function", expr, True, blocker=True)
+            else:
+                self.function_stack[-1].is_generator = True
         if expr.expr:
             expr.expr.accept(self)
+
+    def visit_await_expr(self, expr: AwaitExpr) -> None:
+        if not self.is_func_scope():
+            self.fail("'await' outside function", expr)
+        elif not self.function_stack[-1].is_coroutine:
+            self.fail("'await' outside coroutine ('async def')", expr)
+        expr.expr.accept(self)
 
     #
     # Helpers

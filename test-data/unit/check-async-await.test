@@ -1,0 +1,295 @@
+-- Tests for async def and await (PEP 492)
+-- ---------------------------------------
+
+[case testAsyncDefPass]
+# options: fast_parser
+async def f() -> int:
+    pass
+[builtins fixtures/async_await.py]
+
+[case testAsyncDefReturn]
+# options: fast_parser
+async def f() -> int:
+    return 0
+reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+[builtins fixtures/async_await.py]
+
+[case testAwaitCoroutine]
+# options: fast_parser
+async def f() -> int:
+    x = await f()
+    reveal_type(x)  # E: Revealed type is 'builtins.int*'
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAwaitDefaultContext]
+# options: fast_parser
+from typing import TypeVar
+T = TypeVar('T')
+async def f(x: T) -> T:
+    y = await f(x)
+    reveal_type(y)
+    return y
+[out]
+main: note: In function "f":
+main:6: error: Revealed type is 'T`-1'
+
+[case testAwaitAnyContext]
+# options: fast_parser
+from typing import Any, TypeVar
+T = TypeVar('T')
+async def f(x: T) -> T:
+    y = await f(x)  # type: Any
+    reveal_type(y)
+    return y
+[out]
+main: note: In function "f":
+main:6: error: Revealed type is 'Any'
+
+[case testAwaitExplicitContext]
+# options: fast_parser
+from typing import TypeVar
+T = TypeVar('T')
+async def f(x: T) -> T:
+    y = await f(x)  # type: int
+    reveal_type(y)
+[out]
+main: note: In function "f":
+main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
+main:6: error: Revealed type is 'builtins.int'
+
+[case testAwaitGeneratorError]
+# options: fast_parser
+from typing import Any, Generator
+def g() -> Generator[int, None, str]:
+    yield 0
+    return ''
+async def f() -> int:
+    x = await g()
+    return x
+[out]
+main: note: In function "f":
+main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type "Awaitable")
+
+[case testAwaitIteratorError]
+# options: fast_parser
+from typing import Any, Iterator
+def g() -> Iterator[Any]:
+    yield
+async def f() -> int:
+    x = await g()
+    return x
+[out]
+main: note: In function "f":
+main:6: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
+
+[case testAwaitArgumentError]
+# options: fast_parser
+def g() -> int:
+    return 0
+async def f() -> int:
+    x = await g()
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable")
+
+[case testAwaitResultError]
+# options: fast_parser
+async def g() -> int:
+    return 0
+async def f() -> str:
+    x = await g()  # type: str
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAwaitReturnError]
+# options: fast_parser
+async def g() -> int:
+    return 0
+async def f() -> str:
+    x = await g()
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:6: error: Incompatible return value type (got "int", expected "str")
+
+[case testAsyncFor]
+# options: fast_parser
+from typing import AsyncIterator
+class C(AsyncIterator[int]):
+    async def __anext__(self) -> int: return 0
+async def f() -> None:
+    async for x in C():
+        reveal_type(x)  # E: Revealed type is 'builtins.int*'
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncForError]
+# options: fast_parser
+from typing import AsyncIterator
+async def f() -> None:
+    async for x in [1]:
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:4: error: AsyncIterable expected
+main:4: error: List[int] has no attribute "__aiter__"
+
+[case testAsyncWith]
+# options: fast_parser
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:
+        reveal_type(x)  # E: Revealed type is 'builtins.int*'
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithError]
+# options: fast_parser
+class C:
+    def __enter__(self) -> int: pass
+    def __exit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
+main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
+
+[case testAsyncWithErrorBadAenter]
+# options: fast_parser
+class C:
+    def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable")
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithErrorBadAenter2]
+# options: fast_parser
+class C:
+    def __aenter__(self) -> None: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:  # E: "__aenter__" of "C" does not return a value
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithErrorBadAexit]
+# options: fast_parser
+class C:
+    async def __aenter__(self) -> int: pass
+    def __aexit__(self, x, y, z) -> int: pass
+async def f() -> None:
+    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable")
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testAsyncWithErrorBadAexit2]
+# options: fast_parser
+class C:
+    async def __aenter__(self) -> int: pass
+    def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x: # E: "__aexit__" of "C" does not return a value
+        pass
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+
+[case testNoYieldInAsyncDef]
+# options: fast_parser
+async def f():
+    yield None
+async def g():
+    yield
+async def h():
+    x = yield
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:3: error: 'yield' in async function
+main: note: In function "g":
+main:5: error: 'yield' in async function
+main: note: In function "h":
+main:7: error: 'yield' in async function
+
+[case testNoYieldFromInAsyncDef]
+# options: fast_parser
+async def f():
+    yield from []
+async def g():
+    x = yield from []
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "f":
+main:3: error: 'yield from' in async function
+main: note: In function "g":
+main:5: error: 'yield from' in async function
+
+[case testNoAsyncDefInPY2_python2]
+# options: fast_parser
+async def f():  # E: invalid syntax
+    pass
+
+[case testYieldFromNoAwaitable]
+# options: fast_parser
+from typing import Any, Generator
+async def f() -> str:
+    return ''
+def g() -> Generator[Any, None, str]:
+    x = yield from f()
+    return x
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "g":
+main:6: error: "yield from" can't be applied to Awaitable[str]
+
+[case testAwaitableSubclass]
+# options: fast_parser
+from typing import Any, AsyncIterator, Awaitable, Generator
+class A(Awaitable[int]):
+    def __await__(self) -> Generator[Any, None, int]:
+        yield
+        return 0
+class C:
+    def __aenter__(self) -> A:
+        return A()
+    def __aexit__(self, *a) -> A:
+        return A()
+class I(AsyncIterator[int]):
+    def __aiter__(self) -> 'I':
+        return self
+    def __anext__(self) -> A:
+        return A()
+async def main() -> None:
+    x = await A()
+    reveal_type(x)  # E: Revealed type is 'builtins.int'
+    async with C() as y:
+        reveal_type(y)  # E: Revealed type is 'builtins.int'
+    async for z in I():
+        reveal_type(z)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/async_await.py]
+[out]
+main: note: In function "main":
