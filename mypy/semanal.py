@@ -43,6 +43,7 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
+import sys
 from typing import (
     List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional, Callable
 )
@@ -64,7 +65,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -2781,23 +2782,166 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
         if alias.op == 'not':
             expr = alias.expr
             negated = True
+    result = TRUTH_VALUE_UNKNOWN
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
-    result = TRUTH_VALUE_UNKNOWN
-    if name == 'PY2':
-        result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
-    elif name == 'PY3':
-        result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-    elif name == 'MYPY':
-        result = ALWAYS_TRUE
+    else:
+        result = consider_sys_version_info(expr, pyversion)
+        if result == TRUTH_VALUE_UNKNOWN:
+            result = consider_sys_platform(expr, sys.platform)
+    if result == TRUTH_VALUE_UNKNOWN:
+        if name == 'PY2':
+            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
+        elif name == 'PY3':
+            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
+        elif name == 'MYPY':
+            result = ALWAYS_TRUE
     if negated:
         if result == ALWAYS_TRUE:
             result = ALWAYS_FALSE
         elif result == ALWAYS_FALSE:
             result = ALWAYS_TRUE
     return result
+
+
+def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
+    """Consider whether expr is a comparison involving sys.version_info.
+
+    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
+    """
+    # Cases supported:
+    # - sys.version_info[<int>] <compare_op> <int>
+    # - sys.version_info[:<int>] <compare_op> <tuple_of_n_ints>
+    # - sys.version_info <compare_op> <tuple_of_1_or_2_ints>
+    #   (in this case <compare_op> must be >, >=, <, <=, but cannot be ==, !=)
+    if not isinstance(expr, ComparisonExpr):
+        return TRUTH_VALUE_UNKNOWN
+    # Let's not yet support chained comparisons.
+    if len(expr.operators) > 1:
+        return TRUTH_VALUE_UNKNOWN
+    op = expr.operators[0]
+    if op not in ('==', '!=', '<=', '>=', '<', '>'):
+        return TRUTH_VALUE_UNKNOWN
+    thing = contains_int_or_tuple_of_ints(expr.operands[1])
+    if thing is None:
+        return TRUTH_VALUE_UNKNOWN
+    index = contains_sys_version_info(expr.operands[0])
+    if isinstance(index, int) and isinstance(thing, int):
+        # sys.version_info[i] <compare_op> k
+        if 0 <= index <= 1:
+            return fixed_comparison(pyversion[index], op, thing)
+        else:
+            return TRUTH_VALUE_UNKNOWN
+    elif isinstance(index, tuple) and isinstance(thing, tuple):
+        # Why doesn't mypy see that index can't be None here?
+        lo, hi = cast(tuple, index)
+        if lo is None:
+            lo = 0
+        if hi is None:
+            hi = 2
+        if 0 <= lo < hi <= 2:
+            val = pyversion[lo:hi]
+            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
+                return fixed_comparison(val, op, thing)
+    return TRUTH_VALUE_UNKNOWN
+
+
+def consider_sys_platform(expr: Node, platform: str) -> int:
+    """Consider whether expr is a comparison involving sys.platform.
+
+    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
+    """
+    # Cases supported:
+    # - sys.platform == 'posix'
+    # - sys.platform != 'win32'
+    # TODO: Maybe support e.g.:
+    # - sys.platform.startswith('win')
+    if not isinstance(expr, ComparisonExpr):
+        return TRUTH_VALUE_UNKNOWN
+    # Let's not yet support chained comparisons.
+    if len(expr.operators) > 1:
+        return TRUTH_VALUE_UNKNOWN
+    op = expr.operators[0]
+    if op not in ('==', '!='):
+        return TRUTH_VALUE_UNKNOWN
+    if not is_sys_attr(expr.operands[0], 'platform'):
+        return TRUTH_VALUE_UNKNOWN
+    right = expr.operands[1]
+    if not isinstance(right, (StrExpr, UnicodeExpr)):
+        return TRUTH_VALUE_UNKNOWN
+    return fixed_comparison(platform, op, right.value)
+
+
+Targ = TypeVar('Targ', int, str, Tuple[int, ...])
+
+
+def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
+    rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
+    if op == '==':
+        return rmap[left == right]
+    if op == '!=':
+        return rmap[left != right]
+    if op == '<=':
+        return rmap[left <= right]
+    if op == '>=':
+        return rmap[left >= right]
+    if op == '<':
+        return rmap[left < right]
+    if op == '>':
+        return rmap[left > right]
+    return TRUTH_VALUE_UNKNOWN
+
+
+def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
+    if isinstance(expr, IntExpr):
+        return expr.value
+    if isinstance(expr, TupleExpr):
+        if expr.literal == LITERAL_YES:
+            thing = []
+            for x in expr.items:
+                if not isinstance(x, IntExpr):
+                    return None
+                thing.append(x.value)
+            return tuple(thing)
+    return None
+
+
+def contains_sys_version_info(expr: Node) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
+    if is_sys_attr(expr, 'version_info'):
+        return (None, None)  # Same as sys.version_info[:]
+    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
+        index = expr.index
+        if isinstance(index, IntExpr):
+            return index.value
+        if isinstance(index, SliceExpr):
+            if index.stride is not None:
+                if not isinstance(index.stride, IntExpr) or index.stride.value != 1:
+                    return None
+            begin = end = None
+            if index.begin_index is not None:
+                if not isinstance(index.begin_index, IntExpr):
+                    return None
+                begin = index.begin_index.value
+            if index.end_index is not None:
+                if not isinstance(index.end_index, IntExpr):
+                    return None
+                end = index.end_index.value
+            return (begin, end)
+    return None
+
+
+def is_sys_attr(expr: Node, name: str) -> bool:
+    # TODO: This currently doesn't work with code like this:
+    # - import sys as _sys
+    # - from sys import version_info
+    if isinstance(expr, MemberExpr) and expr.name == name:
+        if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
+            # TODO: Guard against a local named sys, etc.
+            # (Though later passes will still do most checking.)
+            return True
+    return False
 
 
 def mark_block_unreachable(block: Block) -> None:

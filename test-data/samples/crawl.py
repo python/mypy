@@ -20,9 +20,10 @@ from typing import Any, Generator, IO, Optional, Sequence, Set, Tuple
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
-ARGS.add_argument(
-    '--iocp', action='store_true', dest='iocp',
-    default=False, help='Use IOCP event loop (Windows only)')
+if sys.platform == 'win32':
+    ARGS.add_argument(
+        '--iocp', action='store_true', dest='iocp',
+        default=False, help='Use IOCP event loop (Windows only)')
 ARGS.add_argument(
     '--select', action='store_true', dest='select',
     default=False, help='Use Select event loop instead of default')
@@ -824,9 +825,12 @@ def main() -> None:
     log = Logger(args.level)
 
     if args.iocp:
-        from asyncio import ProactorEventLoop
-        loop = ProactorEventLoop()  # type: ignore
-        asyncio.set_event_loop(loop)
+        if sys.platform == 'win32':
+            from asyncio import ProactorEventLoop
+            loop = ProactorEventLoop()  # type: ignore
+            asyncio.set_event_loop(loop)
+        else:
+            assert False
     elif args.select:
         loop = asyncio.SelectorEventLoop()  # type: ignore
         asyncio.set_event_loop(loop)
