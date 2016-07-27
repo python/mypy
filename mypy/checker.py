@@ -360,7 +360,7 @@ class TypeChecker(NodeVisitor[Type]):
             return AnyType()
         elif return_type.type.fullname() == 'typing.Generator':
             # Generator is one of the two types which specify the type of values it returns into
-            # `yield from` expressions (using a `return` statements).
+            # `yield from` expressions (using a `return` statement).
             if len(return_type.args) == 3:
                 return return_type.args[2]
             else:
@@ -377,8 +377,11 @@ class TypeChecker(NodeVisitor[Type]):
             # type when used in a `yield from` expression.
             return AnyType()
 
-    def get_awaitable_return_type(self, t: Type, ctx: Context, msg: str) -> Type:
-        """Given a type t, verify that it is a subtype of Awaitable[tr] and return tr."""
+    def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
+        """Check the argument to `await` and extract the type of value.
+
+        Also used by `async for` and `async with`.
+        """
         if not self.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
                                   msg, 'actual type', 'expected type'):
             return AnyType()
@@ -1700,8 +1703,8 @@ class TypeChecker(NodeVisitor[Type]):
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
         awaitable = echk.check_call(method, [], [], expr)[0]
-        return self.get_awaitable_return_type(awaitable, expr,
-                                              messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        return self.check_awaitable_expr(awaitable, expr,
+                                         messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
 
     def analyze_iterable_item_type(self, expr: Node) -> Type:
         """Analyse iterable expression and return iterator item type."""
@@ -1821,14 +1824,14 @@ class TypeChecker(NodeVisitor[Type]):
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
         obj = echk.check_call(enter, [], [], expr)[0]
-        obj = self.get_awaitable_return_type(
+        obj = self.check_awaitable_expr(
             obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
             self.check_assignment(target, self.temp_node(obj, expr))
         exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
         res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
-        self.get_awaitable_return_type(
+        self.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
     def check_with_item(self, expr: Expression, target: Expression) -> None:
@@ -2036,7 +2039,7 @@ class TypeChecker(NodeVisitor[Type]):
         actual_type = self.accept(e.expr, expected_type)
         if isinstance(actual_type, AnyType):
             return AnyType()
-        return self.get_awaitable_return_type(actual_type, e, messages.INCOMPATIBLE_TYPES_IN_AWAIT)
+        return self.check_awaitable_expr(actual_type, e, messages.INCOMPATIBLE_TYPES_IN_AWAIT)
 
     #
     # Helpers
