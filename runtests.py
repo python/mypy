@@ -201,7 +201,7 @@ PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
 
 def add_pytest(driver: Driver) -> None:
     for f in PYTEST_FILES:
-        driver.add_pytest(f, [f])
+        driver.add_pytest(f, [f] + driver.arglist)
 
 
 def add_myunit(driver: Driver) -> None:
