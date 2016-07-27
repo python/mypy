@@ -223,6 +223,8 @@ foo() + 0
 [out]
 
 [case testSysVersionInfoSliced8]
+# Our pyversion only has (major, minor),
+# so testing for (major, minor, bugfix) is unsupported.
 import sys
 if sys.version_info >= (3, 5, 0):
     def foo() -> int: return 0
@@ -232,6 +234,8 @@ else:
 [out]
 
 [case testSysVersionInfoSliced9]
+# Our pyversion only has (major, minor),
+# so testing for (minor, bugfix) is unsupported (also it's silly :-).
 import sys
 if sys.version_info[1:] >= (5, 0):
     def foo() -> int: return 0
@@ -242,7 +246,7 @@ else:
 
 [case testSysPlatform1]
 import sys
-if sys.platform == 'win32':
+if sys.platform == 'fictional':
     def foo() -> int: return 0
 else:
     def foo() -> str: return ''
@@ -252,7 +256,7 @@ foo() + ''
 
 [case testSysPlatform2]
 import sys
-if sys.platform != 'win32':
+if sys.platform != 'fictional':
     def foo() -> int: return 0
 else:
     def foo() -> str: return ''
@@ -262,10 +266,78 @@ foo() + 0
 
 [case testSysPlatformNegated]
 import sys
-if not (sys.platform == 'win32'):
+if not (sys.platform == 'fictional'):
     def foo() -> int: return 0
 else:
     def foo() -> str: return ''
 foo() + 0
 [builtins fixtures/ops.py]
 [out]
+
+[case testSysVersionInfoClass]
+import sys
+if sys.version_info < (3, 5):
+    class C:
+        pass
+else:
+    class C:
+        def foo(self) -> int: return 0
+C().foo() + 0
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoImport]
+import sys
+if sys.version_info >= (3, 5):
+    import collections
+else:
+    collections = None
+Pt = collections.namedtuple('Pt', 'x y z')
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoVariable]
+import sys
+if sys.version_info >= (3, 5):
+    x = ''
+else:
+    x = 0
+x + ''
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoInClass]
+import sys
+class C:
+    if sys.version_info >= (3, 5):
+        def foo(self) -> int: return 0
+    else:
+        def foo(self) -> str: return ''
+reveal_type(C().foo())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.py]
+[out]
+
+[case testSysVersionInfoInFunction]
+import sys
+def foo() -> None:
+    if sys.version_info >= (3, 5):
+        x = ''
+    else:
+        x = 0
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.py]
+[out]
+main: note: In function "foo":
+
+[case testSysVersionInfoInMethod]
+import sys
+class C:
+    def foo(self) -> None:
+        if sys.platform != 'fictional':
+            x = ''
+        else:
+            x = 0
+        reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.py]
+[out]
+main: note: In member "foo" of class "C":
