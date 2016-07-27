@@ -76,7 +76,9 @@ class LineCountReporter(AbstractReporter):
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
-        physical_lines = len(open(tree.path).readlines())
+        # Count physical lines.  This assumes the file's encoding is a
+        # superset of ASCII (or at least uses \n in its line endings).
+        physical_lines = len(open(tree.path, 'rb').readlines())
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
