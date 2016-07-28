@@ -425,6 +425,124 @@ A type alias does not create a new type. It's just a shorthand notation
 for another type -- it's equivalent to the target type. Type aliases
 can be imported from modules like any names.
 
+.. _newtypes:
+
+NewTypes
+********
+
+(Freely after `PEP 484
+<https://www.python.org/dev/peps/pep-0484/#newtype-helper-function>`_.)
+
+There are also situations where a programmer might want to avoid logical errors by
+creating simple classes. For example:
+
+.. code-block:: python
+
+    class UserId(int):
+        pass
+
+    get_by_user_id(user_id: UserId):
+        ...
+
+However, this approach introduces some runtime overhead. To avoid this, the typing
+module provides a helper function ``NewType`` that creates simple unique types with
+almost zero runtime overhead. Mypy will treat the statement
+``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
+definition:
+
+.. code-block:: python
+
+    class Derived(Base):
+        def __init__(self, _x: Base) -> None:
+            ...
+
+However, at runtime, ``NewType('Derived', Base)`` will return a dummy function that
+simply returns its argument:
+
+.. code-block:: python
+
+    def Derived(_x):
+        return _x
+
+Mypy will require explicit casts from ``int`` where ``UserId`` is expected, while
+implicitly casting from ``UserId`` where ``int`` is expected. Examples:
+
+.. code-block:: python
+
+    from typing import NewType
+
+    UserId = NewType('UserId', int)
+
+    def name_by_id(user_id: UserId) -> str:
+        ...
+
+    UserId('user')          # Fails type check
+
+    name_by_id(42)          # Fails type check
+    name_by_id(UserId(42))  # OK
+
+    num = UserId(5) + 1     # type: int
+
+``NewType`` accepts exactly two arguments. The first argument must be a string literal
+containing the name of the new type and must equal the name of the variable to which the new
+type is assigned. The second argument must be a properly subclassable class, i.e.,
+not a type construct like ``Union``, etc.
+
+The function returned by ``NewType`` accepts only one argument; this is equivalent to
+supporting only one constructor accepting an instance of the base class (see above).
+Example:
+
+.. code-block:: python
+
+    from typing import NewType
+
+    class PacketId:
+        def __init__(self, major: int, minor: int) -> None:
+            self._major = major
+            self._minor = minor
+
+    TcpPacketId = NewType('TcpPacketId', PacketId)
+
+    packet = PacketId(100, 100)
+    tcp_packet = TcpPacketId(packet)  # OK
+
+    tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
+
+Both ``isinstance`` and ``issubclass``, as well as subclassing will fail for
+``NewType('Derived', Base)`` since function objects don't support these operations.
+
+.. note::
+
+    Note that unlike type aliases, ``NewType`` will create an entirely new and
+    unique type when used. The intended purpose of ``NewType`` is to help you
+    detect cases where you accidentally mixed together the old base type and the
+    new derived type.
+
+    For example, the following will successfully typecheck when using type
+    aliases:
+
+    .. code-block:: python
+
+        UserId = int
+
+        def name_by_id(user_id: UserId) -> str:
+            ...
+
+        name_by_id(3)  # ints and UserId are synonymous
+
+    But a similar example using ``NewType`` will not typecheck:
+
+    .. code-block:: python
+
+        from typing import NewType
+
+        UserId = NewType('UserId', int)
+
+        def name_by_id(user_id: UserId) -> str:
+            ...
+
+        name_by_id(3)  # int is not the same as UserId
+
 .. _named-tuples:
 
 Named tuples

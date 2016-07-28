@@ -15,7 +15,7 @@ from mypy.nodes import (
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
-    SymbolTable, RefExpr, TypeVarExpr, PromoteExpr,
+    SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
@@ -452,6 +452,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
         return TypeAliasExpr(node.type)
+
+    def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
+        return NewTypeExpr(node.info)
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> Node:
         return NamedTupleExpr(node.info)
