@@ -24,15 +24,3 @@ T = TypeVar('T')
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
 
 True = bool()
-
-class list(Iterable[T], Generic[T]):
-    @overload
-    def __init__(self) -> None: pass
-    @overload
-    def __init__(self, x: Iterable[T]) -> None: pass
-    def __iter__(self) -> Iterator[T]: pass
-    def __mul__(self, x: int) -> list[T]: pass
-    def __add__(self, x: list[T]) -> list[T]: pass
-    def __getitem__(self, x: int) -> T: pass
-    def append(self, x: T) -> None: pass
-    def extend(self, x: Iterable[T]) -> None: pass

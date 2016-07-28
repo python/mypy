@@ -39,15 +39,19 @@ tcp_packet = TcpPacketId(127, 0)
 main:12: error: Too many arguments for "TcpPacketId"
 main:12: error: Argument 1 to "TcpPacketId" has incompatible type "int"; expected "PacketId"
 
-[case testNewTypeWithCompositeTypes]
-from typing import NewType, Tuple, List
+[case testNewTypeWithTuples]
+from typing import NewType, Tuple
 TwoTuple = NewType('TwoTuple', Tuple[int, str])
 a = TwoTuple((3, "a"))
 b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
 
 reveal_type(a[0])  # E: Revealed type is 'builtins.int'
 reveal_type(a[1])  # E: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.py]
+[out]
 
+[case testNewTypeWithLists]
+from typing import NewType, List
 UserId = NewType('UserId', int)
 IdList = NewType('IdList', List[UserId])
 
@@ -65,7 +69,7 @@ reveal_type(foo)  # E: Revealed type is '__main__.IdList'
 reveal_type(bar)  # E: Revealed type is '__main__.IdList'
 reveal_type(baz)  # E: Revealed type is 'builtins.list[__main__.UserId*]'
 
-[builtins fixtures/tuple.py]
+[builtins fixtures/list.py]
 [out]
 
 [case testNewTypeWithGenerics]
@@ -99,30 +103,26 @@ reveal_type(Derived3(Base('a')).getter())  # E: Revealed type is 'Any'
 from collections import namedtuple
 from typing import NewType, NamedTuple
 
-Vector1 = namedtuple('Vector1', ['x', 'y', 'z'])
+Vector1 = namedtuple('Vector1', ['x', 'y'])
 Point1 = NewType('Point1', Vector1)
-p1 = Point1(Vector1(1, 2, 3))
+p1 = Point1(Vector1(1, 2))
 reveal_type(p1.x)  # E: Revealed type is 'Any'
 reveal_type(p1.y)  # E: Revealed type is 'Any'
-reveal_type(p1.z)  # E: Revealed type is 'Any'
 
-Vector2 = NamedTuple('Vector2', [('x', int), ('y', int), ('z', int)])
+Vector2 = NamedTuple('Vector2', [('x', int), ('y', int)])
 Point2 = NewType('Point2', Vector2)
-p2 = Point2(Vector2(1, 2, 3))
+p2 = Point2(Vector2(1, 2))
 reveal_type(p2.x)  # E: Revealed type is 'builtins.int'
 reveal_type(p2.y)  # E: Revealed type is 'builtins.int'
-reveal_type(p2.z)  # E: Revealed type is 'builtins.int'
 
 class Vector3:
-    def __init__(self, x: int, y: int, z: int) -> None:
+    def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
-        self.z = z
 Point3 = NewType('Point3', Vector3)
-p3 = Point3(Vector3(1, 3, 3))
+p3 = Point3(Vector3(1, 3))
 reveal_type(p3.x)  # E: Revealed type is 'builtins.int'
 reveal_type(p3.y)  # E: Revealed type is 'builtins.int'
-reveal_type(p3.z)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testNewTypeWithCasts]
@@ -138,12 +138,21 @@ foo = cast(UserId, UserId(4))
 from typing import NewType
 Foo = int
 Bar = NewType('Bar', Foo)
+Bar2 = Bar
 
 def func1(x: Foo) -> Bar:
     return Bar(x)
 
 def func2(x: int) -> Bar:
     return Bar(x)
+
+def func3(x: Bar2) -> Bar:
+    return x
+
+x = Bar(42)
+y = Bar2(42)
+
+y = func3(x)
 [out]
 
 
@@ -158,7 +167,7 @@ def func() -> None:
     A = NewType('A', str)
     B = NewType('B', str)
 
-    a = A(3)
+    a = A(3)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
     a = A('xyz')
     b = B('xyz')
 
@@ -172,7 +181,6 @@ b = A(3)
 c = MyClass.C(3.5)
 [out]
 main: note: In function "func":
-main:9: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 
 [case testNewTypeInMultipleFiles]
 import a
@@ -234,20 +242,14 @@ tmp/m.py:14: error: Revealed type is 'builtins.int'
 [case testNewTypeBadInitializationFails]
 from typing import NewType
 
-a = NewType('b', int)
-b = NewType('b', 3)
-c = NewType(2, int)
+a = NewType('b', int)  # E: Argument 1 to NewType(...) does not match variable name
+b = NewType('b', 3)  # E: Argument 2 to NewType(...) must be a valid type
+c = NewType(2, int)  # E: Argument 1 to NewType(...) must be a string literal
 foo = "d"
-d = NewType(foo, int)
-e = NewType(name='e', tp=int)
-f = NewType('f', tp=int)
+d = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
+e = NewType(name='e', tp=int)  # E: NewType(...) expects exactly two positional arguments
+f = NewType('f', tp=int)  # E: NewType(...) expects exactly two positional arguments
 [out]
-main:3: error: Argument 1 to NewType(...) does not match variable name
-main:4: error: Argument 2 to NewType(...) must be a valid type
-main:5: error: Argument 1 to NewType(...) must be a string literal
-main:7: error: Argument 1 to NewType(...) must be a string literal
-main:8: error: NewType(...) expects exactly two positional arguments
-main:9: error: NewType(...) expects exactly two positional arguments
 
 [case testNewTypeWithAnyFails]
 from typing import NewType, Any
@@ -293,7 +295,7 @@ a = 3
 a = NewType('a', int)
 
 b = NewType('b', int)
-b = NewType('b', float)
+b = NewType('b', float)  # this line throws two errors
 
 c = NewType('c', str)   # type: str
 [out]
@@ -301,6 +303,13 @@ main:4: error: Cannot redefine 'a' as a NewType
 main:7: error: Invalid assignment target
 main:7: error: Cannot redefine 'b' as a NewType
 main:9: error: Cannot declare the type of a NewType declaration
+
+[case testNewTypeAddingExplicitTypesFails]
+from typing import NewType
+UserId = NewType('UserId', int)
+
+a = 3  # type: UserId  # E: Incompatible types in assignment (expression has type "int", variable has type "UserId")
+[out]
 
 [case testNewTypeTestSubclassingFails]
 from typing import NewType
