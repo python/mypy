@@ -461,7 +461,7 @@ simply returns its argument:
 
 .. code-block:: python
 
-    def Derived(_x: Base) -> Base:
+    def Derived(_x):
         return _x
 
 Mypy will require explicit casts from ``int`` where ``UserId`` is expected, while
@@ -483,9 +483,9 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
 
     num = UserId(5) + 1     # type: int
 
-``NewType`` accepts exactly two arguments. The first argument must be a string containing
-the name of the new type and must equal the name of the variable to which the new type is
-assigned. The second argument must be a properly subclassable class, i.e.,
+``NewType`` accepts exactly two arguments. The first argument must be a string literal
+containing the name of the new type and must equal the name of the variable to which the new
+type is assigned. The second argument must be a properly subclassable class, i.e.,
 not a type construct like ``Union``, etc.
 
 The function returned by ``NewType`` accepts only one argument; this is equivalent to

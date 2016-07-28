@@ -1,6 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, overload
+from typing import Iterable, TypeVar, Generic, Sequence
 
 Tco = TypeVar('Tco', covariant=True)
 
