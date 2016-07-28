@@ -71,7 +71,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef, TypeType, Void,
+    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef, Void,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
@@ -1294,16 +1294,11 @@ class SemanticAnalyzer(NodeVisitor):
     def process_newtype_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a NewType; if yes, store it in symbol table."""
         # Extract and check all information from newtype declaration
-        call = self.get_newtype_declaration(s)
-        if call is None:
-            return
-        call.analyzed = NewTypeExpr(None).set_line(call.line)
-
-        name = self.get_newtype_name(s)
-        if name is None:
+        name, call = self.analyze_newtype_declaration(s)
+        if name is None or call is None:
             return
 
-        old_type = self.check_newtype_args(call, name, s)
+        old_type = self.check_newtype_args(name, call, s)
         if old_type is None:
             return
 
@@ -1320,51 +1315,49 @@ class SemanticAnalyzer(NodeVisitor):
 
         # If so, add it to the symbol table.
         node = self.lookup(name, s)
+        if node is None:
+            self.fail("Could not find {} in current namespace".format(name), s)
+            return
         # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
         node.node = newtype_class_info
         call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
 
-    def get_newtype_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
-        """Returns the Newtype() call statement if `s` is a newtype declaration
-        or None otherwise."""
-        # TODO: determine if this and get_typevar_declaration should be refactored
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return None
-        if not isinstance(s.rvalue, CallExpr):
-            return None
-        call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return None
-        callee = call.callee
-        if callee.fullname != 'typing.NewType':
-            return None
-        return call
+    def analyze_newtype_declaration(self,
+            s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
+        """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
+        name, call = None, None
+        if (len(s.lvalues) == 1
+                and isinstance(s.lvalues[0], NameExpr)
+                and isinstance(s.rvalue, CallExpr)
+                and isinstance(s.rvalue.callee, RefExpr)
+                and s.rvalue.callee.fullname == 'typing.NewType'):
+            lvalue = s.lvalues[0]
+            name = s.lvalues[0].name
+            if not lvalue.is_def:
+                if s.type:
+                    self.fail("Cannot declare the type of a NewType declaration", s)
+                else:
+                    self.fail("Cannot redefine '%s' as a NewType" % name, s)
 
-    def get_newtype_name(self, s: AssignmentStmt) -> Optional[str]:
-        lvalue = cast(NameExpr, s.lvalues[0])
-        name = lvalue.name
-        if not lvalue.is_def:
-            if s.type:
-                self.fail("Cannot declare the type of a NewType declaration", s)
-            else:
-                self.fail("Cannot redefine '%s' as a NewType" % name, s)
-            return None
-        return name
+            # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
+            # overwritten later with a fully complete NewTypeExpr if there are no other
+            # errors with the NewType() call.
+            call = s.rvalue
+            call.analyzed = NewTypeExpr(None).set_line(call.line)
 
-    def check_newtype_args(self, call: CallExpr, name: str, context: Context) -> Optional[Type]:
+        return name, call
+    
+    def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
         has_failed = False
-        args = call.args
-        if len(args) != 2:
-            self.fail("NewType(...) expects exactly two arguments", context)
+        args, arg_kinds = call.args, call.arg_kinds
+        if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
+            self.fail("NewType(...) expects exactly two positional arguments", context)
             return None
 
         # Check first argument
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
-            has_failed = True
-        elif call.arg_kinds[0] != ARG_POS:
-            self.fail("Argument 1 to NewType(...) must be a positional string literal", context)
             has_failed = True
         elif cast(StrExpr, call.args[0]).value != name:
             self.fail("Argument 1 to NewType(...) does not match variable name", context)
@@ -1372,18 +1365,17 @@ class SemanticAnalyzer(NodeVisitor):
 
         # Check second argument
         try:
-            value = self.anal_type(expr_to_unanalyzed_type(call.args[1]))
+            unanalyzed_type = expr_to_unanalyzed_type(call.args[1])
         except TypeTranslationError:
             self.fail("Argument 2 to NewType(...) must be a valid type", context)
             return None
+        old_type = self.anal_type(unanalyzed_type)
 
-        if call.arg_kinds[1] != ARG_POS:
-            self.fail("Argument 2 to NewType(...) must be a positional type", context)
-            has_failed = True
-        elif isinstance(value, Instance) and value.type.is_newtype:
+        if isinstance(old_type, Instance) and old_type.type.is_newtype:
             self.fail("Argument 2 to NewType(...) cannot be another NewType", context)
+            has_failed = True
 
-        return None if has_failed else value
+        return None if has_failed else old_type
 
     def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
