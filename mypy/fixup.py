@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, cast
 
 from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
-                        TypeVarExpr, NewTypeExpr, ClassDef,
+                        TypeVarExpr, ClassDef,
                         LDEF, MDEF, GDEF, MODULE_REF)
 from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
                         TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
@@ -122,9 +122,6 @@ class NodeFixer(NodeVisitor[None]):
         for value in tv.values:
             value.accept(self.type_fixer)
         tv.upper_bound.accept(self.type_fixer)
-
-    def visit_newtype_expr(self, nt: NewTypeExpr) -> None:
-        raise NotImplemented()
 
     def visit_var(self, v: Var) -> None:
         if self.current_info is not None:

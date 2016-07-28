@@ -1989,7 +1989,7 @@ class TypeInfo(SymbolNode):
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'is_named_tuple': self.is_named_tuple,
-                'is_newtype': self.is_newtype
+                'is_newtype': self.is_newtype,
                 }
         return data
 
