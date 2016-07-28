@@ -11,6 +11,7 @@ docs/build/
 .venv/
 .mypy_cache/
 .incremental_checker_cache.json
+.cache
 
 # Packages
 *.egg
