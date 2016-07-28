@@ -1919,14 +1919,20 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_tuple_expr(self, expr: TupleExpr) -> None:
         for item in expr.items:
+            if isinstance(item, StarExpr):
+                item.valid = True
             item.accept(self)
 
     def visit_list_expr(self, expr: ListExpr) -> None:
         for item in expr.items:
+            if isinstance(item, StarExpr):
+                item.valid = True
             item.accept(self)
 
     def visit_set_expr(self, expr: SetExpr) -> None:
         for item in expr.items:
+            if isinstance(item, StarExpr):
+                item.valid = True
             item.accept(self)
 
     def visit_dict_expr(self, expr: DictExpr) -> None:
@@ -1936,6 +1942,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
+            # XXX TODO Change this error message
             self.fail('Can use starred expression only as assignment target', expr)
         else:
             expr.expr.accept(self)

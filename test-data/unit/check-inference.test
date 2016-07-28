@@ -809,6 +809,14 @@ s = s_i()
 s = s_s() # E: Incompatible types in assignment (expression has type Set[str], variable has type Set[int])
 [builtins fixtures/set.py]
 
+[case testSetWithStarExpr]
+# options: fast_parser
+s = {1, 2, *(3, 4)}
+t = {1, 2, *s}
+reveal_type(s)  # E: Revealed type is 'builtins.set[builtins.int*]'
+reveal_type(t)  # E: Revealed type is 'builtins.set[builtins.int*]'
+[builtins fixtures/set.py]
+
 
 -- For statements
 -- --------------

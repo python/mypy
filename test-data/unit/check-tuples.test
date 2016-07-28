@@ -768,3 +768,9 @@ a = ()
 from typing import Sized
 a = None  # type: Sized
 a = ()
+
+[case testTupleWithStarExpr]
+# options: fast_parser
+a = (1, 2)
+b = (*a, '', '')
+reveal_type(b)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, builtins.str, builtins.str]'

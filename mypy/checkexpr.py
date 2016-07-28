@@ -14,7 +14,7 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2
 )
 from mypy.nodes import function_type
@@ -1306,28 +1306,45 @@ class ExpressionChecker:
             name=tag,
             variables=[tvdef])
         return self.check_call(constructor,
-                               items,
-                               [nodes.ARG_POS] * len(items), context)[0]
+                               [(i.expr if isinstance(i, StarExpr) else i)
+                                for i in items],
+                               [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS)
+                                for i in items],
+                               context)[0]
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         ctx = None  # type: TupleType
-        # Try to determine type context for type inference.
-        if isinstance(self.chk.type_context[-1], TupleType):
-            t = self.chk.type_context[-1]
-            if len(t.items) == len(e.items):
-                ctx = t
+        if not any(isinstance(i, StarExpr) for i in e.items):
+            # Try to determine type context for type inference.
+            if isinstance(self.chk.type_context[-1], TupleType):
+                t = self.chk.type_context[-1]
+                if len(t.items) == len(e.items):
+                    ctx = t
         # Infer item types.
+        staritems = []  # type: List[Type]
         items = []  # type: List[Type]
         for i in range(len(e.items)):
             item = e.items[i]
             tt = None  # type: Type
-            if not ctx:
-                tt = self.accept(item)
+            if isinstance(item, StarExpr):
+                assert ctx is None
+                tt = self.accept(item.expr)
+                self.check_not_void(tt, e)
+                if isinstance(tt, TupleType):
+                    items.extend(tt.items)
+                else:
+                    staritems.append(tt)
             else:
-                tt = self.accept(item, ctx.items[i])
-            self.check_not_void(tt, e)
-            items.append(tt)
+                if not ctx:
+                    tt = self.accept(item)
+                else:
+                    tt = self.accept(item, ctx.items[i])
+                self.check_not_void(tt, e)
+                items.append(tt)
+        if staritems:
+            # XXX Should do better!
+            return self.chk.named_generic_type('builtins.tuple', [AnyType()])
         fallback_item = join.join_type_list(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
