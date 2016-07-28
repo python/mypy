@@ -1286,15 +1286,17 @@ class ExpressionChecker:
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
-        return self.check_list_or_set_expr(e.items, 'builtins.list', '<list>',
-                                           e)
+        return self.check_lst_expr(e.items, 'builtins.list', '<list>', e)
 
     def visit_set_expr(self, e: SetExpr) -> Type:
-        return self.check_list_or_set_expr(e.items, 'builtins.set', '<set>', e)
+        return self.check_lst_expr(e.items, 'builtins.set', '<set>', e)
 
-    def check_list_or_set_expr(self, items: List[Node], fullname: str,
-                               tag: str, context: Context) -> Type:
+    def check_lst_expr(self, items: List[Node], fullname: str,
+                       tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
+        # Used for list and set expressions, as well as for tuples
+        # containing star expressions that don't refer to a
+        # Tuple. (Note: "lst" stands for list-set-tuple. :-)
         tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
         tv = TypeVarType(tvdef)
         constructor = CallableType(
@@ -1315,36 +1317,45 @@ class ExpressionChecker:
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         ctx = None  # type: TupleType
-        if not any(isinstance(i, StarExpr) for i in e.items):
-            # Try to determine type context for type inference.
-            if isinstance(self.chk.type_context[-1], TupleType):
-                t = self.chk.type_context[-1]
-                if len(t.items) == len(e.items):
-                    ctx = t
-        # Infer item types.
-        staritems = []  # type: List[Type]
+        # Try to determine type context for type inference.
+        if isinstance(self.chk.type_context[-1], TupleType):
+            t = self.chk.type_context[-1]
+            ctx = t
+        # NOTE: it's possible for the context to have a different
+        # number of items than e.  In that case we use those context
+        # items that match a position in e, and we'll worry about type
+        # mismatches later.
+
+        # Infer item types.  Give up if there's a star expression
+        # that's not a Tuple.
         items = []  # type: List[Type]
+        j = 0  # Index into ctx.items; irrelevant if ctx is None.
         for i in range(len(e.items)):
             item = e.items[i]
             tt = None  # type: Type
             if isinstance(item, StarExpr):
-                assert ctx is None
+                # Special handling for star expressions.
+                # TODO: If there's a context, and item.expr is a
+                # TupleExpr, flatten it, so we can benefit from the
+                # context?  Counterargument: Why would anyone write
+                # (1, *(2, 3)) instead of (1, 2, 3) except in a test?
                 tt = self.accept(item.expr)
                 self.check_not_void(tt, e)
                 if isinstance(tt, TupleType):
                     items.extend(tt.items)
+                    j += len(tt.items)
                 else:
-                    staritems.append(tt)
+                    # A star expression that's not a Tuple.
+                    # Treat the whole thing as a variable-length tuple.
+                    return self.check_lst_expr(e.items, 'builtins.tuple', '<tuple>', e)
             else:
-                if not ctx:
+                if not ctx or j >= len(ctx.items):
                     tt = self.accept(item)
                 else:
-                    tt = self.accept(item, ctx.items[i])
+                    tt = self.accept(item, ctx.items[j])
+                    j += 1
                 self.check_not_void(tt, e)
                 items.append(tt)
-        if staritems:
-            # XXX Should do better!
-            return self.chk.named_generic_type('builtins.tuple', [AnyType()])
         fallback_item = join.join_type_list(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
