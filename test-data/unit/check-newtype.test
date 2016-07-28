@@ -246,9 +246,8 @@ main:3: error: Argument 1 to NewType(...) does not match variable name
 main:4: error: Argument 2 to NewType(...) must be a valid type
 main:5: error: Argument 1 to NewType(...) must be a string literal
 main:7: error: Argument 1 to NewType(...) must be a string literal
-main:8: error: Argument 1 to NewType(...) must be a positional string literal
-main:8: error: Argument 2 to NewType(...) must be a positional type
-main:9: error: Argument 2 to NewType(...) must be a positional type
+main:8: error: NewType(...) expects exactly two positional arguments
+main:9: error: NewType(...) expects exactly two positional arguments
 
 [case testNewTypeWithAnyFails]
 from typing import NewType, Any
