@@ -10,10 +10,15 @@ docs/build/
 /out/
 .venv/
 .mypy_cache/
+.incremental_checker_cache.json
 
 # Packages
 *.egg
 *.egg-info
 
-#IDEs
+# IDEs
 .idea
+*.swp
+
+# Operating Systems
+.DS_store
