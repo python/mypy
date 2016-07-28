@@ -1347,7 +1347,7 @@ class SemanticAnalyzer(NodeVisitor):
             call.analyzed = NewTypeExpr(None).set_line(call.line)
 
         return name, call
-    
+
     def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
         has_failed = False
         args, arg_kinds = call.args, call.arg_kinds
@@ -1391,12 +1391,12 @@ class SemanticAnalyzer(NodeVisitor):
         args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
                 self.make_argument('item', old_type)]
         signature = CallableType(
-            arg_types = [cast(Type, None), old_type],
-            arg_kinds = [arg.kind for arg in args],
-            arg_names = ['self', 'item'],
-            ret_type = old_type,
-            fallback = self.named_type('__builtins__.function'),
-            name = name)
+            arg_types=[cast(Type, None), old_type],
+            arg_kinds=[arg.kind for arg in args],
+            arg_names=['self', 'item'],
+            ret_type=old_type,
+            fallback=self.named_type('__builtins__.function'),
+            name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
         symbols['__init__'] = SymbolTableNode(MDEF, init_func)

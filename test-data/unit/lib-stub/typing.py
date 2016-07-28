@@ -78,4 +78,3 @@ def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):
         return x
     return new_type
-
