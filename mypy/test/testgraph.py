@@ -40,7 +40,8 @@ class GraphSuite(Suite):
             source_set=None,
             reports=None,
             options=Options(),
-            version_id=__version__)
+            version_id=__version__,
+        )
         return manager
 
     def test_sorted_components(self) -> None:

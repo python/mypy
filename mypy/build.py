@@ -722,7 +722,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
-        meta.get('version_id')
+        meta.get('version_id'),
     )
     if (m.id != id or m.path != path or
             m.mtime is None or m.size is None or
