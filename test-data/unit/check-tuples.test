@@ -768,3 +768,43 @@ a = ()
 from typing import Sized
 a = None  # type: Sized
 a = ()
+
+[case testTupleWithStarExpr1]
+# options: fast_parser
+a = (1, 2)
+b = (*a, '')
+reveal_type(b)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, builtins.str]'
+
+[case testTupleWithStarExpr2]
+a = [1]
+b = (0, *a)
+reveal_type(b)  # E: Revealed type is 'builtins.tuple[builtins.int*]'
+[builtins fixtures/tuple.py]
+
+[case testTupleWithStarExpr3]
+a = ['']
+b = (0, *a)
+reveal_type(b)  # E: Revealed type is 'builtins.tuple[builtins.object*]'
+c = (*a, '')
+reveal_type(c)  # E: Revealed type is 'builtins.tuple[builtins.str*]'
+[builtins fixtures/tuple.py]
+
+[case testTupleWithStarExpr4]
+a = (1, 1, 'x', 'x')
+b = (1, 'x')
+a = (0, *b, '')
+[builtins fixtures/tuple.py]
+
+[case testTupleWithUndersizedContext]
+a = ([1], 'x')
+a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
+[builtins fixtures/tuple.py]
+
+[case testTupleWithOversizedContext]
+a = (1, [1], 'x')
+a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[int, List[int]]", variable has type "Tuple[int, List[int], str]")
+[builtins fixtures/tuple.py]
+
+[case testTupleWithoutContext]
+a = (1, [])  # E: Need type annotation for variable
+[builtins fixtures/tuple.py]

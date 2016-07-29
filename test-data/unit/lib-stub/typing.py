@@ -70,7 +70,7 @@ class AsyncIterator(AsyncIterable[T], Generic[T]):
     @abstractmethod
     def __anext__(self) -> Awaitable[T]: pass
 
-class Sequence(Generic[T]):
+class Sequence(Iterable[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
 

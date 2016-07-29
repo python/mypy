@@ -486,12 +486,8 @@ b = 1
 c = 1
 d = 1
 a = *b
-a = b, (c, *d)
-a = [1, *[2]]
 [out]
 main:4: error: Can use starred expression only as assignment target
-main:5: error: Can use starred expression only as assignment target
-main:6: error: Can use starred expression only as assignment target
 
 [case testStarExpressionInExp]
 a = 1
