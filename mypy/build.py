@@ -173,7 +173,8 @@ def build(sources: List[BuildSource],
                            source_set=source_set,
                            reports=reports,
                            options=options,
-                           version_id=__version__)
+                           version_id=__version__,
+                           )
 
     try:
         dispatch(sources, manager)
