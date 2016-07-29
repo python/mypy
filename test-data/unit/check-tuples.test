@@ -785,6 +785,8 @@ reveal_type(b)  # E: Revealed type is 'builtins.tuple[builtins.int*]'
 a = ['']
 b = (0, *a)
 reveal_type(b)  # E: Revealed type is 'builtins.tuple[builtins.object*]'
+c = (*a, '')
+reveal_type(c)  # E: Revealed type is 'builtins.tuple[builtins.str*]'
 [builtins fixtures/tuple.py]
 
 [case testTupleWithStarExpr4]
