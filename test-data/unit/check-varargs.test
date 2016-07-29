@@ -112,6 +112,16 @@ f(*it1)
 f(*it2) # E: Argument 1 to "f" has incompatible type *Iterable[str]; expected "int"
 [builtins fixtures/for.py]
 
+[case testCallVarargsFunctionWithIterableAndPositional]
+# options: fast_parser
+from typing import Iterable
+it1 = None  # type: Iterable[int]
+def f(*x: int) -> None: pass
+f(*it1, 1, 2)
+f(*it1, 1, *it1, 2)
+f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+[builtins fixtures/for.py]
+
 
 -- Calling varargs function + type inference
 -- -----------------------------------------

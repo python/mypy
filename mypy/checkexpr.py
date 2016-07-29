@@ -1676,6 +1676,8 @@ def map_actuals_to_formals(caller_kinds: List[int],
                         break
                     else:
                         map[j].append(i)
+                    if callee_kinds[j] == nodes.ARG_STAR:
+                        break
                     j += 1
         elif kind == nodes.ARG_NAMED:
             name = caller_names[i]
