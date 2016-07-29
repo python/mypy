@@ -10,6 +10,7 @@ if sys.version_info < (3, 2, 0):
     exit(1)
 
 from distutils.core import setup
+from distutils.command.build_py import build_py
 from mypy.version import __version__
 from mypy import git
 
@@ -28,6 +29,19 @@ actually having to run it.  Mypy has a powerful type system with
 features such as type inference, gradual typing, generics and union
 types.
 '''.lstrip()
+
+
+def cache_version_id():
+    """Returns the version id to use for the incremental hash.
+
+    If setup.py is run from a git repo, the git commit hash will be
+    included if possible. If not, then this function will fall back to
+    using the default version id from mypy/version.py."""
+    if git.is_git_repo('.') and git.have_git():
+        return __version__ + '-' + git.git_revision('.').decode('utf-8')
+    else:
+        # Default fallback
+        return __version__
 
 
 def find_data_files(base, globs):
@@ -50,6 +64,19 @@ def find_data_files(base, globs):
         rv.append((target, files))
 
     return rv
+
+
+class CustomPythonBuild(build_py):
+    def pin_version(self):
+        path = os.path.join(self.build_lib, 'mypy')
+        self.mkpath(path)
+        with open(os.path.join(path, 'version.py'), 'w') as stream:
+            stream.write('__version__ = "{}"\n'.format(cache_version_id()))
+
+    def run(self):
+        self.execute(self.pin_version, ())
+        build_py.run(self)
+
 
 data_files = []
 
@@ -93,4 +120,5 @@ setup(name='mypy-lang',
       scripts=scripts,
       data_files=data_files,
       classifiers=classifiers,
+      cmdclass={'build_py': CustomPythonBuild},
       )

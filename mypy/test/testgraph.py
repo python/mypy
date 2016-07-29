@@ -5,6 +5,7 @@ from typing import AbstractSet, Dict, Set
 from mypy.myunit import Suite, assert_equal
 from mypy.build import BuildManager, State
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
+from mypy.version import __version__
 from mypy.options import Options
 
 
@@ -38,7 +39,9 @@ class GraphSuite(Suite):
             ignore_prefix='',
             source_set=None,
             reports=None,
-            options=Options())
+            options=Options(),
+            version_id=__version__,
+        )
         return manager
 
     def test_sorted_components(self) -> None:
