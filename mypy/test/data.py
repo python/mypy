@@ -405,7 +405,7 @@ class MypyDataCase(pytest.Item):
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}\n{}".format(self.obj.file, self.obj.line, excrepr)
+        return "data: {}:{}:\n{}".format(self.obj.file, self.obj.line, excrepr)
 
 
 class DataSuite:
