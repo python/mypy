@@ -122,6 +122,15 @@ f(*it1, 1, *it1, 2)
 f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/for.py]
 
+[case testCallVarargsFunctionWithTupleAndPositional]
+# options: fast_parser
+def f(*x: int) -> None: pass
+it1 = (1, 2)
+f(*it1, 1, 2)
+f(*it1, 1, *it1, 2)
+f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+[builtins fixtures/for.py]
+
 
 -- Calling varargs function + type inference
 -- -----------------------------------------

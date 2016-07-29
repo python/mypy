@@ -672,6 +672,9 @@ class ExpressionChecker:
                     messages.invalid_keyword_var_arg(arg_type, context)
                 # Get the type of an individual actual argument (for *args
                 # and **args this is the item type, not the collection type).
+                if isinstance(arg_type, TupleType) and tuple_counter[0] >= len(arg_type.items):
+                    # The tuple is exhausted. Continue with further arguments.
+                    continue
                 actual_type = get_actual_type(arg_type, arg_kinds[actual],
                                               tuple_counter)
                 check_arg(actual_type, arg_type, arg_kinds[actual],
@@ -1667,7 +1670,8 @@ def map_actuals_to_formals(caller_kinds: List[int],
                             map[j].append(i)
                         else:
                             break
-                        j += 1
+                        if callee_kinds[j] != nodes.ARG_STAR:
+                            j += 1
             else:
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
