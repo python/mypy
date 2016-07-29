@@ -81,7 +81,9 @@ class StringFormatterChecker:
         for parens_key, key, flags, width, precision, type in re.findall(regex, format):
             if parens_key == '':
                 key = None
-            specifiers.append(ConversionSpecifier(key, flags, width, precision, type))
+            specifier = ConversionSpecifier(key, flags, width, precision, type)
+            if specifier.type != '%' or specifier.has_star():
+                specifiers.append(specifier)
         return specifiers
 
     def analyze_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
