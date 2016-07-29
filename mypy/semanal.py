@@ -1937,7 +1937,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_dict_expr(self, expr: DictExpr) -> None:
         for key, value in expr.items:
-            key.accept(self)
+            if key is not None:
+                key.accept(self)
             value.accept(self)
 
     def visit_star_expr(self, expr: StarExpr) -> None:

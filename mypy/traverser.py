@@ -180,7 +180,8 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_dict_expr(self, o: DictExpr) -> None:
         for k, v in o.items:
-            k.accept(self)
+            if k is not None:
+                k.accept(self)
             v.accept(self)
 
     def visit_set_expr(self, o: SetExpr) -> None:

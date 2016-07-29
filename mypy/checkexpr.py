@@ -1360,29 +1360,58 @@ class ExpressionChecker:
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
-        # Translate into type checking a generic function call.
+        """Type check a dict expression.
+
+        Translate it into a call to dict(), with provisions for **expr.
+        """
+        # Collect function arguments, watching out for **expr.
+        args = []  # type: List[Node]  # Regular "key: value"
+        stargs = []  # type: List[Node]  # For "**expr"
+        for key, value in e.items:
+            if key is None:
+                stargs.append(value)
+            else:
+                args.append(TupleExpr([key, value]))
+        # Define type variables (used in constructors below).
         ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
         vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
-        # The callable type represents a function like this:
-        #
-        #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-        constructor = CallableType(
-            [TupleType([kt, vt], self.named_type('builtins.tuple'))],
-            [nodes.ARG_STAR],
-            [None],
-            self.chk.named_generic_type('builtins.dict', [kt, vt]),
-            self.named_type('builtins.function'),
-            name='<list>',
-            variables=[ktdef, vtdef])
-        # Synthesize function arguments.
-        args = []  # type: List[Node]
-        for key, value in e.items:
-            args.append(TupleExpr([key, value]))
-        return self.check_call(constructor,
-                               args,
-                               [nodes.ARG_POS] * len(args), e)[0]
+        # Call dict(*args), unless it's empty and stargs is not.
+        if args or not stargs:
+            # The callable type represents a function like this:
+            #
+            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
+            constructor = CallableType(
+                [TupleType([kt, vt], self.named_type('builtins.tuple'))],
+                [nodes.ARG_STAR],
+                [None],
+                self.chk.named_generic_type('builtins.dict', [kt, vt]),
+                self.named_type('builtins.function'),
+                name='<list>',
+                variables=[ktdef, vtdef])
+            rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
+        else:
+            # dict(...) will be called below.
+            rv = None
+        # Call rv.update(arg) for each arg in **stargs,
+        # except if rv isn't set yet, then set rv = dict(arg).
+        if stargs:
+            for arg in stargs:
+                if rv is None:
+                    constructor = CallableType(
+                        [self.chk.named_generic_type('typing.Mapping', [kt, vt])],
+                        [nodes.ARG_POS],
+                        [None],
+                        self.chk.named_generic_type('builtins.dict', [kt, vt]),
+                        self.named_type('builtins.function'),
+                        name='<list>',
+                        variables=[ktdef, vtdef])
+                    rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
+                else:
+                    method = self.analyze_external_member_access('update', rv, arg)
+                    self.check_call(method, [arg], [nodes.ARG_POS], arg)
+        return rv
 
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""
