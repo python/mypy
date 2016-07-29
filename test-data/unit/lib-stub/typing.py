@@ -74,6 +74,8 @@ class Sequence(Iterable[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
 
+class Mapping(Generic[T, U]): pass
+
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):
         return x
