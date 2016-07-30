@@ -1657,8 +1657,21 @@ class ExpressionChecker:
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-        return is_subtype(typ, self.chk.named_generic_type(
-            'builtins.dict', [self.named_type('builtins.str'), AnyType()]))
+        if self.chk.options.python_version[0] >= 3:
+            return is_subtype(typ, self.chk.named_generic_type(
+                'builtins.dict', [self.named_type('builtins.str'),
+                                  AnyType()]))
+        else:
+            return (
+                is_subtype(typ, self.chk.named_generic_type(
+                    'builtins.dict',
+                    [self.named_type('builtins.str'),
+                     AnyType()]))
+                or
+                is_subtype(typ, self.chk.named_generic_type(
+                    'builtins.dict',
+                    [self.named_type('builtins.unicode'),
+                     AnyType()])))
 
     def has_non_method(self, typ: Type, member: str) -> bool:
         """Does type have a member variable / property with the given name?"""
