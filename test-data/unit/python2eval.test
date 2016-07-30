@@ -136,6 +136,13 @@ params = {'a': 'b'}
 f(**params)
 [out]
 
+[case testUnicodeStringKwargs_python2]
+def f(**kwargs):  # type: (...) -> None
+  pass
+params = {u'a': 'b'}
+f(**params)
+[out]
+
 [case testStrKwargs_python2]
 def f(**kwargs):  # type: (...) -> None
   pass

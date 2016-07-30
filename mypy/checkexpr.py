@@ -1637,7 +1637,8 @@ class ExpressionChecker:
                 is_subtype(typ, self.chk.named_generic_type(
                     'builtins.dict',
                     [self.named_type('builtins.str'),
-                     AnyType()])) or
+                     AnyType()]))
+                or
                 is_subtype(typ, self.chk.named_generic_type(
                     'builtins.dict',
                     [self.named_type('builtins.unicode'),
