@@ -128,6 +128,21 @@ print '>', ['a', b'b', u'c']
 [out]
 > [u'a', 'b', u'c']
 
+[case testUnicodeLiteralsKwargs_python2]
+from __future__ import unicode_literals
+def f(**kwargs):  # type: (...) -> None
+  pass
+params = {'a': 'b'}
+f(**params)
+[out]
+
+[case testStrKwargs_python2]
+def f(**kwargs):  # type: (...) -> None
+  pass
+params = {'a': 'b'}
+f(**params)
+[out]
+
 [case testFromFutureImportUnicodeLiterals2_python2]
 from __future__ import unicode_literals
 def f(x: str) -> None: pass
