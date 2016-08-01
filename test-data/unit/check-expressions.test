@@ -436,6 +436,30 @@ class B:
 main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
+[case testCmp_python2]
+
+class bool: pass
+
+a, b, bo = None, None, None # type: (A, B, bool)
+bo = a == a
+bo = a != a
+bo = a < b
+bo = a > b
+bo = b <= b
+bo = b >= b
+
+class A:
+    def __cmp__(self, o):
+      # type: ('B') -> bool
+      pass
+class B:
+    def __cmp__(self, o):
+        # type: ('B') -> bool
+        pass
+[out]
+main:5: error: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expected "B"
+main:6: error: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expected "B"
+
 [case testLeAndGe]
 
 a, b, bo = None, None, None # type: (A, B, bool)

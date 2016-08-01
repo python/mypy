@@ -1071,6 +1071,16 @@ class ExpressionChecker:
                 return self.check_call(method_type, [temp], [nodes.ARG_POS],
                                        context)
             else:
+                if self.chk.options.python_version[0] == 2:
+                    if method in nodes.ops_falling_back_to_cmp:
+                        cmp_method = nodes.comparison_fallback_method
+                        if self.has_member(arg_type, cmp_method):
+                            method_type = self.analyze_external_member_access(
+                                cmp_method, base_type, context)
+                            return self.check_call(method_type, [arg],
+                                                   [nodes.ARG_POS],
+                                                   context)
+
                 # No __rX method either. Do deferred type checking to produce
                 # error message that we may have missed previously.
                 # TODO Fix type checking an expression more than once.
