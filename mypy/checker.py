@@ -554,8 +554,9 @@ class TypeChecker(NodeVisitor[Type]):
                                                            [arg_type])
                     elif typ.arg_kinds[i] == nodes.ARG_STAR2:
                         arg_type = self.named_generic_type('builtins.dict',
-                                                           [self.str_type(),
+                                                           [self.unicode_type(),
                                                             arg_type])
+
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
@@ -2114,6 +2115,13 @@ class TypeChecker(NodeVisitor[Type]):
     def str_type(self) -> Instance:
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
+
+    def unicode_type(self) -> Instance:
+        """Return instance type 'unicode'."""
+        if self.options.python_version[0] >= 3:
+            return self.named_type('builtins.str')
+        else:
+            return self.named_type('builtins.unicode')
 
     def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
                                msg: str = messages.INCOMPATIBLE_TYPES) -> None:
