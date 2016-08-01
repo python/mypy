@@ -440,13 +440,15 @@ main:4: error: Incompatible types in assignment (expression has type "bool", var
 
 class bool: pass
 
-a, b, bo = None, None, None # type: (A, B, bool)
+a, b, c, bo = None, None, None, None # type: (A, B, C, bool)
 bo = a == a
 bo = a != a
 bo = a < b
 bo = a > b
 bo = b <= b
+bo = b <= c
 bo = b >= b
+bo = a >= b
 
 class A:
     def __cmp__(self, o):
@@ -456,9 +458,16 @@ class B:
     def __cmp__(self, o):
         # type: ('B') -> bool
         pass
+    def __le__(self, o):
+        # type: ('C') -> bool
+        pass
+class C:
+    pass
 [out]
 main:5: error: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expected "B"
 main:6: error: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expected "B"
+main:11: error: Unsupported operand types for <= ("B" and "B")
+main:12: error: Unsupported operand types for <= ("B" and "A")
 
 [case testLeAndGe]
 

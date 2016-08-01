@@ -1071,6 +1071,8 @@ class ExpressionChecker:
                 return self.check_call(method_type, [temp], [nodes.ARG_POS],
                                        context)
             else:
+                # If we've failed to find an __rX method and we're checking
+                # Python 2, check to see if there is a __cmp__ method.
                 if self.chk.options.python_version[0] == 2:
                     if method in nodes.ops_falling_back_to_cmp:
                         cmp_method = nodes.comparison_fallback_method
@@ -1081,8 +1083,8 @@ class ExpressionChecker:
                                                    [nodes.ARG_POS],
                                                    context)
 
-                # No __rX method either. Do deferred type checking to produce
-                # error message that we may have missed previously.
+                # No __rX method or __cmp__. Do deferred type checking to
+                # produce error message that we may have missed previously.
                 # TODO Fix type checking an expression more than once.
                 return self.check_op_local(method, base_type, arg, context,
                                            self.msg)
