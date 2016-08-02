@@ -825,9 +825,12 @@ def main() -> None:
     log = Logger(args.level)
 
     if args.iocp:
-        from asyncio import ProactorEventLoop
-        loop = ProactorEventLoop()  # type: ignore
-        asyncio.set_event_loop(loop)
+        if sys.platform == 'win32':
+            from asyncio import ProactorEventLoop
+            loop = ProactorEventLoop()  # type: ignore
+            asyncio.set_event_loop(loop)
+        else:
+            assert False
     elif args.select:
         loop = asyncio.SelectorEventLoop()  # type: ignore
         asyncio.set_event_loop(loop)
