@@ -43,7 +43,6 @@ class Options:
         self.pdb = False
         self.dump_type_stats = False
         self.dump_inference_stats = False
-        self.dirty_stubs = False
 
         # -- test options --
         # Stop after the semantic analysis phase

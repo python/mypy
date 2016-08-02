@@ -46,8 +46,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     args = parse_args(testcase.input[0])
     # Type check the program.
     fixed = [python3_path,
-             os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
-             '-f']
+             os.path.join(testcase.old_cwd, 'scripts', 'mypy')]
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,

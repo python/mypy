@@ -33,8 +33,6 @@ def main(script_path: str) -> None:
     sources, options = process_options(sys.argv[1:])
     if options.pdb:
         set_drop_into_pdb(True)
-    if not options.dirty_stubs:
-        git.verify_git_integrity_or_abort(build.default_data_dir(bin_dir))
     f = sys.stdout
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -143,8 +141,6 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
-    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
-                        help="deprecated name for --silent-imports")
     parser.add_argument('--almost-silent', action='store_true',
                         help="like --silent-imports but reports the imports as errors")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
@@ -175,17 +171,21 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser.add_argument('--strict-optional', action='store_true',
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
-    parser.add_argument('-f', '--dirty-stubs', action='store_true',
-                        help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
-    parser.add_argument('--use-python-path', action='store_true',
-                        dest='special-opts:use_python_path',
-                        help="an anti-pattern")
     parser.add_argument('--stats', action='store_true', dest='dump_type_stats', help="dump stats")
     parser.add_argument('--inferstats', action='store_true', dest='dump_inference_stats',
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    # deprecated options
+    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('-f', '--dirty-stubs', action='store_true',
+                        dest='special-opts:dirty_stubs',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--use-python-path', action='store_true',
+                        dest='special-opts:use_python_path',
+                        help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title='report generation',
@@ -231,11 +231,15 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                      "See https://github.com/python/mypy/issues/1411 for more discussion."
                      )
 
-    # --silent is deprecated; warn about this.
+    # warn about deprecated options
     if special_opts.silent:
         print("Warning: --silent is deprecated; use --silent-imports",
               file=sys.stderr)
         options.silent_imports = True
+    if special_opts.dirty_stubs:
+        print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
+              "checks the git status of stubs.",
+              file=sys.stderr)
 
     # Check for invalid argument combinations.
     code_methods = sum(bool(c) for c in [special_opts.modules,
