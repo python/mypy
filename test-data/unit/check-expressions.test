@@ -469,6 +469,20 @@ main:6: error: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expecte
 main:11: error: Unsupported operand types for <= ("B" and "B")
 main:12: error: Unsupported operand types for <= ("B" and "A")
 
+[case cmpIgnoredPy3]
+
+a, b, bo = None, None, None # type: (A, B, bool)
+bo = a <= b # Fail
+
+class A:
+    def __cmp__(self, o: 'B') -> bool: pass
+class B:
+    pass
+
+[builtins fixtures/bool.py]
+[out]
+main:3: error: Unsupported left operand type for <= ("A")
+
 [case testLeAndGe]
 
 a, b, bo = None, None, None # type: (A, B, bool)
