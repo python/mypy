@@ -27,7 +27,7 @@ if True:
 from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
-from mypy import git, util
+from mypy import util
 
 import itertools
 import os
@@ -325,7 +325,6 @@ def main() -> None:
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
     list_only = False
-    dirty_stubs = False
 
     allow_opts = True
     curlist = whitelist
@@ -350,8 +349,6 @@ def main() -> None:
                 curlist = arglist
             elif a == '-l' or a == '--list':
                 list_only = True
-            elif a == '-f' or a == '--dirty-stubs':
-                dirty_stubs = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -369,9 +366,6 @@ def main() -> None:
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
             verbosity=verbosity, parallel_limit=parallel_limit, xfail=[])
-
-    if not dirty_stubs:
-        git.verify_git_integrity_or_abort(driver.cwd)
 
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])

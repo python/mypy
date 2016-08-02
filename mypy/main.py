@@ -33,8 +33,6 @@ def main(script_path: str) -> None:
     sources, options = process_options(sys.argv[1:])
     if options.pdb:
         set_drop_into_pdb(True)
-    if not options.dirty_stubs:
-        git.verify_git_integrity_or_abort(build.default_data_dir(bin_dir))
     f = sys.stdout
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -175,8 +173,6 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser.add_argument('--strict-optional', action='store_true',
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
-    parser.add_argument('-f', '--dirty-stubs', action='store_true',
-                        help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--use-python-path', action='store_true',
                         dest='special-opts:use_python_path',
