@@ -1064,25 +1064,49 @@ class ExpressionChecker:
             # method of the other operand instead.
             rmethod = self.get_reverse_op_method(method)
             arg_type = self.accept(arg)
+            base_arg_node = TempNode(base_type)
+            user_error = None # type: Tuple[Tuple[Type, Type], MessageBuilder]
             if self.has_member(arg_type, rmethod):
-                method_type = self.analyze_external_member_access(
-                    rmethod, arg_type, context)
-                temp = TempNode(base_type)
-                return self.check_call(method_type, [temp], [nodes.ARG_POS],
-                                       context)
+                local_errors = self.msg.copy()
+                local_errors.disable_count = 0
+                result = self.check_op_local(rmethod, arg_type, base_arg_node,
+                                             context, local_errors)
+                if not local_errors.is_errors():
+                    return result
+                user_error = user_error or (result, local_errors)
+            # If we've failed to find an __rX method and we're checking Python 2, check to see if
+            # there is a __cmp__ method on the lhs or on the rhs.
+            if (self.chk.options.python_version[0] == 2 and
+                    method in nodes.ops_falling_back_to_cmp):
+                cmp_method = nodes.comparison_fallback_method
+                if self.has_member(base_type, cmp_method):
+                    # First check the if the lhs has a __cmp__ method that works
+                    local_errors = self.msg.copy()
+                    local_errors.disable_count = 0
+                    result = self.check_op_local(cmp_method, base_type,
+                                                 arg, context,
+                                                 local_errors)
+                    if not local_errors.is_errors():
+                        return result
+                    user_error = user_error or (result, local_errors)
+                if self.has_member(arg_type, cmp_method):
+                    # Failed to find a __cmp__ method on the lhs, check if
+                    # the rhs as a __cmp__ method that can operate on lhs
+                    local_errors = self.msg.copy()
+                    local_errors.disable_count = 0
+                    result = self.check_op_local(cmp_method, arg_type,
+                                                 base_arg_node, context,
+                                                 local_errors)
+                    if not local_errors.is_errors():
+                        return result
+                    user_error = user_error or (result, local_errors)
+            if user_error:
+                # We found either a __rX method, a __cmp__ method on the base_type, or a __cmp__
+                # method on the rhs and failed match. Return the error for the first of these to
+                # fail.
+                self.msg.add_errors(user_error[1])
+                return user_error[0]
             else:
-                # If we've failed to find an __rX method and we're checking
-                # Python 2, check to see if there is a __cmp__ method.
-                if self.chk.options.python_version[0] == 2:
-                    if method in nodes.ops_falling_back_to_cmp:
-                        cmp_method = nodes.comparison_fallback_method
-                        if self.has_member(arg_type, cmp_method):
-                            method_type = self.analyze_external_member_access(
-                                cmp_method, base_type, context)
-                            return self.check_call(method_type, [arg],
-                                                   [nodes.ARG_POS],
-                                                   context)
-
                 # No __rX method or __cmp__. Do deferred type checking to
                 # produce error message that we may have missed previously.
                 # TODO Fix type checking an expression more than once.
