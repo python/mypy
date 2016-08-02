@@ -180,7 +180,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     # deprecated options
     parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
                         help=argparse.SUPPRESS)
-    parser.add_argument('-f', '--dirty-stubs', action='store_true', dest='special-opts:dirty_stubs',
+    parser.add_argument('-f', '--dirty-stubs', action='store_true',
+                        dest='special-opts:dirty_stubs',
                         help=argparse.SUPPRESS)
     parser.add_argument('--use-python-path', action='store_true',
                         dest='special-opts:use_python_path',
