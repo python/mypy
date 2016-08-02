@@ -76,7 +76,7 @@ class Driver:
         full_name = 'check %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, self.mypy, '-f'] + mypy_args
+        args = [sys.executable, self.mypy] + mypy_args
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
