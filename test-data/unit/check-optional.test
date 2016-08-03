@@ -81,11 +81,6 @@ else:
 f = lambda: None
 x = f()
 
-[case testFunctionStillVoid]
-def f() -> None: pass
-f()
-x = f()  # E: "f" does not return a value
-
 [case testNoneArgumentType]
 def f(x: None) -> None: pass
 f(None)
@@ -274,3 +269,32 @@ from typing import overload
 def f() -> None: ...
 @overload
 def f(o: object) -> None: ...
+
+[case testGenericSubclassReturningNone]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+  def f(self) -> T:
+    pass
+
+class SubNone(Base[None]):
+  def f(self) -> None:
+    pass
+
+class SubInt(Base[int]):
+  def f(self) -> int:
+    return 1
+
+[case testUseOfNoneReturningFunction]
+from typing import Optional
+def f() -> None:
+    pass
+
+def g(x: Optional[int]) -> int:
+  pass
+
+x = f()  # E: Function does not return a value
+f() + 1  # E: Function does not return a value
+g(f())  # E: Function does not return a value

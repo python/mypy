@@ -95,10 +95,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
                 if experiments.STRICT_OPTIONAL:
-                    if t.is_ret_type:
-                        return Void()
-                    else:
-                        return NoneTyp()
+                    return NoneTyp(is_ret_type=t.is_ret_type)
                 else:
                     return Void()
             elif fullname == 'typing.Any':

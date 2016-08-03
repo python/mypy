@@ -702,7 +702,7 @@ class ExpressionChecker:
                   callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
-        if isinstance(caller_type, Void):
+        if self.chk.is_unusable_type(caller_type):
             messages.does_not_return_value(caller_type, context)
         elif isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
@@ -997,7 +997,7 @@ class ExpressionChecker:
                 result = sub_result
             else:
                 # TODO: check on void needed?
-                self.check_not_void(sub_result, e)
+                self.check_usable_type(sub_result, e)
                 result = join.join_types(result, sub_result)
 
         return result
@@ -1116,8 +1116,8 @@ class ExpressionChecker:
 
             right_type = self.accept(e.right, left_type)
 
-        self.check_not_void(left_type, context)
-        self.check_not_void(right_type, context)
+        self.check_usable_type(left_type, context)
+        self.check_usable_type(right_type, context)
 
         # If either of the type maps is None that means that result cannot happen.
         # If both of the type maps are None we just have no information.
@@ -1148,7 +1148,7 @@ class ExpressionChecker:
         operand_type = self.accept(e.expr)
         op = e.op
         if op == 'not':
-            self.check_not_void(operand_type, e)
+            self.check_usable_type(operand_type, e)
             result = self.chk.bool_type()  # type: Type
         elif op == '-':
             method_type = self.analyze_external_member_access('__neg__',
@@ -1340,7 +1340,7 @@ class ExpressionChecker:
                 # context?  Counterargument: Why would anyone write
                 # (1, *(2, 3)) instead of (1, 2, 3) except in a test?
                 tt = self.accept(item.expr)
-                self.check_not_void(tt, e)
+                self.check_usable_type(tt, e)
                 if isinstance(tt, TupleType):
                     items.extend(tt.items)
                     j += len(tt.items)
@@ -1354,7 +1354,7 @@ class ExpressionChecker:
                 else:
                     tt = self.accept(item, ctx.items[j])
                     j += 1
-                self.check_not_void(tt, e)
+                self.check_usable_type(tt, e)
                 items.append(tt)
         fallback_item = join.join_type_list(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
@@ -1581,7 +1581,7 @@ class ExpressionChecker:
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
-        self.check_not_void(cond_type, e)
+        self.check_usable_type(cond_type, e)
         ctx = self.chk.type_context[-1]
 
         # Gain type information from isinstance if it is there
@@ -1634,9 +1634,9 @@ class ExpressionChecker:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
 
-    def check_not_void(self, typ: Type, context: Context) -> None:
+    def check_usable_type(self, typ: Type, context: Context) -> None:
         """Generate an error if type is Void."""
-        self.chk.check_not_void(typ, context)
+        self.chk.check_usable_type(typ, context)
 
     def is_boolean(self, typ: Type) -> bool:
         """Is type compatible with bool?"""
