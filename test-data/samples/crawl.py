@@ -20,10 +20,9 @@ from typing import Any, Generator, IO, Optional, Sequence, Set, Tuple
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
-if sys.platform == 'win32':
-    ARGS.add_argument(
-        '--iocp', action='store_true', dest='iocp',
-        default=False, help='Use IOCP event loop (Windows only)')
+ARGS.add_argument(
+    '--iocp', action='store_true', dest='iocp',
+    default=False, help='Use IOCP event loop (Windows only)')
 ARGS.add_argument(
     '--select', action='store_true', dest='select',
     default=False, help='Use Select event loop instead of default')
