@@ -88,6 +88,7 @@ def f() -> Iterator[int]:
     return "foo"
 [out]
 
+
 -- If statement
 -- ------------
 

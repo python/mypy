@@ -417,6 +417,7 @@ class FuncItem(FuncBase):
     is_overload = False
     is_generator = False   # Contains a yield statement?
     is_coroutine = False   # Defined using 'async def' syntax?
+    is_awaitable_coroutine = False  # Decorated with '@{typing,asyncio}.coroutine'?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     # Variants of function with type variables with values expanded
