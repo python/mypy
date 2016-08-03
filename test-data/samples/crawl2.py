@@ -132,7 +132,6 @@ class ConnectionPool:
         self.connections.clear()
         self.queue.clear()
 
-    @asyncio.coroutine
     async def get_connection(self, host: str, port: int, ssl: bool) -> 'Connection':
         """Create or reuse a connection."""
         port = port or (443 if ssl else 80)
@@ -253,7 +252,6 @@ class Connection:
                     return sock.fileno()
         return None
 
-    @asyncio.coroutine
     async def connect(self) -> None:
         self.reader, self.writer = await asyncio.open_connection(
             self.host, self.port, ssl=self.ssl)
@@ -301,7 +299,6 @@ class Request:
         self.headers = []  # type: List[Tuple[str, str]]
         self.conn = None  # type: Connection
 
-    @asyncio.coroutine
     async def connect(self) -> None:
         """Open a connection to the server."""
         self.log(1, '* Connecting to %s:%s using %s for %s' %
@@ -319,7 +316,6 @@ class Request:
             self.conn.close(recycle)
             self.conn = None
 
-    @asyncio.coroutine
     async def putline(self, line: str) -> None:
         """Write a line to the connection.
 
@@ -328,7 +324,6 @@ class Request:
         self.log(2, '>', line)
         self.conn.writer.write(line.encode('latin-1') + b'\r\n')
 
-    @asyncio.coroutine
     async def send_request(self) -> None:
         """Send the request."""
         request_line = '%s %s %s' % (self.method, self.full_path,
@@ -344,7 +339,6 @@ class Request:
             await self.putline(line)
         await self.putline('')
 
-    @asyncio.coroutine
     async def get_response(self) -> 'Response':
         """Receive the response."""
         response = Response(self.log, self.conn.reader)
@@ -368,14 +362,12 @@ class Response:
         self.reason = None  # type: str  # 'Ok'
         self.headers = []  # type: List[Tuple[str, str]]  # [('Content-Type', 'text/html')]
 
-    @asyncio.coroutine
     async def getline(self) -> str:
         """Read one line from the connection."""
         line = (await self.reader.readline()).decode('latin-1').rstrip()
         self.log(2, '<', line)
         return line
 
-    @asyncio.coroutine
     async def read_headers(self) -> None:
         """Read the response status and the request headers."""
         status_line = await self.getline()
@@ -407,7 +399,6 @@ class Response:
                 return v
         return default
 
-    @asyncio.coroutine
     async def read(self) -> bytes:
         """Read the response body.
 
@@ -490,7 +481,6 @@ class Fetcher:
         self.urls = None  # type: Set[str]
         self.new_urls = None  # type: Set[str]
 
-    @asyncio.coroutine
     async def fetch(self) -> None:
         """Attempt to fetch the contents of the URL.
 
@@ -744,7 +734,6 @@ class Crawler:
         self.todo[url] = max_redirect
         return True
 
-    @asyncio.coroutine
     async def crawl(self) -> None:
         """Run the crawler until all finished."""
         with (await self.termination):
@@ -762,7 +751,6 @@ class Crawler:
                     await self.termination.wait()
         self.t1 = time.time()
 
-    @asyncio.coroutine
     async def fetch(self, fetcher: Fetcher) -> None:
         """Call the Fetcher's fetch(), with a limit on concurrency.
 
