@@ -1453,10 +1453,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
                     return None
 
-                if isinstance(return_type, Void):
-                    return None
-
-                if isinstance(return_type, AnyType):
+                if isinstance(return_type, (Void, NoneTyp, AnyType)):
                     return None
 
                 if self.typing_mode_full():

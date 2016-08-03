@@ -298,3 +298,11 @@ def g(x: Optional[int]) -> int:
 x = f()  # E: Function does not return a value
 f() + 1  # E: Function does not return a value
 g(f())  # E: Function does not return a value
+
+[case testEmptyReturn]
+def f() -> None:
+    return
+
+[case testReturnNone]
+def f() -> None:
+    return None
