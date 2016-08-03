@@ -327,19 +327,22 @@ class NoneTyp(Type):
         of a function, where 'None' means Void.
     """
 
-    def __init__(self, line: int = -1) -> None:
+    def __init__(self, is_ret_type: bool = False, line: int = -1) -> None:
         super().__init__(line)
+        self.is_ret_type = is_ret_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'NoneTyp'}
+        return {'.class': 'NoneTyp',
+                'is_ret_type': self.is_ret_type,
+                }
 
     @classmethod
     def deserialize(self, data: JsonDict) -> 'NoneTyp':
         assert data['.class'] == 'NoneTyp'
-        return NoneTyp()
+        return NoneTyp(is_ret_type=data['is_ret_type'])
 
 
 class ErasedType(Type):

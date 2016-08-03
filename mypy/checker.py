@@ -316,7 +316,10 @@ class TypeChecker(NodeVisitor[Type]):
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
             if isinstance(ret_type, NoneTyp):
-                return Void()
+                if experiments.STRICT_OPTIONAL:
+                    return NoneTyp(is_ret_type=True)
+                else:
+                    return Void()
             return ret_type
         else:
             # If the function's declared supertype of Generator has no type
@@ -348,7 +351,10 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.
-            return Void()
+            if experiments.STRICT_OPTIONAL:
+                return NoneTyp(is_ret_type=True)
+            else:
+                return Void()
 
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
@@ -492,7 +498,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if fdef:
                     # Check if __init__ has an invalid, non-None return type.
                     if (fdef.info and fdef.name() == '__init__' and
-                            not isinstance(typ.ret_type, Void) and
+                            not isinstance(typ.ret_type, (Void, NoneTyp)) and
                             not self.dynamic_funcs[-1]):
                         self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
                                   item.type)
@@ -531,8 +537,7 @@ class TypeChecker(NodeVisitor[Type]):
                     if (self.options.python_version[0] == 2 and
                             isinstance(typ.ret_type, Instance) and
                             typ.ret_type.type.fullname() == 'typing.Generator'):
-                        if not (isinstance(typ.ret_type.args[2], Void)
-                                or isinstance(typ.ret_type.args[2], AnyType)):
+                        if not isinstance(typ.ret_type.args[2], (Void, NoneTyp, AnyType)):
                             self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
                 # Push return type.
@@ -1270,8 +1275,8 @@ class TypeChecker(NodeVisitor[Type]):
         if self.typing_mode_weak():
             self.set_inferred_type(name, lvalue, AnyType())
             self.binder.assign_type(lvalue, init_type, self.binder.get_declaration(lvalue), True)
-        elif isinstance(init_type, Void):
-            self.check_not_void(init_type, context)
+        elif self.is_unusable_type(init_type):
+            self.check_usable_type(init_type, context)
             self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
@@ -1429,8 +1434,8 @@ class TypeChecker(NodeVisitor[Type]):
                 if isinstance(typ, AnyType):
                     return None
 
-                if isinstance(return_type, Void):
-                    # Lambdas are allowed to have a Void return.
+                if self.is_unusable_type(return_type):
+                    # Lambdas are allowed to have a unusable returns.
                     # Functions returning a value of type None are allowed to have a Void return.
                     if isinstance(self.function_stack[-1], FuncExpr) or isinstance(typ, NoneTyp):
                         return None
@@ -1488,7 +1493,7 @@ class TypeChecker(NodeVisitor[Type]):
         with self.binder.frame_context():
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
-                self.check_not_void(t, e)
+                self.check_usable_type(t, e)
                 if_map, else_map = find_isinstance_check(
                     e, self.type_map,
                     self.typing_mode_weak()
@@ -1696,7 +1701,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Analyse async iterable expression and return iterator item type."""
         iterable = self.accept(expr)
 
-        self.check_not_void(iterable, expr)
+        self.check_usable_type(iterable, expr)
 
         self.check_subtype(iterable,
                            self.named_generic_type('typing.AsyncIterable',
@@ -1715,7 +1720,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Analyse iterable expression and return iterator item type."""
         iterable = self.accept(expr)
 
-        self.check_not_void(iterable, expr)
+        self.check_usable_type(iterable, expr)
         if isinstance(iterable, TupleType):
             if experiments.STRICT_OPTIONAL:
                 joined = UninhabitedType()  # type: Type
@@ -1912,7 +1917,10 @@ class TypeChecker(NodeVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 return AnyType()
             else:
-                return Void()
+                if experiments.STRICT_OPTIONAL:
+                    return NoneTyp(is_ret_type=True)
+                else:
+                    return Void()
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
@@ -2029,8 +2037,7 @@ class TypeChecker(NodeVisitor[Type]):
         return_type = self.return_types[-1]
         expected_item_type = self.get_generator_yield_type(return_type, False)
         if e.expr is None:
-            if (not (isinstance(expected_item_type, Void) or
-                     isinstance(expected_item_type, AnyType))
+            if (not isinstance(expected_item_type, (Void, NoneTyp, AnyType))
                     and self.typing_mode_full()):
                 self.fail(messages.YIELD_VALUE_EXPECTED, e)
         else:
@@ -2062,7 +2069,7 @@ class TypeChecker(NodeVisitor[Type]):
         if is_subtype(subtype, supertype):
             return True
         else:
-            if isinstance(subtype, Void):
+            if self.is_unusable_type(subtype):
                 self.msg.does_not_return_value(subtype, context)
             else:
                 extra_info = []  # type: List[str]
@@ -2211,9 +2218,16 @@ class TypeChecker(NodeVisitor[Type]):
         """
         return self.return_types != []
 
-    def check_not_void(self, typ: Type, context: Context) -> None:
-        """Generate an error if the type is Void."""
-        if isinstance(typ, Void):
+    def is_unusable_type(self, typ: Type):
+        """Is this type an unusable type?
+
+        The two unusable types are Void and NoneTyp(is_ret_type=True).
+        """
+        return isinstance(typ, Void) or (isinstance(typ, NoneTyp) and typ.is_ret_type)
+
+    def check_usable_type(self, typ: Type, context: Context) -> None:
+        """Generate an error if the type is not a usable type."""
+        if self.is_unusable_type(typ):
             self.msg.does_not_return_value(typ, context)
 
     def temp_node(self, t: Type, context: Context = None) -> Node:
