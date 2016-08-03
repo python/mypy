@@ -1065,7 +1065,7 @@ class ExpressionChecker:
             rmethod = self.get_reverse_op_method(method)
             arg_type = self.accept(arg)
             base_arg_node = TempNode(base_type)
-            user_error = None # type: Tuple[Tuple[Type, Type], MessageBuilder]
+            user_error = None  # type: Tuple[Tuple[Type, Type], MessageBuilder]
             if self.has_member(arg_type, rmethod):
                 local_errors = self.msg.copy()
                 local_errors.disable_count = 0
