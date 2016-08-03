@@ -308,14 +308,7 @@ class TypeChecker(NodeVisitor[Type]):
             gt = self.named_generic_type('typing.Generator', [AnyType(), AnyType(), AnyType()])
             if is_subtype(gt, typ):
                 return True
-        # Check that AwaitableGenerator exists -- it isn't defined in Python 2:
-        try:
-            self.lookup_qualified('typing.AwaitableGenerator')
-        except KeyError:
-            return False
-        agt = self.named_generic_type('typing.AwaitableGenerator',
-                                      [AnyType(), AnyType(), AnyType(), AnyType()])
-        return is_equivalent(typ, agt)
+        return isinstance(typ, Instance) and typ.type.fullname() == 'typing.AwaitableGenerator'
 
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it yields (ty)."""
@@ -342,7 +335,10 @@ class TypeChecker(NodeVisitor[Type]):
                     return Void()
             return ret_type
         else:
-            # object: ty is Any.
+            # If the function's declared supertype of Generator has no type
+            # parameters (i.e. is `object`), then the yielded values can't
+            # be accessed so any type is acceptable.  IOW, ty is Any.
+            # (However, see https://github.com/python/mypy/issues/1933)
             return AnyType()
 
     def get_generator_receive_type(self, return_type: Type, is_coroutine: bool) -> Type:
@@ -364,7 +360,8 @@ class TypeChecker(NodeVisitor[Type]):
             # Generator: tc is args[1].
             return return_type.args[1]
         else:
-            # Supertype of Generator (Iterator, Iterable, object), tc is None.
+            # `return_type` is a supertype of Generator, so callers won't be able to send it
+            # values.  IOW, tc is None.
             if experiments.STRICT_OPTIONAL:
                 return NoneTyp(is_ret_type=True)
             else:
