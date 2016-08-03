@@ -1921,7 +1921,10 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             if not (self.is_async_def(subexpr_type) and self.has_coroutine_decorator(return_type)):
                 self.msg.yield_from_invalid_operand_type(subexpr_type, e)
-            iter_type = AnyType()
+                iter_type = AnyType()
+            else:
+                iter_type = self.check_awaitable_expr(subexpr_type, e,
+                                                      messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM)
 
         # Check that the iterator's item type matches the type yielded by the Generator function
         # containing this `yield from` expression.
