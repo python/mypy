@@ -1,6 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
+import copy
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union
 )
@@ -1411,8 +1412,8 @@ def is_named_instance(t: Type, fullname: str) -> bool:
 
 
 def copy_type(t: Type) -> Type:
-    # FIXME: Find a cleaner way to copy types
-    return t.deserialize(t.serialize())
+    # Check that this works, doesn't create aliasing
+    return copy.copy(t)
 
 
 def true_only(t: Type) -> Type:
