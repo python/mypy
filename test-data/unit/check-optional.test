@@ -306,3 +306,8 @@ def f() -> None:
 [case testReturnNone]
 def f() -> None:
     return None
+
+[case testNoneCallable]
+from typing import Callable
+def f() -> None: pass
+x = f  # type: Callable[[], None]
