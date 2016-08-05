@@ -832,11 +832,21 @@ class UnionType(Type):
 
         from mypy.subtypes import is_subtype
         removed = set()  # type: Set[int]
-        for i in range(len(items)):
-            if any(is_subtype(items[i], items[j]) for j in range(len(items))
-                   if j not in removed and j != i):
-                removed.add(i)
-        # FIXME: Union[TrueOnly(t1), FalseOnly(t1), t2, ...] == Union[t1, t2, ...]
+        for i, ti in enumerate(items):
+            if i in removed: continue
+            # Keep track of the truishness info for deleted subtypes which can be relevant
+            cbt = cbf = False
+            for j, tj in enumerate(items):
+                if i != j and is_subtype(tj, ti):
+                    removed.add(j)
+                    cbt = cbt or tj.can_be_true
+                    cbf = cbf or tj.can_be_false
+            # if deleted subtypes had more general truthiness, use that
+            if not ti.can_be_true and cbt:
+                items[i] = true_or_false(ti)
+            elif not ti.can_be_false and cbf:
+                items[i] = true_or_false(ti)
+
         simplified_set = [items[i] for i in range(len(items)) if i not in removed]
         return UnionType.make_union(simplified_set)
 
@@ -1412,11 +1422,16 @@ def is_named_instance(t: Type, fullname: str) -> bool:
 
 
 def copy_type(t: Type) -> Type:
-    # Check that this works, doesn't create aliasing
+    """
+    Build a copy of the type; used to mutate the copy with truthiness information
+    """
     return copy.copy(t)
 
 
 def true_only(t: Type) -> Type:
+    """
+    Restricted version of t with only True-ish values
+    """
     if not t.can_be_true:
         # All values of t are False-ish, so there are no true values in it
         return UninhabitedType(line=t.line)
@@ -1434,6 +1449,9 @@ def true_only(t: Type) -> Type:
 
 
 def false_only(t: Type) -> Type:
+    """
+    Restricted version of t with only False-ish values
+    """
     if not t.can_be_false:
         # All values of t are True-ish, so there are no false values in it
         return UninhabitedType(line=t.line)
@@ -1448,3 +1466,18 @@ def false_only(t: Type) -> Type:
         new_t = copy_type(t)
         new_t.can_be_true = False
         return new_t
+
+
+def true_or_false(t: Type) -> Type:
+    """
+    Unrestricted version of t with both True-ish and False-ish values
+
+    This assumes that t is already restricted more than its "natural" state. Otherwise, this may
+    rise an exception
+    """
+    new_t = copy_type(t)
+    if not new_t.can_be_true:
+        del new_t.can_be_true
+    if not new_t.can_be_false:
+        del new_t.can_be_false
+    return new_t
