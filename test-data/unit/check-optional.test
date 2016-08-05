@@ -315,3 +315,18 @@ x = f  # type: Callable[[], None]
 [case testOptionalCallable]
 from typing import Callable, Optional
 T = Optional[Callable[..., None]]
+
+[case testAnyTypeInPartialTypeList]
+# options: check_untyped_defs
+def f(): ...
+
+def lookup_field(name, obj):
+    try:
+        pass
+    except:
+        attr = f()
+    else:
+        attr = None
+[out]
+main: note: In function "lookup_field":
+main:10: error: Need type annotation for variable

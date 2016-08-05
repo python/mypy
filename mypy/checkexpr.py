@@ -157,8 +157,10 @@ class ExpressionChecker:
             var = cast(Var, e.callee.expr.node)
             partial_types = self.chk.find_partial_types(var)
             if partial_types is not None and not self.chk.current_node_deferred:
-                partial_type = cast(PartialType, var.type)
-                if partial_type is None or partial_type.type is None:
+                partial_type = var.type
+                if (partial_type is None or
+                        not isinstance(partial_type, PartialType) or
+                        partial_type.type is None):
                     # A partial None type -> can't infer anything.
                     return
                 typename = partial_type.type.fullname()
