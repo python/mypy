@@ -19,7 +19,13 @@ from mypy import nodes
 from mypy import experiments
 
 
-type_constructors = {'typing.Tuple', 'typing.Union', 'typing.Callable', 'typing.Type'}
+type_constructors = {
+    'typing.Callable',
+    'typing.Optional',
+    'typing.Tuple',
+    'typing.Type',
+    'typing.Union',
+}
 
 
 def analyze_type_alias(node: Node,
