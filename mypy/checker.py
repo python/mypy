@@ -2247,7 +2247,8 @@ class TypeChecker(NodeVisitor[Type]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if experiments.STRICT_OPTIONAL and cast(PartialType, var.type).type is None:
+                if (experiments.STRICT_OPTIONAL and
+                        isinstance(var.type, PartialType) and var.type.type is None):
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
                 else:
