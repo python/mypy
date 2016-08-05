@@ -2450,8 +2450,9 @@ def find_isinstance_check(node: Node,
         vartype = type_map[node]
         if_type = true_only(vartype)
         else_type = false_only(vartype)
-        if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
-        else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
+        ref = node  # type: Node
+        if_map = {ref: if_type} if not isinstance(if_type, UninhabitedType) else None
+        else_map = {ref: else_type} if not isinstance(else_type, UninhabitedType) else None
         return if_map, else_map
     elif isinstance(node, OpExpr) and node.op == 'and':
         left_if_vars, left_else_vars = find_isinstance_check(
