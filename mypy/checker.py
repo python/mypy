@@ -33,7 +33,8 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
-    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType
+    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
+    true_only, false_only
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -2444,10 +2445,14 @@ def find_isinstance_check(node: Node,
                 if_vars, else_vars = else_vars, if_vars
             return if_vars, else_vars
     elif isinstance(node, RefExpr) and experiments.STRICT_OPTIONAL:
-        # The type could be falsy, so we can't deduce anything new about the else branch
+        # Restrict the type of the variable to True-ish/False-ish in the if and else branches
+        # respectively
         vartype = type_map[node]
-        _, if_vars = conditional_type_map(node, vartype, NoneTyp(), weak=weak)
-        return if_vars, {}
+        if_type = true_only(vartype)
+        else_type = false_only(vartype)
+        if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
+        else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
+        return if_map, else_map
     elif isinstance(node, OpExpr) and node.op == 'and':
         left_if_vars, left_else_vars = find_isinstance_check(
             node.left,
