@@ -96,15 +96,17 @@ def f() -> Iterator[int]:
 [case testIfStatement]
 
 a = None # type: A
+a2 = None # type: A
+a3 = None # type: A
 b = None # type: bool
 if a:
-    a = b # Fail
-elif a:
-    a = b # Fail
-elif a:
-    a = b # Fail
+    a = b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+elif a2:
+    a = b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
+elif a3:
+    a = b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 else:
-    a = b # Fail
+    a = b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if b:
     pass
 elif b:
@@ -114,11 +116,6 @@ if b:
 
 class A: pass
 [builtins fixtures/bool.py]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:9: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
-main:11: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 
 -- Loops
