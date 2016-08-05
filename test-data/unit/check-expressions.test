@@ -300,6 +300,28 @@ b = a and b # E: Incompatible types in assignment (expression has type "Union[A,
 b = b or a  # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
 b = a or b  # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
 class A: pass
+
+[builtins fixtures/bool.py]
+
+[case testRestrictedTypeAnd]
+
+b = None # type: bool
+i = None # type: str
+j = not b and i
+if j:
+    s = j # type: str
+
+
+[builtins fixtures/bool.py]
+
+[case testRestrictedTypeOr]
+
+b = None # type: bool
+i = None # type: str
+j = b or i
+if not j:
+    s = j # type: str
+
 [builtins fixtures/bool.py]
 
 [case testNonBooleanOr]
