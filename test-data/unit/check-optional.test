@@ -311,3 +311,7 @@ def f() -> None:
 from typing import Callable
 def f() -> None: pass
 x = f  # type: Callable[[], None]
+
+[case testOptionalCallable]
+from typing import Callable, Optional
+T = Optional[Callable[..., None]]
