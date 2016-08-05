@@ -233,7 +233,7 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(fx.gb, fx.ga))
         assert_false(is_proper_subtype(fx.ga, fx.gb))
 
-    # ca_be_true / can_be_false
+    # can_be_true / can_be_false
 
     def test_empty_tuple_always_false(self):
         tuple_type = self.tuple()
