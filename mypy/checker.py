@@ -2444,7 +2444,7 @@ def find_isinstance_check(node: Node,
             if is_not:
                 if_vars, else_vars = else_vars, if_vars
             return if_vars, else_vars
-    elif isinstance(node, RefExpr) and experiments.STRICT_OPTIONAL:
+    elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
         vartype = type_map[node]
