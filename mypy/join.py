@@ -66,11 +66,15 @@ def join_types(s: Type, t: Type) -> Type:
     if isinstance(s, ErasedType):
         return t
 
+    if isinstance(s, UnionType) and not isinstance(t, UnionType):
+        s, t = t, s
+
     if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
         s, t = t, s
 
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s))
+
 
 
 class TypeJoinVisitor(TypeVisitor[Type]):
@@ -114,8 +118,12 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         if experiments.STRICT_OPTIONAL:
             if isinstance(self.s, (NoneTyp, UninhabitedType)):
                 return t
+            elif isinstance(self.s, UnboundType):
+                return AnyType()
+            elif isinstance(self.s, Void) or isinstance(self.s, ErrorType):
+                return ErrorType()
             else:
-                return self.default(self.s)
+                return UnionType.make_simplified_union([self.s, t])
         else:
             if not isinstance(self.s, Void):
                 return self.s
