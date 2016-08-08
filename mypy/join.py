@@ -76,7 +76,6 @@ def join_types(s: Type, t: Type) -> Type:
     return t.accept(TypeJoinVisitor(s))
 
 
-
 class TypeJoinVisitor(TypeVisitor[Type]):
     """Implementation of the least upper bound algorithm.
 
