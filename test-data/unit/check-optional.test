@@ -330,3 +330,11 @@ def lookup_field(name, obj):
 [out]
 main: note: In function "lookup_field":
 main:10: error: Need type annotation for variable
+
+[case testTernaryWithNone]
+reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/bool.py]
+
+[case testListWithNone]
+reveal_type([0, None, 0])    # E: Revealed type is 'builtins.list[Union[builtins.int, builtins.None]]'
+[builtins fixtures/list.py]
