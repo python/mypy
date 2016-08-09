@@ -808,9 +808,13 @@ class TypeChecker(NodeVisitor[Type]):
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
-            if original_type is None and isinstance(base_attr.node,
-                                                    FuncDef):
-                original_type = self.function_type(base_attr.node)
+            if original_type is None:
+                if isinstance(base_attr.node, FuncDef):
+                    original_type = self.function_type(base_attr.node)
+                elif isinstance(base_attr.node, Decorator):
+                    original_type = self.function_type(base_attr.node.func)
+                else:
+                    assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
                     method_type(original_type),
@@ -824,7 +828,6 @@ class TypeChecker(NodeVisitor[Type]):
                                     base.name(),
                                     defn)
             else:
-                assert original_type is not None
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), defn)
 

@@ -1002,6 +1002,20 @@ main:1: note: In module imported here:
 tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
 tmp/a.py:5: error: "str" not callable
 
+[case testUndefinedDecoratorInImportCycle]
+# cmd: mypy -m foo.base
+[file foo/__init__.py]
+import foo.base
+class Derived(foo.base.Base):
+    def method(self) -> None: pass
+[file foo/base.py]
+import foo
+class Base:
+    @decorator
+    def method(self) -> None: pass
+[out]
+tmp/foo/base.py:3: error: Name 'decorator' is not defined
+
 
 -- Conditional function definition
 -- -------------------------------
