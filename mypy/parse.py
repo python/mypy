@@ -479,6 +479,10 @@ class Parser:
             if is_error:
                 return None
 
+            if typ:
+                for arg, arg_type in zip(args, typ.arg_types):
+                    self.set_type_optional(arg_type, arg.initializer)
+
             if typ and isinstance(typ.ret_type, UnboundType):
                 typ.ret_type.is_ret_type = True
 
@@ -781,8 +785,6 @@ class Parser:
                 kind = nodes.ARG_NAMED
             else:
                 kind = nodes.ARG_POS
-
-        self.set_type_optional(type, initializer)
 
         return Argument(variable, type, initializer, kind), require_named
 
