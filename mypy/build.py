@@ -35,6 +35,7 @@ from mypy import defaults
 from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.modinterface import ModuleInterface, extract_interface
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
@@ -287,6 +288,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
+                        ('interface_hash', str),
                         ('version_id', str),  # mypy version for cache invalidation
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
@@ -782,7 +784,7 @@ def random_string() -> str:
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                manager: BuildManager) -> None:
+                interface_hash: str, manager: BuildManager) -> None:
     """Write cache files for a module.
 
     Args:
@@ -824,6 +826,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'child_modules': child_modules,
             'options': select_options_affecting_cache(manager.options),
             'dep_prios': dep_prios,
+            'interface_hash': interface_hash,
             'version_id': manager.version_id,
             }
     with open(meta_json_tmp, 'w') as f:
@@ -998,6 +1001,8 @@ class State:
     dependencies = None  # type: List[str]
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
+    interface = None  # type: ModuleInterface
+    interface_hash = None  # type: str
 
     # Map each dependency to the line number where it is first imported
     dep_line_map = None  # type: Dict[str, int]
@@ -1289,6 +1294,8 @@ class State:
         self.suppressed = suppressed
         self.priorities = priorities
         self.dep_line_map = dep_line_map
+        self.interface = extract_interface(self.tree)
+        self.interface_hash = self.interface.compute_hash()
         self.check_blockers()
 
     def patch_parent(self) -> None:
@@ -1330,7 +1337,7 @@ class State:
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             write_cache(self.id, self.path, self.tree,
                         list(self.dependencies), list(self.suppressed), list(self.child_modules),
-                        dep_prios,
+                        dep_prios, self.interface_hash,
                         self.manager)
 
 
