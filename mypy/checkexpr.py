@@ -1531,55 +1531,68 @@ class ExpressionChecker:
                                          type_name: str,
                                          id_for_messages: str) -> Type:
         """Type check a generator expression or a list comprehension."""
-        self.check_for_comp(gen)
+        with self.chk.binder.frame_context():
+            self.check_for_comp(gen)
 
-        # Infer the type of the list comprehension by using a synthetic generic
-        # callable type.
-        tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
-        tv = TypeVarType(tvdef)
-        constructor = CallableType(
-            [tv],
-            [nodes.ARG_POS],
-            [None],
-            self.chk.named_generic_type(type_name, [tv]),
-            self.chk.named_type('builtins.function'),
-            name=id_for_messages,
-            variables=[tvdef])
-        return self.check_call(constructor,
-                               [gen.left_expr], [nodes.ARG_POS], gen)[0]
+            # Infer the type of the list comprehension by using a synthetic generic
+            # callable type.
+            tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+            tv = TypeVarType(tvdef)
+            constructor = CallableType(
+                [tv],
+                [nodes.ARG_POS],
+                [None],
+                self.chk.named_generic_type(type_name, [tv]),
+                self.chk.named_type('builtins.function'),
+                name=id_for_messages,
+                variables=[tvdef])
+            return self.check_call(constructor,
+                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
-        self.check_for_comp(e)
+        with self.chk.binder.frame_context():
+            self.check_for_comp(e)
 
-        # Infer the type of the list comprehension by using a synthetic generic
-        # callable type.
-        ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
-        vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
-        kt = TypeVarType(ktdef)
-        vt = TypeVarType(vtdef)
-        constructor = CallableType(
-            [kt, vt],
-            [nodes.ARG_POS, nodes.ARG_POS],
-            [None, None],
-            self.chk.named_generic_type('builtins.dict', [kt, vt]),
-            self.chk.named_type('builtins.function'),
-            name='<dictionary-comprehension>',
-            variables=[ktdef, vtdef])
-        return self.check_call(constructor,
-                               [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
+            # Infer the type of the list comprehension by using a synthetic generic
+            # callable type.
+            ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
+            vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+            kt = TypeVarType(ktdef)
+            vt = TypeVarType(vtdef)
+            constructor = CallableType(
+                [kt, vt],
+                [nodes.ARG_POS, nodes.ARG_POS],
+                [None, None],
+                self.chk.named_generic_type('builtins.dict', [kt, vt]),
+                self.chk.named_type('builtins.function'),
+                name='<dictionary-comprehension>',
+                variables=[ktdef, vtdef])
+            return self.check_call(constructor,
+                                   [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 
     def check_for_comp(self, e: Union[GeneratorExpr, DictionaryComprehension]) -> None:
         """Check the for_comp part of comprehensions. That is the part from 'for':
         ... for x in y if z
+
+        Note: This adds the type information derived from the condlists to the current binder.
         """
-        with self.chk.binder.frame_context():
-            for index, sequence, conditions in zip(e.indices, e.sequences,
-                                                   e.condlists):
-                sequence_type = self.chk.analyze_iterable_item_type(sequence)
-                self.chk.analyze_index_variables(index, sequence_type, e)
-                for condition in conditions:
-                    self.accept(condition)
+        for index, sequence, conditions in zip(e.indices, e.sequences,
+                                               e.condlists):
+            sequence_type = self.chk.analyze_iterable_item_type(sequence)
+            self.chk.analyze_index_variables(index, sequence_type, e)
+            for condition in conditions:
+                self.accept(condition)
+
+                # values are only part of the comprehension when all conditions are true
+                true_map, _ = mypy.checker.find_isinstance_check(
+                    condition, self.chk.type_map,
+                    self.chk.typing_mode_weak()
+                )
+
+                if true_map:
+                    for var, type in true_map.items():
+                        self.chk.binder.push(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)

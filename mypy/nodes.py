@@ -1504,7 +1504,7 @@ class GeneratorExpr(Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
     left_expr = None  # type: Expression
-    sequences_expr = None  # type: List[Expression]
+    sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
     indices = None  # type: List[Expression]
 
@@ -1548,7 +1548,7 @@ class DictionaryComprehension(Expression):
 
     key = None  # type: Expression
     value = None  # type: Expression
-    sequences_expr = None  # type: List[Expression]
+    sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
     indices = None  # type: List[Expression]
 
