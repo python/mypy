@@ -1327,8 +1327,11 @@ class State:
         self.suppressed = suppressed
         self.priorities = priorities
         self.dep_line_map = dep_line_map
-        self.interface = extract_interface(self.tree)
-        self.interface_hash = self.interface.compute_hash()
+        if self.manager.options.incremental:
+            self.interface = extract_interface(self.tree)
+            self.interface_hash = self.interface.compute_hash()
+        else:
+            self.interface_hash = ""
         self.check_blockers()
 
     def patch_parent(self) -> None:
