@@ -2461,7 +2461,7 @@ class SemanticAnalyzer(NodeVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
 
 
 class FirstPass(NodeVisitor):
@@ -2673,7 +2673,7 @@ class ThirdPass(TraverserVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:

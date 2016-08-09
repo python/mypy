@@ -415,8 +415,17 @@ def set_drop_into_pdb(flag: bool) -> None:
     drop_into_pdb = flag
 
 
-def report_internal_error(err: Exception, file: str, line: int) -> None:
+def report_internal_error(err: Exception, file: str, line: int,
+                          errors: Errors = None) -> None:
     """Display stack trace and file location for an internal error + exit."""
+    if errors:
+        # Dump out errors so far, they often provide a clue.
+        # But catch unexpected errors rendering them.
+        try:
+            for msg in errors.messages():
+                print(msg)
+        except Exception as e:
+            print("Failed to dump errors:", repr(e))
     if drop_into_pdb:
         import pdb
         pdb.post_mortem(sys.exc_info()[2])

@@ -1181,7 +1181,7 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0)
+            report_internal_error(err, self.path, 0, self.manager.errors)
         self.manager.errors.set_import_context(save_import_context)
         self.check_blockers()
 
