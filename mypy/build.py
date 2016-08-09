@@ -1022,6 +1022,9 @@ class State:
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
 
+    # If True, indicates that the public interface is unchanged.
+    externally_same = False
+
     # If True, indicates that module must be checked later to see if it is
     # stale and if the public interface has been changed.
     maybe_stale = False
@@ -1122,6 +1125,24 @@ class State:
             self.suppressed = []
             self.child_modules = set()
 
+    def check_interface(self) -> None:
+        if self.has_new_submodules():
+            self.manager.trace("Module {} has new submodules".format(self.id))
+            self.parse_file()
+            self.externally_same = False
+        elif self.maybe_stale:
+            self.parse_file()
+            if self.interface_hash == self.meta.interface_hash:
+                self.manager.trace("Module {} was changed but has same interface".format(self.id))
+                self.externally_same = True
+                self.meta = None
+            else:
+                self.manager.trace("Module {} has different interface".format(self.id))
+                self.externally_same = False
+        elif self.meta is not None:
+            self.manager.trace("Module {} is unchanged".format(self.id))
+            self.externally_same = True
+
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
         # TODO: Read the path (the __init__.py file) and return
         # immediately if it's empty or only contains comments.
@@ -1168,16 +1189,28 @@ class State:
         # suppression by --silent-imports.  However when a suppressed
         # dependency is added back we find out later in the process.
         return (self.meta is not None
+                and self.externally_same
                 and self.dependencies == self.meta.dependencies
                 and self.child_modules == set(self.meta.child_modules))
+
+    def is_interface_fresh(self) -> bool:
+        return self.externally_same
 
     def has_new_submodules(self) -> bool:
         """Return if this module has new submodules after being loaded from a warm cache."""
         return self.meta is not None and self.child_modules != set(self.meta.child_modules)
 
-    def mark_stale(self) -> None:
-        """Throw away the cache data for this file, marking it as stale."""
+    def mark_stale(self, interface_is_same=False) -> None:
+        """Throw away the cache data for this file, marking it as stale.
+
+        If interface_is_same is True, treat the module's interface as being
+        fresh -- only the module's content should be considered stale."""
+        if interface_is_same:
+            self.manager.trace("Marking {} as stale (but interface is fresh)".format(self.id))
+        else:
+            self.manager.trace("Marking {} as stale (interface is also stale)".format(self.id))
         self.meta = None
+        self.externally_same = interface_is_same
         self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
@@ -1397,8 +1430,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             if dep in st.ancestors and dep in graph:
                 graph[dep].child_modules.add(st.id)
     for id, g in graph.items():
-        if g.has_new_submodules():
-            g.parse_file()
+        g.check_interface()
     return graph
 
 
@@ -1437,8 +1469,24 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if not graph[id].is_fresh()}
+        stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
         fresh = fresh and not stale_deps
+
+        # TODO: Currently, the interface-based approach to incremental mode will regard
+        # absolutely any interface changes in our dependencies as a sign that our
+        # interface has also changed. This is often over-conservative, but is
+        # an easy way of making sure we preserve correctness.
+        #
+        # This unfortunately does mean that an interface change will often result back
+        # to the worst-case behavior for incremental mode -- changing an interface causes
+        # a cascade of changes through a large subset of the import graph.
+        #
+        # The ideal behavior would be for an interface change to propagate only only one
+        # or two levels through the import DAG, but this requires us to track dependencies
+        # on a more finer-grained level then we currently do.
+        interface_stale_scc = {id for id in scc if not graph[id].is_interface_fresh()}
+        interface_fresh = len(interface_stale_scc) == 0 and len(stale_deps) == 0
+
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
@@ -1453,9 +1501,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
-            newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
+            viable = {id for id in deps if not graph[id].is_interface_fresh()}
+            newest_in_deps = max(graph[dep].meta.data_mtime for dep in viable) if viable else 0
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].meta.data_mtime)
                 for id in all_ids:
                     if id in scc:
                         if graph[id].meta.data_mtime < newest_in_deps:
@@ -1481,6 +1530,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
             if stale_deps:
                 fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
+            if interface_fresh:
+                fresh_msg += ", but interface is fresh"
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
         if len(scc) == 1:
@@ -1488,10 +1539,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         else:
             manager.log("Processing SCC of size %d (%s) as %s" %
                         (len(scc), " ".join(scc), fresh_msg))
+
         if fresh:
             process_fresh_scc(graph, scc)
         else:
-            process_stale_scc(graph, scc)
+            process_stale_scc(graph, scc, interface_fresh)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
@@ -1553,10 +1605,10 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].calculate_mros()
 
 
-def process_stale_scc(graph: Graph, scc: List[str]) -> None:
+def process_stale_scc(graph: Graph, scc: List[str], is_interface_fresh: bool) -> None:
     """Process the modules in one SCC from source code."""
     for id in scc:
-        graph[id].mark_stale()
+        graph[id].mark_stale(is_interface_fresh)
     for id in scc:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
