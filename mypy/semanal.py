@@ -2247,7 +2247,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
-            return self.type[name]
+            return self.type.names[name]
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
