@@ -57,7 +57,67 @@ def func3() -> None: pass
 [out]
 
 
-[case testIncrementalSimpleImportCascade]
+[case testIncrementalInternalChangeOnly]
+import mod1
+mod1.func1()
+
+[file mod1.py]
+import mod2
+def func1() -> None: mod2.func2()
+
+[file mod2.py]
+import mod3
+def func2() -> None: mod3.func3()
+
+[file mod3.py]
+def func3() -> None: pass
+
+[file mod3.py.next]
+def func3() -> None: 3 + 2
+
+[stale mod3]
+[out]
+
+
+[case testIncrementalImportGone]
+import mod1
+
+[file mod1.py]
+from mod2 import A
+def func1() -> A: pass
+
+[file mod2.py]
+class A: pass
+
+[file mod1.py.next]
+def func1() -> A: pass
+
+[stale mod1]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py: note: In function "func1":
+tmp/mod1.py:1: error: Name 'A' is not defined
+
+
+[case testIncrementalSameNameChange]
+import mod1
+
+[file mod1.py]
+from mod2 import A
+def func1() -> A: pass
+
+[file mod2.py]
+class A: pass
+
+[file mod2.py.next]
+class Parent: pass
+class A(Parent): pass
+
+[stale mod1, mod2]
+[out]
+
+
+[case testIncrementalPartialInterfaceChange]
 import mod1
 mod1.func1()
 
@@ -75,7 +135,311 @@ def func3() -> None: pass
 [file mod3.py.next]
 def func3() -> int: return 2
 
+# TODO: ideally, only mod2 and mod3 would be stale, but we treat any
+# changes in our dependencies as an interface change, so mod1 is
+# rechecked as well.
 [stale mod1, mod2, mod3]
+[out]
+
+[case testIncrementalInternalScramble]
+import mod1
+
+[file mod1.py]
+import mod2
+mod2.foo()
+
+[file mod2.py]
+def baz() -> int:
+    return 3
+
+def bar() -> int:
+    return baz()
+
+def foo() -> int:
+    return bar()
+
+[file mod2.py.next]
+def foo() -> int:
+    return baz()
+
+def bar() -> int:
+    return bar()
+
+def baz() -> int:
+    return 42
+[stale mod2]
+[out]
+
+[case testIncrementalMethodInterfaceChange]
+import mod1
+
+[file mod1.py]
+import mod2
+
+[file mod2.py]
+class Foo:
+    def bar(self, a: str) -> str:
+        return "a"
+
+[file mod2.py.next]
+class Foo:
+    def bar(self, a: float) -> str:
+        return "a"
+
+[stale mod1, mod2]
+[out]
+
+[case testIncrementalBaseClassChange]
+import mod1
+
+[file mod1.py]
+from mod2 import Child
+Child().good_method()
+
+[file mod2.py]
+class Good:
+    def good_method(self) -> int: return 1
+class Bad: pass
+class Child(Good): pass
+
+[file mod2.py.next]
+class Good:
+    def good_method(self) -> int: return 1
+class Bad: pass
+class Child(Bad): pass
+
+[stale mod1, mod2]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py:2: error: "Child" has no attribute "good_method"
+
+[case testIncrementalCascadingChange]
+import mod1
+
+[file mod1.py]
+from mod2 import A
+
+[file mod2.py]
+from mod3 import B
+A = B
+
+[file mod3.py]
+from mod4 import C
+B = C
+
+[file mod4.py]
+C = 3
+
+[file mod4.py.next]
+C = "A"
+
+[stale mod1, mod2, mod3, mod4]
+[out]
+
+[case testIncrementalRemoteChange]
+import mod1
+
+[file mod1.py]
+import mod2
+def accepts_int(a: int) -> None: pass
+accepts_int(mod2.mod3.mod4.const)
+
+[file mod2.py]
+import mod3
+
+[file mod3.py]
+import mod4
+
+[file mod4.py]
+const = 3
+
+[file mod4.py.next]
+const = "foo"
+
+[stale mod1, mod2, mod3, mod4]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalBadChange]
+import mod1
+
+[file mod1.py]
+from mod2 import func2
+
+def func1() -> int:
+    return func2()
+
+[file mod2.py]
+def func2() -> int:
+    return 1
+
+[file mod2.py.next]
+def func2() -> str:
+    return "foo"
+
+[stale mod1, mod2]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py: note: In function "func1":
+tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testIncrementalWithComplexDictExpression]
+import mod1 
+
+[file mod1.py]
+import mod1_private
+
+[file mod1_private.py]
+my_dict = {
+    'a': [1, 2, 3],
+    'b': [4, 5, 6]
+}
+
+[file mod1_private.py.next]
+my_dict = {
+    'a': [1, 2, 3],
+    'b': [4, 5, 'a']
+}
+
+[stale mod1, mod1_private]
+[builtins fixtures/dict.py]
+[out]
+
+[case testIncrementalWithComplexConstantExpressionNoAnnotation]
+import mod1 
+
+[file mod1.py]
+import mod1_private
+
+[file mod1_private.py]
+def foo() -> int: return 1
+def bar() -> int: return 2
+baz = 1 + foo()
+
+[file mod1_private.py.next]
+def foo() -> int: return 1
+def bar() -> int: return 2
+baz = 1 + bar()
+# Ideally, this wouldn't count as an interface change,
+# but the interface checker isn't easily able to deduce
+# the type of this constant.
+[stale mod1, mod1_private]
+[out]
+
+[case testIncrementalWithComplexConstantExpressionWithAnnotation]
+import mod1
+
+[file mod1.py]
+import mod1_private
+
+[file mod1_private.py]
+def foo() -> int: return 1
+def bar() -> int: return 2
+baz = 1 + foo()  # type: int
+
+[file mod1_private.py.next]
+def foo() -> int: return 1
+def bar() -> int: return 2
+baz = 1 + bar()  # type: int
+# However, if the constant expressions are annotated, we
+# _can_ currently deduce the type.
+[stale mod1_private]
+[out]
+
+[case testIncrementalWithDecorators]
+import mod1
+
+[file mod1.py]
+import mod1_private
+def accepts_int(a: int) -> None: pass
+accepts_int(mod1_private.some_func(12))
+
+[file mod1_private.py]
+from typing import Callable
+def multiply(f: Callable[[int], int]) -> Callable[[int], int]:
+    return lambda a: f(a) * 10
+
+def stringify(f: Callable[[int], int]) -> Callable[[int], str]:
+    return lambda a: str(f(a))
+
+@multiply
+def some_func(a: int) -> int:
+    return a + 2
+
+[file mod1_private.py.next]
+from typing import Callable
+def multiply(f: Callable[[int], int]) -> Callable[[int], int]:
+    return lambda a: f(a) * 10
+
+def stringify(f: Callable[[int], int]) -> Callable[[int], str]:
+    return lambda a: str(f(a))
+
+@stringify
+def some_func(a: int) -> int:
+    return a + 2
+[stale mod1, mod1_private]
+[builtins fixtures/ops.py]
+[out]
+
+[case testIncrementalChangingClassAttributes]
+import mod1
+
+[file mod1.py]
+import mod2
+mod2.Foo.A
+
+[file mod2.py]
+class Foo:
+    A = 3
+
+[file mod2.py.next]
+class Foo:
+    A = "hello"
+
+[stale mod1, mod2]
+[out]
+
+[case testIncrementalChangingFields]
+import mod1
+
+[file mod1.py]
+import mod2
+f = mod2.Foo()
+f.A
+
+[file mod2.py]
+class Foo:
+    def __init__(self) -> None:
+        self.A = 3
+
+[file mod2.py.next]
+class Foo:
+    def __init__(self) -> None:
+        self.A = "hello"
+
+[stale mod1, mod2]
+[out]
+
+[case testIncrementalNestedClassDefinition]
+import mod1
+
+[file mod1.py]
+import mod2
+b = mod2.Foo.Bar()
+b.attr
+
+[file mod2.py]
+class Foo:
+    class Bar:
+        attr = 3
+
+[file mod2.py.next]
+class Foo:
+    class Bar:
+        attr = "foo"
+
+[stale mod1, mod2]
 [out]
 
 [case testIncrementalSimpleBranchingModules]

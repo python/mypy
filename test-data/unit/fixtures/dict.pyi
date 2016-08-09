@@ -20,7 +20,8 @@ class dict(Iterable[KT], Mapping[KT, VT], Generic[KT, VT]):
     def __iter__(self) -> Iterator[KT]: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
 
-class int: pass # for convenience
+class int: # for convenience
+    def __add__(self, x: int) -> int: pass
 
 class str: pass # for keyword argument key type
 
