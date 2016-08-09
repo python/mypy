@@ -207,8 +207,8 @@ class TypeCheckSuite(DataSuite):
                                  manager: build.BuildManager) -> Set[str]:
         missing = {}
         for id, path in modules.items():
-            meta = build.find_cache_meta(id, path, manager)
-            if meta is None:
+            maybe_stale, meta = build.find_cache_meta(id, path, manager)
+            if meta is None or maybe_stale:
                 missing[id] = path
         return set(missing.values())
 
