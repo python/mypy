@@ -62,6 +62,7 @@ def test_python_evaluation(testcase):
         interpreter = python3_path
         args = []
         py2 = False
+    args.append('--tb')  # Show traceback on crash.
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)

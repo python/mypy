@@ -17,7 +17,7 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     testcase_pyversion, update_testcase_output,
 )
-from mypy.errors import CompileError
+from mypy.errors import CompileError, set_show_tb
 from mypy.options import Options
 
 from mypy import experiments
@@ -113,6 +113,7 @@ class TypeCheckSuite(DataSuite):
         options = self.parse_options(program_text)
         options.use_builtins_fixtures = True
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
+        set_show_tb(True)  # Show traceback on crash.
 
         output = testcase.output
         if incremental:
