@@ -7,7 +7,7 @@ from mypy.types import (
     Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType,
     DeletedType, NoneTyp, TypeType
 )
-from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context
+from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, OpExpr, ComparisonExpr
 from mypy.nodes import function_type, Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
@@ -348,6 +348,11 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
+
+    if isinstance(node.node, MypyFile):
+        # Reference to a module object.
+        # TODO: Retain the identity of the module?
+        return builtin_type('builtins.module')
 
     if is_decorated:
         # TODO: Return type of decorated function. This is quick hack to work around #998.
