@@ -322,3 +322,10 @@ class C:
 [out]
 main: note: In member "__init__" of class "C":
 main:2: error: The return type of "__init__" must be None
+
+[case testMethodSameNameAsReturn]
+def str() -> str: ...
+def f() -> f: ...
+[out]
+main: note: In function "f":
+main:2: error: Invalid type "main.f"
