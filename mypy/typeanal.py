@@ -201,7 +201,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        raise RuntimeError('TypeVarType is already analyzed')
+        return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.anal_array(t.arg_types),

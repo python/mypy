@@ -857,3 +857,21 @@ from typing import TypeVar, Container
 T = TypeVar('T')
 def f(x: Container[T]) -> T: ...
 reveal_type(f((1, 2))) # E: Revealed type is 'builtins.int*'
+
+[case testClassMethodInGenericClassWithGenericConstructorArg]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, a: T) -> None: pass
+    @classmethod
+    def f(cls) -> None: pass
+[builtins fixtures/classmethod.py]
+
+[case testClassMethodInClassWithGenericConstructor]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A:
+    def __init__(self, a: T) -> None: pass
+    @classmethod
+    def f(cls) -> None: pass
+[builtins fixtures/classmethod.py]
