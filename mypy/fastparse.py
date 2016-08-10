@@ -284,6 +284,9 @@ class ASTConverter(ast35.NodeTransformer):
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
 
+        for arg, arg_type in zip(args, arg_types):
+            self.set_type_optional(arg_type, arg.initializer)
+
         if isinstance(return_type, UnboundType):
             return_type.is_ret_type = True
 
@@ -329,9 +332,7 @@ class ASTConverter(ast35.NodeTransformer):
     def transform_args(self, args: ast35.arguments, line: int) -> List[Argument]:
         def make_argument(arg: ast35.arg, default: Optional[ast35.expr], kind: int) -> Argument:
             arg_type = TypeConverter(line=line).visit(arg.annotation)
-            converted_default = self.visit(default)
-            self.set_type_optional(arg_type, converted_default)
-            return Argument(Var(arg.arg), arg_type, converted_default, kind)
+            return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []
         num_no_defaults = len(args.args) - len(args.defaults)

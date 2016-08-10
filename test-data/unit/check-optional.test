@@ -100,6 +100,23 @@ f(None)
 [out]
 main: note: In function "f":
 
+[case testInferOptionalFromDefaultNoneComment]
+def f(x=None):
+  # type: (int) -> None
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
+[case testInferOptionalFromDefaultNoneCommentWithFastParser]
+# options: fast_parser
+def f(x=None):
+  # type: (int) -> None
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
 [case testInferOptionalType]
 x = None
 if bool():
