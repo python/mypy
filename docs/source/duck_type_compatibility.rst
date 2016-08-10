@@ -35,3 +35,6 @@ and also behaves as expected:
    silently pass type checking. In Python 3 ``str`` and ``bytes`` are
    separate, unrelated types and this kind of error is easy to
    detect. This a good reason for preferring Python 3 over Python 2!
+
+   See :ref:`text-and-anystr` for details on how to enforce that a
+   value must be a unicode string in a cross-compatible way.
