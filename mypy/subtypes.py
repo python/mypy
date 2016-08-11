@@ -193,6 +193,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_namedtuple_type(self, left: NamedTupleType) -> bool:
+        #import pdb; pdb.set_trace()
         if isinstance(self.right, NamedTupleType):
             # left.attrs.issubset(right.attrs) is insufficient
             # (a: int, b: str) is not subtype of (b: int, a: str)

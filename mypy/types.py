@@ -762,7 +762,14 @@ class TupleType(Type):
                          implicit=data['implicit'])
 
     def self_type(self, inst: Instance) -> 'TupleType':
-        return TupleType(self.items, inst)
+        return TupleType(self.items, inst, self.line, self.implicit)
+
+    def with_types(self, items: List[Type]) -> 'TupleType':
+        return TupleType(items, self.fallback, self.line, self.implicit)
+
+    def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
+        return TupleType(self.items[begin:end:stride], self.fallback,
+                         self.line, self.implicit)
 
 
 class NamedTupleType(TupleType):
@@ -775,7 +782,11 @@ class NamedTupleType(TupleType):
         super().__init__(*args, **kwargs)
 
     def self_type(self, inst: Instance) -> 'NamedTupleType':
-        return NamedTupleType(self.name, self.attrs, self.items, inst)
+        return NamedTupleType(self.name, self.attrs, self.items, inst, self.line)
+
+    def with_types(self, items: List[Type]) -> 'NamedTupleType':
+        return NamedTupleType(self.name, self.attrs, items,
+                              self.fallback, self.line, self.implicit)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         try:

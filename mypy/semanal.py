@@ -1543,7 +1543,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.add_namedtuple_method('_replace', symbols, info, this_type, this_type,
                                    self.make_factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         self.add_namedtuple_method('__init__', symbols, info, this_type, NoneTyp(),
-                                   self.make_factory_args(vars, ARG_NAMED))
+                                   self.make_factory_args(vars, ARG_POS), info.name())
         # TODO: refine to OrderedDict[Union[types]]
         self.add_namedtuple_method('_asdict', symbols, info, this_type, AnyType(), [])
         return info
@@ -1553,7 +1553,7 @@ class SemanticAnalyzer(NodeVisitor):
         return [Argument(var, var.type, initializer, kind) for var in vars]
 
     def add_namedtuple_method(self, funcname: str, symbols: SymbolTable, info: TypeInfo,
-                              this_type: Type, ret: Type, args: List[Argument]) -> None:
+                              this_type: Type, ret: Type, args: List[Argument], name=None) -> None:
         args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
         types = [arg.type_annotation for arg in args]
         items = [arg.variable.name() for arg in args]
@@ -1561,7 +1561,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: Make sure that the self argument name is not visible?
         signature = CallableType(types, arg_kinds, items, ret,
                                  self.named_type('__builtins__.function'),
-                                 name=info.name())
+                                 name=name or info.name() + '.' + funcname)
         func = FuncDef(funcname,
                        args,
                        Block([]),

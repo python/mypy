@@ -1221,8 +1221,7 @@ class ExpressionChecker:
                     slic.stride)
                 return AnyType()
 
-        return TupleType(left_type.items[begin:end:stride], left_type.fallback,
-                    left_type.line, left_type.implicit)
+        return left_type.slice(begin, stride, end)
 
     def _get_value(self, index: Node) -> Optional[int]:
         if isinstance(index, IntExpr):

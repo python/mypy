@@ -1977,7 +1977,7 @@ class TypeInfo(SymbolNode):
         return ti
 
 
-def NamedTupleTypeInfo(tup: 'mypy.types.NamedTupleType', *args) -> None:
+def NamedTupleTypeInfo(tup: 'mypy.types.NamedTupleType', *args) -> TypeInfo:
     info = TypeInfo(*args)
     info.tuple_type = tup
     info.bases = [tup.fallback]

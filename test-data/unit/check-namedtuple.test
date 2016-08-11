@@ -143,9 +143,9 @@ class B(A): pass
 a = A(1, '')
 b = B(1, '')
 t = None  # type: Tuple[int, str]
-b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
-b = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
+b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
+b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
 t = a
 t = (1, '')
 t = b
@@ -199,8 +199,8 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 x = x._replace(y=5)
-x = x._replace(z=5)  # E: Unexpected keyword argument "z" for X
-x = x._replace(5)  # E: Too many positional arguments for X
+x = x._replace(z=5)  # E: Unexpected keyword argument "z" for X._replace
+x = x._replace(5)  # E: Too many positional arguments for X._replace
 
 [case testNamedTupleReplaceAsClass]
 from collections import namedtuple
@@ -216,4 +216,4 @@ from typing import NamedTuple
 X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
 x = x._replace(x=5)
-x = x._replace(y=5)  # E: Argument 1 to X has incompatible type "int"; expected "str"
+x = x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
