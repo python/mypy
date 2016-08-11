@@ -171,7 +171,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                         return AnyType()
                     # import pdb; pdb.set_trace()
                     if info.is_named_tuple:
-                        return NamedTupleType(info.name, info.attrs, 
+                        return NamedTupleType(info.name(), info.attrs, 
                                               self.anal_array(info.tuple_type.items),
                                               fallback=instance,
                                               line=t.line)
