@@ -11,6 +11,8 @@
 -- if no files should be stale.
 
 [case testIncrementalEmpty]
+[rechecked]
+[stale]
 [out]
 
 [case testIncrementalBasics]
@@ -21,6 +23,7 @@ def foo():
 [file m.py.next]
 def foo() -> None:
     pass
+[rechecked m]
 [stale m]
 [out]
 
@@ -32,7 +35,8 @@ def foo() -> None:
 [file m.py.next]
 def foo() -> None:
     bar()
-[stale m]
+[rechecked m]
+[stale]
 [out]
 main:1: note: In module imported here:
 tmp/m.py: note: In function "foo":
@@ -53,6 +57,7 @@ def func2() -> None: mod3.func3()
 [file mod3.py]
 def func3() -> None: pass
 
+[rechecked]
 [stale]
 [out]
 
@@ -75,7 +80,8 @@ def func3() -> None: pass
 [file mod3.py.next]
 def func3() -> None: 3 + 2
 
-[stale mod3]
+[rechecked mod3]
+[stale]
 [out]
 
 
@@ -92,12 +98,12 @@ class A: pass
 [file mod1.py.next]
 def func1() -> A: pass
 
-[stale mod1]
+[rechecked mod1]
+[stale]
 [out]
 main:1: note: In module imported here:
 tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:1: error: Name 'A' is not defined
-
 
 [case testIncrementalSameNameChange]
 import mod1
@@ -113,6 +119,7 @@ class A: pass
 class Parent: pass
 class A(Parent): pass
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 
@@ -135,9 +142,7 @@ def func3() -> None: pass
 [file mod3.py.next]
 def func3() -> int: return 2
 
-# TODO: ideally, only mod2 and mod3 would be stale, but we treat any
-# changes in our dependencies as an interface change, so mod1 is
-# rechecked as well.
+[rechecked mod1, mod2, mod3]
 [stale mod1, mod2, mod3]
 [out]
 
@@ -167,7 +172,8 @@ def bar() -> int:
 
 def baz() -> int:
     return 42
-[stale mod2]
+[rechecked mod2]
+[stale]
 [out]
 
 [case testIncrementalMethodInterfaceChange]
@@ -186,6 +192,7 @@ class Foo:
     def bar(self, a: float) -> str:
         return "a"
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 
@@ -208,6 +215,7 @@ class Good:
 class Bad: pass
 class Child(Bad): pass
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 main:1: note: In module imported here:
@@ -233,6 +241,7 @@ C = 3
 [file mod4.py.next]
 C = "A"
 
+[rechecked mod1, mod2, mod3, mod4]
 [stale mod1, mod2, mod3, mod4]
 [out]
 
@@ -278,6 +287,7 @@ def func2() -> int:
 def func2() -> str:
     return "foo"
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 main:1: note: In module imported here:
@@ -302,8 +312,9 @@ my_dict = {
     'b': [4, 5, 'a']
 }
 
+[rechecked mod1, mod1_private]
 [stale mod1, mod1_private]
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testIncrementalWithComplexConstantExpressionNoAnnotation]
@@ -321,10 +332,10 @@ baz = 1 + foo()
 def foo() -> int: return 1
 def bar() -> int: return 2
 baz = 1 + bar()
-# Ideally, this wouldn't count as an interface change,
-# but the interface checker isn't easily able to deduce
-# the type of this constant.
-[stale mod1, mod1_private]
+# Foo
+
+[rechecked mod1_private]
+[stale]
 [out]
 
 [case testIncrementalWithComplexConstantExpressionWithAnnotation]
@@ -342,9 +353,10 @@ baz = 1 + foo()  # type: int
 def foo() -> int: return 1
 def bar() -> int: return 2
 baz = 1 + bar()  # type: int
-# However, if the constant expressions are annotated, we
-# _can_ currently deduce the type.
-[stale mod1_private]
+# Type annotations shouldn't make a difference, but just in case...
+
+[rechecked mod1_private]
+[stale]
 [out]
 
 [case testIncrementalWithDecorators]
@@ -378,9 +390,12 @@ def stringify(f: Callable[[int], int]) -> Callable[[int], str]:
 @stringify
 def some_func(a: int) -> int:
     return a + 2
+[rechecked mod1, mod1_private]
 [stale mod1, mod1_private]
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 [out]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalChangingClassAttributes]
 import mod1
@@ -397,6 +412,7 @@ class Foo:
 class Foo:
     A = "hello"
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 
@@ -418,6 +434,7 @@ class Foo:
     def __init__(self) -> None:
         self.A = "hello"
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 
@@ -439,6 +456,7 @@ class Foo:
     class Bar:
         attr = "foo"
 
+[rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
 
@@ -455,6 +473,7 @@ def func() -> None: pass
 [file mod1.py.next]
 def func() -> int: return 1
 
+[rechecked mod1]
 [stale mod1]
 [out]
 
@@ -482,6 +501,7 @@ class Bar:
     def test(self) -> int: return 3
 
 [builtins fixtures/module_all.pyi]
+[rechecked]
 [stale]
 [out]
 
@@ -607,7 +627,8 @@ import a.b
 
 [file a/b.py]
 
-[stale b]
+[rechecked b]
+[stale]
 [out]
 main:1: note: In module imported here:
 tmp/b.py:4: error: Name 'a' already defined

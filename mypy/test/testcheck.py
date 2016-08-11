@@ -166,11 +166,22 @@ class TypeCheckSuite(DataSuite):
         if incremental and res:
             if not options.silent_imports:
                 self.verify_cache(module_data, a, res.manager)
-            if testcase.expected_stale_modules is not None and incremental == 2:
-                assert_string_arrays_equal(
-                    list(sorted(testcase.expected_stale_modules)),
-                    list(sorted(res.manager.stale_modules.difference({"__main__"}))),
-                    'Set of stale modules does not match expected set')
+            if incremental == 2:
+                self.check_module_equivalence(
+                    'rechecked',
+                    testcase.expected_rechecked_modules,
+                    res.manager.rechecked_modules)
+                self.check_module_equivalence(
+                    'stale',
+                    testcase.expected_stale_modules,
+                    res.manager.stale_modules)
+
+    def check_module_equivalence(self, name: str, expected: Set[str], actual: Set[str]) -> None:
+        if expected is not None:
+            assert_string_arrays_equal(
+                list(sorted(expected)),
+                list(sorted(actual.difference({"__main__"}))),
+                'Set of {} modules does not match expected set'.format(name))
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager) -> None:
