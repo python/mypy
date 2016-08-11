@@ -1188,7 +1188,12 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_callable_type(self, t: CallableType) -> str:
         s = ''
         bare_asterisk = False
-        for i in range(len(t.arg_types)):
+        # The lengths of t.arg_types and t.arg_kinds must be equal in
+        # order to be syntactically correct, but the interface extractor
+        # will visit this node before it's checked. To prevent the interface
+        # extractor from crashing, we just take the minimum of the two and
+        # deal with the error later.
+        for i in range(min(len(t.arg_types), len(t.arg_kinds))):
             if s != '':
                 s += ', '
             if t.arg_kinds[i] == mypy.nodes.ARG_NAMED and not bare_asterisk:
