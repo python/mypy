@@ -291,6 +291,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
+                        ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
@@ -729,6 +730,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
+        meta.get('interface_hash', 'missing'),
         meta.get('version_id'),
     )
     if (m.id != id or m.path != path or
@@ -1036,6 +1038,9 @@ class State:
 
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
+
+    # Contains a hash of the public interface in incremental mode
+    interface_hash = "never_set"  # type: str
 
     def __init__(self,
                  id: Optional[str],
@@ -1378,10 +1383,17 @@ class State:
     def write_cache(self) -> None:
         if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
-            write_cache(self.id, self.path, self.tree,
-                        list(self.dependencies), list(self.suppressed), list(self.child_modules),
-                        dep_prios,
-                        self.manager)
+            new_interface_hash = write_cache(
+                self.id, self.path, self.tree,
+                list(self.dependencies), list(self.suppressed), list(self.child_modules),
+                dep_prios,
+                self.manager)
+            if new_interface_hash == self.interface_hash:
+                self.manager.log("Cached module {} has same interface".format(self.id))
+            else:
+                self.manager.log("Cached module {} has changed interface".format(self.id))
+                self.mark_interface_stale()
+                self.interface_hash = new_interface_hash
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
