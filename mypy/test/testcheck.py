@@ -191,11 +191,17 @@ class TypeCheckSuite(DataSuite):
         # NOTE: When A imports B and there's an error in B, the cache
         # data for B is invalidated, but the cache data for A remains.
         # However build.process_graphs() will ignore A's cache data.
+        #
+        # Also note that when A imports B, and there's an error in A
+        # _due to a valid change in B_, the cache data for B will be
+        # invalidated and updated, but the old cache data for A will
+        # remain unchanged. As before, build.process_graphs() will
+        # ignore A's (old) cache data.
         error_paths = self.find_error_paths(a)
         modules = self.find_module_files()
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
-        if missing_paths != error_paths:
+        if not missing_paths.issubset(error_paths):
             raise AssertionFailure("cache data discrepancy %s != %s" %
                                    (missing_paths, error_paths))
 
