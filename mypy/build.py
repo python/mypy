@@ -13,6 +13,7 @@ The function build() is the main interface to this module.
 import binascii
 import collections
 import contextlib
+import hashlib
 import json
 import os
 import os.path
@@ -783,10 +784,14 @@ def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
+def compute_md5_hash(text: str) -> str:
+    return hashlib.md5(text.encode('utf-8')).hexdigest()
+
+
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                manager: BuildManager) -> None:
+                manager: BuildManager) -> str:
     """Write cache files for a module.
 
     Args:
@@ -815,7 +820,16 @@ def write_cache(id: str, path: str, tree: MypyFile,
     data_json_tmp = data_json + nonce
     meta_json_tmp = meta_json + nonce
     with open(data_json_tmp, 'w') as f:
-        json.dump(data, f, indent=2, sort_keys=True)
+        # TODO: The cache writing code currently assumes the data and meta
+        # file are always written together. However, with the new changes to
+        # incremental mode, we could instead write only an updated meta file
+        # and leave the data file alone when the public interface is unchanged.
+        #
+        # It might be cleaner to do this as part of a larger effort to speed up
+        # the serialization logic, however.
+        data_str = json.dumps(data, indent=2, sort_keys=True)
+        interface_hash = compute_md5_hash(data_str)
+        f.write(data_str)
         f.write('\n')
     data_mtime = os.path.getmtime(data_json_tmp)
     meta = {'id': id,
@@ -828,6 +842,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'child_modules': child_modules,
             'options': select_options_affecting_cache(manager.options),
             'dep_prios': dep_prios,
+            'interface_hash': interface_hash,
             'version_id': manager.version_id,
             }
     with open(meta_json_tmp, 'w') as f:
@@ -835,6 +850,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         f.write('\n')
     os.replace(data_json_tmp, data_json)
     os.replace(meta_json_tmp, meta_json)
+    return interface_hash
 
 
 """Dependency manager.
