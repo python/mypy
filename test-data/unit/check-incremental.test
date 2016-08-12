@@ -146,6 +146,34 @@ def func3() -> int: return 2
 [stale mod1, mod2, mod3]
 [out]
 
+[case testIncrementalInternalFunctionDefinitionChange]
+import mod1
+
+[file mod1.py]
+import mod2
+def accepts_int(a: int) -> int: return a
+accepts_int(mod2.foo())
+
+[file mod2.py]
+def foo() -> int:
+    def inner() -> int:
+        return 42
+    return inner()
+
+[file mod2.py.next]
+def foo() -> int:
+    def inner2() -> str:
+        return "foo"
+    return inner2()
+
+[rechecked mod2]
+[stale]
+[out]
+tmp/mod1.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/mod2.py: note: In function "foo":
+tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
+
 [case testIncrementalInternalScramble]
 import mod1
 
@@ -226,6 +254,8 @@ import mod1
 
 [file mod1.py]
 from mod2 import A
+def accepts_int(a: int) -> None: pass
+accepts_int(A)
 
 [file mod2.py]
 from mod3 import B
@@ -244,6 +274,35 @@ C = "A"
 [rechecked mod1, mod2, mod3, mod4]
 [stale mod1, mod2, mod3, mod4]
 [out]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalBrokenCascade]
+import mod1
+
+[file mod1.py]
+import mod2
+def accept_int(a: int) -> int: return a
+accept_int(mod2.mod3.mod4.const)
+
+[file mod2.py]
+import mod3
+
+[file mod3.py]
+import mod4
+
+[file mod4.py]
+const = 3
+
+[file mod3.py.next]
+# Import to mod4 is gone!
+
+[rechecked mod1, mod2, mod3]
+[stale mod1, mod2, mod3]
+[builtins fixtures/module.py]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: "module" has no attribute "mod4"
 
 [case testIncrementalRemoteChange]
 import mod1
@@ -324,15 +383,14 @@ import mod1
 import mod1_private
 
 [file mod1_private.py]
-def foo() -> int: return 1
-def bar() -> int: return 2
-baz = 1 + foo()
+def foobar() -> int: return 1
+def baz() -> int: return 2
+const = 1 + foobar()
 
 [file mod1_private.py.next]
-def foo() -> int: return 1
-def bar() -> int: return 2
-baz = 1 + bar()
-# Foo
+def foobar() -> int: return 1
+def baz() -> int: return 2
+const = 1 + baz()
 
 [rechecked mod1_private]
 [stale]
@@ -345,19 +403,41 @@ import mod1
 import mod1_private
 
 [file mod1_private.py]
-def foo() -> int: return 1
-def bar() -> int: return 2
-baz = 1 + foo()  # type: int
+def foobar() -> int: return 1
+def baz() -> int: return 2
+const = 1 + foobar()  # type: int
 
 [file mod1_private.py.next]
-def foo() -> int: return 1
-def bar() -> int: return 2
-baz = 1 + bar()  # type: int
-# Type annotations shouldn't make a difference, but just in case...
+def foobar() -> int: return 1
+def baz() -> int: return 2
+const = 1 + baz()  # type: int
 
 [rechecked mod1_private]
 [stale]
 [out]
+
+[case testIncrementalSmall]
+import mod1
+
+[file mod1.py]
+import mod1_private
+def accepts_int(a: int) -> None: pass
+accepts_int(mod1_private.some_func(12))
+
+[file mod1_private.py]
+def some_func(a: int) -> int:
+    return 1
+
+[file mod1_private.py.next]
+def some_func(a: int) -> str:
+    return "a"
+
+[rechecked mod1, mod1_private]
+[stale mod1, mod1_private]
+[builtins fixtures/ops.py]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalWithDecorators]
 import mod1
@@ -437,6 +517,31 @@ class Foo:
 [rechecked mod1, mod2]
 [stale mod1, mod2]
 [out]
+
+[case testIncrementalCheckingChangingFields]
+import mod1
+
+[file mod1.py]
+import mod2
+def accept_int(a: int) -> int: return a
+f = mod2.Foo()
+accept_int(f.A)
+
+[file mod2.py]
+class Foo:
+    def __init__(self) -> None:
+        self.A = 3
+
+[file mod2.py.next]
+class Foo:
+    def __init__(self) -> None:
+        self.A = "hello"
+
+[rechecked mod1, mod2]
+[stale mod1, mod2]
+[out]
+main:1: note: In module imported here:
+tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalNestedClassDefinition]
 import mod1
