@@ -353,6 +353,7 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors, self.modules, options=options)
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
+        self.rechecked_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -1046,6 +1047,9 @@ class State:
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
 
+    # If True, indicate that the public interface of this module is unchanged
+    externally_same = True
+
     # Contains a hash of the public interface in incremental mode
     interface_hash = "never_set"  # type: str
 
@@ -1194,16 +1198,25 @@ class State:
         # suppression by --silent-imports.  However when a suppressed
         # dependency is added back we find out later in the process.
         return (self.meta is not None
+                and self.is_interface_fresh()
                 and self.dependencies == self.meta.dependencies
                 and self.child_modules == set(self.meta.child_modules))
+
+    def is_interface_fresh(self) -> bool:
+        return self.externally_same
 
     def has_new_submodules(self) -> bool:
         """Return if this module has new submodules after being loaded from a warm cache."""
         return self.meta is not None and self.child_modules != set(self.meta.child_modules)
 
-    def mark_stale(self) -> None:
-        """Throw away the cache data for this file, marking it as stale."""
+    def mark_as_rechecked(self) -> None:
+        """Marks this module as having been fully re-analyzed by the type-checker."""
+        self.manager.rechecked_modules.add(self.id)
+
+    def mark_interface_stale(self) -> None:
+        """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
+        self.externally_same = False
         self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
@@ -1472,6 +1485,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
+            g.mark_interface_stale()
     return graph
 
 
@@ -1510,7 +1524,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if not graph[id].is_fresh()}
+        stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
         fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
@@ -1526,9 +1540,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
-            newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
+            viable = {id for id in deps if not graph[id].is_interface_fresh()}
+            newest_in_deps = 0 if not viable else max(graph[dep].meta.data_mtime for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].meta.data_mtime)
                 for id in all_ids:
                     if id in scc:
                         if graph[id].meta.data_mtime < newest_in_deps:
@@ -1565,6 +1580,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_fresh_scc(graph, scc)
         else:
             process_stale_scc(graph, scc)
+
+        # TODO: This is a workaround to get around the "chaining imports" problem
+        # with the interface checks.
+        #
+        # That is, if we have a file named `module_a.py` which does:
+        #
+        #     import module_b
+        #     module_b.module_c.foo(3)
+        #
+        # ...and if the type signature of `module_c.foo(...)` were to change,
+        # module_a_ would not be rechecked since the interface of `module_b`
+        # would not be considered changed.
+        #
+        # As a workaround, this check will force a module's interface to be
+        # considered stale if anything it imports also has a stale interface
+        # to make sure these changes are caught and propagated.
+        if len(stale_deps) > 0:
+            for id in scc:
+                graph[id].mark_interface_stale()
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
@@ -1629,8 +1663,6 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
 def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     """Process the modules in one SCC from source code."""
     for id in scc:
-        graph[id].mark_stale()
-    for id in scc:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
@@ -1644,6 +1676,7 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     for id in scc:
         graph[id].type_check()
         graph[id].write_cache()
+        graph[id].mark_as_rechecked()
 
 
 def sorted_components(graph: Graph,
