@@ -852,3 +852,30 @@ class A:
 [rechecked m, n]
 [stale m, n]
 [out]
+
+[case testIncrementalReplacingImports]
+import good, bad, client
+
+[file good.py]
+def foo(a: int) -> None: pass
+
+[file bad.py]
+def foo(a: str) -> None: pass
+
+[file client.py]
+import good
+import bad 
+from good import foo
+foo(3)
+
+[file client.py.next]
+import good
+import bad
+from bad import foo
+foo(3)
+
+[rechecked client]
+[stale]
+[out]
+main:1: note: In module imported here:
+tmp/client.py:4: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
