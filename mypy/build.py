@@ -753,20 +753,27 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
 
+    return m
+
+
+def is_meta_fresh(meta: CacheMeta, path: str, manager: BuildManager) -> bool:
+    if meta is None:
+        return False
+
     # TODO: Share stat() outcome with find_module()
     st = os.stat(path)  # TODO: Errors
-    if st.st_mtime != m.mtime or st.st_size != m.size:
+    if st.st_mtime != meta.mtime or st.st_size != meta.size:
         manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
         return None
 
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
-    if os.path.getmtime(data_json) != m.data_mtime:
+    if os.path.getmtime(meta.data_json) != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
-        return None
-    manager.log('Found {} {} (metadata is fresh)'.format(id, meta_json))
-    return m
+        return False
+    manager.log('Found {} {} (metadata is fresh)'.format(id, meta.data_json))
+    return True
 
 
 def select_options_affecting_cache(options: Options) -> Mapping[str, bool]:
@@ -1121,8 +1128,10 @@ class State:
         if path and source is None and manager.options.incremental:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
+            if self.meta is not None:
+                self.interface_hash = self.meta.interface_hash
         self.add_ancestors()
-        if self.meta:
+        if is_meta_fresh(self.meta, self.path, manager):
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
             self.dependencies = list(self.meta.dependencies)
@@ -1134,6 +1143,7 @@ class State:
             self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
+            self.meta = None
             self.parse_file()
             self.suppressed = []
             self.child_modules = set()
