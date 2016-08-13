@@ -254,3 +254,23 @@ class MyObject(object):
     from bar import FooBar
 [stale]
 [out]
+
+[case testIncrementalSameFileSize]
+import m
+
+[file m.py]
+def foo(a: int) -> None: pass
+def bar(a: str) -> None: pass
+
+foo(3)
+
+[file m.py.next]
+def foo(a: int) -> None: pass
+def bar(a: str) -> None: pass
+
+bar(3)
+
+[stale m]
+[out]
+main:1: note: In module imported here:
+tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "str"

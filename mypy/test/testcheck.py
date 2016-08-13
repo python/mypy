@@ -88,7 +88,6 @@ class TypeCheckSuite(DataSuite):
             # We briefly sleep to make sure file timestamps are distinct.
             self.clear_cache()
             self.run_case_once(testcase, 1)
-            time.sleep(0.1)
             self.run_case_once(testcase, 2)
         elif optional:
             try:
@@ -131,6 +130,13 @@ class TypeCheckSuite(DataSuite):
                             full = os.path.join(dn, file)
                             target = full[:-5]
                             shutil.copy(full, target)
+
+                            # In some systems, mtime has a resolution of 1 second which can cause
+                            # annoying-to-debug issues when a file has the same size after a
+                            # change. We manually set the mtime to circumvent this.
+                            new_time = os.stat(target).st_mtime + 1
+                            os.utime(target, times=(new_time, new_time))
+
             # Always set to none so we're forced to reread program_name
             program_text = None
         source = BuildSource(program_name, module_name, program_text)
