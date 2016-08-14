@@ -760,7 +760,7 @@ class TupleType(Type):
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
-    def self_type(self, inst: Instance) -> 'TupleType':
+    def with_fallback(self, inst: Instance) -> 'TupleType':
         return TupleType(self.items, inst, self.line, self.implicit)
 
     def with_types(self, items: List[Type]) -> 'TupleType':
@@ -780,7 +780,7 @@ class NamedTupleType(TupleType):
         self.name = name
         super().__init__(*args, **kwargs)
 
-    def self_type(self, inst: Instance) -> 'NamedTupleType':
+    def with_fallback(self, inst: Instance) -> 'NamedTupleType':
         return NamedTupleType(self.name, self.attrs, self.items, inst, self.line)
 
     def with_types(self, items: List[Type]) -> 'NamedTupleType':
@@ -809,9 +809,7 @@ class NamedTupleType(TupleType):
                               implicit=tup.implicit)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        if hasattr(visitor, "visit_namedtuple_type"):
-            return visitor.visit_namedtuple_type(self)
-        return super().accept(visitor)
+        return visitor.visit_namedtuple_type(self)
 
 
 class StarType(Type):
@@ -1070,6 +1068,9 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
+    def visit_namedtuple_type(self, t: NamedTupleType) -> T:
+        return self.visit_tuple_type(t)
+
     def visit_star_type(self, t: StarType) -> T:
         raise self._notimplemented_helper('star_type')
 
@@ -1141,6 +1142,10 @@ class TypeTranslator(TypeVisitor[Type]):
         return TupleType(self.translate_types(t.items),
                          cast(Any, t.fallback.accept(self)),
                          t.line)
+
+    def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
+        t = t.with_types(self.translate_types(t.items))
+        return t.with_fallback(cast(Any, t.fallback.accept(self)))
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)
