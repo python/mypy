@@ -735,7 +735,6 @@ class TupleType(Type):
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  implicit: bool = False) -> None:
-        #import pdb; pdb.set_trace()
         self.items = items
         self.fallback = fallback
         self.implicit = implicit
@@ -790,7 +789,7 @@ class NamedTupleType(TupleType):
 
     def __eq__(self, other) -> bool:
         return self.serialize() == other.serialize()
-     
+
     def serialize(self) -> JsonDict:
         d = super().serialize()
         d.update({'.class': 'NamedTupleType',
@@ -808,12 +807,11 @@ class NamedTupleType(TupleType):
                               tup.items,
                               tup.fallback,
                               implicit=tup.implicit)
-        
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        try:
+        if hasattr(visitor, "visit_namedtuple_type"):
             return visitor.visit_namedtuple_type(self)
-        except:
-            return super().accept(visitor)      
+        return super().accept(visitor)
 
 
 class StarType(Type):

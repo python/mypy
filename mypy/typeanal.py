@@ -1,15 +1,15 @@
 """Semantic analysis of types"""
 
-from typing import Callable, cast, List, Tuple
+from typing import Callable, cast, List
 
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, NamedTupleType, UnionType, Instance, AnyType, CallableType,
-    Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, StarType, PartialType,
-    EllipsisType, UninhabitedType, TypeType
+    Type, UnboundType, TypeVarType, TupleType, NamedTupleType, UnionType, Instance,
+    AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
-    TypeInfo, Context, SymbolTableNode, TypeVarExpr, Var, Node,
+    TypeInfo, Context, SymbolTableNode, Var, Node,
     IndexExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
@@ -171,7 +171,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                         return AnyType()
                     # import pdb; pdb.set_trace()
                     if info.is_named_tuple:
-                        return NamedTupleType(info.name(), info.attrs, 
+                        return NamedTupleType(info.name(), info.attrs,
                                               self.anal_array(info.tuple_type.items),
                                               fallback=instance,
                                               line=t.line)
@@ -224,10 +224,8 @@ class TypeAnalyser(TypeVisitor[Type]):
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
-        return NamedTupleType(t.name, t.attrs, 
-                              self.anal_array(t.items),
-                              fallback=t.fallback,
-                              line=t.line)
+        return NamedTupleType(t.name, t.attrs, self.anal_array(t.items),
+                              fallback=t.fallback, line=t.line)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)

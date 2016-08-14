@@ -1179,7 +1179,7 @@ class CallExpr(Expression):
                  arg_names: List[str] = None, analyzed: Expression = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
-        
+
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
@@ -1984,6 +1984,7 @@ def NamedTupleTypeInfo(tup: 'mypy.types.NamedTupleType', *args) -> TypeInfo:
     info.is_named_tuple = True
     info.mro = [info] + tup.fallback.type.mro
     return info
+
 
 class SymbolTableNode:
     # Kind of node. Possible values:
