@@ -161,23 +161,16 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line)
-                if info.tuple_type is None:
+                tup = info.tuple_type
+                if tup is None:
                     return instance
-                else:
-                    # The class has a Tuple[...] base class so it will be
-                    # represented as a tuple type.
-                    if t.args:
-                        self.fail('Generic tuple types not supported', t)
-                        return AnyType()
-                    # import pdb; pdb.set_trace()
-                    if info.is_named_tuple:
-                        return NamedTupleType(info.name(), info.attrs,
-                                              self.anal_array(info.tuple_type.items),
-                                              fallback=instance,
-                                              line=t.line)
-                    return TupleType(self.anal_array(info.tuple_type.items),
-                                     fallback=instance,
-                                     line=t.line)
+                # The class has a Tuple[...] base class so it will be
+                # represented as a tuple type.
+                if t.args:
+                    self.fail('Generic tuple types not supported', t)
+                    return AnyType()
+                return tup.copy_with(items=self.anal_array(tup.items),
+                                     fallback=instance)
         else:
             return AnyType()
 

@@ -760,11 +760,13 @@ class TupleType(Type):
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
-    def with_fallback(self, inst: Instance) -> 'TupleType':
-        return TupleType(self.items, inst, self.line, self.implicit)
-
-    def with_types(self, items: List[Type]) -> 'TupleType':
-        return TupleType(items, self.fallback, self.line, self.implicit)
+    def copy_with(self, *, fallback: Instance = None,
+                  items: List[Type] = None) -> 'TupleType':
+        if fallback is None:
+            fallback = self.fallback
+        if items is None:
+            items = self.items
+        return TupleType(items, fallback, self.line)
 
     def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.fallback,
@@ -776,19 +778,18 @@ class NamedTupleType(TupleType):
     name = None  # type: str
 
     def __init__(self, name: str, attrs: List[str], *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        assert len(self.items) == len(attrs)
         self.attrs = attrs
         self.name = name
-        super().__init__(*args, **kwargs)
 
-    def with_fallback(self, inst: Instance) -> 'NamedTupleType':
-        return NamedTupleType(self.name, self.attrs, self.items, inst, self.line)
-
-    def with_types(self, items: List[Type]) -> 'NamedTupleType':
-        return NamedTupleType(self.name, self.attrs, items,
-                              self.fallback, self.line, self.implicit)
-
-    def __eq__(self, other) -> bool:
-        return self.serialize() == other.serialize()
+    def copy_with(self, *, fallback: Instance = None,
+                  items: List[Type] = None) -> 'NamedTupleType':
+        if fallback is None:
+            fallback = self.fallback
+        if items is None:
+            items = self.items
+        return NamedTupleType(self.name, self.attrs, items, fallback, self.line)
 
     def serialize(self) -> JsonDict:
         d = super().serialize()
@@ -1144,8 +1145,8 @@ class TypeTranslator(TypeVisitor[Type]):
                          t.line)
 
     def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
-        t = t.with_types(self.translate_types(t.items))
-        return t.with_fallback(cast(Any, t.fallback.accept(self)))
+        return t.copy_with(items=self.translate_types(t.items),
+                          fallback=cast(Any, t.fallback.accept(self)))
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)

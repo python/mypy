@@ -218,7 +218,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 items.append(self.join(t.items[i], self.s.items[i]))
             if (not (isinstance(t, NamedTupleType) and isinstance(self.s, NamedTupleType))
                     or self.s.attrs == t.attrs):
-                return self.s.with_types(items)
+                return self.s.copy_with(items=items)
             # TODO: What if the fallback types are different?
             return TupleType(items, t.fallback)
         else:

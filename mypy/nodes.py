@@ -636,6 +636,7 @@ class ClassDef(Statement):
     decorators = None  # type: List[Expression]
     # Built-in/extension class? (single implementation inheritance only)
     is_builtinclass = False
+    has_incompatible_baseclass = False
 
     def __init__(self,
                  name: str,

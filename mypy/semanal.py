@@ -756,7 +756,7 @@ class SemanticAnalyzer(NodeVisitor):
             if isinstance(base, TupleType):
                 if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
-                    defn.incompatible_baseclass = True
+                    defn.has_incompatible_baseclass = True
                 if (not self.is_stub_file
                         and not info.is_named_tuple
                         and base.fallback.type.fullname() == 'builtins.tuple'):
@@ -1531,7 +1531,6 @@ class SemanticAnalyzer(NodeVisitor):
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
-        info.attrs = items
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         # Add named tuple items as attributes.
         # TODO: Make them read-only.
@@ -2638,7 +2637,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
-    return typ.tuple_type.with_fallback(inst)
+    return typ.tuple_type.copy_with(fallback=inst)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
