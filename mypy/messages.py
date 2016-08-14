@@ -146,6 +146,7 @@ class MessageBuilder:
 
     def fail(self, msg: str, context: Context, file: str = None) -> None:
         """Report an error message (unless disabled)."""
+        # import pdb; pdb.set_trace()
         self.report(msg, context, 'error', file=file)
 
     def note(self, msg: str, context: Context, file: str = None) -> None:

@@ -788,6 +788,27 @@ class NamedTupleType(TupleType):
         return NamedTupleType(self.name, self.attrs, items,
                               self.fallback, self.line, self.implicit)
 
+    def __eq__(self, other) -> bool:
+        return self.serialize() == other.serialize()
+     
+    def serialize(self) -> JsonDict:
+        d = super().serialize()
+        d.update({'.class': 'NamedTupleType',
+                'name': self.name,
+                'attrs': self.attrs})
+        return d
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'NamedTupleType':
+        assert data['.class'] == 'NamedTupleType'
+        data['.class'] = 'TupleType'
+        tup = TupleType.deserialize(data)
+        return NamedTupleType(data['name'],
+                              data['attrs'],
+                              tup.items,
+                              tup.fallback,
+                              implicit=tup.implicit)
+        
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         try:
             return visitor.visit_namedtuple_type(self)

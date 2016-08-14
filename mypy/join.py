@@ -1,12 +1,12 @@
 """Calculation of the least upper bound types (joins)."""
 
-from typing import cast, List
+from typing import List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
-    UninhabitedType, TypeType
+    UninhabitedType, TypeType, NamedTupleType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
@@ -210,10 +210,15 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
+        if self.s == t:
+            return self.s
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
             items = []  # type: List[Type]
             for i in range(t.length()):
                 items.append(self.join(t.items[i], self.s.items[i]))
+            if (not (isinstance(t, NamedTupleType) and isinstance(self.s, NamedTupleType))
+                or self.s.attrs == t.attrs):
+                return self.s.with_types(items)
             # TODO: What if the fallback types are different?
             return TupleType(items, t.fallback)
         else:
