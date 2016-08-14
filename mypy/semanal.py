@@ -1541,15 +1541,15 @@ class SemanticAnalyzer(NodeVisitor):
         this_type = self_type(info)
         # Add __init__, _replace, _asdict methods and _fields static field
         self.add_namedtuple_method('_replace', symbols, info, this_type, this_type,
-                                   self.make_factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
+                                   self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         self.add_namedtuple_method('__init__', symbols, info, this_type, NoneTyp(),
-                                   self.make_factory_args(vars, ARG_POS), info.name())
+                                   self.factory_args(vars, ARG_POS), info.name())
         # TODO: refine to OrderedDict[Union[types]]
         self.add_namedtuple_method('_asdict', symbols, info, this_type, AnyType(), [])
         return info
 
-    def make_factory_args(self, vars: List[Var], kind: int,
-                          initializer: Expression = None) -> List[Argument]:
+    def factory_args(self, vars: List[Var], kind: int,
+                    initializer: Expression = None) -> List[Argument]:
         return [Argument(var, var.type, initializer, kind) for var in vars]
 
     def add_namedtuple_method(self, funcname: str, symbols: SymbolTable, info: TypeInfo,
