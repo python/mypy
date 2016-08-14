@@ -1466,6 +1466,7 @@ class SemanticAnalyzer(NodeVisitor):
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
         if len(args) > 2:
+            # FIX incorrect. There are two additional parameters
             return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
         if call.arg_kinds != [ARG_POS, ARG_POS]:
             return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
@@ -1536,6 +1537,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: Make them read-only.
         for var in vars:
             var.info = info
+            var.is_property = True
             symbols[var.name()] = SymbolTableNode(MDEF, var)
         this_type = self_type(info)
         # Add __init__, _replace, _asdict methods and _fields static field
