@@ -2638,7 +2638,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
-    return typ.tuple_type.self_type(inst)
+    return typ.tuple_type.with_fallback(inst)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
