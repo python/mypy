@@ -1,5 +1,7 @@
 -- Nested list assignment
 -- -----------------------------
+[case testListSimplest]
+l = [1, 1]
 
 
 [case testNestedListAssignment]

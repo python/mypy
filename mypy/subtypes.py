@@ -178,8 +178,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 iter_type = right.args[0]
                 return all(is_subtype(li, iter_type) for li in left.items)
             return False
-        elif isinstance(right, NamedTupleType) and not isinstance(left, NamedTupleType):
-            return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
@@ -193,7 +191,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_namedtuple_type(self, left: NamedTupleType) -> bool:
-        #import pdb; pdb.set_trace()
         if isinstance(self.right, NamedTupleType):
             # left.attrs.issubset(right.attrs) is insufficient
             # (a: int, b: str) is not subtype of (b: int, a: str)
