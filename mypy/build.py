@@ -1359,7 +1359,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # Collect dependencies.  We go breadth-first.
     while new:
         st = new.popleft()
-        for dep in st.ancestors + st.dependencies:
+        for dep in st.ancestors + st.dependencies + st.suppressed:
             if dep not in graph:
                 try:
                     if dep in st.ancestors:
@@ -1380,6 +1380,12 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                     new.append(newst)
             if dep in st.ancestors and dep in graph:
                 graph[dep].child_modules.add(st.id)
+            if dep in graph and dep in st.suppressed:
+                # Previously suppressed file is now visible
+                if dep in st.suppressed:
+                    st.suppressed.remove(dep)
+                    st.dependencies.append(dep)
+                pass
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
