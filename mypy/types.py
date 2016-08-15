@@ -780,7 +780,7 @@ class NamedTupleType(TupleType):
     Instance variables:
         name: type name
         attrs: names of the attributes
-        
+
     Uses the default TupleType.fallback: builtins.tuple
     """
 

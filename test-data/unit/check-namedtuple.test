@@ -202,10 +202,11 @@ C(2).b
 [builtins fixtures/property.py]
 
 [case testNamedTupleAsDict]
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
+a = None  # type: OrderedDict
 a = x._asdict()
 
 [case testNamedTupleReplace]
