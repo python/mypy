@@ -1545,6 +1545,11 @@ class SemanticAnalyzer(NodeVisitor):
         _fields.is_initialized_in_class = True
         symbols[_fields.name()] = SymbolTableNode(MDEF, _fields)
         
+        _source = Var('_source', self.named_type('__builtins__.str'))
+        _source.info = info
+        _source.is_initialized_in_class = True
+        symbols[_source.name()] = SymbolTableNode(MDEF, _source)
+                
         this_type = self_type(info)
         add_method = partial(self.add_namedtuple_method, symbols, info, this_type)
         add_method('_replace', this_type,
