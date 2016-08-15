@@ -1385,7 +1385,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                 if dep in st.suppressed:
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
-                pass
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
