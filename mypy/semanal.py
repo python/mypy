@@ -1531,35 +1531,35 @@ class SemanticAnalyzer(NodeVisitor):
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
-        vars = [Var(item, typ) for item, typ in zip(items, types)]
-        # Add namedtuple items as attributes.
-        for var in vars:
-            var.info = info
-            var.is_property = True
-            symbols[var.name()] = SymbolTableNode(MDEF, var)
 
-        typ = TupleType([self.named_type('__builtins__.str') for _ in items],
-                         self.named_type('__builtins__.tuple', [AnyType()]))
-        _fields = Var('_fields', typ)
-        _fields.info = info
-        _fields.is_initialized_in_class = True
-        symbols[_fields.name()] = SymbolTableNode(MDEF, _fields)
-        
-        _source = Var('_source', self.named_type('__builtins__.str'))
-        _source.info = info
-        _source.is_initialized_in_class = True
-        symbols[_source.name()] = SymbolTableNode(MDEF, _source)
-                
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
         this_type = self_type(info)
+        add_field = partial(self.add_namedtuple_field, symbols, info)
         add_method = partial(self.add_namedtuple_method, symbols, info, this_type)
+        strtype = self.named_type('__builtins__.str')
+
+        for var in vars:
+            add_field(var, is_property=True)
+
+        tuple_of_strins = TupleType([strtype for _ in items],
+                                    self.named_type('__builtins__.tuple', [AnyType()]))
+        add_field(Var('_fields', tuple_of_strins), is_initialized_in_class=True)
+        add_field(Var('_source', strtype), is_initialized_in_class=True)
+
         add_method('_replace', this_type,
                    self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         add_method('__init__', NoneTyp(),
                    self.factory_args(vars, ARG_POS), info.name())
         # TODO: refine to OrderedDict[str, Union[types]]
-        add_method('_asdict', AnyType(), [])
-        # self.add_namedtuple_method('_source', self.named_type_or_none('builtins.str'), [])
+        add_method('_asdict', UnboundType('OrderedDict', is_ret_type=True), [])
         return info
+
+    def add_namedtuple_field(self, symbols, info, var,
+                             is_initialized_in_class=False, is_property=False):
+        var.info = info
+        var.is_initialized_in_class = is_initialized_in_class
+        var.is_property = is_property
+        symbols[var.name()] = SymbolTableNode(MDEF, var)
 
     def factory_args(self, vars: List[Var], kind: int,
                     initializer: Expression = None) -> List[Argument]:
