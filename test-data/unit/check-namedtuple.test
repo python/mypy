@@ -1,8 +1,3 @@
-[case testNamedTupleDeclaration]
-from typing import NamedTuple
-
-A = NamedTuple('A', [('x', str), ('y', int)])
-
 [case testNamedTupleUsedAsTuple]
 from collections import namedtuple
 
@@ -22,6 +17,21 @@ x = None  # type: X
 x.x
 x.y
 x.z # E: "X" has no attribute "z"
+
+[case testNamedTupleAttributesAreReadOnly]
+from collections import namedtuple
+
+X = namedtuple('X', ['x', 'y'])
+x = None  # type: X
+x.x = 5 # E: Property "x" defined in "X" is read-only
+x.y = 5 # E: Property "y" defined in "X" is read-only
+x.z = 5 # E: "X" has no attribute "z"
+
+class A(X): pass
+a = None  # type: A
+a.x = 5 # E: Property "x" defined in "A" is read-only
+a.y = 5 # E: Property "y" defined in "A" is read-only
+-- a.z = 5 # not supported yet
 
 [case testNamedTupleCreateWithPositionalArguments]
 from collections import namedtuple
@@ -164,6 +174,7 @@ a = A(1)
 a = l[0]
 (i,) = l[0]
 i, i = l[0]  # E: Need more than 1 value to unpack (2 expected)
+l = [A(1)]
 a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
                variable has type "A")
 [builtins fixtures/list.py]
@@ -203,6 +214,7 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 x = x._replace(y=5)
+x = x._replace(x=3, y=5)
 x = x._replace(z=5)  # E: Unexpected keyword argument "z" for X._replace
 x = x._replace(5)  # E: Too many positional arguments for X._replace
 
