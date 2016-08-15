@@ -106,10 +106,10 @@ class TypeCheckSuite(DataSuite):
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
         find_module_clear_caches()
-        program_text = '\n'.join(testcase.input)
-        module_data = self.parse_module(program_text, incremental)
+        original_program_text = '\n'.join(testcase.input)
+        module_data = self.parse_module(original_program_text, incremental)
 
-        options = self.parse_options(program_text)
+        options = self.parse_options(original_program_text)
         options.use_builtins_fixtures = True
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
         set_show_tb(True)  # Show traceback on crash.
@@ -120,9 +120,9 @@ class TypeCheckSuite(DataSuite):
             if incremental == 1:
                 # In run 1, copy program text to program file.
                 output = []
-                for module_name, program_name, program_text in module_data:
+                for module_name, program_path, program_text in module_data:
                     if module_name == '__main__':
-                        with open(program_name, 'w') as f:
+                        with open(program_path, 'w') as f:
                             f.write(program_text)
                         break
             elif incremental == 2:
@@ -141,10 +141,10 @@ class TypeCheckSuite(DataSuite):
                             os.utime(target, times=(new_time, new_time))
 
         sources = []
-        for module_name, program_name, program_text in module_data:
-            # Always set to none so we're forced to reread program_name
+        for module_name, program_path, program_text in module_data:
+            # Always set to none so we're forced to reread the module in incremental mode
             program_text = None if incremental else program_text
-            sources.append(BuildSource(program_name, module_name, program_text))
+            sources.append(BuildSource(program_path, module_name, program_text))
         try:
             res = build.build(sources=sources,
                               options=options,
@@ -165,14 +165,14 @@ class TypeCheckSuite(DataSuite):
 
         if incremental and res:
             if not options.silent_imports:
-                self.verify_cache(module_name, program_name, a, res.manager)
+                self.verify_cache(module_data, a, res.manager)
             if testcase.expected_stale_modules is not None and incremental == 2:
                 assert_string_arrays_equal(
                     list(sorted(testcase.expected_stale_modules)),
                     list(sorted(res.manager.stale_modules.difference({"__main__"}))),
                     'Set of stale modules does not match expected set')
 
-    def verify_cache(self, module_name: str, program_name: str, a: List[str],
+    def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager) -> None:
         # There should be valid cache metadata for each module except
         # those in error_paths; for those there should not be.
@@ -182,7 +182,7 @@ class TypeCheckSuite(DataSuite):
         # However build.process_graphs() will ignore A's cache data.
         error_paths = self.find_error_paths(a)
         modules = self.find_module_files()
-        modules.update({module_name: program_name})
+        modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
         if missing_paths != error_paths:
             raise AssertionFailure("cache data discrepancy %s != %s" %
@@ -224,22 +224,24 @@ class TypeCheckSuite(DataSuite):
                 missing[id] = path
         return set(missing.values())
 
-    def parse_module(self, program_text: str, incremental:int = 0) -> List[Tuple[str, str, str]]:
+    def parse_module(self, program_text: str, incremental: int = 0) -> List[Tuple[str, str, str]]:
         """Return the module and program names for a test case.
 
-        The default ('__main__') module name can be overridden by
-        using a comment like this in the test case input:
+        Normally, the unit tests will parse the default ('__main__')
+        module and follow all the imports listed there. You can override
+        this behavior and instruct the tests to check multiple modules
+        by using a comment like this in the test case input:
 
-          # cmd: mypy -m foo.bar
+          # cmd: mypy -m foo.bar foo.baz
 
-        Return tuple (main module name, main file name, main program text).
+        Return a list of tuples (module name, file name, program text).
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         m2 = re.search('# cmd2: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         if m2 is not None and incremental == 2:
             # Optionally return a different command if in the second
-            # stage of incremental mode, otherwise default to the
-            # original cmd.
+            # stage of incremental mode, otherwise default to reusing
+            # the original cmd.
             m = m2
 
         if m:
