@@ -43,8 +43,10 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
+from functools import partial
+
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
 )
 
 from mypy.nodes import (
@@ -71,18 +73,15 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef,
+    FunctionLike, UnboundType, TypeList, TypeVarDef,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType,
     NamedTupleType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.lex import lex
-from mypy.parsetype import parse_type
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
-from mypy import defaults
 from mypy.options import Options
 
 
@@ -1533,28 +1532,36 @@ class SemanticAnalyzer(NodeVisitor):
         class_def.fullname = self.qualified_name(name)
         info = NamedTupleTypeInfo(tup, symbols, class_def)
         vars = [Var(item, typ) for item, typ in zip(items, types)]
-        # Add named tuple items as attributes.
-        # TODO: Make them read-only.
+        # Add namedtuple items as attributes.
         for var in vars:
             var.info = info
             var.is_property = True
             symbols[var.name()] = SymbolTableNode(MDEF, var)
+
+        typ = TupleType([self.named_type('__builtins__.str') for _ in items],
+                         self.named_type('__builtins__.tuple', [AnyType()]))
+        _fields = Var('_fields', typ)
+        _fields.info = info
+        _fields.is_initialized_in_class = True
+        symbols[_fields.name()] = SymbolTableNode(MDEF, _fields)
+        
         this_type = self_type(info)
-        # Add __init__, _replace, _asdict methods and _fields static field
-        self.add_namedtuple_method('_replace', symbols, info, this_type, this_type,
-                                   self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
-        self.add_namedtuple_method('__init__', symbols, info, this_type, NoneTyp(),
-                                   self.factory_args(vars, ARG_POS), info.name())
+        add_method = partial(self.add_namedtuple_method, symbols, info, this_type)
+        add_method('_replace', this_type,
+                   self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
+        add_method('__init__', NoneTyp(),
+                   self.factory_args(vars, ARG_POS), info.name())
         # TODO: refine to OrderedDict[str, Union[types]]
-        self.add_namedtuple_method('_asdict', symbols, info, this_type, AnyType(), [])
+        add_method('_asdict', AnyType(), [])
+        # self.add_namedtuple_method('_source', self.named_type_or_none('builtins.str'), [])
         return info
 
     def factory_args(self, vars: List[Var], kind: int,
                     initializer: Expression = None) -> List[Argument]:
         return [Argument(var, var.type, initializer, kind) for var in vars]
 
-    def add_namedtuple_method(self, funcname: str, symbols: SymbolTable, info: TypeInfo,
-                              this_type: Type, ret: Type, args: List[Argument], name=None) -> None:
+    def add_namedtuple_method(self, symbols: SymbolTable, info: TypeInfo, this_type: Type,
+                              funcname: str, ret: Type, args: List[Argument], name=None) -> None:
         args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
         types = [arg.type_annotation for arg in args]
         items = [arg.variable.name() for arg in args]
@@ -1562,10 +1569,7 @@ class SemanticAnalyzer(NodeVisitor):
         signature = CallableType(types, arg_kinds, items, ret,
                                  self.named_type('__builtins__.function'),
                                  name=name or info.name() + '.' + funcname)
-        func = FuncDef(funcname,
-                       args,
-                       Block([]),
-                       typ=signature)
+        func = FuncDef(funcname, args, Block([]), typ=signature)
         func.info = info
         symbols[funcname] = SymbolTableNode(MDEF, func)
 

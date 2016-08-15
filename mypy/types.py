@@ -774,6 +774,16 @@ class TupleType(Type):
 
 
 class NamedTupleType(TupleType):
+    """The namedtuple type NamedTuple[name, (a1, T1), ..., (an, Tn)].
+    Subtype of Tuple[T1, ..., Tn]
+
+    Instance variables:
+        name: type name
+        attrs: names of the attributes
+        
+    Uses the default TupleType.fallback: builtins.tuple
+    """
+
     attrs = None  # type: List[str]
     name = None  # type: str
 

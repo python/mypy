@@ -233,3 +233,15 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
 x = x._replace(x=5)
 x = x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
+
+[case testNamedTupleFields]
+from typing import NamedTuple
+
+X = NamedTuple('X', [('x', int), ('y', str)])
+a = None  # type: str
+b = None  # type: str
+a, b = X._fields
+x = None  # type: X
+a, b = x._fields
+c = None  # type: int
+a, c = X._fields  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
