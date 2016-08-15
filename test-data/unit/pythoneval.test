@@ -1072,7 +1072,7 @@ d3.xyz # E
 d4 = dict(a=1, b='') # type: Dict[str, Any]
 result = dict(x=[], y=[]) # type: Dict[str, List[str]]
 [out]
-_program.py:3: error: List item 1 has incompatible type "Tuple[str, str]"
+_program.py:3: error: List item 1 has incompatible type "Tuple[str, str]"; expected "Tuple[str, int]" * NOTE: This might be a Dict[K, V] instead of List[Tuple[K, V]]
 _program.py:5: error: Dict[str, int] has no attribute "xyz"
 
 [case testDefaultDict]
@@ -1104,7 +1104,7 @@ MyDDict(dict)[0]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
 _program.py:9: error: Invalid index type "str" for "dict"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
+_program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"; expected "Tuple[int, List[None]]" * NOTE: This might be a Dict[K, V] instead of List[Tuple[K, V]]
 _program.py:23: error: Invalid index type "str" for "dict"
 
 [case testDictUpdateInference]

@@ -855,7 +855,7 @@ main: note: In function "f":
 from typing import List, Iterator
 def f() -> 'Iterator[List[int]]':
     yield []
-    yield [object()] # E: List item 0 has incompatible type "object"
+    yield [object()] # E: List item 0 has incompatible type "object"; expected "int"
 [builtins fixtures/for.py]
 [out]
 main: note: In function "f":

@@ -465,11 +465,26 @@ class MessageBuilder:
             target = 'to {} '.format(name)
 
         msg = ''
+        try:
+            expected_type = callee.arg_types[m - 1]
+        except IndexError:  # Varargs callees
+            expected_type = callee.arg_types[-1]
         if callee.name == '<list>':
             name = callee.name[1:-1]
             n -= 1
-            msg = '{} item {} has incompatible type {}'.format(
-                name[0].upper() + name[1:], n, self.format_simple(arg_type))
+            msg = '{} item {} has incompatible type {}; expected {}'.format(
+                name[0].upper() + name[1:], n,
+                self.format_simple(arg_type), self.format_simple(expected_type))
+            # Will add a note if dealing with List[Tuple[K, V]] which might be a Dict[K, V]
+            # TODO: The following is a necessary condition for a Dict;
+            # It is still missing a sufficient condition, in which case the message should be
+            # changed from a note to a properly formatted error.
+            # Also, using a type: ignore for a subclass issue
+            if expected_type.__class__ == TupleType and hasattr(expected_type, 'items'):
+                if(len(expected_type.items) == 2 and  # type: ignore
+                   all([i.__class__ == Instance for i in expected_type.items])):  # type: ignore
+                    # Body
+                    msg += ' * NOTE: This might be a Dict[K, V] instead of List[Tuple[K, V]]'
         elif callee.name == '<list-comprehension>':
             msg = 'List comprehension has incompatible type List[{}]'.format(
                 strip_quotes(self.format(arg_type)))
@@ -486,10 +501,6 @@ class MessageBuilder:
             msg = 'Generator has incompatible item type {}'.format(
                 self.format_simple(arg_type))
         else:
-            try:
-                expected_type = callee.arg_types[m - 1]
-            except IndexError:  # Varargs callees
-                expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
