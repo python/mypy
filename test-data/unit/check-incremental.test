@@ -293,15 +293,15 @@ def handle(c: Class) -> None:
 # empty
 
 [file package/subpackage/mod1.py]
-import math  # Any previously unloaded package works here
+import collections # Any previously unloaded package works here
 
 class Class: pass
 
 [file package/subpackage/mod2.py]
 # empty
 
-[builtins fixtures/args.py]
-[stale]
+[builtins fixtures/args.pyi]
+[stale collections, main, package.subpackage.mod1]
 [out]
-main.py: note: In function "handle":
-main.py:4: error: "Class" has no attribute "some_attribute"
+tmp/main.py: note: In function "handle":
+tmp/main.py:4: error: "Class" has no attribute "some_attribute"
