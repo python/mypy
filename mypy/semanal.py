@@ -66,7 +66,8 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
     IntExpr, FloatExpr, UnicodeExpr,
-    INVARIANT, UNBOUND_IMPORTED, Expression, EllipsisExpr, NamedTupleTypeInfo
+    INVARIANT, UNBOUND_IMPORTED, Expression, EllipsisExpr,
+    namedtuple_type_info
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -1530,7 +1531,7 @@ class SemanticAnalyzer(NodeVisitor):
         tup = NamedTupleType(name, items, types, self.named_type('__builtins__.tuple', types))
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
-        info = NamedTupleTypeInfo(tup, symbols, class_def)
+        info = namedtuple_type_info(tup, symbols, class_def)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         this_type = self_type(info)

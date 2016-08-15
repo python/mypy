@@ -1,2 +1,4 @@
 namedtuple = object()
-class OrderedDict: pass 
+
+class OrderedDict:
+    pass
