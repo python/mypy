@@ -726,20 +726,20 @@ tmp/bar.py:1: error: Module has no attribute 'B'
 
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main
-[file main.py]
 # options: silent_imports almost_silent
+[file main.py]
 import mod
 [file mod.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:2: note: Import of 'mod' silently ignored
-tmp/main.py:2: note: (Using --silent-imports, module not passed on command line)
-tmp/main.py:2: note: (This note courtesy of --almost-silent)
+tmp/main.py:1: note: Import of 'mod' silently ignored
+tmp/main.py:1: note: (Using --silent-imports, module not passed on command line)
+tmp/main.py:1: note: (This note courtesy of --almost-silent)
 
 [case testAncestorSuppressedWhileAlmostSilent]
 # cmd: mypy -m foo.bar
-[file foo/bar.py]
 # options: silent_imports almost_silent
+[file foo/bar.py]
 [file foo/__init__.py]
 [builtins fixtures/module.pyi]
 [out]
@@ -749,8 +749,8 @@ tmp/foo/bar.py: note: (This note brought to you by --almost-silent)
 
 [case testStubImportNonStubWhileSilent]
 # cmd: mypy -m main
-[file main.py]
 # options: silent_imports
+[file main.py]
 from stub import x # Permitted
 from other import y # Disallowed
 x + '' # Error here
@@ -763,7 +763,7 @@ x = 42
 y = 42
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:4: error: Unsupported left operand type for + ("int")
+tmp/main.py:3: error: Unsupported left operand type for + ("int")
 
 [case testSuperclassInImportCycle]
 import a
