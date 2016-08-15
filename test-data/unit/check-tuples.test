@@ -25,7 +25,7 @@ t5 = t5
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleSubtyping]
 from typing import Tuple
@@ -43,7 +43,7 @@ t1 = t3
 
 class A: pass
 class B(A): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleCompatibilityWithOtherTypes]
 from typing import Tuple
@@ -60,7 +60,7 @@ o = t
 t = None
 
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testNestedTupleTypes]
 from typing import Tuple
@@ -72,7 +72,7 @@ t1 = t2
 
 class A: pass
 class B(A): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testNestedTupleTypes2]
 from typing import Tuple
@@ -84,7 +84,7 @@ t1 = t2
 
 class A: pass
 class B(A): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testSubtypingWithNamedTupleType]
 from typing import Tuple
@@ -95,14 +95,14 @@ t1 = t2 # E: Incompatible types in assignment (expression has type Tuple[Any, ..
 t2 = t1
 
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleInitializationWithNone]
 from typing import Tuple
 t = None # type: Tuple[A, A]
 t = None
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Tuple expressions
@@ -133,7 +133,7 @@ t3 = (None, None)
 class A: pass
 class B: pass
 class C(B): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testVoidValueInTuple]
 import typing
@@ -141,7 +141,7 @@ import typing
 (f(), None) # E: "f" does not return a value
 
 def f() -> None: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Indexing
@@ -180,7 +180,7 @@ class B: pass
 class C: pass
 class D: pass
 class E: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testIndexingTuplesWithNegativeIntegers]
 from typing import Tuple
@@ -200,7 +200,7 @@ a = t2[(-1)]
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testAssigningToTupleItems]
 from typing import Tuple
@@ -213,7 +213,7 @@ t[n] = A() # E: Unsupported target for indexed assignment
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Multiple assignment
@@ -235,7 +235,7 @@ a, b, a = t2
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithInvalidNumberOfValues]
 from typing import Tuple
@@ -248,7 +248,7 @@ a, a, a, a = t1 # E: Need more than 3 values to unpack (4 expected)
 a, a, a = t1
 
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithTupleExpressionRvalue]
 
@@ -262,7 +262,7 @@ a, a = a, a
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -280,7 +280,7 @@ b, a = b, b
 
 class A: pass
 class B(A): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testInitializationWithMultipleValues]
 
@@ -296,7 +296,7 @@ ax, bx = a, b # type: (A, B)
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithNonTupleRvalue]
 
@@ -309,7 +309,7 @@ a, b = f   # E: 'def () -> Any' object is not iterable
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithIndexedLvalues]
 
@@ -329,7 +329,7 @@ class B:
 
 class AA: pass
 class BB: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleDeclarationWithParentheses]
 
@@ -356,7 +356,7 @@ a, b = None, None # type: (A, B)
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentUsingSingleTupleType]
 from typing import Tuple
@@ -382,7 +382,7 @@ from typing import List
 t = 1, 2
 a, b, *c = 1, 2  # E: Need type annotation for variable
 aa, bb, *cc = t  # E: Need type annotation for variable
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testAssignmentToStarAnnotation]
 from typing import List
@@ -390,7 +390,7 @@ li, lo = None, None # type: List[int], List[object]
 a, b, *c = 1, 2  # type: int, int, *List[int]
 c = lo  # E: Incompatible types in assignment (expression has type List[object], variable has type List[int])
 c = li
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testAssignmentToStarCount1]
 from typing import List
@@ -400,7 +400,7 @@ a, b, *c = 1,  # E: Need more than 1 value to unpack (2 expected)
 a, b, *c = 1, 2
 a, b, *c = 1, 2, 3
 a, b, *c = 1, 2, 3, 4
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testAssignmentToStarCount2]
 from typing import List
@@ -414,7 +414,7 @@ a, b, *c = t1  # E: Need more than 1 value to unpack (2 expected)
 a, b, *c = t2
 a, b, *c = t3
 a, b, *c = t4
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testAssignmentToStarFromAny]
 from typing import Any
@@ -432,7 +432,7 @@ a, *(li) = 1,
 a, *(b, c) = 1, 2  # E: Need more than 1 value to unpack (2 expected)
 a, *(b, c) = 1, 2, 3
 a, *(b, c) = 1, 2, 3, 4  # E: Too many values to unpack (2 expected, 3 provided)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testAssignmentToStarFromTupleType]
 from typing import List, Tuple
@@ -446,7 +446,7 @@ na = la
 na = a  # E
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:6: error: List item 0 has incompatible type "A"
 main:6: error: List item 1 has incompatible type "A"
@@ -461,7 +461,7 @@ l = li  # E: Incompatible types in assignment (expression has type List[int], va
 l = la
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testAssignmentToStarFromListInference]
@@ -473,7 +473,7 @@ l = li  # E: Incompatible types in assignment (expression has type List[int], va
 l = la
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testAssignmentToStarFromTupleTypeInference]
@@ -486,7 +486,7 @@ l = li  # E: Incompatible types in assignment (expression has type List[int], va
 l = la
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testAssignmentToStarFromListTypeInference]
@@ -498,7 +498,7 @@ l = li  # E: Incompatible types in assignment (expression has type List[int], va
 l = la
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 
@@ -568,7 +568,7 @@ def f(x: 'A') -> None: pass
 
 class A:
     def __add__(self, x: 'A') -> 'A': pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testLargeTuplesInErrorMessages]
 
@@ -577,7 +577,7 @@ a + (a, a, a, a, a, a, a) # Fail
 
 class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for + ("LongTypeName" and tuple(length 7))
 
@@ -628,19 +628,19 @@ t = 1, 2
 for x in t:
     x = 1
     x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
 for x in t: pass # E: Need type annotation for variable
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
 import typing
 t = ()
 for x in None, None: pass # E: Need type annotation for variable
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testForLoopOverTupleAndSubtyping]
 import typing
@@ -650,13 +650,13 @@ for x in B(), A():
     x = A()
     x = B()
     x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testTupleIterable]
 y = 'a'
 x = sum((1,2))
 y = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Tuple as a base type
@@ -673,7 +673,7 @@ class A(Tuple[int, str]):
         a, b = self
         b, a = self  # Error
         self.f('')   # Error
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main:1: note: In module imported here:
 tmp/m.pyi: note: In member "f" of class "A":
@@ -684,7 +684,7 @@ tmp/m.pyi:7: error: Argument 1 to "f" of "A" has incompatible type "str"; expect
 [case testInvalidTupleBaseClass]
 from typing import Tuple
 class A(Tuple[int, str]): pass # E: Tuple[...] not supported as a base class outside a stub file
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testValidTupleBaseClass]
@@ -710,7 +710,7 @@ from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
 class Test(Generic[T], Tuple[T]): pass
 x = Test() # type: Test[int]
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Tuple[...] not supported as a base class outside a stub file
 main:4: error: Generic tuple types not supported
@@ -726,7 +726,7 @@ x = () # type: Tuple[str, ...]
 n = 5
 x[n]() # E: "str" not callable
 x[3]() # E: "str" not callable
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testSubtypingVariableLengthTuple]
 from typing import Tuple
@@ -740,7 +740,7 @@ fa(ta)
 fa(tb)
 fb(tb)
 fb(ta) # E: Argument 1 to "fb" has incompatible type Tuple[A, ...]; expected Tuple[B, ...]
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testSubtypingFixedAndVariableLengthTuples]
 from typing import Tuple
@@ -757,7 +757,7 @@ fa(bb)
 fb(bb)
 fb(ab) # E: Argument 1 to "fb" has incompatible type "Tuple[A, B]"; expected Tuple[B, ...]
 fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected Tuple[B, ...]
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testSubtypingTupleIsContainer]
 from typing import Container
@@ -779,7 +779,7 @@ reveal_type(b)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, builtin
 a = [1]
 b = (0, *a)
 reveal_type(b)  # E: Revealed type is 'builtins.tuple[builtins.int*]'
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr3]
 a = ['']
@@ -787,24 +787,24 @@ b = (0, *a)
 reveal_type(b)  # E: Revealed type is 'builtins.tuple[builtins.object*]'
 c = (*a, '')
 reveal_type(c)  # E: Revealed type is 'builtins.tuple[builtins.str*]'
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr4]
 a = (1, 1, 'x', 'x')
 b = (1, 'x')
 a = (0, *b, '')
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithOversizedContext]
 a = (1, [1], 'x')
 a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[int, List[int]]", variable has type "Tuple[int, List[int], str]")
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithoutContext]
 a = (1, [])  # E: Need type annotation for variable
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]

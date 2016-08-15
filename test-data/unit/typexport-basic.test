@@ -36,7 +36,7 @@ import typing
 5
 2.3
 'foo'
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 [out]
 IntExpr(2) : builtins.int
 FloatExpr(3) : builtins.float
@@ -163,7 +163,7 @@ a = 1
 a and a
 a or a
 not a
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 OpExpr(4) : builtins.int
 OpExpr(5) : builtins.int
@@ -176,7 +176,7 @@ a = bool()
 a and a
 a or a
 not a
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 OpExpr(4) : builtins.bool
 OpExpr(5) : builtins.bool
@@ -191,7 +191,7 @@ f(
 class A: pass
 class B: pass
 def f(a: A, b: B) -> Tuple[A, B]: pass
-[builtins fixtures/tuple-simple.py]
+[builtins fixtures/tuple-simple.pyi]
 [out]
 CallExpr(3) : Tuple[A, B]
 CallExpr(4) : A
@@ -243,7 +243,7 @@ if a:
   1
 elif not a:
   1
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 NameExpr(3) : builtins.bool
 IntExpr(4) : builtins.int
@@ -256,7 +256,7 @@ IntExpr(6) : builtins.int
 a = None # type: bool
 while a:
   a
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 NameExpr(3) : builtins.bool
 NameExpr(4) : builtins.bool
@@ -269,7 +269,7 @@ NameExpr(4) : builtins.bool
 [case testInferSingleType]
 import typing
 x = ()
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 [out]
 NameExpr(2) : Tuple[]
 TupleExpr(2) : Tuple[]
@@ -279,7 +279,7 @@ TupleExpr(2) : Tuple[]
 import typing
 (s,
 i) = 'x', 1
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 [out]
 NameExpr(3) : builtins.str
 NameExpr(4) : builtins.int
@@ -288,7 +288,7 @@ NameExpr(4) : builtins.int
 import typing
 def f() -> None:
     x = ()
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 [out]
 NameExpr(3) : Tuple[]
 TupleExpr(3) : Tuple[]
@@ -330,7 +330,7 @@ class A: pass
 f[A](A())
 f[Any](A())
 def f(a: T) -> Tuple[T, T]: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 CallExpr(5) : A
 CallExpr(5) : Tuple[A, A]
@@ -663,14 +663,14 @@ NameExpr(5) : def (a: A[C]) -> B[A[C]]
 from typing import List
 a = [] # type: List[A]
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 ListExpr(2) : builtins.list[A]
 
 [case testInferGenericTypeInTypeAnyContext]
 from typing import Any
 a = [] # type: Any
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 ListExpr(2) : builtins.list[Any]
 
@@ -685,7 +685,7 @@ def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 CallExpr(4) : builtins.list[B]
 NameExpr(4) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -722,7 +722,7 @@ NameExpr(3) : def () -> builtins.int
 ## FuncExpr|NameExpr
 import typing
 f = lambda: [1]
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 FuncExpr(3) : def () -> builtins.list[builtins.int]
 NameExpr(3) : def () -> builtins.list[builtins.int]
@@ -733,7 +733,7 @@ f = lambda x: [] # type: Callable[[B], List[A]]
 class A: pass
 class B:
   a = None # type: A
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 FuncExpr(2) : def (B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
@@ -749,7 +749,7 @@ def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 CallExpr(5) : builtins.list[B]
 NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -771,7 +771,7 @@ def map(f: Callable[[t], List[s]], a: List[t]) -> List[s]: pass
 class A: pass
 class B: pass
 def f(a: A) -> B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 NameExpr(6) : def (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
 FuncExpr(7) : def (A) -> builtins.list[B]
@@ -790,7 +790,7 @@ map(
   l)
 def map(f: List[Callable[[t], s]], a: List[t]) -> List[s]: pass
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 -- TODO We probably should not silently infer 'Any' types in statically typed
 --      context. Perhaps just fail instead?
@@ -813,7 +813,7 @@ def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A:
   b = None # type: B
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 CallExpr(5) : builtins.list[B]
 NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -834,7 +834,7 @@ def map(f: Callable[[t], s], a: List[t]) -> List[s]: pass
 class A:
   b = None # type: B
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 CallExpr(5) : builtins.list[B]
 NameExpr(5) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
@@ -855,7 +855,7 @@ a or []
 a = a or []
 a = [] or a
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 ListExpr(3) : builtins.list[A]
 NameExpr(3) : builtins.list[A]
@@ -1102,7 +1102,7 @@ def m(fun: Callable[[T], V], iter: List[T]) -> None: pass
 nums = [1] # type: List[int]
 m(fun,
   nums)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 IntExpr(13) : builtins.int
 ListExpr(13) : builtins.list[builtins.int]
@@ -1131,7 +1131,7 @@ NameExpr(6) : def () -> A
 ## ListExpr|OpExpr|IntExpr
 from typing import List
 a = [None] * 3 # type: List[str]
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 IntExpr(3) : builtins.int
 ListExpr(3) : builtins.list[builtins.str]

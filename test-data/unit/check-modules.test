@@ -43,7 +43,7 @@ except m.Bad: # E: Exception type must be derived from BaseException
 [file m.py]
 class Err(BaseException): pass
 class Bad: pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testImportedExceptionType2]
 from m import Err, Bad
@@ -57,7 +57,7 @@ except Bad: # E: Exception type must be derived from BaseException
 [file m.py]
 class Err(BaseException): pass
 class Bad: pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testImportWithinBlock]
 import typing
@@ -162,7 +162,7 @@ m()      # E: "module" not callable
 a = m # type: A  # E: Incompatible types in assignment (expression has type "module", variable has type "A")
 m + None # E: Unsupported left operand type for + ("module")
 [file m.py]
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 
 [case testNameDefinedInDifferentModule]
 import m, n
@@ -172,7 +172,7 @@ m.x # E: "module" has no attribute "x"
 y = object()
 [file n.py]
 x = object()
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 
 [case testChainedAssignmentAndImports]
 import m
@@ -184,7 +184,7 @@ s = m.x # E: Incompatible types in assignment (expression has type "int", variab
 s = m.y # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [file m.py]
 x = y = 1
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testConditionalFunctionDefinitionAndImports]
 import m
@@ -329,7 +329,7 @@ x.nonexistent.foo
 x.z
 [file x.py]
 import nonexistent
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 main:1: note: In module imported here:
 tmp/x.py:1: error: Cannot find module named 'nonexistent'
@@ -409,12 +409,12 @@ __all__.append('c')
 __all__.extend(('d', 'e'))
 
 a = b = c = d = e = f = _g = 1
-[builtins fixtures/module_all.py]
+[builtins fixtures/module_all.pyi]
 
 [case testAllMustBeSequenceStr]
 import typing
 __all__ = [1, 2, 3]
-[builtins fixtures/module_all.py]
+[builtins fixtures/module_all.pyi]
 [out]
 main: error: Type of __all__ must be Sequence[str], not List[int]
 
@@ -637,7 +637,7 @@ else:
 m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [file m.py]
 def f(x: str) -> None: pass
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 
 [case testConditionalImportAndAssignInvalidToModule]
@@ -646,7 +646,7 @@ if object():
 else:
     m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "module")
 [file m.py]
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 
 [case testImportAndAssignToModule]
@@ -655,7 +655,7 @@ m = None
 m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [file m.py]
 def f(x: str) -> None: pass
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 
 
@@ -730,7 +730,7 @@ tmp/bar.py:1: error: Module has no attribute 'B'
 # options: silent_imports almost_silent
 import mod
 [file mod.py]
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 tmp/main.py:2: note: Import of 'mod' silently ignored
 tmp/main.py:2: note: (Using --silent-imports, module not passed on command line)
@@ -741,7 +741,7 @@ tmp/main.py:2: note: (This note courtesy of --almost-silent)
 [file foo/bar.py]
 # options: silent_imports almost_silent
 [file foo/__init__.py]
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 tmp/foo/bar.py: note: Ancestor package 'foo' silently ignored
 tmp/foo/bar.py: note: (Using --silent-imports, submodule passed on command line)
@@ -761,7 +761,7 @@ from non_stub import x
 x = 42
 [file other.py]
 y = 42
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 [out]
 tmp/main.py:4: error: Unsupported left operand type for + ("int")
 

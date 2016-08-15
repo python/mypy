@@ -157,7 +157,7 @@ def f(x: T) -> T:
     return x
 
 b = f(B())
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In function "f":
 
@@ -171,7 +171,7 @@ class A(A0): pass
 T = TypeVar('T', bound=A)
 def f(x: T) -> int:
     return x.foo(22)
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 
 [case testBoundStaticMethod]
@@ -184,7 +184,7 @@ class A(A0): pass
 T = TypeVar('T', bound=A)
 def f(x: T) -> int:
     return x.foo(22)
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 
 [case testBoundOnDecorator]
@@ -205,4 +205,4 @@ a = 1
 b = foo(a)
 b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 twice(a) # E: Type argument 1 of "twice" has incompatible value "int"
-[builtins fixtures/args.py]
+[builtins fixtures/args.pyi]

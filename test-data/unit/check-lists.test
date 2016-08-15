@@ -14,7 +14,7 @@ a1, [a1, [a1, b1]] = a1, [a1, [a1, c1]]  # E: Incompatible types in assignment (
 class A: pass
 class B: pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testNestedListAssignmentToTuple]
@@ -28,7 +28,7 @@ a, b = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
 class A: pass
 class B: pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testListAssignmentFromTuple]
@@ -44,7 +44,7 @@ t = a, b
 class A: pass
 class B: pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testListAssignmentUnequalAmountToUnpack]
@@ -59,7 +59,7 @@ def f() -> None: # needed because test parser tries to parse [a, b] as section h
 class A: pass
 class B: pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 
@@ -71,4 +71,4 @@ b = [0, *a]
 reveal_type(b)  # E: Revealed type is 'builtins.list[builtins.int*]'
 c = [*a, 0]
 reveal_type(c)  # E: Revealed type is 'builtins.list[builtins.int*]'
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]

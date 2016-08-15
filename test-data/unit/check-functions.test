@@ -186,7 +186,7 @@ f([C])  # E: List item 0 has incompatible type
 class D:
     def __init__(self, a, b): pass
 f([D])  # E: List item 0 has incompatible type
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 -- Default argument values
 -- -----------------------
@@ -715,7 +715,7 @@ class A:
     def f(self, x): pass
 
 def dec(f): return f
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 [case testForwardReferenceToStaticallyTypedDecoratedMethod]
 from typing import TypeVar
@@ -730,7 +730,7 @@ class A:
 
 T = TypeVar('T')
 def dec(f: T) -> T: return f
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 main: note: In function "f":
 
@@ -741,7 +741,7 @@ def f(self) -> None:
 class A:
     @property
     def x(self): pass
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testForwardReferenceToStaticallyTypedProperty]
 def f(self) -> None:
@@ -750,7 +750,7 @@ def f(self) -> None:
 class A:
     @property
     def x(self) -> int: return 1
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In function "f":
 
@@ -762,7 +762,7 @@ def f(self) -> None:
 class A:
     @staticmethod
     def x(x): pass
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 main: note: In function "f":
 
@@ -774,7 +774,7 @@ def f(self) -> None:
 class A:
     @staticmethod
     def x(a: int) -> str: return ''
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 main: note: In function "f":
 
@@ -786,7 +786,7 @@ def f(self) -> None:
 class A:
     @classmethod
     def x(cls, a): pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "f":
 
@@ -798,7 +798,7 @@ def f(self) -> None:
 class A:
     @classmethod
     def x(cls, x: int) -> str: return ''
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "f":
 
@@ -850,7 +850,7 @@ class A:
     def g(self, x): pass
 
 def dec(f): return f
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 [case testForwardRefereceToDecoratedFunctionWithCallExpressionDecorator]
 def f(self) -> None:
@@ -1184,7 +1184,7 @@ if object():
     def f(): pass # E: Incompatible redefinition
 f()
 f(1)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Conditional method definition
@@ -1294,7 +1294,7 @@ main: note: In function "f":
 from typing import Callable
 def f(x: Callable[..., int]) -> None:
     x(*[1], **{'x': 2})
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testCastWithCallableAndArbitraryArgs]
 from typing import Callable, cast
@@ -1315,7 +1315,7 @@ def f(x: Callable[..., T]) -> T: pass
 def g(*x: int) -> str: pass
 x = f(g)
 x + 1 # E: Unsupported left operand type for + ("str")
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallableWithArbitraryArgsSubtyping]
 from typing import Callable
@@ -1347,14 +1347,14 @@ def f(x, y, z): # type: (...) -> None
     pass
 f(1, "hello", [])
 f(x=1, y="hello", z=[])
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testEllipsisWithArbitraryArgsOnBareFunctionWithDefaults]
 def f(x, y=1, z="hey"): # type: (...) -> None
     pass
 f(1, "hello", [])
 f(x=1, y="hello", z=[])
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testEllipsisWithArbitraryArgsOnBareFunctionWithKwargs]
 from typing import Dict
@@ -1362,7 +1362,7 @@ def f(x, **kwargs): # type: (...) -> None
     success_dict_type = kwargs # type: Dict[str, str]
     failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[int, str])
 f(1, thing_in_kwargs=["hey"])
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 main: note: In function "f":
 
@@ -1372,7 +1372,7 @@ def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
     fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
 f(1, "hello")
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main: note: In function "f":
 
@@ -1386,14 +1386,14 @@ class A:
     @classmethod
     def f(cls, x, y, z): # type: (...) -> None
         pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testEllipsisWithArbitraryArgsOnStaticMethod]
 class A:
     @staticmethod
     def f(x, y, z): # type: (...) -> None
         pass
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 [case testEllipsisWithSomethingAfterItFails]
 def f(x, y, z): # type: (..., int) -> None
@@ -1416,7 +1416,7 @@ t = TypeVar('t', covariant=True)
 class A(Generic[t]):
     def foo(self, x: t) -> None:
         return None
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 main: note: In member "foo" of class "A":
 main:5: error: Cannot use a covariant type variable as a parameter
@@ -1428,7 +1428,7 @@ t = TypeVar('t', contravariant=True)
 class A(Generic[t]):
     def foo(self) -> t:
         return None
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 main: note: In member "foo" of class "A":
 main:5: error: Cannot use a contravariant type variable as return type
@@ -1440,7 +1440,7 @@ t = TypeVar('t', covariant=True)
 class A(Generic[t]):
     def foo(self) -> t:
         return None
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [case testAcceptContravariantArgument]
 from typing import TypeVar, Generic
 
@@ -1448,7 +1448,7 @@ t = TypeVar('t', contravariant=True)
 class A(Generic[t]):
     def foo(self, x: t) -> None:
         return None
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 
 -- Redefining functions
@@ -1478,7 +1478,7 @@ else:
     def g(): pass
 f()
 g()
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testFunctionDefinitionWithWhileStatement]
 while 1:
@@ -1498,7 +1498,7 @@ def f1() -> bool:
     return False
 
 foo(f1)
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testFunctionNestedWithinWith]
 from typing import Any

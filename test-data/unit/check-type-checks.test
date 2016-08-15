@@ -11,7 +11,7 @@ if isinstance(x, int):
     n = x
     s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testSimpleIsinstance2]
 import typing
@@ -21,7 +21,7 @@ def f(x: object, n: int, s: str) -> None:
         n = x
         s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -37,7 +37,7 @@ class A:
         s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     else:
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In class "A":
 
@@ -52,7 +52,7 @@ def f(x: object, a: A, b: B, c: int) -> None:
             x = a
         a = x
         c = x # E: Incompatible types in assignment (expression has type "A", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -70,7 +70,7 @@ def f(x: object, y: object, n: int, s: str) -> None:
         s = y # E: Incompatible types in assignment (expression has type "object", variable has type "str")
         n = y # E: Incompatible types in assignment (expression has type "object", variable has type "int")
         n = x
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -88,7 +88,7 @@ def f(x: object, n: int, s: str) -> None:
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
         s = x # E: Incompatible types in assignment (expression has type "object", variable has type "str")
     n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -100,7 +100,7 @@ def f(x: Any, n: int, s: str) -> None:
         n = x
         s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     s = x
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -115,6 +115,6 @@ def f(x: object) -> None:
         x.f('')
         x.g() # E: C[Any] has no attribute "g"
     x.g() # E: "object" has no attribute "g"
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":

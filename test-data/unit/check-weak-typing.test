@@ -2,7 +2,7 @@
 x = 17
 y = [] # E: Need type annotation for variable
 z = [2]
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testWeakLocalNotGlobal]
@@ -10,7 +10,7 @@ z = [2]
 y = [] # E: Need type annotation for variable
 x = 1
 x = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testWeakMoo]
@@ -18,7 +18,7 @@ x = 'a' # E: Incompatible types in assignment (expression has type "str", variab
 x = 7
 x + 'd' # E: Unsupported operand types for + ("int" and "str")
 
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 [case testWeakGlobal]
 # mypy: weak=global
@@ -29,7 +29,7 @@ x = 'a'
 x()     # E: "str" not callable
 x = [1]
 x[0]()
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testWeakTypingList]
@@ -37,7 +37,7 @@ x[0]()
 x = 17
 y = []
 z = [2]
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testWeakTypingRename]
@@ -45,7 +45,7 @@ z = [2]
 x = 1
 x = 'a'
 
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testWeakFunctionCall]
@@ -73,7 +73,7 @@ def f():
     x[0] + 1
     x[0] + 'a'
     x.add('a') # E: List[Any] has no attribute "add"; maybe "append" or "extend"?
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 [case testWeakAssignmentInFunction]
@@ -96,7 +96,7 @@ main: note: In function "f":
 # mypy: weak
 def f() -> None:
     x = []  # E: Need type annotation for variable
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 
@@ -106,7 +106,7 @@ def f():
     x, y = g()   # E: 'builtins.int' object is not iterable
 def g() -> int:
     return 0
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -160,7 +160,7 @@ x + 'a'  # E: Unsupported operand types for + ("int" and "str")
 x = 'a'
 x + 1    # E: Unsupported operand types for + ("str" and "int")
 x + 'a'
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 [case testWeakConditionalChanges]
 # mypy: weak
@@ -184,7 +184,7 @@ def g():
     if 1:
         return
     x + 'a'
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 [out]
 main: note: In function "f":
 [case testWeakListInFunction2]
@@ -192,7 +192,7 @@ main: note: In function "f":
 x = [1]
 # XXX: not clear what the right result here is
 x[0]() # E: "int" not callable
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testWeakArgsKws]
 # mypy: weak=global
@@ -206,7 +206,7 @@ args = (1, 2)
 f(*args, y=2) # E: "f" gets multiple values for keyword argument "y"
 args = (1,)
 f(*args, y=2)
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 [case testWeakBinder]
 # mypy: weak=global
