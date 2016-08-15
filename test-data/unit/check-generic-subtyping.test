@@ -250,7 +250,7 @@ class B(A):
     def f(self, x: List[S], y: List[T]) -> None: pass
 class C(A):
     def f(self, x: List[T], y: List[T]) -> None: pass # E: Signature of "f" incompatible with supertype "A"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In class "C":
 
@@ -349,7 +349,7 @@ class B(Generic[T]):
         pass
 class A(B):
     def f(self, a, b): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 
 
@@ -697,7 +697,7 @@ class Nums(Iterable[int]):
     def __next__(self): pass
 n, n = Nums()
 s, s = Nums() # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 
 

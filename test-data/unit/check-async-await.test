@@ -5,14 +5,14 @@
 # options: fast_parser
 async def f() -> int:
     pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 
 [case testAsyncDefReturn]
 # options: fast_parser
 async def f() -> int:
     return 0
 reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 
 [case testAwaitCoroutine]
 # options: fast_parser
@@ -20,7 +20,7 @@ async def f() -> int:
     x = await f()
     reveal_type(x)  # E: Revealed type is 'builtins.int*'
     return x
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -92,7 +92,7 @@ def g() -> int:
 async def f() -> int:
     x = await g()
     return x
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable")
@@ -103,7 +103,7 @@ async def g() -> int:
     return 0
 async def f() -> str:
     x = await g()  # type: str
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -115,7 +115,7 @@ async def g() -> int:
 async def f() -> str:
     x = await g()
     return x
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:6: error: Incompatible return value type (got "int", expected "str")
@@ -128,7 +128,7 @@ class C(AsyncIterator[int]):
 async def f() -> None:
     async for x in C():
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -138,7 +138,7 @@ from typing import AsyncIterator
 async def f() -> None:
     async for x in [1]:
         pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:4: error: AsyncIterable expected
@@ -152,7 +152,7 @@ class C:
 async def f() -> None:
     async with C() as x:
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -164,7 +164,7 @@ class C:
 async def f() -> None:
     async with C() as x:
         pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
@@ -178,7 +178,7 @@ class C:
 async def f() -> None:
     async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable")
         pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -190,7 +190,7 @@ class C:
 async def f() -> None:
     async with C() as x:  # E: "__aenter__" of "C" does not return a value
         pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -202,7 +202,7 @@ class C:
 async def f() -> None:
     async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable")
         pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -214,7 +214,7 @@ class C:
 async def f() -> None:
     async with C() as x: # E: "__aexit__" of "C" does not return a value
         pass
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -226,7 +226,7 @@ async def g():
     yield
 async def h():
     x = yield
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:3: error: 'yield' in async function
@@ -241,7 +241,7 @@ async def f():
     yield from []
 async def g():
     x = yield from []
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 main:3: error: 'yield from' in async function
@@ -261,7 +261,7 @@ async def f() -> str:
 def g() -> Generator[Any, None, str]:
     x = yield from f()
     return x
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "g":
 main:6: error: "yield from" can't be applied to Awaitable[str]
@@ -290,7 +290,7 @@ async def main() -> None:
         reveal_type(y)  # E: Revealed type is 'builtins.int'
     async for z in I():
         reveal_type(z)  # E: Revealed type is 'builtins.int'
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "main":
 
@@ -307,7 +307,7 @@ def f() -> Generator[int, str, int]:
         return 0
     else:
         return ''  # E: Incompatible return value type (got "str", expected "int")
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
 
@@ -397,5 +397,5 @@ async def decorated_host_coroutine() -> None:
     x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
     x = await other_coroutine()
 
-[builtins fixtures/async_await.py]
+[builtins fixtures/async_await.pyi]
 [out]

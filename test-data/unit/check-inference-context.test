@@ -135,7 +135,7 @@ def g(a: T) -> List[T]: pass
 
 class A(Generic[T]): pass
 class B: pass
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "h":
 
@@ -163,7 +163,7 @@ def f(a: T) -> 'Tuple[A[T], A[T]]': pass
 
 class A(Generic[T]): pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main:8: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
 main:9: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
@@ -192,7 +192,7 @@ def h(a: S, b: T) -> 'Tuple[A[S], A[S], A[T], A[T]]': pass
 
 class A(Generic[T]): pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main:9: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
 main:10: error: Incompatible types in assignment (expression has type A[B], variable has type A[object])
@@ -344,7 +344,7 @@ aa = []
 ao = []
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testSingleItemListExpressions]
 from typing import List
@@ -365,7 +365,7 @@ ao = [None]
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testMultiItemListExpressions]
 from typing import List
@@ -383,7 +383,7 @@ ao = [a, b]
 
 class A: pass
 class B(A): pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testLocalVariableInferenceFromEmptyList]
 import typing
@@ -394,7 +394,7 @@ def f() -> None:
     c = [object()] # E: List item 0 has incompatible type "object"
     c = [B()]
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 
@@ -414,7 +414,7 @@ aab = [[None], [b], []]
 aab = [ab, []]
 
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Complex context
@@ -425,7 +425,7 @@ class B: pass
 from typing import List
 l = ([A()]) # type: List[object]
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testComplexTypeInferenceWithTuple]
 from typing import TypeVar, Tuple, Generic
@@ -440,7 +440,7 @@ class A(Generic[t]): pass
 class B: pass
 class C: pass
 class D(Generic[k, v]): pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Dictionary literals
@@ -457,7 +457,7 @@ a_b = A() # type: A[B]
 a_c = A() # type: A[C]
 d = {A() : a_c,
      a_b : A()} # type: Dict[A[B], A[C]]
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 
 -- Special cases (regression tests etc.)
@@ -534,7 +534,7 @@ class set(Generic[t]):
 b = bool()
 l = set([b])
 l = set([object()]) # E: List item 0 has incompatible type "object"
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 
 -- Infer generic type in 'Any' context
@@ -548,7 +548,7 @@ t = TypeVar('t')
 x = [] # type: Any
 y = C() # type: Any
 class C(Generic[s, t]): pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Lambdas
@@ -571,7 +571,7 @@ f = lambda: []
 f = lambda: [B()]  # E: List item 0 has incompatible type "B"
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testInferLambdaAsGenericFunctionArgument]
 from typing import TypeVar, List, Any, Callable
@@ -581,7 +581,7 @@ class A:
 def f(a: List[t], fn: Callable[[t], Any]) -> None: pass
 list_a = [] # type: List[A]
 f(list_a, lambda a: a.x)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testInvalidContextForLambda]
 from typing import Callable
@@ -600,7 +600,7 @@ f2 = lambda: 1 # type: Callable[..., int]
 f3 = lambda *args, **kwargs: 1 # type: Callable[..., int]
 f4 = lambda x: x # type: Callable[..., int]
 g = lambda x: 1 # type: Callable[..., str]
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 main:6: error: Incompatible return value type (got "int", expected "str")
 main:6: error: Incompatible types in assignment (expression has type Callable[[Any], int], variable has type Callable[..., str])
@@ -632,7 +632,7 @@ f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
 f( # E: Argument 1 to "f" has incompatible type Callable[[A], A]; expected Callable[[A], B]
     lambda x: B() if isinstance(x, B) else x, # E: Incompatible return value type (got "A", expected "B")
     A(), r=B())
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 
 -- Overloads + generic functions
@@ -656,7 +656,7 @@ class B: pass
 m = map(g, [A()])
 b = m # type: List[B]
 a = m # type: List[A] # E: Incompatible types in assignment (expression has type List[B], variable has type List[A])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Boolean operators
@@ -675,7 +675,7 @@ b = b or c # E: Incompatible types in assignment (expression has type "Union[Lis
 class A: pass
 class B: pass
 class C(B): pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Special cases
@@ -693,7 +693,7 @@ a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testSomeTypeVarsInferredFromContext2]
 from typing import List, TypeVar
@@ -706,7 +706,7 @@ a = f(B(), B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testLambdaInListAndHigherOrderFunction]
 from typing import TypeVar, Callable, List
@@ -716,7 +716,7 @@ map(
   [lambda x: x], [])
 def map(f: List[Callable[[t], s]], a: List[t]) -> List[s]: pass
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testChainedAssignmentInferenceContexts]
@@ -725,7 +725,7 @@ i = None # type: List[int]
 s = None # type: List[str]
 i = i = []
 i = s = [] # E: Incompatible types in assignment (expression has type List[str], variable has type List[int])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testContextForAttributeDeclaredInInit]
 from typing import List
@@ -736,14 +736,14 @@ a = A()
 a.x = []
 a.x = [1]
 a.x = [''] # E: List item 0 has incompatible type "str"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testListMultiplyInContext]
 from typing import List
 a = None  # type: List[int]
 a = [None] * 3
 a = [''] * 3 # E: List item 0 has incompatible type "str"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testUnionTypeContext]
 from typing import Union, List, TypeVar
@@ -752,7 +752,7 @@ def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[None], str]"
-[builtins fixtures/isinstancelist.py]
+[builtins fixtures/isinstancelist.pyi]
 
 [case testIgnoringInferenceContext]
 from typing import TypeVar, List
@@ -761,7 +761,7 @@ def f(x: List[T]) -> T: pass
 def g(y: object) -> None: pass
 a = [1]
 g(f(a))
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testStar2Context]
 from typing import Any, Dict, Tuple, Iterable
@@ -769,7 +769,7 @@ def f1(iterable: Iterable[Tuple[str, Any]] = None) -> None:
     f2(**dict(iterable))
 def f2(iterable: Iterable[Tuple[str, Any]], **kw: Any) -> None:
     pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testInferenceInGenericFunction]
@@ -779,7 +779,7 @@ def f(a: T) -> None:
     l = []  # type: List[T]
     l.append(a)
     l.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "T"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 
@@ -792,7 +792,7 @@ class A(Generic[S]):
         l = []  # type: List[T]
         l.append(a)
         l.append(b) # E: Argument 1 to "append" of "list" has incompatible type "S"; expected "T"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In member "f" of class "A":
 

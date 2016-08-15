@@ -779,7 +779,7 @@ class C(bool): pass # E: 'bool' is not a valid base class
 class A(int): pass # ok
 class B(float): pass # ok
 class D(str): pass # ok
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 [out]
 
 [case testCyclicInheritance]
@@ -1013,7 +1013,7 @@ from typing import TypeVar
 T = TypeVar('T', int, str, bound=bool) # E: TypeVar cannot have both values and an upper bound
 S = TypeVar('S', covariant=True, contravariant=True) \
     # E: TypeVar cannot be both covariant and contravariant
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
@@ -1136,7 +1136,7 @@ class A:
   def g(self) -> None:
     @staticmethod
     def h(): pass
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 main:2: error: 'staticmethod' used with a non-method
 main: note: In function "g":
@@ -1150,7 +1150,7 @@ class A:
   def g(self) -> None:
     @classmethod
     def h(): pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main:2: error: 'classmethod' used with a non-method
 main: note: In function "g":
@@ -1160,7 +1160,7 @@ main:6: error: 'classmethod' used with a non-method
 import typing
 @property  # E: 'property' used with a non-method
 def f() -> int: pass
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 
 [case testInvalidArgCountForProperty]
@@ -1170,7 +1170,7 @@ class A:
     def f(self, x) -> int: pass  # E: Too many arguments
     @property
     def g() -> int: pass   # E: Method must have at least one argument
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 
 [case testOverloadedProperty]
@@ -1182,7 +1182,7 @@ class A:
     @property  # E: Decorated property not supported
     @overload
     def f(self) -> int: pass
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 
 [case testOverloadedProperty2]
@@ -1193,7 +1193,7 @@ class A:
     @property  # E: Decorated property not supported
     @overload
     def f(self) -> int: pass
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 
 [case testDecoratedProperty]
@@ -1206,7 +1206,7 @@ class A:
     @property  # E: Decorated property not supported
     @dec
     def g(self) -> int: pass
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 
 [case testImportTwoModulesWithSameNameInFunction]
@@ -1234,7 +1234,7 @@ y = 1
 [case testListTypeAliasWithoutImport]
 import typing
 def f() -> List[int]: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 main:2: error: Name 'List' is not defined

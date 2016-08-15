@@ -94,7 +94,7 @@ class B(A):
         super().__new__(cls, x) # E
 B('')
 B(1) # E
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 [out]
 main: note: In member "__new__" of class "B":
 main:8: error: Argument 2 to "__new__" of "A" has incompatible type "str"; expected "int"

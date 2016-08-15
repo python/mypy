@@ -33,7 +33,7 @@ A = List[int]
 def f(x: A) -> None: pass
 f([1])
 f(['x']) # E: List item 0 has incompatible type "str"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testAnyTypeAlias]
@@ -54,10 +54,10 @@ f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[in
 [file _m.py]
 from typing import Union
 U = Union[int, str]
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testTypeAliasInBuiltins]
 def f(x: bytes): pass
 bytes
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
-[builtins fixtures/alias.py]
+[builtins fixtures/alias.pyi]

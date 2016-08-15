@@ -680,7 +680,7 @@ from typing import Tuple
 t = None # type: tuple
 t1 = None # type: Tuple[object]
 t2 = None # type: Tuple[int, object]
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple])
@@ -700,7 +700,7 @@ MypyFile:1(
 [case testVariableLengthTuple]
 from typing import Tuple
 t = None # type: Tuple[int, ...]
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple])
@@ -1251,7 +1251,7 @@ MypyFile:1(
 [case testTypevarWithValuesAndVariance]
 from typing import TypeVar
 T = TypeVar('T', int, str, covariant=True)
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [TypeVar])
@@ -1441,7 +1441,7 @@ y = 1  # type: Optional  # E: Optional[...] must have exactly one type argument
 from typing import TypeVar
 T = TypeVar('T', covariant=True)
 S = TypeVar('S', contravariant=True)
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [TypeVar])

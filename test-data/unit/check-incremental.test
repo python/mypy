@@ -117,7 +117,7 @@ class Foo:
 class Bar:
     def test(self) -> int: return 3
 
-[builtins fixtures/module_all.py]
+[builtins fixtures/module_all.pyi]
 [stale]
 [out]
 
@@ -132,7 +132,7 @@ import parent.b
 
 [file parent/b.py]
 
-[builtins fixtures/args.py]
+[builtins fixtures/args.pyi]
 [stale]
 [out]
 
@@ -152,7 +152,7 @@ import parent.a
 [file parent/c.py]
 import parent.a
 
-[builtins fixtures/args.py]
+[builtins fixtures/args.pyi]
 [stale]
 [out]
 
