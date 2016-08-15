@@ -1545,7 +1545,7 @@ class SemanticAnalyzer(NodeVisitor):
                                    self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         self.add_namedtuple_method('__init__', symbols, info, this_type, NoneTyp(),
                                    self.factory_args(vars, ARG_POS), info.name())
-        # TODO: refine to OrderedDict[Union[types]]
+        # TODO: refine to OrderedDict[str, Union[types]]
         self.add_namedtuple_method('_asdict', symbols, info, this_type, AnyType(), [])
         return info
 
@@ -1559,7 +1559,6 @@ class SemanticAnalyzer(NodeVisitor):
         types = [arg.type_annotation for arg in args]
         items = [arg.variable.name() for arg in args]
         arg_kinds = [arg.kind for arg in args]
-        # TODO: Make sure that the self argument name is not visible?
         signature = CallableType(types, arg_kinds, items, ret,
                                  self.named_type('__builtins__.function'),
                                  name=name or info.name() + '.' + funcname)
