@@ -274,3 +274,34 @@ bar(3)
 [out]
 main:1: note: In module imported here:
 tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "str"
+
+[case testIncrementalUnsilencingModule]
+# cmd: mypy -m main package.subpackage.mod2
+# cmd2: mypy -m main package.subpackage.mod1
+# options: silent_imports
+
+[file main.py]
+from package.subpackage.mod1 import Class
+
+def handle(c: Class) -> None:
+    c.some_attribute
+
+[file package/__init__.py]
+# empty
+
+[file package/subpackage/__init__.py]
+# empty
+
+[file package/subpackage/mod1.py]
+import math  # Any previously unloaded package works here
+
+class Class: pass
+
+[file package/subpackage/mod2.py]
+# empty
+
+[builtins fixtures/args.py]
+[stale]
+[out]
+main.py: note: In function "handle":
+main.py:4: error: "Class" has no attribute "some_attribute"

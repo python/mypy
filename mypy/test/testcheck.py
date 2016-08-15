@@ -107,7 +107,7 @@ class TypeCheckSuite(DataSuite):
     def run_case_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
         find_module_clear_caches()
         program_text = '\n'.join(testcase.input)
-        module_name, program_name, program_text = self.parse_module(program_text)
+        module_data = self.parse_module(program_text, incremental)
 
         options = self.parse_options(program_text)
         options.use_builtins_fixtures = True
@@ -120,8 +120,11 @@ class TypeCheckSuite(DataSuite):
             if incremental == 1:
                 # In run 1, copy program text to program file.
                 output = []
-                with open(program_name, 'w') as f:
-                    f.write(program_text)
+                for module_name, program_name, program_text in module_data:
+                    if module_name == '__main__':
+                        with open(program_name, 'w') as f:
+                            f.write(program_text)
+                        break
             elif incremental == 2:
                 # In run 2, copy *.py.next files to *.py files.
                 for dn, dirs, files in os.walk(os.curdir):
@@ -137,11 +140,13 @@ class TypeCheckSuite(DataSuite):
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
 
+        sources = []
+        for module_name, program_name, program_text in module_data:
             # Always set to none so we're forced to reread program_name
-            program_text = None
-        source = BuildSource(program_name, module_name, program_text)
+            program_text = None if incremental else program_text
+            sources.append(BuildSource(program_name, module_name, program_text))
         try:
-            res = build.build(sources=[source],
+            res = build.build(sources=sources,
                               options=options,
                               alt_lib_path=test_temp_dir)
             a = res.errors
@@ -159,7 +164,8 @@ class TypeCheckSuite(DataSuite):
                 testcase.file, testcase.line))
 
         if incremental and res:
-            self.verify_cache(module_name, program_name, a, res.manager)
+            if not options.silent_imports:
+                self.verify_cache(module_name, program_name, a, res.manager)
             if testcase.expected_stale_modules is not None and incremental == 2:
                 assert_string_arrays_equal(
                     list(sorted(testcase.expected_stale_modules)),
@@ -218,7 +224,7 @@ class TypeCheckSuite(DataSuite):
                 missing[id] = path
         return set(missing.values())
 
-    def parse_module(self, program_text: str) -> Tuple[str, str, str]:
+    def parse_module(self, program_text: str, incremental:int = 0) -> List[Tuple[str, str, str]]:
         """Return the module and program names for a test case.
 
         The default ('__main__') module name can be overridden by
@@ -228,18 +234,28 @@ class TypeCheckSuite(DataSuite):
 
         Return tuple (main module name, main file name, main program text).
         """
-        m = re.search('# cmd: mypy -m ([a-zA-Z0-9_.]+) *$', program_text, flags=re.MULTILINE)
+        m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
+        m2 = re.search('# cmd2: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
+        if m2 is not None and incremental == 2:
+            # Optionally return a different command if in the second
+            # stage of incremental mode, otherwise default to the
+            # original cmd.
+            m = m2
+
         if m:
             # The test case wants to use a non-default main
             # module. Look up the module and give it as the thing to
             # analyze.
-            module_name = m.group(1)
-            path = build.find_module(module_name, [test_temp_dir])
-            with open(path) as f:
-                program_text = f.read()
-            return m.group(1), path, program_text
+            module_names = m.group(1)
+            out = []
+            for module_name in module_names.split(' '):
+                path = build.find_module(module_name, [test_temp_dir])
+                with open(path) as f:
+                    program_text = f.read()
+                out.append((module_name, path, program_text))
+            return out
         else:
-            return '__main__', 'main', program_text
+            return [('__main__', 'main', program_text)]
 
     def parse_options(self, program_text: str) -> Options:
         options = Options()
