@@ -57,10 +57,10 @@ def parse_test_cases(
                     mpath = os.path.join(os.path.dirname(path), p[i].arg)
                     f = open(mpath)
                     if p[i].id == 'builtins':
-                        fnam = 'builtins.py'
+                        fnam = 'builtins.pyi'
                     else:
                         # Python 2
-                        fnam = '__builtin__.py'
+                        fnam = '__builtin__.pyi'
                     files.append((os.path.join(base_path, fnam), f.read()))
                     f.close()
                 elif p[i].id == 'stale':

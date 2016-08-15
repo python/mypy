@@ -60,9 +60,9 @@ def test_transform(testcase):
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
-            if (not f.path.endswith((os.sep + 'builtins.py',
-                                     'typing.py',
-                                     'abc.py'))
+            if (not f.path.endswith((os.sep + 'builtins.pyi',
+                                     'typing.pyi',
+                                     'abc.pyi'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
