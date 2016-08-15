@@ -14,7 +14,7 @@ a = x[1]
 a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 
-[case testAccessingNamedTupleAttributes]
+[case testNamedTupleAccessingAttributes]
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
@@ -23,7 +23,7 @@ x.x
 x.y
 x.z # E: "X" has no attribute "z"
 
-[case testCreateNamedTupleWithPositionalArguments]
+[case testNamedTupleCreateWithPositionalArguments]
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
@@ -42,7 +42,7 @@ x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
 x = X(y=1) # E: Missing positional argument "x" in call to "X"
 
-[case testCreateNamedTupleAndUseAsTuple]
+[case testNamedTupleCreateAndUseAsTuple]
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
@@ -96,20 +96,20 @@ s = x.a  # E: Incompatible types in assignment (expression has type "int", varia
 i, s = x
 s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testTwoNamedTuplesAsBaseClasses]
+[case testNamedTuplesTwoAsBaseClasses]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int)])
 B = NamedTuple('B', [('a', int)])
 class X(A, B):  # E: Class has two incompatible bases derived from tuple
     pass
 
-[case testTwoNamedTuplesAsBaseClasses2]
+[case testNamedTuplesTwoAsBaseClasses2]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int)])
 class X(A, NamedTuple('B', [('a', int)])): # E: Class has two incompatible bases derived from tuple
     pass
 
-[case testSelfTypeWithNamedTupleAsBase]
+[case testNamedTupleSelfTypeWithNamedTupleAsBase]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int), ('b', str)])
 class B(A):
@@ -124,7 +124,7 @@ class B(A):
 [out]
 main: note: In member "f" of class "B":
 
-[case testTypeReferenceToClassDerivedFromNamedTuple]
+[case testNamedTupleTypeReferenceToClassDerivedFrom]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int), ('b', str)])
 class B(A):
