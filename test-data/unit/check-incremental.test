@@ -305,3 +305,42 @@ class Class: pass
 [out]
 tmp/main.py: note: In function "handle":
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
+
+[case testIncrementalWithIgnores]
+import foo # type: ignore
+
+[stale]
+[out]
+
+[case testIncrementalWithSilentImportsAndIgnore]
+# cmd: mypy -m main b
+# cmd2: mypy -m main c c.submodule
+# options: silent_imports
+
+[file main.py]
+import a  # type: ignore
+import b
+import c
+
+a.A().foo()
+b.B().foo()
+c.C().foo()
+
+[file b.py]
+class B:
+    def foo(self) -> None: pass
+
+[file b.py.next]
+
+[file c/__init__.py]
+class C: pass
+
+[file c/submodule.py]
+val = 3  # type: int
+val = "foo"
+
+[builtins fixtures/module_all.pyi]
+[stale main, c, c.submodule]
+[out]
+tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/main.py:7: error: "C" has no attribute "foo"
