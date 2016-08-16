@@ -305,3 +305,9 @@ class Class: pass
 [out]
 tmp/main.py: note: In function "handle":
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
+
+[case testIncrementalWithIgnores]
+import foo # type: ignore
+
+[stale]
+[out]
