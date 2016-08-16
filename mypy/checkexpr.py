@@ -1093,18 +1093,20 @@ class ExpressionChecker:
         ctx = self.chk.type_context[-1]
         left_type = self.accept(e.left, ctx)
 
+        assert e.op in ('and', 'or')  # Checked by visit_op_expr
+
         if e.op == 'and':
             right_map, left_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
-            truthiness_restriction = false_only
+            restricted_left_type = false_only(left_type)
+            result_is_left = not left_type.can_be_true
         elif e.op == 'or':
             left_map, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
-            truthiness_restriction = true_only
-        # type_restriction tells about the possible truth values of the left operand
-        # if that's the result of the boolean operation
+            restricted_left_type = true_only(left_type)
+            result_is_left = not left_type.can_be_false
 
         with self.chk.binder.frame_context():
             if right_map:
@@ -1125,12 +1127,10 @@ class ExpressionChecker:
             assert right_map is not None  # find_isinstance_check guarantees this
             return right_type
 
-        restricted_left_type = truthiness_restriction(left_type)
-
         if isinstance(restricted_left_type, UninhabitedType):
             # The left operand can never be the result
             return right_type
-        elif left_type is restricted_left_type:
+        elif result_is_left:
             # The left operand is always the result
             return left_type
         else:

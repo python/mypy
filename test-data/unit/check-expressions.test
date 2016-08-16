@@ -309,7 +309,7 @@ b = None # type: bool
 i = None # type: str
 j = not b and i
 if j:
-    s = j # type: str
+    reveal_type(j) # E: Revealed type is 'builtins.str'
 
 
 [builtins fixtures/bool.py]
@@ -320,7 +320,7 @@ b = None # type: bool
 i = None # type: str
 j = b or i
 if not j:
-    s = j # type: str
+    reveal_type(j) # E: Revealed type is 'builtins.str'
 
 [builtins fixtures/bool.py]
 
