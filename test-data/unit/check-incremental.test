@@ -792,6 +792,7 @@ class Class: pass
 # empty
 
 [builtins fixtures/args.pyi]
+[rechecked collections, main, package.subpackage.mod1]
 [stale collections, main, package.subpackage.mod1]
 [out]
 tmp/main.py: note: In function "handle":
@@ -831,7 +832,8 @@ val = 3  # type: int
 val = "foo"
 
 [builtins fixtures/module_all.pyi]
-[stale main, c, c.submodule]
+[rechecked main, c, c.submodule]
+[stale]
 [out]
 tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
