@@ -1,5 +1,6 @@
 from mypy import defaults
 import pprint
+from typing import Any
 
 
 class BuildType:
@@ -40,9 +41,9 @@ class Options:
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
+        self.show_traceback = False
         self.dump_type_stats = False
         self.dump_inference_stats = False
-        self.dirty_stubs = False
 
         # -- test options --
         # Stop after the semantic analysis phase
@@ -54,12 +55,14 @@ class Options:
         # -- experimental options --
         self.fast_parser = False
         self.incremental = False
+        self.cache_dir = defaults.MYPY_CACHE
+        self.suppress_error_context = False  # Suppress "note: In function "foo":" messages.
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))

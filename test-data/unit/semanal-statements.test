@@ -771,7 +771,7 @@ except Err as f:
     f = BaseException() # Fail
     f = Err()
 class Err(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 MypyFile:1(
   TryStmt:1(

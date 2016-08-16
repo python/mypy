@@ -1,4 +1,6 @@
-from typing import builtinclass
+from typing import builtinclass, overload, Any, Generic, Sequence, TypeVar
+
+Tco = TypeVar('Tco', covariant=True)
 
 # This is an extension of transform builtins with additional operations.
 
@@ -9,7 +11,18 @@ class object:
     def __ne__(self, o: 'object') -> 'bool': pass
 
 class type: pass
-class tuple: pass
+
+class slice: pass
+
+class tuple(Sequence[Tco], Generic[Tco]):
+    def __getitem__(self, x: int) -> Tco: pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
+    def __lt__(self, x: 'tuple') -> bool: pass
+    def __le__(self, x: 'tuple') -> bool: pass
+    def __gt__(self, x: 'tuple') -> bool: pass
+    def __ge__(self, x: 'tuple') -> bool: pass
+
 class function: pass
 
 class bool: pass

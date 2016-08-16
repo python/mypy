@@ -36,7 +36,23 @@ x   # E: Name 'x' is not defined
 import m # type: ignore
 from m import a # type: ignore
 [file m.py]
-+ # A parse error, but we shouldn't even parse m.py
++
+[out]
+main:1: note: In module imported here:
+tmp/m.py:1: error: Parse error before end of line
+
+[case testIgnoreAppliesOnlyToMissing]
+import a # type: ignore
+import b # type: ignore
+reveal_type(a.foo) # E: Revealed type is 'Any'
+reveal_type(b.foo) # E: Revealed type is 'builtins.int'
+a.bar()
+b.bar() # E: "module" has no attribute "bar"
+
+[file b.py]
+foo = 3
+
+[builtins fixtures/module_all.pyi]
 [out]
 
 [case testIgnoreImportStarFromBadModule]
@@ -64,26 +80,26 @@ m.x = object # type: ignore
 m.f() # type: ignore
 m.y # E: "module" has no attribute "y"
 [file m.py]
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 
 [case testIgnoreTypeInferenceError]
 x = [] # type: ignore
 y = x
 x.append(1)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testIgnoreTypeInferenceError2]
 def f() -> None: pass
 x = f() # type: ignore
 y = x
 x = 1
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testIgnoreTypeInferenceErrorAndMultipleAssignment]
 x, y = [], [] # type: ignore
 z = x
 z = y
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testIgnoreSomeStarImportErrors]
 from m1 import *
@@ -131,7 +147,7 @@ class C(m.B):
 C.f(1) # E: Too many arguments for "f" of "C"
 C.g(1)
 C.x = 1
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance1]
@@ -195,3 +211,6 @@ def f() -> None: pass
 [out]
 main:3: error: Unexpected keyword argument "kw" for "f"
 tmp/m.py:2: note: "f" defined here
+
+[case testCannotIgnoreBlockingError]
+yield  # type: ignore  # E: 'yield' outside function

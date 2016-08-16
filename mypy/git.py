@@ -70,7 +70,7 @@ def warn_no_git_executable() -> None:
           "git executable not in path.", file=sys.stderr)
 
 
-def warn_dirty(dir) -> None:
+def warn_dirty(dir: str) -> None:
     print("Warning: git module '{}' has uncommitted changes.".format(dir),
           file=sys.stderr)
     print("Go to the directory", file=sys.stderr)
@@ -78,7 +78,7 @@ def warn_dirty(dir) -> None:
     print("and commit or reset your changes", file=sys.stderr)
 
 
-def warn_extra_files(dir) -> None:
+def warn_extra_files(dir: str) -> None:
     print("Warning: git module '{}' has untracked files.".format(dir),
           file=sys.stderr)
     print("Go to the directory", file=sys.stderr)
@@ -86,7 +86,7 @@ def warn_extra_files(dir) -> None:
     print("and add & commit your new files.", file=sys.stderr)
 
 
-def chdir_prefix(dir) -> str:
+def chdir_prefix(dir: str) -> str:
     """Return the command to change to the target directory, plus '&&'."""
     if os.path.relpath(dir) != ".":
         return "cd " + pipes.quote(dir) + " && "

@@ -89,7 +89,10 @@ class Errors:
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
 
-    def __init__(self) -> None:
+    # Set to True to suppress "In function "foo":" messages.
+    suppress_error_context = False  # type: bool
+
+    def __init__(self, suppress_error_context: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
         self.type_name = [None]
@@ -97,9 +100,10 @@ class Errors:
         self.ignored_lines = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
         self.only_once_messages = set()
+        self.suppress_error_context = suppress_error_context
 
     def copy(self) -> 'Errors':
-        new = Errors()
+        new = Errors(self.suppress_error_context)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -188,7 +192,9 @@ class Errors:
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        if info.file in self.ignored_lines and info.line in self.ignored_lines[info.file]:
+        if (info.file in self.ignored_lines and
+                info.line in self.ignored_lines[info.file] and
+                not info.blocker):
             # Annotation requests us to ignore all errors on this line.
             self.used_ignored_lines[info.file].add(info.line)
             return
@@ -200,12 +206,17 @@ class Errors:
 
     def generate_unused_ignore_notes(self) -> None:
         for file, ignored_lines in self.ignored_lines.items():
-            for line in ignored_lines - self.used_ignored_lines[file]:
-                # Don't use report since add_error_info will ignore the error!
-                info = ErrorInfo(self.import_context(), file, None, None,
-                                 line, 'note', "unused 'type: ignore' comment",
-                                 False, False)
-                self.error_info.append(info)
+            if not self.is_typeshed_file(file):
+                for line in ignored_lines - self.used_ignored_lines[file]:
+                    # Don't use report since add_error_info will ignore the error!
+                    info = ErrorInfo(self.import_context(), file, None, None,
+                                    line, 'note', "unused 'type: ignore' comment",
+                                    False, False)
+                    self.error_info.append(info)
+
+    def is_typeshed_file(self, file: str) -> bool:
+        # gross, but no other clear way to tell
+        return 'typeshed' in os.path.normpath(file).split(os.sep)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
@@ -285,7 +296,9 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if (e.function_or_member != prev_function_or_member or
+            if self.suppress_error_context:
+                pass
+            elif (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
@@ -396,31 +409,64 @@ def remove_path_prefix(path: str, prefix: str) -> str:
 # Corresponds to command-line flag --pdb.
 drop_into_pdb = False
 
+# Corresponds to command-line flag --show-traceback.
+show_tb = False
+
 
 def set_drop_into_pdb(flag: bool) -> None:
     global drop_into_pdb
     drop_into_pdb = flag
 
 
-def report_internal_error(err: Exception, file: str, line: int) -> None:
-    """Display stack trace and file location for an internal error + exit."""
-    if drop_into_pdb:
-        import pdb  # type: ignore
-        pdb.post_mortem(sys.exc_info()[2])
-    tb = traceback.extract_stack()[:-2]
-    tb2 = traceback.extract_tb(sys.exc_info()[2])
-    print('Traceback (most recent call last):')
-    for s in traceback.format_list(tb + tb2):
-        print(s.rstrip('\n'))
-    print('{}: {}'.format(type(err).__name__, err))
-    print('\n*** INTERNAL ERROR ***', file=sys.stderr)
+def set_show_tb(flag: bool) -> None:
+    global show_tb
+    show_tb = flag
+
+
+def report_internal_error(err: Exception, file: str, line: int, errors: Errors) -> None:
+    """Report internal error and exit.
+
+    This optionally starts pdb or shows a traceback.
+    """
+    # Dump out errors so far, they often provide a clue.
+    # But catch unexpected errors rendering them.
+    try:
+        for msg in errors.messages():
+            print(msg)
+    except Exception as e:
+        print("Failed to dump errors:", repr(e), file=sys.stderr)
+
+    # Compute file:line prefix for official-looking error messages.
     if line:
         prefix = '{}:{}'.format(file, line)
     else:
         prefix = file
-    print('\n{}: error: Internal error --'.format(prefix),
+
+    # Print "INTERNAL ERROR" message.
+    print('{}: error: INTERNAL ERROR --'.format(prefix),
           'please report a bug at https://github.com/python/mypy/issues',
           file=sys.stderr)
-    print('\nNOTE: you can use "mypy --pdb ..." to drop into the debugger when this happens.',
-          file=sys.stderr)
-    sys.exit(1)
+
+    # If requested, drop into pdb. This overrides show_tb.
+    if drop_into_pdb:
+        print('Dropping into pdb', file=sys.stderr)
+        import pdb
+        pdb.post_mortem(sys.exc_info()[2])
+
+    # If requested, print traceback, else print note explaining how to get one.
+    if not show_tb:
+        if not drop_into_pdb:
+            print('{}: note: please use --show-traceback to print a traceback '
+                  'when reporting a bug'.format(prefix),
+                  file=sys.stderr)
+    else:
+        tb = traceback.extract_stack()[:-2]
+        tb2 = traceback.extract_tb(sys.exc_info()[2])
+        print('Traceback (most recent call last):')
+        for s in traceback.format_list(tb + tb2):
+            print(s.rstrip('\n'))
+        print('{}: {}'.format(type(err).__name__, err))
+        print('{}: note: use --pdb to drop into pdb'.format(prefix), file=sys.stderr)
+
+    # Exit.  The caller has nothing more to say.
+    raise SystemExit(1)

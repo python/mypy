@@ -19,7 +19,13 @@ from mypy import nodes
 from mypy import experiments
 
 
-type_constructors = {'typing.Tuple', 'typing.Union', 'typing.Callable', 'typing.Type'}
+type_constructors = {
+    'typing.Callable',
+    'typing.Optional',
+    'typing.Tuple',
+    'typing.Type',
+    'typing.Union',
+}
 
 
 def analyze_type_alias(node: Node,
@@ -95,10 +101,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
                 if experiments.STRICT_OPTIONAL:
-                    if t.is_ret_type:
-                        return Void()
-                    else:
-                        return NoneTyp()
+                    return NoneTyp(is_ret_type=t.is_ret_type)
                 else:
                     return Void()
             elif fullname == 'typing.Any':
@@ -198,7 +201,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return t
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        raise RuntimeError('TypeVarType is already analyzed')
+        return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.anal_array(t.arg_types),

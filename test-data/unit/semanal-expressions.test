@@ -382,7 +382,7 @@ MypyFile:1(
 
 [case testDictWithKeywordArgs]
 dict(a=1, b=str())
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 MypyFile:1(
   ExpressionStmt:1(

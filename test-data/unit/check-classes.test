@@ -483,7 +483,7 @@ class A:
     x = A()
     y = A()
     x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In class "A":
 
@@ -578,13 +578,13 @@ x = C.x # E: Cannot determine type of 'x'
 def f() -> int: return 1
 class C:
     x = f()
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue2]
 class C:
     x = []
 x = C.x
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In class "C":
 main:2: error: Need type annotation for variable
@@ -689,7 +689,7 @@ class A:
 class B:
     'x'
     y = B()
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testErrorMessageInFunctionNestedWithinMethod]
 import typing
@@ -718,13 +718,13 @@ A.f(1)
 A().f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 [case testBuiltinStaticMethod]
 import typing
 int.from_bytes(b'', '')
 int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 [case testAssignStaticMethodOnInstance]
 import typing
@@ -732,7 +732,7 @@ class A:
   @staticmethod
   def f(x: int) -> None: pass
 A().f = A.f # E: Cannot assign to a method
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 
 
 -- Class methods
@@ -748,13 +748,13 @@ A.f(1)
 A().f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testBuiltinClassMethod]
 import typing
 int.from_bytes(b'', '')
 int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testAssignClassMethodOnClass]
 import typing
@@ -762,7 +762,7 @@ class A:
   @classmethod
   def f(cls, x: int) -> None: pass
 A.f = A.f # E: Cannot assign to a method
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testAssignClassMethodOnInstance]
 import typing
@@ -770,7 +770,7 @@ class A:
   @classmethod
   def f(cls, x: int) -> None: pass
 A().f = A.f # E: Cannot assign to a method
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testClassMethodCalledInClassMethod]
 import typing
@@ -784,7 +784,7 @@ class C:
     cls.bar()
     cls.bar(1)  # E: Too many arguments for "bar" of "C"
     cls.bozo()  # E: "C" has no attribute "bozo"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In member "bar" of class "C":
 
@@ -796,7 +796,7 @@ class C:
 C.foo()
 C.foo(1)  # E: Too many arguments for "foo" of "C"
 C.bozo()  # E: "C" has no attribute "bozo"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testClassMethodCalledOnInstance]
 import typing
@@ -806,7 +806,7 @@ class C:
 C().foo()
 C().foo(1)  # E: Too many arguments for "foo" of "C"
 C.bozo()    # E: "C" has no attribute "bozo"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 [case testClassMethodMayCallAbstractMethod]
 from abc import abstractmethod
@@ -818,7 +818,7 @@ class C:
   @abstractmethod
   def bar(self) -> None:
       pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 
 
 -- Properties
@@ -834,7 +834,7 @@ a = A() # type. A
 s = ''  # type: str
 s = a.f
 a = a.f  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testAssigningToReadOnlyProperty]
 import typing
@@ -842,7 +842,7 @@ class A:
     @property
     def f(self) -> str: pass
 A().f = '' # E: Property "f" defined in "A" is read-only
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testPropertyGetterBody]
 import typing
@@ -851,7 +851,7 @@ class A:
     def f(self) -> str:
         self.x = 1
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In member "f" of class "A":
 
@@ -863,7 +863,7 @@ class A:
 a = A() # type. A
 a.f.xx
 a.f = '' # E: Property "f" defined in "A" is read-only
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testPropertyWithSetter]
 import typing
@@ -878,7 +878,7 @@ a = A()
 a.f = a.f
 a.f.x # E: "int" has no attribute "x"
 a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testPropertyWithDeleterButNoSetter]
 import typing
@@ -892,7 +892,7 @@ class A:
 a = A()
 a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 
 -- Multiple inheritance, non-object built-in class as base
@@ -951,7 +951,7 @@ def g(x: complex) -> None: pass
 f(1)
 g(1)
 g(1.1)
-[builtins fixtures/complex.py]
+[builtins fixtures/complex.pyi]
 
 
 -- Operator methods
@@ -1289,7 +1289,7 @@ class C:
 x = C(foo=12)
 x.a # E: "C" has no attribute "a"
 C(foo='') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
 class C:
@@ -1301,7 +1301,7 @@ x = C(foo=12)
 x = C(foo='x')
 x.a # E: "C" has no attribute "a"
 C(bar='') # E: Unexpected keyword argument "bar" for "C"
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType]
 class C:
@@ -1312,7 +1312,7 @@ def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
 g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType2]
 class C:
@@ -1323,7 +1323,7 @@ def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
 g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 
 [case testGenericClassWith__new__]
 from typing import TypeVar, Generic
@@ -1336,7 +1336,7 @@ class C(Generic[T]):
 c = C('')
 c.set('')
 c.set(1) # E: Argument 1 to "set" of "C" has incompatible type "int"; expected "str"
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 
 [case testOverloaded__new__]
 from typing import overload
@@ -1353,7 +1353,7 @@ c = C(1)
 c.a # E: "C" has no attribute "a"
 C('', '')
 C('') # E: No overload variant of "C" matches argument types [builtins.str]
-[builtins fixtures/__new__.py]
+[builtins fixtures/__new__.pyi]
 
 
 -- Special cases
@@ -1577,7 +1577,7 @@ class X: pass
 def bar(arg: Type[X]):
     foo(arg)
 foo(X)
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testTypeUsingTypeCClassMethod]
@@ -1592,7 +1592,7 @@ def process(cls: Type[User]):
     reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
     cls.mro()  # Defined in class type
     cls.error  # E: Type[User] has no attribute "error"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
 
@@ -1611,7 +1611,7 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     cls.bar(obj)  # E: Type[Union[BasicUser, ProUser]] has no attribute "bar"
     cls.mro()  # Defined in class type
     cls.error  # E: Type[Union[BasicUser, ProUser]] has no attribute "error"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
 
@@ -1628,7 +1628,7 @@ def process(cls: Type[U]):
     reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
     cls.mro()  # Defined in class type
     cls.error  # E: Type[U] has no attribute "error"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
 
@@ -1648,7 +1648,7 @@ def process(cls: Type[U]):
     cls.bar(obj)  # E: Type[U] has no attribute "bar"
     cls.mro()  # Defined in class type
     cls.error  # E: Type[U] has no attribute "error"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
 
@@ -1656,7 +1656,7 @@ main: note: In function "process":
 from typing import Type, Tuple
 def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
     arg()
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main: note: In function "foo":
 
@@ -1680,7 +1680,7 @@ def new(uc: Type[U]) -> U:
     u.foo(0)
     return uc()
 u = new(User)
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "new":
 main:16: error: No overload variant of "User" matches argument types [builtins.str]
@@ -1706,7 +1706,7 @@ from typing import Type, NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
 def f(a: Type[N]):
     a()
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
 main:3: error: Unsupported type Type["N"]
@@ -1720,7 +1720,7 @@ def foo(c: Type[C], d: Type[D]) -> None:
     x = [c, d]
     reveal_type(x)
 
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main: note: In function "foo":
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
@@ -1738,7 +1738,7 @@ def f(a: int) -> str: pass
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeMatchesGeneralTypeInOverloadedFunctions]
@@ -1751,13 +1751,13 @@ UserType = User  # type: Type[User]
 def f(a: type) -> int:
     return 1
 @overload
-def f(a: int) -> str: 
-    return "a" 
+def f(a: int) -> str:
+    return "a"
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
 reveal_type(f(1))  # E: Revealed type is 'builtins.str'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeMatchesSpecificTypeInOverloadedFunctions]
@@ -1768,19 +1768,19 @@ UserType = User  # type: Type[User]
 
 @overload
 def f(a: User) -> User:
-    return User() 
+    return User()
 @overload
 def f(a: Type[User]) -> int:
     return 1
 @overload
-def f(a: int) -> str: 
-    return "a" 
+def f(a: int) -> str:
+    return "a"
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
 reveal_type(f(User()))  # E: Revealed type is '__main__.User'
 reveal_type(f(1))  # E: Revealed type is 'builtins.str'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testMixingTypeTypeInOverloadedFunctions]
@@ -1795,7 +1795,7 @@ def f(a: User) -> Type[User]:
 def f(a: Type[User]) -> User:
     return a()
 @overload
-def f(a: int) -> Type[User]: 
+def f(a: int) -> Type[User]:
     return User
 @overload
 def f(a: str) -> User:
@@ -1805,7 +1805,7 @@ reveal_type(f(User()))  # E: Revealed type is 'Type[__main__.User]'
 reveal_type(f(User))  # E: Revealed type is '__main__.User'
 reveal_type(f(3))  # E: Revealed type is 'Type[__main__.User]'
 reveal_type(f("hi"))  # E: Revealed type is '__main__.User'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testGeneralTypeDoesNotMatchSpecificTypeInOverloadedFunctions]
@@ -1822,7 +1822,7 @@ def mock() -> type: return User
 
 f(User)
 f(mock())  # E: No overload variant of "f" matches argument types [builtins.type]
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testNonTypeDoesNotMatchOverloadedFunctions]
@@ -1836,7 +1836,7 @@ def f(a: Type[User]) -> None: pass
 def f(a: type) -> None: pass
 
 f(3)  # E: No overload variant of "f" matches argument types [builtins.int]
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testInstancesDoNotMatchTypeInOverloadedFunctions]
@@ -1851,7 +1851,7 @@ def f(a: int) -> None: pass
 
 f(User)
 f(User())  # E: No overload variant of "f" matches argument types [__main__.User]
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeCovarianceWithOverloadedFunctions]
@@ -1875,7 +1875,7 @@ f(C)
 f(AType)  # E: No overload variant of "f" matches argument types [Type[__main__.A]]
 f(BType)
 f(CType)
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 
@@ -1889,7 +1889,7 @@ class B(A): pass
 def f(a: Type[A]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(a: Type[B]) -> str: pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testDistinctOverloadedCovariantTypesSucceed]
@@ -1901,7 +1901,7 @@ class B: pass
 class BChild(B): pass
 
 @overload
-def f(a: Type[A]) -> int: pass 
+def f(a: Type[A]) -> int: pass
 @overload
 def f(a: Type[B]) -> str: pass
 @overload
@@ -1918,7 +1918,7 @@ reveal_type(f(A()))  # E: Revealed type is '__main__.A'
 reveal_type(f(AChild()))  # E: Revealed type is '__main__.A'
 reveal_type(f(B()))  # E: Revealed type is '__main__.B'
 reveal_type(f(BChild()))  # E: Revealed type is '__main__.B'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeTypeOverlapsWithObjectAndType]
@@ -1935,7 +1935,7 @@ def f(a: object) -> str: pass
 def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def g(a: type) -> str: pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeOverlapsWithObject]
@@ -1947,7 +1947,7 @@ class User: pass
 def f(a: type) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(a: object) -> str: pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeConstructorReturnsTypeType]
@@ -1964,7 +1964,7 @@ reveal_type(type(u))  # E: Revealed type is 'Type[__main__.User]'
 reveal_type(type(u).test_class_method())  # E: Revealed type is 'builtins.int'
 reveal_type(type(u).test_static_method())  # E: Revealed type is 'builtins.str'
 type(u).test_instance_method()  # E: Too few arguments for "test_instance_method" of "User"
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testObfuscatedTypeConstructorReturnsTypeType]
@@ -1981,7 +1981,7 @@ u = User()
 
 reveal_type(f1(u))  # E: Revealed type is 'Type[__main__.User]'
 reveal_type(f2(type)(u))  # E: Revealed type is 'Type[__main__.User]'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testTypeConstructorLookalikeFails]
@@ -1995,7 +1995,7 @@ def fake2(a: int) -> type:
 reveal_type(type(User()))  # E: Revealed type is 'Type[__main__.User]'
 reveal_type(fake1(User()))  # E: Revealed type is 'builtins.type'
 reveal_type(fake2(3))  # E: Revealed type is 'builtins.type'
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testOtherTypeConstructorsSucceed]
@@ -2003,6 +2003,65 @@ def foo(self) -> int: return self.attr
 
 User = type('User', (object,), {'foo': foo, 'attr': 3})
 reveal_type(User)  # E: Revealed type is 'builtins.type'
-[builtins fixtures/args.py]
+[builtins fixtures/args.pyi]
 [out]
 
+[case testTypeTypeComparisonWorks]
+class User: pass
+
+User == User
+User == type(User())
+type(User()) == User
+type(User()) == type(User())
+
+User != User
+User != type(User())
+type(User()) != User
+type(User()) != type(User())
+
+int == int
+int == type(3)
+type(3) == int
+type(3) == type(3)
+
+int != int
+int != type(3)
+type(3) != int
+type(3) != type(3)
+
+User is User
+User is type(User)
+type(User) is User
+type(User) is type(User)
+
+int is int
+int is type(3)
+type(3) is int
+type(3) is type(3)
+
+int.__eq__(int)
+int.__eq__(3, 4)
+[builtins fixtures/args.pyi]
+[out]
+main:33: error: Too few arguments for "__eq__" of "int"
+main:33: error: Unsupported operand types for == ("int" and "int")
+
+[case testMroSetAfterError]
+class C(str, str):
+    foo = 0
+    bar = foo
+[out]
+main:1: error: Duplicate base class "str"
+
+[case testCannotDetermineMro]
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(A, B): pass # E: Cannot determine consistent method resolution order (MRO) for "D"
+class E(C, D): pass # E: Cannot determine consistent method resolution order (MRO) for "E"
+
+[case testInconsistentMroLocalRef]
+class A: pass
+class B(object, A): # E: Cannot determine consistent method resolution order (MRO) for "B"
+    def readlines(self): pass
+    __iter__ = readlines

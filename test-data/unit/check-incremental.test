@@ -3,6 +3,12 @@
 -- The first time it must pass.
 -- Before it is run the second time, any *.py.next files are copied to *.py.
 -- The second time it must produce the errors given in the [out] section, if any.
+--
+-- Any files that we expect to be stale and rechecked should be annotated in
+-- the [stale] annotation. The test suite will automatically assume that
+-- __main__ is stale so we can avoid constantly having to annotate it.
+-- The list of stale files can be in any arbitrary order, or can be left empty
+-- if no files should be stale.
 
 [case testIncrementalEmpty]
 [out]
@@ -15,6 +21,7 @@ def foo():
 [file m.py.next]
 def foo() -> None:
     pass
+[stale m]
 [out]
 
 [case testIncrementalError]
@@ -25,7 +32,315 @@ def foo() -> None:
 [file m.py.next]
 def foo() -> None:
     bar()
+[stale m]
 [out]
 main:1: note: In module imported here:
 tmp/m.py: note: In function "foo":
 tmp/m.py:2: error: Name 'bar' is not defined
+
+[case testIncrementalSimpleImportSequence]
+import mod1
+mod1.func1()
+
+[file mod1.py]
+import mod2
+def func1() -> None: mod2.func2()
+
+[file mod2.py]
+import mod3
+def func2() -> None: mod3.func3()
+
+[file mod3.py]
+def func3() -> None: pass
+
+[stale]
+[out]
+
+
+[case testIncrementalSimpleImportCascade]
+import mod1
+mod1.func1()
+
+[file mod1.py]
+import mod2
+def func1() -> None: mod2.func2()
+
+[file mod2.py]
+import mod3
+def func2() -> None: mod3.func3()
+
+[file mod3.py]
+def func3() -> None: pass
+
+[file mod3.py.next]
+def func3() -> int: return 2
+
+[stale mod1, mod2, mod3]
+[out]
+
+[case testIncrementalSimpleBranchingModules]
+import mod1
+import mod2
+
+[file mod1.py]
+def func() -> None: pass
+
+[file mod2.py]
+def func() -> None: pass
+
+[file mod1.py.next]
+def func() -> int: return 1
+
+[stale mod1]
+[out]
+
+[case testIncrementalSubmoduleImport]
+from parent.childA import Foo
+
+def func1() -> Foo:
+    return Foo()
+
+[file parent/__init__.py]
+from parent.childA import Foo
+from parent.childB import Bar
+
+__all__ = ['Foo', 'Bar']
+
+[file parent/childA.py]
+import parent
+
+class Foo:
+    def test(self) -> int:
+        return parent.Bar().test()
+
+[file parent/childB.py]
+class Bar:
+    def test(self) -> int: return 3
+
+[builtins fixtures/module_all.pyi]
+[stale]
+[out]
+
+[case testIncrementalSubmoduleParentBackreference]
+import parent
+
+[file parent/__init__.py]
+from parent import a
+
+[file parent/a.py]
+import parent.b
+
+[file parent/b.py]
+
+[builtins fixtures/args.pyi]
+[stale]
+[out]
+
+[case testIncrementalSubmoduleParentBackreferenceComplex]
+import parent
+
+[file parent/__init__.py]
+import parent.a
+
+[file parent/a.py]
+import parent.b
+import parent.c
+
+[file parent/b.py]
+import parent.a
+
+[file parent/c.py]
+import parent.a
+
+[builtins fixtures/args.pyi]
+[stale]
+[out]
+
+[case testIncrementalReferenceNewFileWithImportFrom]
+from parent import a
+
+[file parent/__init__.py]
+
+[file parent/a.py]
+
+[file parent/a.py.next]
+from parent import b
+
+[file parent/b.py.next]
+
+[stale parent, parent.a, parent.b]
+[out]
+
+[case testIncrementalReferenceExistingFileWithImportFrom]
+from parent import a, b
+
+[file parent/__init__.py]
+
+[file parent/a.py]
+
+[file parent/b.py]
+
+[file parent/a.py.next]
+from parent import b
+
+[stale parent.a]
+[out]
+
+[case testIncrementalWithTypeIgnoreOnDirectImport]
+import a, b
+
+[file a.py]
+import b  # type: ignore
+
+[file b.py]
+import c
+
+[file c.py]
+
+[stale]
+[out]
+
+[case testIncrementalWithTypeIgnoreOnImportFrom]
+import a, b
+
+[file a.py]
+from b import something # type: ignore
+
+[file b.py]
+import c
+something = 3
+
+[file c.py]
+
+[stale]
+[out]
+
+[case testIncrementalWithPartialTypeIgnore]
+import a  # type: ignore
+import a.b
+
+[file a/__init__.py]
+
+[file a/b.py]
+
+[stale]
+[out]
+
+[case testIncrementalAnyIsDifferentFromIgnore]
+import b
+
+[file b.py]
+from typing import Any
+import a.b
+
+[file b.py.next]
+from typing import Any
+
+a = 3  # type: Any
+import a.b
+
+[file a/__init__.py]
+
+[file a/b.py]
+
+[stale b]
+[out]
+main:1: note: In module imported here:
+tmp/b.py:4: error: Name 'a' already defined
+
+[case testIncrementalSilentImportsAndImportsInClass]
+# options: silent_imports
+class MyObject(object):
+    from bar import FooBar
+[stale]
+[out]
+
+[case testIncrementalSameFileSize]
+import m
+
+[file m.py]
+def foo(a: int) -> None: pass
+def bar(a: str) -> None: pass
+
+foo(3)
+
+[file m.py.next]
+def foo(a: int) -> None: pass
+def bar(a: str) -> None: pass
+
+bar(3)
+
+[stale m]
+[out]
+main:1: note: In module imported here:
+tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "str"
+
+[case testIncrementalUnsilencingModule]
+# cmd: mypy -m main package.subpackage.mod2
+# cmd2: mypy -m main package.subpackage.mod1
+# options: silent_imports
+
+[file main.py]
+from package.subpackage.mod1 import Class
+
+def handle(c: Class) -> None:
+    c.some_attribute
+
+[file package/__init__.py]
+# empty
+
+[file package/subpackage/__init__.py]
+# empty
+
+[file package/subpackage/mod1.py]
+import collections # Any previously unloaded package works here
+
+class Class: pass
+
+[file package/subpackage/mod2.py]
+# empty
+
+[builtins fixtures/args.pyi]
+[stale collections, main, package.subpackage.mod1]
+[out]
+tmp/main.py: note: In function "handle":
+tmp/main.py:4: error: "Class" has no attribute "some_attribute"
+
+[case testIncrementalWithIgnores]
+import foo # type: ignore
+
+[stale]
+[out]
+
+[case testIncrementalWithSilentImportsAndIgnore]
+# cmd: mypy -m main b
+# cmd2: mypy -m main c c.submodule
+# options: silent_imports
+
+[file main.py]
+import a  # type: ignore
+import b
+import c
+
+a.A().foo()
+b.B().foo()
+c.C().foo()
+
+[file b.py]
+class B:
+    def foo(self) -> None: pass
+
+[file b.py.next]
+
+[file c/__init__.py]
+class C: pass
+
+[file c/submodule.py]
+val = 3  # type: int
+val = "foo"
+
+[builtins fixtures/module_all.pyi]
+[stale main, c, c.submodule]
+[out]
+tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/main.py:7: error: "C" has no attribute "foo"

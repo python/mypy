@@ -3,7 +3,7 @@
 import re
 import os
 
-import typing
+from typing import Any, List
 
 from mypy.util import dump_tagged, short_type
 import mypy.nodes
@@ -21,7 +21,7 @@ class StrConv(NodeVisitor[str]):
         ExpressionStmt:1(
           IntExpr(1)))
     """
-    def dump(self, nodes, obj):
+    def dump(self, nodes: List[Any], obj: 'mypy.nodes.Node') -> str:
         """Convert a list of items to a multiline pretty-printed string.
 
         The tag is produced from the type name of obj and its line
@@ -30,7 +30,7 @@ class StrConv(NodeVisitor[str]):
         """
         return dump_tagged(nodes, short_type(obj) + ':' + str(obj.line))
 
-    def func_helper(self, o):
+    def func_helper(self, o: 'mypy.nodes.FuncItem') -> List[Any]:
         """Return a list in a format suitable for dump() that represents the
         arguments and the body of a function. The caller can then decorate the
         array with information specific to methods, global functions or
@@ -50,7 +50,7 @@ class StrConv(NodeVisitor[str]):
                 extra.append(('VarArg', [o.arguments[i].variable]))
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(('DictVarArg', [o.arguments[i].variable]))
-        a = []
+        a = []  # type: List[Any]
         if args:
             a.append(('Args', args))
         if o.type:
@@ -65,9 +65,9 @@ class StrConv(NodeVisitor[str]):
 
     # Top-level structures
 
-    def visit_mypy_file(self, o):
+    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> str:
         # Skip implicit definitions.
-        a = [o.defs]
+        a = [o.defs]  # type: List[Any]
         if o.is_bom:
             a.insert(0, 'BOM')
         # Omit path to special file with name "main". This is used to simplify
@@ -82,7 +82,7 @@ class StrConv(NodeVisitor[str]):
                                                     for line in sorted(o.ignored_lines)))
         return self.dump(a, o)
 
-    def visit_import(self, o):
+    def visit_import(self, o: 'mypy.nodes.Import') -> str:
         a = []
         for id, as_id in o.ids:
             if as_id is not None:
@@ -199,8 +199,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_for_stmt(self, o):
-        a = [o.index]
-        a.extend([o.expr, o.body])
+        a = []
+        if o.is_async:
+            a.append(('Async', ''))
+        a.extend([o.index, o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
@@ -243,6 +245,9 @@ class StrConv(NodeVisitor[str]):
     def visit_yield_expr(self, o):
         return self.dump([o.expr], o)
 
+    def visit_await_expr(self, o):
+        return self.dump([o.expr], o)
+
     def visit_del_stmt(self, o):
         return self.dump([o.expr], o)
 
@@ -264,6 +269,8 @@ class StrConv(NodeVisitor[str]):
 
     def visit_with_stmt(self, o):
         a = []
+        if o.is_async:
+            a.append(('Async', ''))
         for i in range(len(o.expr)):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:
@@ -425,6 +432,9 @@ class StrConv(NodeVisitor[str]):
 
     def visit__promote_expr(self, o):
         return 'PromoteExpr:{}({})'.format(o.line, o.type)
+
+    def visit_newtype_expr(self, o):
+        return 'NewTypeExpr:{}({}, {})'.format(o.line, o.fullname(), self.dump([o.value], o))
 
     def visit_func_expr(self, o):
         a = self.func_helper(o)

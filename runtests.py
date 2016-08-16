@@ -27,7 +27,7 @@ if True:
 from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
-from mypy import git, util
+from mypy import util
 
 import itertools
 import os
@@ -76,7 +76,8 @@ class Driver:
         full_name = 'check %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, self.mypy, '-f'] + mypy_args
+        args = [sys.executable, self.mypy] + mypy_args
+        args.append('--tb')  # Show traceback on crash.
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -92,6 +93,13 @@ class Driver:
 
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
+
+    def add_pytest(self, name: str, pytest_args: List[str]) -> None:
+        full_name = 'pytest %s' % name
+        if not self.allow(full_name):
+            return
+        args = [sys.executable, '-m', 'pytest'] + pytest_args
+        self.waiter.add(LazySubprocess(full_name, args, env=self.env))
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
@@ -187,6 +195,16 @@ def add_imports(driver: Driver) -> None:
         driver.add_flake8('module %s' % mod, f)
 
 
+PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
+    'testcheck',
+]]
+
+
+def add_pytest(driver: Driver) -> None:
+    for f in PYTEST_FILES:
+        driver.add_pytest(f, [f] + driver.arglist)
+
+
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
         mod = file_to_module(f)
@@ -198,6 +216,9 @@ def add_myunit(driver: Driver) -> None:
             # Run Python evaluation integration tests and command-line
             # parsing tests separately since they are much slower than
             # proper unit tests.
+            pass
+        elif f in PYTEST_FILES:
+            # This module has been converted to pytest; don't try to use myunit.
             pass
         else:
             driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
@@ -254,7 +275,7 @@ def add_samples(driver: Driver) -> None:
                     'import mypy.codec.register, %s' % bf,
                     cwd=cwd)
         else:
-            driver.add_mypy('file %s' % f, f)
+            driver.add_mypy('file %s' % f, f, '--fast-parser')
 
 
 def usage(status: int) -> None:
@@ -305,7 +326,6 @@ def main() -> None:
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
     list_only = False
-    dirty_stubs = False
 
     allow_opts = True
     curlist = whitelist
@@ -330,8 +350,6 @@ def main() -> None:
                 curlist = arglist
             elif a == '-l' or a == '--list':
                 list_only = True
-            elif a == '-f' or a == '--dirty-stubs':
-                dirty_stubs = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -350,9 +368,6 @@ def main() -> None:
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
             verbosity=verbosity, parallel_limit=parallel_limit, xfail=[])
 
-    if not dirty_stubs:
-        git.verify_git_integrity_or_abort(driver.cwd)
-
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])
@@ -362,6 +377,7 @@ def main() -> None:
     add_cmdline(driver)
     add_basic(driver)
     add_selftypecheck(driver)
+    add_pytest(driver)
     add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)

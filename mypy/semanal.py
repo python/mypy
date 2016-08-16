@@ -45,6 +45,7 @@ TODO: Check if the third pass slows down type checking significantly.
 
 from functools import partial
 
+import sys
 from typing import (
     List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
 )
@@ -59,22 +60,22 @@ from mypy.nodes import (
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
+    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr,
-    INVARIANT, UNBOUND_IMPORTED, Expression, EllipsisExpr,
-    namedtuple_type_info
+    Expression, EllipsisExpr, namedtuple_type_info,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef,
+    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeVarDef, Void,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType,
     NamedTupleType, TypeType
 )
@@ -315,6 +316,13 @@ class SemanticAnalyzer(NodeVisitor):
             # Second phase of analysis for function.
             self.errors.push_function(defn.name())
             self.analyze_function(defn)
+            if defn.is_coroutine and isinstance(defn.type, CallableType):
+                # A coroutine defined as `async def foo(...) -> T: ...`
+                # has external return type `Awaitable[T]`.
+                defn.type = defn.type.copy_modified(
+                    ret_type=Instance(
+                        self.named_type_or_none('typing.Awaitable').type,
+                        [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -543,7 +551,7 @@ class SemanticAnalyzer(NodeVisitor):
             extra_anys = [AnyType()] * (len(fdef.arguments) - len(sig.arg_types))
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
-            self.fail('Type signature has too many arguments', fdef)
+            self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
@@ -606,7 +614,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
         decorator.accept(self)
 
-    def setup_is_builtinclass(self, defn: ClassDef):
+    def setup_is_builtinclass(self, defn: ClassDef) -> None:
         for decorator in defn.decorators:
             if refers_to_fullname(decorator, 'typing.builtinclass'):
                 defn.is_builtinclass = True
@@ -764,6 +772,8 @@ class SemanticAnalyzer(NodeVisitor):
                 info.tuple_type = base
                 base_types.append(base.fallback)
             elif isinstance(base, Instance):
+                if base.type.is_newtype:
+                    self.fail("Cannot subclass NewType", defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 info.fallback_to_any = True
@@ -781,9 +791,10 @@ class SemanticAnalyzer(NodeVisitor):
         # the bases of defn include classes imported from other
         # modules in an import loop. We'll recompute it in ThirdPass.
         if not self.verify_base_classes(defn):
-            info.mro = []
+            # Give it an MRO consisting of just the class itself and object.
+            defn.info.mro = [defn.info, self.object_type().type]
             return
-        calculate_class_mro(defn, self.fail)
+        calculate_class_mro(defn, self.fail_blocker)
         # If there are cyclic imports, we may be missing 'object' in
         # the MRO. Fix MRO if needed.
         if info.mro and info.mro[-1].fullname() != 'builtins.object':
@@ -807,16 +818,16 @@ class SemanticAnalyzer(NodeVisitor):
         for base in info.bases:
             baseinfo = base.type
             if self.is_base_class(info, baseinfo):
-                self.fail('Cycle in inheritance hierarchy', defn)
+                self.fail('Cycle in inheritance hierarchy', defn, blocker=True)
                 # Clear bases to forcefully get rid of the cycle.
                 info.bases = []
             if baseinfo.fullname() == 'builtins.bool':
                 self.fail("'%s' is not a valid base class" %
-                          baseinfo.name(), defn)
+                          baseinfo.name(), defn, blocker=True)
                 return False
         dup = find_duplicate(info.direct_base_classes())
         if dup:
-            self.fail('Duplicate base class "%s"' % dup.name(), defn)
+            self.fail('Duplicate base class "%s"' % dup.name(), defn, blocker=True)
             return False
         return True
 
@@ -1000,7 +1011,10 @@ class SemanticAnalyzer(NodeVisitor):
 
     def add_unknown_symbol(self, name: str, context: Context) -> None:
         var = Var(name)
-        var._fullname = self.qualified_name(name)
+        if self.type:
+            var._fullname = self.type.fullname() + "." + name
+        else:
+            var._fullname = self.qualified_name(name)
         var.is_ready = True
         var.type = AnyType()
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
@@ -1061,7 +1075,7 @@ class SemanticAnalyzer(NodeVisitor):
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
                                          self.fail)
-                if res and (not isinstance(res, Instance) or cast(Instance, res).args):
+                if res and (not isinstance(res, Instance) or res.args):
                     # TODO: What if this gets reassigned?
                     name = s.lvalues[0]
                     node = self.lookup(name.name, name)
@@ -1074,6 +1088,7 @@ class SemanticAnalyzer(NodeVisitor):
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
         self.check_and_set_up_type_alias(s)
+        self.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
 
@@ -1280,6 +1295,118 @@ class SemanticAnalyzer(NodeVisitor):
             # This has been flagged elsewhere as an error, so just ignore here.
             pass
 
+    def process_newtype_declaration(self, s: AssignmentStmt) -> None:
+        """Check if s declares a NewType; if yes, store it in symbol table."""
+        # Extract and check all information from newtype declaration
+        name, call = self.analyze_newtype_declaration(s)
+        if name is None or call is None:
+            return
+
+        old_type = self.check_newtype_args(name, call, s)
+        if old_type is None:
+            return
+
+        # Create the corresponding class definition if the aliased type is subtypeable
+        if isinstance(old_type, TupleType):
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
+            newtype_class_info.tuple_type = old_type
+        elif isinstance(old_type, Instance):
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
+        else:
+            message = "Argument 2 to NewType(...) must be subclassable (got {})"
+            self.fail(message.format(old_type), s)
+            return
+
+        # If so, add it to the symbol table.
+        node = self.lookup(name, s)
+        if node is None:
+            self.fail("Could not find {} in current namespace".format(name), s)
+            return
+        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
+        node.kind = GDEF
+        node.node = newtype_class_info
+        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
+
+    def analyze_newtype_declaration(self,
+            s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
+        """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
+        name, call = None, None
+        if (len(s.lvalues) == 1
+                and isinstance(s.lvalues[0], NameExpr)
+                and isinstance(s.rvalue, CallExpr)
+                and isinstance(s.rvalue.callee, RefExpr)
+                and s.rvalue.callee.fullname == 'typing.NewType'):
+            lvalue = s.lvalues[0]
+            name = s.lvalues[0].name
+            if not lvalue.is_def:
+                if s.type:
+                    self.fail("Cannot declare the type of a NewType declaration", s)
+                else:
+                    self.fail("Cannot redefine '%s' as a NewType" % name, s)
+
+            # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
+            # overwritten later with a fully complete NewTypeExpr if there are no other
+            # errors with the NewType() call.
+            call = s.rvalue
+            call.analyzed = NewTypeExpr(None).set_line(call.line)
+
+        return name, call
+
+    def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
+        has_failed = False
+        args, arg_kinds = call.args, call.arg_kinds
+        if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
+            self.fail("NewType(...) expects exactly two positional arguments", context)
+            return None
+
+        # Check first argument
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+            self.fail("Argument 1 to NewType(...) must be a string literal", context)
+            has_failed = True
+        elif cast(StrExpr, call.args[0]).value != name:
+            self.fail("Argument 1 to NewType(...) does not match variable name", context)
+            has_failed = True
+
+        # Check second argument
+        try:
+            unanalyzed_type = expr_to_unanalyzed_type(call.args[1])
+        except TypeTranslationError:
+            self.fail("Argument 2 to NewType(...) must be a valid type", context)
+            return None
+        old_type = self.anal_type(unanalyzed_type)
+
+        if isinstance(old_type, Instance) and old_type.type.is_newtype:
+            self.fail("Argument 2 to NewType(...) cannot be another NewType", context)
+            has_failed = True
+
+        return None if has_failed else old_type
+
+    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = self.qualified_name(name)
+
+        symbols = SymbolTable()
+        info = TypeInfo(symbols, class_def)
+        info.mro = [info] + base_type.type.mro
+        info.bases = [base_type]
+        info.is_newtype = True
+
+        # Add __init__ method
+        args = [Argument(Var('cls'), NoneTyp(), None, ARG_POS),
+                self.make_argument('item', old_type)]
+        signature = CallableType(
+            arg_types=[cast(Type, None), old_type],
+            arg_kinds=[arg.kind for arg in args],
+            arg_names=['self', 'item'],
+            ret_type=old_type,
+            fallback=self.named_type('__builtins__.function'),
+            name=name)
+        init_func = FuncDef('__init__', args, Block([]), typ=signature)
+        init_func.info = info
+        symbols['__init__'] = SymbolTableNode(MDEF, init_func)
+
+        return info
+
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
         call = self.get_typevar_declaration(s)
@@ -1323,7 +1450,8 @@ class SemanticAnalyzer(NodeVisitor):
         if len(call.args) < 1:
             self.fail("Too few arguments for TypeVar()", context)
             return False
-        if not isinstance(call.args[0], (StrExpr, BytesExpr)) or not call.arg_kinds[0] == ARG_POS:
+        if (not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
+                or not call.arg_kinds[0] == ARG_POS):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
         if cast(StrExpr, call.args[0]).value != name:
@@ -1413,7 +1541,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
-        lvalue = cast(NameExpr, s.lvalues[0])
+        lvalue = s.lvalues[0]
         name = lvalue.name
         named_tuple = self.check_namedtuple(s.rvalue, name)
         if named_tuple is None:
@@ -1470,13 +1598,14 @@ class SemanticAnalyzer(NodeVisitor):
             return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
         if call.arg_kinds != [ARG_POS, ARG_POS]:
             return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
-        if not isinstance(args[0], (StrExpr, BytesExpr)):
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             return self.fail_namedtuple_arg(
                 "namedtuple() expects a string literal as the first argument", call)
         types = []  # type: List[Type]
         ok = True
         if not isinstance(args[1], ListExpr):
-            if fullname == 'collections.namedtuple' and isinstance(args[1], (StrExpr, BytesExpr)):
+            if (fullname == 'collections.namedtuple'
+                    and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
                 str_expr = cast(StrExpr, args[1])
                 items = str_expr.value.split()
             else:
@@ -1486,7 +1615,8 @@ class SemanticAnalyzer(NodeVisitor):
             listexpr = args[1]
             if fullname == 'collections.namedtuple':
                 # The fields argument contains just names, with implicit Any types.
-                if any(not isinstance(item, (StrExpr, BytesExpr)) for item in listexpr.items):
+                if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
+                       for item in listexpr.items):
                     return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
                                                     call)
                 items = [cast(StrExpr, item).value for item in listexpr.items]
@@ -1507,7 +1637,7 @@ class SemanticAnalyzer(NodeVisitor):
                     return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
                                                     item)
                 name, type_node = item.items
-                if isinstance(name, (StrExpr, BytesExpr)):
+                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
                     items.append(name.value)
                 else:
                     return self.fail_namedtuple_arg("Invalid NamedTuple() field name", item)
@@ -1619,8 +1749,10 @@ class SemanticAnalyzer(NodeVisitor):
                 removed.append(i)
                 dec.func.is_abstract = True
                 self.check_decorated_function_is_method('abstractmethod', dec)
-            elif refers_to_fullname(d, 'asyncio.tasks.coroutine'):
+            elif (refers_to_fullname(d, 'asyncio.coroutines.coroutine') or
+                  refers_to_fullname(d, 'types.coroutine')):
                 removed.append(i)
+                dec.func.is_awaitable_coroutine = True
             elif refers_to_fullname(d, 'builtins.staticmethod'):
                 removed.append(i)
                 dec.func.is_static = True
@@ -1822,23 +1954,31 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_tuple_expr(self, expr: TupleExpr) -> None:
         for item in expr.items:
+            if isinstance(item, StarExpr):
+                item.valid = True
             item.accept(self)
 
     def visit_list_expr(self, expr: ListExpr) -> None:
         for item in expr.items:
+            if isinstance(item, StarExpr):
+                item.valid = True
             item.accept(self)
 
     def visit_set_expr(self, expr: SetExpr) -> None:
         for item in expr.items:
+            if isinstance(item, StarExpr):
+                item.valid = True
             item.accept(self)
 
     def visit_dict_expr(self, expr: DictExpr) -> None:
         for key, value in expr.items:
-            key.accept(self)
+            if key is not None:
+                key.accept(self)
             value.accept(self)
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
+            # XXX TODO Change this error message
             self.fail('Can use starred expression only as assignment target', expr)
         else:
             expr.expr.accept(self)
@@ -1847,7 +1987,10 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.is_func_scope():  # not sure
             self.fail("'yield from' outside function", e, True, blocker=True)
         else:
-            self.function_stack[-1].is_generator = True
+            if self.function_stack[-1].is_coroutine:
+                self.fail("'yield from' in async function", e, True, blocker=True)
+            else:
+                self.function_stack[-1].is_generator = True
         if e.expr:
             e.expr.accept(self)
 
@@ -2100,9 +2243,19 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.is_func_scope():
             self.fail("'yield' outside function", expr, True, blocker=True)
         else:
-            self.function_stack[-1].is_generator = True
+            if self.function_stack[-1].is_coroutine:
+                self.fail("'yield' in async function", expr, True, blocker=True)
+            else:
+                self.function_stack[-1].is_generator = True
         if expr.expr:
             expr.expr.accept(self)
+
+    def visit_await_expr(self, expr: AwaitExpr) -> None:
+        if not self.is_func_scope():
+            self.fail("'await' outside function", expr)
+        elif not self.function_stack[-1].is_coroutine:
+            self.fail("'await' outside coroutine ('async def')", expr)
+        expr.expr.accept(self)
 
     #
     # Helpers
@@ -2127,7 +2280,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
-            return self.type[name]
+            return self.type.names[name]
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
@@ -2321,6 +2474,9 @@ class SemanticAnalyzer(NodeVisitor):
             return
         self.errors.report(ctx.get_line(), msg, blocker=blocker)
 
+    def fail_blocker(self, msg: str, ctx: Context) -> None:
+        self.fail(msg, ctx, blocker=True)
+
     def note(self, msg: str, ctx: Context) -> None:
         if (not self.options.check_untyped_defs and
                 self.function_stack and
@@ -2338,7 +2494,7 @@ class SemanticAnalyzer(NodeVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
 
 
 class FirstPass(NodeVisitor):
@@ -2550,7 +2706,7 @@ class ThirdPass(TraverserVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
@@ -2571,7 +2727,7 @@ class ThirdPass(TraverserVisitor):
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
-            calculate_class_mro(tdef, self.fail)
+            calculate_class_mro(tdef, self.fail_blocker)
         super().visit_class_def(tdef)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -2647,8 +2803,11 @@ class ThirdPass(TraverserVisitor):
             analyzer = TypeAnalyserPass3(self.fail)
             type.accept(analyzer)
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
         self.errors.report(ctx.get_line(), msg)
+
+    def fail_blocker(self, msg: str, ctx: Context) -> None:
+        self.fail(msg, ctx, blocker=True)
 
     def builtin_type(self, name: str, args: List[Type] = None) -> Instance:
         names = self.modules['builtins']
@@ -2780,23 +2939,166 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
         if alias.op == 'not':
             expr = alias.expr
             negated = True
+    result = TRUTH_VALUE_UNKNOWN
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
-    result = TRUTH_VALUE_UNKNOWN
-    if name == 'PY2':
-        result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
-    elif name == 'PY3':
-        result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-    elif name == 'MYPY':
-        result = ALWAYS_TRUE
+    else:
+        result = consider_sys_version_info(expr, pyversion)
+        if result == TRUTH_VALUE_UNKNOWN:
+            result = consider_sys_platform(expr, sys.platform)
+    if result == TRUTH_VALUE_UNKNOWN:
+        if name == 'PY2':
+            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
+        elif name == 'PY3':
+            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
+        elif name == 'MYPY':
+            result = ALWAYS_TRUE
     if negated:
         if result == ALWAYS_TRUE:
             result = ALWAYS_FALSE
         elif result == ALWAYS_FALSE:
             result = ALWAYS_TRUE
     return result
+
+
+def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
+    """Consider whether expr is a comparison involving sys.version_info.
+
+    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
+    """
+    # Cases supported:
+    # - sys.version_info[<int>] <compare_op> <int>
+    # - sys.version_info[:<int>] <compare_op> <tuple_of_n_ints>
+    # - sys.version_info <compare_op> <tuple_of_1_or_2_ints>
+    #   (in this case <compare_op> must be >, >=, <, <=, but cannot be ==, !=)
+    if not isinstance(expr, ComparisonExpr):
+        return TRUTH_VALUE_UNKNOWN
+    # Let's not yet support chained comparisons.
+    if len(expr.operators) > 1:
+        return TRUTH_VALUE_UNKNOWN
+    op = expr.operators[0]
+    if op not in ('==', '!=', '<=', '>=', '<', '>'):
+        return TRUTH_VALUE_UNKNOWN
+    thing = contains_int_or_tuple_of_ints(expr.operands[1])
+    if thing is None:
+        return TRUTH_VALUE_UNKNOWN
+    index = contains_sys_version_info(expr.operands[0])
+    if isinstance(index, int) and isinstance(thing, int):
+        # sys.version_info[i] <compare_op> k
+        if 0 <= index <= 1:
+            return fixed_comparison(pyversion[index], op, thing)
+        else:
+            return TRUTH_VALUE_UNKNOWN
+    elif isinstance(index, tuple) and isinstance(thing, tuple):
+        # Why doesn't mypy see that index can't be None here?
+        lo, hi = cast(tuple, index)
+        if lo is None:
+            lo = 0
+        if hi is None:
+            hi = 2
+        if 0 <= lo < hi <= 2:
+            val = pyversion[lo:hi]
+            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
+                return fixed_comparison(val, op, thing)
+    return TRUTH_VALUE_UNKNOWN
+
+
+def consider_sys_platform(expr: Node, platform: str) -> int:
+    """Consider whether expr is a comparison involving sys.platform.
+
+    Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
+    """
+    # Cases supported:
+    # - sys.platform == 'posix'
+    # - sys.platform != 'win32'
+    # TODO: Maybe support e.g.:
+    # - sys.platform.startswith('win')
+    if not isinstance(expr, ComparisonExpr):
+        return TRUTH_VALUE_UNKNOWN
+    # Let's not yet support chained comparisons.
+    if len(expr.operators) > 1:
+        return TRUTH_VALUE_UNKNOWN
+    op = expr.operators[0]
+    if op not in ('==', '!='):
+        return TRUTH_VALUE_UNKNOWN
+    if not is_sys_attr(expr.operands[0], 'platform'):
+        return TRUTH_VALUE_UNKNOWN
+    right = expr.operands[1]
+    if not isinstance(right, (StrExpr, UnicodeExpr)):
+        return TRUTH_VALUE_UNKNOWN
+    return fixed_comparison(platform, op, right.value)
+
+
+Targ = TypeVar('Targ', int, str, Tuple[int, ...])
+
+
+def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
+    rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
+    if op == '==':
+        return rmap[left == right]
+    if op == '!=':
+        return rmap[left != right]
+    if op == '<=':
+        return rmap[left <= right]
+    if op == '>=':
+        return rmap[left >= right]
+    if op == '<':
+        return rmap[left < right]
+    if op == '>':
+        return rmap[left > right]
+    return TRUTH_VALUE_UNKNOWN
+
+
+def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
+    if isinstance(expr, IntExpr):
+        return expr.value
+    if isinstance(expr, TupleExpr):
+        if expr.literal == LITERAL_YES:
+            thing = []
+            for x in expr.items:
+                if not isinstance(x, IntExpr):
+                    return None
+                thing.append(x.value)
+            return tuple(thing)
+    return None
+
+
+def contains_sys_version_info(expr: Node) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
+    if is_sys_attr(expr, 'version_info'):
+        return (None, None)  # Same as sys.version_info[:]
+    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
+        index = expr.index
+        if isinstance(index, IntExpr):
+            return index.value
+        if isinstance(index, SliceExpr):
+            if index.stride is not None:
+                if not isinstance(index.stride, IntExpr) or index.stride.value != 1:
+                    return None
+            begin = end = None
+            if index.begin_index is not None:
+                if not isinstance(index.begin_index, IntExpr):
+                    return None
+                begin = index.begin_index.value
+            if index.end_index is not None:
+                if not isinstance(index.end_index, IntExpr):
+                    return None
+                end = index.end_index.value
+            return (begin, end)
+    return None
+
+
+def is_sys_attr(expr: Node, name: str) -> bool:
+    # TODO: This currently doesn't work with code like this:
+    # - import sys as _sys
+    # - from sys import version_info
+    if isinstance(expr, MemberExpr) and expr.name == name:
+        if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
+            # TODO: Guard against a local named sys, etc.
+            # (Though later passes will still do most checking.)
+            return True
+    return False
 
 
 def mark_block_unreachable(block: Block) -> None:

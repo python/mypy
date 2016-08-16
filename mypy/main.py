@@ -5,14 +5,14 @@ import os
 import re
 import sys
 
-from typing import Optional, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy import git
 from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
-from mypy.errors import CompileError, set_drop_into_pdb
+from mypy.errors import CompileError, set_drop_into_pdb, set_show_tb
 from mypy.options import Options, BuildType
 
 from mypy.version import __version__
@@ -33,8 +33,8 @@ def main(script_path: str) -> None:
     sources, options = process_options(sys.argv[1:])
     if options.pdb:
         set_drop_into_pdb(True)
-    if not options.dirty_stubs:
-        git.verify_git_integrity_or_abort(build.default_data_dir(bin_dir))
+    if options.show_traceback:
+        set_show_tb(True)
     f = sys.stdout
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -85,22 +85,22 @@ FOOTER = """environment variables:
 MYPYPATH     additional module search path"""
 
 
-class SplitNamespace:
-    def __init__(self, standard_namespace, alt_namespace, alt_prefix):
+class SplitNamespace(argparse.Namespace):
+    def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
         self.__dict__['_standard_namespace'] = standard_namespace
         self.__dict__['_alt_namespace'] = alt_namespace
         self.__dict__['_alt_prefix'] = alt_prefix
 
-    def _get(self):
+    def _get(self) -> Tuple[Any, Any]:
         return (self._standard_namespace, self._alt_namespace)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         if name.startswith(self._alt_prefix):
             setattr(self._alt_namespace, name[len(self._alt_prefix):], value)
         else:
             setattr(self._standard_namespace, name, value)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if name.startswith(self._alt_prefix):
             return getattr(self._alt_namespace, name[len(self._alt_prefix):])
         else:
@@ -121,7 +121,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=help_factory)
 
-    def parse_version(v):
+    def parse_version(v: str) -> Tuple[int, int]:
         m = re.match(r'\A(\d)\.(\d+)\Z', v)
         if m:
             return int(m.group(1)), int(m.group(2))
@@ -139,12 +139,10 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
-    parser.add_argument('--py2', dest='python_version', action='store_const',
+    parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
-    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
-                        help="deprecated name for --silent-imports")
     parser.add_argument('--almost-silent', action='store_true',
                         help="like --silent-imports but reports the imports as errors")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
@@ -162,24 +160,36 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         help="warn about casting an expression to its inferred type")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
+    parser.add_argument('--suppress-error-context', action='store_true',
+                        dest='suppress_error_context',
+                        help="Suppress context notes before errors")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
+    parser.add_argument('--cache-dir', action='store', metavar='DIR',
+                        help="store module cache info in the given folder in incremental mode "
+                        "(defaults to '{}')".format(defaults.MYPY_CACHE))
     parser.add_argument('--strict-optional', action='store_true',
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
-    parser.add_argument('-f', '--dirty-stubs', action='store_true',
-                        help="don't warn if typeshed is out of sync")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
-    parser.add_argument('--use-python-path', action='store_true',
-                        dest='special-opts:use_python_path',
-                        help="an anti-pattern")
+    parser.add_argument('--show-traceback', '--tb', action='store_true',
+                        help="show traceback on fatal error")
     parser.add_argument('--stats', action='store_true', dest='dump_type_stats', help="dump stats")
     parser.add_argument('--inferstats', action='store_true', dest='dump_inference_stats',
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    # deprecated options
+    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('-f', '--dirty-stubs', action='store_true',
+                        dest='special-opts:dirty_stubs',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--use-python-path', action='store_true',
+                        dest='special-opts:use_python_path',
+                        help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title='report generation',
@@ -225,11 +235,15 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                      "See https://github.com/python/mypy/issues/1411 for more discussion."
                      )
 
-    # --silent is deprecated; warn about this.
+    # warn about deprecated options
     if special_opts.silent:
         print("Warning: --silent is deprecated; use --silent-imports",
               file=sys.stderr)
         options.silent_imports = True
+    if special_opts.dirty_stubs:
+        print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
+              "checks the git status of stubs.",
+              file=sys.stderr)
 
     # Check for invalid argument combinations.
     code_methods = sum(bool(c) for c in [special_opts.modules,

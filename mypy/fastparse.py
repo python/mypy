@@ -14,10 +14,14 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
+    AwaitExpr,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
-from mypy.types import Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType
+from mypy.types import (
+    Type, CallableType, FunctionLike, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+)
 from mypy import defaults
+from mypy import experiments
 from mypy.errors import Errors
 
 try:
@@ -35,8 +39,9 @@ except ImportError:
               ' Python 3.3 and greater.')
     sys.exit(1)
 
-T = TypeVar('T')
-U = TypeVar('U')
+T = TypeVar('T', bound=Union[ast35.expr, ast35.stmt])
+U = TypeVar('U', bound=Node)
+V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
@@ -91,16 +96,16 @@ def parse_type_comment(type_comment: str, line: int) -> Type:
         return TypeConverter(line=line).visit(typ.body)
 
 
-def with_line(f: Callable[[Any, T], U]) -> Callable[[Any, T], U]:
+def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
     @wraps(f)
-    def wrapper(self, ast):
+    def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno)
         return node
     return wrapper
 
 
-def find(f: Callable[[T], bool], seq: Sequence[T]) -> T:
+def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
     for item in seq:
         if f(item):
             return item
@@ -240,6 +245,17 @@ class ASTConverter(ast35.NodeTransformer):
     #              arg? kwarg, expr* defaults)
     @with_line
     def visit_FunctionDef(self, n: ast35.FunctionDef) -> Node:
+        return self.do_func_def(n)
+
+    # AsyncFunctionDef(identifier name, arguments args,
+    #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
+    @with_line
+    def visit_AsyncFunctionDef(self, n: ast35.AsyncFunctionDef) -> Node:
+        return self.do_func_def(n, is_coroutine=True)
+
+    def do_func_def(self, n: Union[ast35.FunctionDef, ast35.AsyncFunctionDef],
+                    is_coroutine: bool = False) -> Node:
+        """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
         args = self.transform_args(n.args, n.lineno)
 
         arg_kinds = [arg.kind for arg in args]
@@ -268,6 +284,12 @@ class ASTConverter(ast35.NodeTransformer):
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
 
+        for arg, arg_type in zip(args, arg_types):
+            self.set_type_optional(arg_type, arg.initializer)
+
+        if isinstance(return_type, UnboundType):
+            return_type.is_ret_type = True
+
         func_type = None
         if any(arg_types) or return_type:
             func_type = CallableType([a if a is not None else AnyType() for a in arg_types],
@@ -280,8 +302,12 @@ class ASTConverter(ast35.NodeTransformer):
                        args,
                        self.as_block(n.body, n.lineno),
                        func_type)
+        if is_coroutine:
+            # A coroutine is also a generator, mostly for internal reasons.
+            func_def.is_generator = func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
+            func_type.line = n.lineno
 
         if n.decorator_list:
             var = Var(func_def.name())
@@ -295,8 +321,16 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return func_def
 
+    def set_type_optional(self, type: Type, initializer: Node) -> None:
+        if not experiments.STRICT_OPTIONAL:
+            return
+        # Indicate that type should be wrapped in an Optional if arg is initialized to None.
+        optional = isinstance(initializer, NameExpr) and initializer.name == 'None'
+        if isinstance(type, UnboundType):
+            type.optional = optional
+
     def transform_args(self, args: ast35.arguments, line: int) -> List[Argument]:
-        def make_argument(arg, default, kind):
+        def make_argument(arg: ast35.arg, default: Optional[ast35.expr], kind: int) -> Argument:
             arg_type = TypeConverter(line=line).visit(arg.annotation)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
@@ -328,9 +362,6 @@ class ASTConverter(ast35.NodeTransformer):
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
 
         return new_args
-
-    # TODO: AsyncFunctionDef(identifier name, arguments args,
-    #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
 
     def stringify_name(self, n: ast35.AST) -> str:
         if isinstance(n, ast35.Name):
@@ -403,7 +434,16 @@ class ASTConverter(ast35.NodeTransformer):
                        self.as_block(n.body, n.lineno),
                        self.as_block(n.orelse, n.lineno))
 
-    # TODO: AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+    # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+    @with_line
+    def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
+        r = ForStmt(self.visit(n.target),
+                    self.visit(n.iter),
+                    self.as_block(n.body, n.lineno),
+                    self.as_block(n.orelse, n.lineno))
+        r.is_async = True
+        return r
+
     # While(expr test, stmt* body, stmt* orelse)
     @with_line
     def visit_While(self, n: ast35.While) -> Node:
@@ -425,7 +465,14 @@ class ASTConverter(ast35.NodeTransformer):
                         [self.visit(i.optional_vars) for i in n.items],
                         self.as_block(n.body, n.lineno))
 
-    # TODO: AsyncWith(withitem* items, stmt* body)
+    # AsyncWith(withitem* items, stmt* body)
+    @with_line
+    def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
+        r = WithStmt([self.visit(i.context_expr) for i in n.items],
+                     [self.visit(i.optional_vars) for i in n.items],
+                     self.as_block(n.body, n.lineno))
+        r.is_async = True
+        return r
 
     # Raise(expr? exc, expr? cause)
     @with_line
@@ -517,7 +564,7 @@ class ASTConverter(ast35.NodeTransformer):
             raise RuntimeError('unknown BoolOp ' + str(type(n)))
 
         # potentially inefficient!
-        def group(vals):
+        def group(vals: List[Node]) -> Node:
             if len(vals) == 2:
                 return OpExpr(op, vals[0], vals[1])
             else:
@@ -612,7 +659,11 @@ class ASTConverter(ast35.NodeTransformer):
                              iters,
                              ifs_list)
 
-    # TODO: Await(expr value)
+    # Await(expr value)
+    @with_line
+    def visit_Await(self, n: ast35.Await) -> Node:
+        v = self.visit(n.value)
+        return AwaitExpr(v)
 
     # Yield(expr? value)
     @with_line
@@ -635,7 +686,7 @@ class ASTConverter(ast35.NodeTransformer):
     # keyword = (identifier? arg, expr value)
     @with_line
     def visit_Call(self, n: ast35.Call) -> Node:
-        def is_star2arg(k):
+        def is_star2arg(k: ast35.keyword) -> bool:
             return k.arg is None
 
         arg_types = self.visit_list(

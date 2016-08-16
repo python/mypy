@@ -177,7 +177,7 @@ i, i = l[0]  # E: Need more than 1 value to unpack (2 expected)
 l = [A(1)]
 a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
                variable has type "A")
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testNamedTupleMissingClassAttribute]
 import collections
@@ -187,7 +187,7 @@ MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
 [case testNamedTupleEmptyItems]
 from typing import NamedTuple
 A = NamedTuple('A', [])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testNamedTupleProperty]
 from typing import NamedTuple
@@ -199,7 +199,7 @@ class B(A):
 class C(B): pass
 B(1).b
 C(2).b
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testNamedTupleAsDict]
 from collections import namedtuple, OrderedDict
@@ -243,7 +243,7 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
 x = X._make([5, 'a'])
 
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testNamedTupleFields]
 from typing import NamedTuple
@@ -276,3 +276,4 @@ X = NamedTuple('X', [])
 x = X()  # type: X
 x = x._replace()
 _ = x._fields[0]  # E: Tuple index out of range
+

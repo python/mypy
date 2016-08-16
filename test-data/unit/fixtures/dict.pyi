@@ -1,6 +1,6 @@
 # Builtins stub used in dictionary-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Tuple, overload
+from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -11,14 +11,14 @@ class object:
 
 class type: pass
 
-class dict(Iterable[KT], Generic[KT, VT]):
+class dict(Iterable[KT], Mapping[KT, VT], Generic[KT, VT]):
     @overload
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
     def __init__(self, arg: Iterable[Tuple[KT, VT]], **kwargs: VT) -> None: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
-    def update(self, a: 'dict[KT, VT]') -> None: pass
+    def update(self, a: Mapping[KT, VT]) -> None: pass
 
 class int: pass # for convenience
 

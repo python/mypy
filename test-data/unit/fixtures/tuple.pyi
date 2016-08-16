@@ -1,6 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, TypeVar, Generic, Sequence
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence
 
 Tco = TypeVar('Tco', covariant=True)
 
@@ -11,6 +11,7 @@ class type:
     def __init__(self, *a) -> None: pass
     def __call__(self, *a) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
+    def __iter__(self) -> Iterator[Tco]: pass
     def __getitem__(self, x: int) -> Tco: pass
 class function: pass
 
@@ -20,6 +21,8 @@ class bool: pass
 class str: pass # For convenience
 
 T = TypeVar('T')
+
+class list(Sequence[T], Generic[T]): pass
 
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
 

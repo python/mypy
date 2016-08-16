@@ -58,7 +58,7 @@ def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
 
 
 def is_equivalent(a: Type, b: Type,
-                  type_parameter_checker=check_type_parameter) -> bool:
+                  type_parameter_checker: TypeParameterChecker = check_type_parameter) -> bool:
     return is_subtype(a, b, type_parameter_checker) and is_subtype(b, a, type_parameter_checker)
 
 
@@ -346,7 +346,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
     if msg.is_errors() or not isinstance(applied, CallableType):
         return None
-    return cast(CallableType, applied)
+    return applied
 
 
 def restrict_subtype_away(t: Type, s: Type) -> Type:

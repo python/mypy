@@ -76,7 +76,7 @@ if not MYPY:
     import xyz753
 else:
     import pow123 # E
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 main:6: error: Cannot find module named 'pow123'
 main:6: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
@@ -88,7 +88,7 @@ if MYPY:
     None + 1 # E: Unsupported left operand type for + (None)
 else:
     None + ''
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testConditionalClassDefPY3]
 def f(): pass
@@ -111,3 +111,233 @@ else:
     import bad_name
     1 + ''
 [out]
+
+[case testSysVersionInfo_python2]
+import sys
+if sys.version_info[0] >= 3:
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # E: Revealed type is 'builtins.str'
+[builtins_py2 fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfo]
+import sys
+if sys.version_info[0] >= 3:
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoNegated_python2]
+import sys
+if not (sys.version_info[0] < 3):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # E: Revealed type is 'builtins.str'
+[builtins_py2 fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoNegated]
+import sys
+if not (sys.version_info[0] < 3):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced1]
+import sys
+if sys.version_info[:1] >= (3,):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced2]
+import sys
+if sys.version_info[:2] >= (3, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced3]
+import sys
+if sys.version_info[:] >= (3, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced4]
+import sys
+if sys.version_info[0:2] >= (3, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced5]
+import sys
+if sys.version_info[0:] >= (3,):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced6]
+import sys
+if sys.version_info[1:] >= (5,):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced7]
+import sys
+if sys.version_info >= (3, 5):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced8]
+# Our pyversion only has (major, minor),
+# so testing for (major, minor, bugfix) is unsupported.
+import sys
+if sys.version_info >= (3, 5, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''  # E: All conditional function variants must have identical signatures
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoSliced9]
+# Our pyversion only has (major, minor),
+# so testing for (minor, bugfix) is unsupported (also it's silly :-).
+import sys
+if sys.version_info[1:] >= (5, 0):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''  # E: All conditional function variants must have identical signatures
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysPlatform1]
+import sys
+if sys.platform == 'fictional':
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + ''
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysPlatform2]
+import sys
+if sys.platform != 'fictional':
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysPlatformNegated]
+import sys
+if not (sys.platform == 'fictional'):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoClass]
+import sys
+if sys.version_info < (3, 5):
+    class C:
+        pass
+else:
+    class C:
+        def foo(self) -> int: return 0
+C().foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoImport]
+import sys
+if sys.version_info >= (3, 5):
+    import collections
+else:
+    collections = None
+Pt = collections.namedtuple('Pt', 'x y z')
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoVariable]
+import sys
+if sys.version_info >= (3, 5):
+    x = ''
+else:
+    x = 0
+x + ''
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoInClass]
+import sys
+class C:
+    if sys.version_info >= (3, 5):
+        def foo(self) -> int: return 0
+    else:
+        def foo(self) -> str: return ''
+reveal_type(C().foo())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysVersionInfoInFunction]
+import sys
+def foo() -> None:
+    if sys.version_info >= (3, 5):
+        x = ''
+    else:
+        x = 0
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]
+[out]
+main: note: In function "foo":
+
+[case testSysVersionInfoInMethod]
+import sys
+class C:
+    def foo(self) -> None:
+        if sys.platform != 'fictional':
+            x = ''
+        else:
+            x = 0
+        reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]
+[out]
+main: note: In member "foo" of class "C":

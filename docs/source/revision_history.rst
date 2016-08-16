@@ -3,6 +3,13 @@ Revision history
 
 List of major changes to this document:
 
+- July 2016
+    Publish ``mypy-lang`` version 0.4.3 on PyPI.
+
+    Add :ref:`strict_optional`.
+
+    Add :ref:`multi_line_annotation`.
+
 - June 2016
     Publish ``mypy-lang`` version 0.4.2 on PyPI.
 

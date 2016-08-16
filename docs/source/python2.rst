@@ -12,12 +12,13 @@ Run mypy in Python 2 mode by using the ``--py2`` option::
 
     $ mypy --py2 program.py
 
-To run your program, you must have the ``typing`` module in your module
-search path. Use ``pip install typing`` to install the module (this also
-works for Python 3).
+To run your program, you must have the ``typing`` module in your
+Python 2 module search path. Use ``pip install typing`` to install the
+module. This also works for Python 3 versions prior to 3.5 that don't
+include ``typing`` in the standard library.
 
-The example below illustrates Python 2 function type annotation
-syntax. This syntax is also valid in Python 3 mode.
+The example below illustrates the Python 2 function type annotation
+syntax. This syntax is also valid in Python 3 mode:
 
 .. code-block:: python
 
@@ -32,10 +33,7 @@ syntax. This syntax is also valid in Python 3 mode.
             """Docstring comes after type comment."""
             ...
 
-Important details
------------------
-
-It's worth going through these carefully to avoid surprises:
+It's worth going through these details carefully to avoid surprises:
 
 - You don't provide an annotation for the ``self`` / ``cls`` variable of
   methods.
@@ -43,8 +41,9 @@ It's worth going through these carefully to avoid surprises:
 - Docstring always comes *after* the type comment.
 
 - For ``*args`` and ``**kwargs`` the type should be prefixed with
-  ``*`` or ``**``, respectively. Again, the above example illustrates
-  this.
+  ``*`` or ``**``, respectively (except when using the multi-line
+  annotation syntax described below). Again, the above example
+  illustrates this.
 
 - Things like ``Any`` must be imported from ``typing``, even if they
   are only used in comments.
@@ -54,11 +53,47 @@ It's worth going through these carefully to avoid surprises:
   ``str`` in Python 3, which are incompatible. ``bytes`` in Python 2 is
   equivalent to ``str``. (This might change in the future.)
 
+.. _multi_line_annotation:
+
+Multi-line Python 2 function annotations
+----------------------------------------
+
+Mypy also supports a multi-line comment annotation syntax. You
+can provide a separate annotation for each argument using the variable
+annotation syntax. When using the single-line annotation syntax
+described above, functions with long argument lists tend to result in
+overly long type comments and it's often tricky to see which argument
+type corresponds to which argument. The alternative, multi-line
+annotation syntax makes long annotations easier to read and write.
+
 .. note::
 
-    Currently there's no support for splitting an annotation to multiple
-    lines. This will likely change in the future. (PEP 484 already defines
-    the syntax to use; we just have to implement it.)
+    Multi-line comment annotations currently only work when using the
+    ``--fast-parser`` command line option.  This is not enabled by
+    default because the option isn’t supported on Windows yet.
+
+Here is an example (from PEP 484):
+
+.. code-block:: python
+
+    def send_email(address,     # type: Union[str, List[str]]
+                   sender,      # type: str
+                   cc,          # type: Optional[List[str]]
+                   bcc,         # type: Optional[List[str]]
+                   subject='',
+                   body=None    # type: List[str]
+                   ):
+        # type: (...) -> bool
+        """Send an email message.  Return True iff successful."""
+        <code>
+
+You write a separate annotation for each function argument on the same
+line as the argument. Each annotation must be on a separate line. If
+you leave out an annotation for an argument, it defaults to
+``Any``. You provide a return type annotation in the body of the
+function using the form ``# type: (...) -> rt``, where ``rt`` is the
+return type. Note that the  return type annotation contains literal
+three dots.
 
 Additional notes
 ----------------

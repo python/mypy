@@ -6,14 +6,15 @@ import re
 from os import remove, rmdir
 import shutil
 
-from typing import Callable, List, Tuple
+import pytest  # type: ignore  # no pytest in typeshed
+from typing import Callable, List, Tuple, Set, Optional
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
 
 def parse_test_cases(
         path: str,
-        perform: Callable[['DataDrivenTestCase'], None],
+        perform: Optional[Callable[['DataDrivenTestCase'], None]],
         base_path: str = '.',
         optional_out: bool = False,
         include_path: str = None,
@@ -21,6 +22,10 @@ def parse_test_cases(
     """Parse a file with test case descriptions.
 
     Return an array of test cases.
+
+    NB this function and DataDrivenTestCase are shared between the
+    myunit and pytest codepaths -- if something looks redundant,
+    that's likely the reason.
     """
 
     if not include_path:
@@ -41,6 +46,7 @@ def parse_test_cases(
             i += 1
 
             files = []  # type: List[Tuple[str, str]] # path and contents
+            stale_modules = None  # type: Optional[Set[str]]  # module names
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
@@ -51,12 +57,17 @@ def parse_test_cases(
                     mpath = os.path.join(os.path.dirname(path), p[i].arg)
                     f = open(mpath)
                     if p[i].id == 'builtins':
-                        fnam = 'builtins.py'
+                        fnam = 'builtins.pyi'
                     else:
                         # Python 2
-                        fnam = '__builtin__.py'
+                        fnam = '__builtin__.pyi'
                     files.append((os.path.join(base_path, fnam), f.read()))
                     f.close()
+                elif p[i].id == 'stale':
+                    if p[i].arg is None:
+                        stale_modules = set()
+                    else:
+                        stale_modules = {item.strip() for item in p[i].arg.split(',')}
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
@@ -78,7 +89,8 @@ def parse_test_cases(
                 expand_errors(input, tcout, 'main')
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
-                                        p[i0].line, lastline, perform, files)
+                                        p[i0].line, lastline, perform,
+                                        files, stale_modules)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -99,11 +111,12 @@ class DataDrivenTestCase(TestCase):
 
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]
+    expected_stale_modules = None  # type: Optional[Set[str]]
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self, name, input, output, file, line, lastline,
-                 perform, files):
+                 perform, files, expected_stale_modules):
         super().__init__(name)
         self.input = input
         self.output = output
@@ -112,9 +125,11 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
+        self.expected_stale_modules = expected_stale_modules
 
     def set_up(self) -> None:
         super().set_up()
+        encountered_files = set()
         self.clean_up = []
         for path, content in self.files:
             dir = os.path.dirname(path)
@@ -124,6 +139,13 @@ class DataDrivenTestCase(TestCase):
             f.write(content)
             f.close()
             self.clean_up.append((False, path))
+            encountered_files.add(path)
+            if path.endswith(".next"):
+                # Make sure new files introduced in the second run are accounted for
+                renamed_path = path[:-5]
+                if renamed_path not in encountered_files:
+                    encountered_files.add(renamed_path)
+                    self.clean_up.append((False, renamed_path))
 
     def add_dirs(self, dir: str) -> List[str]:
         """Add all subdirectories required to create dir.
@@ -319,3 +341,77 @@ def fix_win_path(line: str) -> str:
         filename, lineno, message = m.groups()
         return '{}:{}{}'.format(filename.replace('/', '\\'),
                                 lineno or '', message)
+
+
+##
+#
+# pytest setup
+#
+##
+
+
+def pytest_addoption(parser):
+    group = parser.getgroup('mypy')
+    group.addoption('--update-data', action='store_true', default=False,
+                    help='Update test data to reflect actual output'
+                         ' (supported only for certain tests)')
+
+
+def pytest_pycollect_makeitem(collector, name, obj):
+    if not isinstance(obj, type) or not issubclass(obj, DataSuite):
+        return None
+    return MypyDataSuite(name, parent=collector)
+
+
+class MypyDataSuite(pytest.Class):
+    def collect(self):
+        for case in self.obj.cases():
+            yield MypyDataCase(case.name, self, case)
+
+
+class MypyDataCase(pytest.Item):
+    def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
+        self.skip = False
+        if name.endswith('-skip'):
+            self.skip = True
+            name = name[:-len('-skip')]
+
+        super().__init__(name, parent)
+        self.obj = obj
+
+    def runtest(self):
+        if self.skip:
+            pytest.skip()
+        update_data = self.config.getoption('--update-data', False)
+        self.parent.obj(update_data=update_data).run_case(self.obj)
+
+    def setup(self):
+        self.obj.set_up()
+
+    def teardown(self):
+        self.obj.tear_down()
+
+    def reportinfo(self):
+        return self.obj.file, self.obj.line, self.obj.name
+
+    def repr_failure(self, excinfo):
+        if excinfo.errisinstance(SystemExit):
+            # We assume that before doing exit() (which raises SystemExit) we've printed
+            # enough context about what happened so that a stack trace is not useful.
+            # In particular, uncaught exceptions during semantic analysis or type checking
+            # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        else:
+            self.parent._prunetraceback(excinfo)
+            excrepr = excinfo.getrepr(style='short')
+
+        return "data: {}:{}:\n{}".format(self.obj.file, self.obj.line, excrepr)
+
+
+class DataSuite:
+    @classmethod
+    def cases(cls) -> List[DataDrivenTestCase]:
+        return []
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        raise NotImplementedError

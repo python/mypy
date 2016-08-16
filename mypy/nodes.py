@@ -343,6 +343,12 @@ class OverloadedFuncDef(FuncBase, Statement):
 class Argument(Node):
     """A single argument in a FuncItem."""
 
+    variable = None  # type: Var
+    type_annotation = None  # type: Optional[mypy.types.Type]
+    initializater = None  # type: Optional[Expression]
+    kind = None  # type: int
+    initialization_statement = None  # type: Optional[AssignmentStmt]
+
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
             initializer: Optional[Expression], kind: int,
             initialization_statement: Optional['AssignmentStmt'] = None) -> None:
@@ -410,6 +416,8 @@ class FuncItem(FuncBase):
     # Is this an overload variant of function with more than one overload variant?
     is_overload = False
     is_generator = False   # Contains a yield statement?
+    is_coroutine = False   # Defined using 'async def' syntax?
+    is_awaitable_coroutine = False  # Decorated with '@{typing,asyncio}.coroutine'?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
     # Variants of function with type variables with values expanded
@@ -438,7 +446,7 @@ class FuncItem(FuncBase):
             arg.set_line(self.line)
         return self
 
-    def is_dynamic(self):
+    def is_dynamic(self) -> bool:
         return self.type is None
 
 
@@ -480,6 +488,7 @@ class FuncDef(FuncItem, Statement):
                 'is_property': self.is_property,
                 'is_overload': self.is_overload,
                 'is_generator': self.is_generator,
+                'is_coroutine': self.is_coroutine,
                 'is_static': self.is_static,
                 'is_class': self.is_class,
                 'is_decorated': self.is_decorated,
@@ -501,6 +510,7 @@ class FuncDef(FuncItem, Statement):
         ret.is_property = data['is_property']
         ret.is_overload = data['is_overload']
         ret.is_generator = data['is_generator']
+        ret.is_coroutine = data['is_coroutine']
         ret.is_static = data['is_static']
         ret.is_class = data['is_class']
         ret.is_decorated = data['is_decorated']
@@ -793,6 +803,7 @@ class ForStmt(Statement):
     expr = None  # type: Expression
     body = None  # type: Block
     else_body = None  # type: Block
+    is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Expression, expr: Expression, body: Block,
                  else_body: Block) -> None:
@@ -903,6 +914,7 @@ class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Expression]
     body = None  # type: Block
+    is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Expression],
                  body: Block) -> None:
@@ -1448,7 +1460,9 @@ class DictExpr(Expression):
 
     def __init__(self, items: List[Tuple[Expression, Expression]]) -> None:
         self.items = items
-        if all(x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
+        # key is None for **item, e.g. {'a': 1, **x} has
+        # keys ['a', None] and values [1, x].
+        if all(x[0] and x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
                for x in items):
             self.literal = LITERAL_YES
             self.literal_hash = ('Dict',) + tuple(
@@ -1492,7 +1506,7 @@ class GeneratorExpr(Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
     left_expr = None  # type: Expression
-    sequences_expr = None  # type: List[Expression]
+    sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
     indices = None  # type: List[Expression]
 
@@ -1536,7 +1550,7 @@ class DictionaryComprehension(Expression):
 
     key = None  # type: Expression
     value = None  # type: Expression
-    sequences_expr = None  # type: List[Expression]
+    sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
     indices = None  # type: List[Expression]
 
@@ -1701,6 +1715,30 @@ class PromoteExpr(Expression):
         return visitor.visit__promote_expr(self)
 
 
+class NewTypeExpr(Expression):
+    """NewType expression NewType(...)."""
+
+    info = None  # type: Optional[TypeInfo]
+
+    def __init__(self, info: Optional['TypeInfo']) -> None:
+        self.info = info
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_newtype_expr(self)
+
+
+class AwaitExpr(Node):
+    """Await expression (await ...)."""
+
+    expr = None  # type: Node
+
+    def __init__(self, expr: Node) -> None:
+        self.expr = expr
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_await_expr(self)
+
+
 # Constants
 
 
@@ -1776,6 +1814,9 @@ class TypeInfo(SymbolNode):
 
     # Is this a named tuple type?
     is_named_tuple = False
+
+    # Is this a newtype type?
+    is_newtype = False
 
     # Is this a dummy from deserialization?
     is_dummy = False
@@ -1953,6 +1994,7 @@ class TypeInfo(SymbolNode):
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'is_named_tuple': self.is_named_tuple,
+                'is_newtype': self.is_newtype,
                 }
         return data
 
@@ -1975,6 +2017,7 @@ class TypeInfo(SymbolNode):
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.is_named_tuple = data['is_named_tuple']
+        ti.is_newtype = data['is_newtype']
         return ti
 
 

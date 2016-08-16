@@ -178,7 +178,7 @@ a = not d # E: Incompatible types in assignment (expression has type "bool", var
 b = not d
 a = -d
 class A: pass
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testDynamicWithMemberAccess]
@@ -219,7 +219,7 @@ t2 = (d, d, d)  # E: Incompatible types in assignment (expression has type "Tupl
 t2 = (d, d)
 
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testCastsWithDynamicType]
 from typing import Any, cast
@@ -252,7 +252,7 @@ def g(a: 'A') -> None:
 
 class A: pass
 class B: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Statements
@@ -268,13 +268,13 @@ if d:
     pass
 elif d:
     pass
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testRaiseWithDynamic]
 from typing import Any
 d = None # type: Any
 raise d
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testReturnWithDynamic]
 from typing import Any
@@ -389,7 +389,7 @@ def g(x):
     if a():
         a()
 class A: pass
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs]
 
@@ -462,7 +462,7 @@ f() # E: Too few arguments for "f"
 f(o)
 f(o, o)
 f(o, o, o)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Implicit types for constructors
@@ -528,7 +528,7 @@ t4 = t2
 t4 = t3
 
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testFunctionTypeCompatibilityAndReturnTypes]
 from typing import Any, Callable

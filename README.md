@@ -184,18 +184,25 @@ To run all tests, run the script `runtests.py` in the mypy repository:
 Note that some tests will be disabled for older python versions.
 
 This will run all tests, including integration and regression tests,
-and will type check mypy and verify that all stubs are valid. You can also
-run unit tests only, which run pretty quickly:
-
-    $ ./runtests.py unit-test
+and will type check mypy and verify that all stubs are valid.
 
 You can run a subset of test suites by passing positive or negative
 filters:
 
     $ ./runtests.py lex parse -x lint -x stub
 
-If you want to run individual unit tests, you can run `myunit` directly, or
+For example, to run unit tests only, which run pretty quickly:
+
+    $ ./runtests.py unit-test pytest
+
+The unit test suites are driven by a mixture of test frameworks:
+mypy's own `myunit` framework, and `pytest`, which we're in the
+process of migrating to.  For finer control over which unit tests are
+run and how, you can run `py.test` or `scripts/myunit` directly, or
 pass inferior arguments via `-a`:
+
+    $ py.test mypy/test/testcheck.py -v -k MethodCall
+    $ ./runtests.py -v 'pytest mypy/test/testcheck' -a -v -a -k -a MethodCall
 
     $ PYTHONPATH=$PWD scripts/myunit -m mypy.test.testlex -v '*backslash*'
     $ ./runtests.py mypy.test.testlex -a -v -a '*backslash*'
@@ -231,7 +238,7 @@ There is an experimental feature to generate coverage reports.  To use
 this feature, you need to `pip install lxml`.  This is an extension
 module and requires various library headers to install; on a
 Debian-derived system the command
-  apt-get install python3-dev libxml2-dev libxslt1-dev
+  `apt-get install python3-dev libxml2-dev libxslt1-dev`
 may provide the necessary dependencies.
 
 To use the feature, pass e.g. `--txt-report "$(mktemp -d)"`.

@@ -7,7 +7,17 @@ u = unicode()
 s = ''
 s = u'foo' # E: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 s = b'foo'
-[builtins_py2 fixtures/python2.py]
+[builtins_py2 fixtures/python2.pyi]
+
+[case testTypeVariableUnicode]
+from typing import TypeVar
+T = TypeVar(u'T')
+
+[case testNamedTuple*sh Unicode]
+from typing import NamedTuple
+from collections import namedtuple
+N = NamedTuple(u'N', [(u'x', int)])
+n = namedtuple(u'n', u'x y')
 
 [case testPrintStatement]
 print ''() # E: "str" not callable
@@ -35,7 +45,7 @@ def f(x: unicode) -> None: pass
 f('')
 f(u'')
 f(b'')
-[builtins_py2 fixtures/python2.py]
+[builtins_py2 fixtures/python2.pyi]
 
 [case testStaticMethodWithCommentSignature]
 class A:
@@ -44,21 +54,21 @@ class A:
         return ''
 A.f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-[builtins_py2 fixtures/staticmethod.py]
+[builtins_py2 fixtures/staticmethod.pyi]
 
 [case testRaiseTuple]
 import typing
 raise BaseException, "a"
 raise BaseException, "a", None
 raise BaseException, "a", None, None # E: Exception must be derived from BaseException
-[builtins_py2 fixtures/exception.py]
+[builtins_py2 fixtures/exception.pyi]
 
 [case testTryExceptWithTuple]
 try:
     None
 except BaseException, e:
     e() # E: "BaseException" not callable
-[builtins_py2 fixtures/exception.py]
+[builtins_py2 fixtures/exception.pyi]
 
 [case testAlternateNameSuggestions]
 class Foo(object):
@@ -100,7 +110,7 @@ def f(x, (y, z)): # type: (object, Tuple[int, str]) -> None
     z() # E
 f(object(), (1, ''))
 f(1, 1) # E
-[builtins_py2 fixtures/tuple.py]
+[builtins_py2 fixtures/tuple.pyi]
 [out]
 main: note: In function "f":
 main:3: error: "object" not callable
@@ -118,7 +128,7 @@ def f(x, (y, (a, b))): # type: (object, Tuple[int, Tuple[str, int]]) -> None
     b() # E
 f(object(), (1, ('', 2)))
 f(1, 1) # E
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main: note: In function "f":
 main:3: error: "object" not callable

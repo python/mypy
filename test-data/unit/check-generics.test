@@ -473,7 +473,7 @@ b2, b2 = list_b # E: Incompatible types in assignment (expression has type "B", 
 
 a, a = list_a
 b, b2, b = list_b2
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testMultipleAssignmentWithListsInInitialization]
 from typing import List
@@ -483,7 +483,7 @@ list_a = [A()]
 a, b = list_object # type: (A, object) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 c, d = list_object # type: (object, A) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 e, f = list_a # type: (A, object)
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testMultipleAssignmentWithListAndIndexing]
 from typing import List
@@ -518,7 +518,7 @@ a, b = f(a)   # E: Incompatible types in assignment (expression has type "int", 
 b, b = f(a)   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 a, a = f(a)
 b, b = f(b)
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 
 -- Error messages
@@ -586,7 +586,7 @@ a = f(b)   # E: Incompatible types in assignment (expression has type "B", varia
 
 a = f([a])
 b = f(b)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testGenericFunctionAsOverloadItem]
 from typing import overload, TypeVar, List
@@ -608,7 +608,7 @@ a = f(b)   # E: Incompatible types in assignment (expression has type "B", varia
 a = f([a])
 b = f([b])
 b = f(b)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Type variable scoping
@@ -762,7 +762,7 @@ def f(a: T, b: T) -> T:
         return a
     else:
         return b
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 [case testTypeVariableTypeIs]
 from typing import TypeVar
@@ -772,7 +772,7 @@ def f(a: T, b: T) -> T:
         return a
     else:
         return b
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 [case testTypeVariableTypeLessThan]
 from typing import TypeVar
@@ -782,7 +782,7 @@ def f(a: T, b: T) -> T:
         return a
     else:
         return b
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 [out]
 main: note: In function "f":
 main:4: error: Unsupported left operand type for < ("T")
@@ -851,3 +851,27 @@ def f3(x: A, y: B) -> B: ...
 g = f1
 g = f2
 g = f3
+
+[case testTypeVariableWithContainerAndTuple]
+from typing import TypeVar, Container
+T = TypeVar('T')
+def f(x: Container[T]) -> T: ...
+reveal_type(f((1, 2))) # E: Revealed type is 'builtins.int*'
+
+[case testClassMethodInGenericClassWithGenericConstructorArg]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, a: T) -> None: pass
+    @classmethod
+    def f(cls) -> None: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodInClassWithGenericConstructor]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A:
+    def __init__(self, a: T) -> None: pass
+    @classmethod
+    def f(cls) -> None: pass
+[builtins fixtures/classmethod.pyi]

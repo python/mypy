@@ -40,6 +40,11 @@ YIELD_VALUE_EXPECTED = 'Yield value expected'
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
 INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
+INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in await'
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for __aenter__'
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for __aexit__'
+INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
+
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
@@ -57,6 +62,7 @@ INCOMPATIBLE_KEY_TYPE = 'Incompatible dictionary key type'
 INCOMPATIBLE_VALUE_TYPE = 'Incompatible dictionary value type'
 NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
 ITERABLE_EXPECTED = 'Iterable expected'
+ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
 INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
 INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
@@ -314,8 +320,8 @@ class MessageBuilder:
         if (isinstance(typ, Instance) and
                 typ.type.has_readable_member(member)):
             self.fail('Member "{}" is not assignable'.format(member), context)
-        elif isinstance(typ, Void):
-            self.check_void(typ, context)
+        elif self.check_unusable_type(typ, context):
+            pass
         elif member == '__contains__':
             self.fail('Unsupported right operand type for in ({})'.format(
                 self.format(typ)), context)
@@ -370,9 +376,8 @@ class MessageBuilder:
 
         Types can be Type objects or strings.
         """
-        if isinstance(left_type, Void) or isinstance(right_type, Void):
-            self.check_void(left_type, context)
-            self.check_void(right_type, context)
+        if (self.check_unusable_type(left_type, context) or
+                self.check_unusable_type(right_type, context)):
             return
         left_str = ''
         if isinstance(left_type, str):
@@ -395,7 +400,7 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if not self.check_void(typ, context):
+        if not self.check_unusable_type(typ, context):
             if self.disable_type_names:
                 msg = 'Unsupported left operand type for {} (some union)'.format(op)
             else:
@@ -548,18 +553,17 @@ class MessageBuilder:
                   format(capitalize(callable_name(callee)),
                          callee.arg_names[index]), context)
 
-    def does_not_return_value(self, void_type: Type, context: Context) -> None:
-        """Report an error about a void type in a non-void context.
+    def does_not_return_value(self, unusable_type: Type, context: Context) -> None:
+        """Report an error about use of an unusable type.
 
-        The first argument must be a void type. If the void type has a
-        source in it, report it in the error message. This allows
-        giving messages such as 'Foo does not return a value'.
+        If the type is a Void type and has a source in it, report it in the error message.
+        This allows giving messages such as 'Foo does not return a value'.
         """
-        if (cast(Void, void_type)).source is None:
-            self.fail('Function does not return a value', context)
-        else:
+        if isinstance(unusable_type, Void) and unusable_type.source is not None:
             self.fail('{} does not return a value'.format(
-                capitalize((cast(Void, void_type)).source)), context)
+                capitalize((cast(Void, unusable_type)).source)), context)
+        else:
+            self.fail('Function does not return a value', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -596,7 +600,7 @@ class MessageBuilder:
 
     def invalid_cast(self, target_type: Type, source_type: Type,
                      context: Context) -> None:
-        if not self.check_void(source_type, context):
+        if not self.check_unusable_type(source_type, context):
             self.fail('Cannot cast from {} to {}'.format(
                 self.format(source_type), self.format(target_type)), context)
 
@@ -714,11 +718,13 @@ class MessageBuilder:
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
-    def check_void(self, typ: Type, context: Context) -> bool:
-        """If type is void, report an error such as '.. does not
+    def check_unusable_type(self, typ: Type, context: Context) -> bool:
+        """If type is a type which is not meant to be used (like Void or
+        NoneTyp(is_ret_type=True)), report an error such as '.. does not
         return a value' and return True. Otherwise, return False.
         """
-        if isinstance(typ, Void):
+        if (isinstance(typ, Void) or
+                (isinstance(typ, NoneTyp) and typ.is_ret_type)):
             self.does_not_return_value(typ, context)
             return True
         else:
@@ -767,7 +773,7 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list("'%s'" % a for a in abstract_attributes[:5])
+        attrs = format_string_list("'%s'" % a for a in abstract_attributes)
         self.fail("Cannot instantiate abstract class '%s' with abstract "
                   "attribute%s %s" % (class_name, plural_s(abstract_attributes),
                                    attrs),
@@ -881,8 +887,10 @@ def format_string_list(s: Iterable[str]) -> str:
     assert len(l) > 0
     if len(l) == 1:
         return l[0]
-    else:
+    elif len(l) <= 5:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
+    else:
+        return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
 
 
 def callable_name(type: CallableType) -> str:

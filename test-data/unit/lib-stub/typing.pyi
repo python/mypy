@@ -26,6 +26,7 @@ Set = 0
 T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')
+S = TypeVar('S')
 
 class Container(Generic[T]):
     @abstractmethod
@@ -57,6 +58,29 @@ class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
-class Sequence(Generic[T]):
+class Awaitable(Generic[T]):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, Any, T]: pass
+
+class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
+    pass
+
+class AsyncIterable(Generic[T]):
+    @abstractmethod
+    def __aiter__(self) -> 'AsyncIterator[T]': pass
+
+class AsyncIterator(AsyncIterable[T], Generic[T]):
+    def __aiter__(self) -> 'AsyncIterator[T]': return self
+    @abstractmethod
+    def __anext__(self) -> Awaitable[T]: pass
+
+class Sequence(Iterable[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
+
+class Mapping(Generic[T, U]): pass
+
+def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
+    def new_type(x):
+        return x
+    return new_type

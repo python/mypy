@@ -14,8 +14,6 @@ is_verbose = False
 is_quiet = False
 patterns = []  # type: List[str]
 times = []  # type: List[Tuple[float, str]]
-APPEND_TESTCASES = ''
-UPDATE_TESTCASES = False
 
 
 class AssertionFailure(Exception):
@@ -199,7 +197,6 @@ class ListSuite(Suite):
 
 def main(args: List[str] = None) -> None:
     global patterns, is_verbose, is_quiet
-    global APPEND_TESTCASES, UPDATE_TESTCASES
     if not args:
         args = sys.argv[1:]
     is_verbose = False
@@ -213,12 +210,6 @@ def main(args: List[str] = None) -> None:
             is_verbose = True
         elif a == '-q':
             is_quiet = True
-        elif a == '-u':
-            APPEND_TESTCASES = '.new'
-            UPDATE_TESTCASES = True
-        elif a == '-i':
-            APPEND_TESTCASES = ''
-            UPDATE_TESTCASES = True
         elif a == '-m':
             i += 1
             if i == len(args):
@@ -227,7 +218,7 @@ def main(args: List[str] = None) -> None:
         elif not a.startswith('-'):
             patterns.append(a)
         else:
-            sys.exit('Usage: python -m mypy.myunit [-v] [-q] [-u | -i]'
+            sys.exit('Usage: python -m mypy.myunit [-v] [-q]'
                     + ' -m mypy.test.module [-m mypy.test.module ...] [filter ...]')
         i += 1
     if len(patterns) == 0:

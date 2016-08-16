@@ -14,7 +14,7 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2
 )
 from mypy.nodes import function_type
@@ -157,8 +157,10 @@ class ExpressionChecker:
             var = cast(Var, e.callee.expr.node)
             partial_types = self.chk.find_partial_types(var)
             if partial_types is not None and not self.chk.current_node_deferred:
-                partial_type = cast(PartialType, var.type)
-                if partial_type is None or partial_type.type is None:
+                partial_type = var.type
+                if (partial_type is None or
+                        not isinstance(partial_type, PartialType) or
+                        partial_type.type is None):
                     # A partial None type -> can't infer anything.
                     return
                 typename = partial_type.type.fullname()
@@ -286,8 +288,8 @@ class ExpressionChecker:
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                         False, False, self.named_type, self.not_ready_callback,
-                                         self.msg)
+                                         False, False, False, self.named_type,
+                                         self.not_ready_callback, self.msg)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -411,7 +413,7 @@ class ExpressionChecker:
         ret_type = callable.ret_type
         if isinstance(ret_type, TypeVarType):
             if ret_type.values or (not isinstance(ctx, Instance) or
-                                   not cast(Instance, ctx).args):
+                                   not ctx.args):
                 # The return type is a type variable. If it has values, we can't easily restrict
                 # type inference to conform to the valid values. If it's unrestricted, we could
                 # infer a too general type for the type variable if we use context, and this could
@@ -661,6 +663,8 @@ class ExpressionChecker:
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
                 arg_type = arg_types[actual]
+                if arg_type is None:
+                    continue  # Some kind of error was already reported.
                 # Check that a *arg is valid as varargs.
                 if (arg_kinds[actual] == nodes.ARG_STAR and
                         not self.is_valid_var_arg(arg_type)):
@@ -670,6 +674,11 @@ class ExpressionChecker:
                     messages.invalid_keyword_var_arg(arg_type, context)
                 # Get the type of an individual actual argument (for *args
                 # and **args this is the item type, not the collection type).
+                if (isinstance(arg_type, TupleType)
+                        and tuple_counter[0] >= len(arg_type.items)
+                        and arg_kinds[actual] == nodes.ARG_STAR):
+                    # The tuple is exhausted. Continue with further arguments.
+                    continue
                 actual_type = get_actual_type(arg_type, arg_kinds[actual],
                                               tuple_counter)
                 check_arg(actual_type, arg_type, arg_kinds[actual],
@@ -695,7 +704,7 @@ class ExpressionChecker:
                   callee_type: Type, n: int, m: int, callee: CallableType,
                   context: Context, messages: MessageBuilder) -> None:
         """Check the type of a single argument in a call."""
-        if isinstance(caller_type, Void):
+        if self.chk.is_unusable_type(caller_type):
             messages.does_not_return_value(caller_type, context)
         elif isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
@@ -861,7 +870,7 @@ class ExpressionChecker:
         else:
             # This is a reference to a non-module attribute.
             return analyze_member_access(e.name, self.accept(e.expr), e,
-                                         is_lvalue, False,
+                                         is_lvalue, False, False,
                                          self.named_type, self.not_ready_callback, self.msg)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
@@ -870,7 +879,7 @@ class ExpressionChecker:
         refer to private definitions. Return the result type.
         """
         # TODO remove; no private definitions in mypy
-        return analyze_member_access(member, base_type, context, False, False,
+        return analyze_member_access(member, base_type, context, False, False, False,
                                      self.named_type, self.not_ready_callback, self.msg)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
@@ -990,7 +999,7 @@ class ExpressionChecker:
                 result = sub_result
             else:
                 # TODO: check on void needed?
-                self.check_not_void(sub_result, e)
+                self.check_usable_type(sub_result, e)
                 result = join.join_types(result, sub_result)
 
         return result
@@ -1008,7 +1017,7 @@ class ExpressionChecker:
 
         Return tuple (result type, inferred operator method type).
         """
-        method_type = analyze_member_access(method, base_type, context, False, False,
+        method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
@@ -1086,15 +1095,21 @@ class ExpressionChecker:
         left_type = self.accept(e.left, ctx)
 
         if e.op == 'and':
-            right_map, _ = \
+            right_map, left_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         elif e.op == 'or':
-            _, right_map = \
+            left_map, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
         else:
+            left_map = None
             right_map = None
+
+        if left_map and e.left in left_map:
+            # The type of expressions in left_map is the type they'll have if
+            # the left operand is the result of the operator.
+            left_type = left_map[e.left]
 
         with self.chk.binder.frame_context():
             if right_map:
@@ -1103,8 +1118,15 @@ class ExpressionChecker:
 
             right_type = self.accept(e.right, left_type)
 
-        self.check_not_void(left_type, context)
-        self.check_not_void(right_type, context)
+        self.check_usable_type(left_type, context)
+        self.check_usable_type(right_type, context)
+
+        # If either of the type maps is None that means that result cannot happen.
+        # If both of the type maps are None we just have no information.
+        if left_map is not None and right_map is None:
+            return left_type
+        elif left_map is None and right_map is not None:
+            return right_type
         return UnionType.make_simplified_union([left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
@@ -1128,7 +1150,7 @@ class ExpressionChecker:
         operand_type = self.accept(e.expr)
         op = e.op
         if op == 'not':
-            self.check_not_void(operand_type, e)
+            self.check_usable_type(operand_type, e)
             result = self.chk.bool_type()  # type: Type
         elif op == '-':
             method_type = self.analyze_external_member_access('__neg__',
@@ -1192,7 +1214,7 @@ class ExpressionChecker:
             e.method_type = method_type
             return result
 
-    def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr):
+    def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
         begin = None  # type: int
         end = None  # type: int
         stride = None  # type:int
@@ -1265,15 +1287,17 @@ class ExpressionChecker:
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
-        return self.check_list_or_set_expr(e.items, 'builtins.list', '<list>',
-                                           e)
+        return self.check_lst_expr(e.items, 'builtins.list', '<list>', e)
 
     def visit_set_expr(self, e: SetExpr) -> Type:
-        return self.check_list_or_set_expr(e.items, 'builtins.set', '<set>', e)
+        return self.check_lst_expr(e.items, 'builtins.set', '<set>', e)
 
-    def check_list_or_set_expr(self, items: List[Node], fullname: str,
-                               tag: str, context: Context) -> Type:
+    def check_lst_expr(self, items: List[Node], fullname: str,
+                       tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
+        # Used for list and set expressions, as well as for tuples
+        # containing star expressions that don't refer to a
+        # Tuple. (Note: "lst" stands for list-set-tuple. :-)
         tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
         tv = TypeVarType(tvdef)
         constructor = CallableType(
@@ -1285,8 +1309,11 @@ class ExpressionChecker:
             name=tag,
             variables=[tvdef])
         return self.check_call(constructor,
-                               items,
-                               [nodes.ARG_POS] * len(items), context)[0]
+                               [(i.expr if isinstance(i, StarExpr) else i)
+                                for i in items],
+                               [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS)
+                                for i in items],
+                               context)[0]
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
@@ -1294,46 +1321,98 @@ class ExpressionChecker:
         # Try to determine type context for type inference.
         if isinstance(self.chk.type_context[-1], TupleType):
             t = self.chk.type_context[-1]
-            if len(t.items) == len(e.items):
-                ctx = t
-        # Infer item types.
+            ctx = t
+        # NOTE: it's possible for the context to have a different
+        # number of items than e.  In that case we use those context
+        # items that match a position in e, and we'll worry about type
+        # mismatches later.
+
+        # Infer item types.  Give up if there's a star expression
+        # that's not a Tuple.
         items = []  # type: List[Type]
+        j = 0  # Index into ctx.items; irrelevant if ctx is None.
         for i in range(len(e.items)):
             item = e.items[i]
             tt = None  # type: Type
-            if not ctx:
-                tt = self.accept(item)
+            if isinstance(item, StarExpr):
+                # Special handling for star expressions.
+                # TODO: If there's a context, and item.expr is a
+                # TupleExpr, flatten it, so we can benefit from the
+                # context?  Counterargument: Why would anyone write
+                # (1, *(2, 3)) instead of (1, 2, 3) except in a test?
+                tt = self.accept(item.expr)
+                self.check_usable_type(tt, e)
+                if isinstance(tt, TupleType):
+                    items.extend(tt.items)
+                    j += len(tt.items)
+                else:
+                    # A star expression that's not a Tuple.
+                    # Treat the whole thing as a variable-length tuple.
+                    return self.check_lst_expr(e.items, 'builtins.tuple', '<tuple>', e)
             else:
-                tt = self.accept(item, ctx.items[i])
-            self.check_not_void(tt, e)
-            items.append(tt)
+                if not ctx or j >= len(ctx.items):
+                    tt = self.accept(item)
+                else:
+                    tt = self.accept(item, ctx.items[j])
+                    j += 1
+                self.check_usable_type(tt, e)
+                items.append(tt)
         fallback_item = join.join_type_list(items)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
-        # Translate into type checking a generic function call.
+        """Type check a dict expression.
+
+        Translate it into a call to dict(), with provisions for **expr.
+        """
+        # Collect function arguments, watching out for **expr.
+        args = []  # type: List[Node]  # Regular "key: value"
+        stargs = []  # type: List[Node]  # For "**expr"
+        for key, value in e.items:
+            if key is None:
+                stargs.append(value)
+            else:
+                args.append(TupleExpr([key, value]))
+        # Define type variables (used in constructors below).
         ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
         vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
-        # The callable type represents a function like this:
-        #
-        #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-        constructor = CallableType(
-            [TupleType([kt, vt], self.named_type('builtins.tuple'))],
-            [nodes.ARG_STAR],
-            [None],
-            self.chk.named_generic_type('builtins.dict', [kt, vt]),
-            self.named_type('builtins.function'),
-            name='<list>',
-            variables=[ktdef, vtdef])
-        # Synthesize function arguments.
-        args = []  # type: List[Node]
-        for key, value in e.items:
-            args.append(TupleExpr([key, value]))
-        return self.check_call(constructor,
-                               args,
-                               [nodes.ARG_POS] * len(args), e)[0]
+        # Call dict(*args), unless it's empty and stargs is not.
+        if args or not stargs:
+            # The callable type represents a function like this:
+            #
+            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
+            constructor = CallableType(
+                [TupleType([kt, vt], self.named_type('builtins.tuple'))],
+                [nodes.ARG_STAR],
+                [None],
+                self.chk.named_generic_type('builtins.dict', [kt, vt]),
+                self.named_type('builtins.function'),
+                name='<list>',
+                variables=[ktdef, vtdef])
+            rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
+        else:
+            # dict(...) will be called below.
+            rv = None
+        # Call rv.update(arg) for each arg in **stargs,
+        # except if rv isn't set yet, then set rv = dict(arg).
+        if stargs:
+            for arg in stargs:
+                if rv is None:
+                    constructor = CallableType(
+                        [self.chk.named_generic_type('typing.Mapping', [kt, vt])],
+                        [nodes.ARG_POS],
+                        [None],
+                        self.chk.named_generic_type('builtins.dict', [kt, vt]),
+                        self.named_type('builtins.function'),
+                        name='<list>',
+                        variables=[ktdef, vtdef])
+                    rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
+                else:
+                    method = self.analyze_external_member_access('update', rv, arg)
+                    self.check_call(method, [arg], [nodes.ARG_POS], arg)
+        return rv
 
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""
@@ -1420,7 +1499,7 @@ class ExpressionChecker:
                     if not self.chk.typing_mode_full():
                         return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
-                                                 is_lvalue, True,
+                                                 is_lvalue, True, False,
                                                  self.named_type, self.not_ready_callback,
                                                  self.msg, base)
         else:
@@ -1451,59 +1530,72 @@ class ExpressionChecker:
                                          type_name: str,
                                          id_for_messages: str) -> Type:
         """Type check a generator expression or a list comprehension."""
-        self.check_for_comp(gen)
+        with self.chk.binder.frame_context():
+            self.check_for_comp(gen)
 
-        # Infer the type of the list comprehension by using a synthetic generic
-        # callable type.
-        tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
-        tv = TypeVarType(tvdef)
-        constructor = CallableType(
-            [tv],
-            [nodes.ARG_POS],
-            [None],
-            self.chk.named_generic_type(type_name, [tv]),
-            self.chk.named_type('builtins.function'),
-            name=id_for_messages,
-            variables=[tvdef])
-        return self.check_call(constructor,
-                               [gen.left_expr], [nodes.ARG_POS], gen)[0]
+            # Infer the type of the list comprehension by using a synthetic generic
+            # callable type.
+            tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+            tv = TypeVarType(tvdef)
+            constructor = CallableType(
+                [tv],
+                [nodes.ARG_POS],
+                [None],
+                self.chk.named_generic_type(type_name, [tv]),
+                self.chk.named_type('builtins.function'),
+                name=id_for_messages,
+                variables=[tvdef])
+            return self.check_call(constructor,
+                                [gen.left_expr], [nodes.ARG_POS], gen)[0]
 
-    def visit_dictionary_comprehension(self, e: DictionaryComprehension):
+    def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
-        self.check_for_comp(e)
+        with self.chk.binder.frame_context():
+            self.check_for_comp(e)
 
-        # Infer the type of the list comprehension by using a synthetic generic
-        # callable type.
-        ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
-        vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
-        kt = TypeVarType(ktdef)
-        vt = TypeVarType(vtdef)
-        constructor = CallableType(
-            [kt, vt],
-            [nodes.ARG_POS, nodes.ARG_POS],
-            [None, None],
-            self.chk.named_generic_type('builtins.dict', [kt, vt]),
-            self.chk.named_type('builtins.function'),
-            name='<dictionary-comprehension>',
-            variables=[ktdef, vtdef])
-        return self.check_call(constructor,
-                               [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
+            # Infer the type of the list comprehension by using a synthetic generic
+            # callable type.
+            ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
+            vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+            kt = TypeVarType(ktdef)
+            vt = TypeVarType(vtdef)
+            constructor = CallableType(
+                [kt, vt],
+                [nodes.ARG_POS, nodes.ARG_POS],
+                [None, None],
+                self.chk.named_generic_type('builtins.dict', [kt, vt]),
+                self.chk.named_type('builtins.function'),
+                name='<dictionary-comprehension>',
+                variables=[ktdef, vtdef])
+            return self.check_call(constructor,
+                                   [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e)[0]
 
     def check_for_comp(self, e: Union[GeneratorExpr, DictionaryComprehension]) -> None:
         """Check the for_comp part of comprehensions. That is the part from 'for':
         ... for x in y if z
+
+        Note: This adds the type information derived from the condlists to the current binder.
         """
-        with self.chk.binder.frame_context():
-            for index, sequence, conditions in zip(e.indices, e.sequences,
-                                                   e.condlists):
-                sequence_type = self.chk.analyze_iterable_item_type(sequence)
-                self.chk.analyze_index_variables(index, sequence_type, e)
-                for condition in conditions:
-                    self.accept(condition)
+        for index, sequence, conditions in zip(e.indices, e.sequences,
+                                               e.condlists):
+            sequence_type = self.chk.analyze_iterable_item_type(sequence)
+            self.chk.analyze_index_variables(index, sequence_type, e)
+            for condition in conditions:
+                self.accept(condition)
+
+                # values are only part of the comprehension when all conditions are true
+                true_map, _ = mypy.checker.find_isinstance_check(
+                    condition, self.chk.type_map,
+                    self.chk.typing_mode_weak()
+                )
+
+                if true_map:
+                    for var, type in true_map.items():
+                        self.chk.binder.push(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
-        self.check_not_void(cond_type, e)
+        self.check_usable_type(cond_type, e)
         ctx = self.chk.type_context[-1]
 
         # Gain type information from isinstance if it is there
@@ -1556,9 +1648,9 @@ class ExpressionChecker:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
 
-    def check_not_void(self, typ: Type, context: Context) -> None:
+    def check_usable_type(self, typ: Type, context: Context) -> None:
         """Generate an error if type is Void."""
-        self.chk.check_not_void(typ, context)
+        self.chk.check_usable_type(typ, context)
 
     def is_boolean(self, typ: Type) -> bool:
         """Is type compatible with bool?"""
@@ -1579,8 +1671,21 @@ class ExpressionChecker:
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-        return is_subtype(typ, self.chk.named_generic_type(
-            'builtins.dict', [self.named_type('builtins.str'), AnyType()]))
+        if self.chk.options.python_version[0] >= 3:
+            return is_subtype(typ, self.chk.named_generic_type(
+                'builtins.dict', [self.named_type('builtins.str'),
+                                  AnyType()]))
+        else:
+            return (
+                is_subtype(typ, self.chk.named_generic_type(
+                    'builtins.dict',
+                    [self.named_type('builtins.str'),
+                     AnyType()]))
+                or
+                is_subtype(typ, self.chk.named_generic_type(
+                    'builtins.dict',
+                    [self.named_type('builtins.unicode'),
+                     AnyType()])))
 
     def has_non_method(self, typ: Type, member: str) -> bool:
         """Does type have a member variable / property with the given name?"""
@@ -1629,9 +1734,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
     argument type with the given index.
     """
     ncallee = len(callee_kinds)
-    map = [None] * ncallee  # type: List[List[int]]
-    for i in range(ncallee):
-        map[i] = []
+    map = [[] for i in range(ncallee)]  # type: List[List[int]]
     j = 0
     for i, kind in enumerate(caller_kinds):
         if kind == nodes.ARG_POS:
@@ -1652,8 +1755,9 @@ def map_actuals_to_formals(caller_kinds: List[int],
                         if callee_kinds[j] != nodes.ARG_STAR2:
                             map[j].append(i)
                         else:
-                            raise NotImplementedError()
-                        j += 1
+                            break
+                        if callee_kinds[j] != nodes.ARG_STAR:
+                            j += 1
             else:
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
@@ -1662,6 +1766,8 @@ def map_actuals_to_formals(caller_kinds: List[int],
                         break
                     else:
                         map[j].append(i)
+                    if callee_kinds[j] == nodes.ARG_STAR:
+                        break
                     j += 1
         elif kind == nodes.ARG_NAMED:
             name = caller_names[i]
@@ -1761,9 +1867,14 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
-    if not experiments.STRICT_OPTIONAL and isinstance(actual, NoneTyp):
-        # NoneTyp matches anything if we're not doing strict Optional checking
-        return 2
+    if isinstance(actual, NoneTyp):
+        if not experiments.STRICT_OPTIONAL:
+            # NoneTyp matches anything if we're not doing strict Optional checking
+            return 2
+        else:
+            # NoneType is a subtype of object
+            if isinstance(formal, Instance) and formal.type.fullname() == "builtins.object":
+                return 2
     if isinstance(actual, UnionType):
         return max(overload_arg_similarity(item, formal)
                    for item in actual.items)

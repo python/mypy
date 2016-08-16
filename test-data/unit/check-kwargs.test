@@ -51,7 +51,7 @@ from typing import List
 def f(a: 'A', b: 'List[A]') -> None: pass
 f(b=[], a=A())
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testGivingSameKeywordArgumentTwice]
 import typing
@@ -136,7 +136,7 @@ f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
 f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
 from typing import List
@@ -152,7 +152,7 @@ f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
 import typing
@@ -170,7 +170,7 @@ def f( **kwargs: 'A') -> None:
     d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[A, Any])
     d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[Any, str])
 class A: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 main: note: In function "f":
 
@@ -181,7 +181,7 @@ def f(**kwargs) -> None:
     d2 = kwargs # type: Dict[str, str]
     d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[A, Any])
 class A: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 main: note: In function "f":
 
@@ -196,7 +196,7 @@ f(A())   # E: Too many arguments for "f"
 # Perhaps a better message would be "Too many *positional* arguments..."
 class A: pass
 class B: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testCallingFunctionWithKeywordVarArgs]
 from typing import Dict
@@ -209,7 +209,7 @@ f(**d2)        # E: Argument 1 to "f" has incompatible type **Dict[str, B]; expe
 f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type **Dict[str, B]; expected "A"
 class A: pass
 class B: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
@@ -218,7 +218,7 @@ d = None # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a dictionary
 class A: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
 from typing import Any, Dict
@@ -229,7 +229,7 @@ d2 = None # type: Dict[str, A]
 f(**d2) # E: Argument 1 to "f" has incompatible type **Dict[str, A]; expected "B"
 class A: pass
 class B: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testBothKindsOfVarArgs]
 from typing import Any, List, Dict
@@ -238,7 +238,7 @@ l = None # type: List[Any]
 d = None # type: Dict[Any, Any]
 f(*l, **d)
 class A: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testKeywordArgumentAndCommentSignature]
 import typing
@@ -265,7 +265,7 @@ f(z=1)
 f(x=1, y=1)
 f(x='', y=1) # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(x=1, y='') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testFunctionWithBareAsteriskAndVarArgs]
 class A: pass
@@ -276,7 +276,7 @@ f(1, '', '')
 f(1, y=A(), z=B())
 f(1, '', '', y=A(), z=B())
 f(1, '', '', z=B(), y=A())
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testFunctionWithBareAsteriskAndVarArgs2]
 class A: pass
@@ -285,7 +285,7 @@ def f(x: int, *args: str, *, y: A = None, **kw: B) -> None: pass
 f(1, 2) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 f(1, y=1) # E: Argument 2 to "f" has incompatible type "int"; expected "A"
 f(1, z=1) # E: Argument 2 to "f" has incompatible type "int"; expected "B"
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testCallsWithStars]
 def f(a: int) -> None:
@@ -304,4 +304,9 @@ f(**b) # E: Argument 1 to "f" has incompatible type **Dict[str, str]; expected "
 
 c = {0: 0}
 f(**c) # E: Keywords must be strings
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
+
+[case testCallStar2WithStar]
+def f(**k): pass
+f(*(1, 2))  # E: Too many arguments for "f"
+[builtins fixtures/dict.pyi]

@@ -10,12 +10,15 @@ flag (or its long form ``--help``)::
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--py2] [-s] [--silent]
               [--almost-silent] [--disallow-untyped-calls]
-              [--disallow-untyped-defs] [--check-untyped-defs] [--fast-parser]
-              [-i] [-f] [--pdb] [--use-python-path] [--stats] [--inferstats]
-              [--custom-typing MODULE] [--html-report DIR]
+              [--disallow-untyped-defs] [--check-untyped-defs]
+              [--warn-incomplete-stub] [--warn-redundant-casts]
+              [--warn-unused-ignores] [--fast-parser] [-i] [--cache-dir DIR]
+              [--strict-optional] [-f] [--pdb] [--use-python-path] [--stats]
+              [--inferstats] [--custom-typing MODULE] [--html-report DIR]
               [--old-html-report DIR] [--xslt-html-report DIR]
               [--xml-report DIR] [--txt-report DIR] [--xslt-txt-report DIR]
-              [--linecount-report DIR] [-m MODULES] [-c COMMAND] [-p PACKAGE]
+              [--linecount-report DIR] [-m MODULE] [-c PROGRAM_TEXT]
+              [-p PACKAGE]
               [files [files ...]]
   (etc., too long to show everything here)
 
@@ -213,13 +216,15 @@ you should add another file to the command line.  This won't directly
 flag the error in the above fragment, but it will help you realize
 that ``BaseClass`` is not really imported.
 
-Other flags changing what's checked
-***********************************
+Additional command line flags
+*****************************
 
 Here are some more useful flags:
 
-- ``--disallow-untyped-calls`` reports an error whenever a function
-  with type annotations calls a function defined without annotations.
+- ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
+  types and ``None`` values. Without this option, mypy doesn't generally check the
+  use of ``None`` values -- they are valid everywhere. See :ref:`strict_optional` for
+  more about this feature.
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
@@ -229,6 +234,18 @@ Here are some more useful flags:
   has type annotations.  (By default the bodies of functions without
   annotations are not type checked.)  It will assume all arguments
   have type ``Any`` and always infer ``Any`` as the return type.
+
+- ``--disallow-untyped-calls`` reports an error whenever a function
+  with type annotations calls a function defined without annotations.
+
+- ``--incremental`` is an experimental option that enables incremental
+  type checking. When enabled, mypy caches results from previous runs
+  to speed up type checking. Incremental mode can help when most parts
+  of your program haven't changed since the previous mypy run.
+
+- ``--fast-parser`` enables an experimental parser implemented in C that
+  is faster than the default parser and supports multi-line comment
+  function annotations (see :ref:`multi_line_annotation` for the details).
 
 For the remaining flags you can read the full ``mypy -h`` output.
 

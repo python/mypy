@@ -15,11 +15,11 @@ from mypy.nodes import (
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
-    SymbolTable, RefExpr, TypeVarExpr, PromoteExpr,
+    SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.visitor import NodeVisitor
@@ -339,6 +339,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_yield_expr(self, node: YieldExpr) -> Node:
         return YieldExpr(self.node(node.expr))
 
+    def visit_await_expr(self, node: AwaitExpr) -> Node:
+        return AwaitExpr(self.node(node.expr))
+
     def visit_call_expr(self, node: CallExpr) -> Node:
         return CallExpr(self.node(node.callee),
                         self.nodes(node.args),
@@ -449,6 +452,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
         return TypeAliasExpr(node.type)
+
+    def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
+        return NewTypeExpr(node.info)
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> Node:
         return NamedTupleExpr(node.info)

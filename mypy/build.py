@@ -38,6 +38,7 @@ from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
+from mypy.version import __version__
 
 
 # We need to know the location of this file to load data, but
@@ -136,7 +137,7 @@ def build(sources: List[BuildSource],
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).  This is a test-only feature, so assume our files are laid out
         # as in the source tree.
-        root_dir = os.path.dirname(os.path.dirname(__file__))
+        root_dir = dirname(dirname(__file__))
         lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
     else:
         for source in sources:
@@ -171,7 +172,9 @@ def build(sources: List[BuildSource],
                            ignore_prefix=os.getcwd(),
                            source_set=source_set,
                            reports=reports,
-                           options=options)
+                           options=options,
+                           version_id=__version__,
+                           )
 
     try:
         dispatch(sources, manager)
@@ -281,8 +284,10 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', float),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
+                        ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
+                        ('version_id', str),  # mypy version for cache invalidation
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
@@ -317,6 +322,8 @@ class BuildManager:
       errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
+      stale_modules:   Set of modules that needed to be rechecked
+      version_id:      The current mypy version (based on commit id when possible)
     """
 
     def __init__(self, data_dir: str,
@@ -324,20 +331,23 @@ class BuildManager:
                  ignore_prefix: str,
                  source_set: BuildSourceSet,
                  reports: Reports,
-                 options: Options) -> None:
+                 options: Options,
+                 version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors()
+        self.errors = Errors(options.suppress_error_context)
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
         self.reports = reports
         self.options = options
+        self.version_id = version_id
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors, options=options)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors, self.modules, options=options)
         self.missing_modules = set()  # type: Set[str]
+        self.stale_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -367,6 +377,11 @@ class BuildManager:
                 if isinstance(imp, Import):
                     pri = PRI_MED if imp.is_top_level else PRI_LOW
                     for id, _ in imp.ids:
+                        ancestor_parts = id.split(".")[:-1]
+                        ancestors = []
+                        for part in ancestor_parts:
+                            ancestors.append(part)
+                            res.append((PRI_LOW, ".".join(ancestors), imp.line))
                         res.append((pri, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
@@ -407,25 +422,11 @@ class BuildManager:
         tree = parse(source, path, self.errors, options=self.options)
         tree._fullname = id
 
-        # We don't want to warn about 'type: ignore' comments on
-        # imports, but we're about to modify tree.imports, so grab
-        # these first.
-        import_lines = set(node.line for node in tree.imports)
-
-        # Skip imports that have been ignored (so that we can ignore a C extension module without
-        # stub, for example), except for 'from x import *', because we wouldn't be able to
-        # determine which names should be defined unless we process the module. We can still
-        # ignore errors such as redefinitions when using the latter form.
-        imports = [node for node in tree.imports
-                   if node.line not in tree.ignored_lines or isinstance(node, ImportAll)]
-        tree.imports = imports
-
         if self.errors.num_messages() != num_errs:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
         self.errors.set_file_ignored_lines(path, tree.ignored_lines)
-        self.errors.mark_file_ignored_lines_used(path, import_lines)
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
@@ -505,7 +506,7 @@ find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 find_module_listdir_cache = {}  # type: Dict[str, Optional[List[str]]]
 
 
-def find_module_clear_caches():
+def find_module_clear_caches() -> None:
     find_module_cache.clear()
     find_module_dir_cache.clear()
     find_module_listdir_cache.clear()
@@ -544,12 +545,11 @@ def is_file(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def find_module(id: str, lib_path: Iterable[str]) -> str:
+def find_module(id: str, lib_path_arg: Iterable[str]) -> str:
     """Return the path of the module source file, or None if not found."""
-    if not isinstance(lib_path, tuple):
-        lib_path = tuple(lib_path)
+    lib_path = tuple(lib_path_arg)
 
-    def find():
+    def find() -> Optional[str]:
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
         # that only once and cache it for when we look for modules like 'foo.bar.blah'
@@ -665,22 +665,21 @@ def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> str:
         return source_bytearray.decode(encoding)
 
 
-MYPY_CACHE = '.mypy_cache'
-
-
-def get_cache_names(id: str, path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+def get_cache_names(id: str, path: str, cache_dir: str,
+                    pyversion: Tuple[int, int]) -> Tuple[str, str]:
     """Return the file names for the cache files.
 
     Args:
       id: module ID
       path: module path (used to recognize packages)
+      cache_dir: cache directory
       pyversion: Python version (major, minor)
 
     Returns:
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    prefix = os.path.join(MYPY_CACHE, '%d.%d' % pyversion, *id.split('.'))
+    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
@@ -700,7 +699,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json = get_cache_names(id, path, manager.options.python_version)
+    meta_json, data_json = get_cache_names(
+        id, path, manager.options.cache_dir, manager.options.python_version)
     manager.trace('Looking for {} {}'.format(id, data_json))
     if not os.path.exists(meta_json):
         return None
@@ -720,8 +720,10 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('data_mtime'),
         data_json,
         meta.get('suppressed', []),
+        meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
+        meta.get('version_id'),
     )
     if (m.id != id or m.path != path or
             m.mtime is None or m.size is None or
@@ -729,7 +731,9 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         return None
 
     # Ignore cache if generated by an older mypy version.
-    if m.options is None or len(m.dependencies) != len(m.dep_prios):
+    if (m.version_id != manager.version_id
+            or m.options is None
+            or len(m.dependencies) != len(m.dep_prios)):
         return None
 
     # Ignore cache if (relevant) options aren't the same.
@@ -743,6 +747,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if st.st_mtime != m.mtime or st.st_size != m.size:
         manager.log('Metadata abandoned because of modified file {}'.format(path))
         return None
+
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
@@ -765,13 +770,13 @@ OPTIONS_AFFECTING_CACHE = [
 ]
 
 
-def random_string():
+def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
-                dep_prios: List[int],
+                child_modules: List[str], dep_prios: List[int],
                 manager: BuildManager) -> None:
     """Write cache files for a module.
 
@@ -789,7 +794,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     st = os.stat(path)  # TODO: Errors
     mtime = st.st_mtime
     size = st.st_size
-    meta_json, data_json = get_cache_names(id, path, manager.options.python_version)
+    meta_json, data_json = get_cache_names(
+        id, path, manager.options.cache_dir, manager.options.python_version)
     manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
     data = tree.serialize()
     parent = os.path.dirname(data_json)
@@ -810,8 +816,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
+            'child_modules': child_modules,
             'options': select_options_affecting_cache(manager.options),
             'dep_prios': dep_prios,
+            'version_id': manager.version_id,
             }
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
@@ -992,6 +1000,9 @@ class State:
     # Parent package, its parent, etc.
     ancestors = None  # type: Optional[List[str]]
 
+    # A list of all direct submodules of a given module
+    child_modules = None  # type: Optional[Set[str]]
+
     # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
 
@@ -1089,11 +1100,13 @@ class State:
             assert len(self.meta.dependencies) == len(self.meta.dep_prios)
             self.priorities = {id: pri
                                for id, pri in zip(self.meta.dependencies, self.meta.dep_prios)}
+            self.child_modules = set(self.meta.child_modules)
             self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
             self.suppressed = []
+            self.child_modules = set()
 
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
         # TODO: Read the path (the __init__.py file) and return
@@ -1140,11 +1153,18 @@ class State:
         # self.meta.dependencies when a dependency is dropped due to
         # suppression by --silent-imports.  However when a suppressed
         # dependency is added back we find out later in the process.
-        return self.meta is not None and self.dependencies == self.meta.dependencies
+        return (self.meta is not None
+                and self.dependencies == self.meta.dependencies
+                and self.child_modules == set(self.meta.child_modules))
+
+    def has_new_submodules(self) -> bool:
+        """Return if this module has new submodules after being loaded from a warm cache."""
+        return self.meta is not None and self.child_modules != set(self.meta.child_modules)
 
     def mark_stale(self) -> None:
         """Throw away the cache data for this file, marking it as stale."""
         self.meta = None
+        self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
         """Raise CompileError if a blocking error is detected."""
@@ -1161,7 +1181,7 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0)
+            report_internal_error(err, self.path, 0, self.manager.errors)
         self.manager.errors.set_import_context(save_import_context)
         self.check_blockers()
 
@@ -1300,7 +1320,7 @@ class State:
         if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             write_cache(self.id, self.path, self.tree,
-                        list(self.dependencies), list(self.suppressed),
+                        list(self.dependencies), list(self.suppressed), list(self.child_modules),
                         dep_prios,
                         self.manager)
 
@@ -1309,7 +1329,7 @@ Graph = Dict[str, State]
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
-    manager.log("Using new dependency manager")
+    manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
@@ -1324,6 +1344,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
     new = collections.deque()  # type: collections.deque[State]
+    entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:
         try:
@@ -1332,15 +1353,20 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath)
-            manager.errors.report(1, "Duplicate module named '%s'" % st.id)
+            manager.errors.report(-1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)
+        entry_points.add(bs.module)
     # Collect dependencies.  We go breadth-first.
     while new:
         st = new.popleft()
-        for dep in st.ancestors + st.dependencies:
-            if dep not in graph:
+        for dep in st.ancestors + st.dependencies + st.suppressed:
+            # We don't want to recheck imports marked with '# type: ignore'
+            # so we ignore any suppressed module not explicitly re-included
+            # from the command line.
+            ignored = dep in st.suppressed and dep not in entry_points
+            if dep not in graph and not ignored:
                 try:
                     if dep in st.ancestors:
                         # TODO: Why not 'if dep not in st.dependencies' ?
@@ -1358,6 +1384,16 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
+            if dep in st.ancestors and dep in graph:
+                graph[dep].child_modules.add(st.id)
+            if dep in graph and dep in st.suppressed:
+                # Previously suppressed file is now visible
+                if dep in st.suppressed:
+                    st.suppressed.remove(dep)
+                    st.dependencies.append(dep)
+    for id, g in graph.items():
+        if g.has_new_submodules():
+            g.parse_file()
     return graph
 
 

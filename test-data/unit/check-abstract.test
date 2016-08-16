@@ -157,6 +157,33 @@ class B(A): pass
 B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
+[case testInstantiatingClassWithInheritedAbstractMethodAndSuppression]
+from abc import abstractmethod, ABCMeta
+import typing
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def a(self): pass
+    @abstractmethod
+    def b(self): pass
+    @abstractmethod
+    def c(self): pass
+    @abstractmethod
+    def d(self): pass
+    @abstractmethod
+    def e(self): pass
+    @abstractmethod
+    def f(self): pass
+    @abstractmethod
+    def g(self): pass
+    @abstractmethod
+    def h(self): pass
+    @abstractmethod
+    def i(self): pass
+    @abstractmethod
+    def j(self): pass
+a = A() # E: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', ... and 'j' (7 methods suppressed)
+[out]
+
 
 -- Implementing abstract methods
 -- -----------------------------
@@ -590,7 +617,7 @@ class B(A):
     def x(self) -> int: pass
 b = B()
 b.x() # E: "int" not callable
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testImplementReradWriteAbstractPropertyViaProperty]
 from abc import abstractproperty, ABCMeta
@@ -606,7 +633,7 @@ class B(A):
     def x(self, v: int) -> None: pass
 b = B()
 b.x.y # E: "int" has no attribute "y"
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 
 [case testImplementAbstractPropertyViaPropertyInvalidType]
 from abc import abstractproperty, ABCMeta
@@ -618,7 +645,7 @@ class B(A):
     def x(self) -> str: pass # E
 b = B()
 b.x() # E
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In class "B":
 main:7: error: Return type of "x" incompatible with supertype "A"
@@ -635,7 +662,7 @@ class B(A):
         self.x = 1 # E
 b = B() # E
 b.x.y # E
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In member "__init__" of class "B":
 main:7: error: Property "x" defined in "B" is read-only
@@ -652,7 +679,7 @@ class B(A):
     @property
     def x(self) -> int:
         return super().x.y # E: "int" has no attribute "y"
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In member "x" of class "B":
 
@@ -670,7 +697,7 @@ class B(A):
     @x.setter
     def x(self, v: int) -> None:
         super().x = '' # E
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In member "x" of class "B":
 main:10: error: "int" has no attribute "y"
@@ -689,7 +716,7 @@ class B(A):
     def x(self) -> int: pass
 b = B()
 b.x.y # E
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 main: note: In class "B":
 main:8: error: Read-only property cannot override read-write property

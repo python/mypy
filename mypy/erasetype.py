@@ -5,6 +5,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
     PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
 )
+from mypy import experiments
 
 
 def erase_type(typ: Type) -> Type:
@@ -65,7 +66,11 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        return CallableType([], [], [], Void(), t.fallback)
+        if experiments.STRICT_OPTIONAL:
+            ret_type = NoneTyp(is_ret_type=True)  # type: Type
+        else:
+            ret_type = Void()
+        return CallableType([], [], [], ret_type, t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         return t.items()[0].accept(self)
@@ -78,31 +83,6 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType(t.item.accept(self), line=t.line)
-
-
-def erase_generic_types(t: Type) -> Type:
-    """Remove generic type arguments and type variables from a type.
-
-    Replace all types A[...] with simply A, and all type variables
-    with 'Any'.
-    """
-
-    if t:
-        return t.accept(GenericTypeEraser())
-    else:
-        return None
-
-
-class GenericTypeEraser(TypeTranslator):
-    """Implementation of type erasure"""
-
-    # FIX: What about generic function types?
-
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        return AnyType()
-
-    def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, [], t.line)
 
 
 def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:

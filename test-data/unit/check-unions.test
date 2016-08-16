@@ -9,7 +9,7 @@ def f(x: Union[int, str]) -> None:
     elif isinstance(x, str):
         z = 'a'
         z = x
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testUnion2]
 from typing import Union
@@ -20,7 +20,7 @@ def f(x: Union[int, str]) -> None:
     else:
         z = 'a'
         z = x
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testUnion3]
 from typing import Union
@@ -31,7 +31,7 @@ def f(x: Union[int, str]) -> None:
     else:
         z = 2
         z = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -54,7 +54,7 @@ w.y = 'a'     # E: Incompatible types in assignment (expression has type "str", 
 y = x.y       # E: Some element of union has no attribute "y"
 z = x.y       # E: Some element of union has no attribute "y"
 
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testUnionMethodCalls]
 from typing import Union
@@ -75,14 +75,14 @@ y.foo()
 i = x.foo()
 i = y.foo()   # E: Incompatible types in assignment (expression has type "Union[int, str]", variable has type "int")
 
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testUnionIndexing]
 from typing import Union, List
 x = None # type: Union[List[int], str]
 x[2]
 x[2] + 1 # E: Unsupported operand types for + (likely involving Union)
-[builtins fixtures/isinstancelist.py]
+[builtins fixtures/isinstancelist.pyi]
 
 [case testUnionAsOverloadArg]
 from typing import Union, overload
@@ -118,7 +118,7 @@ def f(x: List[T]) -> Union[T, int]: pass
 def g(y: str) -> None: pass
 a = f([1])
 g(a) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testUnionSimplificationGenericClass]
 from typing import TypeVar, Union, Generic

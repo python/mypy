@@ -17,7 +17,7 @@ def f( *b: 'B') -> None:
 
 class B: pass
 class C: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 main: note: In function "f":
 
@@ -29,7 +29,7 @@ def want_sequence(types: Sequence[type]): pass
 def test(*t: type) -> None:
     want_tuple(t)
     want_sequence(t)
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 
 
@@ -59,7 +59,7 @@ def g() -> None: pass
 class A: pass
 class B(A): pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallingVarArgsFunctionWithAlsoNormalArgs]
 
@@ -79,7 +79,7 @@ def f(a: 'C', *b: 'A') -> None: pass
 class A: pass
 class B(A): pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallingVarArgsFunctionWithDefaultArgs]
 
@@ -101,7 +101,7 @@ def f(a: 'C' = None, *b: 'A') -> None:
 class A: pass
 class B(A): pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallVarargsFunctionWithIterable]
 from typing import Iterable
@@ -110,7 +110,26 @@ it2 = None  # type: Iterable[str]
 def f(*x: int) -> None: pass
 f(*it1)
 f(*it2) # E: Argument 1 to "f" has incompatible type *Iterable[str]; expected "int"
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
+
+[case testCallVarargsFunctionWithIterableAndPositional]
+# options: fast_parser
+from typing import Iterable
+it1 = None  # type: Iterable[int]
+def f(*x: int) -> None: pass
+f(*it1, 1, 2)
+f(*it1, 1, *it1, 2)
+f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+[builtins fixtures/for.pyi]
+
+[case testCallVarargsFunctionWithTupleAndPositional]
+# options: fast_parser
+def f(*x: int) -> None: pass
+it1 = (1, 2)
+f(*it1, 1, 2)
+f(*it1, 1, *it1, 2)
+f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+[builtins fixtures/for.pyi]
 
 
 -- Calling varargs function + type inference
@@ -142,7 +161,7 @@ def f( *a: T) -> T:
 class A: pass
 class B(A): pass
 class C: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testTypeInferenceWithCalleeVarArgsAndDefaultArgs]
 from typing import TypeVar
@@ -163,7 +182,7 @@ def f(a: T, b: T = None, *c: T) -> T:
     pass
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Calling normal function with varargs
@@ -188,7 +207,7 @@ def f(a: 'A', b: 'B') -> None:
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:7: error: Argument 1 to "f" has incompatible type *List[A]; expected "B"
 
@@ -217,7 +236,7 @@ class A: pass
 class B: pass
 class C: pass
 class CC(C): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 [case testInvalidVarArg]
 
@@ -231,7 +250,7 @@ def f(a: 'A') -> None:
     pass
 
 class A: pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Calling varargs function with varargs
@@ -257,7 +276,7 @@ def f(a: 'A', *b: 'B') -> None: pass
 def g(a: 'A', *b: 'A') -> None: pass
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:3: error: Argument 1 to "f" has incompatible type *List[A]; expected "B"
 main:4: error: Argument 2 to "f" has incompatible type *List[A]; expected "B"
@@ -291,7 +310,7 @@ class A: pass
 class B: pass
 class C: pass
 class CC(C): pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Varargs special cases
@@ -312,7 +331,7 @@ g(a, a, *d)
 def f(a: 'A') -> None: pass
 def g(a: 'A', *b: 'A') -> None: pass
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:3: error: Too many arguments for "f"
 main:4: error: Too many arguments for "f"
@@ -335,7 +354,7 @@ def g( *a: 'B') -> None:
 
 class A: pass
 class B(A): pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallerVarArgsAndDefaultArgs]
 
@@ -356,7 +375,7 @@ def f(a: 'A', b: 'B' = None, *c: 'B') -> None:
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:3: error: Too few arguments for "f"
 main:4: error: Argument 2 to "f" has incompatible type *List[A]; expected "B"
@@ -366,7 +385,7 @@ main:6: error: Argument 1 to "f" has incompatible type *"Tuple[A, A, B]"; expect
 [case testVarArgsAfterKeywordArgInCall1]
 def f(x: int, y: str) -> None: pass
 f(x=1, *[2])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:2: error: "f" gets multiple values for keyword argument "x"
 main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str"
@@ -374,7 +393,7 @@ main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str
 [case testVarArgsAfterKeywordArgInCall2]
 def f(x: int, y: str) -> None: pass
 f(y='x', *[1])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:2: error: "f" gets multiple values for keyword argument "y"
 main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str"
@@ -382,17 +401,17 @@ main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str
 [case testVarArgsAfterKeywordArgInCall3]
 def f(x: int, y: str) -> None: pass
 f(y='x', *(1,))
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testVarArgsAfterKeywordArgInCall4]
 def f(x: int, *, y: str) -> None: pass
 f(y='x', *[1])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testVarArgsAfterKeywordArgInCall5]
 def f(x: int, *, y: str) -> None: pass
 f(y='x', *(1,))
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Overloads + varargs
@@ -437,7 +456,7 @@ def f(a: A = None, *b: B) -> A: pass
 
 @overload
 def f(a: B, *b: B) -> B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Caller varargs + type inference
@@ -467,7 +486,7 @@ def f(a: S, *b: T) -> Tuple[S, T]:
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:6: error: Argument 1 to "f" has incompatible type *List[A]; expected "B"
 main:7: error: Argument 1 to "f" has incompatible type *List[A]; expected "B"
@@ -496,7 +515,7 @@ def f(a: S, b: T) -> Tuple[S, T]: pass
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallerVarargsAndComplexTypeInference]
 from typing import List, TypeVar, Generic, Tuple
@@ -520,7 +539,7 @@ class G(Generic[T]):
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:9: error: Incompatible types in assignment (expression has type List[A], variable has type "A")
 main:9: error: Incompatible types in assignment (expression has type List[None], variable has type List[A])
@@ -541,7 +560,7 @@ f(1)
 f(1, 2)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Subtyping
@@ -555,7 +574,7 @@ def f(*x: int) -> None: pass
 def g(*x: str) -> None: pass
 x = f
 x = g # E: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 

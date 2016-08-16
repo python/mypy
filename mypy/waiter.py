@@ -161,7 +161,7 @@ class Waiter:
 
     def _poll_current(self) -> Tuple[int, int]:
         while True:
-            time.sleep(.25)
+            time.sleep(.05)
             for pid in self.current:
                 cmd = self.current[pid][1]
                 code = cmd.process.poll()
@@ -281,6 +281,18 @@ def parse_test_stats_from_output(output: str, fail_type: Optional[str]) -> Tuple
     Return tuple (number of tests, number of test failures). Default
     to the entire task representing a single test as a fallback.
     """
+
+    # pytest
+    m = re.search('^=+ (.*) in [0-9.]+ seconds =+\n\Z', output, re.MULTILINE)
+    if m:
+        counts = {}
+        for part in m.group(1).split(', '):  # e.g., '3 failed, 32 passed, 345 deselected'
+            count, key = part.split()
+            counts[key] = int(count)
+        return (sum(c for k, c in counts.items() if k != 'deselected'),
+                counts.get('failed', 0))
+
+    # myunit
     m = re.search('^([0-9]+)/([0-9]+) test cases failed(, ([0-9]+) skipped)?.$', output,
                   re.MULTILINE)
     if m:
@@ -289,6 +301,7 @@ def parse_test_stats_from_output(output: str, fail_type: Optional[str]) -> Tuple
                   re.MULTILINE)
     if m:
         return int(m.group(1)), 0
+
     # Couldn't find test counts, so fall back to single test per tasks.
     if fail_type is not None:
         return 1, 1
