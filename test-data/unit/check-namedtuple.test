@@ -235,6 +235,16 @@ x = None  # type: X
 x = x._replace(x=5)
 x = x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
 
+
+[case testNamedTupleMake]
+from typing import NamedTuple
+
+X = NamedTuple('X', [('x', int), ('y', str)])
+x = None  # type: X
+x = X._make([5, 'a'])
+
+[builtins fixtures/list.py]
+
 [case testNamedTupleFields]
 from typing import NamedTuple
 

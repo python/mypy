@@ -61,7 +61,7 @@ from mypy.nodes import (
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, COVARIANT, CONTRAVARIANT,
@@ -76,7 +76,7 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType,
-    NamedTupleType
+    NamedTupleType, TypeType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
@@ -1531,32 +1531,47 @@ class SemanticAnalyzer(NodeVisitor):
         tup = NamedTupleType(name, items, types, self.named_type('__builtins__.tuple', types))
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
+        self.enter_class(class_def)
         info = namedtuple_type_info(tup, symbols, class_def)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         this_type = self_type(info)
         add_field = partial(self.add_namedtuple_field, symbols, info)
-        add_method = partial(self.add_namedtuple_method, symbols, info, this_type)
         strtype = self.named_type('__builtins__.str')
 
         for var in vars:
             add_field(var, is_property=True)
 
-        tuple_of_strins = TupleType([strtype for _ in items],
-                                    self.named_type('__builtins__.tuple', [AnyType()]))
-        add_field(Var('_fields', tuple_of_strins), is_initialized_in_class=True)
-        add_field(Var('_source', strtype), is_initialized_in_class=True)
+        tuple_of_strings = TupleType([strtype for _ in items],
+                                     self.named_type('__builtins__.tuple', [AnyType()]))
+        add_field(Var('_fields', tuple_of_strings),
+                  is_initialized_in_class=True)
+        add_field(Var('_field_types', UnboundType('Dict', [strtype, AnyType()])),
+                  is_initialized_in_class=True)
+        add_field(Var('_source', strtype),
+                  is_initialized_in_class=True)
 
-        add_method('_replace', this_type,
-                   self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
-        add_method('__init__', NoneTyp(),
-                   self.factory_args(vars, ARG_POS), info.name())
+        add_method = partial(self.add_namedtuple_method, symbols, info, this_type)
+        add_method('_replace', ret=this_type,
+                   args=self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
+        add_method('__init__', ret=NoneTyp(),
+                   args=self.factory_args(vars, ARG_POS), name=info.name())
         # TODO: refine to OrderedDict[str, Union[types]]
-        add_method('_asdict', UnboundType('OrderedDict', is_ret_type=True), [])
+        add_method('_asdict', ret=UnboundType('collections.OrderedDict', is_ret_type=True),
+                   args=[])
+
+        # TODO: refine signature
+        union = UnboundType('Iterable', [UnionType(types)])
+        add_method('_make', ret=this_type, is_classmethod=True,
+                   args=[Argument(Var('iterable', union), union, None, ARG_POS),
+                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
+                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
+        self.leave_class()
         return info
 
-    def add_namedtuple_field(self, symbols, info, var,
-                             is_initialized_in_class=False, is_property=False):
+    def add_namedtuple_field(self, symbols: SymbolTable, info: TypeInfo, var: Var,
+                             is_initialized_in_class: bool = False,
+                             is_property: bool = False) -> None:
         var.info = info
         var.is_initialized_in_class = is_initialized_in_class
         var.is_property = is_property
@@ -1567,16 +1582,20 @@ class SemanticAnalyzer(NodeVisitor):
         return [Argument(var, var.type, initializer, kind) for var in vars]
 
     def add_namedtuple_method(self, symbols: SymbolTable, info: TypeInfo, this_type: Type,
-                              funcname: str, ret: Type, args: List[Argument], name=None) -> None:
-        args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
+                              funcname: str, ret: Type, args: List[Argument], name=None,
+                              is_classmethod=False) -> None:
+        if not is_classmethod:
+            args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
         types = [arg.type_annotation for arg in args]
         items = [arg.variable.name() for arg in args]
         arg_kinds = [arg.kind for arg in args]
         signature = CallableType(types, arg_kinds, items, ret,
                                  self.named_type('__builtins__.function'),
                                  name=name or info.name() + '.' + funcname)
+        signature.is_classmethod_class = is_classmethod
         func = FuncDef(funcname, args, Block([]), typ=signature)
         func.info = info
+        func.is_class = is_classmethod
         symbols[funcname] = SymbolTableNode(MDEF, func)
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
