@@ -761,7 +761,7 @@ def bar(a: str) -> None: pass
 bar(3)
 
 [rechecked m]
-[stale m]
+[stale]
 [out]
 main:1: note: In module imported here:
 tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "str"
