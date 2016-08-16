@@ -731,7 +731,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
-        meta.get('interface_hash', 'missing'),
+        meta.get('interface_hash', ''),
         meta.get('version_id'),
     )
     if (m.id != id or m.path != path or
@@ -1051,7 +1051,7 @@ class State:
     externally_same = True
 
     # Contains a hash of the public interface in incremental mode
-    interface_hash = "never_set"  # type: str
+    interface_hash = ""  # type: str
 
     def __init__(self,
                  id: Optional[str],
@@ -1594,8 +1594,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # would not be considered changed.
         #
         # As a workaround, this check will force a module's interface to be
-        # considered stale if anything it imports also has a stale interface
-        # to make sure these changes are caught and propagated.
+        # considered stale if anything it imports has a stale interface,
+        # which ensures these changes are caught and propagated.
         if len(stale_deps) > 0:
             for id in scc:
                 graph[id].mark_interface_stale()
