@@ -3,15 +3,16 @@
 from typing import List
 
 from mypy.myunit import (
-    Suite, assert_equal, assert_true, assert_false
+    Suite, assert_equal, assert_true, assert_false, assert_type
 )
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
-from mypy.join import join_types
+from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
-    Instance, NoneTyp, ErrorType, Overloaded, TypeType,
+    Instance, NoneTyp, ErrorType, Overloaded, TypeType, UnionType, UninhabitedType,
+    true_only, false_only
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -232,6 +233,95 @@ class TypeOpsSuite(Suite):
         assert_false(is_proper_subtype(fx.gb, fx.ga))
         assert_false(is_proper_subtype(fx.ga, fx.gb))
 
+    # can_be_true / can_be_false
+
+    def test_empty_tuple_always_false(self):
+        tuple_type = self.tuple()
+        assert_true(tuple_type.can_be_false)
+        assert_false(tuple_type.can_be_true)
+
+    def test_nonempty_tuple_always_true(self):
+        tuple_type = self.tuple(AnyType(), AnyType())
+        assert_true(tuple_type.can_be_true)
+        assert_false(tuple_type.can_be_false)
+
+    def test_union_can_be_true_if_any_true(self):
+        union_type = UnionType([self.fx.a, self.tuple()])
+        assert_true(union_type.can_be_true)
+
+    def test_union_can_not_be_true_if_none_true(self):
+        union_type = UnionType([self.tuple(), self.tuple()])
+        assert_false(union_type.can_be_true)
+
+    def test_union_can_be_false_if_any_false(self):
+        union_type = UnionType([self.fx.a, self.tuple()])
+        assert_true(union_type.can_be_false)
+
+    def test_union_can_not_be_false_if_none_false(self):
+        union_type = UnionType([self.tuple(self.fx.a), self.tuple(self.fx.d)])
+        assert_false(union_type.can_be_false)
+
+    # true_only / false_only
+
+    def test_true_only_of_false_type_is_uninhabited(self):
+        to = true_only(NoneTyp())
+        assert_type(UninhabitedType, to)
+
+    def test_true_only_of_true_type_is_idempotent(self):
+        always_true = self.tuple(AnyType())
+        to = true_only(always_true)
+        assert_true(always_true is to)
+
+    def test_true_only_of_instance(self):
+        to = true_only(self.fx.a)
+        assert_equal(str(to), "A")
+        assert_true(to.can_be_true)
+        assert_false(to.can_be_false)
+        assert_type(Instance, to)
+        # The original class still can be false
+        assert_true(self.fx.a.can_be_false)
+
+    def test_true_only_of_union(self):
+        tup_type = self.tuple(AnyType())
+        # Union of something that is unknown, something that is always true, something
+        # that is always false
+        union_type = UnionType([self.fx.a, tup_type, self.tuple()])
+        to = true_only(union_type)
+        assert_equal(len(to.items), 2)
+        assert_true(to.items[0].can_be_true)
+        assert_false(to.items[0].can_be_false)
+        assert_true(to.items[1] is tup_type)
+
+    def test_false_only_of_true_type_is_uninhabited(self):
+        fo = false_only(self.tuple(AnyType()))
+        assert_type(UninhabitedType, fo)
+
+    def test_false_only_of_false_type_is_idempotent(self):
+        always_false = NoneTyp()
+        fo = false_only(always_false)
+        assert_true(always_false is fo)
+
+    def test_false_only_of_instance(self):
+        fo = false_only(self.fx.a)
+        assert_equal(str(fo), "A")
+        assert_false(fo.can_be_true)
+        assert_true(fo.can_be_false)
+        assert_type(Instance, fo)
+        # The original class still can be true
+        assert_true(self.fx.a.can_be_true)
+
+    def test_false_only_of_union(self):
+        tup_type = self.tuple()
+        # Union of something that is unknown, something that is always true, something
+        # that is always false
+        union_type = UnionType([self.fx.a, self.tuple(AnyType()), tup_type])
+        assert_equal(len(union_type.items), 3)
+        fo = false_only(union_type)
+        assert_equal(len(fo.items), 2)
+        assert_false(fo.items[0].can_be_true)
+        assert_true(fo.items[0].can_be_false)
+        assert_true(fo.items[1] is tup_type)
+
     # Helpers
 
     def tuple(self, *a):
@@ -342,6 +432,22 @@ class JoinSuite(Suite):
                   UnboundType('x'), self.fx.void, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
+
+    def test_mixed_truth_restricted_type_simple(self):
+        # join_simple against differently restricted truthiness types drops restrictions.
+        true_a = true_only(self.fx.a)
+        false_o = false_only(self.fx.o)
+        j = join_simple(self.fx.o, true_a, false_o)
+        assert_true(j.can_be_true)
+        assert_true(j.can_be_false)
+
+    def test_mixed_truth_restricted_type(self):
+        # join_types against differently restricted truthiness types drops restrictions.
+        true_any = true_only(AnyType())
+        false_o = false_only(self.fx.o)
+        j = join_types(true_any, false_o)
+        assert_true(j.can_be_true)
+        assert_true(j.can_be_false)
 
     def test_other_mixed_types(self):
         # In general, joining unrelated types produces object.

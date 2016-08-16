@@ -5,7 +5,8 @@ from typing import cast, Dict, List, Tuple, Callable, Union, Optional
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType
+    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
+    true_only, false_only
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -1094,22 +1095,20 @@ class ExpressionChecker:
         ctx = self.chk.type_context[-1]
         left_type = self.accept(e.left, ctx)
 
+        assert e.op in ('and', 'or')  # Checked by visit_op_expr
+
         if e.op == 'and':
             right_map, left_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
+            restricted_left_type = false_only(left_type)
+            result_is_left = not left_type.can_be_true
         elif e.op == 'or':
             left_map, right_map = \
                 mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
                                                    self.chk.typing_mode_weak())
-        else:
-            left_map = None
-            right_map = None
-
-        if left_map and e.left in left_map:
-            # The type of expressions in left_map is the type they'll have if
-            # the left operand is the result of the operator.
-            left_type = left_map[e.left]
+            restricted_left_type = true_only(left_type)
+            result_is_left = not left_type.can_be_false
 
         with self.chk.binder.frame_context():
             if right_map:
@@ -1121,13 +1120,23 @@ class ExpressionChecker:
         self.check_usable_type(left_type, context)
         self.check_usable_type(right_type, context)
 
-        # If either of the type maps is None that means that result cannot happen.
-        # If both of the type maps are None we just have no information.
-        if left_map is not None and right_map is None:
+        if right_map is None:
+            # The boolean expression is statically known to be the left value
+            assert left_map is not None  # find_isinstance_check guarantees this
             return left_type
-        elif left_map is None and right_map is not None:
+        if left_map is None:
+            # The boolean expression is statically known to be the right value
+            assert right_map is not None  # find_isinstance_check guarantees this
             return right_type
-        return UnionType.make_simplified_union([left_type, right_type])
+
+        if isinstance(restricted_left_type, UninhabitedType):
+            # The left operand can never be the result
+            return right_type
+        elif result_is_left:
+            # The left operand is always the result
+            return left_type
+        else:
+            return UnionType.make_simplified_union([restricted_left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.

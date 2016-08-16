@@ -1,6 +1,7 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
+import copy
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union
 )
@@ -20,6 +21,8 @@ class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
     line = 0
+    can_be_true = True
+    can_be_false = True
 
     def __init__(self, line: int = -1) -> None:
         self.line = line
@@ -259,6 +262,7 @@ class Void(Type):
     the result type of calling such callable.
     """
 
+    can_be_true = False
     source = ''   # May be None; function that generated this value
 
     def __init__(self, source: str = None, line: int = -1) -> None:
@@ -294,6 +298,9 @@ class UninhabitedType(Type):
         is_subtype(UninhabitedType, T) = True
     """
 
+    can_be_true = False
+    can_be_false = False
+
     def __init__(self, line: int = -1) -> None:
         super().__init__(line)
 
@@ -326,6 +333,8 @@ class NoneTyp(Type):
         This type can be written by users as 'None', except as the return value
         of a function, where 'None' means Void.
     """
+
+    can_be_true = False
 
     def __init__(self, is_ret_type: bool = False, line: int = -1) -> None:
         super().__init__(line)
@@ -479,6 +488,8 @@ class TypeVarType(Type):
 
 class FunctionLike(Type):
     """Abstract base class for function types."""
+
+    can_be_false = False
 
     @abstractmethod
     def is_type_obj(self) -> bool: pass
@@ -741,6 +752,8 @@ class TupleType(Type):
         self.items = items
         self.fallback = fallback
         self.implicit = implicit
+        self.can_be_true = len(self.items) > 0
+        self.can_be_false = len(self.items) == 0
         super().__init__(line)
 
     def length(self) -> int:
@@ -787,6 +800,8 @@ class UnionType(Type):
 
     def __init__(self, items: List[Type], line: int = -1) -> None:
         self.items = items
+        self.can_be_true = any(item.can_be_true for item in items)
+        self.can_be_false = any(item.can_be_false for item in items)
         super().__init__(line)
 
     @staticmethod
@@ -817,10 +832,20 @@ class UnionType(Type):
 
         from mypy.subtypes import is_subtype
         removed = set()  # type: Set[int]
-        for i in range(len(items)):
-            if any(is_subtype(items[i], items[j]) for j in range(len(items))
-                   if j not in removed and j != i):
-                removed.add(i)
+        for i, ti in enumerate(items):
+            if i in removed: continue
+            # Keep track of the truishness info for deleted subtypes which can be relevant
+            cbt = cbf = False
+            for j, tj in enumerate(items):
+                if i != j and is_subtype(tj, ti):
+                    removed.add(j)
+                    cbt = cbt or tj.can_be_true
+                    cbf = cbf or tj.can_be_false
+            # if deleted subtypes had more general truthiness, use that
+            if not ti.can_be_true and cbt:
+                items[i] = true_or_false(ti)
+            elif not ti.can_be_false and cbf:
+                items[i] = true_or_false(ti)
 
         simplified_set = [items[i] for i in range(len(items)) if i not in removed]
         return UnionType.make_union(simplified_set)
@@ -1394,3 +1419,60 @@ def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
             t.type is not None and
             t.type.fullname() == fullname)
+
+
+def copy_type(t: Type) -> Type:
+    """
+    Build a copy of the type; used to mutate the copy with truthiness information
+    """
+    return copy.copy(t)
+
+
+def true_only(t: Type) -> Type:
+    """
+    Restricted version of t with only True-ish values
+    """
+    if not t.can_be_true:
+        # All values of t are False-ish, so there are no true values in it
+        return UninhabitedType(line=t.line)
+    elif not t.can_be_false:
+        # All values of t are already True-ish, so true_only is idempotent in this case
+        return t
+    elif isinstance(t, UnionType):
+        # The true version of a union type is the union of the true versions of its components
+        new_items = [true_only(item) for item in t.items]
+        return UnionType.make_simplified_union(new_items, line=t.line)
+    else:
+        new_t = copy_type(t)
+        new_t.can_be_false = False
+        return new_t
+
+
+def false_only(t: Type) -> Type:
+    """
+    Restricted version of t with only False-ish values
+    """
+    if not t.can_be_false:
+        # All values of t are True-ish, so there are no false values in it
+        return UninhabitedType(line=t.line)
+    elif not t.can_be_true:
+        # All values of t are already False-ish, so false_only is idempotent in this case
+        return t
+    elif isinstance(t, UnionType):
+        # The false version of a union type is the union of the false versions of its components
+        new_items = [false_only(item) for item in t.items]
+        return UnionType.make_simplified_union(new_items, line=t.line)
+    else:
+        new_t = copy_type(t)
+        new_t.can_be_true = False
+        return new_t
+
+
+def true_or_false(t: Type) -> Type:
+    """
+    Unrestricted version of t with both True-ish and False-ish values
+    """
+    new_t = copy_type(t)
+    new_t.can_be_true = type(new_t).can_be_true
+    new_t.can_be_false = type(new_t).can_be_false
+    return new_t
