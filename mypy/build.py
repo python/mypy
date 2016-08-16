@@ -801,7 +801,7 @@ def compute_md5_hash(text: str) -> str:
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                manager: BuildManager) -> str:
+                old_interface_hash: str, manager: BuildManager) -> str:
     """Write cache files for a module.
 
     Args:
@@ -811,37 +811,52 @@ def write_cache(id: str, path: str, tree: MypyFile,
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
       dep_prios: priorities (parallel array to dependencies)
+      old_interface_hash: the hash from the previous version of the data cache file
       manager: the build manager (for pyversion, log/trace)
+
+    Return:
+      The new interface hash based on the serialized tree
     """
+    # Obtain file paths
     path = os.path.abspath(path)
-    manager.trace('Dumping {} {}'.format(id, path))
-    st = os.stat(path)  # TODO: Errors
-    mtime = st.st_mtime
-    size = st.st_size
     meta_json, data_json = get_cache_names(
         id, path, manager.options.cache_dir, manager.options.python_version)
-    manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
-    data = tree.serialize()
+    manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
+
+    # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
     if not os.path.isdir(parent):
         os.makedirs(parent)
     assert os.path.dirname(meta_json) == parent
+
+    # Construct temp file names
     nonce = '.' + random_string()
     data_json_tmp = data_json + nonce
     meta_json_tmp = meta_json + nonce
-    with open(data_json_tmp, 'w') as f:
-        # TODO: The cache writing code currently assumes the data and meta
-        # file are always written together. However, with the new changes to
-        # incremental mode, we could instead write only an updated meta file
-        # and leave the data file alone when the public interface is unchanged.
-        #
-        # It might be cleaner to do this as part of a larger effort to speed up
-        # the serialization logic, however.
-        data_str = json.dumps(data, indent=2, sort_keys=True)
-        interface_hash = compute_md5_hash(data_str)
-        f.write(data_str)
-        f.write('\n')
-    data_mtime = os.path.getmtime(data_json_tmp)
+
+    # Serialize data and analyze interface
+    data = tree.serialize()
+    data_str = json.dumps(data, indent=2, sort_keys=True)
+    interface_hash = compute_md5_hash(data_str)
+
+    # Write data cache file, if applicable
+    if old_interface_hash == interface_hash:
+        # If the interface is unchanged, the cached data is guaranteed
+        # to be equivalent, and we only need to update the metadata.
+        data_mtime = os.path.getmtime(data_json)
+        manager.trace("Interface for {} is unchanged".format(id))
+    else:
+        with open(data_json_tmp, 'w') as f:
+            f.write(data_str)
+            f.write('\n')
+        data_mtime = os.path.getmtime(data_json_tmp)
+        os.replace(data_json_tmp, data_json)
+        manager.trace("Interface for {} has changed".format(id))
+
+    # Obtain and set up metadata
+    st = os.stat(path)  # TODO: Handle errors
+    mtime = st.st_mtime
+    size = st.st_size
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
@@ -855,11 +870,13 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
             }
+
+    # Write meta cache file
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
-    os.replace(data_json_tmp, data_json)
     os.replace(meta_json_tmp, meta_json)
+
     return interface_hash
 
 
@@ -1409,7 +1426,7 @@ class State:
             new_interface_hash = write_cache(
                 self.id, self.path, self.tree,
                 list(self.dependencies), list(self.suppressed), list(self.child_modules),
-                dep_prios,
+                dep_prios, self.interface_hash,
                 self.manager)
             if new_interface_hash == self.interface_hash:
                 self.manager.log("Cached module {} has same interface".format(self.id))
