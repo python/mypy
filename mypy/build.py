@@ -794,7 +794,10 @@ def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
-def compute_md5_hash(text: str) -> str:
+def compute_hash(text: str) -> str:
+    # We use md5 instead of the builtin hash(...) function because the output of hash(...)
+    # can differ between runs due to hash randomization (enabled by default in Python 3.3).
+    # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 
@@ -837,7 +840,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     # Serialize data and analyze interface
     data = tree.serialize()
     data_str = json.dumps(data, indent=2, sort_keys=True)
-    interface_hash = compute_md5_hash(data_str)
+    interface_hash = compute_hash(data_str)
 
     # Write data cache file, if applicable
     if old_interface_hash == interface_hash:
