@@ -1298,7 +1298,8 @@ class TypeStrVisitor(TypeVisitor[str]):
         return 'Tuple[{}]'.format(s)
 
     def visit_namedtuple_type(self, t: NamedTupleType) -> str:
-        s = self.list_str(zip(t.attrs, t.items))
+        s = ', '.join('({}, {})'.format(repr(attr), item.accept(self))
+                    for attr, item in zip(t.attrs, t.items))
         return '{}[{}]'.format(t.name, s)
 
     def visit_star_type(self, t: StarType) -> str:
