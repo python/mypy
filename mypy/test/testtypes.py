@@ -433,11 +433,19 @@ class JoinSuite(Suite):
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
 
-    def test_mixed_truth_restricted_type(self):
-        # Join_simple against differently restricted truthiness types drops restrictions.
+    def test_mixed_truth_restricted_type_simple(self):
+        # join_simple against differently restricted truthiness types drops restrictions.
         true_a = true_only(self.fx.a)
         false_o = false_only(self.fx.o)
         j = join_simple(self.fx.o, true_a, false_o)
+        assert_true(j.can_be_true)
+        assert_true(j.can_be_false)
+
+    def test_mixed_truth_restricted_type(self):
+        # join_types against differently restricted truthiness types drops restrictions.
+        true_any = true_only(AnyType())
+        false_o = false_only(self.fx.o)
+        j = join_types(true_any, false_o)
         assert_true(j.can_be_true)
         assert_true(j.can_be_false)
 

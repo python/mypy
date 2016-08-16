@@ -65,6 +65,11 @@ def join_types(s: Type, t: Type) -> Type:
 
     If the join does not exist, return an ErrorType instance.
     """
+    if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
+        # if types are restricted in different ways, use the more general versions
+        s = true_or_false(s)
+        t = true_or_false(t)
+
     if isinstance(s, AnyType):
         return s
 
