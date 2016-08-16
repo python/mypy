@@ -75,7 +75,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeVarDef, Void,
+    FunctionLike, UnboundType, TypeList, TypeVarDef, Void,
     replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType,
     NamedTupleType, TypeType
 )
@@ -1727,6 +1727,9 @@ class SemanticAnalyzer(NodeVisitor):
         func.info = info
         func.is_class = is_classmethod
         symbols[funcname] = SymbolTableNode(MDEF, func)
+
+    def make_argument(self, name: str, type: Type) -> Argument:
+        return Argument(Var(name), type, None, ARG_POS)
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = []  # type: List[Type]
