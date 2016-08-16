@@ -39,7 +39,7 @@ if isinstance(x, int):
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 else:
   reveal_type(x)  # E: Revealed type is 'builtins.None'
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testIfCases]
 from typing import Optional
@@ -48,7 +48,7 @@ if x:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 else:
   reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testIfNotCases]
 from typing import Optional
@@ -57,7 +57,7 @@ if not x:
   reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testIsNotNoneCases]
 from typing import Optional
@@ -66,7 +66,7 @@ if x is not None:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 else:
   reveal_type(x)  # E: Revealed type is 'builtins.None'
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testIsNoneCases]
 from typing import Optional
@@ -75,7 +75,7 @@ if x is None:
   reveal_type(x)  # E: Revealed type is 'builtins.None'
 else:
   reveal_type(x)  # E: Revealed type is 'builtins.int'
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testLambdaReturningNone]
 f = lambda: None
@@ -100,6 +100,23 @@ f(None)
 [out]
 main: note: In function "f":
 
+[case testInferOptionalFromDefaultNoneComment]
+def f(x=None):
+  # type: (int) -> None
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
+[case testInferOptionalFromDefaultNoneCommentWithFastParser]
+# options: fast_parser
+def f(x=None):
+  # type: (int) -> None
+  x + 1  # E: Unsupported left operand type for + (some union)
+f(None)
+[out]
+main: note: In function "f":
+
 [case testInferOptionalType]
 x = None
 if bool():
@@ -109,7 +126,7 @@ if bool():
   reveal_type(x)  # E: Revealed type is 'builtins.int'
 # out of scope of the assignment, it's an Optional[int]
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testInferOptionalTypeLocallyBound]
 x = None
@@ -128,25 +145,25 @@ reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 x = [None]
 x.append(1)
 reveal_type(x)  # E: Revealed type is 'builtins.list[Union[builtins.int, builtins.None]]'
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testInferNonOptionalListType]
 x = []
 x.append(1)
 x()  # E: List[int] not callable
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testInferOptionalDictKeyValueTypes]
 x = {None: None}
 x["bar"] = 1
 reveal_type(x)  # E: Revealed type is 'builtins.dict[Union[builtins.str, builtins.None], Union[builtins.int, builtins.None]]'
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testInferNonOptionalDictType]
 x = {}
 x["bar"] = 1
 x()  # E: Dict[str, int] not callable
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 
 [case testNoneClassVariable]
 from typing import Optional
@@ -315,3 +332,26 @@ x = f  # type: Callable[[], None]
 [case testOptionalCallable]
 from typing import Callable, Optional
 T = Optional[Callable[..., None]]
+
+[case testAnyTypeInPartialTypeList]
+# options: check_untyped_defs
+def f(): ...
+
+def lookup_field(name, obj):
+    try:
+        pass
+    except:
+        attr = f()
+    else:
+        attr = None
+[out]
+main: note: In function "lookup_field":
+main:10: error: Need type annotation for variable
+
+[case testTernaryWithNone]
+reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+[builtins fixtures/bool.pyi]
+
+[case testListWithNone]
+reveal_type([0, None, 0])    # E: Revealed type is 'builtins.list[Union[builtins.int, builtins.None]]'
+[builtins fixtures/list.pyi]

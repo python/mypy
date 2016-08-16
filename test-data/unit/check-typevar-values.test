@@ -19,7 +19,7 @@ o = [object()]
 i = f(1)
 s = f('')
 o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
 from typing import TypeVar, Any
@@ -118,7 +118,7 @@ def h(x: T) -> T:
     if isinstance(x, int):
         return '' # E: Incompatible return value type (got "str", expected "int")
     return x
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "h":
 
@@ -136,7 +136,7 @@ def g(x: T) -> T:
     else:
         return 2  # E: Incompatible return value type (got "int", expected "str")
     return x
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "g":
 
@@ -149,7 +149,7 @@ def f(x: T) -> T:
     else:
         y = ''
     return y
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndTypeVarValues4]
 from typing import TypeVar
@@ -160,7 +160,7 @@ def f(x: T) -> T:
     else:
         y = object()
     return y # E: Incompatible return value type (got "object", expected "str")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -173,7 +173,7 @@ def f(x: T) -> T:
     else:
         y = ''
     return y # E: Incompatible return value type (got "object", expected "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -197,7 +197,7 @@ def g(x: S) -> None:
     y = x
     if isinstance(x, int):
         x = y
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 
@@ -216,7 +216,7 @@ def f(x: T) -> None:
         x = y
         x = 1
         x = S() # E: Incompatible types in assignment (expression has type "S", variable has type "int")
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
 

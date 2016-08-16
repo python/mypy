@@ -12,7 +12,7 @@ from mypy import defaults
 from mypy import git
 from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
-from mypy.errors import CompileError, set_drop_into_pdb
+from mypy.errors import CompileError, set_drop_into_pdb, set_show_tb
 from mypy.options import Options, BuildType
 
 from mypy.version import __version__
@@ -33,6 +33,8 @@ def main(script_path: str) -> None:
     sources, options = process_options(sys.argv[1:])
     if options.pdb:
         set_drop_into_pdb(True)
+    if options.show_traceback:
+        set_show_tb(True)
     f = sys.stdout
     try:
         res = type_check_only(sources, bin_dir, options)
@@ -137,7 +139,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
-    parser.add_argument('--py2', dest='python_version', action='store_const',
+    parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
@@ -172,6 +174,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
+    parser.add_argument('--show-traceback', '--tb', action='store_true',
+                        help="show traceback on fatal error")
     parser.add_argument('--stats', action='store_true', dest='dump_type_stats', help="dump stats")
     parser.add_argument('--inferstats', action='store_true', dest='dump_inference_stats',
                         help="dump type inference stats")

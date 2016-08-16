@@ -2247,7 +2247,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
-            return self.type[name]
+            return self.type.names[name]
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
@@ -2461,7 +2461,7 @@ class SemanticAnalyzer(NodeVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
 
 
 class FirstPass(NodeVisitor):
@@ -2673,7 +2673,7 @@ class ThirdPass(TraverserVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:

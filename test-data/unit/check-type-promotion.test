@@ -4,36 +4,36 @@
 [case testPromoteIntToFloat]
 def f(x: float) -> None: pass
 f(1)
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testCantPromoteFloatToInt]
 def f(x: int) -> None: pass
 f(1.1) # E: Argument 1 to "f" has incompatible type "float"; expected "int"
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testPromoteFloatToComplex]
 def f(x: complex) -> None: pass
 f(1)
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testPromoteIntToComplex]
 def f(x: complex) -> None: pass
 f(1)
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testPromoteBytearrayToByte]
 def f(x: bytes) -> None: pass
 f(bytearray())
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownFromPromoteTargetType]
 y = 0.0
 y = 1
 y() # E: "int" not callable
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownFromPromoteTargetType2]
 y = 0.0
 y = 1
 y.x # E: "int" has no attribute "x"
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]

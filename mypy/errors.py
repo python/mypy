@@ -409,31 +409,64 @@ def remove_path_prefix(path: str, prefix: str) -> str:
 # Corresponds to command-line flag --pdb.
 drop_into_pdb = False
 
+# Corresponds to command-line flag --show-traceback.
+show_tb = False
+
 
 def set_drop_into_pdb(flag: bool) -> None:
     global drop_into_pdb
     drop_into_pdb = flag
 
 
-def report_internal_error(err: Exception, file: str, line: int) -> None:
-    """Display stack trace and file location for an internal error + exit."""
-    if drop_into_pdb:
-        import pdb
-        pdb.post_mortem(sys.exc_info()[2])
-    tb = traceback.extract_stack()[:-2]
-    tb2 = traceback.extract_tb(sys.exc_info()[2])
-    print('Traceback (most recent call last):')
-    for s in traceback.format_list(tb + tb2):
-        print(s.rstrip('\n'))
-    print('{}: {}'.format(type(err).__name__, err))
-    print('\n*** INTERNAL ERROR ***', file=sys.stderr)
+def set_show_tb(flag: bool) -> None:
+    global show_tb
+    show_tb = flag
+
+
+def report_internal_error(err: Exception, file: str, line: int, errors: Errors) -> None:
+    """Report internal error and exit.
+
+    This optionally starts pdb or shows a traceback.
+    """
+    # Dump out errors so far, they often provide a clue.
+    # But catch unexpected errors rendering them.
+    try:
+        for msg in errors.messages():
+            print(msg)
+    except Exception as e:
+        print("Failed to dump errors:", repr(e), file=sys.stderr)
+
+    # Compute file:line prefix for official-looking error messages.
     if line:
         prefix = '{}:{}'.format(file, line)
     else:
         prefix = file
-    print('\n{}: error: Internal error --'.format(prefix),
+
+    # Print "INTERNAL ERROR" message.
+    print('{}: error: INTERNAL ERROR --'.format(prefix),
           'please report a bug at https://github.com/python/mypy/issues',
           file=sys.stderr)
-    print('\nNOTE: you can use "mypy --pdb ..." to drop into the debugger when this happens.',
-          file=sys.stderr)
-    sys.exit(1)
+
+    # If requested, drop into pdb. This overrides show_tb.
+    if drop_into_pdb:
+        print('Dropping into pdb', file=sys.stderr)
+        import pdb
+        pdb.post_mortem(sys.exc_info()[2])
+
+    # If requested, print traceback, else print note explaining how to get one.
+    if not show_tb:
+        if not drop_into_pdb:
+            print('{}: note: please use --show-traceback to print a traceback '
+                  'when reporting a bug'.format(prefix),
+                  file=sys.stderr)
+    else:
+        tb = traceback.extract_stack()[:-2]
+        tb2 = traceback.extract_tb(sys.exc_info()[2])
+        print('Traceback (most recent call last):')
+        for s in traceback.format_list(tb + tb2):
+            print(s.rstrip('\n'))
+        print('{}: {}'.format(type(err).__name__, err))
+        print('{}: note: use --pdb to drop into pdb'.format(prefix), file=sys.stderr)
+
+    # Exit.  The caller has nothing more to say.
+    raise SystemExit(1)

@@ -8,7 +8,7 @@ import re
 
 from typing import List, Tuple, Any, Set, cast, Union, Optional
 
-from mypy import lex, docstring
+from mypy import lex
 from mypy.lex import (
     Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
@@ -479,6 +479,10 @@ class Parser:
             if is_error:
                 return None
 
+            if typ:
+                for arg, arg_type in zip(args, typ.arg_types):
+                    self.set_type_optional(arg_type, arg.initializer)
+
             if typ and isinstance(typ.ret_type, UnboundType):
                 typ.ret_type.is_ret_type = True
 
@@ -782,8 +786,6 @@ class Parser:
             else:
                 kind = nodes.ARG_POS
 
-        self.set_type_optional(type, initializer)
-
         return Argument(variable, type, initializer, kind), require_named
 
     def set_type_optional(self, type: Type, initializer: Node) -> None:
@@ -859,17 +861,6 @@ class Parser:
             type = self.parse_type_comment(brk, signature=True)
             self.expect_indent()
             stmt_list = []  # type: List[Node]
-            if allow_type:
-                cur = self.current()
-                if type is None and isinstance(cur, StrLit):
-                    ds = docstring.parse_docstring(cur.parsed())
-                    if ds and False:  # TODO: Enable when this is working.
-                        try:
-                            type = parse_str_as_signature(ds.as_type_str(), cur.line)
-                        except TypeParseError:
-                            # We don't require docstrings to be actually correct.
-                            # TODO: Report something here.
-                            type = None
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:

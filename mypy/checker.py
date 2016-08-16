@@ -201,7 +201,7 @@ class TypeChecker(NodeVisitor[Type]):
         try:
             typ = node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line)
+            report_internal_error(err, self.errors.file, node.line, self.errors)
         self.type_context.pop()
         self.store_type(node, typ)
         if self.typing_mode_none():
@@ -809,9 +809,13 @@ class TypeChecker(NodeVisitor[Type]):
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
-            if original_type is None and isinstance(base_attr.node,
-                                                    FuncDef):
-                original_type = self.function_type(base_attr.node)
+            if original_type is None:
+                if isinstance(base_attr.node, FuncDef):
+                    original_type = self.function_type(base_attr.node)
+                elif isinstance(base_attr.node, Decorator):
+                    original_type = self.function_type(base_attr.node.func)
+                else:
+                    assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
                     method_type(original_type),
@@ -825,7 +829,6 @@ class TypeChecker(NodeVisitor[Type]):
                                     base.name(),
                                     defn)
             else:
-                assert original_type is not None
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), defn)
 
@@ -2248,7 +2251,8 @@ class TypeChecker(NodeVisitor[Type]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if experiments.STRICT_OPTIONAL and cast(PartialType, var.type).type is None:
+                if (experiments.STRICT_OPTIONAL and
+                        isinstance(var.type, PartialType) and var.type.type is None):
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
                 else:

@@ -18,7 +18,7 @@ from typing import cast, Union
 x = 1  # type: Union[int, str]
 if isinstance(x, str):
     cast(str, x)
-[builtins fixtures/isinstance.py]
+[builtins fixtures/isinstance.pyi]
 [out]
 main:5: note: Redundant cast to "str"
 
@@ -33,7 +33,7 @@ a = A()
 b = B()
 # Without the cast, the following line would fail to type check.
 c = add([cast(A, b)], [a])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Unused 'type: ignore' comments

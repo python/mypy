@@ -223,21 +223,21 @@ import typing
 x = __name__ # type: str
 a = __name__ # type: A  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 class A: pass
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testModule__doc__]
 import typing
 x = __doc__ # type: str
 a = __doc__ # type: A  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 class A: pass
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case testModule__file__]
 import typing
 x = __file__ # type: str
 a = __file__ # type: A  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 class A: pass
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 
 [case test__package__]
 import typing

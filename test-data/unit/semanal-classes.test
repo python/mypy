@@ -408,7 +408,7 @@ MypyFile:1(
 class A:
   @staticmethod
   def f(z: int) -> str: pass
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 MypyFile:1(
   ClassDef:1(
@@ -428,7 +428,7 @@ MypyFile:1(
 class A:
   @staticmethod
   def f() -> str: pass
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 MypyFile:1(
   ClassDef:1(
@@ -446,7 +446,7 @@ MypyFile:1(
 class A:
   @classmethod
   def f(cls, z: int) -> str: pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 MypyFile:1(
   ClassDef:1(
@@ -467,7 +467,7 @@ MypyFile:1(
 class A:
   @classmethod
   def f(cls) -> str: pass
-[builtins fixtures/classmethod.py]
+[builtins fixtures/classmethod.pyi]
 [out]
 MypyFile:1(
   ClassDef:1(
@@ -488,7 +488,7 @@ import typing
 class A:
   @property
   def f(self) -> str: pass
-[builtins fixtures/property.py]
+[builtins fixtures/property.pyi]
 [out]
 MypyFile:1(
   Import:1(typing)
@@ -572,7 +572,7 @@ import m
 [file m.pyi]
 from typing import Tuple
 class A(Tuple[int, str]): pass
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   Import:1(m))

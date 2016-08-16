@@ -1,7 +1,7 @@
 [case testListTypeAlias]
 from typing import List
 def f() -> List[int]: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [List])
@@ -14,7 +14,7 @@ MypyFile:1(
 [case testDictTypeAlias]
 from typing import Dict
 def f() -> Dict[int, str]: pass
-[builtins fixtures/dict.py]
+[builtins fixtures/dict.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Dict])
@@ -27,7 +27,7 @@ MypyFile:1(
 [case testQualifiedTypeAlias]
 import typing
 def f() -> typing.List[int]: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 MypyFile:1(
   Import:1(typing)
@@ -40,7 +40,7 @@ MypyFile:1(
 [case testTypeApplicationWithTypeAlias]
 from typing import List
 List[List[int]]
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [List])
@@ -53,7 +53,7 @@ MypyFile:1(
 [case testTypeApplicationWithQualifiedTypeAlias]
 import typing
 typing.List[typing.List[int]]
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 MypyFile:1(
   Import:1(typing)
@@ -235,7 +235,7 @@ MypyFile:1(
 from typing import List
 A = List[int]
 def f(x: A) -> None: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [List])

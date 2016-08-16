@@ -52,7 +52,7 @@ b.bar() # E: "module" has no attribute "bar"
 [file b.py]
 foo = 3
 
-[builtins fixtures/module_all.py]
+[builtins fixtures/module_all.pyi]
 [out]
 
 [case testIgnoreImportStarFromBadModule]
@@ -80,26 +80,26 @@ m.x = object # type: ignore
 m.f() # type: ignore
 m.y # E: "module" has no attribute "y"
 [file m.py]
-[builtins fixtures/module.py]
+[builtins fixtures/module.pyi]
 
 [case testIgnoreTypeInferenceError]
 x = [] # type: ignore
 y = x
 x.append(1)
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testIgnoreTypeInferenceError2]
 def f() -> None: pass
 x = f() # type: ignore
 y = x
 x = 1
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testIgnoreTypeInferenceErrorAndMultipleAssignment]
 x, y = [], [] # type: ignore
 z = x
 z = y
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 [case testIgnoreSomeStarImportErrors]
 from m1 import *
@@ -147,7 +147,7 @@ class C(m.B):
 C.f(1) # E: Too many arguments for "f" of "C"
 C.g(1)
 C.x = 1
-[builtins fixtures/staticmethod.py]
+[builtins fixtures/staticmethod.pyi]
 [out]
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance1]

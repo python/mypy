@@ -115,7 +115,7 @@ if b:
     pass
 
 class A: pass
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 
 -- Loops
@@ -134,7 +134,7 @@ while b:
     b = b
 
 class A: pass
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
@@ -149,7 +149,7 @@ else:
     a = b    # Fail
 
 class A: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "A")
@@ -158,14 +158,14 @@ main:7: error: Incompatible types in assignment (expression has type "object", v
 import typing
 while None:
     break
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testContinueStatement]
 import typing
 while None:
     continue
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 [out]
 
 
@@ -328,7 +328,7 @@ raise e
 raise f
 class A: pass
 class MyError(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:5: error: Exception must be derived from BaseException
 
@@ -342,7 +342,7 @@ raise MyError
 raise A # E: Exception must be derived from BaseException
 raise object # E: Exception must be derived from BaseException
 raise f # E: Exception must be derived from BaseException
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testRaiseFromStatement]
 
@@ -354,7 +354,7 @@ raise e from e
 raise e from f
 class A: pass
 class MyError(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testRaiseFromClassobject]
 import typing
@@ -366,7 +366,7 @@ raise BaseException from MyError
 raise BaseException from A # E: Exception must be derived from BaseException
 raise BaseException from object # E: Exception must be derived from BaseException
 raise BaseException from f # E: Exception must be derived from BaseException
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testTryFinallyStatement]
 import typing
@@ -389,7 +389,7 @@ except BaseException as e:
   e = o # Fail
 class A: pass
 class B: pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
@@ -414,7 +414,7 @@ x = object()         # Fail
 x = A()              # Fail
 x = BaseException()
 class A: pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:3: error: Incompatible types in assignment (expression has type "BaseException", variable has type "A")
 main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
@@ -428,7 +428,7 @@ try:
 except BaseException as e:
   e = object() # Fail
   e = BaseException()
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
@@ -440,7 +440,7 @@ except Err as e:
   e = BaseException() # Fail
   e = Err()
 class Err(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
@@ -454,7 +454,7 @@ except Err as f:
     f = BaseException() # Fail
     f = Err()
 class Err(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:7: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
@@ -471,7 +471,7 @@ except Err as f:
 class A: pass
 class B: pass
 class Err(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:5: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
@@ -488,7 +488,7 @@ def f() -> None:
     f = BaseException() # Fail
     f = Err()
 class Err(BaseException): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
@@ -502,7 +502,7 @@ def f() -> None:
   except:
     raise
   x + 'a' # E: Unsupported left operand type for + ("int")
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main: note: In function "f":
 
@@ -512,7 +512,7 @@ try: pass
 except BaseException: pass
 else:
   object(None) # E: Too many arguments for "object"
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testRedefinedFunctionInTryWithElse-skip]
 def f() -> None: pass
@@ -528,7 +528,7 @@ except BaseException:
     f3 = f
 else:
     def f3() -> None: pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 [out]
 main:7: error: Incompatible redefinition (redefinition with type Callable[[], str], original type Callable[[], None])
 
@@ -538,7 +538,7 @@ try:
     -None # E: Unsupported operand type for unary - (None)
 except:
     ~None # E: Unsupported operand type for ~ (None)
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testRaiseWithoutArgument]
 import typing
@@ -546,7 +546,7 @@ try:
     None
 except:
     raise
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testExceptWithMultipleTypes]
 import typing
@@ -562,7 +562,7 @@ except (E1, (E2,)): pass  # E: Exception type must be derived from BaseException
 except (E1, E2): pass
 except ((E1, E2)): pass
 except (((E1, E2))): pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testExceptWithMultipleTypes2]
 import typing
@@ -578,7 +578,7 @@ except (E2, E1) as e2:
     b = e2 # type: E2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E2")
 except (E1, E2, int) as e3: # E: Exception type must be derived from BaseException
     pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testExceptWithMultipleTypes3]
 import typing
@@ -594,7 +594,7 @@ except (E1_1, E1_2) as e2:
     a = e2 # type: E1
     b = e2 # type: E1_1 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_1")
     c = e2 # type: E1_2 # E: Incompatible types in assignment (expression has type "Union[E1_1, E1_2]", variable has type "E1_2")
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testExceptWithAnyTypes]
 from typing import Any
@@ -629,7 +629,7 @@ except (NotBaseDerived, E1, E2) as e6:  # E: Exception type must be derived from
     pass
 except (E1, E2, NotBaseDerived) as e6:  # E: Exception type must be derived from BaseException
     pass
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testReuseTryExceptionVariable]
 import typing
@@ -643,7 +643,7 @@ try: pass
 except E2 as e: pass
 e + 1 # E: Trying to read deleted variable 'e'
 e = E1() # E: Assignment to variable 'e' outside except: block
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testReuseDefinedTryExceptionVariable]
 import typing
@@ -655,7 +655,7 @@ try: pass
 except E1 as e: pass
 e = 1 # E: Assignment to variable 'e' outside except: block
 e = E1() # E: Assignment to variable 'e' outside except: block
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testArbitraryExpressionAsExceptionType]
 import typing
@@ -664,7 +664,7 @@ try: pass
 except a as b:
     b = BaseException()
     b = object() # E: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testInvalidExceptionCallable]
 import typing
@@ -672,7 +672,7 @@ def exc() -> BaseException: pass
 try: pass
 except exc as e: pass             # E: Exception type must be derived from BaseException
 except BaseException() as b: pass # E: Exception type must be derived from BaseException
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testTupleValueAsExceptionType]
 import typing
@@ -698,7 +698,7 @@ except exs2 as e2:
 exs3 = (E1, (E1_1, (E1_2,)))
 try: pass
 except exs3 as e3: pass  # E: Exception type must be derived from BaseException
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testInvalidTupleValueAsExceptionType]
 import typing
@@ -709,7 +709,7 @@ class E2(E1): pass
 exs1 = (E1, E2, int)
 try: pass
 except exs1 as e: pass # E: Exception type must be derived from BaseException
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testOverloadedExceptionType]
 from typing import overload
@@ -723,7 +723,7 @@ try:
 except E as e:
     e = E()
     e = BaseException() # E: Incompatible types in assignment (expression has type "BaseException", variable has type "E")
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 [case testExceptionWithAnyBaseClass]
 from typing import Any
@@ -731,7 +731,7 @@ E = None  # type: Any
 class EE(E): pass
 raise EE()
 raise EE
-[builtins fixtures/exception.py]
+[builtins fixtures/exception.pyi]
 
 
 -- Del statement
@@ -769,14 +769,14 @@ a = 1
 a + 1
 del a
 a + 1 # E: Trying to read deleted variable 'a'
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 [case testDelStatementWithAssignmentTuple]
 a = 1
 b = 1
 del (a, b)
 b + 1 # E: Trying to read deleted variable 'b'
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 [case testDelStatementWithAssignmentClass]
 class C:
@@ -787,7 +787,7 @@ c.a = 1
 c.a + 1
 del c.a
 c.a + 1
-[builtins fixtures/ops.py]
+[builtins fixtures/ops.pyi]
 
 -- Yield statement
 -- ---------------
@@ -798,7 +798,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
     yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -806,20 +806,20 @@ main: note: In function "f":
 from typing import Generator
 def f() -> Generator[int, None, None]:
     yield 1
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 
 [case testYieldInFunctionReturningIterable]
 from typing import Iterable
 def f() -> Iterable[int]:
     yield 1
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 
 [case testYieldInFunctionReturningObject]
 def f() -> object:
     yield 1
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 
 [case testYieldInFunctionReturningAny]
@@ -844,7 +844,7 @@ def f():
 import typing
 def f() -> int: # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield 1
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -853,7 +853,7 @@ from typing import List, Iterator
 def f() -> 'Iterator[List[int]]':
     yield []
     yield [object()] # E: List item 0 has incompatible type "object"
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -862,19 +862,19 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
     return
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testYieldWithNoValue]
 from typing import Iterator
 def f() -> Iterator[None]:
     yield
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 
 [case testYieldWithNoValueWhenValueRequired]
 from typing import Iterator
 def f() -> Iterator[int]:
     yield  # E: Yield value expected
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -882,7 +882,7 @@ main: note: In function "f":
 from typing import Iterator
 def f() -> Iterator[None]:
     yield None  # E: Incompatible types in yield (actual type None, expected type None)
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -947,7 +947,7 @@ def g() -> Iterator[List[int]]:
 def f() -> Iterator[List[int]]:
     yield from g()
     yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type List[int])
-[builtins fixtures/for.py]
+[builtins fixtures/for.pyi]
 [out]
 main: note: In function "f":
 
@@ -1064,7 +1064,7 @@ with A() as (a, b):
     a = 1
     b = ''
     a = b # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 
 
 -- Chained assignment
@@ -1088,7 +1088,7 @@ def f() -> None:
     y = 'x'
     x = y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-[builtins fixtures/primitives.py]
+[builtins fixtures/primitives.pyi]
 [out]
 main: note: In function "f":
 
@@ -1115,7 +1115,7 @@ nc = cs
 
 class A: pass
 class B: pass
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 
 
 -- Type aliases

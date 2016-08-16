@@ -47,7 +47,7 @@ b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tup
 
 reveal_type(a[0])  # E: Revealed type is 'builtins.int'
 reveal_type(a[1])  # E: Revealed type is 'builtins.str'
-[builtins fixtures/tuple.py]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNewTypeWithLists]
@@ -69,7 +69,7 @@ reveal_type(foo)  # E: Revealed type is '__main__.IdList'
 reveal_type(bar)  # E: Revealed type is '__main__.IdList'
 reveal_type(baz)  # E: Revealed type is 'builtins.list[__main__.UserId*]'
 
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testNewTypeWithGenerics]
@@ -196,7 +196,7 @@ UserId = NewType('UserId', int)
 from typing import NewType
 UserId = NewType('UserId', int)
 
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 
 [case testNewTypeWithIncremental]
@@ -265,7 +265,7 @@ Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be
 from typing import NewType, Type
 Foo = NewType('Foo', Type[int])  # E: Argument 2 to NewType(...) must be subclassable (got Type[builtins.int])
 a = Foo(type(3))
-[builtins fixtures/args.py]
+[builtins fixtures/args.pyi]
 [out]
 
 [case testNewTypeWithTypeVarsFails]
@@ -273,7 +273,7 @@ from typing import NewType, TypeVar, List
 T = TypeVar('T')
 A = NewType('A', T)
 B = NewType('B', List[T])
-[builtins fixtures/list.py]
+[builtins fixtures/list.pyi]
 [out]
 main:3: error: Invalid type "__main__.T"
 main:3: error: Argument 2 to NewType(...) must be subclassable (got T?)

@@ -19,8 +19,7 @@ Built-in types
 
 .. code-block:: python
 
-   from typing import List, Set, Dict, Tuple, Optional
-   import six
+   from typing import List, Set, Dict, Tuple, Text, Optional
 
    # For simple built-in types, just use the name of the type.
    x = 1 # type: int
@@ -39,9 +38,9 @@ Built-in types
    # For tuples, we specify the types of all the elements.
    x = (3, "yes", 7.5) # type: Tuple[int, str, float]
 
-   # For textual data, we generally use six.text_type.
+   # For textual data, use Text.
    # This is `unicode` in Python 2 and `str` in Python 3.
-   x = ["string", u"unicode"] # type: List[six.text_type]
+   x = ["string", u"unicode"] # type: List[Text]
 
    # Use Optional for values that could be None.
    input_str = f() # type: Optional[str]
@@ -177,11 +176,17 @@ Other stuff
 .. code-block:: python
 
    # typing.Match describes regex matches from the re module.
-   from typing import Match
+   from typing import Match, AnyStr
    x = re.match(r'[0-9]+', "15") # type: Match[str]
+
+   # Use AnyStr for functions that should accept any kind of string
+   # without allowing different kinds of strings to mix.
+   def concat(a: AnyStr, b: AnyStr) -> AnyStr:
+       return a + b
+   concat(u"foo", u"bar")  # type: unicode
+   concat(b"foo", b"bar")  # type: bytes
 
    # TODO: add typing.IO: e.g., sys.stdout has type IO[str]
 
    # TODO: add TypeVar and a simple generic function
 
-   # TODO: add AnyStr (and mention up next to strings)

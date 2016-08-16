@@ -1181,7 +1181,7 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0)
+            report_internal_error(err, self.path, 0, self.manager.errors)
         self.manager.errors.set_import_context(save_import_context)
         self.check_blockers()
 
@@ -1344,6 +1344,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
     new = collections.deque()  # type: collections.deque[State]
+    entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:
         try:
@@ -1356,11 +1357,16 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)
+        entry_points.add(bs.module)
     # Collect dependencies.  We go breadth-first.
     while new:
         st = new.popleft()
-        for dep in st.ancestors + st.dependencies:
-            if dep not in graph:
+        for dep in st.ancestors + st.dependencies + st.suppressed:
+            # We don't want to recheck imports marked with '# type: ignore'
+            # so we ignore any suppressed module not explicitly re-included
+            # from the command line.
+            ignored = dep in st.suppressed and dep not in entry_points
+            if dep not in graph and not ignored:
                 try:
                     if dep in st.ancestors:
                         # TODO: Why not 'if dep not in st.dependencies' ?
@@ -1380,6 +1386,11 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
                     new.append(newst)
             if dep in st.ancestors and dep in graph:
                 graph[dep].child_modules.add(st.id)
+            if dep in graph and dep in st.suppressed:
+                # Previously suppressed file is now visible
+                if dep in st.suppressed:
+                    st.suppressed.remove(dep)
+                    st.dependencies.append(dep)
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
