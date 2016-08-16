@@ -7,7 +7,7 @@ from mypy.myunit import (
 )
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
-from mypy.join import join_types
+from mypy.join import join_types, join_simple
 from mypy.meet import meet_types
 from mypy.types import (
     UnboundType, AnyType, Void, CallableType, TupleType, TypeVarDef, Type,
@@ -432,6 +432,14 @@ class JoinSuite(Suite):
                   UnboundType('x'), self.fx.void, self.fx.t, self.tuple(),
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
+
+    def test_mixed_truth_restricted_type(self):
+        # Join_simple against differently restricted truthiness types drops restrictions.
+        true_a = true_only(self.fx.a)
+        false_o = false_only(self.fx.o)
+        j = join_simple(self.fx.o, true_a, false_o)
+        assert_true(j.can_be_true)
+        assert_true(j.can_be_false)
 
     def test_other_mixed_types(self):
         # In general, joining unrelated types produces object.

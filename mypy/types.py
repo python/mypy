@@ -1471,13 +1471,10 @@ def false_only(t: Type) -> Type:
 def true_or_false(t: Type) -> Type:
     """
     Unrestricted version of t with both True-ish and False-ish values
-
-    This assumes that t is already restricted more than its "natural" state. Otherwise, this may
-    rise an exception
     """
     new_t = copy_type(t)
-    if not new_t.can_be_true:
+    if not new_t.can_be_true and type(new_t).can_be_true:
         del new_t.can_be_true
-    if not new_t.can_be_false:
+    if not new_t.can_be_false and type(new_t).can_be_false:
         del new_t.can_be_false
     return new_t

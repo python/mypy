@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
-    UninhabitedType, TypeType
+    UninhabitedType, TypeType, true_or_false
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent, is_subtype_ignoring_tvars
@@ -16,6 +16,11 @@ from mypy import experiments
 
 def join_simple(declaration: Type, s: Type, t: Type) -> Type:
     """Return a simple least upper bound given the declared type."""
+
+    if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
+        # if types are restricted in different ways, use the more general versions
+        s = true_or_false(s)
+        t = true_or_false(t)
 
     if isinstance(s, AnyType):
         return s
