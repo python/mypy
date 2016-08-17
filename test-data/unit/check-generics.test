@@ -408,7 +408,7 @@ class A(Generic[T]):
         if s:
             return p_s_s # E: Incompatible return value type (got p[S, S], expected p[S, T])
         p_t_t = None  # type: p[T, T]
-        if s:
+        if t:
             return p_t_t # E: Incompatible return value type (got p[T, T], expected p[S, T])
         t = t
         s = s
