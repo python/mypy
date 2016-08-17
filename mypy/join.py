@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
     ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
-    UninhabitedType, TypeType, NamedTupleType
+    UninhabitedType, TypeType, NamedTupleType,
     true_or_false
 )
 from mypy.maptype import map_instance_to_supertype
