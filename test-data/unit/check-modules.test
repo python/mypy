@@ -974,6 +974,15 @@ from a import x
 x = 0
 [out]
 
+[case testImportInClass]
+class C:
+    import foo
+reveal_type(C.foo.bar)  # E: Revealed type is 'builtins.int'
+[file foo.py]
+bar = 0
+[builtins fixtures/module.pyi]
+[out]
+
 
 -- Test stability under import cycles
 -- ----------------------------------
