@@ -13,6 +13,7 @@ The function build() is the main interface to this module.
 import binascii
 import collections
 import contextlib
+import hashlib
 import json
 import os
 import os.path
@@ -290,6 +291,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, bool]]),  # build options
                         ('dep_prios', List[int]),
+                        ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
@@ -351,6 +353,7 @@ class BuildManager:
         self.type_checker = TypeChecker(self.errors, self.modules, options=options)
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
+        self.rechecked_modules = set()  # type: Set[str]
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -728,6 +731,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
+        meta.get('interface_hash', ''),
         meta.get('version_id'),
     )
     if (m.id != id or m.path != path or
@@ -750,20 +754,27 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
 
+    return m
+
+
+def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) -> bool:
+    if meta is None:
+        return False
+
     # TODO: Share stat() outcome with find_module()
     st = os.stat(path)  # TODO: Errors
-    if st.st_mtime != m.mtime or st.st_size != m.size:
+    if st.st_mtime != meta.mtime or st.st_size != meta.size:
         manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
         return None
 
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
-    if os.path.getmtime(data_json) != m.data_mtime:
+    if os.path.getmtime(meta.data_json) != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
-        return None
-    manager.log('Found {} {} (metadata is fresh)'.format(id, meta_json))
-    return m
+        return False
+    manager.log('Found {} {} (metadata is fresh)'.format(id, meta.data_json))
+    return True
 
 
 def select_options_affecting_cache(options: Options) -> Mapping[str, bool]:
@@ -783,10 +794,17 @@ def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
+def compute_hash(text: str) -> str:
+    # We use md5 instead of the builtin hash(...) function because the output of hash(...)
+    # can differ between runs due to hash randomization (enabled by default in Python 3.3).
+    # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
+    return hashlib.md5(text.encode('utf-8')).hexdigest()
+
+
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
                 child_modules: List[str], dep_prios: List[int],
-                manager: BuildManager) -> None:
+                old_interface_hash: str, manager: BuildManager) -> str:
     """Write cache files for a module.
 
     Args:
@@ -796,28 +814,52 @@ def write_cache(id: str, path: str, tree: MypyFile,
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
       dep_prios: priorities (parallel array to dependencies)
+      old_interface_hash: the hash from the previous version of the data cache file
       manager: the build manager (for pyversion, log/trace)
+
+    Return:
+      The new interface hash based on the serialized tree
     """
+    # Obtain file paths
     path = os.path.abspath(path)
-    manager.trace('Dumping {} {}'.format(id, path))
-    st = os.stat(path)  # TODO: Errors
-    mtime = st.st_mtime
-    size = st.st_size
     meta_json, data_json = get_cache_names(
         id, path, manager.options.cache_dir, manager.options.python_version)
-    manager.log('Writing {} {} {}'.format(id, meta_json, data_json))
-    data = tree.serialize()
+    manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
+
+    # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
     if not os.path.isdir(parent):
         os.makedirs(parent)
     assert os.path.dirname(meta_json) == parent
+
+    # Construct temp file names
     nonce = '.' + random_string()
     data_json_tmp = data_json + nonce
     meta_json_tmp = meta_json + nonce
-    with open(data_json_tmp, 'w') as f:
-        json.dump(data, f, indent=2, sort_keys=True)
-        f.write('\n')
-    data_mtime = os.path.getmtime(data_json_tmp)
+
+    # Serialize data and analyze interface
+    data = tree.serialize()
+    data_str = json.dumps(data, indent=2, sort_keys=True)
+    interface_hash = compute_hash(data_str)
+
+    # Write data cache file, if applicable
+    if old_interface_hash == interface_hash:
+        # If the interface is unchanged, the cached data is guaranteed
+        # to be equivalent, and we only need to update the metadata.
+        data_mtime = os.path.getmtime(data_json)
+        manager.trace("Interface for {} is unchanged".format(id))
+    else:
+        with open(data_json_tmp, 'w') as f:
+            f.write(data_str)
+            f.write('\n')
+        data_mtime = os.path.getmtime(data_json_tmp)
+        os.replace(data_json_tmp, data_json)
+        manager.trace("Interface for {} has changed".format(id))
+
+    # Obtain and set up metadata
+    st = os.stat(path)  # TODO: Handle errors
+    mtime = st.st_mtime
+    size = st.st_size
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
@@ -828,13 +870,17 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'child_modules': child_modules,
             'options': select_options_affecting_cache(manager.options),
             'dep_prios': dep_prios,
+            'interface_hash': interface_hash,
             'version_id': manager.version_id,
             }
+
+    # Write meta cache file
     with open(meta_json_tmp, 'w') as f:
         json.dump(meta, f, sort_keys=True)
         f.write('\n')
-    os.replace(data_json_tmp, data_json)
     os.replace(meta_json_tmp, meta_json)
+
+    return interface_hash
 
 
 """Dependency manager.
@@ -1021,6 +1067,12 @@ class State:
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0
 
+    # If True, indicate that the public interface of this module is unchanged
+    externally_same = True
+
+    # Contains a hash of the public interface in incremental mode
+    interface_hash = ""  # type: str
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1100,8 +1152,10 @@ class State:
         if path and source is None and manager.options.incremental:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
+            if self.meta is not None:
+                self.interface_hash = self.meta.interface_hash
         self.add_ancestors()
-        if self.meta:
+        if is_meta_fresh(self.meta, self.id, self.path, manager):
             # Make copies, since we may modify these and want to
             # compare them to the originals later.
             self.dependencies = list(self.meta.dependencies)
@@ -1113,6 +1167,7 @@ class State:
             self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
+            self.meta = None
             self.parse_file()
             self.suppressed = []
             self.child_modules = set()
@@ -1163,16 +1218,25 @@ class State:
         # suppression by --silent-imports.  However when a suppressed
         # dependency is added back we find out later in the process.
         return (self.meta is not None
+                and self.is_interface_fresh()
                 and self.dependencies == self.meta.dependencies
                 and self.child_modules == set(self.meta.child_modules))
+
+    def is_interface_fresh(self) -> bool:
+        return self.externally_same
 
     def has_new_submodules(self) -> bool:
         """Return if this module has new submodules after being loaded from a warm cache."""
         return self.meta is not None and self.child_modules != set(self.meta.child_modules)
 
-    def mark_stale(self) -> None:
-        """Throw away the cache data for this file, marking it as stale."""
+    def mark_as_rechecked(self) -> None:
+        """Marks this module as having been fully re-analyzed by the type-checker."""
+        self.manager.rechecked_modules.add(self.id)
+
+    def mark_interface_stale(self) -> None:
+        """Marks this module as having a stale public interface, and discards the cache data."""
         self.meta = None
+        self.externally_same = False
         self.manager.stale_modules.add(self.id)
 
     def check_blockers(self) -> None:
@@ -1362,10 +1426,17 @@ class State:
     def write_cache(self) -> None:
         if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
-            write_cache(self.id, self.path, self.tree,
-                        list(self.dependencies), list(self.suppressed), list(self.child_modules),
-                        dep_prios,
-                        self.manager)
+            new_interface_hash = write_cache(
+                self.id, self.path, self.tree,
+                list(self.dependencies), list(self.suppressed), list(self.child_modules),
+                dep_prios, self.interface_hash,
+                self.manager)
+            if new_interface_hash == self.interface_hash:
+                self.manager.log("Cached module {} has same interface".format(self.id))
+            else:
+                self.manager.log("Cached module {} has changed interface".format(self.id))
+                self.mark_interface_stale()
+                self.interface_hash = new_interface_hash
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
@@ -1434,6 +1505,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
+            g.mark_interface_stale()
     return graph
 
 
@@ -1472,7 +1544,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        stale_deps = {id for id in deps if not graph[id].is_fresh()}
+        stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
         fresh = fresh and not stale_deps
         undeps = set()
         if fresh:
@@ -1488,9 +1560,10 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
             oldest_in_scc = min(graph[id].meta.data_mtime for id in scc)
-            newest_in_deps = 0 if not deps else max(graph[dep].meta.data_mtime for dep in deps)
+            viable = {id for id in deps if not graph[id].is_interface_fresh()}
+            newest_in_deps = 0 if not viable else max(graph[dep].meta.data_mtime for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | deps, key=lambda id: graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].meta.data_mtime)
                 for id in all_ids:
                     if id in scc:
                         if graph[id].meta.data_mtime < newest_in_deps:
@@ -1527,6 +1600,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_fresh_scc(graph, scc)
         else:
             process_stale_scc(graph, scc)
+
+        # TODO: This is a workaround to get around the "chaining imports" problem
+        # with the interface checks.
+        #
+        # That is, if we have a file named `module_a.py` which does:
+        #
+        #     import module_b
+        #     module_b.module_c.foo(3)
+        #
+        # ...and if the type signature of `module_c.foo(...)` were to change,
+        # module_a_ would not be rechecked since the interface of `module_b`
+        # would not be considered changed.
+        #
+        # As a workaround, this check will force a module's interface to be
+        # considered stale if anything it imports has a stale interface,
+        # which ensures these changes are caught and propagated.
+        if len(stale_deps) > 0:
+            for id in scc:
+                graph[id].mark_interface_stale()
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
@@ -1591,8 +1683,6 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
 def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     """Process the modules in one SCC from source code."""
     for id in scc:
-        graph[id].mark_stale()
-    for id in scc:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
@@ -1606,6 +1696,7 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     for id in scc:
         graph[id].type_check()
         graph[id].write_cache()
+        graph[id].mark_as_rechecked()
 
 
 def sorted_components(graph: Graph,

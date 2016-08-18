@@ -47,6 +47,7 @@ def parse_test_cases(
 
             files = []  # type: List[Tuple[str, str]] # path and contents
             stale_modules = None  # type: Optional[Set[str]]  # module names
+            rechecked_modules = None  # type: Optional[Set[str]]  # module names
             while i < len(p) and p[i].id not in ['out', 'case']:
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
@@ -68,11 +69,24 @@ def parse_test_cases(
                         stale_modules = set()
                     else:
                         stale_modules = {item.strip() for item in p[i].arg.split(',')}
+                elif p[i].id == 'rechecked':
+                    if p[i].arg is None:
+                        rechecked_modules = set()
+                    else:
+                        rechecked_modules = {item.strip() for item in p[i].arg.split(',')}
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
                             p[i].id, path, p[i].line))
                 i += 1
+
+            if rechecked_modules is None:
+                # If the set of rechecked modules isn't specified, make it the same as the set of
+                # modules with a stale public interface.
+                rechecked_modules = stale_modules
+            if stale_modules is not None and not stale_modules.issubset(rechecked_modules):
+                raise ValueError(
+                    'Stale modules must be a subset of rechecked modules ({})'.format(path))
 
             tcout = []  # type: List[str]
             if i < len(p) and p[i].id == 'out':
@@ -90,7 +104,7 @@ def parse_test_cases(
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
                                         p[i0].line, lastline, perform,
-                                        files, stale_modules)
+                                        files, stale_modules, rechecked_modules)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -116,7 +130,7 @@ class DataDrivenTestCase(TestCase):
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self, name, input, output, file, line, lastline,
-                 perform, files, expected_stale_modules):
+                 perform, files, expected_stale_modules, expected_rechecked_modules):
         super().__init__(name)
         self.input = input
         self.output = output
@@ -126,6 +140,7 @@ class DataDrivenTestCase(TestCase):
         self.perform = perform
         self.files = files
         self.expected_stale_modules = expected_stale_modules
+        self.expected_rechecked_modules = expected_rechecked_modules
 
     def set_up(self) -> None:
         super().set_up()
