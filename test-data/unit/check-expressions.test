@@ -310,8 +310,6 @@ i = None # type: str
 j = not b and i
 if j:
     reveal_type(j) # E: Revealed type is 'builtins.str'
-
-
 [builtins fixtures/bool.pyi]
 
 [case testRestrictedTypeOr]
@@ -321,7 +319,13 @@ i = None # type: str
 j = b or i
 if not j:
     reveal_type(j) # E: Revealed type is 'builtins.str'
+[builtins fixtures/bool.pyi]
 
+[case testAndOr]
+
+s = ""
+b = bool()
+reveal_type(s and b or b)  # E: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
 [case testNonBooleanOr]
