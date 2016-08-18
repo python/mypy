@@ -166,11 +166,22 @@ class TypeCheckSuite(DataSuite):
         if incremental and res:
             if not options.silent_imports:
                 self.verify_cache(module_data, a, res.manager)
-            if testcase.expected_stale_modules is not None and incremental == 2:
-                assert_string_arrays_equal(
-                    list(sorted(testcase.expected_stale_modules)),
-                    list(sorted(res.manager.stale_modules.difference({"__main__"}))),
-                    'Set of stale modules does not match expected set')
+            if incremental == 2:
+                self.check_module_equivalence(
+                    'rechecked',
+                    testcase.expected_rechecked_modules,
+                    res.manager.rechecked_modules)
+                self.check_module_equivalence(
+                    'stale',
+                    testcase.expected_stale_modules,
+                    res.manager.stale_modules)
+
+    def check_module_equivalence(self, name: str, expected: Set[str], actual: Set[str]) -> None:
+        if expected is not None:
+            assert_string_arrays_equal(
+                list(sorted(expected)),
+                list(sorted(actual.difference({"__main__"}))),
+                'Set of {} modules does not match expected set'.format(name))
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager) -> None:
@@ -180,11 +191,17 @@ class TypeCheckSuite(DataSuite):
         # NOTE: When A imports B and there's an error in B, the cache
         # data for B is invalidated, but the cache data for A remains.
         # However build.process_graphs() will ignore A's cache data.
+        #
+        # Also note that when A imports B, and there's an error in A
+        # _due to a valid change in B_, the cache data for B will be
+        # invalidated and updated, but the old cache data for A will
+        # remain unchanged. As before, build.process_graphs() will
+        # ignore A's (old) cache data.
         error_paths = self.find_error_paths(a)
         modules = self.find_module_files()
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
-        if missing_paths != error_paths:
+        if not missing_paths.issubset(error_paths):
             raise AssertionFailure("cache data discrepancy %s != %s" %
                                    (missing_paths, error_paths))
 
@@ -220,7 +237,7 @@ class TypeCheckSuite(DataSuite):
         missing = {}
         for id, path in modules.items():
             meta = build.find_cache_meta(id, path, manager)
-            if meta is None:
+            if not build.is_meta_fresh(meta, id, path, manager):
                 missing[id] = path
         return set(missing.values())
 

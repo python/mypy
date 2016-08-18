@@ -230,7 +230,8 @@ num = id + 1
 
 reveal_type(id)
 reveal_type(num)
-[stale m]
+[rechecked m]
+[stale]
 [out]
 main:1: note: In module imported here:
 tmp/m.py:13: error: Revealed type is 'm.UserId'
