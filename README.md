@@ -147,14 +147,15 @@ If you want to contribute, first clone the mypy git repository:
 
     $ git clone --recurse-submodules https://github.com/python/mypy.git
 
-Run the supplied `setup.py` script to install mypy:
+From the mypy directory, use pip to install mypy:
 
-    $ python3 setup.py install
+    $ cd mypy
+    $ python3 -m pip install --upgrade .
 
 Replace `python3` with your Python 3 interpreter.  You may have to do
-the above as root. For example, in Ubuntu and Mac OS X:
+the above as root. For example, in Ubuntu:
 
-    $ sudo python3 setup.py install
+    $ sudo python3 -m pip install --upgrade .
 
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
@@ -260,7 +261,6 @@ mypy development has been done using mypy for a while!
 Here are some of the more significant Python features not supported
 right now (but all of these will improve):
 
- - Python 2.x support needs polish and documentation
  - properties with setters not supported
  - limited metaclass support
  - only a subset of Python standard library modules are supported, and some
@@ -286,9 +286,10 @@ Help wanted
 -----------
 
 Any help in testing, development, documentation and other tasks is
-highly appreciated and useful to the project.  Contact the developers
-to join the project, or just start coding and send pull requests!
-There are tasks for contributors of all experience levels.
+highly appreciated and useful to the project. There are tasks for
+contributors of all experience levels. If you're just getting started,
+check out the [difficulty/newcomer](https://github.com/python/mypy/labels/difficulty%2Fnewcomer)
+and [difficulty/easy](https://github.com/python/mypy/labels/difficulty%2Feasy) labels.
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 
