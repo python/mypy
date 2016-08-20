@@ -228,17 +228,23 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        if self.s == t:
-            return self.s
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
             items = []  # type: List[Type]
             for i in range(t.length()):
                 items.append(self.join(t.items[i], self.s.items[i]))
-            if (not (isinstance(t, NamedTupleType) and isinstance(self.s, NamedTupleType))
-                    or self.s.attrs == t.attrs):
-                return self.s.copy_with(items=items)
             # TODO: What if the fallback types are different?
             return TupleType(items, t.fallback)
+        else:
+            return self.default(self.s)
+
+    def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
+        tuple_type = self.visit_tuple_type(t)
+        if isinstance(tuple_type, TupleType):
+            if isinstance(self.s, NamedTupleType) and self.s.attrs == t.attrs:
+                # we forget about t.name
+                return self.s.copy_with(items=tuple_type.items)
+            else:
+                return tuple_type
         else:
             return self.default(self.s)
 
