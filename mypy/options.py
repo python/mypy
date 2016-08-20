@@ -1,7 +1,7 @@
 from mypy import defaults
 import pprint
 import sys
-from typing import Any
+from typing import Any, Optional, Tuple
 
 
 class BuildType:
@@ -59,6 +59,7 @@ class Options:
         self.incremental = False
         self.cache_dir = defaults.MYPY_CACHE
         self.suppress_error_context = False  # Suppress "note: In function "foo":" messages.
+        self.shadow_file = None  # type: Optional[Tuple[str, str]]
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__

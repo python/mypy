@@ -1323,7 +1323,11 @@ class State:
             self.source = None  # We won't need it again.
             if self.path and source is None:
                 try:
-                    source = read_with_python_encoding(self.path, manager.options.python_version)
+                    path = self.path
+                    if (self.manager.options.shadow_file and
+                            os.path.samefile(self.manager.options.shadow_file[0], path)):
+                        path = self.manager.options.shadow_file[1]
+                    source = read_with_python_encoding(path, manager.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
