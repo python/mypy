@@ -2985,22 +2985,35 @@ def consider_sys_platform(expr: Node, platform: str) -> int:
     # Cases supported:
     # - sys.platform == 'posix'
     # - sys.platform != 'win32'
-    # TODO: Maybe support e.g.:
     # - sys.platform.startswith('win')
-    if not isinstance(expr, ComparisonExpr):
+    if isinstance(expr, ComparisonExpr):
+        # Let's not yet support chained comparisons.
+        if len(expr.operators) > 1:
+            return TRUTH_VALUE_UNKNOWN
+        op = expr.operators[0]
+        if op not in ('==', '!='):
+            return TRUTH_VALUE_UNKNOWN
+        if not is_sys_attr(expr.operands[0], 'platform'):
+            return TRUTH_VALUE_UNKNOWN
+        right = expr.operands[1]
+        if not isinstance(right, (StrExpr, UnicodeExpr)):
+            return TRUTH_VALUE_UNKNOWN
+        return fixed_comparison(platform, op, right.value)
+    elif isinstance(expr, CallExpr):
+        if not isinstance(expr.callee, MemberExpr):
+            return TRUTH_VALUE_UNKNOWN
+        if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
+            return TRUTH_VALUE_UNKNOWN
+        if not is_sys_attr(expr.callee.expr, 'platform'):
+            return TRUTH_VALUE_UNKNOWN
+        if expr.callee.name != 'startswith':
+            return TRUTH_VALUE_UNKNOWN
+        if platform.startswith(expr.args[0].value):
+            return ALWAYS_TRUE
+        else:
+            return ALWAYS_FALSE
+    else:
         return TRUTH_VALUE_UNKNOWN
-    # Let's not yet support chained comparisons.
-    if len(expr.operators) > 1:
-        return TRUTH_VALUE_UNKNOWN
-    op = expr.operators[0]
-    if op not in ('==', '!='):
-        return TRUTH_VALUE_UNKNOWN
-    if not is_sys_attr(expr.operands[0], 'platform'):
-        return TRUTH_VALUE_UNKNOWN
-    right = expr.operands[1]
-    if not isinstance(right, (StrExpr, UnicodeExpr)):
-        return TRUTH_VALUE_UNKNOWN
-    return fixed_comparison(platform, op, right.value)
 
 
 Targ = TypeVar('Targ', int, str, Tuple[int, ...])
