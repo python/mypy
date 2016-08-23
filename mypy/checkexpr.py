@@ -1012,6 +1012,20 @@ class ExpressionChecker:
         else:
             return nodes.op_methods[op]
 
+    def _check_op_for_errors(self, method: str, base_type: Type, arg: Node,
+                             context: Context
+                             ) -> Tuple[Tuple[Type, Type], MessageBuilder]:
+        """Type check a binary operation which maps to a method call.
+
+        Return ((result type, inferred operator method type), error message).
+        """
+        local_errors = self.msg.copy()
+        local_errors.disable_count = 0
+        result = self.check_op_local(method, base_type,
+                                     arg, context,
+                                     local_errors)
+        return result, local_errors
+
     def check_op_local(self, method: str, base_type: Type, arg: Node,
                        context: Context, local_errors: MessageBuilder) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
@@ -1065,15 +1079,16 @@ class ExpressionChecker:
             rmethod = self.get_reverse_op_method(method)
             arg_type = self.accept(arg)
             base_arg_node = TempNode(base_type)
-            user_error = None  # type: Tuple[Tuple[Type, Type], MessageBuilder]
+            # In order to be consistent with showing an error about the lhs not matching if neither
+            # the lhs nor the rhs have a compatible signature, we keep track of the first error
+            # message generated when considering __rX methods and __cmp__ methods for Python 2.
+            first_error = None  # type: Optional[Tuple[Tuple[Type, Type], MessageBuilder]]
             if self.has_member(arg_type, rmethod):
-                local_errors = self.msg.copy()
-                local_errors.disable_count = 0
-                result = self.check_op_local(rmethod, arg_type, base_arg_node,
-                                             context, local_errors)
+                result, local_errors = self._check_op_for_errors(rmethod, arg_type,
+                                                                 base_arg_node, context)
                 if not local_errors.is_errors():
                     return result
-                user_error = user_error or (result, local_errors)
+                first_error = first_error or (result, local_errors)
             # If we've failed to find an __rX method and we're checking Python 2, check to see if
             # there is a __cmp__ method on the lhs or on the rhs.
             if (self.chk.options.python_version[0] == 2 and
@@ -1081,31 +1096,25 @@ class ExpressionChecker:
                 cmp_method = nodes.comparison_fallback_method
                 if self.has_member(base_type, cmp_method):
                     # First check the if the lhs has a __cmp__ method that works
-                    local_errors = self.msg.copy()
-                    local_errors.disable_count = 0
-                    result = self.check_op_local(cmp_method, base_type,
-                                                 arg, context,
-                                                 local_errors)
+                    result, local_errors = self._check_op_for_errors(cmp_method, base_type,
+                                                                     base_arg_node, context)
                     if not local_errors.is_errors():
                         return result
-                    user_error = user_error or (result, local_errors)
+                    first_error = first_error or (result, local_errors)
                 if self.has_member(arg_type, cmp_method):
                     # Failed to find a __cmp__ method on the lhs, check if
                     # the rhs as a __cmp__ method that can operate on lhs
-                    local_errors = self.msg.copy()
-                    local_errors.disable_count = 0
-                    result = self.check_op_local(cmp_method, arg_type,
-                                                 base_arg_node, context,
-                                                 local_errors)
+                    result, local_errors = self._check_op_for_errors(cmp_method, arg_type,
+                                                                     base_arg_node, context)
                     if not local_errors.is_errors():
                         return result
-                    user_error = user_error or (result, local_errors)
-            if user_error:
+                    first_error = first_error or (result, local_errors)
+            if first_error:
                 # We found either a __rX method, a __cmp__ method on the base_type, or a __cmp__
                 # method on the rhs and failed match. Return the error for the first of these to
                 # fail.
-                self.msg.add_errors(user_error[1])
-                return user_error[0]
+                self.msg.add_errors(first_error[1])
+                return first_error[0]
             else:
                 # No __rX method or __cmp__. Do deferred type checking to
                 # produce error message that we may have missed previously.
