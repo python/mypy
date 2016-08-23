@@ -1097,7 +1097,7 @@ class ExpressionChecker:
                 if self.has_member(base_type, cmp_method):
                     # First check the if the lhs has a __cmp__ method that works
                     result, local_errors = self._check_op_for_errors(cmp_method, base_type,
-                                                                     base_arg_node, context)
+                                                                     arg, context)
                     if not local_errors.is_errors():
                         return result
                     first_error = first_error or (result, local_errors)

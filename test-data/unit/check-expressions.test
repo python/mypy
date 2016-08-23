@@ -474,7 +474,7 @@ class C:
       # type: ('int') -> bool
       pass
 
-[builtins_py2 fixtures/bool.py]
+[builtins_py2 fixtures/bool.pyi]
 
 [case cmpIgnoredPy3]
 
@@ -486,7 +486,7 @@ class A:
 class B:
     pass
 
-[builtins fixtures/bool.py]
+[builtins fixtures/bool.pyi]
 
 [case testLeAndGe]
 
