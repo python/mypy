@@ -280,7 +280,7 @@ class TypeCheckSuite(DataSuite):
         options = Options()
         flags = re.search('# options: (.*)$', program_text, flags=re.MULTILINE)
         version_flag = re.search('# pyversion: (.*)$', program_text, flags=re.MULTILINE)
-        platform_flag = re.search('# osplatform: (.*)$', program_text, flags=re.MULTILINE)
+        platform_flag = re.search('# platform: (.*)$', program_text, flags=re.MULTILINE)
 
         if flags:
             options_to_enable = flags.group(1).split()
@@ -294,6 +294,6 @@ class TypeCheckSuite(DataSuite):
             options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
         if platform_flag:
-            options.os_platform = platform_flag.group(1)
+            options.platform = platform_flag.group(1)
 
         return options

@@ -17,7 +17,7 @@ class Options:
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = defaults.PYTHON3_VERSION
-        self.os_platform = sys.platform
+        self.platform = sys.platform
         self.custom_typing_module = None  # type: str
         self.report_dirs = {}  # type: Dict[str, str]
         self.silent_imports = False

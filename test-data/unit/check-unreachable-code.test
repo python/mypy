@@ -365,7 +365,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testCustomSysPlatform]
-# osplatform: linux
+# platform: linux
 import sys
 if sys.platform == 'linux':
     x = "foo"
@@ -376,7 +376,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.str'
 [out]
 
 [case testCustomSysPlatform2]
-# osplatform: win32
+# platform: win32
 import sys
 if sys.platform == 'linux':
     x = "foo"
@@ -387,7 +387,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testCustomSysPlatformStartsWith]
-# osplatform: win32
+# platform: win32
 import sys
 if sys.platform.startswith('win'):
     x = "foo"

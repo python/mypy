@@ -1821,7 +1821,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s,
             pyversion=self.options.python_version,
-            osplatform=self.options.os_platform)
+            platform=self.options.platform)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
@@ -2475,7 +2475,7 @@ class FirstPass(NodeVisitor):
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
         self.pyversion = sem.options.python_version
-        self.osplatform = sem.options.os_platform
+        self.platform = sem.options.platform
 
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.
@@ -2644,7 +2644,7 @@ class FirstPass(NodeVisitor):
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion, osplatform=self.osplatform)
+        infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
         for node in s.body:
             node.accept(self)
         if s.else_body:
@@ -2882,9 +2882,9 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 def infer_reachability_of_if_statement(s: IfStmt,
                                        pyversion: Tuple[int, int],
-                                       osplatform: str) -> None:
+                                       platform: str) -> None:
     for i in range(len(s.expr)):
-        result = infer_if_condition_value(s.expr[i], pyversion, osplatform)
+        result = infer_if_condition_value(s.expr[i], pyversion, platform)
         if result == ALWAYS_FALSE:
             # The condition is always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
@@ -2898,7 +2898,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], osplatform: str) -> int:
+def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], platform: str) -> int:
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
@@ -2919,7 +2919,7 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], osplatform:
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, osplatform)
+            result = consider_sys_platform(expr, platform)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == 'PY2':
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
