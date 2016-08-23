@@ -341,3 +341,58 @@ class C:
 [builtins fixtures/ops.pyi]
 [out]
 main: note: In member "foo" of class "C":
+
+[case testCustomSysVersionInfo]
+# pyversion: 3.2
+import sys
+if sys.version_info == (3, 2):
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testCustomSysVersionInfo2]
+# pyversion: 3.1
+import sys
+if sys.version_info == (3, 2):
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testCustomSysPlatform]
+# osplatform: linux
+import sys
+if sys.platform == 'linux':
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testCustomSysPlatform2]
+# osplatform: win32
+import sys
+if sys.platform == 'linux':
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testCustomSysPlatformStartsWith]
+# osplatform: win32
+import sys
+if sys.platform.startswith('win'):
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/ops.pyi]
+[out]

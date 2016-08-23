@@ -107,6 +107,15 @@ class SplitNamespace(argparse.Namespace):
             return getattr(self._standard_namespace, name)
 
 
+def parse_version(v: str) -> Tuple[int, int]:
+    m = re.match(r'\A(\d)\.(\d+)\Z', v)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    else:
+        raise argparse.ArgumentTypeError(
+            "Invalid python version '{}' (expected format: 'x.y')".format(v))
+
+
 def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     """Process command line arguments.
 
@@ -120,14 +129,6 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                     argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=help_factory)
-
-    def parse_version(v: str) -> Tuple[int, int]:
-        m = re.match(r'\A(\d)\.(\d+)\Z', v)
-        if m:
-            return int(m.group(1)), int(m.group(2))
-        else:
-            raise argparse.ArgumentTypeError(
-                "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
