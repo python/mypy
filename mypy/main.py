@@ -139,6 +139,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
+    parser.add_argument('--os-platform', action='store', metavar='PLATFORM',
+                        help="typecheck special-cased code for the given OS platform "
+                        "(defaults to sys.platform).")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', action='store_true',
