@@ -1,4 +1,4 @@
-from typing import builtinclass, overload, Any, Generic, Sequence, TypeVar
+from typing import builtinclass, overload, Any, Generic, Sequence, Tuple, TypeVar
 
 Tco = TypeVar('Tco', covariant=True)
 
@@ -30,6 +30,7 @@ class bool: pass
 class str:
     def __init__(self, x: 'int') -> None: pass
     def __add__(self, x: 'str') -> 'str': pass
+    def startswith(self, x: 'str') -> bool: pass
 
 class int:
     def __add__(self, x: 'int') -> 'int': pass
@@ -54,3 +55,5 @@ True = None # type: bool
 False = None # type: bool
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass
+
+class module: pass

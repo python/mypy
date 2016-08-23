@@ -8,9 +8,10 @@ summary of command line flags can always be printed using the ``-h``
 flag (or its long form ``--help``)::
 
   $ mypy -h
-  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--py2] [-s] [--silent]
-              [--almost-silent] [--disallow-untyped-calls]
-              [--disallow-untyped-defs] [--check-untyped-defs]
+  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM]
+              [--py2] [-s] [--silent] [--almost-silent]
+              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--check-untyped-defs]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--warn-unused-ignores] [--fast-parser] [-i] [--cache-dir DIR]
               [--strict-optional] [-f] [--pdb] [--use-python-path] [--stats]

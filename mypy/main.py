@@ -107,6 +107,15 @@ class SplitNamespace(argparse.Namespace):
             return getattr(self._standard_namespace, name)
 
 
+def parse_version(v: str) -> Tuple[int, int]:
+    m = re.match(r'\A(\d)\.(\d+)\Z', v)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    else:
+        raise argparse.ArgumentTypeError(
+            "Invalid python version '{}' (expected format: 'x.y')".format(v))
+
+
 def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     """Process command line arguments.
 
@@ -121,14 +130,6 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      formatter_class=help_factory)
 
-    def parse_version(v: str) -> Tuple[int, int]:
-        m = re.match(r'\A(\d)\.(\d+)\Z', v)
-        if m:
-            return int(m.group(1)), int(m.group(2))
-        else:
-            raise argparse.ArgumentTypeError(
-                "Invalid python version '{}' (expected format: 'x.y')".format(v))
-
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
     # their `dest` prefixed with `special-opts:`, which will cause them to be
@@ -139,6 +140,9 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
+    parser.add_argument('--platform', action='store', metavar='PLATFORM',
+                        help="typecheck special-cased code for the given OS platform "
+                        "(defaults to sys.platform).")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('-s', '--silent-imports', action='store_true',

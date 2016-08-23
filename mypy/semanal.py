@@ -1819,7 +1819,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("'continue' outside loop", s, True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.options.python_version)
+        infer_reachability_of_if_statement(s,
+            pyversion=self.options.python_version,
+            platform=self.options.platform)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
@@ -2473,6 +2475,7 @@ class FirstPass(NodeVisitor):
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
         self.pyversion = sem.options.python_version
+        self.platform = sem.options.platform
 
     def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
         """Perform the first analysis pass.
@@ -2641,7 +2644,7 @@ class FirstPass(NodeVisitor):
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion)
+        infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
         for node in s.body:
             node.accept(self)
         if s.else_body:
@@ -2878,9 +2881,10 @@ def remove_imported_names_from_symtable(names: SymbolTable,
 
 
 def infer_reachability_of_if_statement(s: IfStmt,
-                                       pyversion: Tuple[int, int]) -> None:
+                                       pyversion: Tuple[int, int],
+                                       platform: str) -> None:
     for i in range(len(s.expr)):
-        result = infer_if_condition_value(s.expr[i], pyversion)
+        result = infer_if_condition_value(s.expr[i], pyversion, platform)
         if result == ALWAYS_FALSE:
             # The condition is always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
@@ -2894,7 +2898,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
+def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], platform: str) -> int:
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
@@ -2915,7 +2919,7 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int]) -> int:
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, sys.platform)
+            result = consider_sys_platform(expr, platform)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == 'PY2':
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
@@ -2981,22 +2985,35 @@ def consider_sys_platform(expr: Node, platform: str) -> int:
     # Cases supported:
     # - sys.platform == 'posix'
     # - sys.platform != 'win32'
-    # TODO: Maybe support e.g.:
     # - sys.platform.startswith('win')
-    if not isinstance(expr, ComparisonExpr):
+    if isinstance(expr, ComparisonExpr):
+        # Let's not yet support chained comparisons.
+        if len(expr.operators) > 1:
+            return TRUTH_VALUE_UNKNOWN
+        op = expr.operators[0]
+        if op not in ('==', '!='):
+            return TRUTH_VALUE_UNKNOWN
+        if not is_sys_attr(expr.operands[0], 'platform'):
+            return TRUTH_VALUE_UNKNOWN
+        right = expr.operands[1]
+        if not isinstance(right, (StrExpr, UnicodeExpr)):
+            return TRUTH_VALUE_UNKNOWN
+        return fixed_comparison(platform, op, right.value)
+    elif isinstance(expr, CallExpr):
+        if not isinstance(expr.callee, MemberExpr):
+            return TRUTH_VALUE_UNKNOWN
+        if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
+            return TRUTH_VALUE_UNKNOWN
+        if not is_sys_attr(expr.callee.expr, 'platform'):
+            return TRUTH_VALUE_UNKNOWN
+        if expr.callee.name != 'startswith':
+            return TRUTH_VALUE_UNKNOWN
+        if platform.startswith(expr.args[0].value):
+            return ALWAYS_TRUE
+        else:
+            return ALWAYS_FALSE
+    else:
         return TRUTH_VALUE_UNKNOWN
-    # Let's not yet support chained comparisons.
-    if len(expr.operators) > 1:
-        return TRUTH_VALUE_UNKNOWN
-    op = expr.operators[0]
-    if op not in ('==', '!='):
-        return TRUTH_VALUE_UNKNOWN
-    if not is_sys_attr(expr.operands[0], 'platform'):
-        return TRUTH_VALUE_UNKNOWN
-    right = expr.operands[1]
-    if not isinstance(right, (StrExpr, UnicodeExpr)):
-        return TRUTH_VALUE_UNKNOWN
-    return fixed_comparison(platform, op, right.value)
 
 
 Targ = TypeVar('Targ', int, str, Tuple[int, ...])
