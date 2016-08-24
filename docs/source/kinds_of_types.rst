@@ -701,3 +701,207 @@ For more details, see :ref:`type-variable-value-restriction`.
 
    How ``bytes``, ``str``, and ``unicode`` are handled between Python 2 and
    Python 3 may change in future versions of mypy.
+
+.. _generators:
+
+Generators
+**********
+
+A generator can be annotated by the generic type
+``Generator[YieldType, SendType, ReturnType]``. For example:
+
+.. code-block:: python
+
+   def echo_round() -> Generator[int, float, str]:
+       sent = yield 0
+       while sent >= 0:
+           sent = yield round(sent)
+       return 'Done'
+
+Note that unlike many other generics in the typing module, the ``SendType`` of
+``Generator`` behaves contravariantly, not covariantly or invariantly.
+
+If your generator will only yield values, set the ``SendType`` and
+``ReturnType`` to None:
+
+.. code-block:: python
+
+   def infinite_stream(start: int) -> Generator[int, None, None]:
+       while True:
+           yield start
+           start += 1
+
+Alternatively, you may annotate your generator as having a return type of
+``Iterator[YieldType]``:
+
+.. code-block:: python
+
+   def infinite_stream(start: int) -> Iterator[int]:
+       while True:
+           yield start
+           start += 1
+
+.. _async-and-await:
+
+Typing async/await
+******************
+
+Mypy supports the ability to type coroutines that use the ``async/await``
+syntax introduced in Python 3.5. For more information regarding coroutines and
+this new syntax, see `PEP 492 <https://www.python.org/dev/peps/pep-0492/>`_.
+
+Functions that use the ``async`` keyword are typed just like normal functions.
+The return type annotation should be the same as the type of the value you
+expect to get back when ``await``-ing the coroutine.
+
+.. code-block:: python
+
+   import asyncio
+
+   async def format_string(tag: str, count: int) -> str:
+       return 'T-minus {} ({})'.format(count, tag)
+
+   async def countdown_1(tag: str, count: int) -> str:
+       while count > 0:
+           my_str = await format_string(tag, count)  # has type 'str'
+           print(my_str)
+           await asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_1("Millennium Falcon", 5))
+   loop.close()
+
+The result of calling an ``async def`` function will be a value of type
+``Awaitable[T]``:
+
+.. code-block:: python
+
+   my_coroutine = countdown_1("Millennium Falcon", 5)
+   reveal_type(my_coroutine)  # has type 'Awaitable[str]'
+
+If you want to use coroutines in older versions of Python that do not support
+the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
+decorator to convert a generator into a coroutine. Note that we set the
+``YieldType`` to be ``Any`` since the functions we call ``yield from`` on may
+potentially return many different kinds of objects.
+
+.. code-block:: python
+
+   from typing import Any
+   import asyncio
+
+   @asyncio.coroutine
+   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           yield from asyncio.sleep(0.1)
+           count -= 1
+      return "Blastoff!"
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_2("USS Enterprise", 5))
+   loop.close()
+
+As before, the result of calling a generator decorated with ``@asyncio.coroutine``
+will be a value of type ``Awaitable[T]``.
+
+.. note::
+
+   At runtime, you are allowed to add the ``@asyncio.coroutine`` decorator to
+   both functions and generators. This is useful when you want to mark a
+   work-in-progress function as a coroutine, but have not yet added ``yield`` or
+   ``yield from`` statements:
+
+   .. code-block:: python
+   
+      import asyncio
+
+      @asyncio.coroutine
+      def serialize(obj: object) -> str:
+          # todo: add yield/yield from to turn this into a generator
+          return "placeholder"
+
+   However, mypy currently does not support converting functions into
+   coroutines. Support for this feature will be added in a future version, but
+   for now, you can manually force the function to be a decorator by doing
+   something like this:
+
+
+   .. code-block:: python
+   
+      from typing import Generator
+      import asyncio
+
+      @asyncio.coroutine
+      def serialize(obj: object) -> Generator[None, None, str]:
+          # todo: add yield/yield from to turn this into a generator
+          if False:
+              yield
+          return "placeholder"
+
+You may also optionally chose to create a subclass of ``Awaitable`` instead:
+
+.. code-block:: python
+
+   from typing import Any, Awaitable
+   import asyncio
+
+   class MyAwaitable(Awaitable[str]):
+       def __init__(self, tag: str, count: int) -> None:
+           self.tag = tag
+           self.count = count
+
+       def __await__(self) -> Generator[Any, None, str]:
+           for i in range(n, 0, -1):
+               print('T-minus {} ({})'.format(i, tag))
+               yield from asyncio.sleep(0.1)
+           return "Blastoff!"
+
+   def countdown_3(tag: str, count: int) -> Awaitable[None]:
+       return MyAwaitable(tag, count)
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_3("Heart of Gold", 5))
+   loop.close()
+
+To create an iterable coroutine, subclass ``AsyncIterator``:
+
+.. code-block:: python
+
+   from typing import Optional, AsyncIterator
+   import asyncio
+
+   class arange(AsyncIterator[int]):
+       def __init__(self, start: int, stop: int, step: int) -> None:
+           self.start = start
+           self.stop = stop
+           self.step = step
+           self.count = start - step
+
+       def __aiter__(self) -> AsyncIterator[int]:
+           return self
+
+       async def __anext__(self) -> int:
+           self.count += self.step
+           if self.count == self.stop:
+               raise StopAsyncIteration
+           else:
+               return self.count
+
+   async def countdown_4(tag: str, n: int) -> str:
+       async for i in arange(n, 0, -1):
+           print('T-minus {} ({})'.format(i, tag))
+           await asyncio.sleep(0.1)
+       return "Blastoff!"
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_4("Serenity", 5))
+   loop.close()
+
+For a more concrete example, the mypy repo has a toy webcrawler that
+demonstrates how to work with coroutines. One version
+`uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
+and one
+`uses the backwards-compatible decorator <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
