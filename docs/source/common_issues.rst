@@ -189,7 +189,6 @@ More specifically, mypy will understand the use of ``sys.version_info`` and
 
 .. code-block:: python
 
-   from typing import Union, Text, Iterator
    import sys
 
    # Distinguishing between different versions of Python:
