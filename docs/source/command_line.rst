@@ -248,6 +248,17 @@ Here are some more useful flags:
   is faster than the default parser and supports multi-line comment
   function annotations (see :ref:`multi_line_annotation` for the details).
 
+- ``--python-version X.Y`` will make mypy typecheck your code as if it were
+  run under Python version X.Y. Without this option, mypy will default to using
+  whatever version of Python is running mypy. Note that the ``-2`` and
+  ``--py2`` flags are aliases for ``--python-version 2.7``. See
+  :ref:`version_and_platform_checks` for more about this feature.
+
+- ``--platform PLATFORM`` will make mypy typecheck your code as if it were
+  run under the the given operating system. Without this option, mypy will
+  default to using whatever operating system you are currently using. See
+  :ref:`version_and_platform_checks` for more about this feature.
+  
 For the remaining flags you can read the full ``mypy -h`` output.
 
 .. note::
