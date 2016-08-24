@@ -202,6 +202,7 @@ More specifically, mypy will understand the use of ``sys.version_info`` and
 
    # Distinguishing between different operating systems:
    if sys.platform.startswith("linux"):
+       # Linux-specific code
    elif sys.platform == "darwin":
        # Mac-specific code
    elif sys.platform == "win32":
