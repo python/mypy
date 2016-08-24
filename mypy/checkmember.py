@@ -17,6 +17,7 @@ from mypy.nodes import method_type, method_type_with_fallback
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
+import mypy.checker
 
 
 def analyze_member_access(name: str,
@@ -29,7 +30,8 @@ def analyze_member_access(name: str,
                           not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder,
                           override_info: TypeInfo = None,
-                          report_type: Type = None) -> Type:
+                          report_type: Type = None,
+                          chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Analyse attribute access.
 
     This is a general operation that supports various different variations:
@@ -74,27 +76,29 @@ def analyze_member_access(name: str,
             return analyze_member_var_access(name, typ, info, node,
                                              is_lvalue, is_super, builtin_type,
                                              not_ready_callback, msg,
-                                             report_type=report_type)
+                                             report_type=report_type, chk=chk)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType()
     elif isinstance(typ, NoneTyp):
+        if chk and chk.should_suppress_optional_error([typ]):
+            return AnyType()
         # The only attribute NoneType has are those it inherits from object
         return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
                                      is_super, is_operator, builtin_type, not_ready_callback, msg,
-                                     report_type=report_type)
+                                     report_type=report_type, chk=chk)
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
-                                         is_operator, builtin_type, not_ready_callback, msg)
+                                         is_operator, builtin_type, not_ready_callback, msg, chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg)
+                                     is_operator, builtin_type, not_ready_callback, msg, chk=chk)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -123,18 +127,18 @@ def analyze_member_access(name: str,
             # Look up from the 'type' type.
             return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
-                                         report_type=report_type)
+                                         report_type=report_type, chk=chk)
         else:
             assert False, 'Unexpected type {}'.format(repr(ret_type))
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
-                                     report_type=report_type)
+                                     report_type=report_type, chk=chk)
     elif isinstance(typ, TypeVarType):
         return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
-                                     report_type=report_type)
+                                     report_type=report_type, chk=chk)
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
         return AnyType()
@@ -155,7 +159,10 @@ def analyze_member_access(name: str,
         fallback = builtin_type('builtins.type')
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
-                                     report_type=report_type)
+                                     report_type=report_type, chk=chk)
+
+    if chk and chk.should_suppress_optional_error([typ]):
+        return AnyType()
     return msg.has_no_attr(report_type, name, node)
 
 
@@ -164,7 +171,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               builtin_type: Callable[[str], Instance],
                               not_ready_callback: Callable[[str, Context], None],
                               msg: MessageBuilder,
-                              report_type: Type = None) -> Type:
+                              report_type: Type = None,
+                              chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Analyse attribute access that does not target a method.
 
     This is logically part of analyze_member_access and the arguments are
@@ -200,6 +208,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         msg.undefined_in_superclass(name, node)
         return AnyType()
     else:
+        if chk and chk.should_suppress_optional_error([itype]):
+            return AnyType()
         return msg.has_no_attr(report_type or itype, name, node)
 
 

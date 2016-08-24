@@ -2,6 +2,7 @@
 
 import itertools
 import contextlib
+import fnmatch
 import os
 import os.path
 
@@ -114,7 +115,10 @@ class TypeChecker(NodeVisitor[Type]):
     # Have we deferred the current function? If yes, don't infer additional
     # types during this pass within the function.
     current_node_deferred = False
+    # Is this file a typeshed stub?
     is_typeshed_stub = False
+    # Should strict Optional-related errors be suppressed in this file?
+    suppress_none_errors = False
     options = None  # type: Options
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
@@ -148,6 +152,12 @@ class TypeChecker(NodeVisitor[Type]):
         self.weak_opts = file_node.weak_opts
         self.enter_partial_types()
         self.is_typeshed_stub = self.errors.is_typeshed_file(path)
+        if self.options.strict_optional_whitelist is None:
+            self.suppress_none_errors = False
+        else:
+            self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
+                                                for pattern
+                                                in self.options.strict_optional_whitelist)
 
         for d in file_node.defs:
             self.accept(d)
@@ -2125,6 +2135,8 @@ class TypeChecker(NodeVisitor[Type]):
             if self.is_unusable_type(subtype):
                 self.msg.does_not_return_value(subtype, context)
             else:
+                if self.should_suppress_optional_error([subtype, supertype]):
+                    return False
                 extra_info = []  # type: List[str]
                 if subtype_label is not None or supertype_label is not None:
                     subtype_str, supertype_str = self.msg.format_distinctly(subtype, supertype)
@@ -2136,6 +2148,15 @@ class TypeChecker(NodeVisitor[Type]):
                     msg += ' (' + ', '.join(extra_info) + ')'
                 self.fail(msg, context)
             return False
+
+    def contains_none(self, t: Type):
+        return (isinstance(t, NoneTyp) or
+                (isinstance(t, UnionType) and any(self.contains_none(ut) for ut in t.items)) or
+                (isinstance(t, TupleType) and any(self.contains_none(tt) for tt in t.items)) or
+                (isinstance(t, Instance) and t.args and any(self.contains_none(it) for it in t.args)))
+
+    def should_suppress_optional_error(self, related_types: List[Type]) -> bool:
+        return self.suppress_none_errors and any(self.contains_none(t) for t in related_types)
 
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no
