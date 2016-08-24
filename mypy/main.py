@@ -185,6 +185,13 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    # hidden options
+    # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
+    # Useful for tools to make transformations to a file to get more
+    # information from a mypy run without having to change the file in-place
+    # (e.g. by adding a call to reveal_type).
+    parser.add_argument('--shadow-file', metavar='PATH', nargs=2, dest='shadow_file',
+                        help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
                         help=argparse.SUPPRESS)
