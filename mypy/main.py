@@ -144,7 +144,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                         help="typecheck special-cased code for the given OS platform "
                         "(defaults to sys.platform).")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
-                        const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
+                        const=defaults.PYTHON2_VERSION,
+                        help="use Python 2 mode (same as '--python-version 2.7')")
     parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
     parser.add_argument('--almost-silent', action='store_true',
@@ -248,6 +249,13 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",
               file=sys.stderr)
+
+    # warn about flags overriding other flags
+    if '--py2' in args and '--python-version' in args:
+        print("Warning: --py2 and --python-version are mutually exclusive flags. You should\n"
+              "pick one or the other. (Mypy will use the last specified flag).",
+              file=sys.stderr)
+
 
     # Check for invalid argument combinations.
     code_methods = sum(bool(c) for c in [special_opts.modules,
