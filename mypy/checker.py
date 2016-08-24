@@ -1557,11 +1557,11 @@ class TypeChecker(NodeVisitor[Type]):
                                        s: OperatorAssignmentStmt) -> Type:
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
-        method = infer_operator_assignment_method(lvalue_type, s.op)
+        inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
         rvalue_type, method_type = self.expr_checker.check_op(
             method, lvalue_type, s.rvalue, s)
 
-        if isinstance(s.lvalue, IndexExpr):
+        if isinstance(s.lvalue, IndexExpr) and not inplace:
             self.check_indexed_assignment(s.lvalue, s.rvalue, s.rvalue)
         else:
             if not is_subtype(rvalue_type, lvalue_type):
@@ -2630,19 +2630,19 @@ def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
     return is_more_precise(t.ret_type, s.ret_type)
 
 
-def infer_operator_assignment_method(type: Type, operator: str) -> str:
-    """Return the method used for operator assignment for given value type.
+def infer_operator_assignment_method(type: Type, operator: str) -> Tuple[bool, str]:
+    """Determine if operator assignment on given value type is in-place, and the method name.
 
-    For example, if operator is '+', return '__iadd__' or '__add__' depending
-    on which method is supported by the type.
+    For example, if operator is '+', return (True, '__iadd__') or (False, '__add__')
+    depending on which method is supported by the type.
     """
     method = nodes.op_methods[operator]
     if isinstance(type, Instance):
         if operator in nodes.ops_with_inplace_method:
-            inplace = '__i' + method[2:]
-            if type.type.has_readable_member(inplace):
-                method = inplace
-    return method
+            inplace_method = '__i' + method[2:]
+            if type.type.has_readable_member(inplace_method):
+                return True, inplace_method
+    return False, method
 
 
 def is_valid_inferred_type(typ: Type) -> bool:
