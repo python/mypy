@@ -707,8 +707,18 @@ For more details, see :ref:`type-variable-value-restriction`.
 Generators
 **********
 
-A generator can be annotated by the generic type
-``Generator[YieldType, SendType, ReturnType]``. For example:
+A basic generator that only yields values can be annotated as having a return
+type of either ``Iterator[YieldType]`` or ``Iterable[YieldType]``. For example:
+
+.. code-block:: python
+
+   def squares(n: int) -> Iterator[int]:
+       for i in range(n):
+           yield i * i
+
+If you want your generator to accept values via the ``send`` method or return
+a value, you should use the
+``Generator[YieldType, SendType, ReturnType]`` generic type instead. For example:
 
 .. code-block:: python
 
@@ -721,25 +731,15 @@ A generator can be annotated by the generic type
 Note that unlike many other generics in the typing module, the ``SendType`` of
 ``Generator`` behaves contravariantly, not covariantly or invariantly.
 
-If your generator will only yield values, set the ``SendType`` and
-``ReturnType`` to None:
+If you do not plan on recieving or returning values, then set the ``SendType``
+or ``ReturnType`` to ``None``, as appropriate. For example, we could have 
+annotated the first example as the following:
 
 .. code-block:: python
 
-   def infinite_stream(start: int) -> Generator[int, None, None]:
-       while True:
-           yield start
-           start += 1
-
-Alternatively, you may annotate your generator as having a return type of
-``Iterator[YieldType]``:
-
-.. code-block:: python
-
-   def infinite_stream(start: int) -> Iterator[int]:
-       while True:
-           yield start
-           start += 1
+   def squares(n: int) -> Generator[int, None, None]:
+       for i in range(n):
+           yield i * i
 
 .. _async-and-await:
 
@@ -750,7 +750,7 @@ Mypy supports the ability to type coroutines that use the ``async/await``
 syntax introduced in Python 3.5. For more information regarding coroutines and
 this new syntax, see `PEP 492 <https://www.python.org/dev/peps/pep-0492/>`_.
 
-Functions that use the ``async`` keyword are typed just like normal functions.
+Functions defined using ``async def`` are typed just like normal functions.
 The return type annotation should be the same as the type of the value you
 expect to get back when ``await``-ing the coroutine.
 
@@ -773,8 +773,8 @@ expect to get back when ``await``-ing the coroutine.
    loop.run_until_complete(countdown_1("Millennium Falcon", 5))
    loop.close()
 
-The result of calling an ``async def`` function will be a value of type
-``Awaitable[T]``:
+The result of calling an ``async def`` function *without awaiting* will be a
+value of type ``Awaitable[T]``:
 
 .. code-block:: python
 
@@ -783,9 +783,12 @@ The result of calling an ``async def`` function will be a value of type
 
 If you want to use coroutines in older versions of Python that do not support
 the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
-decorator to convert a generator into a coroutine. Note that we set the
-``YieldType`` to be ``Any`` since the functions we call ``yield from`` on may
-potentially return many different kinds of objects.
+decorator to convert a generator into a coroutine.
+
+Note that we set the ``YieldType`` of the generator to be ``Any`` in the
+following example. This is because the exact yield type is an implementation
+detail of the coroutine runner (e.g. the ``asyncio`` event loop) and your
+couroutine shouldn't have to know or care about what precisely that type is.
 
 .. code-block:: python
 
@@ -841,7 +844,7 @@ will be a value of type ``Awaitable[T]``.
               yield
           return "placeholder"
 
-You may also optionally chose to create a subclass of ``Awaitable`` instead:
+You may also optionally choose to create a subclass of ``Awaitable`` instead:
 
 .. code-block:: python
 
@@ -904,4 +907,4 @@ For a more concrete example, the mypy repo has a toy webcrawler that
 demonstrates how to work with coroutines. One version
 `uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
 and one
-`uses the backwards-compatible decorator <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
+`uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
