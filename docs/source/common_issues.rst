@@ -184,45 +184,30 @@ the targeted Python version or platform. This allows you to more effectively
 typecheck code that supports multiple versions of Python or multiple operating
 systems.
 
-More specifically, mypy understands ``if/elif`` statements of the following
-forms:
+More specifically, mypy will understand the use of ``sys.version_info`` and
+``sys.platform`` checks within ``if/elif/else`` statements. For example:
 
 .. code-block:: python
 
-   if sys.version_info[INT] COMPARE_OP INT:
-       ...
-
-   if sys.version_info[:INT] COMPARE_OP TUPLE_OF_N_INTS:
-       ...
-
-   if sys.version_info COMPARE_OP TUPLE_OF_1_OR_2_INTS:
-       # In this case, COMPARE_OP must be >, >=, <. <=, but not == or !=
-       ...
-
-   if sys.platform.startswith(STRING):
-       ...
-
-   if sys.platform COMPARE_OP STRING:
-       # In this case, COMPARE_OP must be == or !=
-       ...
-
-For example:
-
-.. code-block:: python
-
+   from typing import Union, Text, Iterator
    import sys
 
-   if sys.version_info[0] >= 3:
+   # Distinguishing between different versions of Python:
+   if sys.version_info >= (3, 5):
+       # Python 3.5+ specific definitions and imports
+   elif sys.version_info[0] >= 3:
        # Python 3 specific definitions and imports
    else:
        # Python 2 specific definitions and imports
 
-   if sys.platform.startswith("win32"):
-       # Windows specific code
-   elif sys.platform.startswith("cygwin"):
-       # Windows + Cygwin specific code
+   # Distinguishing between different operating systems:
+   if sys.platform.startswith("linux"):
+   elif sys.platform == "darwin":
+       # Mac-specific code
+   elif sys.platform == "win32":
+       # Windows-specific code
    else:
-       # Posix specific definitions.
+       # Other systems
 
 .. note::
 
@@ -238,10 +223,6 @@ To target a different Python version, use the ``--python-version X.Y`` flag.
 For example, to verify your code typechecks if were run using Python 2, pass
 in ``--python-version 2.7`` from the command line. Note that you do not need
 to have Python 2.7 installed to perform this check.
-
-Since typechecking your code against Python 2 is a common use case, mypy also
-provides the ``--py2`` and ``-2`` flags as aliases for
-``--python-version 2.7``.
 
 To target a different operating system, use the ``--platform PLATFORM`` flag.
 For example, to verify your code typechecks if it were run in Windows, pass
