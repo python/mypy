@@ -173,6 +173,82 @@ and difficult-to-predict failure modes and could result in very
 confusing error messages. The tradeoff is that you as a programmer
 sometimes have to give the type checker a little help.
 
+.. _version_and_platform_checks:
+
+Python version and system platform checks
+-----------------------------------------
+
+Mypy supports the ability to perform Python version checks and platform
+checks (e.g. Windows vs Posix), ignoring code paths that won't be run on
+the targeted Python version or platform. This allows you to more effectively
+typecheck code that supports multiple versions of Python or multiple operating
+systems.
+
+More specifically, mypy understands ``if/elif`` statements of the following
+forms:
+
+.. code-block:: python
+
+   if sys.version_info[INT] COMPARE_OP INT:
+       ...
+
+   if sys.version_info[:INT] COMPARE_OP TUPLE_OF_N_INTS:
+       ...
+
+   if sys.version_info COMPARE_OP TUPLE_OF_1_OR_2_INTS:
+       # In this case, COMPARE_OP must be >, >=, <. <=, but not == or !=
+       ...
+
+   if sys.platform.startswith(STRING):
+       ...
+
+   if sys.platform COMPARE_OP STRING:
+       # In this case, COMPARE_OP must be == or !=
+       ...
+
+For example:
+
+.. code-block:: python
+
+   import sys
+
+   if sys.version_info[0] >= 3:
+       # Python 3 specific definitions and imports
+   else:
+       # Python 2 specific definitions and imports
+
+   if sys.platform.startswith("win32"):
+       # Windows specific code
+   elif sys.platform.startswith("cygwin"):
+       # Windows + Cygwin specific code
+   else:
+       # Posix specific definitions.
+
+.. note::
+
+   Mypy currently does not support more complex checks, and does not assign
+   any special meaning when assigning a ``sys.version_info`` or ``sys.platform``
+   check to a variable. This may change in future versions of mypy.
+
+By default, mypy will use your current version of Python and your current
+operating system as default values for ``sys.version_info`` and
+``sys.platform``.
+
+To target a different Python version, use the ``--python-version X.Y`` flag.
+For example, to verify your code typechecks if were run using Python 2, pass
+in ``--python-version 2.7`` from the command line. Note that you do not need
+to have Python 2.7 installed to perform this check.
+
+Since typechecking your code against Python 2 is a common use case, mypy also
+provides the ``--py2`` and ``-2`` flags as aliases for
+``--python-version 2.7``.
+
+To target a different operating system, use the ``--platform PLATFORM`` flag.
+For example, to verify your code typechecks if it were run in Windows, pass
+in ``--platform win32``. See the documentation for
+`sys.platform <https://docs.python.org/3/library/sys.html#sys.platform>`_
+for examples of valid platform parameters.
+
 .. _reveal-type:
 
 Displaying the type of an expression
