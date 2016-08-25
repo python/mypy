@@ -1779,6 +1779,10 @@ class TypeInfo(SymbolNode):
     """
 
     _fullname = None  # type: str          # Fully qualified name
+    # Fully qualified name for the module this type was defined in. This
+    # information is also in the fullname, but is harder to extract in the
+    # case of nested class definitions.
+    module_name = None  # type: str
     defn = None  # type: ClassDef          # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
@@ -1830,10 +1834,11 @@ class TypeInfo(SymbolNode):
     # Alternative to fullname() for 'anonymous' classes.
     alt_fullname = None  # type: Optional[str]
 
-    def __init__(self, names: 'SymbolTable', defn: ClassDef) -> None:
+    def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
         self.names = names
         self.defn = defn
+        self.module_name = module_name
         self.subtypes = set()
         self.type_vars = []
         self.bases = []
@@ -1987,6 +1992,7 @@ class TypeInfo(SymbolNode):
     def serialize(self) -> Union[str, JsonDict]:
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
         data = {'.class': 'TypeInfo',
+                'module_name': self.module_name,
                 'fullname': self.fullname(),
                 'alt_fullname': self.alt_fullname,
                 'names': self.names.serialize(self.alt_fullname or self.fullname()),
@@ -2008,7 +2014,8 @@ class TypeInfo(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'TypeInfo':
         names = SymbolTable.deserialize(data['names'])
         defn = ClassDef.deserialize(data['defn'])
-        ti = TypeInfo(names, defn)
+        module_name = data['module_name']
+        ti = TypeInfo(names, defn, module_name)
         ti._fullname = data['fullname']
         ti.alt_fullname = data['alt_fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
@@ -2027,9 +2034,9 @@ class TypeInfo(SymbolNode):
         return ti
 
 
-def namedtuple_type_info(tup: 'mypy.types.TupleType',
-                         names: 'SymbolTable', defn: ClassDef) -> TypeInfo:
-    info = TypeInfo(names, defn)
+def namedtuple_type_info(tup: 'mypy.types.TupleType', names: 'SymbolTable',
+                         defn: ClassDef, module_name: str) -> TypeInfo:
+    info = TypeInfo(names, defn, module_name)
     info.tuple_type = tup
     info.bases = [tup.fallback]
     info.is_named_tuple = True
