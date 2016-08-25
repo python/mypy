@@ -746,6 +746,15 @@ annotated the first example as the following:
 Typing async/await
 ******************
 
+.. note::
+
+   Currently, you must pass in the ``--fast-parser`` flag if you want to run
+   mypy against code containing the ``async/await`` keywords. The fast parser
+   will be enabled by default in a future version of mypy.
+
+   Note that mypy will understand coroutines created using the ``@asyncio.coroutine``
+   decorator both with and without the fast parser enabled.
+
 Mypy supports the ability to type coroutines that use the ``async/await``
 syntax introduced in Python 3.5. For more information regarding coroutines and
 this new syntax, see `PEP 492 <https://www.python.org/dev/peps/pep-0492/>`_.
@@ -792,7 +801,7 @@ couroutine shouldn't have to know or care about what precisely that type is.
 
 .. code-block:: python
 
-   from typing import Any
+   from typing import Any, Generator
    import asyncio
 
    @asyncio.coroutine
@@ -848,7 +857,7 @@ You may also optionally choose to create a subclass of ``Awaitable`` instead:
 
 .. code-block:: python
 
-   from typing import Any, Awaitable
+   from typing import Any, Awaitable, Generator
    import asyncio
 
    class MyAwaitable(Awaitable[str]):
