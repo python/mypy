@@ -3,6 +3,17 @@ Revision history
 
 List of major changes to this document:
 
+- August 2016
+    Publish ``mypy-lang`` version 0.4.4 on PyPI.
+
+    Add :ref:`newtypes`.
+
+    Add :ref:`async-and-await`.
+
+    Add :ref:`text-and-anystr`.
+
+    Add :ref:`version_and_platform_checks`.
+
 - July 2016
     Publish ``mypy-lang`` version 0.4.3 on PyPI.
 
