@@ -36,6 +36,7 @@ from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
+from mypy.util import split_module_names
 
 from mypy import experiments
 
@@ -43,17 +44,6 @@ from mypy import experiments
 # check_args() below for details.
 ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, MessageBuilder],
                       None]
-
-
-def split_module_names(mod_name: str) -> Iterable[str]:
-    """Yields the module and all parent module names.
-
-    So, if `mod_name` is 'a.b.c', this function will yield
-    ['a.b.c', 'a.b', and 'a']."""
-    yield mod_name
-    while '.' in mod_name:
-        mod_name = mod_name.rsplit('.', 1)[0]
-        yield mod_name
 
 
 def extract_refexpr_names(expr: RefExpr) -> Set[str]:

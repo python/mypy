@@ -2,7 +2,7 @@
 
 import re
 import subprocess
-from typing import TypeVar, List, Any, Tuple, Optional
+from typing import TypeVar, List, Any, Tuple, Optional, Iterable
 
 
 T = TypeVar('T')
@@ -10,6 +10,17 @@ T = TypeVar('T')
 ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
 
 default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
+
+
+def split_module_names(mod_name: str) -> Iterable[str]:
+    """Yields the module and all parent module names.
+
+    So, if `mod_name` is 'a.b.c', this function will yield
+    ['a.b.c', 'a.b', and 'a']."""
+    yield mod_name
+    while '.' in mod_name:
+        mod_name = mod_name.rsplit('.', 1)[0]
+        yield mod_name
 
 
 def short_type(obj: object) -> str:
