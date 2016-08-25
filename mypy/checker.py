@@ -87,6 +87,8 @@ class TypeChecker(NodeVisitor[Type]):
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
     type_map = None  # type: Dict[Node, Type]
+    # Types of type checked nodes within this specific module
+    module_type_map = None  # type: Dict[Node, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -121,6 +123,10 @@ class TypeChecker(NodeVisitor[Type]):
     suppress_none_errors = False
     options = None  # type: Options
 
+    # The set of all dependencies (suppressed or not) that this module accesses, either
+    # directly or indirectly.
+    module_refs = None  # type: Set[str]
+
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
         """Construct a type checker.
 
@@ -131,6 +137,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.options = options
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
+        self.module_type_map = {}
         self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
@@ -142,6 +149,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.deferred_nodes = []
         self.pass_num = 0
         self.current_node_deferred = False
+        self.module_refs = set()
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
@@ -152,6 +160,8 @@ class TypeChecker(NodeVisitor[Type]):
         self.weak_opts = file_node.weak_opts
         self.enter_partial_types()
         self.is_typeshed_stub = self.errors.is_typeshed_file(path)
+        self.module_type_map = {}
+        self.module_refs = set()
         if self.options.strict_optional_whitelist is None:
             self.suppress_none_errors = False
         else:
@@ -2211,6 +2221,8 @@ class TypeChecker(NodeVisitor[Type]):
     def store_type(self, node: Node, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
+        if typ is not None:
+            self.module_type_map[node] = typ
 
     def typing_mode_none(self) -> bool:
         if self.is_dynamic_function() and not self.options.check_untyped_defs:

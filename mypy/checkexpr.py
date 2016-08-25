@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import cast, Dict, List, Tuple, Callable, Union, Optional
+from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
@@ -16,7 +16,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2
+    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
 )
 from mypy.nodes import function_type
 from mypy import nodes
@@ -45,6 +45,43 @@ ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, M
                       None]
 
 
+def split_module_names(mod_name: str) -> Iterable[str]:
+    """Yields the module and all parent module names.
+
+    So, if `mod_name` is 'a.b.c', this function will yield
+    ['a.b.c', 'a.b', and 'a']."""
+    yield mod_name
+    while '.' in mod_name:
+        mod_name = mod_name.rsplit('.', 1)[0]
+        yield mod_name
+
+
+def extract_refexpr_names(expr: RefExpr) -> Set[str]:
+    """Recursively extracts all module references from a reference expression.
+
+    Note that currently, the only two subclasses of RefExpr are NameExpr and
+    MemberExpr."""
+    output = set()  # type: Set[str]
+    while expr.kind == MODULE_REF or expr.fullname is not None:
+        if expr.kind == MODULE_REF:
+            output.add(expr.fullname)
+        elif expr.fullname is not None and '.' in expr.fullname:
+            output.add(expr.fullname.rsplit('.', 1)[0])
+
+        if isinstance(expr, NameExpr):
+            if expr.info is not None:
+                output.update(split_module_names(expr.info.module_name))
+            break
+        elif isinstance(expr, MemberExpr):
+            if isinstance(expr.expr, RefExpr):
+                expr = expr.expr
+            else:
+                break
+        else:
+            raise AssertionError("Unknown RefExpr subclass: {}".format(type(expr)))
+    return output
+
+
 class Finished(Exception):
     """Raised if we can terminate overload argument check early (no match)."""
 
@@ -70,11 +107,16 @@ class ExpressionChecker:
         self.msg = msg
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
+    def _visit_typeinfo(self, info: nodes.TypeInfo) -> None:
+        if info is not None:
+            self.chk.module_refs.update(split_module_names(info.module_name))
+
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
 
         It can be of any kind: local, member or global.
         """
+        self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ref_expr(e)
         return self.chk.narrow_type_from_binder(e, result)
 
@@ -861,6 +903,7 @@ class ExpressionChecker:
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
+        self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, False)
         return self.chk.narrow_type_from_binder(e, result)
 
