@@ -355,6 +355,15 @@ class BuildManager:
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
 
+    def maybe_swap_for_shadow_path(self, path: str) -> str:
+        if (self.options.shadow_file and
+                os.path.samefile(self.options.shadow_file[0], path)):
+            path = self.options.shadow_file[1]
+        return path
+
+    def get_stat(self, path: str) -> os.stat_result:
+        return os.stat(self.maybe_swap_for_shadow_path(path))
+
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
         """Find all reachable import statements in a file.
@@ -762,7 +771,7 @@ def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) ->
         return False
 
     # TODO: Share stat() outcome with find_module()
-    st = os.stat(path)  # TODO: Errors
+    st = manager.get_stat(path)  # TODO: Errors
     if st.st_mtime != meta.mtime or st.st_size != meta.size:
         manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
         return None
@@ -857,7 +866,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         manager.trace("Interface for {} has changed".format(id))
 
     # Obtain and set up metadata
-    st = os.stat(path)  # TODO: Handle errors
+    st = manager.get_stat(path)  # TODO: Handle errors
     mtime = st.st_mtime
     size = st.st_size
     meta = {'id': id,
@@ -1323,10 +1332,7 @@ class State:
             self.source = None  # We won't need it again.
             if self.path and source is None:
                 try:
-                    path = self.path
-                    if (self.manager.options.shadow_file and
-                            os.path.samefile(self.manager.options.shadow_file[0], path)):
-                        path = self.manager.options.shadow_file[1]
+                    path = manager.maybe_swap_for_shadow_path(self.path)
                     source = read_with_python_encoding(path, manager.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([

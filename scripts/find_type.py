@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Usage: find_type.py FILENAME START_LINE START_COL END_LINE END_COL MYPY_AND_ARGS
 # Prints out the type of the expression in the given location if the mypy run
 # succeeds cleanly.  Otherwise, prints out the errors encountered.
@@ -15,11 +16,12 @@
 #   let [endline, endcol] = getpos("'>")[1:2]
 #   " Convert to 0-based column offsets
 #   let startcol = startcol - 1
-#   let endcol = endcol - 1
 #   " Change this line to point to the find_type.py script.
 #   execute '!python3 /path/to/mypy/scripts/find_type.py % ' . startline . ' ' . startcol . ' ' . endline . ' ' . endcol . ' ' . mypycmd
 # endfunction
 # vnoremap <Leader>t :call RevealType()<CR>
+#
+# For an Emacs example, see misc/macs.el.
 
 from typing import List, Tuple, Optional
 import subprocess
@@ -66,7 +68,7 @@ def main():
     end_col = int(end_col_str)
     with open(filename, 'r') as f:
         lines = f.readlines()
-        lines[end_line - 1] = update_line(lines[end_line - 1], REVEAL_TYPE_END, end_col + 1)  # insert after end_col
+        lines[end_line - 1] = update_line(lines[end_line - 1], REVEAL_TYPE_END, end_col)  # insert after end_col
         lines[start_line - 1] = update_line(lines[start_line - 1], REVEAL_TYPE_START, start_col)
         with tempfile.NamedTemporaryFile(mode='w', prefix='mypy') as tmp_f:
             tmp_f.writelines(lines)
