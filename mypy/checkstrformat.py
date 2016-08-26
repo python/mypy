@@ -13,6 +13,7 @@ from mypy.nodes import (
 if False:
     # break import cycle only needed for mypy
     import mypy.checker
+    import mypy.checkexpr
 from mypy import messages
 from mypy.messages import MessageBuilder
 
