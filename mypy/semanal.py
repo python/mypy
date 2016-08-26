@@ -894,6 +894,24 @@ class SemanticAnalyzer(NodeVisitor):
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i)
+                self.add_parent_modules(id, module_public)
+
+    def add_parent_modules(self, id: str, module_public: bool) -> None:
+        """Adds all parent modules to the symbol table given a fully qualified import.
+
+        It turns out that when you have imports of the form `import a.b.c`, Python will
+        actually import not only module `a.b.c`, but modules `a.b` and `a` as well. This
+        method adds in those checks.
+
+        Note that this does NOT happen when you have imports of the form
+        `import a.b.c as foo` -- here, only module `a.b.c` is loaded under the name `foo`."""
+        while '.' in id:
+            parent, child = id.rsplit('.', 1)
+            if parent in self.modules and id in self.modules:
+                sym = SymbolTableNode(MODULE_REF, self.modules[id], parent,
+                        module_public=module_public)
+                self.modules[parent].names[child] = sym
+            id = parent
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context) -> None:
@@ -910,6 +928,15 @@ class SemanticAnalyzer(NodeVisitor):
             module = self.modules[import_id]
             for id, as_id in imp.names:
                 node = module.names.get(id)
+
+                # If the module does not contain a symbol with the name 'id',
+                # try checking if it's a module instead.
+                if id not in module.names or node.kind == UNBOUND_IMPORTED:
+                    possible_module_id = import_id + '.' + id
+                    mod = self.modules.get(possible_module_id)
+                    if mod is not None:
+                        node = SymbolTableNode(MODULE_REF, mod, import_id)
+
                 if node and node.kind != UNBOUND_IMPORTED:
                     node = self.normalize_type_alias(node, imp)
                     if not node:

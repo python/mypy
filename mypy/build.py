@@ -1399,19 +1399,6 @@ class State:
         self.dep_line_map = dep_line_map
         self.check_blockers()
 
-    def patch_parent(self) -> None:
-        # Include module in the symbol table of the enclosing package.
-        if '.' not in self.id:
-            return
-        manager = self.manager
-        modules = manager.modules
-        parent, child = self.id.rsplit('.', 1)
-        if parent in modules:
-            manager.trace("Added %s.%s" % (parent, child))
-            modules[parent].names[child] = SymbolTableNode(MODULE_REF, self.tree, parent)
-        else:
-            manager.log("Hm... couldn't add %s.%s" % (parent, child))
-
     def semantic_analysis(self) -> None:
         with self.wrap_context():
             self.manager.semantic_analyzer.visit_file(self.tree, self.xpath)
@@ -1683,8 +1670,6 @@ def process_fresh_scc(graph: Graph, scc: List[str]) -> None:
     for id in scc:
         graph[id].load_tree()
     for id in scc:
-        graph[id].patch_parent()
-    for id in scc:
         graph[id].fix_cross_refs()
     for id in scc:
         graph[id].calculate_mros()
@@ -1697,8 +1682,6 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
-    for id in scc:
-        graph[id].patch_parent()
     for id in scc:
         graph[id].semantic_analysis()
     for id in scc:
