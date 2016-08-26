@@ -91,7 +91,8 @@ def analyze_member_access(name: str,
         # The base object has dynamic type.
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
-                                         is_operator, builtin_type, not_ready_callback, msg, chk=chk)
+                                         is_operator, builtin_type, not_ready_callback, msg,
+                                         chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)

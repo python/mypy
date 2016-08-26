@@ -2150,10 +2150,12 @@ class TypeChecker(NodeVisitor[Type]):
             return False
 
     def contains_none(self, t: Type):
-        return (isinstance(t, NoneTyp) or
-                (isinstance(t, UnionType) and any(self.contains_none(ut) for ut in t.items)) or
-                (isinstance(t, TupleType) and any(self.contains_none(tt) for tt in t.items)) or
-                (isinstance(t, Instance) and t.args and any(self.contains_none(it) for it in t.args)))
+        return (
+            isinstance(t, NoneTyp) or
+            (isinstance(t, UnionType) and any(self.contains_none(ut) for ut in t.items)) or
+            (isinstance(t, TupleType) and any(self.contains_none(tt) for tt in t.items)) or
+            (isinstance(t, Instance) and t.args and any(self.contains_none(it) for it in t.args))
+        )
 
     def should_suppress_optional_error(self, related_types: List[Type]) -> bool:
         return self.suppress_none_errors and any(self.contains_none(t) for t in related_types)

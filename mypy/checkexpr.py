@@ -874,7 +874,8 @@ class ExpressionChecker:
             # This is a reference to a non-module attribute.
             return analyze_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False, False,
-                                         self.named_type, self.not_ready_callback, self.msg, chk=self.chk)
+                                         self.named_type, self.not_ready_callback, self.msg,
+                                         chk=self.chk)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -883,7 +884,8 @@ class ExpressionChecker:
         """
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
-                                     self.named_type, self.not_ready_callback, self.msg, chk=self.chk)
+                                     self.named_type, self.not_ready_callback, self.msg,
+                                     chk=self.chk)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -1035,7 +1037,8 @@ class ExpressionChecker:
         Return tuple (result type, inferred operator method type).
         """
         method_type = analyze_member_access(method, base_type, context, False, False, True,
-                                            self.named_type, self.not_ready_callback, local_errors, chk=self.chk)
+                                            self.named_type, self.not_ready_callback, local_errors,
+                                            chk=self.chk)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
