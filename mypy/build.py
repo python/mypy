@@ -184,8 +184,9 @@ def build(sources: List[BuildSource],
         dispatch(sources, manager)
         return BuildResult(manager)
     finally:
-        manager.log("Build finished with %d modules, %d types, and %d errors" %
-                    (len(manager.modules),
+        manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
+                    (time.time() - manager.start_time,
+                     len(manager.modules),
                      len(manager.type_checker.type_map),
                      manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
@@ -467,12 +468,12 @@ class BuildManager:
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
-            print('%.3f:LOG: ' % (time.time() - self.start_time), *message, file=sys.stderr)
+            print('LOG: ', *message, file=sys.stderr)
             sys.stderr.flush()
 
     def trace(self, *message: str) -> None:
         if self.options.verbosity >= 2:
-            print('%.3f:TRACE:' % (time.time() - self.start_time), *message, file=sys.stderr)
+            print('TRACE:', *message, file=sys.stderr)
             sys.stderr.flush()
 
 
