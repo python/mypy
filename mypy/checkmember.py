@@ -17,7 +17,8 @@ from mypy.nodes import method_type, method_type_with_fallback
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
-import mypy.checker
+if False:  # import for forward declaration only
+    import mypy.checker
 
 
 def analyze_member_access(name: str,
