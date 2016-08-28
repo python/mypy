@@ -1,6 +1,7 @@
 from mypy import defaults
 import pprint
-from typing import Any
+import sys
+from typing import Any, Optional, Tuple
 
 
 class BuildType:
@@ -16,6 +17,7 @@ class Options:
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = defaults.PYTHON3_VERSION
+        self.platform = sys.platform
         self.custom_typing_module = None  # type: str
         self.report_dirs = {}  # type: Dict[str, str]
         self.silent_imports = False
@@ -57,6 +59,7 @@ class Options:
         self.incremental = False
         self.cache_dir = defaults.MYPY_CACHE
         self.suppress_error_context = False  # Suppress "note: In function "foo":" messages.
+        self.shadow_file = None  # type: Optional[Tuple[str, str]]
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__

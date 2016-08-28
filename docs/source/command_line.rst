@@ -8,9 +8,10 @@ summary of command line flags can always be printed using the ``-h``
 flag (or its long form ``--help``)::
 
   $ mypy -h
-  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--py2] [-s] [--silent]
-              [--almost-silent] [--disallow-untyped-calls]
-              [--disallow-untyped-defs] [--check-untyped-defs]
+  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM]
+              [--py2] [-s] [--silent] [--almost-silent]
+              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--check-untyped-defs]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--warn-unused-ignores] [--fast-parser] [-i] [--cache-dir DIR]
               [--strict-optional] [-f] [--pdb] [--use-python-path] [--stats]
@@ -247,6 +248,17 @@ Here are some more useful flags:
   is faster than the default parser and supports multi-line comment
   function annotations (see :ref:`multi_line_annotation` for the details).
 
+- ``--python-version X.Y`` will make mypy typecheck your code as if it were
+  run under Python version X.Y. Without this option, mypy will default to using
+  whatever version of Python is running mypy. Note that the ``-2`` and
+  ``--py2`` flags are aliases for ``--python-version 2.7``. See
+  :ref:`version_and_platform_checks` for more about this feature.
+
+- ``--platform PLATFORM`` will make mypy typecheck your code as if it were
+  run under the the given operating system. Without this option, mypy will
+  default to using whatever operating system you are currently using. See
+  :ref:`version_and_platform_checks` for more about this feature.
+  
 For the remaining flags you can read the full ``mypy -h`` output.
 
 .. note::

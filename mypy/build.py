@@ -184,8 +184,9 @@ def build(sources: List[BuildSource],
         dispatch(sources, manager)
         return BuildResult(manager)
     finally:
-        manager.log("Build finished with %d modules, %d types, and %d errors" %
-                    (len(manager.modules),
+        manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
+                    (time.time() - manager.start_time,
+                     len(manager.modules),
                      len(manager.type_checker.type_map),
                      manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
@@ -355,6 +356,15 @@ class BuildManager:
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
 
+    def maybe_swap_for_shadow_path(self, path: str) -> str:
+        if (self.options.shadow_file and
+                os.path.samefile(self.options.shadow_file[0], path)):
+            path = self.options.shadow_file[1]
+        return path
+
+    def get_stat(self, path: str) -> os.stat_result:
+        return os.stat(self.maybe_swap_for_shadow_path(path))
+
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
         """Find all reachable import statements in a file.
@@ -458,12 +468,12 @@ class BuildManager:
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
-            print('%.3f:LOG: ' % (time.time() - self.start_time), *message, file=sys.stderr)
+            print('LOG: ', *message, file=sys.stderr)
             sys.stderr.flush()
 
     def trace(self, *message: str) -> None:
         if self.options.verbosity >= 2:
-            print('%.3f:TRACE:' % (time.time() - self.start_time), *message, file=sys.stderr)
+            print('TRACE:', *message, file=sys.stderr)
             sys.stderr.flush()
 
 
@@ -762,7 +772,7 @@ def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) ->
         return False
 
     # TODO: Share stat() outcome with find_module()
-    st = os.stat(path)  # TODO: Errors
+    st = manager.get_stat(path)  # TODO: Errors
     if st.st_mtime != meta.mtime or st.st_size != meta.size:
         manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
         return None
@@ -857,7 +867,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         manager.trace("Interface for {} has changed".format(id))
 
     # Obtain and set up metadata
-    st = os.stat(path)  # TODO: Handle errors
+    st = manager.get_stat(path)  # TODO: Handle errors
     mtime = st.st_mtime
     size = st.st_size
     meta = {'id': id,
@@ -1323,7 +1333,8 @@ class State:
             self.source = None  # We won't need it again.
             if self.path and source is None:
                 try:
-                    source = read_with_python_encoding(self.path, manager.options.python_version)
+                    path = manager.maybe_swap_for_shadow_path(self.path)
+                    source = read_with_python_encoding(path, manager.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])

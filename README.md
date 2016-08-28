@@ -28,7 +28,7 @@ type check them statically. Find bugs in your programs without even
 running them!
 
 The type annotation standard has also been backported to earlier
-Python 3.x versions.  Mypy supports Python 3.2 and later.
+Python 3.x versions.  Mypy supports Python 3.3 and later.
 
 For Python 2.7, you can add annotations as comments (this is also
 specified in [PEP 484](https://www.python.org/dev/peps/pep-0484/)).
@@ -56,7 +56,7 @@ See 'Development status' below.
 Requirements
 ------------
 
-You need Python 3.2 or later to run mypy.  You can have multiple Python
+You need Python 3.3 or later to run mypy.  You can have multiple Python
 versions (2.x and 3.x) installed on the same system without problems.
 
 In Ubuntu, Mint and Debian you can install Python 3 like this:

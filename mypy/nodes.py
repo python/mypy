@@ -1291,6 +1291,12 @@ op_methods = {
     'in': '__contains__',
 }  # type: Dict[str, str]
 
+comparison_fallback_method = '__cmp__'
+ops_falling_back_to_cmp = {'__ne__', '__eq__',
+                           '__lt__', '__le__',
+                           '__gt__', '__ge__'}
+
+
 ops_with_inplace_method = {
     '+', '-', '*', '/', '%', '//', '**', '&', '|', '^', '<<', '>>'}
 

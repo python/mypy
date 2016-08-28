@@ -9,6 +9,7 @@ import time
 from typing import Tuple, List, Dict, Set
 
 from mypy import build, defaults
+from mypy.main import parse_version
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
@@ -109,9 +110,8 @@ class TypeCheckSuite(DataSuite):
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental)
 
-        options = self.parse_options(original_program_text)
+        options = self.parse_options(original_program_text, testcase)
         options.use_builtins_fixtures = True
-        options.python_version = testcase_pyversion(testcase.file, testcase.name)
         set_show_tb(True)  # Show traceback on crash.
 
         output = testcase.output
@@ -276,11 +276,24 @@ class TypeCheckSuite(DataSuite):
         else:
             return [('__main__', 'main', program_text)]
 
-    def parse_options(self, program_text: str) -> Options:
+    def parse_options(self, program_text: str, testcase: DataDrivenTestCase) -> Options:
         options = Options()
-        m = re.search('# options: (.*)$', program_text, flags=re.MULTILINE)
-        if m:
-            options_to_enable = m.group(1).split()
+        flags = re.search('# options: (.*)$', program_text, flags=re.MULTILINE)
+        version_flag = re.search('# pyversion: (.*)$', program_text, flags=re.MULTILINE)
+        platform_flag = re.search('# platform: (.*)$', program_text, flags=re.MULTILINE)
+
+        if flags:
+            options_to_enable = flags.group(1).split()
             for opt in options_to_enable:
                 setattr(options, opt, True)
+
+        # Allow custom pyversion comment to override testcase_pyversion
+        if version_flag:
+            options.python_version = parse_version(version_flag.group(1))
+        else:
+            options.python_version = testcase_pyversion(testcase.file, testcase.name)
+
+        if platform_flag:
+            options.platform = platform_flag.group(1)
+
         return options

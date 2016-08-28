@@ -436,6 +436,58 @@ class B:
 main:3: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 main:4: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
+[case testCmp_python2]
+
+a, b, c, bo = None, None, None, None # type: (A, B, C, bool)
+bo = a == a  # E: Unsupported operand types for == ("A" and "A")
+bo = a != a  # E: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expected "B"
+bo = a < b
+bo = a > b
+bo = b <= b
+bo = b <= c
+bo = b >= c  # E: Argument 1 to "__cmp__" of "B" has incompatible type "C"; expected "B"
+bo = a >= b
+bo = c >= b
+bo = c <= b  # E: Argument 1 to "__cmp__" of "C" has incompatible type "B"; expected "A"
+bo = a == c
+bo = b == c  # E: Unsupported operand types for == ("C" and "B")
+
+class A:
+    def __cmp__(self, o):
+      # type: ('B') -> bool
+      pass
+    def __eq__(self, o):
+      # type: ('int') -> bool
+      pass
+class B:
+    def __cmp__(self, o):
+        # type: ('B') -> bool
+        pass
+    def __le__(self, o):
+        # type: ('C') -> bool
+        pass
+class C:
+    def __cmp__(self, o):
+      # type: ('A') -> bool
+      pass
+    def __eq__(self, o):
+      # type: ('int') -> bool
+      pass
+
+[builtins_py2 fixtures/bool.pyi]
+
+[case cmpIgnoredPy3]
+
+a, b, bo = None, None, None # type: (A, B, bool)
+bo = a <= b # E: Unsupported left operand type for <= ("A")
+
+class A:
+    def __cmp__(self, o: 'B') -> bool: pass
+class B:
+    pass
+
+[builtins fixtures/bool.pyi]
+
 [case testLeAndGe]
 
 a, b, bo = None, None, None # type: (A, B, bool)

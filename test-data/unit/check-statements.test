@@ -301,6 +301,22 @@ a *= ''
 a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"; expected "int"
 a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"; expected "str"
 
+[case testInplaceSetitem]
+class A(object):
+    def __init__(self):
+        self.a = 0
+
+    def __iadd__(self, a):
+        # type: (int) -> A
+        self.a += 1
+        return self
+
+a = A()
+b = [a]
+b[0] += 1
+[builtins fixtures/list.pyi]
+[out]
+
 
 -- Assert statement
 -- ----------------
