@@ -219,6 +219,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                               dest='special-opts:xslt_txt_report')
     report_group.add_argument('--linecount-report', metavar='DIR',
                               dest='special-opts:linecount_report')
+    report_group.add_argument('--linecoverage-report', metavar='DIR',
+                              dest='special-opts:linecoverage_report')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
