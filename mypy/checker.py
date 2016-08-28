@@ -2236,7 +2236,16 @@ class TypeChecker(NodeVisitor[Type]):
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
                 n = cast(MypyFile, n.names.get(parts[i], None).node)
-            return n.names[parts[-1]]
+            last = parts[-1]
+            if last in n.names:
+                return n.names[last]
+            elif len(parts) == 2 and parts[0] == 'builtins':
+                raise KeyError("Could not find builtin symbol '{}'. (Are you running a "
+                               "test case? If so, make sure to include a fixture that "
+                               "defines this symbol.)".format(last))
+            else:
+                msg = "Failed qualified lookup: '{}' (fullname = '{}')."
+                raise KeyError(msg.format(last, name))
 
     def enter_partial_types(self) -> None:
         """Push a new scope for collecting partial types."""
