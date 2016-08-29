@@ -9,7 +9,7 @@ import time
 from typing import Tuple, List, Dict, Set
 
 from mypy import build, defaults
-from mypy.main import parse_version
+from mypy.main import parse_version, process_options
 from mypy.build import BuildSource, find_module_clear_caches
 from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir, test_data_prefix
@@ -278,22 +278,17 @@ class TypeCheckSuite(DataSuite):
 
     def parse_options(self, program_text: str, testcase: DataDrivenTestCase) -> Options:
         options = Options()
-        flags = re.search('# options: (.*)$', program_text, flags=re.MULTILINE)
-        version_flag = re.search('# pyversion: (.*)$', program_text, flags=re.MULTILINE)
-        platform_flag = re.search('# platform: (.*)$', program_text, flags=re.MULTILINE)
+        flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
 
+        flag_list = None
         if flags:
-            options_to_enable = flags.group(1).split()
-            for opt in options_to_enable:
-                setattr(options, opt, True)
-
-        # Allow custom pyversion comment to override testcase_pyversion
-        if version_flag:
-            options.python_version = parse_version(version_flag.group(1))
+            flag_list = flags.group(1).split()
+            _, options = process_options(flag_list, require_targets=False)
         else:
-            options.python_version = testcase_pyversion(testcase.file, testcase.name)
+            options = Options()
 
-        if platform_flag:
-            options.platform = platform_flag.group(1)
+        # Allow custom python version to override testcase_pyversion
+        if not flag_list or '--python-version' not in flag_list:
+            options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
         return options

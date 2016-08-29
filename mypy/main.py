@@ -116,13 +116,10 @@ def parse_version(v: str) -> Tuple[int, int]:
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
 
-def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
-    """Process command line arguments.
-
-    Return (mypy program path (or None),
-            module to run as script (or None),
-            parsed flags)
-    """
+def process_options(args: List[str],
+                    require_targets: bool = True
+                    ) -> Tuple[List[BuildSource], Options]:
+    """Parse command line arguments."""
 
     # Make the help output a little less jarring.
     help_factory = (lambda prog:
@@ -259,14 +256,15 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
               file=sys.stderr)
 
     # Check for invalid argument combinations.
-    code_methods = sum(bool(c) for c in [special_opts.modules,
-                                         special_opts.command,
-                                         special_opts.package,
-                                         special_opts.files])
-    if code_methods == 0:
-        parser.error("Missing target module, package, files, or command.")
-    elif code_methods > 1:
-        parser.error("May only specify one of: module, package, files, or command.")
+    if require_targets:
+        code_methods = sum(bool(c) for c in [special_opts.modules,
+                                            special_opts.command,
+                                            special_opts.package,
+                                            special_opts.files])
+        if code_methods == 0:
+            parser.error("Missing target module, package, files, or command.")
+        elif code_methods > 1:
+            parser.error("May only specify one of: module, package, files, or command.")
 
     # Set build flags.
     if special_opts.strict_optional:
