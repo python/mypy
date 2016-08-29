@@ -49,7 +49,11 @@ class TransformVisitor(NodeVisitor[Node]):
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
         self.var_map = {}  # type: Dict[Var, Var]
-        self.func_map = {}  # type: Dict[FuncDef, FuncDef]
+        # These are uninitialized placeholder nodes used temporarily for nested
+        # functions while we are transforming a top-level function. This maps an
+        # untransformed node to a placeholder (which will later become the
+        # transformed node).
+        self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
 
     def visit_mypy_file(self, node: MypyFile) -> Node:
         # NOTE: The 'names' and 'imports' instance variables will be empty!
@@ -103,7 +107,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
         # These contortions are needed to handle the case of recursive
         # references inside the function being transformed.
-        # Set up empty nodes for references within this function
+        # Set up placholder nodes for references within this function
         # to other functions defined inside it.
         # Don't create an entry for this function itself though,
         # since we want self-references to point to the original
@@ -128,8 +132,12 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_property = node.is_property
         new.original_def = node.original_def
 
-        if node in self.func_map:
-            result = self.func_map[node]
+        if node in self.func_placeholder_map:
+            # There is a placeholder definition for this function. Replace
+            # the attributes of the placeholder with those form the transformed
+            # function. We know that the classes will be identical (otherwise
+            # this wouldn't work).
+            result = self.func_placeholder_map[node]
             result.__dict__ = new.__dict__
             return result
         else:
@@ -351,8 +359,8 @@ class TransformVisitor(NodeVisitor[Node]):
         if isinstance(target, Var):
             target = self.visit_var(target)
         elif isinstance(target, FuncDef):
-            if target in self.func_map:
-                target = self.func_map[target]
+            # Use a placeholder node for the function if it exists.
+            target = self.func_placeholder_map.get(target, target)
         new.node = target
         new.is_def = original.is_def
 
@@ -553,11 +561,17 @@ class TransformVisitor(NodeVisitor[Node]):
 
 
 class FuncMapInitializer(TraverserVisitor):
+    """This traverser creates mappings from nested FuncDefs to placeholder FuncDefs.
+
+    The placholders will later be replaced with transformed nodes.
+    """
+
     def __init__(self, transformer: TransformVisitor) -> None:
         self.transformer = transformer
 
     def visit_func_def(self, node: FuncDef) -> None:
-        if node not in self.transformer.func_map:
-            self.transformer.func_map[node] = FuncDef(
+        if node not in self.transformer.func_placeholder_map:
+            # Haven't seen this FuncDef before, so create a placeholder node.
+            self.transformer.func_placeholder_map[node] = FuncDef(
                 node.name(), node.arguments, node.body, None)
         super().visit_func_def(node)
