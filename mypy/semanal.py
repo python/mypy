@@ -894,6 +894,30 @@ class SemanticAnalyzer(NodeVisitor):
                 base = id.split('.')[0]
                 self.add_module_symbol(base, base, module_public=module_public,
                                        context=i)
+                self.add_submodules_to_parent_modules(id, module_public)
+
+    def add_submodules_to_parent_modules(self, id: str, module_public: bool) -> None:
+        """Recursively adds a reference to a newly loaded submodule to its parent.
+
+        When you import a submodule in any way, Python will add a reference to that
+        submodule to its parent. So, if you do something like `import A.B` or
+        `from A import B` or `from A.B import Foo`, Python will add a reference to
+        module A.B to A's namespace.
+
+        Note that this "parent patching" process is completely independent from any
+        changes made to the *importer's* namespace. For example, if you have a file
+        named `foo.py` where you do `from A.B import Bar`, then foo's namespace will
+        be modified to contain a reference to only Bar. Independently, A's namespace
+        will be modified to contain a reference to `A.B`.
+        """
+        while '.' in id:
+            parent, child = id.rsplit('.', 1)
+            modules_loaded = parent in self.modules and id in self.modules
+            if modules_loaded and child not in self.modules[parent].names:
+                sym = SymbolTableNode(MODULE_REF, self.modules[id], parent,
+                        module_public=module_public)
+                self.modules[parent].names[child] = sym
+            id = parent
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context) -> None:
@@ -908,8 +932,19 @@ class SemanticAnalyzer(NodeVisitor):
         import_id = self.correct_relative_import(imp)
         if import_id in self.modules:
             module = self.modules[import_id]
+            self.add_submodules_to_parent_modules(import_id, True)
             for id, as_id in imp.names:
                 node = module.names.get(id)
+
+                # If the module does not contain a symbol with the name 'id',
+                # try checking if it's a module instead.
+                if id not in module.names or node.kind == UNBOUND_IMPORTED:
+                    possible_module_id = import_id + '.' + id
+                    mod = self.modules.get(possible_module_id)
+                    if mod is not None:
+                        node = SymbolTableNode(MODULE_REF, mod, import_id)
+                        self.add_submodules_to_parent_modules(possible_module_id, True)
+
                 if node and node.kind != UNBOUND_IMPORTED:
                     node = self.normalize_type_alias(node, imp)
                     if not node:
@@ -991,6 +1026,7 @@ class SemanticAnalyzer(NodeVisitor):
         i_id = self.correct_relative_import(i)
         if i_id in self.modules:
             m = self.modules[i_id]
+            self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
                 node = self.normalize_type_alias(node, i)
                 if not name.startswith('_') and node.module_public:

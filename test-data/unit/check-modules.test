@@ -711,6 +711,169 @@ import m.a
 [out]
 
 
+-- Checks dealing with submodules and different kinds of imports
+-- -------------------------------------------------------------
+
+[case testSubmoduleRegularImportAddsAllParents]
+import a.b.c
+reveal_type(a.value)  # E: Revealed type is 'builtins.int'
+reveal_type(a.b.value)  # E: Revealed type is 'builtins.str'
+reveal_type(a.b.c.value)  # E: Revealed type is 'builtins.float'
+b.value  # E: Name 'b' is not defined
+c.value  # E: Name 'c' is not defined
+
+[file a/__init__.py]
+value = 3
+[file a/b/__init__.py]
+value = "a"
+[file a/b/c.py]
+value = 3.2
+[out]
+
+[case testSubmoduleImportAsDoesNotAddParents]
+import a.b.c as foo
+reveal_type(foo.value)  # E: Revealed type is 'builtins.float'
+a.value  # E: Name 'a' is not defined
+b.value  # E: Name 'b' is not defined
+c.value  # E: Name 'c' is not defined
+
+[file a/__init__.py]
+value = 3
+[file a/b/__init__.py]
+value = "a"
+[file a/b/c.py]
+value = 3.2
+[out]
+
+[case testSubmoduleImportFromDoesNotAddParents]
+from a import b
+reveal_type(b.value)  # E: Revealed type is 'builtins.str'
+b.c.value  # E: "module" has no attribute "c"
+a.value  # E: Name 'a' is not defined
+
+[file a/__init__.py]
+value = 3
+[file a/b/__init__.py]
+value = "a"
+[file a/b/c.py]
+value = 3.2
+[builtins fixtures/module.pyi]
+[out]
+
+[case testSubmoduleImportFromDoesNotAddParents2]
+from a.b import c
+reveal_type(c.value)  # E: Revealed type is 'builtins.float'
+a.value  # E: Name 'a' is not defined
+b.value  # E: Name 'b' is not defined
+
+[file a/__init__.py]
+value = 3
+[file a/b/__init__.py]
+value = "a"
+[file a/b/c.py]
+value = 3.2
+[out]
+
+[case testSubmoduleRegularImportNotDirectlyAddedToParent]
+import a.b.c
+def accept_float(x: float) -> None: pass
+accept_float(a.b.c.value)
+
+[file a/__init__.py]
+value = 3
+b.value
+a.b.value
+
+[file a/b/__init__.py]
+value = "a"
+c.value
+a.b.c.value
+
+[file a/b/c.py]
+value = 3.2
+[out]
+main:1: note: In module imported here:
+tmp/a/b/__init__.py:2: error: Name 'c' is not defined
+tmp/a/b/__init__.py:3: error: Name 'a' is not defined
+tmp/a/__init__.py:2: error: Name 'b' is not defined
+tmp/a/__init__.py:3: error: Name 'a' is not defined
+
+[case testSubmoduleMixingLocalAndQualifiedNames]
+from a.b import MyClass
+val1 = None  # type: a.b.MyClass  # E: Name 'a' is not defined
+val2 = None  # type: MyClass
+
+[file a/__init__.py]
+[file a/b.py]
+class MyClass: pass
+[out]
+
+[case testSubmoduleMixingImportFrom]
+import parent.child
+
+[file parent/__init__.py]
+
+[file parent/common.py]
+class SomeClass: pass
+
+[file parent/child.py]
+from parent.common import SomeClass
+from parent import common
+foo = parent.common.SomeClass()
+
+[builtins fixtures/module.pyi]
+[out]
+main:1: note: In module imported here:
+tmp/parent/child.py:3: error: Name 'parent' is not defined
+
+[case testSubmoduleMixingImportFromAndImport]
+import parent.child
+
+[file parent/__init__.py]
+
+[file parent/common.py]
+class SomeClass: pass
+
+[file parent/unrelated.py]
+class ShouldNotLoad: pass
+
+[file parent/child.py]
+from parent.common import SomeClass
+import parent
+
+# Note, since this might be unintuitive -- when `parent.common` is loaded in any way,
+# shape, or form, it's added to `parent`'s namespace, which is why the below line
+# succeeds.
+foo = parent.common.SomeClass()
+reveal_type(foo)
+bar = parent.unrelated.ShouldNotLoad()
+
+[builtins fixtures/module.pyi]
+[out]
+main:1: note: In module imported here:
+tmp/parent/child.py:8: error: Revealed type is 'parent.common.SomeClass'
+tmp/parent/child.py:9: error: "module" has no attribute "unrelated"
+
+[case testSubmoduleMixingImportFromAndImport2]
+import parent.child
+
+[file parent/__init__.py]
+
+[file parent/common.py]
+class SomeClass: pass
+
+[file parent/child.py]
+from parent import common
+import parent
+foo = parent.common.SomeClass()
+reveal_type(foo)
+
+[builtins fixtures/module.pyi]
+[out]
+main:1: note: In module imported here:
+tmp/parent/child.py:4: error: Revealed type is 'parent.common.SomeClass'
+
+
 -- Misc
 
 [case testInheritFromBadImport]
