@@ -288,7 +288,8 @@ class TypeCheckSuite(DataSuite):
             options = Options()
 
         # Allow custom python version to override testcase_pyversion
-        if not flag_list or '--python-version' not in flag_list:
+        if (not flag_list or
+                all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
             options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
         return options
