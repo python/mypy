@@ -1200,3 +1200,17 @@ def test() -> str: return "foo"
 [stale foo, unrelated]
 [out]
 tmp/main.py:3: error: Revealed type is 'builtins.str'
+
+[case testIncrementalWorksWithNestedClasses]
+import foo
+
+[file foo.py]
+class MyClass:
+    class NestedClass:
+        pass
+
+    class_attr = NestedClass()
+
+[rechecked]
+[stale]
+[out]

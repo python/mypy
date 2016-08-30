@@ -55,13 +55,17 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     while expr.kind == MODULE_REF or expr.fullname is not None:
         if expr.kind == MODULE_REF:
             output.add(expr.fullname)
-        elif expr.fullname is not None and '.' in expr.fullname:
-            if not (isinstance(expr.node, Var) and expr.node.is_import):
-                output.add(expr.fullname.rsplit('.', 1)[0])
 
         if isinstance(expr, NameExpr):
+            is_silenced_import = isinstance(expr.node, Var) and expr.node.is_import
             if expr.info is not None:
+                # Reference to regular type
                 output.update(split_module_names(expr.info.module_name))
+            elif isinstance(expr.node, TypeInfo):
+                # Nested class
+                output.update(split_module_names(expr.node.module_name))
+            elif expr.fullname is not None and '.' in expr.fullname and not is_silenced_import:
+                output.add(expr.fullname.rsplit('.', 1)[0])
             break
         elif isinstance(expr, MemberExpr):
             if isinstance(expr.expr, RefExpr):
