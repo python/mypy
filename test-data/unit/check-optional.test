@@ -379,3 +379,52 @@ reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, b
 [case testListWithNone]
 reveal_type([0, None, 0])    # E: Revealed type is 'builtins.list[Union[builtins.int, builtins.None]]'
 [builtins fixtures/list.pyi]
+
+[case testOptionalWhitelistSuppressesOptionalErrors]
+# flags: --strict-optional-whitelist
+import a
+import b
+[file a.py]
+from typing import Optional
+x = None  # type: Optional[str]
+x + "foo"
+
+[file b.py]
+from typing import Optional
+x = None  # type: Optional[int]
+x + 1
+
+[case testOptionalWhitelistPermitsOtherErrors]
+# flags: --strict-optional-whitelist
+import a
+import b
+[file a.py]
+from typing import Optional
+x = None  # type: Optional[str]
+x + "foo"
+
+[file b.py]
+from typing import Optional
+x = None  # type: Optional[int]
+x + 1
+1 + "foo"
+[out]
+main:3: note: In module imported here:
+tmp/b.py:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testOptionalWhitelistPermitsWhitelistedFiles]
+# flags: --strict-optional-whitelist **/a.py
+import a
+import b
+[file a.py]
+from typing import Optional
+x = None  # type: Optional[str]
+x + "foo"
+
+[file b.py]
+from typing import Optional
+x = None  # type: Optional[int]
+x + 1
+[out]
+main:2: note: In module imported here:
+tmp/a.py:3: error: Unsupported left operand type for + (some union)
