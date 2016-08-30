@@ -1151,7 +1151,7 @@ tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; exp
 
 [case testIncrementalSilentImportsWithInnerImports]
 # cmd: mypy -m main foo
-# options: silent_imports
+# flags: --silent-imports
 
 [file main.py]
 from foo import MyClass
@@ -1176,7 +1176,7 @@ tmp/main.py:3: error: Revealed type is 'Any'
 [case testIncrementalSilentImportsWithInnerImportsAndNewFile]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main foo unrelated
-# options: silent_imports
+# flags: --silent-imports
 
 [file main.py]
 from foo import MyClass
