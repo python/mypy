@@ -1148,3 +1148,55 @@ def C() -> str:
 [out2]
 main:1: note: In module imported here:
 tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalSilentImportsWithInnerImports]
+# cmd: mypy -m main foo
+# options: silent_imports
+
+[file main.py]
+from foo import MyClass
+m = MyClass()
+
+[file main.py.next]
+from foo import MyClass
+m = MyClass()
+reveal_type(m.val)
+
+[file foo.py]
+class MyClass:
+    def __init__(self) -> None:
+        import unrelated
+        self.val = unrelated.test()
+
+[rechecked main]
+[stale]
+[out]
+tmp/main.py:3: error: Revealed type is 'Any'
+
+[case testIncrementalSilentImportsWithInnerImportsAndNewFile]
+# cmd: mypy -m main foo
+# cmd2: mypy -m main foo unrelated
+# options: silent_imports
+
+[file main.py]
+from foo import MyClass
+m = MyClass()
+
+[file main.py.next]
+from foo import MyClass
+m = MyClass()
+reveal_type(m.val)
+
+[file foo.py]
+class MyClass:
+    def __init__(self) -> None:
+        import unrelated
+        self.val = unrelated.test()
+
+[file unrelated.py]
+def test() -> str: return "foo"
+
+[rechecked main, foo, unrelated]
+[stale foo, unrelated]
+[out]
+tmp/main.py:3: error: Revealed type is 'builtins.str'
