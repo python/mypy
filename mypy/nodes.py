@@ -583,6 +583,9 @@ class Var(SymbolNode, Statement):
     is_classmethod = False
     is_property = False
     is_settable_property = False
+    # Set to true when this variable refers to a module we were unable to
+    # parse for some reason (eg a silenced module)
+    is_import = False
 
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name
@@ -613,6 +616,7 @@ class Var(SymbolNode, Statement):
                 'is_classmethod': self.is_classmethod,
                 'is_property': self.is_property,
                 'is_settable_property': self.is_settable_property,
+                'is_import': self.is_import,
                 }  # type: JsonDict
         return data
 
@@ -629,6 +633,7 @@ class Var(SymbolNode, Statement):
         v.is_classmethod = data['is_classmethod']
         v.is_property = data['is_property']
         v.is_settable_property = data['is_settable_property']
+        v.is_import = data['is_import']
         return v
 
 

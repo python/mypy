@@ -923,7 +923,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id,
                                                    module_public=module_public), context)
         else:
-            self.add_unknown_symbol(as_id, context)
+            self.add_unknown_symbol(as_id, context, is_import=True)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         import_id = self.correct_relative_import(imp)
@@ -969,7 +969,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             # Missing module.
             for id, as_id in imp.names:
-                self.add_unknown_symbol(as_id or id, imp)
+                self.add_unknown_symbol(as_id or id, imp, is_import=True)
 
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,
@@ -1039,7 +1039,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
 
-    def add_unknown_symbol(self, name: str, context: Context) -> None:
+    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False) -> None:
         var = Var(name)
         if self.type:
             var._fullname = self.type.fullname() + "." + name
@@ -1047,6 +1047,7 @@ class SemanticAnalyzer(NodeVisitor):
             var._fullname = self.qualified_name(name)
         var.is_ready = True
         var.type = AnyType()
+        var.is_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
     #
