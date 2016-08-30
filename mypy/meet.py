@@ -4,7 +4,7 @@ from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType,
-    DeletedType, UninhabitedType, TypeType, NamedTupleType
+    DeletedType, UninhabitedType, TypeType
 )
 from mypy.subtypes import is_subtype
 from mypy.nodes import TypeInfo
@@ -252,17 +252,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
-        else:
-            return self.default(self.s)
-
-    def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
-        tuple_type = self.visit_tuple_type(t)
-        if isinstance(tuple_type, TupleType):
-            if isinstance(self.s, NamedTupleType) and self.s.attrs == t.attrs:
-                # we forget about t.name
-                return self.s.copy_with(items=tuple_type.items)
-            else:
-                return tuple_type
         else:
             return self.default(self.s)
 

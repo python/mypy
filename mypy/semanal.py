@@ -76,8 +76,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, Void,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType,
-    NamedTupleType, TypeType
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
 )
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
@@ -1658,10 +1657,10 @@ class SemanticAnalyzer(NodeVisitor):
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
         symbols = SymbolTable()
-        tup = NamedTupleType(name, items, types, self.named_type('__builtins__.tuple', types))
+        tup = TupleType(types, self.named_type('__builtins__.tuple', types))
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
-        self.enter_class(class_def)
+
         info = namedtuple_type_info(tup, symbols, class_def)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
@@ -1696,7 +1695,6 @@ class SemanticAnalyzer(NodeVisitor):
                    args=[Argument(Var('iterable', union), union, None, ARG_POS),
                          Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
                          Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
-        self.leave_class()
         return info
 
     def add_namedtuple_field(self, symbols: SymbolTable, info: TypeInfo, var: Var,
@@ -2832,7 +2830,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
-    return typ.tuple_type.copy_with(fallback=inst)
+    return typ.tuple_type.copy_modified(fallback=inst)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

@@ -2,7 +2,7 @@ from typing import cast, List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVarType, CallableType, TupleType, NamedTupleType, UnionType, Overloaded,
+    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded,
     ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
@@ -189,14 +189,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         else:
             return False
-
-    def visit_namedtuple_type(self, left: NamedTupleType) -> bool:
-        if isinstance(self.right, NamedTupleType):
-            # left.attrs.issubset(right.attrs) is insufficient
-            # (a: int, b: str) is not subtype of (b: int, a: str)
-            if any(l != r for l, r in zip(left.attrs, self.right.attrs)):
-                return False
-        return self.visit_tuple_type(left)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right

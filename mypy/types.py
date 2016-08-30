@@ -776,7 +776,7 @@ class TupleType(Type):
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
-    def copy_with(self, *, fallback: Instance = None,
+    def copy_modified(self, *, fallback: Instance = None,
                   items: List[Type] = None) -> 'TupleType':
         if fallback is None:
             fallback = self.fallback
@@ -787,56 +787,6 @@ class TupleType(Type):
     def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.fallback,
                          self.line, self.implicit)
-
-
-class NamedTupleType(TupleType):
-    """The namedtuple type NamedTuple[name, (a1, T1), ..., (an, Tn)].
-    Subtype of Tuple[T1, ..., Tn]
-
-    Instance variables:
-        name: type name
-        attrs: names of the attributes
-
-    Uses the default TupleType.fallback: builtins.tuple
-    """
-
-    attrs = None  # type: List[str]
-    name = None  # type: str
-
-    def __init__(self, name: str, attrs: List[str], *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        assert len(self.items) == len(attrs)
-        self.attrs = attrs
-        self.name = name
-
-    def copy_with(self, *, fallback: Instance = None,
-                  items: List[Type] = None) -> 'NamedTupleType':
-        if fallback is None:
-            fallback = self.fallback
-        if items is None:
-            items = self.items
-        return NamedTupleType(self.name, self.attrs, items, fallback, self.line)
-
-    def serialize(self) -> JsonDict:
-        d = super().serialize()
-        d.update({'.class': 'NamedTupleType',
-                'name': self.name,
-                'attrs': self.attrs})
-        return d
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'NamedTupleType':
-        assert data['.class'] == 'NamedTupleType'
-        data['.class'] = 'TupleType'
-        tup = TupleType.deserialize(data)
-        return NamedTupleType(data['name'],
-                              data['attrs'],
-                              tup.items,
-                              tup.fallback,
-                              implicit=tup.implicit)
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_namedtuple_type(self)
 
 
 class StarType(Type):
@@ -1108,9 +1058,6 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
-    def visit_namedtuple_type(self, t: NamedTupleType) -> T:
-        return self.visit_tuple_type(t)
-
     def visit_star_type(self, t: StarType) -> T:
         raise self._notimplemented_helper('star_type')
 
@@ -1182,10 +1129,6 @@ class TypeTranslator(TypeVisitor[Type]):
         return TupleType(self.translate_types(t.items),
                          cast(Any, t.fallback.accept(self)),
                          t.line)
-
-    def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
-        return t.copy_with(items=self.translate_types(t.items),
-                          fallback=cast(Any, t.fallback.accept(self)))
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)
@@ -1321,11 +1264,6 @@ class TypeStrVisitor(TypeVisitor[str]):
             if fallback_name != 'builtins.tuple':
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
-
-    def visit_namedtuple_type(self, t: NamedTupleType) -> str:
-        s = ', '.join('({}, {})'.format(repr(attr), item.accept(self))
-                    for attr, item in zip(t.attrs, t.items))
-        return '{}[{}]'.format(t.name, s)
 
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)

@@ -3,7 +3,7 @@
 from typing import Callable, cast, List
 
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, NamedTupleType, UnionType, Instance,
+    Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType
 )
@@ -173,8 +173,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                     if t.args:
                         self.fail('Generic tuple types not supported', t)
                         return AnyType()
-                    return tup.copy_with(items=self.anal_array(tup.items),
-                                         fallback=instance)
+                    return tup.copy_modified(items=self.anal_array(tup.items),
+                                             fallback=instance)
         else:
             return AnyType()
 
@@ -219,10 +219,6 @@ class TypeAnalyser(TypeVisitor[Type]):
             return AnyType()
         fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple', [AnyType()])
         return TupleType(self.anal_array(t.items), fallback, t.line)
-
-    def visit_namedtuple_type(self, t: NamedTupleType) -> Type:
-        return NamedTupleType(t.name, t.attrs, self.anal_array(t.items),
-                              fallback=t.fallback, line=t.line)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)
