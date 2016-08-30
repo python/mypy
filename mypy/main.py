@@ -229,7 +229,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
     # ignore A (last option wins).  Perhaps -c, -m and -p could just
     # be command-line flags that modify how we interpret self.files?
-    code_group.add_argument('-c', '--command', metavar='PROGRAM_TEXT', dest='special-opts:command',
+    code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
+                            dest='special-opts:command',
                             help="type-check program passed in as string")
     code_group.add_argument('-p', '--package', metavar='PACKAGE', dest='special-opts:package',
                             help="type-check all files in a directory")
@@ -296,7 +297,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
-        return [BuildSource(None, None, special_opts.command)], options
+        return [BuildSource(None, None, '\n'.join(special_opts.command))], options
     else:
         targets = []
         for f in special_opts.files:
