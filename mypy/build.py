@@ -1442,6 +1442,8 @@ class State:
         extra = encountered - valid
 
         for dep in sorted(extra):
+            if dep not in self.manager.modules:
+                continue
             if dep not in self.suppressed and dep not in self.manager.missing_modules:
                 self.dependencies.append(dep)
                 self.priorities[dep] = PRI_INDIRECT
