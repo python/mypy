@@ -56,7 +56,8 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
         if expr.kind == MODULE_REF:
             output.add(expr.fullname)
         elif expr.fullname is not None and '.' in expr.fullname:
-            output.add(expr.fullname.rsplit('.', 1)[0])
+            if not (isinstance(expr.node, Var) and expr.node.is_import):
+                output.add(expr.fullname.rsplit('.', 1)[0])
 
         if isinstance(expr, NameExpr):
             if expr.info is not None:
