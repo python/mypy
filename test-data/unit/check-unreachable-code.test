@@ -343,7 +343,7 @@ class C:
 main: note: In member "foo" of class "C":
 
 [case testCustomSysVersionInfo]
-# pyversion: 3.2
+# flags: --python-version 3.2
 import sys
 if sys.version_info == (3, 2):
     x = "foo"
@@ -354,7 +354,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.str'
 [out]
 
 [case testCustomSysVersionInfo2]
-# pyversion: 3.1
+# flags: --python-version 3.1
 import sys
 if sys.version_info == (3, 2):
     x = "foo"
@@ -365,7 +365,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testCustomSysPlatform]
-# platform: linux
+# flags: --platform linux
 import sys
 if sys.platform == 'linux':
     x = "foo"
@@ -376,7 +376,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.str'
 [out]
 
 [case testCustomSysPlatform2]
-# platform: win32
+# flags: --platform win32
 import sys
 if sys.platform == 'linux':
     x = "foo"
@@ -387,7 +387,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testCustomSysPlatformStartsWith]
-# platform: win32
+# flags: --platform win32
 import sys
 if sys.platform.startswith('win'):
     x = "foo"
