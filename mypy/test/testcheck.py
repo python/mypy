@@ -283,7 +283,10 @@ class TypeCheckSuite(DataSuite):
         flag_list = None
         if flags:
             flag_list = flags.group(1).split()
-            _, options = process_options(flag_list, require_targets=False)
+            targets, options = process_options(flag_list, require_targets=False)
+            if targets:
+                # TODO: support specifying targets via the flags pragma
+                raise RuntimeError('Specifying targets via the flags pragma is not supported.')
         else:
             options = Options()
 
