@@ -1442,8 +1442,11 @@ class State:
         extra = encountered - valid
 
         for dep in sorted(extra):
-            self.dependencies.append(dep)
-            self.priorities[dep] = PRI_INDIRECT
+            if dep not in self.suppressed and dep not in self.manager.missing_modules:
+                self.dependencies.append(dep)
+                self.priorities[dep] = PRI_INDIRECT
+            elif dep not in self.suppressed and dep in self.manager.missing_modules:
+                self.suppressed.append(dep)
 
     def valid_references(self) -> Set[str]:
         valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
