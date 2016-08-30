@@ -1,6 +1,6 @@
 -- Semantic analysis of named tuples
 
-[case testSimpleNamedTuple]
+[case testSimpleNamedtuple]
 from collections import namedtuple
 N = namedtuple('N', ['a'])
 def f() -> N: pass
@@ -9,14 +9,14 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, N[('a', Any)]))
+    NamedTupleExpr:2(N, Tuple[Any]))
   FuncDef:3(
     f
-    def () -> N[('a', Any)]
+    def () -> Tuple[Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
-[case testTwoItemNamedTuple]
+[case testTwoItemNamedtuple]
 from collections import namedtuple
 N = namedtuple('N', ['a', 'xyz'])
 def f() -> N: pass
@@ -25,14 +25,14 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, N[('a', Any), ('xyz', Any)]))
+    NamedTupleExpr:2(N, Tuple[Any, Any]))
   FuncDef:3(
     f
-    def () -> N[('a', Any), ('xyz', Any)]
+    def () -> Tuple[Any, Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
-[case testTwoItemNamedTupleWithShorthandSyntax]
+[case testTwoItemNamedtupleWithShorthandSyntax]
 from collections import namedtuple
 N = namedtuple('N', ' a  xyz ')
 def f() -> N: pass
@@ -41,10 +41,10 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, N[('a', Any), ('xyz', Any)]))
+    NamedTupleExpr:2(N, Tuple[Any, Any]))
   FuncDef:3(
     f
-    def () -> N[('a', Any), ('xyz', Any)]
+    def () -> Tuple[Any, Any, fallback=__main__.N]
     Block:3(
       PassStmt:3())))
 
@@ -57,7 +57,7 @@ MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, N[('a', builtins.int), ('b', builtins.str)])))
+    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
 
 [case testNamedTupleBaseClass]
 from collections import namedtuple
@@ -68,11 +68,11 @@ MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
   AssignmentStmt:2(
     NameExpr(N* [__main__.N])
-    NamedTupleExpr:2(N, N[('x', Any)]))
+    NamedTupleExpr:2(N, Tuple[Any]))
   ClassDef:3(
     A
     TupleType(
-      N[('x', Any)])
+      Tuple[Any, fallback=__main__.N])
     BaseType(
       __main__.N)
     PassStmt:3()))
