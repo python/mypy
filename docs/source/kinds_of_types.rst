@@ -837,9 +837,8 @@ will be a value of type ``Awaitable[T]``.
 
    However, mypy currently does not support converting functions into
    coroutines. Support for this feature will be added in a future version, but
-   for now, you can manually force the function to be a decorator by doing
+   for now, you can manually force the function to be a generator by doing
    something like this:
-
 
    .. code-block:: python
    
