@@ -36,7 +36,6 @@ from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
-import mypy.checkexpr
 
 from mypy import experiments
 
@@ -61,7 +60,7 @@ class ExpressionChecker:
     # This is shared with TypeChecker, but stored also here for convenience.
     msg = None  # type: MessageBuilder
 
-    strfrm_checker = None  # type: mypy.checkstrformat.StringFormatterChecker
+    strfrm_checker = None  # type: StringFormatterChecker
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
@@ -69,7 +68,7 @@ class ExpressionChecker:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
-        self.strfrm_checker = mypy.checkexpr.StringFormatterChecker(self, self.chk, self.msg)
+        self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.

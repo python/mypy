@@ -770,7 +770,7 @@ a = None  # type: Sized
 a = ()
 
 [case testTupleWithStarExpr1]
-# options: fast_parser
+# flags: --fast-parser
 a = (1, 2)
 b = (*a, '')
 reveal_type(b)  # E: Revealed type is 'Tuple[builtins.int, builtins.int, builtins.str]'

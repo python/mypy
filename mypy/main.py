@@ -116,13 +116,10 @@ def parse_version(v: str) -> Tuple[int, int]:
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
 
-def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
-    """Process command line arguments.
-
-    Return (mypy program path (or None),
-            module to run as script (or None),
-            parsed flags)
-    """
+def process_options(args: List[str],
+                    require_targets: bool = True
+                    ) -> Tuple[List[BuildSource], Options]:
+    """Parse command line arguments."""
 
     # Make the help output a little less jarring.
     help_factory = (lambda prog:
@@ -219,6 +216,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
                               dest='special-opts:xslt_txt_report')
     report_group.add_argument('--linecount-report', metavar='DIR',
                               dest='special-opts:linecount_report')
+    report_group.add_argument('--linecoverage-report', metavar='DIR',
+                              dest='special-opts:linecoverage_report')
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
@@ -227,7 +226,8 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
     # ignore A (last option wins).  Perhaps -c, -m and -p could just
     # be command-line flags that modify how we interpret self.files?
-    code_group.add_argument('-c', '--command', metavar='PROGRAM_TEXT', dest='special-opts:command',
+    code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
+                            dest='special-opts:command',
                             help="type-check program passed in as string")
     code_group.add_argument('-p', '--package', metavar='PACKAGE', dest='special-opts:package',
                             help="type-check all files in a directory")
@@ -257,14 +257,15 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
               file=sys.stderr)
 
     # Check for invalid argument combinations.
-    code_methods = sum(bool(c) for c in [special_opts.modules,
-                                         special_opts.command,
-                                         special_opts.package,
-                                         special_opts.files])
-    if code_methods == 0:
-        parser.error("Missing target module, package, files, or command.")
-    elif code_methods > 1:
-        parser.error("May only specify one of: module, package, files, or command.")
+    if require_targets:
+        code_methods = sum(bool(c) for c in [special_opts.modules,
+                                            special_opts.command,
+                                            special_opts.package,
+                                            special_opts.files])
+        if code_methods == 0:
+            parser.error("Missing target module, package, files, or command.")
+        elif code_methods > 1:
+            parser.error("May only specify one of: module, package, files, or command.")
 
     # Set build flags.
     if special_opts.strict_optional:
@@ -294,7 +295,7 @@ def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
         return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
-        return [BuildSource(None, None, special_opts.command)], options
+        return [BuildSource(None, None, '\n'.join(special_opts.command))], options
     else:
         targets = []
         for f in special_opts.files:

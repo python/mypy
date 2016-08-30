@@ -13,9 +13,6 @@ from mypy.main import process_options
 
 class ArgSuite(Suite):
     def test_coherence(self):
-        # We have to special case Options.BuildType because we're required to
-        # set a target
         options = Options()
-        options.build_type = BuildType.PROGRAM_TEXT
-        _, parsed_options = process_options(['-c', 'cmd'])
+        _, parsed_options = process_options([], require_targets=False)
         assert_equal(options, parsed_options)

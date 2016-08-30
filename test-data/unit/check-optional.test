@@ -117,7 +117,7 @@ f(None)
 main: note: In function "f":
 
 [case testInferOptionalFromDefaultNoneWithFastParser]
-# options: fast_parser
+# flags: --fast-parser
 def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + (some union)
 f(None)
@@ -133,7 +133,7 @@ f(None)
 main: note: In function "f":
 
 [case testInferOptionalFromDefaultNoneCommentWithFastParser]
-# options: fast_parser
+# flags: --fast-parser
 def f(x=None):
   # type: (int) -> None
   x + 1  # E: Unsupported left operand type for + (some union)
@@ -358,7 +358,7 @@ from typing import Callable, Optional
 T = Optional[Callable[..., None]]
 
 [case testAnyTypeInPartialTypeList]
-# options: check_untyped_defs
+# flags: --check-untyped-defs
 def f(): ...
 
 def lookup_field(name, obj):
