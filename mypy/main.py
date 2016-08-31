@@ -175,8 +175,10 @@ def process_options(args: List[str],
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
-                        help="suppress strict Optional errors in all but the provided files"
-                        " (experimental).  Implies --strict-optional.")
+                        help="suppress strict Optional errors in all but the provided files "
+                        "(experimental -- read documentation before using!).  "
+                        "Implies --strict-optional.  Has the undesirable side-effect of "
+                        "suppressing other errors in non-whitelisted files.")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
                         help="show traceback on fatal error")
