@@ -2135,7 +2135,7 @@ class TypeChecker(NodeVisitor[Type]):
             if self.is_unusable_type(subtype):
                 self.msg.does_not_return_value(subtype, context)
             else:
-                if self.should_suppress_optional_error([subtype, supertype]):
+                if self.should_suppress_optional_error([subtype]):
                     return False
                 extra_info = []  # type: List[str]
                 if subtype_label is not None or supertype_label is not None:
