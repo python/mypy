@@ -351,11 +351,11 @@ import mod2.mod3 as mod3
 [file mod2/mod3/__init__.py]
 import mod2.mod3.mod4 as mod4
 
-[file mod2/mod3/mod4.py]
-const = 3
-
 [file mod2/mod3/__init__.py.next]
 # Import is gone!
+
+[file mod2/mod3/mod4.py]
+const = 3
 
 [rechecked mod1, mod2, mod2.mod3]
 [stale mod2.mod3]
@@ -363,6 +363,84 @@ const = 3
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: "module" has no attribute "mod4"
+
+[case testIncrementalNestedBrokenCascadeWithType1]
+import mod1, mod2.mod3.mod5
+
+[file mod1.py]
+import mod2
+def accept_int(x: int) -> None: pass
+def produce() -> mod2.CustomType:
+    return mod2.CustomType()
+a = produce()
+accept_int(a.foo())
+
+[file mod2/__init__.py]
+from mod2.mod3 import CustomType 
+
+[file mod2/mod3/__init__.py]
+from mod2.mod3.mod4 import CustomType
+
+[file mod2/mod3/__init__.py.next]
+# Import a different class that also happens to be called 'CustomType'
+from mod2.mod3.mod5 import CustomType
+def produce() -> CustomType:
+    return CustomType()
+
+[file mod2/mod3/mod4.py]
+class CustomType:
+    def foo(self) -> int: return 1
+
+[file mod2/mod3/mod5.py]
+class CustomType:
+    def foo(self) -> str: return "a"
+
+[rechecked mod1, mod2, mod2.mod3]
+[stale mod2, mod2.mod3]
+[builtins fixtures/module.pyi]
+[out1]
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:6: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalNestedBrokenCascadeWithType2]
+import mod1, mod2.mod3.mod5
+
+[file mod1.py]
+from mod2 import produce 
+def accept_int(x: int) -> None: pass
+a = produce()
+accept_int(a.foo())
+
+[file mod2/__init__.py]
+from mod2.mod3 import produce 
+
+[file mod2/mod3/__init__.py]
+from mod2.mod3.mod4 import CustomType
+def produce() -> CustomType:
+    return CustomType()
+
+[file mod2/mod3/__init__.py.next]
+# Import a different class that also happens to be called 'CustomType'
+from mod2.mod3.mod5 import CustomType
+def produce() -> CustomType:
+    return CustomType()
+
+[file mod2/mod3/mod4.py]
+class CustomType:
+    def foo(self) -> int: return 1
+
+[file mod2/mod3/mod5.py]
+class CustomType:
+    def foo(self) -> str: return "a"
+
+[rechecked mod1, mod2, mod2.mod3]
+[stale mod2.mod3]
+[builtins fixtures/module.pyi]
+[out1]
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalRemoteChange]
 import mod1

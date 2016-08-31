@@ -10,7 +10,7 @@ from mypy.util import split_module_names
 
 
 def extract_module_names(symbol_name: str) -> Iterable[str]:
-    """Returns the module and parent modules of a fully qualified symbol name."""
+    """Return the module and parent modules of a fully qualified symbol name."""
     if symbol_name is not None:
         while '.' in symbol_name:
             symbol_name = symbol_name.rsplit('.', 1)[0]
