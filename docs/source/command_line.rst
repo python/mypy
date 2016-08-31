@@ -227,6 +227,18 @@ Here are some more useful flags:
   use of ``None`` values -- they are valid everywhere. See :ref:`strict_optional` for
   more about this feature.
 
+- ``--strict-optional-whitelist`` attempts to suppress strict Optional-related
+  errors in non-whitelisted files.  Takes an arbitrary number of globs as the
+  whitelist.  This option is intended to be used to incrementally roll out
+  ``--strict-optional`` to a large codebase that already has mypy annotations.
+  However, this flag comes with some significant caveats.  It does not suppress
+  all errors caused by turning on ``--strict-optional``, only most of them, so
+  there may still be a bit of upfront work to be done before it can be used in
+  CI.  It will also suppress some errors that would be caught in a
+  non-strict-Optional run.  Therefore, when using this flag, you should also
+  re-check your code without ``--strict-optional`` to ensure new type errors
+  are not introduced.
+
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
 

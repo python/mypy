@@ -174,6 +174,11 @@ def process_options(args: List[str],
     parser.add_argument('--strict-optional', action='store_true',
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
+    parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
+                        help="suppress strict Optional errors in all but the provided files "
+                        "(experimental -- read documentation before using!).  "
+                        "Implies --strict-optional.  Has the undesirable side-effect of "
+                        "suppressing other errors in non-whitelisted files.")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
                         help="show traceback on fatal error")
@@ -268,7 +273,7 @@ def process_options(args: List[str],
             parser.error("May only specify one of: module, package, files, or command.")
 
     # Set build flags.
-    if special_opts.strict_optional:
+    if special_opts.strict_optional or options.strict_optional_whitelist is not None:
         experiments.STRICT_OPTIONAL = True
 
     # Set reports.
