@@ -46,9 +46,11 @@ def parse_test_cases(
             i += 1
 
             files = []  # type: List[Tuple[str, str]] # path and contents
+            tcout = []  # type: List[str]  # Regular output errors
+            tcout2 = []  # type: List[str]  # Output errors for incremental, second run
             stale_modules = None  # type: Optional[Set[str]]  # module names
             rechecked_modules = None  # type: Optional[Set[str]]  # module names
-            while i < len(p) and p[i].id not in ['out', 'case']:
+            while i < len(p) and p[i].id != 'case':
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
                     files.append((os.path.join(base_path, p[i].arg),
@@ -74,6 +76,18 @@ def parse_test_cases(
                         rechecked_modules = set()
                     else:
                         rechecked_modules = {item.strip() for item in p[i].arg.split(',')}
+                elif p[i].id == 'out' or p[i].id == 'out1':
+                    tcout = p[i].data
+                    if native_sep and os.path.sep == '\\':
+                        tcout = [fix_win_path(line) for line in tcout]
+                    ok = True
+                elif p[i].id == 'out2':
+                    if not ok:
+                        msg = '[out] section must precede [out2] section in {} at line {}'
+                        raise ValueError(msg.format(path, p[i].line))
+                    tcout2 = p[i].data
+                    if native_sep and os.path.sep == '\\':
+                        tcout2 = [fix_win_path(line) for line in tcout2]
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(
@@ -88,21 +102,14 @@ def parse_test_cases(
                 raise ValueError(
                     'Stale modules must be a subset of rechecked modules ({})'.format(path))
 
-            tcout = []  # type: List[str]
-            if i < len(p) and p[i].id == 'out':
-                tcout = p[i].data
-                if native_sep and os.path.sep == '\\':
-                    tcout = [fix_win_path(line) for line in tcout]
-                ok = True
-                i += 1
-            elif optional_out:
+            if optional_out:
                 ok = True
 
             if ok:
                 input = expand_includes(p[i0].data, include_path)
                 expand_errors(input, tcout, 'main')
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
-                tc = DataDrivenTestCase(p[i0].arg, input, tcout, path,
+                tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, stale_modules, rechecked_modules)
                 out.append(tc)
@@ -129,11 +136,12 @@ class DataDrivenTestCase(TestCase):
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
-    def __init__(self, name, input, output, file, line, lastline,
+    def __init__(self, name, input, output, output2, file, line, lastline,
                  perform, files, expected_stale_modules, expected_rechecked_modules):
         super().__init__(name)
         self.input = input
         self.output = output
+        self.output2 = output2
         self.lastline = lastline
         self.file = file
         self.line = line
