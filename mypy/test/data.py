@@ -82,12 +82,10 @@ def parse_test_cases(
                         tcout = [fix_win_path(line) for line in tcout]
                     ok = True
                 elif p[i].id == 'out2':
-                    if not ok:
-                        msg = '[out] section must precede [out2] section in {} at line {}'
-                        raise ValueError(msg.format(path, p[i].line))
                     tcout2 = p[i].data
                     if native_sep and os.path.sep == '\\':
                         tcout2 = [fix_win_path(line) for line in tcout2]
+                    ok = True
                 else:
                     raise ValueError(
                         'Invalid section header {} in {} at line {}'.format(

@@ -154,15 +154,15 @@ class TypeCheckSuite(DataSuite):
         a = normalize_error_messages(a)
 
         # Make sure error messages match
-        output = testcase.output
         if incremental == 0:
             msg = 'Invalid type checker output ({}, line {})'
+            output = testcase.output
         elif incremental == 1:
             msg = 'Invalid type checker output in incremental, run 1 ({}, line {})'
+            output = testcase.output
         elif incremental == 2:
             msg = 'Invalid type checker output in incremental, run 2 ({}, line {})'
-            if testcase.output2 is not None:
-                output = testcase.output2  # Only for incremental mode
+            output = testcase.output2
         else:
             raise AssertionError()
 
