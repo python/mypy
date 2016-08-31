@@ -897,6 +897,52 @@ class A:
 [out2]
 main:2: error: "A" has no attribute "bar"
 
+[case testIncrementalRemoteErrorFixed]
+import m
+m.C().foo().bar()
+[file m.py]
+import n
+class C:
+  def foo(self) -> n.A: pass
+[file n.py]
+class A:
+  pass
+[file n.py.next]
+class A:
+  def bar(self): pass
+[rechecked m, n]
+[stale m, n]
+[out1]
+main:2: error: "A" has no attribute "bar"
+[out2]
+
+[case testIncrementalChangedError]
+import m
+[file m.py]
+import n
+def accept_int(x: int) -> None: pass
+accept_int(n.foo)
+[file n.py]
+foo = "hello"
+reveal_type(foo)
+[file n.py.next]
+foo = 3.14
+reveal_type(foo)
+[rechecked m, n]
+[stale]
+[out1]
+tmp/m.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/n.py:2: error: Revealed type is 'builtins.str'
+main:1: note: In module imported here:
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+[out2]
+tmp/m.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/n.py:2: error: Revealed type is 'builtins.float'
+main:1: note: In module imported here:
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "float"; expected "int"
+
 [case testIncrementalReplacingImports]
 import good, bad, client
 
