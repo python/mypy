@@ -9,12 +9,12 @@ import mypy.types as types
 from mypy.util import split_module_names
 
 
-def extract_module_names(symbol_name: str) -> Iterable[str]:
-    """Return the module and parent modules of a fully qualified symbol name."""
-    if symbol_name is not None:
-        while '.' in symbol_name:
-            symbol_name = symbol_name.rsplit('.', 1)[0]
-            yield symbol_name
+def extract_module_names(type_name: Optional[str]) -> Iterable[str]:
+    """Returns the module name of a fully qualified type name."""
+    if type_name is not None:
+        while '.' in type_name:
+            type_name = type_name.rsplit('.', 1)[0]
+            yield type_name
 
 
 class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
