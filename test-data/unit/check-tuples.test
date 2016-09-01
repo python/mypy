@@ -808,3 +808,15 @@ a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[i
 [case testTupleWithoutContext]
 a = (1, [])  # E: Need type annotation for variable
 [builtins fixtures/tuple.pyi]
+
+[case testTupleWithUnionContext]
+from typing import List, Union, Tuple
+def f() -> Union[int, Tuple[List[str]]]:
+    return ([],)
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithVariableSizedTupleContext]
+from typing import List, Tuple
+def f() -> Tuple[List[str], ...]:
+    return ([],)
+[builtins fixtures/tuple.pyi]
