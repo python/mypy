@@ -797,6 +797,7 @@ OPTIONS_AFFECTING_CACHE = [
     "disallow_untyped_calls",
     "disallow_untyped_defs",
     "check_untyped_defs",
+    "debug_cache",
 ]
 
 
@@ -849,7 +850,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Serialize data and analyze interface
     data = tree.serialize()
-    data_str = json.dumps(data, indent=2, sort_keys=True)
+    if manager.options.debug_cache:
+        data_str = json.dumps(data, indent=2, sort_keys=True)
+    else:
+        data_str = json.dumps(data, sort_keys=True)
     interface_hash = compute_hash(data_str)
 
     # Write data cache file, if applicable
@@ -886,8 +890,10 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Write meta cache file
     with open(meta_json_tmp, 'w') as f:
-        json.dump(meta, f, sort_keys=True)
-        f.write('\n')
+        if manager.options.debug_cache:
+            json.dump(meta, f, indent=2, sort_keys=True)
+        else:
+            json.dump(meta, f)
     os.replace(meta_json_tmp, meta_json)
 
     return interface_hash
