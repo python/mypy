@@ -1728,7 +1728,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_method('__init__', ret=NoneTyp(),
                    args=self.factory_args(vars, ARG_POS), name=info.name())
         # actual signature should return OrderedDict[str, Union[types]]
-        dictype = self.external_instance('typing.OrderedDict', [strtype, AnyType()])
+        dictype = self.external_instance('typing.Dict', [strtype, AnyType()])
         add_method('_asdict', args=[], ret=dictype)
 
         # note: actual signature should accept an invariant version of Iterable[UnionType[types]].
