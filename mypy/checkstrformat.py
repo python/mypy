@@ -70,7 +70,7 @@ class StringFormatterChecker:
         return self.named_type('builtins.str')
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
-        key_regex = r'(\((\w*)\))?'  # (optional) parenthesised sequence of characters
+        key_regex = r'(\(([\w ]*)\))?'  # (optional) parenthesised sequence of characters
         flags_regex = r'([#0\-+ ]*)'  # (optional) sequence of flags
         width_regex = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
         precision_regex = r'(?:\.(\*|[0-9]+)?)?'  # (optional) . followed by * of numbers
