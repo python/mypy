@@ -14,4 +14,3 @@ class int: pass
 class str: pass
 class bytes: pass
 class tuple: pass
-class dict: pass
