@@ -221,7 +221,9 @@ from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
-reveal_type(x._asdict())  # E: Revealed type is 'typing.OrderedDict[builtins.str, Any]'
+reveal_type(x._asdict())  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
+
+[builtins fixtures/dict.pyi]
 
 [case testNamedTupleReplace]
 from collections import namedtuple
@@ -312,6 +314,8 @@ reveal_type([X(1, 'a'), (3, 'b')])  # E: Revealed type is 'builtins.list[Tuple[b
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-reveal_type(X._field_types)  # E: Revealed type is 'typing.Dict[builtins.str, Any]'
+reveal_type(X._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 x = None  # type: X
-reveal_type(x._field_types)  # E: Revealed type is 'typing.Dict[builtins.str, Any]'
+reveal_type(x._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
+
+[builtins fixtures/dict.pyi]

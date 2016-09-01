@@ -315,8 +315,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # A coroutine defined as `async def foo(...) -> T: ...`
                 # has external return type `Awaitable[T]`.
                 defn.type = defn.type.copy_modified(
-                    ret_type=self.external_instance('typing.Awaitable',
-                                                    [defn.type.ret_type]))
+                    ret_type = self.named_type_or_none('typing.Awaitable',
+                                                       [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -863,14 +863,11 @@ class SemanticAnalyzer(NodeVisitor):
         sym = self.lookup_qualified(qualified_name, None)
         return Instance(cast(TypeInfo, sym.node), args or [])
 
-    def named_type_or_none(self, qualified_name: str) -> Instance:
+    def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
-        return Instance(cast(TypeInfo, sym.node), [])
-
-    def external_instance(self, qualified_name: str, args: List[Type] = None) -> Instance:
-        return Instance(self.named_type_or_none(qualified_name).type, args or None)
+        return Instance(cast(TypeInfo, sym.node), args or [])
 
     def is_instance_type(self, t: Type) -> bool:
         return isinstance(t, Instance)
@@ -1690,15 +1687,24 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
-        symbols = SymbolTable()
-        tup = TupleType(types, self.named_type('__builtins__.tuple', types))
-        class_def = ClassDef(name, Block([]))
-        class_def.fullname = self.qualified_name(name)
-        info = namedtuple_type_info(tup, symbols, class_def)
-
-        vars = [Var(item, typ) for item, typ in zip(items, types)]
-        this_type = self_type(info)
         strtype = self.named_type('__builtins__.str')  # type: Type
+        basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
+        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                   or self.object_type())
+        # Actual signature should return OrderedDict[str, Union[types]]
+        ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                          or self.object_type())
+        fallback = self.named_type('__builtins__.tuple', types)
+        # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
+        # but it can't be expressed. 'new' and 'len' should be callable types.
+        iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
+        function_type = self.named_type('__builtins__.function')
+        fullname = self.qualified_name(name)
+
+        symbols = SymbolTable()
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = fullname
+        info = namedtuple_type_info(TupleType(types, fallback), symbols, class_def)
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -1707,60 +1713,44 @@ class SemanticAnalyzer(NodeVisitor):
             var.is_property = is_property
             symbols[var.name()] = SymbolTableNode(MDEF, var)
 
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
         for var in vars:
             add_field(var, is_property=True)
 
-        tuple_of_strings = TupleType([strtype for _ in items],
-                                     self.named_type('__builtins__.tuple', [AnyType()]))
-        # TODO: refine type of values
-        dictype = self.external_instance('typing.Dict', [strtype, AnyType()])
+        tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
         add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
+        # TODO: SelfType should be bind to actual 'self'
+        this_type = self_type(info)
+
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
-            self.add_namedtuple_method(symbols, info, this_type,
-                                       funcname, ret, args, name, is_classmethod)
+            if not is_classmethod:
+                args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
+            types = [arg.type_annotation for arg in args]
+            items = [arg.variable.name() for arg in args]
+            arg_kinds = [arg.kind for arg in args]
+            signature = CallableType(types, arg_kinds, items, ret, function_type,
+                                     name=name or info.name() + '.' + funcname)
+            signature.is_classmethod_class = is_classmethod
+            func = FuncDef(funcname, args, Block([]), typ=signature)
+            func.info = info
+            func.is_class = is_classmethod
+            symbols[funcname] = SymbolTableNode(MDEF, func)
 
         add_method('_replace', ret=this_type,
-                   args=self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
-        add_method('__init__', ret=NoneTyp(),
-                   args=self.factory_args(vars, ARG_POS), name=info.name())
-        # actual signature should return OrderedDict[str, Union[types]]
-        dictype = self.external_instance('typing.OrderedDict', [strtype, AnyType()])
-        add_method('_asdict', args=[], ret=dictype)
-
-        # note: actual signature should accept an invariant version of Iterable[UnionType[types]].
-        # but it can't be expressed
-        # 'new' and 'len' as function types.
-        iterable_type = self.external_instance('typing.Iterable', [AnyType()])
+                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED) for var in vars])
+        add_method('__init__', ret=NoneTyp(), name=info.name(),
+                   args=[Argument(var, var.type, None, ARG_POS) for var in vars])
+        add_method('_asdict', args=[], ret=ordereddictype)
+        # FIX: make it actual class method
         add_method('_make', ret=this_type, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
                          Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
                          Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
         return info
-
-    def factory_args(self, vars: List[Var], kind: int,
-                    initializer: Expression = None) -> List[Argument]:
-        return [Argument(var, var.type, initializer, kind) for var in vars]
-
-    def add_namedtuple_method(self, symbols: SymbolTable, info: TypeInfo, this_type: Type,
-                              funcname: str, ret: Type, args: List[Argument], name=None,
-                              is_classmethod=False) -> None:
-        if not is_classmethod:
-            args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
-        types = [arg.type_annotation for arg in args]
-        items = [arg.variable.name() for arg in args]
-        arg_kinds = [arg.kind for arg in args]
-        signature = CallableType(types, arg_kinds, items, ret,
-                                 self.named_type('__builtins__.function'),
-                                 name=name or info.name() + '.' + funcname)
-        signature.is_classmethod_class = is_classmethod
-        func = FuncDef(funcname, args, Block([]), typ=signature)
-        func.info = info
-        func.is_class = is_classmethod
-        symbols[funcname] = SymbolTableNode(MDEF, func)
 
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)

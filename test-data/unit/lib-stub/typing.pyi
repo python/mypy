@@ -21,7 +21,6 @@ no_type_check = 0
 # Type aliases.
 List = 0
 Dict = 0
-OrderedDict = 0
 Set = 0
 
 T = TypeVar('T')
