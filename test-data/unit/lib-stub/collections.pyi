@@ -1,4 +1,8 @@
-namedtuple = object()
+from typing import Generic, TypeVar
 
-class OrderedDict:
+namedtuple = object()
+KT = TypeVar('KT')
+KV = TypeVar('KV')
+
+class OrderedDict(Generic[KT, KV]):
     pass

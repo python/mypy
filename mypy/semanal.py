@@ -43,9 +43,6 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
-from functools import partial
-
-import sys
 from typing import (
     List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
 )
@@ -62,7 +59,7 @@ from mypy.nodes import (
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_OPT, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
@@ -75,9 +72,8 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef, Void,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
-)
+    FunctionLike, UnboundType, TypeList, TypeVarDef,
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType)
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -319,9 +315,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # A coroutine defined as `async def foo(...) -> T: ...`
                 # has external return type `Awaitable[T]`.
                 defn.type = defn.type.copy_modified(
-                    ret_type=Instance(
-                        self.named_type_or_none('typing.Awaitable').type,
-                        [defn.type.ret_type]))
+                    ret_type=self.external_instance('typing.Awaitable',
+                                                    [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -873,6 +868,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not sym:
             return None
         return Instance(cast(TypeInfo, sym.node), [])
+
+    def external_instance(self, qualified_name: str, args: List[Type] = None) -> Instance:
+        return Instance(self.named_type_or_none(qualified_name).type, args or None)
 
     def is_instance_type(self, t: Type) -> bool:
         return isinstance(t, Instance)
@@ -1642,7 +1640,7 @@ class SemanticAnalyzer(NodeVisitor):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
                 str_expr = cast(StrExpr, args[1])
-                items = str_expr.value.split()
+                items = str_expr.value.replace(',', ' ').split()
             else:
                 return self.fail_namedtuple_arg(
                     "List literal expected as the second argument to namedtuple()", call)
@@ -1696,50 +1694,52 @@ class SemanticAnalyzer(NodeVisitor):
         tup = TupleType(types, self.named_type('__builtins__.tuple', types))
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
-
         info = namedtuple_type_info(tup, symbols, class_def)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         this_type = self_type(info)
-        add_field = partial(self.add_namedtuple_field, symbols, info)
-        strtype = self.named_type('__builtins__.str')
+        strtype = self.named_type('__builtins__.str')  # type: Type
+
+        def add_field(var: Var, is_initialized_in_class: bool = False,
+                      is_property: bool = False) -> None:
+            var.info = info
+            var.is_initialized_in_class = is_initialized_in_class
+            var.is_property = is_property
+            symbols[var.name()] = SymbolTableNode(MDEF, var)
 
         for var in vars:
             add_field(var, is_property=True)
 
         tuple_of_strings = TupleType([strtype for _ in items],
                                      self.named_type('__builtins__.tuple', [AnyType()]))
-        add_field(Var('_fields', tuple_of_strings),
-                  is_initialized_in_class=True)
-        add_field(Var('_field_types', UnboundType('Dict', [strtype, AnyType()])),
-                  is_initialized_in_class=True)
-        add_field(Var('_source', strtype),
-                  is_initialized_in_class=True)
+        # TODO: refine type of values
+        dictype = self.external_instance('typing.Dict', [strtype, AnyType()])
+        add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
+        add_field(Var('_field_types', dictype), is_initialized_in_class=True)
+        add_field(Var('_source', strtype), is_initialized_in_class=True)
 
-        add_method = partial(self.add_namedtuple_method, symbols, info, this_type)
+        def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
+                       is_classmethod=False) -> None:
+            self.add_namedtuple_method(symbols, info, this_type,
+                                       funcname, ret, args, name, is_classmethod)
+
         add_method('_replace', ret=this_type,
                    args=self.factory_args(vars, ARG_NAMED, initializer=EllipsisExpr()))
         add_method('__init__', ret=NoneTyp(),
                    args=self.factory_args(vars, ARG_POS), name=info.name())
-        # TODO: refine to OrderedDict[str, Union[types]]
-        add_method('_asdict', ret=UnboundType('collections.OrderedDict', is_ret_type=True),
-                   args=[])
+        # actual signature should return OrderedDict[str, Union[types]]
+        dictype = self.external_instance('typing.OrderedDict', [strtype, AnyType()])
+        add_method('_asdict', args=[], ret=dictype)
 
-        # TODO: refine signature
-        union = UnboundType('Iterable', [UnionType(types)])
+        # note: actual signature should accept an invariant version of Iterable[UnionType[types]].
+        # but it can't be expressed
+        # 'new' and 'len' as function types.
+        iterable_type = self.external_instance('typing.Iterable', [AnyType()])
         add_method('_make', ret=this_type, is_classmethod=True,
-                   args=[Argument(Var('iterable', union), union, None, ARG_POS),
+                   args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
                          Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
                          Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
         return info
-
-    def add_namedtuple_field(self, symbols: SymbolTable, info: TypeInfo, var: Var,
-                             is_initialized_in_class: bool = False,
-                             is_property: bool = False) -> None:
-        var.info = info
-        var.is_initialized_in_class = is_initialized_in_class
-        var.is_property = is_property
-        symbols[var.name()] = SymbolTableNode(MDEF, var)
 
     def factory_args(self, vars: List[Var], kind: int,
                     initializer: Expression = None) -> List[Argument]:
@@ -2511,6 +2511,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
+        # In case it's a bug and we don't really have context
+        assert ctx is not None, msg
         self.errors.report(ctx.get_line(), msg, blocker=blocker)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
