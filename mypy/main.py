@@ -194,6 +194,10 @@ def process_options(args: List[str],
     # (e.g. by adding a call to reveal_type).
     parser.add_argument('--shadow-file', metavar='PATH', nargs=2, dest='shadow_file',
                         help=argparse.SUPPRESS)
+    # --debug-cache will disable any cache-related compressions/optimizations,
+    # which will make the cache writing process output pretty-printed JSON (which
+    # is easier to debug).
+    parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
                         help=argparse.SUPPRESS)
