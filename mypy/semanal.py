@@ -2128,6 +2128,17 @@ class SemanticAnalyzer(NodeVisitor):
                 if full_name in obsolete_name_mapping:
                     self.fail("Module has no attribute %r (it's now called %r)" % (
                         expr.name, obsolete_name_mapping[full_name]), expr)
+        elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
+            # Attribute lookup on a class.
+            # Check if it's a module.
+            n = base.node.names.get(expr.name)
+            if n is not None and n.kind == MODULE_REF:
+                n = self.normalize_type_alias(n, expr)
+                if not n:
+                    return
+                expr.kind = n.kind
+                expr.fullname = n.fullname
+                expr.node = n.node
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
