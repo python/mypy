@@ -221,7 +221,7 @@ from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
-reveal_type(x._asdict())  # E: Revealed type is 'typing.Dict[builtins.str, Any]'
+reveal_type(x._asdict())  # E: Revealed type is 'typing.OrderedDict[builtins.str, Any]'
 
 [case testNamedTupleReplace]
 from collections import namedtuple
