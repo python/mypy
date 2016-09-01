@@ -1,19 +1,24 @@
 -- Checks for incremental mode (see testcheck.py).
 -- Each test is run twice, once with a cold cache, once with a warm cache.
--- The first time it must pass.
--- Before it is run the second time, any *.py.next files are copied to *.py.
--- The second time it must produce the errors given in the [out] section, if any.
+-- Before the tests are run the second time, any *.py.next files are copied to *.py.
 --
--- Any files that we expect to be stale and rechecked should be annotated in
--- the [stale] annotation. The test suite will automatically assume that
--- __main__ is stale so we can avoid constantly having to annotate it.
--- The list of stale files can be in any arbitrary order, or can be left empty
--- if no files should be stale.
+-- Errors expected in the first run should be in the `[out1]` section, and
+-- errors expected in the second run should be in the `[out2]` section. If a
+-- section is omitted, it is expected there are no errors on that run.
+--
+-- Any files that we expect to be rechecked should be annotated in the [rechecked]
+-- annotation, and any files expect to be stale (aka have a modified interface)
+-- should be annotated in the [stale] annotation. Note that a file that ends up
+-- producing an error does not create a new cache file and so is not considered stale.
+--
+-- The test suite will automatically assume that __main__ is stale and rechecked in
+-- all cases so we can avoid constantly having to annotate it. The list of
+-- rechecked/stale files can be in any arbitrary order, or can be left empty
+-- if no files should be rechecked/stale.
 
 [case testIncrementalEmpty]
 [rechecked]
 [stale]
-[out]
 
 [case testIncrementalBasics]
 import m
@@ -25,7 +30,6 @@ def foo() -> None:
     pass
 [rechecked m]
 [stale m]
-[out]
 
 [case testIncrementalError]
 import m
@@ -37,7 +41,7 @@ def foo() -> None:
     bar()
 [rechecked m]
 [stale]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/m.py: note: In function "foo":
 tmp/m.py:2: error: Name 'bar' is not defined
@@ -59,7 +63,6 @@ def func3() -> None: pass
 
 [rechecked]
 [stale]
-[out]
 
 
 [case testIncrementalInternalChangeOnly]
@@ -82,7 +85,6 @@ def func3() -> None: 3 + 2
 
 [rechecked mod3]
 [stale]
-[out]
 
 
 [case testIncrementalImportGone]
@@ -100,7 +102,7 @@ def func1() -> A: pass
 
 [rechecked mod1]
 [stale]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:1: error: Name 'A' is not defined
@@ -121,7 +123,6 @@ class A(Parent): pass
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
 
 
 [case testIncrementalPartialInterfaceChange]
@@ -144,7 +145,6 @@ def func3() -> int: return 2
 
 [rechecked mod1, mod2, mod3]
 [stale mod1, mod2, mod3]
-[out]
 
 [case testIncrementalInternalFunctionDefinitionChange]
 import mod1
@@ -168,7 +168,7 @@ def foo() -> int:
 
 [rechecked mod2]
 [stale]
-[out]
+[out2]
 tmp/mod1.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/mod2.py: note: In function "foo":
@@ -202,7 +202,6 @@ def baz() -> int:
     return 42
 [rechecked mod2]
 [stale]
-[out]
 
 [case testIncrementalMethodInterfaceChange]
 import mod1
@@ -222,7 +221,6 @@ class Foo:
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
 
 [case testIncrementalBaseClassChange]
 import mod1
@@ -245,7 +243,7 @@ class Child(Bad): pass
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:2: error: "Child" has no attribute "good_method"
 
@@ -273,7 +271,7 @@ C = "A"
 
 [rechecked mod1, mod2, mod3, mod4]
 [stale mod1, mod2, mod3, mod4]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
@@ -300,7 +298,7 @@ const = 3
 [rechecked mod1, mod2, mod3]
 [stale mod1, mod2, mod3]
 [builtins fixtures/module.pyi]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: "module" has no attribute "mod4"
 
@@ -325,7 +323,7 @@ const = 3
 const = "foo"
 
 [stale mod1, mod2, mod3, mod4]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
@@ -348,7 +346,7 @@ def func2() -> str:
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
@@ -374,7 +372,6 @@ my_dict = {
 [rechecked mod1, mod1_private]
 [stale mod1, mod1_private]
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testIncrementalWithComplexConstantExpressionNoAnnotation]
 import mod1 
@@ -394,7 +391,6 @@ const = 1 + baz()
 
 [rechecked mod1_private]
 [stale]
-[out]
 
 [case testIncrementalWithComplexConstantExpressionWithAnnotation]
 import mod1
@@ -414,7 +410,6 @@ const = 1 + baz()  # type: int
 
 [rechecked mod1_private]
 [stale]
-[out]
 
 [case testIncrementalSmall]
 import mod1
@@ -435,7 +430,7 @@ def some_func(a: int) -> str:
 [rechecked mod1, mod1_private]
 [stale mod1, mod1_private]
 [builtins fixtures/ops.pyi]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
@@ -473,7 +468,7 @@ def some_func(a: int) -> int:
 [rechecked mod1, mod1_private]
 [stale mod1, mod1_private]
 [builtins fixtures/ops.pyi]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
@@ -494,7 +489,6 @@ class Foo:
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
 
 [case testIncrementalChangingFields]
 import mod1
@@ -516,7 +510,6 @@ class Foo:
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
 
 [case testIncrementalCheckingChangingFields]
 import mod1
@@ -539,7 +532,7 @@ class Foo:
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -563,7 +556,6 @@ class Foo:
 
 [rechecked mod1, mod2]
 [stale mod1, mod2]
-[out]
 
 [case testIncrementalSimpleBranchingModules]
 import mod1
@@ -580,7 +572,6 @@ def func() -> int: return 1
 
 [rechecked mod1]
 [stale mod1]
-[out]
 
 [case testIncrementalSubmoduleImport]
 from parent.childA import Foo
@@ -608,7 +599,6 @@ class Bar:
 [builtins fixtures/module_all.pyi]
 [rechecked]
 [stale]
-[out]
 
 [case testIncrementalSubmoduleParentBackreference]
 import parent
@@ -623,7 +613,6 @@ import parent.b
 
 [builtins fixtures/args.pyi]
 [stale]
-[out]
 
 [case testIncrementalSubmoduleParentBackreferenceComplex]
 import parent
@@ -643,7 +632,6 @@ import parent.a
 
 [builtins fixtures/args.pyi]
 [stale]
-[out]
 
 [case testIncrementalReferenceNewFileWithImportFrom]
 from parent import a
@@ -658,7 +646,6 @@ from parent import b
 [file parent/b.py.next]
 
 [stale parent, parent.a, parent.b]
-[out]
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
@@ -673,7 +660,6 @@ from parent import a, b
 from parent import b
 
 [stale parent.a]
-[out]
 
 [case testIncrementalWithTypeIgnoreOnDirectImport]
 import a, b
@@ -687,7 +673,6 @@ import c
 [file c.py]
 
 [stale]
-[out]
 
 [case testIncrementalWithTypeIgnoreOnImportFrom]
 import a, b
@@ -702,7 +687,6 @@ something = 3
 [file c.py]
 
 [stale]
-[out]
 
 [case testIncrementalWithPartialTypeIgnore]
 import a  # type: ignore
@@ -713,7 +697,6 @@ import a.b
 [file a/b.py]
 
 [stale]
-[out]
 
 [case testIncrementalAnyIsDifferentFromIgnore]
 import b
@@ -734,7 +717,7 @@ import a.b
 
 [rechecked b]
 [stale]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/b.py:4: error: Name 'a' already defined
 
@@ -743,7 +726,6 @@ tmp/b.py:4: error: Name 'a' already defined
 class MyObject(object):
     from bar import FooBar
 [stale]
-[out]
 
 [case testIncrementalSameFileSize]
 import m
@@ -762,7 +744,7 @@ bar(3)
 
 [rechecked m]
 [stale]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "str"
 
@@ -794,7 +776,7 @@ class Class: pass
 [builtins fixtures/args.pyi]
 [rechecked collections, main, package.subpackage.mod1]
 [stale collections, main, package.subpackage.mod1]
-[out]
+[out2]
 tmp/main.py: note: In function "handle":
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
 
@@ -802,7 +784,6 @@ tmp/main.py:4: error: "Class" has no attribute "some_attribute"
 import foo # type: ignore
 
 [stale]
-[out]
 
 [case testIncrementalWithSilentImportsAndIgnore]
 # cmd: mypy -m main b
@@ -834,13 +815,13 @@ val = "foo"
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
 [stale]
-[out]
+[out2]
 tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
 
 [case testIncrementalRemoteError]
 import m
-m.C().foo().bar()  # E: "A" has no attribute "bar"
+m.C().foo().bar()
 [file m.py]
 import n
 class C:
@@ -853,7 +834,53 @@ class A:
   pass
 [rechecked m, n]
 [stale m, n]
-[out]
+[out2]
+main:2: error: "A" has no attribute "bar"
+
+[case testIncrementalRemoteErrorFixed]
+import m
+m.C().foo().bar()
+[file m.py]
+import n
+class C:
+  def foo(self) -> n.A: pass
+[file n.py]
+class A:
+  pass
+[file n.py.next]
+class A:
+  def bar(self): pass
+[rechecked m, n]
+[stale m, n]
+[out1]
+main:2: error: "A" has no attribute "bar"
+
+[case testIncrementalChangedError]
+import m
+[file m.py]
+import n
+def accept_int(x: int) -> None: pass
+accept_int(n.foo)
+[file n.py]
+foo = "hello"
+reveal_type(foo)
+[file n.py.next]
+foo = 3.14
+reveal_type(foo)
+[rechecked m, n]
+[stale]
+[out1]
+tmp/m.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/n.py:2: error: Revealed type is 'builtins.str'
+main:1: note: In module imported here:
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+[out2]
+tmp/m.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/n.py:2: error: Revealed type is 'builtins.float'
+main:1: note: In module imported here:
+tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "float"; expected "int"
 
 [case testIncrementalReplacingImports]
 import good, bad, client
@@ -878,6 +905,6 @@ foo(3)
 
 [rechecked client]
 [stale]
-[out]
+[out2]
 main:1: note: In module imported here:
 tmp/client.py:4: error: Argument 1 to "foo" has incompatible type "int"; expected "str"

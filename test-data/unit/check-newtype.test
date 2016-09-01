@@ -232,7 +232,8 @@ reveal_type(id)
 reveal_type(num)
 [rechecked m]
 [stale]
-[out]
+[out1]
+[out2]
 main:1: note: In module imported here:
 tmp/m.py:13: error: Revealed type is 'm.UserId'
 tmp/m.py:14: error: Revealed type is 'builtins.int'

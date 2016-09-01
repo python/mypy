@@ -114,12 +114,10 @@ class TypeCheckSuite(DataSuite):
         options.use_builtins_fixtures = True
         set_show_tb(True)  # Show traceback on crash.
 
-        output = testcase.output
         if incremental:
             options.incremental = True
             if incremental == 1:
                 # In run 1, copy program text to program file.
-                output = []
                 for module_name, program_path, program_text in module_data:
                     if module_name == '__main__':
                         with open(program_path, 'w') as f:
@@ -155,16 +153,25 @@ class TypeCheckSuite(DataSuite):
             a = e.messages
         a = normalize_error_messages(a)
 
+        # Make sure error messages match
+        if incremental == 0:
+            msg = 'Invalid type checker output ({}, line {})'
+            output = testcase.output
+        elif incremental == 1:
+            msg = 'Invalid type checker output in incremental, run 1 ({}, line {})'
+            output = testcase.output
+        elif incremental == 2:
+            msg = 'Invalid type checker output in incremental, run 2 ({}, line {})'
+            output = testcase.output2
+        else:
+            raise AssertionError()
+
         if output != a and self.update_data:
             update_testcase_output(testcase, a)
-
-        assert_string_arrays_equal(
-            output, a,
-            'Invalid type checker output ({}, line {})'.format(
-                testcase.file, testcase.line))
+        assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if incremental and res:
-            if not options.silent_imports:
+            if not options.silent_imports and testcase.output is None:
                 self.verify_cache(module_data, a, res.manager)
             if incremental == 2:
                 self.check_module_equivalence(
