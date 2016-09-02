@@ -100,10 +100,6 @@ class ExpressionChecker:
         self.msg = msg
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
-    def _visit_typeinfo(self, info: nodes.TypeInfo) -> None:
-        if info is not None:
-            self.chk.module_refs.update(split_module_names(info.module_name))
-
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
 

@@ -1047,7 +1047,7 @@ class SemanticAnalyzer(NodeVisitor):
             var._fullname = self.qualified_name(name)
         var.is_ready = True
         var.type = AnyType()
-        var.is_import = is_import
+        var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
     #

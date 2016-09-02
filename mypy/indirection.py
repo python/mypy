@@ -1,4 +1,4 @@
-from typing import Optional, Set, Iterable
+from typing import Dict, Iterable, List, Optional, Set
 from abc import abstractmethod
 
 from mypy.visitor import NodeVisitor
@@ -9,12 +9,14 @@ import mypy.types as types
 from mypy.util import split_module_names
 
 
-def extract_module_names(type_name: Optional[str]) -> Iterable[str]:
-    """Returns the module name of a fully qualified type name."""
+def extract_module_names(type_name: Optional[str]) -> List[str]:
+    """Returns the module names of a fully qualified type name."""
     if type_name is not None:
-        while '.' in type_name:
-            type_name = type_name.rsplit('.', 1)[0]
-            yield type_name
+        # Discard the first one, which is just the qualified name of the type
+        possible_module_names = split_module_names(type_name)
+        return possible_module_names[1:]
+    else:
+        return []
 
 
 class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
