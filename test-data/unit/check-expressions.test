@@ -1108,6 +1108,8 @@ di = None # type: Dict[int, int]
 main:3: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 main:4: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 
+[case testStringInterpolationSpaceKey]
+'%( )s' % {' ': 'foo'}
 
 -- Lambdas
 -- -------
