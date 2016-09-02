@@ -1499,3 +1499,71 @@ class MyClass:
 
 [rechecked]
 [stale]
+
+[case testIncrementalWorksWithNamedTuple]
+import foo
+
+[file foo.py]
+from mid import MyTuple
+def accept_int(x: int) -> None: pass
+accept_int(MyTuple(1, "b", "c").a)
+
+[file mid.py]
+from bar import MyTuple
+
+[file bar.py]
+from typing import NamedTuple
+MyTuple = NamedTuple('MyTuple', [
+    ('a', int),
+    ('b', str),
+    ('c', str)
+])
+
+[file bar.py.next]
+from typing import NamedTuple
+MyTuple = NamedTuple('MyTuple', [
+    ('b', int),  # a and b are swapped
+    ('a', str),
+    ('c', str)
+])
+
+[rechecked bar, mid, foo]
+[stale bar]
+[out2]
+main:1: note: In module imported here:
+tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalWorksWithNestedNamedTuple]
+import foo
+
+[file foo.py]
+from mid import Outer 
+def accept_int(x: int) -> None: pass
+accept_int(Outer.MyTuple(1, "b", "c").a)
+
+[file mid.py]
+from bar import Outer 
+
+[file bar.py]
+from typing import NamedTuple
+class Outer:
+    MyTuple = NamedTuple('MyTuple', [
+        ('a', int),
+        ('b', str),
+        ('c', str)
+    ])
+
+[file bar.py.next]
+from typing import NamedTuple
+class Outer:
+    MyTuple = NamedTuple('MyTuple', [
+        ('b', int),  # a and b are swapped
+        ('a', str),
+        ('c', str)
+    ])
+
+[rechecked bar, mid, foo]
+[stale bar]
+[out2]
+main:1: note: In module imported here:
+tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
