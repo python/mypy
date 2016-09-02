@@ -776,6 +776,18 @@ class TupleType(Type):
                          Instance.deserialize(data['fallback']),
                          implicit=data['implicit'])
 
+    def copy_modified(self, *, fallback: Instance = None,
+                  items: List[Type] = None) -> 'TupleType':
+        if fallback is None:
+            fallback = self.fallback
+        if items is None:
+            items = self.items
+        return TupleType(items, fallback, self.line)
+
+    def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
+        return TupleType(self.items[begin:end:stride], self.fallback,
+                         self.line, self.implicit)
+
 
 class StarType(Type):
     """The star type *type_parameter.

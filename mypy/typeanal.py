@@ -1,15 +1,15 @@
 """Semantic analysis of types"""
 
-from typing import Callable, cast, List, Tuple
+from typing import Callable, cast, List
 
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, UnionType, Instance, AnyType, CallableType,
-    Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor, StarType, PartialType,
-    EllipsisType, UninhabitedType, TypeType
+    Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
+    AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
-    TypeInfo, Context, SymbolTableNode, TypeVarExpr, Var, Node,
+    TypeInfo, Context, SymbolTableNode, Var, Node,
     IndexExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
@@ -164,7 +164,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line)
-                if info.tuple_type is None:
+                tup = info.tuple_type
+                if tup is None:
                     return instance
                 else:
                     # The class has a Tuple[...] base class so it will be
@@ -172,9 +173,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                     if t.args:
                         self.fail('Generic tuple types not supported', t)
                         return AnyType()
-                    return TupleType(self.anal_array(info.tuple_type.items),
-                                     fallback=instance,
-                                     line=t.line)
+                    return tup.copy_modified(items=self.anal_array(tup.items),
+                                             fallback=instance)
         else:
             return AnyType()
 

@@ -1,6 +1,6 @@
 """Calculation of the least upper bound types (joins)."""
 
-from typing import cast, List
+from typing import List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
@@ -231,8 +231,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = []  # type: List[Type]
             for i in range(t.length()):
                 items.append(self.join(t.items[i], self.s.items[i]))
-            # TODO: What if the fallback types are different?
-            return TupleType(items, t.fallback)
+            # join fallback types if they are different
+            from typing import cast
+            return TupleType(items, cast(Instance, join_instances(self.s.fallback, t.fallback)))
         else:
             return self.default(self.s)
 

@@ -43,9 +43,8 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
-import sys
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
 )
 
 from mypy.nodes import (
@@ -65,6 +64,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr,
+    Expression, EllipsisExpr, namedtuple_type_info,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -72,17 +72,13 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, ErrorType, TypeVarDef, Void,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType
-)
+    FunctionLike, UnboundType, TypeList, TypeVarDef,
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType)
 from mypy.nodes import function_type, implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.lex import lex
-from mypy.parsetype import parse_type
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
-from mypy import defaults
 from mypy.options import Options
 
 
@@ -319,9 +315,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # A coroutine defined as `async def foo(...) -> T: ...`
                 # has external return type `Awaitable[T]`.
                 defn.type = defn.type.copy_modified(
-                    ret_type=Instance(
-                        self.named_type_or_none('typing.Awaitable').type,
-                        [defn.type.ret_type]))
+                    ret_type = self.named_type_or_none('typing.Awaitable',
+                                                       [defn.type.ret_type]))
             self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef) -> None:
@@ -751,38 +746,40 @@ class SemanticAnalyzer(NodeVisitor):
         """
 
         base_types = []  # type: List[Instance]
+        info = defn.info
         for base_expr in defn.base_type_exprs:
             try:
                 base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
-                defn.info.fallback_to_any = True
+                info.fallback_to_any = True
                 continue
 
             if isinstance(base, TupleType):
-                if defn.info.tuple_type:
+                if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
+                    defn.has_incompatible_baseclass = True
                 if (not self.is_stub_file
-                        and not defn.info.is_named_tuple
+                        and not info.is_named_tuple
                         and base.fallback.type.fullname() == 'builtins.tuple'):
                     self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
-                defn.info.tuple_type = base
+                info.tuple_type = base
                 base_types.append(base.fallback)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail("Cannot subclass NewType", defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
-                defn.info.fallback_to_any = True
+                info.fallback_to_any = True
             else:
                 self.fail('Invalid base class', base_expr)
-                defn.info.fallback_to_any = True
+                info.fallback_to_any = True
 
         # Add 'object' as implicit base if there is no other base class.
         if (not base_types and defn.fullname != 'builtins.object'):
             base_types.append(self.object_type())
 
-        defn.info.bases = base_types
+        info.bases = base_types
 
         # Calculate the MRO. It might be incomplete at this point if
         # the bases of defn include classes imported from other
@@ -794,8 +791,8 @@ class SemanticAnalyzer(NodeVisitor):
         calculate_class_mro(defn, self.fail_blocker)
         # If there are cyclic imports, we may be missing 'object' in
         # the MRO. Fix MRO if needed.
-        if defn.info.mro and defn.info.mro[-1].fullname() != 'builtins.object':
-            defn.info.mro.append(self.object_type().type)
+        if info.mro and info.mro[-1].fullname() != 'builtins.object':
+            info.mro.append(self.object_type().type)
 
     def expr_to_analyzed_type(self, expr: Node) -> Type:
         if isinstance(expr, CallExpr):
@@ -866,11 +863,11 @@ class SemanticAnalyzer(NodeVisitor):
         sym = self.lookup_qualified(qualified_name, None)
         return Instance(cast(TypeInfo, sym.node), args or [])
 
-    def named_type_or_none(self, qualified_name: str) -> Instance:
+    def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
-        return Instance(cast(TypeInfo, sym.node), [])
+        return Instance(cast(TypeInfo, sym.node), args or [])
 
     def is_instance_type(self, t: Type) -> bool:
         return isinstance(t, Instance)
@@ -1627,6 +1624,7 @@ class SemanticAnalyzer(NodeVisitor):
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
         if len(args) > 2:
+            # FIX incorrect. There are two additional parameters
             return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
         if call.arg_kinds != [ARG_POS, ARG_POS]:
             return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
@@ -1639,7 +1637,7 @@ class SemanticAnalyzer(NodeVisitor):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
                 str_expr = cast(StrExpr, args[1])
-                items = str_expr.value.split()
+                items = str_expr.value.replace(',', ' ').split()
             else:
                 return self.fail_namedtuple_arg(
                     "List literal expected as the second argument to namedtuple()", call)
@@ -1689,47 +1687,73 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
+        strtype = self.named_type('__builtins__.str')  # type: Type
+        basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
+        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                   or self.object_type())
+        # Actual signature should return OrderedDict[str, Union[types]]
+        ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                          or self.object_type())
+        fallback = self.named_type('__builtins__.tuple', types)
+        # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
+        # but it can't be expressed. 'new' and 'len' should be callable types.
+        iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
+        function_type = self.named_type('__builtins__.function')
+        fullname = self.qualified_name(name)
+
         symbols = SymbolTable()
         class_def = ClassDef(name, Block([]))
-        class_def.fullname = self.qualified_name(name)
-        info = TypeInfo(symbols, class_def)
-        # Add named tuple items as attributes.
-        # TODO: Make them read-only.
-        for item, typ in zip(items, types):
-            var = Var(item)
+        class_def.fullname = fullname
+        info = namedtuple_type_info(TupleType(types, fallback), symbols, class_def)
+
+        def add_field(var: Var, is_initialized_in_class: bool = False,
+                      is_property: bool = False) -> None:
             var.info = info
-            var.type = typ
-            symbols[item] = SymbolTableNode(MDEF, var)
-        # Add a __init__ method.
-        init = self.make_namedtuple_init(info, items, types)
-        symbols['__init__'] = SymbolTableNode(MDEF, init)
-        info.tuple_type = TupleType(types, self.named_type('__builtins__.tuple', [AnyType()]))
-        info.is_named_tuple = True
-        info.mro = [info] + info.tuple_type.fallback.type.mro
-        info.bases = [info.tuple_type.fallback]
+            var.is_initialized_in_class = is_initialized_in_class
+            var.is_property = is_property
+            symbols[var.name()] = SymbolTableNode(MDEF, var)
+
+        vars = [Var(item, typ) for item, typ in zip(items, types)]
+        for var in vars:
+            add_field(var, is_property=True)
+
+        tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
+        add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
+        add_field(Var('_field_types', dictype), is_initialized_in_class=True)
+        add_field(Var('_source', strtype), is_initialized_in_class=True)
+
+        # TODO: SelfType should be bind to actual 'self'
+        this_type = self_type(info)
+
+        def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
+                       is_classmethod=False) -> None:
+            if not is_classmethod:
+                args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
+            types = [arg.type_annotation for arg in args]
+            items = [arg.variable.name() for arg in args]
+            arg_kinds = [arg.kind for arg in args]
+            signature = CallableType(types, arg_kinds, items, ret, function_type,
+                                     name=name or info.name() + '.' + funcname)
+            signature.is_classmethod_class = is_classmethod
+            func = FuncDef(funcname, args, Block([]), typ=signature)
+            func.info = info
+            func.is_class = is_classmethod
+            symbols[funcname] = SymbolTableNode(MDEF, func)
+
+        add_method('_replace', ret=this_type,
+                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED) for var in vars])
+        add_method('__init__', ret=NoneTyp(), name=info.name(),
+                   args=[Argument(var, var.type, None, ARG_POS) for var in vars])
+        add_method('_asdict', args=[], ret=ordereddictype)
+        # FIX: make it actual class method
+        add_method('_make', ret=this_type, is_classmethod=True,
+                   args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
+                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
+                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
         return info
 
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
-
-    def make_namedtuple_init(self, info: TypeInfo, items: List[str],
-                             types: List[Type]) -> FuncDef:
-        args = [self.make_argument(item, type) for item, type in zip(items, types)]
-        # TODO: Make sure that the self argument name is not visible?
-        args = [Argument(Var('__self'), NoneTyp(), None, ARG_POS)] + args
-        arg_kinds = [arg.kind for arg in args]
-        signature = CallableType([cast(Type, None)] + types,
-                                 arg_kinds,
-                                 ['__self'] + items,
-                                 NoneTyp(),
-                                 self.named_type('__builtins__.function'),
-                                 name=info.name())
-        func = FuncDef('__init__',
-                       args,
-                       Block([]),
-                       typ=signature)
-        func.info = info
-        return func
 
     def analyze_types(self, items: List[Node]) -> List[Type]:
         result = []  # type: List[Type]
@@ -2477,6 +2501,8 @@ class SemanticAnalyzer(NodeVisitor):
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
+        # In case it's a bug and we don't really have context
+        assert ctx is not None, msg
         self.errors.report(ctx.get_line(), msg, blocker=blocker)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
@@ -2832,8 +2858,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
     inst = Instance(typ, tv)
     if typ.tuple_type is None:
         return inst
-    else:
-        return TupleType(typ.tuple_type.items, inst)
+    return typ.tuple_type.copy_modified(fallback=inst)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

@@ -19,6 +19,8 @@ from collections import namedtuple
 N = NamedTuple(u'N', [(u'x', int)])
 n = namedtuple(u'n', u'x y')
 
+[builtins fixtures/dict.pyi]
+
 [case testPrintStatement]
 print ''() # E: "str" not callable
 print 1, 1() # E: "int" not callable

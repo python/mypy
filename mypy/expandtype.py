@@ -88,7 +88,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.expand_types(t.items), t.fallback, t.line)
+        return t.copy_modified(items=self.expand_types(t.items))
 
     def visit_union_type(self, t: UnionType) -> Type:
         # After substituting for type variables in t.items,

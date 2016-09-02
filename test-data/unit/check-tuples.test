@@ -2,7 +2,7 @@
 -- -------------------------------
 
 
-[case testAssignmentWithTupleTypes]
+[case testTupleAssignmentWithTupleTypes]
 from typing import Tuple
 t1 = None # type: Tuple[A]
 t2 = None # type: Tuple[B]

@@ -187,7 +187,6 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
-
     if isinstance(v, Var):
         return analyze_var(name, v, itype, info, node, is_lvalue, msg, not_ready_callback)
     elif isinstance(v, FuncDef):
@@ -229,6 +228,9 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         if isinstance(typ, PartialType):
             return handle_partial_attribute_type(typ, is_lvalue, msg, var)
         t = expand_type_by_instance(typ, itype)
+        if is_lvalue and var.is_property and not var.is_settable_property:
+            # TODO allow setting attributes in subclass (although it is probably an error)
+            msg.read_only_property(name, info, node)
         if var.is_initialized_in_class and isinstance(t, FunctionLike):
             if is_lvalue:
                 if var.is_property:

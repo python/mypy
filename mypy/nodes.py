@@ -646,6 +646,7 @@ class ClassDef(Statement):
     decorators = None  # type: List[Expression]
     # Built-in/extension class? (single implementation inheritance only)
     is_builtinclass = False
+    has_incompatible_baseclass = False
 
     def __init__(self,
                  name: str,
@@ -1191,6 +1192,7 @@ class CallExpr(Expression):
                  arg_names: List[str] = None, analyzed: Expression = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
+
         self.callee = callee
         self.args = args
         self.arg_kinds = arg_kinds
@@ -2023,6 +2025,16 @@ class TypeInfo(SymbolNode):
         ti.is_named_tuple = data['is_named_tuple']
         ti.is_newtype = data['is_newtype']
         return ti
+
+
+def namedtuple_type_info(tup: 'mypy.types.TupleType',
+                         names: 'SymbolTable', defn: ClassDef) -> TypeInfo:
+    info = TypeInfo(names, defn)
+    info.tuple_type = tup
+    info.bases = [tup.fallback]
+    info.is_named_tuple = True
+    info.mro = [info] + tup.fallback.type.mro
+    return info
 
 
 class SymbolTableNode:

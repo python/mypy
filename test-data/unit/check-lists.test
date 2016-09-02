@@ -1,7 +1,6 @@
 -- Nested list assignment
 -- -----------------------------
 
-
 [case testNestedListAssignment]
 from typing import List
 a1, b1, c1 = None, None, None # type: (A, B, C)

@@ -914,7 +914,9 @@ class TypeChecker(NodeVisitor[Type]):
         with self.binder.frame_context():
             self.accept(defn.defs)
         self.binder = old_binder
-        self.check_multiple_inheritance(typ)
+        if not defn.has_incompatible_baseclass:
+            # Otherwise we've already found errors; more errors are not useful
+            self.check_multiple_inheritance(typ)
         self.leave_partial_types()
         self.errors.pop_type()
 

@@ -2,8 +2,8 @@ from typing import cast, List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType, TypeList,
-    PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
+    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded,
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -181,8 +181,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
-            for i in range(len(left.items)):
-                if not is_subtype(left.items[i], right.items[i], self.check_type_parameter):
+            for l, r in zip(left.items, right.items):
+                if not is_subtype(l, r, self.check_type_parameter):
                     return False
             if not is_subtype(left.fallback, right.fallback, self.check_type_parameter):
                 return False
