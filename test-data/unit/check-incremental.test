@@ -122,8 +122,7 @@ class Parent: pass
 class A(Parent): pass
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
-
+[stale mod2]
 
 [case testIncrementalPartialInterfaceChange]
 import mod1
@@ -143,8 +142,8 @@ def func3() -> None: pass
 [file mod3.py.next]
 def func3() -> int: return 2
 
-[rechecked mod1, mod2, mod3]
-[stale mod1, mod2, mod3]
+[rechecked mod2, mod3]
+[stale mod3]
 
 [case testIncrementalInternalFunctionDefinitionChange]
 import mod1
@@ -220,7 +219,7 @@ class Foo:
         return "a"
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
+[stale mod2]
 
 [case testIncrementalBaseClassChange]
 import mod1
@@ -242,7 +241,7 @@ class Bad: pass
 class Child(Bad): pass
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
+[stale mod2]
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py:2: error: "Child" has no attribute "good_method"
@@ -270,7 +269,7 @@ C = 3
 C = "A"
 
 [rechecked mod1, mod2, mod3, mod4]
-[stale mod1, mod2, mod3, mod4]
+[stale mod2, mod3, mod4]
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
@@ -296,11 +295,152 @@ const = 3
 # Import to mod4 is gone!
 
 [rechecked mod1, mod2, mod3]
-[stale mod1, mod2, mod3]
+[stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: "module" has no attribute "mod4"
+
+[case testIncrementalLongBrokenCascade]
+import mod1
+
+[file mod1.py]
+import mod2
+def accept_int(a: int) -> int: return a
+accept_int(mod2.mod3.mod4.mod5.mod6.mod7.const)
+
+[file mod2.py]
+import mod3
+
+[file mod3.py]
+import mod4
+
+[file mod4.py]
+import mod5
+
+[file mod5.py]
+import mod6
+
+[file mod6.py]
+import mod7
+
+[file mod7.py]
+const = 3
+
+[file mod6.py.next]
+# Import to mod7 is gone!
+
+[rechecked mod1, mod5, mod6]
+[stale mod6]
+[builtins fixtures/module.pyi]
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: "module" has no attribute "mod7"
+
+[case testIncrementalNestedBrokenCascade]
+import mod1
+
+[file mod1.py]
+import mod2
+def accept_int(a: int) -> int: return a
+accept_int(mod2.mod3.mod4.const)
+
+[file mod2/__init__.py]
+import mod2.mod3 as mod3
+
+[file mod2/mod3/__init__.py]
+import mod2.mod3.mod4 as mod4
+
+[file mod2/mod3/__init__.py.next]
+# Import is gone!
+
+[file mod2/mod3/mod4.py]
+const = 3
+
+[rechecked mod1, mod2, mod2.mod3]
+[stale mod2.mod3]
+[builtins fixtures/module.pyi]
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: "module" has no attribute "mod4"
+
+[case testIncrementalNestedBrokenCascadeWithType1]
+import mod1, mod2.mod3.mod5
+
+[file mod1.py]
+import mod2
+def accept_int(x: int) -> None: pass
+def produce() -> mod2.CustomType:
+    return mod2.CustomType()
+a = produce()
+accept_int(a.foo())
+
+[file mod2/__init__.py]
+from mod2.mod3 import CustomType 
+
+[file mod2/mod3/__init__.py]
+from mod2.mod3.mod4 import CustomType
+
+[file mod2/mod3/__init__.py.next]
+# Import a different class that also happens to be called 'CustomType'
+from mod2.mod3.mod5 import CustomType
+def produce() -> CustomType:
+    return CustomType()
+
+[file mod2/mod3/mod4.py]
+class CustomType:
+    def foo(self) -> int: return 1
+
+[file mod2/mod3/mod5.py]
+class CustomType:
+    def foo(self) -> str: return "a"
+
+[rechecked mod1, mod2, mod2.mod3]
+[stale mod2, mod2.mod3]
+[builtins fixtures/module.pyi]
+[out1]
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:6: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalNestedBrokenCascadeWithType2]
+import mod1, mod2.mod3.mod5
+
+[file mod1.py]
+from mod2 import produce 
+def accept_int(x: int) -> None: pass
+a = produce()
+accept_int(a.foo())
+
+[file mod2/__init__.py]
+from mod2.mod3 import produce 
+
+[file mod2/mod3/__init__.py]
+from mod2.mod3.mod4 import CustomType
+def produce() -> CustomType:
+    return CustomType()
+
+[file mod2/mod3/__init__.py.next]
+# Import a different class that also happens to be called 'CustomType'
+from mod2.mod3.mod5 import CustomType
+def produce() -> CustomType:
+    return CustomType()
+
+[file mod2/mod3/mod4.py]
+class CustomType:
+    def foo(self) -> int: return 1
+
+[file mod2/mod3/mod5.py]
+class CustomType:
+    def foo(self) -> str: return "a"
+
+[rechecked mod1, mod2, mod2.mod3]
+[stale mod2.mod3]
+[builtins fixtures/module.pyi]
+[out1]
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalRemoteChange]
 import mod1
@@ -322,7 +462,8 @@ const = 3
 [file mod4.py.next]
 const = "foo"
 
-[stale mod1, mod2, mod3, mod4]
+[rechecked mod1, mod3, mod4]
+[stale mod4]
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
@@ -345,11 +486,66 @@ def func2() -> str:
     return "foo"
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
+[stale mod2]
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testIncrementalBadChangeWithSave]
+import mod0
+
+[file mod0.py]
+import mod1
+A = mod1.func2()
+
+[file mod1.py]
+from mod2 import func2
+
+def func1() -> int:
+    return func2()
+
+[file mod2.py]
+def func2() -> int:
+    return 1
+
+[file mod2.py.next]
+def func2() -> str:
+    return "foo"
+
+[rechecked mod0, mod1, mod2]
+[stale mod2]
+[out2]
+tmp/mod0.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/mod1.py: note: In function "func1":
+tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testIncrementalOkChangeWithSave]
+import mod0
+
+[file mod0.py]
+import mod1
+A = mod1.func2()
+
+[file mod1.py]
+from mod2 import func2
+
+def func1() -> int:
+    func2()
+    return 1
+
+[file mod2.py]
+def func2() -> int:
+    return 1
+
+[file mod2.py.next]
+def func2() -> str:
+    return "foo"
+
+[rechecked mod0, mod1, mod2]
+[stale mod0, mod2]
+[out2]
 
 [case testIncrementalWithComplexDictExpression]
 import mod1 
@@ -370,7 +566,7 @@ my_dict = {
 }
 
 [rechecked mod1, mod1_private]
-[stale mod1, mod1_private]
+[stale mod1_private]
 [builtins fixtures/dict.pyi]
 
 [case testIncrementalWithComplexConstantExpressionNoAnnotation]
@@ -428,7 +624,7 @@ def some_func(a: int) -> str:
     return "a"
 
 [rechecked mod1, mod1_private]
-[stale mod1, mod1_private]
+[stale mod1_private]
 [builtins fixtures/ops.pyi]
 [out2]
 main:1: note: In module imported here:
@@ -466,7 +662,7 @@ def stringify(f: Callable[[int], int]) -> Callable[[int], str]:
 def some_func(a: int) -> int:
     return a + 2
 [rechecked mod1, mod1_private]
-[stale mod1, mod1_private]
+[stale mod1_private]
 [builtins fixtures/ops.pyi]
 [out2]
 main:1: note: In module imported here:
@@ -488,7 +684,7 @@ class Foo:
     A = "hello"
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
+[stale mod2]
 
 [case testIncrementalChangingFields]
 import mod1
@@ -497,6 +693,28 @@ import mod1
 import mod2
 f = mod2.Foo()
 f.A
+
+[file mod2.py]
+class Foo:
+    def __init__(self) -> None:
+        self.A = 3
+
+[file mod2.py.next]
+class Foo:
+    def __init__(self) -> None:
+        self.A = "hello"
+
+[rechecked mod1, mod2]
+[stale mod2]
+[out2]
+
+[case testIncrementalChangingFieldsWithAssignment]
+import mod1
+
+[file mod1.py]
+import mod2
+f = mod2.Foo()
+B = f.A
 
 [file mod2.py]
 class Foo:
@@ -531,7 +749,7 @@ class Foo:
         self.A = "hello"
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
+[stale mod2]
 [out2]
 main:1: note: In module imported here:
 tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
@@ -555,7 +773,7 @@ class Foo:
         attr = "foo"
 
 [rechecked mod1, mod2]
-[stale mod1, mod2]
+[stale mod2]
 
 [case testIncrementalSimpleBranchingModules]
 import mod1
@@ -598,6 +816,72 @@ class Bar:
 
 [builtins fixtures/module_all.pyi]
 [rechecked]
+[stale]
+
+[case testIncrementalSubmoduleWithAttr]
+import mod.child
+x = mod.child.Foo()
+x.bar()
+
+[file mod/__init__.py]
+
+[file mod/child.py]
+class Foo:
+    def bar(self) -> None: pass
+[builtins fixtures/module.pyi]
+[rechecked]
+[stale]
+
+[case testIncrementalNestedSubmoduleImportFromWithAttr]
+from mod1.mod2 import mod3
+def accept_int(a: int) -> None: pass
+
+accept_int(mod3.val3)
+
+[file mod1/__init__.py]
+val1 = 1
+
+[file mod1/mod2/__init__.py]
+val2 = 1
+
+[file mod1/mod2/mod3.py]
+val3 = 1
+
+[builtins fixtures/module.pyi]
+[rechecked]
+[stale]
+
+[case testIncrementalNestedSubmoduleWithAttr]
+import mod1.mod2.mod3
+def accept_int(a: int) -> None: pass
+
+accept_int(mod1.mod2.mod3.val3)
+accept_int(mod1.mod2.val2)
+accept_int(mod1.val1)
+
+[file mod1/__init__.py]
+val1 = 1
+
+[file mod1/mod2/__init__.py]
+val2 = 1
+
+[file mod1/mod2/mod3.py]
+val3 = 1
+
+[builtins fixtures/module.pyi]
+[rechecked]
+[stale]
+
+[case testIncrementalSubmoduleParentWithImportFrom]
+import parent
+
+[file parent/__init__.py]
+from parent import a
+
+[file parent/a.py]
+val = 3
+
+[builtins fixtures/args.pyi]
 [stale]
 
 [case testIncrementalSubmoduleParentBackreference]
@@ -775,7 +1059,7 @@ class Class: pass
 
 [builtins fixtures/args.pyi]
 [rechecked collections, main, package.subpackage.mod1]
-[stale collections, main, package.subpackage.mod1]
+[stale collections, package.subpackage.mod1]
 [out2]
 tmp/main.py: note: In function "handle":
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
@@ -783,6 +1067,7 @@ tmp/main.py:4: error: "Class" has no attribute "some_attribute"
 [case testIncrementalWithIgnores]
 import foo # type: ignore
 
+[builtins fixtures/module.pyi]
 [stale]
 
 [case testIncrementalWithSilentImportsAndIgnore]
@@ -833,7 +1118,7 @@ class A:
 class A:
   pass
 [rechecked m, n]
-[stale m, n]
+[stale n]
 [out2]
 main:2: error: "A" has no attribute "bar"
 
@@ -851,7 +1136,7 @@ class A:
 class A:
   def bar(self): pass
 [rechecked m, n]
-[stale m, n]
+[stale n]
 [out1]
 main:2: error: "A" has no attribute "bar"
 
@@ -908,3 +1193,377 @@ foo(3)
 [out2]
 main:1: note: In module imported here:
 tmp/client.py:4: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
+[case testIncrementalChangingAlias]
+import m1, m2, m3, m4, m5
+
+[file m1.py]
+from m2 import A
+def accepts_int(x: int) -> None: pass
+accepts_int(A())
+
+[file m2.py]
+from m3 import A
+
+[file m3.py]
+from m4 import B
+A = B
+
+[file m3.py.next]
+from m5 import C
+A = C
+
+[file m4.py]
+def B() -> int:
+    return 42
+
+[file m5.py]
+def C() -> str:
+    return "hello"
+
+[rechecked m1, m2, m3]
+[stale m3]
+[out2]
+main:1: note: In module imported here:
+tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalSilentImportsWithBlatantError]
+# cmd: mypy -m main
+# flags: --silent-imports
+
+[file main.py]
+from evil import Hello
+
+[file main.py.next]
+from evil import Hello
+reveal_type(Hello())
+
+[file evil.py]
+def accept_int(x: int) -> None: pass
+accept_int("not an int")
+
+[rechecked main]
+[stale]
+[out2]
+tmp/main.py:2: error: Revealed type is 'Any'
+
+[case testIncrementalImportIsNewlySilenced]
+# cmd: mypy -m main foo
+# cmd2: mypy -m main
+# flags: --silent-imports
+
+[file main.py]
+from foo import bar
+def accept_int(x: int) -> None: pass
+accept_int(bar)
+
+[file foo.py]
+bar = 3
+
+[file foo.py.next]
+# Empty!
+
+[rechecked main]
+[stale main]
+
+[case testIncrementalSilencedModuleNoLongerCausesError]
+# cmd: mypy -m main evil
+# cmd2: mypy -m main
+# flags: --silent-imports
+
+[file main.py]
+from evil import bar
+def accept_int(x: int) -> None: pass
+accept_int(bar)
+reveal_type(bar)
+
+[file evil.py]
+bar = "str"
+
+[rechecked main]
+[stale]
+[out1]
+tmp/main.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+tmp/main.py:4: error: Revealed type is 'builtins.str'
+[out2]
+tmp/main.py:4: error: Revealed type is 'Any'
+
+[case testIncrementalFixedBugCausesPropagation]
+import mod1
+
+[file mod1.py]
+from mod2 import A
+val = A().makeB().makeC().foo()
+reveal_type(val)
+
+[file mod2.py]
+from mod3 import B
+class A:
+    def makeB(self) -> B: return B()
+
+[file mod3.py]
+from mod4 import C
+class B:
+    def makeC(self) -> C:
+        val = 3  # type: int
+        val = "str"   # deliberately triggering error
+        return C()
+
+[file mod3.py.next]
+from mod4 import C
+class B:
+    def makeC(self) -> C: return C()
+
+[file mod4.py]
+class C:
+    def foo(self) -> int: return 1
+
+[rechecked mod3, mod2, mod1]
+[stale mod3, mod2]
+[out1]
+tmp/mod2.py:1: note: In module imported here,
+tmp/mod1.py:1: note: ... from here,
+main:1: note: ... from here:
+tmp/mod3.py: note: In member "makeC" of class "B":
+tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:1: note: In module imported here:
+tmp/mod1.py: note: At top level:
+tmp/mod1.py:3: error: Revealed type is 'builtins.int'
+
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: Revealed type is 'builtins.int'
+
+[case testIncrementalIncidentalChangeWithBugCausesPropagation]
+import mod1
+
+[file mod1.py]
+from mod2 import A
+val = A().makeB().makeC().foo()
+reveal_type(val)
+
+[file mod2.py]
+from mod3 import B
+class A:
+    def makeB(self) -> B: return B()
+
+[file mod3.py]
+from mod4 import C
+class B:
+    def makeC(self) -> C:
+        val = 3  # type: int
+        val = "str"   # deliberately triggering error
+        return C()
+
+[file mod4.py]
+class C:
+    def foo(self) -> int: return 1
+
+[file mod4.py.next]
+class C:
+    def foo(self) -> str: return 'a'
+
+[rechecked mod4, mod3, mod2, mod1]
+[stale mod4]
+[out1]
+tmp/mod2.py:1: note: In module imported here,
+tmp/mod1.py:1: note: ... from here,
+main:1: note: ... from here:
+tmp/mod3.py: note: In member "makeC" of class "B":
+tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:1: note: In module imported here:
+tmp/mod1.py: note: At top level:
+tmp/mod1.py:3: error: Revealed type is 'builtins.int'
+
+[out2]
+tmp/mod2.py:1: note: In module imported here,
+tmp/mod1.py:1: note: ... from here,
+main:1: note: ... from here:
+tmp/mod3.py: note: In member "makeC" of class "B":
+tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:1: note: In module imported here:
+tmp/mod1.py: note: At top level:
+tmp/mod1.py:3: error: Revealed type is 'builtins.str'
+
+[case testIncrementalIncidentalChangeWithBugFixCausesPropagation]
+import mod1
+
+[file mod1.py]
+from mod2 import A
+val = A().makeB().makeC().foo()
+reveal_type(val)
+
+[file mod2.py]
+from mod3 import B
+class A:
+    def makeB(self) -> B: return B()
+
+[file mod3.py]
+from mod4 import C
+class B:
+    def makeC(self) -> C:
+        val = 3  # type: int
+        val = "str"   # deliberately triggering error
+        return C()
+
+[file mod3.py.next]
+from mod4 import C
+class B:
+    def makeC(self) -> C: return C()
+
+[file mod4.py]
+class C:
+    def foo(self) -> int: return 1
+
+[file mod4.py.next]
+class C:
+    def foo(self) -> str: return 'a'
+
+[rechecked mod4, mod3, mod2, mod1]
+[stale mod4, mod3, mod2]
+[out1]
+tmp/mod2.py:1: note: In module imported here,
+tmp/mod1.py:1: note: ... from here,
+main:1: note: ... from here:
+tmp/mod3.py: note: In member "makeC" of class "B":
+tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:1: note: In module imported here:
+tmp/mod1.py: note: At top level:
+tmp/mod1.py:3: error: Revealed type is 'builtins.int'
+
+[out2]
+main:1: note: In module imported here:
+tmp/mod1.py:3: error: Revealed type is 'builtins.str'
+
+[case testIncrementalSilentImportsWithInnerImports]
+# cmd: mypy -m main foo
+# flags: --silent-imports
+
+[file main.py]
+from foo import MyClass
+m = MyClass()
+
+[file main.py.next]
+from foo import MyClass
+m = MyClass()
+reveal_type(m.val)
+
+[file foo.py]
+class MyClass:
+    def __init__(self) -> None:
+        import unrelated
+        self.val = unrelated.test()
+
+[rechecked main]
+[stale]
+[out2]
+tmp/main.py:3: error: Revealed type is 'Any'
+
+[case testIncrementalSilentImportsWithInnerImportsAndNewFile]
+# cmd: mypy -m main foo
+# cmd2: mypy -m main foo unrelated
+# flags: --silent-imports
+
+[file main.py]
+from foo import MyClass
+m = MyClass()
+
+[file main.py.next]
+from foo import MyClass
+m = MyClass()
+reveal_type(m.val)
+
+[file foo.py]
+class MyClass:
+    def __init__(self) -> None:
+        import unrelated
+        self.val = unrelated.test()
+
+[file unrelated.py]
+def test() -> str: return "foo"
+
+[rechecked main, foo, unrelated]
+[stale foo, unrelated]
+[out2]
+tmp/main.py:3: error: Revealed type is 'builtins.str'
+
+[case testIncrementalWorksWithNestedClasses]
+import foo
+
+[file foo.py]
+class MyClass:
+    class NestedClass:
+        pass
+
+    class_attr = NestedClass()
+
+[rechecked]
+[stale]
+
+[case testIncrementalWorksWithNamedTuple]
+import foo
+
+[file foo.py]
+from mid import MyTuple
+def accept_int(x: int) -> None: pass
+accept_int(MyTuple(1, "b", "c").a)
+
+[file mid.py]
+from bar import MyTuple
+
+[file bar.py]
+from typing import NamedTuple
+MyTuple = NamedTuple('MyTuple', [
+    ('a', int),
+    ('b', str),
+    ('c', str)
+])
+
+[file bar.py.next]
+from typing import NamedTuple
+MyTuple = NamedTuple('MyTuple', [
+    ('b', int),  # a and b are swapped
+    ('a', str),
+    ('c', str)
+])
+
+[rechecked bar, mid, foo]
+[stale bar]
+[out2]
+main:1: note: In module imported here:
+tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalWorksWithNestedNamedTuple]
+import foo
+
+[file foo.py]
+from mid import Outer 
+def accept_int(x: int) -> None: pass
+accept_int(Outer.MyTuple(1, "b", "c").a)
+
+[file mid.py]
+from bar import Outer 
+
+[file bar.py]
+from typing import NamedTuple
+class Outer:
+    MyTuple = NamedTuple('MyTuple', [
+        ('a', int),
+        ('b', str),
+        ('c', str)
+    ])
+
+[file bar.py.next]
+from typing import NamedTuple
+class Outer:
+    MyTuple = NamedTuple('MyTuple', [
+        ('b', int),  # a and b are swapped
+        ('a', str),
+        ('c', str)
+    ])
+
+[rechecked bar, mid, foo]
+[stale bar]
+[out2]
+main:1: note: In module imported here:
+tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"

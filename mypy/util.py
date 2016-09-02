@@ -12,6 +12,19 @@ ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*
 default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
 
 
+def split_module_names(mod_name: str) -> List[str]:
+    """Return the module and all parent module names.
+
+    So, if `mod_name` is 'a.b.c', this function will return
+    ['a.b.c', 'a.b', and 'a'].
+    """
+    out = [mod_name]
+    while '.' in mod_name:
+        mod_name = mod_name.rsplit('.', 1)[0]
+        out.append(mod_name)
+    return out
+
+
 def short_type(obj: object) -> str:
     """Return the last component of the type name of an object.
 

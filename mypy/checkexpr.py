@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from typing import cast, Dict, List, Tuple, Callable, Union, Optional
+from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
@@ -16,7 +16,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2
+    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
 )
 from mypy.nodes import function_type
 from mypy import nodes
@@ -36,6 +36,7 @@ from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
+from mypy.util import split_module_names
 
 from mypy import experiments
 
@@ -43,6 +44,35 @@ from mypy import experiments
 # check_args() below for details.
 ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, MessageBuilder],
                       None]
+
+
+def extract_refexpr_names(expr: RefExpr) -> Set[str]:
+    """Recursively extracts all module references from a reference expression.
+
+    Note that currently, the only two subclasses of RefExpr are NameExpr and
+    MemberExpr."""
+    output = set()  # type: Set[str]
+    while expr.kind == MODULE_REF or expr.fullname is not None:
+        if expr.kind == MODULE_REF:
+            output.add(expr.fullname)
+
+        if isinstance(expr, NameExpr):
+            is_suppressed_import = isinstance(expr.node, Var) and expr.node.is_suppressed_import
+            if isinstance(expr.node, TypeInfo):
+                # Reference to a class or a nested class
+                output.update(split_module_names(expr.node.module_name))
+            elif expr.fullname is not None and '.' in expr.fullname and not is_suppressed_import:
+                # Everything else (that is not a silenced import within a class)
+                output.add(expr.fullname.rsplit('.', 1)[0])
+            break
+        elif isinstance(expr, MemberExpr):
+            if isinstance(expr.expr, RefExpr):
+                expr = expr.expr
+            else:
+                break
+        else:
+            raise AssertionError("Unknown RefExpr subclass: {}".format(type(expr)))
+    return output
 
 
 class Finished(Exception):
@@ -75,6 +105,7 @@ class ExpressionChecker:
 
         It can be of any kind: local, member or global.
         """
+        self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ref_expr(e)
         return self.chk.narrow_type_from_binder(e, result)
 
@@ -861,6 +892,7 @@ class ExpressionChecker:
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
+        self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, False)
         return self.chk.narrow_type_from_binder(e, result)
 

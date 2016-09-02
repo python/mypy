@@ -193,6 +193,7 @@ class TypeFixture:
                             a[-1], self.function)
 
     def make_type_info(self, name: str,
+                       module_name: str = None,
                        is_abstract: bool = False,
                        mro: List[TypeInfo] = None,
                        bases: List[Instance] = None,
@@ -202,6 +203,12 @@ class TypeFixture:
 
         class_def = ClassDef(name, Block([]), None, [])
         class_def.fullname = name
+
+        if module_name is None:
+            if '.' in name:
+                module_name = name.rsplit('.', 1)[0]
+            else:
+                module_name = '__main__'
 
         if typevars:
             v = []  # type: List[TypeVarDef]
@@ -213,7 +220,7 @@ class TypeFixture:
                 v.append(TypeVarDef(n, id, None, self.o, variance=variance))
             class_def.type_vars = v
 
-        info = TypeInfo(SymbolTable(), class_def)
+        info = TypeInfo(SymbolTable(), class_def, module_name)
         if mro is None:
             mro = []
             if name != 'builtins.object':

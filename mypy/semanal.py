@@ -729,7 +729,7 @@ class SemanticAnalyzer(NodeVisitor):
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
         if not defn.info:
-            defn.info = TypeInfo(SymbolTable(), defn)
+            defn.info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
             defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
             kind = MDEF
@@ -923,7 +923,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m, self.cur_mod_id,
                                                    module_public=module_public), context)
         else:
-            self.add_unknown_symbol(as_id, context)
+            self.add_unknown_symbol(as_id, context, is_import=True)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         import_id = self.correct_relative_import(imp)
@@ -969,7 +969,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             # Missing module.
             for id, as_id in imp.names:
-                self.add_unknown_symbol(as_id or id, imp)
+                self.add_unknown_symbol(as_id or id, imp, is_import=True)
 
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,
@@ -1039,7 +1039,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
 
-    def add_unknown_symbol(self, name: str, context: Context) -> None:
+    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False) -> None:
         var = Var(name)
         if self.type:
             var._fullname = self.type.fullname() + "." + name
@@ -1047,6 +1047,7 @@ class SemanticAnalyzer(NodeVisitor):
             var._fullname = self.qualified_name(name)
         var.is_ready = True
         var.type = AnyType()
+        var.is_suppressed_import = is_import
         self.add_symbol(name, SymbolTableNode(GDEF, var, self.cur_mod_id), context)
 
     #
@@ -1416,7 +1417,7 @@ class SemanticAnalyzer(NodeVisitor):
         class_def.fullname = self.qualified_name(name)
 
         symbols = SymbolTable()
-        info = TypeInfo(symbols, class_def)
+        info = TypeInfo(symbols, class_def, self.cur_mod_id)
         info.mro = [info] + base_type.type.mro
         info.bases = [base_type]
         info.is_newtype = True
@@ -1704,7 +1705,8 @@ class SemanticAnalyzer(NodeVisitor):
         symbols = SymbolTable()
         class_def = ClassDef(name, Block([]))
         class_def.fullname = fullname
-        info = namedtuple_type_info(TupleType(types, fallback), symbols, class_def)
+        info = namedtuple_type_info(TupleType(types, fallback), symbols,
+                class_def, self.cur_mod_id)
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
@@ -2641,7 +2643,7 @@ class FirstPass(NodeVisitor):
     def visit_class_def(self, cdef: ClassDef) -> None:
         self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
-        info = TypeInfo(SymbolTable(), cdef)
+        info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
         info.set_line(cdef.line)
         cdef.info = info
         self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info,
@@ -2651,11 +2653,12 @@ class FirstPass(NodeVisitor):
     def process_nested_classes(self, outer_def: ClassDef) -> None:
         for node in outer_def.defs.body:
             if isinstance(node, ClassDef):
-                node.info = TypeInfo(SymbolTable(), node)
+                node.info = TypeInfo(SymbolTable(), node, self.sem.cur_mod_id)
                 if outer_def.fullname:
                     node.info._fullname = outer_def.fullname + '.' + node.info.name()
                 else:
                     node.info._fullname = node.info.name()
+                node.fullname = node.info._fullname
                 symbol = SymbolTableNode(MDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)

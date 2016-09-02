@@ -29,6 +29,7 @@ from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
                         SymbolTableNode, MODULE_REF)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
+from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
 from mypy import fixup
 from mypy.report import Reports
@@ -306,6 +307,7 @@ CacheMeta = NamedTuple('CacheMeta',
 PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
+PRI_INDIRECT = 30  # an indirect dependency
 PRI_ALL = 99  # include all priorities
 
 
@@ -352,6 +354,7 @@ class BuildManager:
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.type_checker = TypeChecker(self.errors, self.modules, options=options)
+        self.indirection_detector = TypeIndirectionVisitor()
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
@@ -1422,10 +1425,39 @@ class State:
             return
         with self.wrap_context():
             manager.type_checker.visit_file(self.tree, self.xpath)
+
+            if manager.options.incremental:
+                self._patch_indirect_dependencies(manager.type_checker.module_refs)
+
             if manager.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
                                 typemap=manager.type_checker.type_map)
             manager.report_file(self.tree)
+
+    def _patch_indirect_dependencies(self, module_refs: Set[str]) -> None:
+        types = self.manager.type_checker.module_type_map.values()
+        valid = self.valid_references()
+
+        encountered = self.manager.indirection_detector.find_modules(types) | module_refs
+        extra = encountered - valid
+
+        for dep in sorted(extra):
+            if dep not in self.manager.modules:
+                continue
+            if dep not in self.suppressed and dep not in self.manager.missing_modules:
+                self.dependencies.append(dep)
+                self.priorities[dep] = PRI_INDIRECT
+            elif dep not in self.suppressed and dep in self.manager.missing_modules:
+                self.suppressed.append(dep)
+
+    def valid_references(self) -> Set[str]:
+        valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
+        valid_refs .add(self.id)
+
+        if "os" in valid_refs:
+            valid_refs.add("os.path")
+
+        return valid_refs
 
     def write_cache(self) -> None:
         if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
@@ -1604,25 +1636,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_fresh_scc(graph, scc)
         else:
             process_stale_scc(graph, scc)
-
-        # TODO: This is a workaround to get around the "chaining imports" problem
-        # with the interface checks.
-        #
-        # That is, if we have a file named `module_a.py` which does:
-        #
-        #     import module_b
-        #     module_b.module_c.foo(3)
-        #
-        # ...and if the type signature of `module_c.foo(...)` were to change,
-        # module_a_ would not be rechecked since the interface of `module_b`
-        # would not be considered changed.
-        #
-        # As a workaround, this check will force a module's interface to be
-        # considered stale if anything it imports has a stale interface,
-        # which ensures these changes are caught and propagated.
-        if len(stale_deps) > 0:
-            for id in scc:
-                graph[id].mark_interface_stale()
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
