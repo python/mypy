@@ -1109,8 +1109,6 @@ class NameExpr(RefExpr):
     """
 
     name = None  # type: str      # Name referred to (may be qualified)
-    # TypeInfo of class surrounding expression (may be None)
-    info = None  # type: TypeInfo
 
     literal = LITERAL_TYPE
 

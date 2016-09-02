@@ -340,7 +340,6 @@ class TransformVisitor(NodeVisitor[Node]):
         # This method is used when the transform result must be a NameExpr.
         # visit_name_expr() is used when there is no such restriction.
         new = NameExpr(node.name)
-        new.info = node.info
         self.copy_ref(new, node)
         return new
 
