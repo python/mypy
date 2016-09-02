@@ -351,7 +351,6 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
-        # TODO: Retain the identity of the module?
         return builtin_type('builtins.module')
 
     if is_decorated:
