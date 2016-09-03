@@ -177,6 +177,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                   is_named_instance(right, 'typing.Reversible')):
                 iter_type = right.args[0]
                 return all(is_subtype(li, iter_type) for li in left.items)
+            if is_subtype(left.fallback, right, self.check_type_parameter):
+                return True
             return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):

@@ -319,3 +319,23 @@ x = None  # type: X
 reveal_type(x._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 
 [builtins fixtures/dict.pyi]
+
+[case testNamedTupleAndOtherSuperclass]
+from typing import NamedTuple
+
+class A: pass
+def f(x: A) -> None: pass
+
+class B(NamedTuple('B', []), A): pass
+f(B())
+x = None  # type: A
+x = B()
+
+# Sanity check: fail if baseclass does not match
+class C: pass
+def g(x: C) -> None: pass
+class D(NamedTuple('D', []), A): pass
+
+g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
+y = None  # type: C
+y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
