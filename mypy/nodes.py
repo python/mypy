@@ -2037,6 +2037,16 @@ class TypeInfo(SymbolNode):
         return ti
 
 
+def namedtuple_type_info(tup: 'mypy.types.TupleType', names: 'SymbolTable',
+                         defn: ClassDef, module_name: str) -> TypeInfo:
+    info = TypeInfo(names, defn, module_name)
+    info.tuple_type = tup
+    info.bases = [tup.fallback]
+    info.is_named_tuple = True
+    info.mro = [info] + tup.fallback.type.mro
+    return info
+
+
 class SymbolTableNode:
     # Kind of node. Possible values:
     #  - LDEF: local definition (of any kind)

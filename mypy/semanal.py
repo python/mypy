@@ -63,7 +63,8 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr,
+    Expression, EllipsisExpr, namedtuple_type_info,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -1412,7 +1413,13 @@ class SemanticAnalyzer(NodeVisitor):
         return None if has_failed else old_type
 
     def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
-        info = self.basic_new_typeinfo(name, base_type)
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = self.qualified_name(name)
+
+        symbols = SymbolTable()
+        info = TypeInfo(symbols, class_def, self.cur_mod_id)
+        info.mro = [info] + base_type.type.mro
+        info.bases = [base_type]
         info.is_newtype = True
 
         # Add __init__ method
@@ -1427,7 +1434,7 @@ class SemanticAnalyzer(NodeVisitor):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
-        info.names['__init__'] = SymbolTableNode(MDEF, init_func)
+        symbols['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info
 
@@ -1679,15 +1686,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.fail(message, context)
         return [], [], False
 
-    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
-        class_def = ClassDef(name, Block([]))
-        class_def.fullname = self.qualified_name(name)
-
-        info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
-        info.mro = [info] + basetype_or_fallback.type.mro
-        info.bases = [basetype_or_fallback]
-        return info
-
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
         strtype = self.named_type('__builtins__.str')  # type: Type
@@ -1702,17 +1700,20 @@ class SemanticAnalyzer(NodeVisitor):
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.named_type_or_none('typing.Iterable', [AnyType()])
         function_type = self.named_type('__builtins__.function')
+        fullname = self.qualified_name(name)
 
-        info = self.basic_new_typeinfo(name, fallback)
-        info.is_named_tuple = True
-        info.tuple_type = TupleType(types, fallback)
+        symbols = SymbolTable()
+        class_def = ClassDef(name, Block([]))
+        class_def.fullname = fullname
+        info = namedtuple_type_info(TupleType(types, fallback), symbols,
+                class_def, self.cur_mod_id)
 
         def add_field(var: Var, is_initialized_in_class: bool = False,
                       is_property: bool = False) -> None:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            info.names[var.name()] = SymbolTableNode(MDEF, var)
+            symbols[var.name()] = SymbolTableNode(MDEF, var)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         for var in vars:
@@ -1739,7 +1740,7 @@ class SemanticAnalyzer(NodeVisitor):
             func = FuncDef(funcname, args, Block([]), typ=signature)
             func.info = info
             func.is_class = is_classmethod
-            info.names[funcname] = SymbolTableNode(MDEF, func)
+            symbols[funcname] = SymbolTableNode(MDEF, func)
 
         add_method('_replace', ret=this_type,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED) for var in vars])
