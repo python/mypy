@@ -319,3 +319,8 @@ x = None  # type: X
 reveal_type(x._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
 
 [builtins fixtures/dict.pyi]
+
+[case testNamedTupleNoUnderscoreFields]
+from collections import namedtuple
+
+X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() Field names cannot start with an underscore: _y, _z

@@ -1656,6 +1656,10 @@ class SemanticAnalyzer(NodeVisitor):
                 items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
         if not types:
             types = [AnyType() for _ in items]
+        underscore = [item for item in items if item.startswith('_')]
+        if underscore:
+            self.fail("namedtuple() Field names cannot start with an underscore: "
+                      + ', '.join(underscore), call)
         return items, types, ok
 
     def parse_namedtuple_fields_with_types(self, nodes: List[Node],
