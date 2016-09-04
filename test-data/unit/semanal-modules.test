@@ -9,7 +9,7 @@ y = 1
 [out]
 MypyFile:1(
   Import:1(x)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(x)
       y [x.y])))
@@ -82,7 +82,7 @@ y = 2
 [out]
 MypyFile:1(
   Import:1(_m, _n)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       MemberExpr:2(
         NameExpr(_m)
@@ -99,7 +99,7 @@ x = 1
 [out]
 MypyFile:1(
   Import:1(_m : n)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(n [_m])
       x [_m.x])))
@@ -112,7 +112,7 @@ x = y = 1
 [out]
 MypyFile:1(
   ImportFrom:1(_m, [x, y])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       NameExpr(x [_m.x])
       NameExpr(y [_m.y]))))
@@ -125,7 +125,7 @@ y = 1
 [out]
 MypyFile:1(
   ImportFrom:1(_m, [y : z])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(z [_m.y])))
 
 [case testAccessImportedName]
@@ -201,7 +201,7 @@ x = 1
 [out]
 MypyFile:1(
   ImportFrom:1(_m, [_n])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(_n)
       x [_n.x])))
@@ -216,7 +216,7 @@ x = 1
 [out]
 MypyFile:1(
   Import:1(_m)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       MemberExpr:2(
         NameExpr(_m)
@@ -261,7 +261,7 @@ x = y = 1
 [out]
 MypyFile:1(
   ImportAll:1(_m)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       NameExpr(x [_m.x])
       NameExpr(y [_m.y]))))
@@ -277,7 +277,7 @@ x = y = 1
 [out]
 MypyFile:1(
   ImportAll:1(_m)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       MemberExpr:2(
         NameExpr(n_)
@@ -314,7 +314,7 @@ x = 1
 [out]
 MypyFile:1(
   Import:1(_m)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(_m)
       x [_m.x])))
@@ -329,7 +329,7 @@ x = 1
 [out]
 MypyFile:1(
   Import:1(m.n)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       MemberExpr:2(
         MemberExpr:2(
@@ -354,7 +354,7 @@ x = 1
 [out]
 MypyFile:1(
   ImportFrom:1(m._n, [x])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(x [m._n.x])))
 
 [case testImportAllFromSubmodule]
@@ -366,7 +366,7 @@ x = y = 1
 [out]
 MypyFile:1(
   ImportAll:1(m._n)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       NameExpr(x [m._n.x])
       NameExpr(y [m._n.y]))))
@@ -408,7 +408,7 @@ x = 1
 [out]
 MypyFile:1(
   ImportFrom:1(m, [_n])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(_n [m._n])
       x [m._n.x])))
@@ -427,7 +427,7 @@ x = 1
 [out]
 MypyFile:1(
   Import:1(m.n.k)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       MemberExpr:2(
         MemberExpr:2(
@@ -435,13 +435,13 @@ MypyFile:1(
           n [m.n])
         k [m.n.k])
       x [m.n.k.x]))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     MemberExpr:3(
       MemberExpr:3(
         NameExpr(m)
         n [m.n])
       b [m.n.b]))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     MemberExpr:4(
       NameExpr(m)
       a [m.a])))
@@ -483,7 +483,7 @@ MypyFile:1(
 object
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(object [builtins.object])))
 
 [case testAssignmentToModuleAttribute]
@@ -532,7 +532,7 @@ MypyFile:1(
       IntExpr(1))
     Then(
       Import:2(_x)
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         MemberExpr:3(
           NameExpr(_x)
           y [_x.y])))))
@@ -550,7 +550,7 @@ MypyFile:1(
     def ()
     Block:1(
       Import:2(_x)
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         MemberExpr:3(
           NameExpr(_x)
           y [_x.y])))))
@@ -602,7 +602,7 @@ MypyFile:1(
     Block:1(
       Import:2(x)
       Import:3(x)
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         MemberExpr:4(
           NameExpr(x)
           y [x.y])))))
@@ -623,7 +623,7 @@ y = 1
 [out]
 MypyFile:1(
   Import:1(m.x)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       MemberExpr:2(
         MemberExpr:2(
@@ -655,13 +655,13 @@ from .. import x, z
 [out]
 MypyFile:1(
   Import:1(m.t.b : b)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       MemberExpr:2(
         NameExpr(b [m.t.b])
         x [m.x])
       y [m.x.y]))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     MemberExpr:3(
       MemberExpr:3(
         NameExpr(b [m.t.b])
@@ -697,11 +697,11 @@ from ..z import y as zy
 [out]
 MypyFile:1(
   Import:1(m.t.b : b)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(b [m.t.b])
       xy [m.x.y]))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     MemberExpr:3(
       NameExpr(b [m.t.b])
       zy [m.z.y])))
@@ -739,15 +739,15 @@ from .. import xy as y
 [out]
 MypyFile:1(
   Import:1(m.t)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(m)
       zy [m.z.zy]))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     MemberExpr:3(
       NameExpr(m)
       xy [m.z.zy]))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     MemberExpr:4(
       MemberExpr:4(
         NameExpr(m)
@@ -808,9 +808,9 @@ y = 2
 [out]
 MypyFile:1(
   ImportAll:1(m_)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(x [m2_.x]))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     NameExpr(y [m2_.y])))
 
 [case testImportAsInStub]
@@ -836,9 +836,9 @@ import m3_
 [out]
 MypyFile:1(
   ImportAll:1(m_)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(m2_))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     NameExpr(m3_)))
 
 [case testErrorsInMultipleModules]

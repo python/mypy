@@ -32,7 +32,7 @@ MypyFile:1(
     f
     Generator
     Block:1(
-      ExpressionStmt:1(
+      ExpressionStatement:1(
         YieldExpr:1(
           NameExpr(f [__main__.f]))))))
 
@@ -77,7 +77,7 @@ MypyFile:1(
   WhileStmt:2(
     NameExpr(x [__main__.x])
     Block:2(
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         NameExpr(y [__main__.y])))))
 
 [case testFor]
@@ -89,7 +89,7 @@ MypyFile:1(
     NameExpr(x* [__main__.x])
     NameExpr(object [builtins.object])
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(x [__main__.x])))))
 
 [case testForInFunction]
@@ -105,7 +105,7 @@ MypyFile:1(
         NameExpr(x* [l])
         NameExpr(f [__main__.f])
         Block:2(
-          ExpressionStmt:3(
+          ExpressionStatement:3(
             NameExpr(x [l])))))))
 
 [case testMultipleForIndexVars]
@@ -119,7 +119,7 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     ListExpr:1()
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         TupleExpr:2(
           NameExpr(x [__main__.x])
           NameExpr(y [__main__.y]))))))
@@ -135,7 +135,7 @@ MypyFile:1(
     ListExpr:1()
     Block:1(
       PassStmt:2()))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     NameExpr(x [__main__.x])))
 
 [case testForIndexVarScope2]
@@ -153,7 +153,7 @@ MypyFile:1(
         ListExpr:2()
         Block:2(
           PassStmt:3()))
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(x [l])))))
 
 [case testReusingForLoopIndexVariable]
@@ -213,14 +213,14 @@ MypyFile:1(
     Block:1(
       PassStmt:2())
     Else(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(x [__main__.x]))))
   WhileStmt:5(
     IntExpr(1)
     Block:5(
       PassStmt:6())
     Else(
-      ExpressionStmt:8(
+      ExpressionStatement:8(
         NameExpr(x [__main__.x])))))
 
 [case testBreak]
@@ -276,20 +276,20 @@ MypyFile:1(
     If(
       NameExpr(x [__main__.x]))
     Then(
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         NameExpr(x [__main__.x])))
     If(
       NameExpr(x [__main__.x]))
     Then(
-      ExpressionStmt:5(
+      ExpressionStatement:5(
         NameExpr(x [__main__.x])))
     If(
       NameExpr(x [__main__.x]))
     Then(
-      ExpressionStmt:7(
+      ExpressionStatement:7(
         NameExpr(x [__main__.x])))
     Else(
-      ExpressionStmt:9(
+      ExpressionStatement:9(
         NameExpr(x [__main__.x])))))
 
 [case testSimpleIf]
@@ -301,7 +301,7 @@ MypyFile:1(
     If(
       NameExpr(object [builtins.object]))
     Then(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(object [builtins.object])))))
 
 [case testLvalues]
@@ -419,7 +419,7 @@ MypyFile:1(
       AssignmentStmt:2(
         NameExpr(x* [l])
         IntExpr(1))
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         NameExpr(x [l])))))
 
 [case testMultipleDefOnlySomeNew]
@@ -559,22 +559,22 @@ MypyFile:1(
     PassStmt:1())
   TryStmt:2(
     Block:2(
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         NameExpr(c [__main__.c])))
     NameExpr(object [builtins.object])
     Block:4(
-      ExpressionStmt:5(
+      ExpressionStatement:5(
         NameExpr(c [__main__.c])))
     NameExpr(c [__main__.c])
     NameExpr(e* [__main__.e])
     Block:6(
-      ExpressionStmt:7(
+      ExpressionStatement:7(
         NameExpr(e [__main__.e])))
     Block:8(
-      ExpressionStmt:9(
+      ExpressionStatement:9(
         NameExpr(c [__main__.c])))
     Finally(
-      ExpressionStmt:11(
+      ExpressionStatement:11(
         NameExpr(c [__main__.c])))))
 
 [case testTryElse]
@@ -592,7 +592,7 @@ MypyFile:1(
     Block:3(
       PassStmt:4())
     Else(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         NameExpr(object [builtins.object])))))
 
 [case testTryWithOnlyFinally]
@@ -627,7 +627,7 @@ MypyFile:1(
       NameExpr(object [builtins.object]))
     NameExpr(e* [__main__.e])
     Block:4(
-      ExpressionStmt:5(
+      ExpressionStatement:5(
         NameExpr(e [__main__.e])))))
 
 [case testRaiseWithoutExpr]
@@ -645,7 +645,7 @@ MypyFile:1(
     Expr(
       NameExpr(object [builtins.object]))
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(object [builtins.object])))))
 
 [case testWithAndVariable]
@@ -659,7 +659,7 @@ MypyFile:1(
     Target(
       NameExpr(x* [__main__.x]))
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(x [__main__.x])))))
 
 [case testWithInFunction]
@@ -677,7 +677,7 @@ MypyFile:1(
         Target(
           NameExpr(x* [l]))
         Block:2(
-          ExpressionStmt:3(
+          ExpressionStatement:3(
             NameExpr(x [l])))))))
 
 [case testComplexWith]
@@ -835,7 +835,7 @@ MypyFile:1(
     FuncDef:3(
       g
       Block:3(
-        ExpressionStmt:4(
+        ExpressionStatement:4(
           CallExpr:4(
             NameExpr(g [__main__.g])
             Args()))))))

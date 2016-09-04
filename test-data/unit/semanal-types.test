@@ -285,15 +285,15 @@ MypyFile:1(
     TypeVars(
       t)
     PassStmt:4())
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     CastExpr:5(
       IntExpr(1)
       Any))
-  ExpressionStmt:6(
+  ExpressionStatement:6(
     CastExpr:6(
       IntExpr(1)
       __main__.c))
-  ExpressionStmt:7(
+  ExpressionStatement:7(
     CastExpr:7(
       NameExpr(c [__main__.c])
       __main__.d[__main__.c])))
@@ -308,7 +308,7 @@ class C: pass
 MypyFile:1(
   Import:1(typing)
   Import:2(_m)
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     CastExpr:3(
       NameExpr(object [builtins.object])
       _m.C)))
@@ -324,7 +324,7 @@ class C: pass
 MypyFile:1(
   Import:1(typing)
   Import:2(_m._n)
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     CastExpr:3(
       NameExpr(object [builtins.object])
       _m._n.C)))
@@ -350,7 +350,7 @@ MypyFile:1(
       t
       s)
     PassStmt:4())
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     CastExpr:5(
       NameExpr(C [__main__.C])
       __main__.C[builtins.str, builtins.int])))
@@ -361,7 +361,7 @@ Any(None)
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Any])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CastExpr:2(
       NameExpr(None [builtins.None])
       Any)))
@@ -372,7 +372,7 @@ cast(Tuple[int, str], None)
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple, cast])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CastExpr:2(
       NameExpr(None [builtins.None])
       Tuple[builtins.int, builtins.str])))
@@ -383,7 +383,7 @@ cast(Callable[[int], str], None)
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Callable, cast])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CastExpr:2(
       NameExpr(None [builtins.None])
       def (builtins.int) -> builtins.str)))
@@ -394,7 +394,7 @@ cast('int', 1)
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [cast])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CastExpr:2(
       IntExpr(1)
       builtins.int)))
@@ -751,7 +751,7 @@ MypyFile:1(
           Var(o))
         def (o: builtins.object) -> builtins.int
         Block:3(
-          ExpressionStmt:3(
+          ExpressionStatement:3(
             NameExpr(o [l])))))
     Decorator:4(
       Var(f)
@@ -762,7 +762,7 @@ MypyFile:1(
           Var(a))
         def (a: builtins.str) -> builtins.object
         Block:5(
-          ExpressionStmt:5(
+          ExpressionStatement:5(
             NameExpr(a [l])))))))
 
 [case testReferenceToOverloadedFunction]
@@ -963,7 +963,7 @@ MypyFile:1(
     def [t] (x: t`-1)
     Block:3(
       PassStmt:3()))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     CallExpr:4(
       TypeApplication:4(
         NameExpr(f [__main__.f])
@@ -988,7 +988,7 @@ MypyFile:1(
     TypeVars(
       t)
     PassStmt:3())
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     CallExpr:4(
       TypeApplication:4(
         NameExpr(A [__main__.A])

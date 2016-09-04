@@ -42,7 +42,7 @@ cast(Tuple[int, ...], ())
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple, cast])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CastExpr:2(
       TupleExpr:2()
       builtins.tuple[builtins.int])))
@@ -71,6 +71,6 @@ MypyFile:1(
 `object`
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     BackquoteExpr:1(
       NameExpr(object [builtins.object]))))

@@ -10,7 +10,7 @@ from typing import List, Tuple, Any, Set, cast, Union, Optional
 
 from mypy import lex
 from mypy.lex import (
-    Token, Eof, Bom, Break, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
+    Token, Eof, Bom, BreakToken, Name, Colon, Dedent, IntLit, StrLit, BytesLit,
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
     EllipsisToken
 )
@@ -18,7 +18,7 @@ import mypy.types
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
-    ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
+    ExpressionStatement, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
@@ -187,7 +187,7 @@ class Parser:
         """Parse the optional byte order mark at the beginning of a file."""
         if isinstance(self.current(), Bom):
             self.expect_type(Bom)
-            if isinstance(self.current(), Break):
+            if isinstance(self.current(), BreakToken):
                 self.expect_break()
             return True
         else:
@@ -546,8 +546,8 @@ class Parser:
 
             args, typ, extra_stmts = self.parse_args(no_type_checks)
         except ParseError:
-            if not isinstance(self.current(), Break):
-                self.ind -= 1  # Kludge: go back to the Break token
+            if not isinstance(self.current(), BreakToken):
+                self.ind -= 1  # Kludge: go back to the BreakToken token
             # Resynchronise parsing by going back over :, if present.
             if isinstance(self.tok[self.ind - 1], Colon):
                 self.ind -= 1
@@ -839,7 +839,7 @@ class Parser:
 
     def parse_block(self, allow_type: bool = False) -> Tuple[Block, Type]:
         colon = self.expect(':')
-        if not isinstance(self.current(), Break):
+        if not isinstance(self.current(), BreakToken):
             # Block immediately after ':'.
             nodes = []
             while True:
@@ -968,7 +968,7 @@ class Parser:
             return OperatorAssignmentStmt(op, expr, rvalue)
         else:
             # Expression statement.
-            return ExpressionStmt(expr)
+            return ExpressionStatement(expr)
 
     def parse_assignment(self, lvalue: Any) -> Node:
         """Parse an assignment statement.
@@ -984,7 +984,7 @@ class Parser:
             lvalues.append(expr)
             expr = self.parse_expression(star_expr_allowed=True)
         cur = self.current()
-        if isinstance(cur, Break):
+        if isinstance(cur, BreakToken):
             type = self.parse_type_comment(cur, signature=False)
         else:
             type = None
@@ -996,7 +996,7 @@ class Parser:
         current = self.current()
         if current.string == 'yield':
             self.parse_error()
-        if not isinstance(current, Break):
+        if not isinstance(current, BreakToken):
             expr = self.parse_expression()
         node = ReturnStmt(expr)
         return node
@@ -1005,7 +1005,7 @@ class Parser:
         self.expect('raise')
         expr = None
         from_expr = None
-        if not isinstance(self.current(), Break):
+        if not isinstance(self.current(), BreakToken):
             expr = self.parse_expression()
             if self.current_str() == 'from':
                 self.expect('from')
@@ -1023,7 +1023,7 @@ class Parser:
         self.expect("yield")
         expr = None
         node = YieldExpr(expr)  # type: Union[YieldFromExpr, YieldExpr]
-        if not isinstance(self.current(), Break):
+        if not isinstance(self.current(), BreakToken):
             if self.current_str() == "from":
                 self.expect("from")
                 expr = self.parse_expression()  # when yield from is assigned to a variable
@@ -1248,13 +1248,13 @@ class Parser:
             target = self.parse_expression(precedence[','])
             if self.current_str() == ',':
                 self.skip()
-                if isinstance(self.current(), Break):
+                if isinstance(self.current(), BreakToken):
                     self.parse_error()
             else:
-                if not isinstance(self.current(), Break):
+                if not isinstance(self.current(), BreakToken):
                     self.parse_error()
         comma = False
-        while not isinstance(self.current(), Break):
+        while not isinstance(self.current(), BreakToken):
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() == ',':
                 comma = True
@@ -1543,7 +1543,7 @@ class Parser:
         while True:
             self.expect(',')
             if (self.current_str() in [')', ']', '=', ':'] or
-                    isinstance(self.current(), Break)):
+                    isinstance(self.current(), BreakToken)):
                 break
             items.append(self.parse_expression(prec, star_expr_allowed=True))
             if self.current_str() != ',': break
@@ -1701,7 +1701,7 @@ class Parser:
             items = [index]
             while self.current_str() == ',':
                 self.skip()
-                if self.current_str() == ']' or isinstance(self.current(), Break):
+                if self.current_str() == ']' or isinstance(self.current(), BreakToken):
                     break
                 items.append(self.parse_slice_item())
             index = TupleExpr(items)
@@ -1846,10 +1846,10 @@ class Parser:
             self.parse_error()
 
     def expect_colon_and_break(self) -> Tuple[Token, Token]:
-        return self.expect_type(Colon), self.expect_type(Break)
+        return self.expect_type(Colon), self.expect_type(BreakToken)
 
     def expect_break(self) -> Token:
-        return self.expect_type(Break)
+        return self.expect_type(BreakToken)
 
     def current(self) -> Token:
         return self.tok[self.ind]
@@ -1882,7 +1882,7 @@ class Parser:
 
     def skip_until_break(self) -> None:
         n = 0
-        while (not isinstance(self.current(), Break)
+        while (not isinstance(self.current(), BreakToken)
                and not isinstance(self.current(), Eof)):
             self.skip()
             n += 1
@@ -1891,11 +1891,11 @@ class Parser:
 
     def skip_until_next_line(self) -> None:
         self.skip_until_break()
-        if isinstance(self.current(), Break):
+        if isinstance(self.current(), BreakToken):
             self.skip()
 
     def eol(self) -> bool:
-        return isinstance(self.current(), Break) or self.eof()
+        return isinstance(self.current(), BreakToken) or self.eof()
 
     def eof(self) -> bool:
         return isinstance(self.current(), Eof)
@@ -1951,7 +1951,7 @@ class ParseError(Exception): pass
 
 def token_repr(tok: Token) -> str:
     """Return a representation of a token for use in parse error messages."""
-    if isinstance(tok, Break):
+    if isinstance(tok, BreakToken):
         return 'end of line'
     elif isinstance(tok, Eof):
         return 'end of file'

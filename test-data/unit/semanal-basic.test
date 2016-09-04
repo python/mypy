@@ -10,7 +10,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(x [__main__.x])))
 
 [case testMultipleGlobals]
@@ -27,7 +27,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(z* [__main__.z])
     IntExpr(3))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     TupleExpr:3(
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y])
@@ -42,7 +42,7 @@ MypyFile:1(
     f
     Block:1(
       PassStmt:1()))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CallExpr:2(
       NameExpr(f [__main__.f])
       Args())))
@@ -54,9 +54,9 @@ x = 1
 def f(): pass
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(x [__main__.x]))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CallExpr:2(
       NameExpr(f [__main__.f])
       Args()))
@@ -79,7 +79,7 @@ MypyFile:1(
       Var(x)
       Var(y))
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         TupleExpr:2(
           NameExpr(x [l])
           NameExpr(y [l]))))))
@@ -96,7 +96,7 @@ MypyFile:1(
       AssignmentStmt:2(
         NameExpr(x* [l])
         IntExpr(1))
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         NameExpr(x [l])))))
 
 [case testAccessGlobalInFn]
@@ -110,9 +110,9 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(x [__main__.x]))
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         CallExpr:3(
           NameExpr(g [__main__.g])
           Args()))))
@@ -171,9 +171,9 @@ MypyFile:1(
       AssignmentStmt:3(
         NameExpr(x* [l])
         IntExpr(2))
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(x [l]))))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     NameExpr(x [__main__.x])))
 
 [case testArgumentInitializers]
@@ -194,7 +194,7 @@ MypyFile:1(
         NameExpr(y [l])
         NameExpr(object [builtins.object])))
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         TupleExpr:2(
           NameExpr(x [l])
           NameExpr(y [l]))))))
@@ -211,7 +211,7 @@ MypyFile:1(
     VarArg(
       Var(y))
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         TupleExpr:2(
           NameExpr(x [l])
           NameExpr(y [l]))))))
@@ -236,7 +236,7 @@ MypyFile:1(
       AssignmentStmt:4(
         NameExpr(x [__main__.x])
         NameExpr(None [builtins.None]))
-      ExpressionStmt:5(
+      ExpressionStatement:5(
         NameExpr(x [__main__.x]))))
   ClassDef:6(
     A
@@ -355,7 +355,7 @@ MypyFile:1(
       AssignmentStmt:3(
         NameExpr(x [__main__.x])
         NameExpr(x [__main__.x]))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     NameExpr(x [__main__.x])))
 
 [case testNonlocalDecl]
@@ -381,7 +381,7 @@ MypyFile:1(
           AssignmentStmt:5(
             NameExpr(x [l])
             NameExpr(None [builtins.None]))
-          ExpressionStmt:6(
+          ExpressionStatement:6(
             NameExpr(x [l])))))))
 
 [case testMultipleNamesInNonlocalDecl]

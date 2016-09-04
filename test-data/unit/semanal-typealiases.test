@@ -44,7 +44,7 @@ List[List[int]]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [List])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TypeApplication:2(
       NameExpr(List [builtins.list])
       Types(
@@ -57,7 +57,7 @@ typing.List[typing.List[int]]
 [out]
 MypyFile:1(
   Import:1(typing)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TypeApplication:2(
       MemberExpr:2(
         NameExpr(typing)

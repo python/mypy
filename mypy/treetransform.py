@@ -8,7 +8,7 @@ from typing import List, Dict, cast
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
-    OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
+    OperatorAssignmentStmt, ExpressionStatement, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
     PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
     CastExpr, RevealTypeExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
@@ -229,8 +229,8 @@ class TransformVisitor(NodeVisitor[Node]):
         self.var_map[node] = new
         return new
 
-    def visit_expression_stmt(self, node: ExpressionStmt) -> Node:
-        return ExpressionStmt(self.node(node.expr))
+    def visit_expression_stmt(self, node: ExpressionStatement) -> Node:
+        return ExpressionStatement(self.node(node.expr))
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> Node:
         return self.duplicate_assignment(node)

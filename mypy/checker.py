@@ -15,7 +15,7 @@ from mypy.nodes import (
     SymbolTable, Node, MypyFile, Var, Expression,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
-    TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
+    TupleExpr, ListExpr, ExpressionStatement, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
@@ -1456,7 +1456,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                                [full_key_type, full_value_type])
                         del partial_types[var]
 
-    def visit_expression_stmt(self, s: ExpressionStmt) -> Type:
+    def visit_expression_stmt(self, s: ExpressionStatement) -> Type:
         self.accept(s.expr)
 
     def visit_return_stmt(self, s: ReturnStmt) -> Type:

@@ -51,7 +51,7 @@ from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
-    IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
+    IndexExpr, TupleExpr, ListExpr, ExpressionStatement, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
@@ -1826,7 +1826,7 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.type or self.is_func_scope():
             self.fail("'%s' used with a non-method" % decorator, context)
 
-    def visit_expression_stmt(self, s: ExpressionStmt) -> None:
+    def visit_expression_stmt(self, s: ExpressionStatement) -> None:
         s.expr.accept(self)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:

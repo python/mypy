@@ -3,7 +3,7 @@
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
-    ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
+    ExpressionStatement, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
     TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
@@ -59,7 +59,7 @@ class TraverserVisitor(NodeVisitor[None]):
         for decorator in o.decorators:
             decorator.accept(self)
 
-    def visit_expression_stmt(self, o: ExpressionStmt) -> None:
+    def visit_expression_stmt(self, o: ExpressionStatement) -> None:
         o.expr.accept(self)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:

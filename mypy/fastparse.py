@@ -5,7 +5,7 @@ from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cas
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
-    ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
+    ExpressionStatement, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
@@ -532,16 +532,16 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Expr(self, n: ast35.Expr) -> Node:
         value = self.visit(n.value)
-        return ExpressionStmt(value)
+        return ExpressionStatement(value)
 
     # Pass
     @with_line
     def visit_Pass(self, n: ast35.Pass) -> Node:
         return PassStmt()
 
-    # Break
+    # BreakToken
     @with_line
-    def visit_Break(self, n: ast35.Break) -> Node:
+    def visit_Break(self, n: ast35.BreakToken) -> Node:
         return BreakStmt()
 
     # Continue

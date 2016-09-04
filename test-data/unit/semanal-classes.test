@@ -203,7 +203,7 @@ MypyFile:1(
             Var(self))
           def (self: __main__.A)
           Block:4(
-            ExpressionStmt:4(
+            ExpressionStatement:4(
               NameExpr(self [l])))))
       Decorator:5(
         Var(f)
@@ -215,7 +215,7 @@ MypyFile:1(
             Var(x))
           def (self: __main__.A, x: __main__.A)
           Block:6(
-            ExpressionStmt:6(
+            ExpressionStatement:6(
               NameExpr(self [l]))))))))
 
 [case testAttributeWithoutType]
@@ -314,7 +314,7 @@ MypyFile:1(
       ClassDef:2(
         A
         PassStmt:2())
-      ExpressionStmt:3(
+      ExpressionStatement:3(
         NameExpr(A [l])))))
 
 [case testReferenceToClassWithinClass]
@@ -328,7 +328,7 @@ MypyFile:1(
     ClassDef:2(
       B
       PassStmt:2())
-    ExpressionStmt:3(
+    ExpressionStatement:3(
       NameExpr(B [__main__.A.B]))))
 
 [case testClassWithBaseClassWithinClass]

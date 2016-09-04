@@ -736,7 +736,7 @@ class Block(Statement):
 # Statements
 
 
-class ExpressionStmt(Statement):
+class ExpressionStatement(Statement):
     """An expression as a statement, such as print(s)."""
     expr = None  # type: Expression
 

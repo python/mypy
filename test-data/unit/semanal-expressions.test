@@ -2,7 +2,7 @@
 (1, 'x', 1.1, 1.1j)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     TupleExpr:1(
       IntExpr(1)
       StrExpr(x)
@@ -17,7 +17,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     MemberExpr:2(
       NameExpr(x [__main__.x])
       y)))
@@ -32,7 +32,7 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IndexExpr:2(
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y]))))
@@ -50,22 +50,22 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     OpExpr:2(
       +
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y])))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     OpExpr:3(
       |
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y])))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     ComparisonExpr:4(
       is not
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y])))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     ComparisonExpr:5(
       ==
       NameExpr(x [__main__.x])
@@ -82,19 +82,19 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     UnaryExpr:2(
       -
       NameExpr(x [__main__.x])))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     UnaryExpr:3(
       ~
       NameExpr(x [__main__.x])))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     UnaryExpr:4(
       +
       NameExpr(x [__main__.x])))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     UnaryExpr:5(
       not
       NameExpr(x [__main__.x]))))
@@ -112,20 +112,20 @@ MypyFile:1(
       NameExpr(y* [__main__.y])
       NameExpr(z* [__main__.z]))
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IndexExpr:2(
       NameExpr(x [__main__.x])
       SliceExpr:2(
         NameExpr(y [__main__.y])
         NameExpr(z [__main__.z])
         NameExpr(x [__main__.x]))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     IndexExpr:3(
       NameExpr(x [__main__.x])
       SliceExpr:3(
         <empty>
         <empty>)))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     IndexExpr:4(
       NameExpr(x [__main__.x])
       SliceExpr:4(
@@ -142,7 +142,7 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y]))))
@@ -157,7 +157,7 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       ListExpr:2()
       ListExpr:2(
@@ -174,7 +174,7 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     IntExpr(1))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     DictExpr:2(
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y])
@@ -189,7 +189,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     ListComprehension:2(
       GeneratorExpr:2(
         OpExpr:2(
@@ -210,7 +210,7 @@ MypyFile:1(
       Var(a))
     def (a: Any)
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         ListComprehension:2(
           GeneratorExpr:2(
             NameExpr(x [l])
@@ -242,7 +242,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     SetComprehension:2(
       GeneratorExpr:2(
         OpExpr:2(
@@ -277,7 +277,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     DictionaryComprehension:2(
       NameExpr(x [l])
       OpExpr:2(
@@ -315,7 +315,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     GeneratorExpr:2(
       NameExpr(x [l])
       NameExpr(x* [l])
@@ -329,7 +329,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     GeneratorExpr:2(
       NameExpr(x [l])
       TupleExpr:2(
@@ -347,7 +347,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x* [__main__.x])
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     FuncExpr:2(
       Block:2(
         ReturnStmt:2(
@@ -357,7 +357,7 @@ MypyFile:1(
 lambda x, y: x + y
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     FuncExpr:1(
       Args(
         Var(x)
@@ -373,7 +373,7 @@ MypyFile:1(
 int if None else str
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ConditionalExpr:1(
       Condition(
         NameExpr(None [builtins.None]))
@@ -385,7 +385,7 @@ dict(a=1, b=str())
 [builtins fixtures/dict.pyi]
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     DictExpr:1(
       StrExpr(a)
       IntExpr(1)
