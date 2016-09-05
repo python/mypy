@@ -9,7 +9,7 @@ MypyFile:1(
     f
     def () -> builtins.list[builtins.int]
     Block:2(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testDictTypeAlias]
 from typing import Dict
@@ -22,7 +22,7 @@ MypyFile:1(
     f
     def () -> builtins.dict[builtins.int, builtins.str]
     Block:2(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testQualifiedTypeAlias]
 import typing
@@ -35,7 +35,7 @@ MypyFile:1(
     f
     def () -> builtins.list[builtins.int]
     Block:2(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testTypeApplicationWithTypeAlias]
 from typing import List
@@ -75,8 +75,8 @@ MypyFile:1(
   Import:1(typing)
   ClassDef:2(
     A
-    PassStmt:2())
-  AssignmentStmt:3(
+    Pass:2())
+  Assignment:3(
     NameExpr(A2* [__main__.A2])
     NameExpr(A [__main__.A]))
   FuncDef:4(
@@ -85,7 +85,7 @@ MypyFile:1(
       Var(x))
     def (x: __main__.A) -> __main__.A
     Block:4(
-      PassStmt:4())))
+      Pass:4())))
 
 [case testQualifiedSimpleTypeAlias]
 import typing
@@ -99,12 +99,12 @@ class A: pass
 MypyFile:1(
   Import:1(typing)
   Import:2(_m)
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(A2* [__main__.A2])
     MemberExpr:3(
       NameExpr(_m)
       A [_m.A]))
-  AssignmentStmt:4(
+  Assignment:4(
     NameExpr(x [__main__.x])
     IntExpr(1)
     _m.A))
@@ -116,7 +116,7 @@ def f(x: U) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Union])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(U* [__main__.U])
     TypeAliasExpr(Union[builtins.int, builtins.str]))
   FuncDef:3(
@@ -125,7 +125,7 @@ MypyFile:1(
       Var(x))
     def (x: Union[builtins.int, builtins.str])
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testUnionTypeAlias2]
 from typing import Union
@@ -137,8 +137,8 @@ MypyFile:1(
   ImportFrom:1(typing, [Union])
   ClassDef:2(
     A
-    PassStmt:2())
-  AssignmentStmt:3(
+    Pass:2())
+  Assignment:3(
     NameExpr(U* [__main__.U])
     TypeAliasExpr(Union[builtins.int, __main__.A]))
   FuncDef:4(
@@ -147,7 +147,7 @@ MypyFile:1(
       Var(x))
     def (x: Union[builtins.int, __main__.A])
     Block:4(
-      PassStmt:4())))
+      Pass:4())))
 
 [case testUnionTypeAliasWithQualifiedUnion]
 import typing
@@ -156,7 +156,7 @@ def f(x: U) -> None: pass
 [out]
 MypyFile:1(
   Import:1(typing)
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(U* [__main__.U])
     TypeAliasExpr(Union[builtins.int, builtins.str]))
   FuncDef:3(
@@ -165,7 +165,7 @@ MypyFile:1(
       Var(x))
     def (x: Union[builtins.int, builtins.str])
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -174,7 +174,7 @@ def f(x: T) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(T* [__main__.T])
     TypeAliasExpr(Tuple[builtins.int, builtins.str]))
   FuncDef:3(
@@ -183,7 +183,7 @@ MypyFile:1(
       Var(x))
     def (x: Tuple[builtins.int, builtins.str])
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testCallableTypeAlias]
 from typing import Callable
@@ -192,7 +192,7 @@ def f(x: C) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Callable])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(C* [__main__.C])
     TypeAliasExpr(def (builtins.int)))
   FuncDef:3(
@@ -201,7 +201,7 @@ MypyFile:1(
       Var(x))
     def (x: def (builtins.int))
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testGenericTypeAlias]
 from typing import Generic, TypeVar
@@ -212,15 +212,15 @@ def f(x: A) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Generic, TypeVar])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(T* [__main__.T])
     TypeVarExpr:2())
   ClassDef:3(
     G
     TypeVars(
       T)
-    PassStmt:3())
-  AssignmentStmt:4(
+    Pass:3())
+  Assignment:4(
     NameExpr(A* [__main__.A])
     TypeAliasExpr(__main__.G[builtins.int]))
   FuncDef:5(
@@ -229,7 +229,7 @@ MypyFile:1(
       Var(x))
     def (x: __main__.G[builtins.int])
     Block:5(
-      PassStmt:5())))
+      Pass:5())))
 
 [case testGenericTypeAlias2]
 from typing import List
@@ -239,7 +239,7 @@ def f(x: A) -> None: pass
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [List])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(A* [__main__.A])
     TypeAliasExpr(builtins.list[builtins.int]))
   FuncDef:3(
@@ -248,7 +248,7 @@ MypyFile:1(
       Var(x))
     def (x: builtins.list[builtins.int])
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testImportUnionTypeAlias]
 import typing
@@ -268,7 +268,7 @@ MypyFile:1(
       Var(x))
     def (x: Union[builtins.int, _m.A])
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testImportUnionTypeAlias2]
 import typing
@@ -288,7 +288,7 @@ MypyFile:1(
       Var(x))
     def (x: Union[builtins.int, _m.A])
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testImportSimpleTypeAlias]
 import typing
@@ -307,7 +307,7 @@ MypyFile:1(
       Var(x))
     def (x: builtins.int)
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testImportSimpleTypeAlias2]
 import typing
@@ -326,7 +326,7 @@ MypyFile:1(
       Var(x))
     def (x: builtins.int)
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testAnyTypeAlias]
 from typing import Any
@@ -335,10 +335,10 @@ a = 1 # type: A
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Any])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(A* [__main__.A])
     NameExpr(Any [typing.Any]))
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(a [__main__.a])
     IntExpr(1)
     Any))
@@ -350,12 +350,12 @@ a = 1 # type: A
 [out]
 MypyFile:1(
   Import:1(typing)
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(A* [__main__.A])
     MemberExpr:2(
       NameExpr(typing)
       Any [typing.Any]))
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(a [__main__.a])
     IntExpr(1)
     Any))
@@ -368,13 +368,13 @@ x = 1 # type: U2
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Union])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(U* [__main__.U])
     TypeAliasExpr(Union[builtins.int, builtins.str]))
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(U2* [__main__.U2])
     NameExpr(U [__main__.U]))
-  AssignmentStmt:4(
+  Assignment:4(
     NameExpr(x [__main__.x])
     IntExpr(1)
     Union[builtins.int, builtins.str]))
@@ -391,10 +391,10 @@ U = Union[int, str]
 MypyFile:1(
   ImportFrom:1(typing, [Union])
   ImportFrom:2(_m, [U])
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(U2* [__main__.U2])
     NameExpr(U [_m.U]))
-  AssignmentStmt:4(
+  Assignment:4(
     NameExpr(x [__main__.x])
     IntExpr(1)
     Union[builtins.int, builtins.str]))
@@ -416,10 +416,10 @@ a = 1 # type: A
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Union])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(A* [__main__.A])
     TypeAliasExpr(Union[builtins.int, builtins.str]))
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(a [__main__.a])
     IntExpr(1)
     Union[builtins.int, builtins.str]))
@@ -431,10 +431,10 @@ a = 1 # type: A
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Union, Tuple, Any])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(A* [__main__.A])
     TypeAliasExpr(Union[builtins.int, Tuple[builtins.int, Any]]))
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(a [__main__.a])
     IntExpr(1)
     Union[builtins.int, Tuple[builtins.int, Any]]))

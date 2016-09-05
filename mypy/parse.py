@@ -17,16 +17,16 @@ from mypy.lex import (
 import mypy.types
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
-    ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
-    ExpressionStatement, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
-    DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    ClassDef, Decorator, Block, Var, OperatorAssignment,
+    ExpressionStatement, Assignment, Return, Raise, Assert,
+    Del, Break, Continue, Pass, GlobalDecl,
+    While, For, If, Try, With,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
+    UnaryExpr, FuncExpr, Print, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Exec, Argument,
     BackquoteExpr
 )
 from mypy import defaults
@@ -524,7 +524,7 @@ class Parser:
                                                        List[Argument],
                                                        CallableType,
                                                        bool,
-                                                       List[AssignmentStmt]]:
+                                                       List[Assignment]]:
         """Parse function header (a name followed by arguments)
 
         Return a 5-tuple with the following items:
@@ -557,7 +557,7 @@ class Parser:
 
     def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Argument],
                                                               CallableType,
-                                                              List[AssignmentStmt]]:
+                                                              List[Assignment]]:
         """Parse a function signature (...) [-> t].
 
         See parse_arg_list for an explanation of the final tuple item.
@@ -600,7 +600,7 @@ class Parser:
 
     def parse_arg_list(self, allow_signature: bool = True,
             no_type_checks: bool=False) -> Tuple[List[Argument],
-                                                 List[AssignmentStmt]]:
+                                                 List[Assignment]]:
         """Parse function definition argument list.
 
         This includes everything between '(' and ')' (but not the
@@ -702,7 +702,7 @@ class Parser:
 
         return Argument(variable, type, None, kind)
 
-    def parse_tuple_arg(self, index: int) -> Tuple[Argument, AssignmentStmt, List[str]]:
+    def parse_tuple_arg(self, index: int) -> Tuple[Argument, Assignment, List[str]]:
         """Parse a single Python 2 tuple argument.
 
         Example: def f(x, (y, z)): ...
@@ -730,7 +730,7 @@ class Parser:
         else:
             rvalue = NameExpr(arg_name)
             rvalue.set_line(line)
-            decompose = AssignmentStmt([paren_arg], rvalue)
+            decompose = Assignment([paren_arg], rvalue)
             decompose.set_line(line)
         kind = nodes.ARG_POS
         initializer = None
@@ -965,7 +965,7 @@ class Parser:
             op = self.current_str()[:-1]
             self.skip()
             rvalue = self.parse_expression()
-            return OperatorAssignmentStmt(op, expr, rvalue)
+            return OperatorAssignment(op, expr, rvalue)
         else:
             # Expression statement.
             return ExpressionStatement(expr)
@@ -988,9 +988,9 @@ class Parser:
             type = self.parse_type_comment(cur, signature=False)
         else:
             type = None
-        return AssignmentStmt(lvalues, expr, type)
+        return Assignment(lvalues, expr, type)
 
-    def parse_return_stmt(self) -> ReturnStmt:
+    def parse_return_stmt(self) -> Return:
         self.expect('return')
         expr = None
         current = self.current()
@@ -998,10 +998,10 @@ class Parser:
             self.parse_error()
         if not isinstance(current, BreakToken):
             expr = self.parse_expression()
-        node = ReturnStmt(expr)
+        node = Return(expr)
         return node
 
-    def parse_raise_stmt(self) -> RaiseStmt:
+    def parse_raise_stmt(self) -> Raise:
         self.expect('raise')
         expr = None
         from_expr = None
@@ -1010,13 +1010,13 @@ class Parser:
             if self.current_str() == 'from':
                 self.expect('from')
                 from_expr = self.parse_expression()
-        node = RaiseStmt(expr, from_expr)
+        node = Raise(expr, from_expr)
         return node
 
-    def parse_assert_stmt(self) -> AssertStmt:
+    def parse_assert_stmt(self) -> Assert:
         self.expect('assert')
         expr = self.parse_expression()
-        node = AssertStmt(expr)
+        node = Assert(expr)
         return node
 
     def parse_yield_or_yield_from_expr(self) -> Union[YieldFromExpr, YieldExpr]:
@@ -1041,25 +1041,25 @@ class Parser:
         node = EllipsisExpr()
         return node
 
-    def parse_del_stmt(self) -> DelStmt:
+    def parse_del_stmt(self) -> Del:
         self.expect('del')
         expr = self.parse_expression()
-        node = DelStmt(expr)
+        node = Del(expr)
         return node
 
-    def parse_break_stmt(self) -> BreakStmt:
+    def parse_break_stmt(self) -> Break:
         self.expect('break')
-        node = BreakStmt()
+        node = Break()
         return node
 
-    def parse_continue_stmt(self) -> ContinueStmt:
+    def parse_continue_stmt(self) -> Continue:
         self.expect('continue')
-        node = ContinueStmt()
+        node = Continue()
         return node
 
-    def parse_pass_stmt(self) -> PassStmt:
+    def parse_pass_stmt(self) -> Pass:
         self.expect('pass')
-        node = PassStmt()
+        node = Pass()
         return node
 
     def parse_global_decl(self) -> GlobalDecl:
@@ -1084,7 +1084,7 @@ class Parser:
             self.skip()
         return names
 
-    def parse_while_stmt(self) -> WhileStmt:
+    def parse_while_stmt(self) -> While:
         is_error = False
         self.expect('while')
         try:
@@ -1098,12 +1098,12 @@ class Parser:
         else:
             else_body = None
         if is_error is not None:
-            node = WhileStmt(expr, body, else_body)
+            node = While(expr, body, else_body)
             return node
         else:
             return None
 
-    def parse_for_stmt(self) -> ForStmt:
+    def parse_for_stmt(self) -> For:
         self.expect('for')
         index = self.parse_for_index_variables()
         self.expect('in')
@@ -1117,7 +1117,7 @@ class Parser:
         else:
             else_body = None
 
-        node = ForStmt(index, expr, body, else_body)
+        node = For(index, expr, body, else_body)
         return node
 
     def parse_for_index_variables(self) -> Node:
@@ -1144,7 +1144,7 @@ class Parser:
 
         return index
 
-    def parse_if_stmt(self) -> IfStmt:
+    def parse_if_stmt(self) -> If:
         is_error = False
 
         self.expect('if')
@@ -1171,7 +1171,7 @@ class Parser:
             else_body = None
 
         if not is_error:
-            node = IfStmt(expr, body, else_body)
+            node = If(expr, body, else_body)
             return node
         else:
             return None
@@ -1214,13 +1214,13 @@ class Parser:
                 finally_body, _ = self.parse_block()
             else:
                 finally_body = None
-            node = TryStmt(body, vars, types, handlers, else_body,
-                           finally_body)
+            node = Try(body, vars, types, handlers, else_body,
+                       finally_body)
             return node
         else:
             return None
 
-    def parse_with_stmt(self) -> WithStmt:
+    def parse_with_stmt(self) -> With:
         self.expect('with')
         exprs = []
         targets = []
@@ -1237,9 +1237,9 @@ class Parser:
                 break
             self.expect(',')
         body, _ = self.parse_block()
-        return WithStmt(exprs, targets, body)
+        return With(exprs, targets, body)
 
-    def parse_print_stmt(self) -> PrintStmt:
+    def parse_print_stmt(self) -> Print:
         self.expect('print')
         args = []
         target = None
@@ -1262,9 +1262,9 @@ class Parser:
             else:
                 comma = False
                 break
-        return PrintStmt(args, newline=not comma, target=target)
+        return Print(args, newline=not comma, target=target)
 
-    def parse_exec_stmt(self) -> ExecStmt:
+    def parse_exec_stmt(self) -> Exec:
         self.expect('exec')
         expr = self.parse_expression(precedence['in'])
         variables1 = None
@@ -1275,7 +1275,7 @@ class Parser:
             if self.current_str() == ',':
                 self.skip()
                 variables2 = self.parse_expression(precedence[','])
-        return ExecStmt(expr, variables1, variables2)
+        return Exec(expr, variables1, variables2)
 
     # Parsing expressions
 
@@ -1805,7 +1805,7 @@ class Parser:
 
         expr = self.parse_expression(precedence[','])
 
-        nodes = [ReturnStmt(expr).set_line(lambda_tok)]
+        nodes = [Return(expr).set_line(lambda_tok)]
         # Potentially insert extra assignment statements to the beginning of the
         # body, used to decompose Python 2 tuple arguments.
         nodes[:0] = extra_stmts

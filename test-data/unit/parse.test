@@ -14,14 +14,14 @@ MypyFile:1()
 1
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IntExpr(1)))
 
 [case testAssignment]
 x = 1
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(1)))
 
@@ -32,14 +32,14 @@ x = f(1, None)
 -1.23
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     CallExpr:1(
       NameExpr(f)
       Args(
         IntExpr(1)
         NameExpr(None))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     OpExpr:2(
       *
       IntExpr(123)
@@ -47,13 +47,13 @@ MypyFile:1(
         +
         IntExpr(2)
         NameExpr(x))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     CallExpr:3(
       MemberExpr:3(
         StrExpr(hello)
         lower)
       Args()))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     UnaryExpr:4(
       -
       FloatExpr(1.23))))
@@ -65,11 +65,11 @@ MypyFile:1(
 bar'
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr())
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     StrExpr(foo))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     StrExpr(foobar)))
 
 [case testDoubleQuotedStr]
@@ -79,11 +79,11 @@ MypyFile:1(
 bar"
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr())
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     StrExpr(foo))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     StrExpr(foobar)))
 
 [case testTripleQuotedStr]
@@ -103,25 +103,25 @@ bar"""
 """fo""bar"""
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr())
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     StrExpr(foo))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     StrExpr(foobar))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     StrExpr(\nfoo\u000abar))
-  ExpressionStmt:6(
+  ExpressionStatement:6(
     StrExpr(fo''bar))
-  ExpressionStmt:7(
+  ExpressionStatement:7(
     StrExpr())
-  ExpressionStmt:8(
+  ExpressionStatement:8(
     StrExpr(foo))
-  ExpressionStmt:9(
+  ExpressionStatement:9(
     StrExpr(foobar))
-  ExpressionStmt:10(
+  ExpressionStatement:10(
     StrExpr(\nfoo\u000abar))
-  ExpressionStmt:12(
+  ExpressionStatement:12(
     StrExpr(fo""bar)))
 
 [case testRawStr]
@@ -129,9 +129,9 @@ r'x\n\''
 r"x\n\""
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(x\n'))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     StrExpr(x\n")))
 --" fix syntax highlight
 
@@ -142,11 +142,11 @@ bar"
 br'x\n\''
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     BytesExpr(foo))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     BytesExpr(foobar))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     BytesExpr(x\n')))
 
 [case testEscapesInStrings]
@@ -154,9 +154,9 @@ MypyFile:1(
 b'\r\n\t\x2f\u123f'
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(\u000d\u000a\u0009/\u123f))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     BytesExpr(\u000d\u000a\u0009/\\u123f)))
 -- Note \\u in the b'...' case (\u sequence not translated)
 
@@ -164,7 +164,7 @@ MypyFile:1(
 '\''
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(')))
 --'
 
@@ -173,16 +173,16 @@ MypyFile:1(
 b'\1\476'
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(\u0000\u0001\u007fS4))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     BytesExpr(\u0001\u013e)))
 
 [case testUnicodeLiteralInPython3]
 u'foo'
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(foo)))
 
 [case testArrays]
@@ -191,15 +191,15 @@ a = [1, 2]
 a[[1]] = a[2]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     ListExpr:1())
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(a)
     ListExpr:2(
       IntExpr(1)
       IntExpr(2)))
-  AssignmentStmt:3(
+  Assignment:3(
     IndexExpr:3(
       NameExpr(a)
       ListExpr:3(
@@ -215,16 +215,16 @@ MypyFile:1(
 a, b = 1, (2, 3)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     TupleExpr:1())
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       IntExpr(1)))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     TupleExpr:3(
       IntExpr(1)
       NameExpr(foo)))
-  AssignmentStmt:4(
+  Assignment:4(
     TupleExpr:4(
       NameExpr(a)
       NameExpr(b))
@@ -242,7 +242,7 @@ MypyFile:1(
   FuncDef:1(
     main
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(1)))))
 
 [case testPass]
@@ -253,18 +253,18 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testIf]
 if 1:
     2
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(2)))))
 
 [case testIfElse]
@@ -274,14 +274,14 @@ else:
     3
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(2)))
     Else(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(3)))))
 
 [case testIfElif]
@@ -295,24 +295,24 @@ else:
     7
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(2)))
     If(
       IntExpr(3))
     Then(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(4)))
     If(
       IntExpr(5))
     Then(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         IntExpr(6)))
     Else(
-      ExpressionStmt:8(
+      ExpressionStatement:8(
         IntExpr(7)))))
 
 [case testWhile]
@@ -320,10 +320,10 @@ while 1:
     pass
 [out]
 MypyFile:1(
-  WhileStmt:1(
+  While:1(
     IntExpr(1)
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testReturn]
 def f():
@@ -333,7 +333,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ReturnStmt:2(
+      Return:2(
         IntExpr(1)))))
 
 
@@ -345,17 +345,17 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ReturnStmt:2())))
+      Return:2())))
 
 [case testBreak]
 while 1:
     break
 [out]
 MypyFile:1(
-  WhileStmt:1(
+  While:1(
     IntExpr(1)
     Block:1(
-      BreakStmt:2())))
+      Break:2())))
 
 [case testLargeBlock]
 if 1:
@@ -365,18 +365,18 @@ if 1:
     y = 2
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
-      AssignmentStmt:2(
+      Assignment:2(
         NameExpr(x)
         IntExpr(1))
-      WhileStmt:3(
+      While:3(
         IntExpr(2)
         Block:3(
-          PassStmt:4()))
-      AssignmentStmt:5(
+          Pass:4()))
+      Assignment:5(
         NameExpr(y)
         IntExpr(2)))))
 
@@ -393,18 +393,18 @@ MypyFile:1(
       Args(
         Var(self))
       Block:2(
-        PassStmt:3()))))
+        Pass:3()))))
 
 [case testGlobalVarWithType]
 x = 0 # type: int
 y = False # type: bool
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(0)
     int?)
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(y)
     NameExpr(False)
     bool?))
@@ -419,15 +419,15 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      AssignmentStmt:2(
+      Assignment:2(
         NameExpr(x)
         IntExpr(0)
         int?)
-      AssignmentStmt:3(
+      Assignment:3(
         NameExpr(y)
         NameExpr(False)
         bool?)
-      AssignmentStmt:4(
+      Assignment:4(
         NameExpr(a)
         NameExpr(None)
         Any?))))
@@ -437,7 +437,7 @@ x = 0
   # type: int
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(0)
     int?))
@@ -458,7 +458,7 @@ MypyFile:1(
       Var(y))
     def (y: str?) -> int?
     Block:1(
-      ReturnStmt:2()))
+      Return:2()))
   ClassDef:3(
     A
     FuncDef:4(
@@ -469,14 +469,14 @@ MypyFile:1(
         Var(b))
       def (self: Any, a: int?, b: Any?) -> x?
       Block:4(
-        PassStmt:5()))
+        Pass:5()))
     FuncDef:6(
       g
       Args(
         Var(self))
       def (self: Any) -> Any?
       Block:6(
-        PassStmt:7()))))
+        Pass:7()))))
 
 [case testFuncWithNoneReturn]
 def f() -> None:
@@ -487,18 +487,18 @@ MypyFile:1(
     f
     def () -> None?
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testVarDefWithGenericType]
 x = None # type: List[str]
 y = None # type: Dict[int, Any]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     NameExpr(None)
     List?[str?])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(y)
     NameExpr(None)
     Dict?[int?, Any?]))
@@ -514,7 +514,7 @@ MypyFile:1(
       Var(y))
     def (y: t?[Any?, x?]) -> a?[b?[c?], d?]
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testParsingExpressionsWithLessAndGreaterThan]
 # The operators < > can sometimes be confused with generic types.
@@ -525,7 +525,7 @@ x < b, y > 2
 (a < b > c)
 [out]
 MypyFile:1(
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(x)
     ComparisonExpr:2(
       <
@@ -533,7 +533,7 @@ MypyFile:1(
       NameExpr(a)
       NameExpr(b)
       NameExpr(c)))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     CallExpr:3(
       NameExpr(f)
       Args(
@@ -545,14 +545,14 @@ MypyFile:1(
           >
           NameExpr(y)
           NameExpr(c)))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     ComparisonExpr:4(
       <
       >
       NameExpr(a)
       NameExpr(b)
       IntExpr(1)))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     TupleExpr:5(
       ComparisonExpr:5(
         <
@@ -562,7 +562,7 @@ MypyFile:1(
         >
         NameExpr(y)
         IntExpr(2))))
-  ExpressionStmt:6(
+  ExpressionStatement:6(
     ComparisonExpr:6(
       <
       >
@@ -576,20 +576,20 @@ if (1 +
   pass
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       OpExpr:1(
         +
         IntExpr(1)
         IntExpr(2)))
     Then(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testMultipleVarDef]
 x, y = z # type: int, a[c]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     TupleExpr:1(
       NameExpr(x)
       NameExpr(y))
@@ -600,7 +600,7 @@ MypyFile:1(
 (xx, z, i) = 1 # type: (a[c], Any, int)
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     TupleExpr:1(
       NameExpr(xx)
       NameExpr(z)
@@ -612,7 +612,7 @@ MypyFile:1(
 (xx, (z, i)) = 1 # type: (a[c], (Any, int))
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     TupleExpr:1(
       NameExpr(xx)
       TupleExpr:1(
@@ -634,7 +634,7 @@ MypyFile:1(
       Args(
         Var(self))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           MemberExpr:3(
             NameExpr(self)
             x)
@@ -645,7 +645,7 @@ MypyFile:1(
 x = 0 # type: int # bar!
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(0)
     int?))
@@ -656,7 +656,7 @@ MypyFile:1(
       2) # type: foo, bar
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     TupleExpr:1(
       NameExpr(x)
       NameExpr(y))
@@ -669,7 +669,7 @@ MypyFile:1(
 x = 1#type:int
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(1)
     int?))
@@ -678,7 +678,7 @@ MypyFile:1(
 x = 1#   type:   int
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(1)
     int?))
@@ -687,7 +687,7 @@ MypyFile:1(
 x = 1# type : int       # not recognized!
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(1)))
 
@@ -697,13 +697,13 @@ y=1 #.type: int
 z=1 # Type: int
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     IntExpr(1))
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(y)
     IntExpr(1))
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(z)
     IntExpr(1)))
 
@@ -714,14 +714,14 @@ class C:
 MypyFile:1(
   ClassDef:1(
     C
-    PassStmt:2()))
+    Pass:2()))
 
 [case testOperatorPrecedence]
 a | b ^ c
 a & b << c
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     OpExpr:1(
       |
       NameExpr(a)
@@ -729,7 +729,7 @@ MypyFile:1(
         ^
         NameExpr(b)
         NameExpr(c))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     OpExpr:2(
       &
       NameExpr(a)
@@ -743,7 +743,7 @@ MypyFile:1(
 1 << 2 << 3
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     OpExpr:1(
       +
       OpExpr:1(
@@ -751,7 +751,7 @@ MypyFile:1(
         IntExpr(1)
         IntExpr(2))
       IntExpr(3)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     OpExpr:2(
       <<
       OpExpr:2(
@@ -765,7 +765,7 @@ MypyFile:1(
 ~3**2
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     OpExpr:1(
       *
       OpExpr:1(
@@ -782,7 +782,7 @@ MypyFile:1(
           ~
           IntExpr(3)))
       IntExpr(2)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     UnaryExpr:2(
       ~
       OpExpr:2(
@@ -797,24 +797,24 @@ def f(): pass
 def g() -> int: return 1
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
-      PassStmt:1()))
-  WhileStmt:2(
+      Pass:1()))
+  While:2(
     IntExpr(1)
     Block:2(
-      PassStmt:2()))
+      Pass:2()))
   FuncDef:3(
     f
     Block:3(
-      PassStmt:3()))
+      Pass:3()))
   FuncDef:4(
     g
     def () -> int?
     Block:4(
-      ReturnStmt:4(
+      Return:4(
         IntExpr(1)))))
 
 [case testForStatement]
@@ -826,12 +826,12 @@ for [x, (y, w)] in z:
   1
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     NameExpr(x)
     NameExpr(y)
     Block:1(
-      PassStmt:2()))
-  ForStmt:3(
+      Pass:2()))
+  For:3(
     TupleExpr:3(
       NameExpr(x)
       TupleExpr:3(
@@ -839,9 +839,9 @@ MypyFile:1(
         NameExpr(w)))
     NameExpr(z)
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(1))))
-  ForStmt:5(
+  For:5(
     ListExpr:5(
       NameExpr(x)
       TupleExpr:5(
@@ -849,7 +849,7 @@ MypyFile:1(
         NameExpr(w)))
     NameExpr(z)
     Block:5(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         IntExpr(1)))))
 
 [case testGlobalDecl]
@@ -887,7 +887,7 @@ MypyFile:1(
 raise foo
 [out]
 MypyFile:1(
-  RaiseStmt:1(
+  Raise:1(
     NameExpr(foo)))
 
 [case testRaiseWithoutArg]
@@ -897,17 +897,17 @@ except:
   raise
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      PassStmt:2())
+      Pass:2())
     Block:3(
-      RaiseStmt:4())))
+      Raise:4())))
 
 [case testRaiseFrom]
 raise e from x
 [out]
 MypyFile:1(
-  RaiseStmt:1(
+  Raise:1(
     NameExpr(e)
     NameExpr(x)))
 
@@ -922,7 +922,7 @@ MypyFile:1(
     A
     BaseTypeExpr(
       NameExpr(B))
-    PassStmt:2())
+    Pass:2())
   ClassDef:3(
     A
     BaseTypeExpr(
@@ -936,13 +936,13 @@ MypyFile:1(
           IndexExpr:3(
             NameExpr(d)
             NameExpr(x)))))
-    PassStmt:4()))
+    Pass:4()))
 
 [case testIsNot]
 x is not y
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ComparisonExpr:1(
       is not
       NameExpr(x)
@@ -952,7 +952,7 @@ MypyFile:1(
 x in not y
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ComparisonExpr:1(
       in
       NameExpr(x)
@@ -966,19 +966,19 @@ not x not in y
 x not in y | z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ComparisonExpr:1(
       not in
       NameExpr(x)
       NameExpr(y)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     UnaryExpr:2(
       not
       ComparisonExpr:2(
         not in
         NameExpr(x)
         NameExpr(y))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     ComparisonExpr:3(
       not in
       NameExpr(x)
@@ -1002,13 +1002,13 @@ x not is y # E: Parse error before is
 {1:x, 2 or 1:2 and 3}
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     DictExpr:1())
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     DictExpr:2(
       IntExpr(1)
       NameExpr(x)))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     DictExpr:3(
       IntExpr(1)
       NameExpr(x)
@@ -1033,7 +1033,7 @@ MypyFile:1(
 x = None # type: x.y
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     NameExpr(None)
     x.y?))
@@ -1046,7 +1046,7 @@ MypyFile:1(
     f
     def () -> x.y?[a.b.c?]
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testImportFrom]
 from m import x
@@ -1078,7 +1078,7 @@ def f():
   from z import *
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IntExpr(1))
   Import:2(x)
   FuncDef:3(
@@ -1105,11 +1105,11 @@ MypyFile:1(
     Args(
       Var(x))
     Init(
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(x)
         IntExpr(1)))
     Block:1(
-      PassStmt:2()))
+      Pass:2()))
   FuncDef:3(
     g
     Args(
@@ -1117,19 +1117,19 @@ MypyFile:1(
       Var(y)
       Var(z))
     Init(
-      AssignmentStmt:3(
+      Assignment:3(
         NameExpr(y)
         OpExpr:3(
           +
           IntExpr(1)
           IntExpr(2)))
-      AssignmentStmt:3(
+      Assignment:3(
         NameExpr(z)
         TupleExpr:3(
           IntExpr(1)
           IntExpr(2))))
     Block:3(
-      PassStmt:4())))
+      Pass:4())))
 
 [case testTryFinally]
 try:
@@ -1138,12 +1138,12 @@ finally:
   2
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(1)))
     Finally(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(2)))))
 
 [case testTry]
@@ -1153,13 +1153,13 @@ except x:
   2
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(1)))
     NameExpr(x)
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(2)))))
 
 [case testComplexTry]
@@ -1171,27 +1171,27 @@ except x.y:
   3
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(1)))
     NameExpr(x)
     NameExpr(y)
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(2)))
     MemberExpr:5(
       NameExpr(x)
       y)
     Block:5(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         IntExpr(3)))))
 
 [case testGeneratorExpression]
 x for y in z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     GeneratorExpr:1(
       NameExpr(x)
       NameExpr(y)
@@ -1201,7 +1201,7 @@ MypyFile:1(
 x for y, (p, q) in z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     GeneratorExpr:1(
       NameExpr(x)
       TupleExpr:1(
@@ -1215,7 +1215,7 @@ MypyFile:1(
 x=[x for y in z]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     ListComprehension:1(
       GeneratorExpr:1(
@@ -1227,7 +1227,7 @@ MypyFile:1(
 x=[(x, y) for y, z in (1, 2)]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     ListComprehension:1(
       GeneratorExpr:1(
@@ -1245,7 +1245,7 @@ MypyFile:1(
 ([x + 1 for x in a])
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ListComprehension:1(
       GeneratorExpr:1(
         OpExpr:1(
@@ -1262,25 +1262,25 @@ x[1:]
 x[:]
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IndexExpr:1(
       NameExpr(x)
       SliceExpr:1(
         IntExpr(1)
         IntExpr(2))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IndexExpr:2(
       NameExpr(x)
       SliceExpr:2(
         <empty>
         IntExpr(1))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     IndexExpr:3(
       NameExpr(x)
       SliceExpr:3(
         IntExpr(1)
         <empty>)))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     IndexExpr:4(
       NameExpr(x)
       SliceExpr:4(
@@ -1295,35 +1295,35 @@ x[::2]
 x[1:2:]
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IndexExpr:1(
       NameExpr(x)
       SliceExpr:1(
         IntExpr(1)
         IntExpr(2)
         IntExpr(3))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IndexExpr:2(
       NameExpr(x)
       SliceExpr:2(
         IntExpr(1)
         <empty>
         IntExpr(2))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     IndexExpr:3(
       NameExpr(x)
       SliceExpr:3(
         <empty>
         IntExpr(1)
         IntExpr(2))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     IndexExpr:4(
       NameExpr(x)
       SliceExpr:4(
         <empty>
         <empty>
         IntExpr(2))))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     IndexExpr:5(
       NameExpr(x)
       SliceExpr:5(
@@ -1338,7 +1338,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         YieldExpr:2(
           OpExpr:2(
             +
@@ -1353,7 +1353,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         YieldFromExpr:2(
           CallExpr:2(
             NameExpr(h)
@@ -1367,7 +1367,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      AssignmentStmt:2(
+      Assignment:2(
         NameExpr(a)
         YieldFromExpr:2(
           CallExpr:2(
@@ -1379,9 +1379,9 @@ del x
 del x[0], y[1]
 [out]
 MypyFile:1(
-  DelStmt:1(
+  Del:1(
     NameExpr(x))
-  DelStmt:2(
+  Del:2(
     TupleExpr:2(
       IndexExpr:2(
         NameExpr(x)
@@ -1397,22 +1397,22 @@ f(1,)
 {1:2,}
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     TupleExpr:1(
       IntExpr(1)
       IntExpr(2)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     UnaryExpr:2(
       +
       ListExpr:2(
         IntExpr(1)
         IntExpr(2))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     CallExpr:3(
       NameExpr(f)
       Args(
         IntExpr(1))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     DictExpr:4(
       IntExpr(1)
       IntExpr(2))))
@@ -1427,7 +1427,7 @@ MypyFile:1(
     Args(
       Var(x))
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testLambda]
 lambda: 1
@@ -1435,57 +1435,57 @@ lambda x: y + 1
 lambda x, y: 1
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     FuncExpr:1(
       Block:1(
-        ReturnStmt:1(
+        Return:1(
           IntExpr(1)))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     FuncExpr:2(
       Args(
         Var(x))
       Block:2(
-        ReturnStmt:2(
+        Return:2(
           OpExpr:2(
             +
             NameExpr(y)
             IntExpr(1))))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     FuncExpr:3(
       Args(
         Var(x)
         Var(y))
       Block:3(
-        ReturnStmt:3(
+        Return:3(
           IntExpr(1))))))
 
 [case testComplexLambda]
 lambda x=2: x
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     FuncExpr:1(
       Args(
         Var(x))
       Init(
-        AssignmentStmt:1(
+        Assignment:1(
           NameExpr(x)
           IntExpr(2)))
       Block:1(
-        ReturnStmt:1(
+        Return:1(
           NameExpr(x))))))
 
 [case testLambdaPrecedence]
 lambda x: 1, 2
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     TupleExpr:1(
       FuncExpr:1(
         Args(
           Var(x))
         Block:1(
-          ReturnStmt:1(
+          Return:1(
             IntExpr(1))))
       IntExpr(2))))
 
@@ -1494,31 +1494,31 @@ for (i, j) in x:
   pass
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     TupleExpr:1(
       NameExpr(i)
       NameExpr(j))
     NameExpr(x)
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testForAndTrailingCommaAfterIndexVar]
 for i, in x:
     pass
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     TupleExpr:1(
       NameExpr(i))
     NameExpr(x)
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testListComprehensionAndTrailingCommaAfterIndexVar]
 x = [a for b, in c]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     ListComprehension:1(
       GeneratorExpr:1(
@@ -1532,19 +1532,19 @@ for i, j, in x:
     pass
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     TupleExpr:1(
       NameExpr(i)
       NameExpr(j))
     NameExpr(x)
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testGeneratorWithCondition]
 x for y in z if 0
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     GeneratorExpr:1(
       NameExpr(x)
       NameExpr(y)
@@ -1555,7 +1555,7 @@ MypyFile:1(
 raise [x for y in z if 0]
 [out]
 MypyFile:1(
-  RaiseStmt:1(
+  Raise:1(
     ListComprehension:1(
       GeneratorExpr:1(
         NameExpr(x)
@@ -1567,7 +1567,7 @@ MypyFile:1(
 raise [x for y in z if 0 if 1]
 [out]
 MypyFile:1(
-  RaiseStmt:1(
+  Raise:1(
     ListComprehension:1(
       GeneratorExpr:1(
         NameExpr(x)
@@ -1580,7 +1580,7 @@ MypyFile:1(
 raise [x for y in z if (1 if 2 else 3) if 1]
 [out]
 MypyFile:1(
-  RaiseStmt:1(
+  Raise:1(
     ListComprehension:1(
       GeneratorExpr:1(
         NameExpr(x)
@@ -1597,7 +1597,7 @@ MypyFile:1(
 a = {x: y for x, y in xys}
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     DictionaryComprehension:1(
       NameExpr(x)
@@ -1611,7 +1611,7 @@ MypyFile:1(
 a = {x: y for x, y in xys for p, q in pqs if c}
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     DictionaryComprehension:1(
       NameExpr(x)
@@ -1630,7 +1630,7 @@ MypyFile:1(
 a = {i for i in l}
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     SetComprehension:1(
       GeneratorExpr:1(
@@ -1642,7 +1642,7 @@ MypyFile:1(
 a = {x + p for x in xys for p in pqs if c}
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     SetComprehension:1(
       GeneratorExpr:1(
@@ -1661,7 +1661,7 @@ with open('foo') as f:
   pass
 [out]
 MypyFile:1(
-  WithStmt:1(
+  With:1(
     Expr(
       CallExpr:1(
         NameExpr(open)
@@ -1670,24 +1670,24 @@ MypyFile:1(
     Target(
       NameExpr(f))
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testWithStatementWithoutTarget]
 with foo:
   pass
 [out]
 MypyFile:1(
-  WithStmt:1(
+  With:1(
     Expr(
       NameExpr(foo))
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testHexOctBinLiterals]
 0xa, 0Xaf, 0o7, 0O12, 0b1, 0B101
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     TupleExpr:1(
       IntExpr(10)
       IntExpr(175)
@@ -1705,15 +1705,15 @@ MypyFile:1(
   ImportFrom:1(x, [y])
   ImportFrom:2(x, [y, z]))
 
-[case testContinueStmt]
+[case testContinue]
 while 1:
   continue
 [out]
 MypyFile:1(
-  WhileStmt:1(
+  While:1(
     IntExpr(1)
     Block:1(
-      ContinueStmt:2())))
+      Continue:2())))
 
 [case testStrLiteralConcatenate]
 'f' 'bar'
@@ -1722,9 +1722,9 @@ MypyFile:1(
  'z')
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(fbar))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     StrExpr(xyz)))
 
 [case testCatchAllExcept]
@@ -1740,21 +1740,21 @@ except:
   2
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         IntExpr(1)))
     Block:3(
-      PassStmt:4()))
-  TryStmt:5(
+      Pass:4()))
+  Try:5(
     Block:5(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         IntExpr(1)))
     NameExpr(x)
     Block:7(
-      PassStmt:8())
+      Pass:8())
     Block:9(
-      ExpressionStmt:10(
+      ExpressionStatement:10(
         IntExpr(2)))))
 
 [case testTryElse]
@@ -1766,15 +1766,15 @@ else:
   2
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      PassStmt:2())
+      Pass:2())
     NameExpr(x)
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         IntExpr(1)))
     Else(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         IntExpr(2)))))
 
 [case testExceptWithMultipleTypes]
@@ -1786,21 +1786,21 @@ except (a, b, c) as e:
   pass
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      PassStmt:2())
+      Pass:2())
     TupleExpr:3(
       NameExpr(x)
       NameExpr(y))
     Block:3(
-      PassStmt:4())
+      Pass:4())
     TupleExpr:5(
       NameExpr(a)
       NameExpr(b)
       NameExpr(c))
     NameExpr(e)
     Block:5(
-      PassStmt:6())))
+      Pass:6())))
 
 [case testNestedFunctions]
 def f():
@@ -1817,7 +1817,7 @@ MypyFile:1(
       FuncDef:2(
         g
         Block:2(
-          PassStmt:3()))))
+          Pass:3()))))
   FuncDef:4(
     h
     def () -> int?
@@ -1826,7 +1826,7 @@ MypyFile:1(
         g
         def () -> int?
         Block:5(
-          PassStmt:6())))))
+          Pass:6())))))
 
 [case testStatementsAndDocStringsInClassBody]
 class A:
@@ -1838,9 +1838,9 @@ class A:
 MypyFile:1(
   ClassDef:1(
     A
-    ExpressionStmt:2(
+    ExpressionStatement:2(
       StrExpr(doc string))
-    AssignmentStmt:3(
+    Assignment:3(
       NameExpr(x)
       NameExpr(y))
     FuncDef:4(
@@ -1848,7 +1848,7 @@ MypyFile:1(
       Args(
         Var(self))
       Block:4(
-        PassStmt:5()))))
+        Pass:5()))))
 
 [case testSingleLineClass]
 class a: pass
@@ -1856,7 +1856,7 @@ class a: pass
 MypyFile:1(
   ClassDef:1(
     a
-    PassStmt:1()))
+    Pass:1()))
 
 [case testDecorator]
 @property
@@ -1870,7 +1870,7 @@ MypyFile:1(
     FuncDef:2(
       f
       Block:2(
-        PassStmt:3()))))
+        Pass:3()))))
 
 [case testComplexDecorator]
 @foo(bar, 1)
@@ -1891,13 +1891,13 @@ MypyFile:1(
       f
       def () -> int?
       Block:3(
-        PassStmt:4()))))
+        Pass:4()))))
 
 [case testKeywordArgInCall]
 f(x=1)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     CallExpr:1(
       NameExpr(f)
       Args()
@@ -1909,7 +1909,7 @@ MypyFile:1(
 f(x, y=1 or 2, z=y)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     CallExpr:1(
       NameExpr(f)
       Args(
@@ -1928,7 +1928,7 @@ MypyFile:1(
 x = z = 1
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x)
       NameExpr(z))
@@ -1946,8 +1946,8 @@ MypyFile:1(
     VarArg(
       Var(a))
     Block:1(
-      PassStmt:1()))
-  ExpressionStmt:2(
+      Pass:1()))
+  ExpressionStatement:2(
     CallExpr:2(
       NameExpr(f)
       Args(
@@ -1967,7 +1967,7 @@ MypyFile:1(
     VarArg(
       Var(a))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testDictVarArgs]
 def f(x, **a): pass
@@ -1980,7 +1980,7 @@ MypyFile:1(
     DictVarArg(
       Var(a))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testBothVarArgs]
 def f(x, *a, **b): pass
@@ -1996,7 +1996,7 @@ MypyFile:1(
     DictVarArg(
       Var(b))
     Block:1(
-      PassStmt:1()))
+      Pass:1()))
   FuncDef:2(
     g
     VarArg(
@@ -2004,7 +2004,7 @@ MypyFile:1(
     DictVarArg(
       Var(b))
     Block:2(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testDictVarArgsWithType]
 def f(x: X, **a: A) -> None: pass
@@ -2018,7 +2018,7 @@ MypyFile:1(
     DictVarArg(
       Var(a))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testCallDictVarArgs]
 f(**x)
@@ -2027,20 +2027,20 @@ f(*x, **y)
 f(x, *y, **z)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     CallExpr:1(
       NameExpr(f)
       Args()
       DictVarArg(
         NameExpr(x))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CallExpr:2(
       NameExpr(f)
       Args(
         NameExpr(x))
       DictVarArg(
         NameExpr(y))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     CallExpr:3(
       NameExpr(f)
       Args(
@@ -2048,7 +2048,7 @@ MypyFile:1(
       VarArg
       DictVarArg(
         NameExpr(y))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     CallExpr:4(
       NameExpr(f)
       Args(
@@ -2062,7 +2062,7 @@ MypyFile:1(
 assert x == y
 [out]
 MypyFile:1(
-  AssertStmt:1(
+  Assert:1(
     ComparisonExpr:1(
       ==
       NameExpr(x)
@@ -2076,14 +2076,14 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         YieldExpr:2()))))
 
 [case testConditionalExpression]
 x if y else z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ConditionalExpr:1(
       Condition(
         NameExpr(y))
@@ -2094,7 +2094,7 @@ MypyFile:1(
 a = [x if y else z for a in b]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     ListComprehension:1(
       GeneratorExpr:1(
@@ -2110,7 +2110,7 @@ MypyFile:1(
 1 if 2 else 3, 4
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     TupleExpr:1(
       ConditionalExpr:1(
         Condition(
@@ -2124,13 +2124,13 @@ MypyFile:1(
 {1, 2}
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     SetExpr:1(
       OpExpr:1(
         or
         NameExpr(x)
         NameExpr(y))))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     SetExpr:2(
       IntExpr(1)
       IntExpr(2))))
@@ -2139,7 +2139,7 @@ MypyFile:1(
 {x,}
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     SetExpr:1(
       NameExpr(x))))
 
@@ -2158,13 +2158,13 @@ else:
   x
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     NameExpr(x)
     NameExpr(y)
     Block:1(
-      PassStmt:2())
+      Pass:2())
     Else(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(x)))))
 
 [case testWhileAndElse]
@@ -2174,12 +2174,12 @@ else:
   y
 [out]
 MypyFile:1(
-  WhileStmt:1(
+  While:1(
     NameExpr(x)
     Block:1(
-      PassStmt:2())
+      Pass:2())
     Else(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(y)))))
 
 [case testWithAndMultipleOperands]
@@ -2189,7 +2189,7 @@ with x(), y():
   pass
 [out]
 MypyFile:1(
-  WithStmt:1(
+  With:1(
     Expr(
       NameExpr(x))
     Target(
@@ -2199,8 +2199,8 @@ MypyFile:1(
     Target(
       NameExpr(b))
     Block:1(
-      PassStmt:2()))
-  WithStmt:3(
+      Pass:2()))
+  With:3(
     Expr(
       CallExpr:3(
         NameExpr(x)
@@ -2210,7 +2210,7 @@ MypyFile:1(
         NameExpr(y)
         Args()))
     Block:3(
-      PassStmt:4())))
+      Pass:4())))
 
 [case testOperatorAssignment]
 x += 1
@@ -2227,51 +2227,51 @@ x >>= 1
 x <<= 1
 [out]
 MypyFile:1(
-  OperatorAssignmentStmt:1(
+  OperatorAssignment:1(
     +
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:2(
+  OperatorAssignment:2(
     -
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:3(
+  OperatorAssignment:3(
     *
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:4(
+  OperatorAssignment:4(
     /
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:5(
+  OperatorAssignment:5(
     //
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:6(
+  OperatorAssignment:6(
     %
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:7(
+  OperatorAssignment:7(
     **
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:8(
+  OperatorAssignment:8(
     |
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:9(
+  OperatorAssignment:9(
     &
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:10(
+  OperatorAssignment:10(
     ^
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:11(
+  OperatorAssignment:11(
     >>
     NameExpr(x)
     IntExpr(1))
-  OperatorAssignmentStmt:12(
+  OperatorAssignment:12(
     <<
     NameExpr(x)
     IntExpr(1)))
@@ -2288,10 +2288,10 @@ MypyFile:1(
     A
     ClassDef:2(
       B
-      PassStmt:3())
+      Pass:3())
     ClassDef:4(
       C
-      PassStmt:5())))
+      Pass:5())))
 
 [case testTryWithExceptAndFinally]
 try:
@@ -2302,15 +2302,15 @@ finally:
   y
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      PassStmt:2())
+      Pass:2())
     NameExpr(x)
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(x)))
     Finally(
-      ExpressionStmt:6(
+      ExpressionStatement:6(
         NameExpr(y)))))
 
 [case testBareAsteriskInFuncDef]
@@ -2324,11 +2324,11 @@ MypyFile:1(
       Var(x)
       Var(y))
     Init(
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(y)
         IntExpr(1)))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testBareAsteriskInFuncDefWithSignature]
 def f(x: A, *, y: B = 1) -> None: pass
@@ -2342,11 +2342,11 @@ MypyFile:1(
       Var(y))
     def (x: A?, *, y: B?) -> None?
     Init(
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(y)
         IntExpr(1)))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testBareAsteriskNamedDefault]
 def f(*, y: B = 1) -> None: pass
@@ -2359,11 +2359,11 @@ MypyFile:1(
       Var(y))
     def (*, y: B?) -> None?
     Init(
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(y)
         IntExpr(1)))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testBareAsteriskNamedNoDefault]
 def f(*, y: B) -> None: pass
@@ -2377,13 +2377,13 @@ MypyFile:1(
     def (*, y: B?) -> None?
     Init()
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testSuperExpr]
 super().x
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     SuperExpr:1(
       x)))
 
@@ -2391,7 +2391,7 @@ MypyFile:1(
 f(x = y, **kwargs)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     CallExpr:1(
       NameExpr(f)
       Args()
@@ -2405,7 +2405,7 @@ MypyFile:1(
 f = None # type: Callable[[], None]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(f)
     NameExpr(None)
     Callable?[<TypeList >, None?]))
@@ -2414,7 +2414,7 @@ MypyFile:1(
 f = None # type: Callable[[str], int]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(f)
     NameExpr(None)
     Callable?[<TypeList str?>, int?]))
@@ -2423,7 +2423,7 @@ MypyFile:1(
 f = None # type: Callable[[a[b], x.y], List[int]]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(f)
     NameExpr(None)
     Callable?[<TypeList a?[b?], x.y?>, List?[int?]]))
@@ -2438,7 +2438,7 @@ MypyFile:1(
       Var(x))
     def (x: Callable?[<TypeList str?>, int?]) -> Any
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testSimpleStringLiteralType]
 def f() -> 'A': pass
@@ -2448,7 +2448,7 @@ MypyFile:1(
     f
     def () -> A?
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testGenericStringLiteralType]
 def f() -> 'A[B, C]': pass
@@ -2458,7 +2458,7 @@ MypyFile:1(
     f
     def () -> A?[B?, C?]
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testPartialStringLiteralType]
 def f() -> A['B', C]: pass
@@ -2468,7 +2468,7 @@ MypyFile:1(
     f
     def () -> A?[B?, C?]
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testWhitespaceInStringLiteralType]
 def f() -> '  A  [  X  ]  ': pass
@@ -2478,7 +2478,7 @@ MypyFile:1(
     f
     def () -> A?[X?]
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testEscapeInStringLiteralType]
 def f() -> '\x41': pass
@@ -2488,7 +2488,7 @@ MypyFile:1(
     f
     def () -> A?
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testMetaclass]
 class Foo(metaclass=Bar): pass
@@ -2497,7 +2497,7 @@ MypyFile:1(
   ClassDef:1(
     Foo
     Metaclass(Bar)
-    PassStmt:1()))
+    Pass:1()))
 
 [case testQualifiedMetaclass]
 class Foo(metaclass=foo.Bar): pass
@@ -2506,7 +2506,7 @@ MypyFile:1(
   ClassDef:1(
     Foo
     Metaclass(foo.Bar)
-    PassStmt:1()))
+    Pass:1()))
 
 [case testBaseAndMetaclass]
 class Foo(foo.bar[x], metaclass=Bar): pass
@@ -2521,7 +2521,7 @@ MypyFile:1(
           NameExpr(foo)
           bar)
         NameExpr(x)))
-    PassStmt:1()))
+    Pass:1()))
 
 [case testClassKeywordArgs]
 class Foo(_root=None): pass
@@ -2529,7 +2529,7 @@ class Foo(_root=None): pass
 MypyFile:1(
   ClassDef:1(
     Foo
-    PassStmt:1()))
+    Pass:1()))
 
 [case testClassKeywordArgsBeforeMeta]
 class Foo(_root=None, metaclass=Bar): pass
@@ -2538,7 +2538,7 @@ MypyFile:1(
   ClassDef:1(
     Foo
     Metaclass(Bar)
-    PassStmt:1()))
+    Pass:1()))
 
 [case testClassKeywordArgsAfterMeta]
 class Foo(metaclass=Bar, _root=None): pass
@@ -2547,13 +2547,13 @@ MypyFile:1(
   ClassDef:1(
     Foo
     Metaclass(Bar)
-    PassStmt:1()))
+    Pass:1()))
 
 [case testNamesThatAreNoLongerKeywords]
 any = interface
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(any)
     NameExpr(interface)))
 
@@ -2572,7 +2572,7 @@ MypyFile:1(
         f
         def () -> x?
         Block:2(
-          PassStmt:2())))
+          Pass:2())))
     Decorator:3(
       Var(f)
       NameExpr(foo)
@@ -2580,7 +2580,7 @@ MypyFile:1(
         f
         def () -> y?
         Block:4(
-          PassStmt:4())))))
+          Pass:4())))))
 
 [case testFunctionOverloadAndOtherStatements]
 x
@@ -2591,7 +2591,7 @@ def f() -> y: pass
 x
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(x))
   OverloadedFuncDef:2(
     Decorator:2(
@@ -2601,7 +2601,7 @@ MypyFile:1(
         f
         def () -> x?
         Block:3(
-          PassStmt:3())))
+          Pass:3())))
     Decorator:4(
       Var(f)
       NameExpr(foo)
@@ -2609,8 +2609,8 @@ MypyFile:1(
         f
         def () -> y?
         Block:5(
-          PassStmt:5()))))
-  ExpressionStmt:6(
+          Pass:5()))))
+  ExpressionStatement:6(
     NameExpr(x)))
 
 [case testFunctionOverloadWithThreeVariants]
@@ -2630,7 +2630,7 @@ MypyFile:1(
         f
         def () -> x?
         Block:2(
-          PassStmt:2())))
+          Pass:2())))
     Decorator:3(
       Var(f)
       NameExpr(foo)
@@ -2638,7 +2638,7 @@ MypyFile:1(
         f
         def () -> y?
         Block:4(
-          PassStmt:4())))
+          Pass:4())))
     Decorator:5(
       Var(f)
       NameExpr(foo)
@@ -2647,7 +2647,7 @@ MypyFile:1(
         Args(
           Var(y))
         Block:6(
-          PassStmt:6())))))
+          Pass:6())))))
 
 [case testDecoratorsThatAreNotOverloads]
 @foo
@@ -2663,7 +2663,7 @@ MypyFile:1(
       f
       def () -> x?
       Block:2(
-        PassStmt:2())))
+        Pass:2())))
   Decorator:3(
     Var(g)
     NameExpr(foo)
@@ -2671,7 +2671,7 @@ MypyFile:1(
       g
       def () -> y?
       Block:4(
-        PassStmt:4()))))
+        Pass:4()))))
 
 [case testFunctionOverloadWithinFunction]
 def f():
@@ -2691,7 +2691,7 @@ MypyFile:1(
           FuncDef:3(
             g
             Block:3(
-              PassStmt:3())))
+              Pass:3())))
         Decorator:4(
           Var(g)
           NameExpr(foo)
@@ -2699,7 +2699,7 @@ MypyFile:1(
             g
             def () -> x?
             Block:5(
-              PassStmt:5())))))))
+              Pass:5())))))))
 
 [case testCommentFunctionAnnotation]
 def f(): # type: () -> A
@@ -2712,14 +2712,14 @@ MypyFile:1(
     f
     def () -> A?
     Block:1(
-      PassStmt:2()))
+      Pass:2()))
   FuncDef:3(
     g
     Args(
       Var(x))
     def (x: A?) -> B?
     Block:3(
-      PassStmt:4())))
+      Pass:4())))
 
 [case testCommentMethodAnnotation]
 class A:
@@ -2737,7 +2737,7 @@ MypyFile:1(
         Var(self))
       def (self: Any) -> A?
       Block:2(
-        PassStmt:3()))
+        Pass:3()))
     FuncDef:4(
       g
       Args(
@@ -2745,7 +2745,7 @@ MypyFile:1(
         Var(x))
       def (xself: Any, x: A?) -> B?
       Block:4(
-        PassStmt:5()))))
+        Pass:5()))))
 
 [case testCommentMethodAnnotationAndNestedFunction]
 class A:
@@ -2768,7 +2768,7 @@ MypyFile:1(
             Var(x))
           def (x: A?) -> B?
           Block:3(
-            PassStmt:4()))))))
+            Pass:4()))))))
 
 [case testCommentFunctionAnnotationOnSeparateLine]
 def f(x):
@@ -2782,7 +2782,7 @@ MypyFile:1(
       Var(x))
     def (x: X?) -> Y?
     Block:1(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testCommentFunctionAnnotationOnSeparateLine2]
 def f(x):
@@ -2798,7 +2798,7 @@ MypyFile:1(
       Var(x))
     def (x: X?) -> Y?
     Block:1(
-      PassStmt:5())))
+      Pass:5())))
 
 [case testCommentFunctionAnnotationAndVarArg]
 def f(x, *y): # type: (X, *Y) -> Z
@@ -2813,7 +2813,7 @@ MypyFile:1(
     VarArg(
       Var(y))
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testCommentFunctionAnnotationAndAllVarArgs]
 def f(x, *y, **z): # type: (X, *Y, **Z) -> A
@@ -2830,7 +2830,7 @@ MypyFile:1(
     DictVarArg(
       Var(z))
     Block:1(
-      PassStmt:2())))
+      Pass:2())))
 
 [case testClassDecorator]
 @foo
@@ -2844,7 +2844,7 @@ MypyFile:1(
     X
     Decorators(
       NameExpr(foo))
-    PassStmt:2())
+    Pass:2())
   ClassDef:3(
     Z
     Decorators(
@@ -2855,7 +2855,7 @@ MypyFile:1(
       MemberExpr:4(
         NameExpr(x)
         y))
-    PassStmt:5()))
+    Pass:5()))
 
 [case testTrailingSemicolon]
 def x():
@@ -2868,11 +2868,11 @@ MypyFile:1(
   FuncDef:1(
     x
     Block:1(
-      PassStmt:2()))
+      Pass:2()))
   FuncDef:4(
     y
     Block:4(
-      PassStmt:5())))
+      Pass:5())))
 
 [case testEmptySuperClass]
 class A():
@@ -2881,7 +2881,7 @@ class A():
 MypyFile:1(
   ClassDef:1(
     A
-    PassStmt:2()))
+    Pass:2()))
 
 [case testStarExpression]
 *a
@@ -2891,27 +2891,27 @@ a, (*x, y)
 a, (x, *y)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StarExpr:1(
       NameExpr(a)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     TupleExpr:2(
       StarExpr:2(
         NameExpr(a))
       NameExpr(b)))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     TupleExpr:3(
       NameExpr(a)
       StarExpr:3(
         NameExpr(b))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     TupleExpr:4(
       NameExpr(a)
       TupleExpr:4(
         StarExpr:4(
           NameExpr(x))
         NameExpr(y))))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     TupleExpr:5(
       NameExpr(a)
       TupleExpr:5(
@@ -2924,10 +2924,10 @@ MypyFile:1(
 *(a,b)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StarExpr:1(
       NameExpr(a)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     StarExpr:2(
       TupleExpr:2(
         NameExpr(a)
@@ -2944,28 +2944,28 @@ for *a, b in c:
     pass
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     StarExpr:1(
       NameExpr(a))
     NameExpr(b)
     Block:1(
-      PassStmt:2()))
-  ForStmt:4(
+      Pass:2()))
+  For:4(
     TupleExpr:4(
       NameExpr(a)
       StarExpr:4(
         NameExpr(b)))
     NameExpr(c)
     Block:4(
-      PassStmt:5()))
-  ForStmt:7(
+      Pass:5()))
+  For:7(
     TupleExpr:7(
       StarExpr:7(
         NameExpr(a))
       NameExpr(b))
     NameExpr(c)
     Block:7(
-      PassStmt:8())))
+      Pass:8())))
 
 [case testStarExprInGeneratorExpr]
 x for y, *p in z
@@ -2973,7 +2973,7 @@ x for *p, y in z
 x for y, *p, q in z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     GeneratorExpr:1(
       NameExpr(x)
       TupleExpr:1(
@@ -2981,7 +2981,7 @@ MypyFile:1(
         StarExpr:1(
           NameExpr(p)))
       NameExpr(z)))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     GeneratorExpr:2(
       NameExpr(x)
       TupleExpr:2(
@@ -2989,7 +2989,7 @@ MypyFile:1(
           NameExpr(p))
         NameExpr(y))
       NameExpr(z)))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     GeneratorExpr:3(
       NameExpr(x)
       TupleExpr:3(
@@ -3012,7 +3012,7 @@ MypyFile:1(
           StrExpr(x)
           ListExpr:1(
             StrExpr(y)))))
-    PassStmt:1()))
+    Pass:1()))
 
 [case testEllipsis]
 ...
@@ -3020,16 +3020,16 @@ a[1,...,2]
 ....__class__
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     Ellipsis)
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IndexExpr:2(
       NameExpr(a)
       TupleExpr:2(
         IntExpr(1)
         Ellipsis
         IntExpr(2))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     MemberExpr:3(
       Ellipsis
       __class__)))
@@ -3045,7 +3045,7 @@ MypyFile:1(
       Var(x)
       Var(y))
     Init(
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(y)
         NameExpr(None)))
     VarArg(
@@ -3053,19 +3053,19 @@ MypyFile:1(
     DictVarArg(
       Var(kw))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testIfWithSemicolons]
 if 1: a; b
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
-      ExpressionStmt:1(
+      ExpressionStatement:1(
         NameExpr(a))
-      ExpressionStmt:1(
+      ExpressionStatement:1(
         NameExpr(b)))))
 
 [case testIfWithSemicolonsNested]
@@ -3073,16 +3073,16 @@ while 2:
     if 1: a; b
 [out]
 MypyFile:1(
-  WhileStmt:1(
+  While:1(
     IntExpr(2)
     Block:1(
-      IfStmt:2(
+      If:2(
         If(
           IntExpr(1))
         Then(
-          ExpressionStmt:2(
+          ExpressionStatement:2(
             NameExpr(a))
-          ExpressionStmt:2(
+          ExpressionStatement:2(
             NameExpr(b)))))))
 
 [case testIfElseWithSemicolons]
@@ -3091,22 +3091,22 @@ else: x = 1; return 3
 4
 [out]
 MypyFile:1(
-  IfStmt:1(
+  If:1(
     If(
       IntExpr(1))
     Then(
       GlobalDecl:1(
         x)
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(y)
         IntExpr(1)))
     Else(
-      AssignmentStmt:2(
+      Assignment:2(
         NameExpr(x)
         IntExpr(1))
-      ReturnStmt:2(
+      Return:2(
         IntExpr(3))))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     IntExpr(4)))
 
 [case testIfElseWithSemicolonsNested]
@@ -3116,32 +3116,32 @@ while 2:
 4
 [out]
 MypyFile:1(
-  WhileStmt:1(
+  While:1(
     IntExpr(2)
     Block:1(
-      IfStmt:2(
+      If:2(
         If(
           IntExpr(1))
         Then(
           GlobalDecl:2(
             x)
-          AssignmentStmt:2(
+          Assignment:2(
             NameExpr(y)
             IntExpr(1)))
         Else(
-          AssignmentStmt:3(
+          Assignment:3(
             NameExpr(x)
             IntExpr(1))
-          ReturnStmt:3(
+          Return:3(
             IntExpr(3))))))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     IntExpr(4)))
 
 [case testKeywordArgumentAfterStarArgumentInCall]
 f(x=1, *y)
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     CallExpr:1(
       NameExpr(f)
       Args(
@@ -3155,7 +3155,7 @@ MypyFile:1(
 { 1 if x else 2 for x in y }
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     SetComprehension:1(
       GeneratorExpr:1(
         ConditionalExpr:1(
@@ -3170,7 +3170,7 @@ MypyFile:1(
 a = [ 1 if x else 2 for x in y ]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a)
     ListComprehension:1(
       GeneratorExpr:1(
@@ -3186,7 +3186,7 @@ MypyFile:1(
 with x as y.z: pass
 [out]
 MypyFile:1(
-  WithStmt:1(
+  With:1(
     Expr(
       NameExpr(x))
     Target(
@@ -3194,7 +3194,7 @@ MypyFile:1(
         NameExpr(y)
         z))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testRelativeImportWithEllipsis]
 from ... import x
@@ -3212,7 +3212,7 @@ MypyFile:1(
 a[:, :]
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IndexExpr:1(
       NameExpr(a)
       TupleExpr:1(
@@ -3227,7 +3227,7 @@ MypyFile:1(
 a[1:2:, :,]
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IndexExpr:1(
       NameExpr(a)
       TupleExpr:1(
@@ -3242,7 +3242,7 @@ MypyFile:1(
 a[1:2:3, ..., 1]
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IndexExpr:1(
       NameExpr(a)
       TupleExpr:1(
@@ -3257,7 +3257,7 @@ MypyFile:1(
 test =  { 'spam': 'eggs' if True else 'bacon' }
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(test)
     DictExpr:1(
       StrExpr(spam)
@@ -3280,11 +3280,11 @@ y # type: ignore
 z # type: ignore
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(x))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(y))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     NameExpr(z))
   IgnoredLines(2, 3))
 
@@ -3292,7 +3292,7 @@ MypyFile:1(
 y ## type: ignore
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(y)))
 
 [case testInvalidIgnoreAnnotations]
@@ -3301,11 +3301,11 @@ y # type: IGNORE
 y # type : ignore
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(y))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(y))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     NameExpr(y)))
 
 [case testSpaceInIgnoreAnnotations]
@@ -3313,9 +3313,9 @@ y #  type:  ignore    # foo
 y #type:ignore
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     NameExpr(y))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     NameExpr(y))
   IgnoredLines(1, 2))
 
@@ -3328,12 +3328,12 @@ y = {   # type: ignore
 }       # type: ignore
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x)
     DictExpr:1(
       IntExpr(1)
       IntExpr(2)))
-  AssignmentStmt:4(
+  Assignment:4(
     NameExpr(y)
     DictExpr:4(
       IntExpr(1)
@@ -3357,7 +3357,7 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      AssignmentStmt:2(
+      Assignment:2(
         NameExpr(x)
         YieldExpr:2(
           CallExpr:2(
@@ -3368,12 +3368,12 @@ MypyFile:1(
 for x in 1,: pass
 [out]
 MypyFile:1(
-  ForStmt:1(
+  For:1(
     NameExpr(x)
     TupleExpr:1(
       IntExpr(1))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testIsoLatinUnixEncoding]
 # coding: iso-latin-1-unix
@@ -3398,5 +3398,5 @@ MypyFile:1(
   FuncDef:1(
     f
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         YieldExpr:2()))))

@@ -457,7 +457,7 @@ main:1: error: Two starred expressions in assignment
 main:3: error: Two starred expressions in assignment
 main:4: error: Two starred expressions in assignment
 
-[case testTwoStarExpressionsInForStmt]
+[case testTwoStarExpressionsInFor]
 z = 1
 for a, *b, *c in z:
     pass

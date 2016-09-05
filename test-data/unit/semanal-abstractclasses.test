@@ -23,7 +23,7 @@ MypyFile:1(
         def (self: __main__.A) -> __main__.A
         Abstract
         Block:6(
-          PassStmt:6())))
+          Pass:6())))
     Decorator:7(
       Var(f)
       FuncDef:8(
@@ -33,7 +33,7 @@ MypyFile:1(
         def (self: __main__.A) -> __main__.A
         Abstract
         Block:8(
-          ReturnStmt:8(
+          Return:8(
             NameExpr(self [l])))))))
 
 [case testClassInheritingTwoAbstractClasses]
@@ -50,17 +50,17 @@ MypyFile:1(
   ClassDef:4(
     A
     Metaclass(ABCMeta)
-    PassStmt:4())
+    Pass:4())
   ClassDef:5(
     B
     Metaclass(ABCMeta)
-    PassStmt:5())
+    Pass:5())
   ClassDef:6(
     C
     BaseType(
       __main__.A
       __main__.B)
-    PassStmt:6()))
+    Pass:6()))
 
 [case testAbstractGenericClass]
 from abc import abstractmethod
@@ -73,7 +73,7 @@ class A(Generic[T]):
 MypyFile:1(
   ImportFrom:1(abc, [abstractmethod])
   ImportFrom:2(typing, [Generic, TypeVar])
-  AssignmentStmt:3(
+  Assignment:3(
     NameExpr(T* [__main__.T])
     TypeVarExpr:3())
   ClassDef:4(
@@ -89,7 +89,7 @@ MypyFile:1(
         def (self: __main__.A[T`1]) -> __main__.A[T`1]
         Abstract
         Block:6(
-          PassStmt:6())))))
+          Pass:6())))))
 
 [case testFullyQualifiedAbstractMethodDecl]
 import abc
@@ -116,4 +116,4 @@ MypyFile:1(
         def (self: __main__.A) -> __main__.A
         Abstract
         Block:7(
-          PassStmt:7())))))
+          Pass:7())))))

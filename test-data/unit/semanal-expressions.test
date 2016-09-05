@@ -14,7 +14,7 @@ x = 1
 x.y
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
   ExpressionStatement:2(
@@ -27,7 +27,7 @@ x = y = 1
 x[y]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
@@ -45,7 +45,7 @@ x is not y
 x == y
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
@@ -79,7 +79,7 @@ x = 1
 not x
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
   ExpressionStatement:2(
@@ -106,7 +106,7 @@ x[:]
 x[:y]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y])
@@ -137,7 +137,7 @@ x = y = 1
 x, y
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
@@ -152,7 +152,7 @@ x = y = 1
 ([], [x, y])
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
@@ -169,7 +169,7 @@ x = y = 1
 { x : y, y : x }
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     Lvalues(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
@@ -186,7 +186,7 @@ a = 0
 ([x + 1 for x in a])
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStatement:2(
@@ -222,10 +222,10 @@ a = 0
 a = [x for x in a if x]
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(a [__main__.a])
     ListComprehension:2(
       GeneratorExpr:2(
@@ -239,7 +239,7 @@ a = 0
 ({x + 1 for x in a})
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStatement:2(
@@ -257,10 +257,10 @@ a = 0
 a = {x for x in a if x}
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(a [__main__.a])
     SetComprehension:2(
       GeneratorExpr:2(
@@ -274,7 +274,7 @@ a = 0
 ({x: x + 1 for x in a})
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStatement:2(
@@ -292,10 +292,10 @@ a = 0
 a = {x: x + 1 for x in a if x}
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(a [__main__.a])
     DictionaryComprehension:2(
       NameExpr(x [l])
@@ -312,7 +312,7 @@ a = 0
 x for x in a
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStatement:2(
@@ -326,7 +326,7 @@ a = 0
 x for x, (y, z) in a
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   ExpressionStatement:2(
@@ -344,13 +344,13 @@ x = 0
 lambda: x
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
+  Assignment:1(
     NameExpr(x* [__main__.x])
     IntExpr(0))
   ExpressionStatement:2(
     FuncExpr:2(
       Block:2(
-        ReturnStmt:2(
+        Return:2(
           NameExpr(x [__main__.x]))))))
 
 [case testLambdaWithArguments]
@@ -363,7 +363,7 @@ MypyFile:1(
         Var(x)
         Var(y))
       Block:1(
-        ReturnStmt:1(
+        Return:1(
           OpExpr:1(
             +
             NameExpr(x [l])

@@ -53,8 +53,8 @@ import mypy.traverser
 from mypy import defaults
 from mypy.nodes import (
     Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
+    ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, Assignment,
+    If, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
@@ -332,7 +332,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add_import_line('import %s\n' % modname)
         return base_types
 
-    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+    def visit_assignment_stmt(self, o: Assignment) -> None:
         foundl = []
 
         for lvalue in o.lvalues:
@@ -386,7 +386,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._classes.add(lvalue.name)
         self._state = CLASS
 
-    def visit_if_stmt(self, o: IfStmt) -> None:
+    def visit_if_stmt(self, o: If) -> None:
         # Ignore if __name__ == '__main__'.
         expr = o.expr[0]
         if (isinstance(expr, ComparisonExpr) and
@@ -528,7 +528,7 @@ def find_self_initializers(fdef: FuncBase) -> List[str]:
     results = []  # type: List[str]
 
     class SelfTraverser(mypy.traverser.TraverserVisitor):
-        def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        def visit_assignment_stmt(self, o: Assignment) -> None:
             lvalue = o.lvalues[0]
             if (isinstance(lvalue, MemberExpr) and
                     isinstance(lvalue.expr, NameExpr) and

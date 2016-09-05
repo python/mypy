@@ -7,8 +7,8 @@ x = A
 MypyFile:1(
   ClassDef:1(
     A
-    PassStmt:1())
-  AssignmentStmt:2(
+    Pass:1())
+  Assignment:2(
     NameExpr(x* [__main__.x])
     NameExpr(A [__main__.A])))
 
@@ -28,7 +28,7 @@ MypyFile:1(
         Var(self)
         Var(x))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           NameExpr(y* [l])
           NameExpr(x [l]))))
     FuncDef:4(
@@ -36,7 +36,7 @@ MypyFile:1(
       Args(
         Var(self))
       Block:4(
-        AssignmentStmt:5(
+        Assignment:5(
           NameExpr(y* [l])
           NameExpr(self [l]))))))
 
@@ -54,12 +54,12 @@ MypyFile:1(
       Args(
         Var(self))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           MemberExpr:3(
             NameExpr(self [l])
             x*)
           IntExpr(1))
-        AssignmentStmt:4(
+        Assignment:4(
           MemberExpr:4(
             NameExpr(self [l])
             y*)
@@ -80,7 +80,7 @@ MypyFile:1(
       Args(
         Var(self))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           MemberExpr:3(
             NameExpr(self [l])
             x*)
@@ -90,7 +90,7 @@ MypyFile:1(
     Args(
       Var(self))
     Block:4(
-      AssignmentStmt:5(
+      Assignment:5(
         MemberExpr:5(
           NameExpr(self [l])
           y)
@@ -114,7 +114,7 @@ MypyFile:1(
         Var(x)
         Var(self))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           MemberExpr:3(
             NameExpr(self [l])
             y)
@@ -126,10 +126,10 @@ MypyFile:1(
       Args(
         Var(x))
       Block:5(
-        AssignmentStmt:6(
+        Assignment:6(
           NameExpr(self* [l])
           NameExpr(x [l]))
-        AssignmentStmt:7(
+        Assignment:7(
           MemberExpr:7(
             NameExpr(self [l])
             z)
@@ -148,7 +148,7 @@ MypyFile:1(
       Args(
         Var(x))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           MemberExpr:3(
             NameExpr(x [l])
             y*)
@@ -168,12 +168,12 @@ MypyFile:1(
       Args(
         Var(self))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           MemberExpr:3(
             NameExpr(self [l])
             x*)
           IntExpr(1))
-        AssignmentStmt:4(
+        Assignment:4(
           MemberExpr:4(
             NameExpr(self [l])
             x)
@@ -225,7 +225,7 @@ class A:
 MypyFile:1(
   ClassDef:1(
     A
-    AssignmentStmt:2(
+    Assignment:2(
       NameExpr(a* [m])
       NameExpr(object [builtins.object]))))
 
@@ -237,10 +237,10 @@ class A:
 MypyFile:1(
   ClassDef:1(
     A
-    AssignmentStmt:2(
+    Assignment:2(
       NameExpr(x* [m])
       IntExpr(1))
-    AssignmentStmt:3(
+    Assignment:3(
       NameExpr(y* [m])
       NameExpr(x [m]))))
 
@@ -257,8 +257,8 @@ MypyFile:1(
       Args(
         Var(self))
       Block:2(
-        PassStmt:2()))
-    AssignmentStmt:3(
+        Pass:2()))
+    Assignment:3(
       NameExpr(g* [m])
       NameExpr(f [m]))))
 
@@ -272,15 +272,15 @@ class A:
 MypyFile:1(
   ClassDef:1(
     A
-    IfStmt:2(
+    If:2(
       If(
         NameExpr(A [__main__.A]))
       Then(
-        AssignmentStmt:3(
+        Assignment:3(
           NameExpr(x* [m])
           IntExpr(1)))
       Else(
-        AssignmentStmt:5(
+        Assignment:5(
           NameExpr(x [m])
           IntExpr(2))))))
 
@@ -292,13 +292,13 @@ class A:
 MypyFile:1(
   ClassDef:1(
     A
-    ForStmt:2(
+    For:2(
       NameExpr(x* [m])
       ListExpr:2(
         IntExpr(1)
         IntExpr(2))
       Block:2(
-        AssignmentStmt:3(
+        Assignment:3(
           NameExpr(y* [m])
           NameExpr(x [m]))))))
 
@@ -313,7 +313,7 @@ MypyFile:1(
     Block:1(
       ClassDef:2(
         A
-        PassStmt:2())
+        Pass:2())
       ExpressionStatement:3(
         NameExpr(A [l])))))
 
@@ -327,7 +327,7 @@ MypyFile:1(
     A
     ClassDef:2(
       B
-      PassStmt:2())
+      Pass:2())
     ExpressionStatement:3(
       NameExpr(B [__main__.A.B]))))
 
@@ -341,12 +341,12 @@ MypyFile:1(
     A
     ClassDef:2(
       B
-      PassStmt:2())
+      Pass:2())
     ClassDef:3(
       C
       BaseType(
         __main__.A.B)
-      PassStmt:3())))
+      Pass:3())))
 
 [case testDeclarationReferenceToNestedClass]
 def f() -> None:
@@ -360,8 +360,8 @@ MypyFile:1(
     Block:1(
       ClassDef:2(
         A
-        PassStmt:2())
-      AssignmentStmt:3(
+        Pass:2())
+      Assignment:3(
         NameExpr(x [l])
         NameExpr(None [builtins.None])
         A))))
@@ -381,7 +381,7 @@ MypyFile:1(
     Block:1(
       ClassDef:2(
         A
-        AssignmentStmt:3(
+        Assignment:3(
           NameExpr(y* [m])
           NameExpr(x [l]))
         FuncDef:4(
@@ -389,7 +389,7 @@ MypyFile:1(
           Args(
             Var(self))
           Block:4(
-            AssignmentStmt:5(
+            Assignment:5(
               NameExpr(z* [l])
               NameExpr(x [l]))))))))
 
@@ -402,7 +402,7 @@ MypyFile:1(
   ClassDef:2(
     A
     Metaclass(abc.ABCMeta)
-    PassStmt:2()))
+    Pass:2()))
 
 [case testStaticMethod]
 class A:
@@ -422,7 +422,7 @@ MypyFile:1(
         def (z: builtins.int) -> builtins.str
         Static
         Block:3(
-          PassStmt:3())))))
+          Pass:3())))))
 
 [case testStaticMethodWithNoArgs]
 class A:
@@ -440,7 +440,7 @@ MypyFile:1(
         def () -> builtins.str
         Static
         Block:3(
-          PassStmt:3())))))
+          Pass:3())))))
 
 [case testClassMethod]
 class A:
@@ -461,7 +461,7 @@ MypyFile:1(
         def (cls: def () -> __main__.A, z: builtins.int) -> builtins.str
         Class
         Block:3(
-          PassStmt:3())))))
+          Pass:3())))))
 
 [case testClassMethodWithNoArgs]
 class A:
@@ -481,7 +481,7 @@ MypyFile:1(
         def (cls: def () -> __main__.A) -> builtins.str
         Class
         Block:3(
-          PassStmt:3())))))
+          Pass:3())))))
 
 [case testProperty]
 import typing
@@ -503,7 +503,7 @@ MypyFile:1(
         def (self: __main__.A) -> builtins.str
         Property
         Block:4(
-          PassStmt:4())))))
+          Pass:4())))))
 
 [case testClassDecorator]
 import typing
@@ -516,7 +516,7 @@ MypyFile:1(
     A
     Decorators(
       NameExpr(object [builtins.object]))
-    PassStmt:3()))
+    Pass:3()))
 
 [case testBuiltinclassDecorator]
 from typing import builtinclass
@@ -530,7 +530,7 @@ MypyFile:1(
     Builtinclass
     Decorators(
       NameExpr(builtinclass [typing.builtinclass]))
-    PassStmt:3()))
+    Pass:3()))
 
 [case testClassAttributeAsMethodDefaultArgumentValue]
 import typing
@@ -542,7 +542,7 @@ MypyFile:1(
   Import:1(typing)
   ClassDef:2(
     A
-    AssignmentStmt:3(
+    Assignment:3(
       NameExpr(X* [m])
       IntExpr(1))
     FuncDef:4(
@@ -552,11 +552,11 @@ MypyFile:1(
         Var(x))
       def (self: __main__.A, x: builtins.int =)
       Init(
-        AssignmentStmt:4(
+        Assignment:4(
           NameExpr(x [l])
           NameExpr(X [m])))
       Block:4(
-        PassStmt:4()))))
+        Pass:4()))))
 
 [case testInvalidBaseClass]
 from typing import Any, Callable
@@ -585,7 +585,7 @@ MypyFile:1(
       Tuple[builtins.int, builtins.str])
     BaseType(
       builtins.tuple[Any])
-    PassStmt:2()))
+    Pass:2()))
 
 [case testBaseClassFromIgnoredModule]
 import m # type: ignore
@@ -599,7 +599,7 @@ MypyFile:1(
     FallbackToAny
     BaseType(
       builtins.object)
-    PassStmt:3())
+    Pass:3())
   IgnoredLines(1))
 
 [case testBaseClassFromIgnoredModuleUsingImportFrom]
@@ -614,7 +614,7 @@ MypyFile:1(
     FallbackToAny
     BaseType(
       builtins.int)
-    PassStmt:3())
+    Pass:3())
   IgnoredLines(1))
 
 [case testBaseClassWithExplicitAnyType]
@@ -625,7 +625,7 @@ class B(A):
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Any])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(A [__main__.A])
     IntExpr(1)
     Any)
@@ -634,4 +634,4 @@ MypyFile:1(
     FallbackToAny
     BaseType(
       builtins.object)
-    PassStmt:4()))
+    Pass:4()))

@@ -234,7 +234,7 @@ class ImportBase(Statement):
     #
     #     x = 1
     #     from m import x   <-- add assignment representing "x = m.x"
-    assignments = None  # type: List[AssignmentStmt]
+    assignments = None  # type: List[Assignment]
 
     def __init__(self) -> None:
         self.assignments = []
@@ -347,11 +347,11 @@ class Argument(Node):
     type_annotation = None  # type: Optional[mypy.types.Type]
     initializater = None  # type: Optional[Expression]
     kind = None  # type: int
-    initialization_statement = None  # type: Optional[AssignmentStmt]
+    initialization_statement = None  # type: Optional[Assignment]
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
             initializer: Optional[Expression], kind: int,
-            initialization_statement: Optional['AssignmentStmt'] = None) -> None:
+            initialization_statement: Optional['Assignment'] = None) -> None:
         self.variable = variable
 
         self.type_annotation = type_annotation
@@ -363,7 +363,7 @@ class Argument(Node):
 
         self.kind = kind
 
-    def _initialization_statement(self) -> Optional['AssignmentStmt']:
+    def _initialization_statement(self) -> Optional['Assignment']:
         """Convert the initializer into an assignment statement.
         """
         if not self.initializer:
@@ -371,7 +371,7 @@ class Argument(Node):
 
         rvalue = self.initializer
         lvalue = NameExpr(self.variable.name())
-        assign = AssignmentStmt([lvalue], rvalue)
+        assign = Assignment([lvalue], rvalue)
         return assign
 
     def set_line(self, target: Union[Token, Node, int]) -> Node:
@@ -747,7 +747,7 @@ class ExpressionStatement(Statement):
         return visitor.visit_expression_stmt(self)
 
 
-class AssignmentStmt(Statement):
+class Assignment(Statement):
     """Assignment statement
     The same node class is used for single assignment, multiple assignment
     (e.g. x, y = z) and chained assignment (e.g. x = y = z), assignments
@@ -771,7 +771,7 @@ class AssignmentStmt(Statement):
         return visitor.visit_assignment_stmt(self)
 
 
-class OperatorAssignmentStmt(Statement):
+class OperatorAssignment(Statement):
     """Operator assignment statement such as x += 1"""
 
     op = ''
@@ -787,7 +787,7 @@ class OperatorAssignmentStmt(Statement):
         return visitor.visit_operator_assignment_stmt(self)
 
 
-class WhileStmt(Statement):
+class While(Statement):
     expr = None  # type: Expression
     body = None  # type: Block
     else_body = None  # type: Block
@@ -801,7 +801,7 @@ class WhileStmt(Statement):
         return visitor.visit_while_stmt(self)
 
 
-class ForStmt(Statement):
+class For(Statement):
     # Index variables
     index = None  # type: Expression
     # Expression to iterate
@@ -821,7 +821,7 @@ class ForStmt(Statement):
         return visitor.visit_for_stmt(self)
 
 
-class ReturnStmt(Statement):
+class Return(Statement):
     expr = None  # type: Optional[Expression]
 
     def __init__(self, expr: Optional[Expression]) -> None:
@@ -831,7 +831,7 @@ class ReturnStmt(Statement):
         return visitor.visit_return_stmt(self)
 
 
-class AssertStmt(Statement):
+class Assert(Statement):
     expr = None  # type: Expression
 
     def __init__(self, expr: Expression) -> None:
@@ -841,7 +841,7 @@ class AssertStmt(Statement):
         return visitor.visit_assert_stmt(self)
 
 
-class DelStmt(Statement):
+class Del(Statement):
     expr = None  # type: Expression
 
     def __init__(self, expr: Expression) -> None:
@@ -851,22 +851,22 @@ class DelStmt(Statement):
         return visitor.visit_del_stmt(self)
 
 
-class BreakStmt(Statement):
+class Break(Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
-class ContinueStmt(Statement):
+class Continue(Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
-class PassStmt(Statement):
+class Pass(Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
-class IfStmt(Statement):
+class If(Statement):
     expr = None  # type: List[Expression]
     body = None  # type: List[Block]
     else_body = None  # type: Block
@@ -881,7 +881,7 @@ class IfStmt(Statement):
         return visitor.visit_if_stmt(self)
 
 
-class RaiseStmt(Statement):
+class Raise(Statement):
     expr = None  # type: Expression
     from_expr = None  # type: Expression
 
@@ -893,7 +893,7 @@ class RaiseStmt(Statement):
         return visitor.visit_raise_stmt(self)
 
 
-class TryStmt(Statement):
+class Try(Statement):
     body = None  # type: Block                # Try body
     types = None  # type: List[Expression]    # Except type expressions
     vars = None  # type: List[NameExpr]     # Except variable names
@@ -915,7 +915,7 @@ class TryStmt(Statement):
         return visitor.visit_try_stmt(self)
 
 
-class WithStmt(Statement):
+class With(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Expression]
     body = None  # type: Block
@@ -931,7 +931,7 @@ class WithStmt(Statement):
         return visitor.visit_with_stmt(self)
 
 
-class PrintStmt(Statement):
+class Print(Statement):
     """Python 2 print statement"""
 
     args = None  # type: List[Expression]
@@ -948,7 +948,7 @@ class PrintStmt(Statement):
         return visitor.visit_print_stmt(self)
 
 
-class ExecStmt(Statement):
+class Exec(Statement):
     """Python 2 exec statement"""
 
     expr = None  # type: Expression
@@ -1440,7 +1440,7 @@ class FuncExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = cast(Return, self.body.body[-1])
         return ret.expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

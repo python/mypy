@@ -3,9 +3,9 @@
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
-    ExpressionStatement, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
+    ExpressionStatement, Assignment, OperatorAssignment, While,
+    For, Return, Assert, Del, If, Raise,
+    Try, With, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, ConditionalExpr, TypeApplication,
     FuncExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
@@ -62,41 +62,41 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_expression_stmt(self, o: ExpressionStatement) -> None:
         o.expr.accept(self)
 
-    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+    def visit_assignment_stmt(self, o: Assignment) -> None:
         o.rvalue.accept(self)
         for l in o.lvalues:
             l.accept(self)
 
-    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:
+    def visit_operator_assignment_stmt(self, o: OperatorAssignment) -> None:
         o.rvalue.accept(self)
         o.lvalue.accept(self)
 
-    def visit_while_stmt(self, o: WhileStmt) -> None:
+    def visit_while_stmt(self, o: While) -> None:
         o.expr.accept(self)
         o.body.accept(self)
         if o.else_body:
             o.else_body.accept(self)
 
-    def visit_for_stmt(self, o: ForStmt) -> None:
+    def visit_for_stmt(self, o: For) -> None:
         o.index.accept(self)
         o.expr.accept(self)
         o.body.accept(self)
         if o.else_body:
             o.else_body.accept(self)
 
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
+    def visit_return_stmt(self, o: Return) -> None:
         if o.expr is not None:
             o.expr.accept(self)
 
-    def visit_assert_stmt(self, o: AssertStmt) -> None:
+    def visit_assert_stmt(self, o: Assert) -> None:
         if o.expr is not None:
             o.expr.accept(self)
 
-    def visit_del_stmt(self, o: DelStmt) -> None:
+    def visit_del_stmt(self, o: Del) -> None:
         if o.expr is not None:
             o.expr.accept(self)
 
-    def visit_if_stmt(self, o: IfStmt) -> None:
+    def visit_if_stmt(self, o: If) -> None:
         for e in o.expr:
             e.accept(self)
         for b in o.body:
@@ -104,13 +104,13 @@ class TraverserVisitor(NodeVisitor[None]):
         if o.else_body:
             o.else_body.accept(self)
 
-    def visit_raise_stmt(self, o: RaiseStmt) -> None:
+    def visit_raise_stmt(self, o: Raise) -> None:
         if o.expr is not None:
             o.expr.accept(self)
         if o.from_expr is not None:
             o.from_expr.accept(self)
 
-    def visit_try_stmt(self, o: TryStmt) -> None:
+    def visit_try_stmt(self, o: Try) -> None:
         o.body.accept(self)
         for i in range(len(o.types)):
             if o.types[i]:
@@ -121,7 +121,7 @@ class TraverserVisitor(NodeVisitor[None]):
         if o.finally_body is not None:
             o.finally_body.accept(self)
 
-    def visit_with_stmt(self, o: WithStmt) -> None:
+    def visit_with_stmt(self, o: With) -> None:
         for i in range(len(o.expr)):
             o.expr[i].accept(self)
             if o.target[i] is not None:

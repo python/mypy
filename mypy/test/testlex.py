@@ -14,7 +14,7 @@ class LexerSuite(Suite):
         self.assert_lex(
             'if else elif def return pass',
             'Keyword(if) Keyword( else) Keyword( elif) Keyword( def) '
-            'Keyword( return) Keyword( pass) Break() Eof()')
+            'Keyword( return) Keyword( pass) BreakToken() Eof()')
 
         self.assert_lex(
             'from import as class global',
@@ -25,17 +25,17 @@ class LexerSuite(Suite):
         self.assert_lex(
             'i x FooBar FOO_BAR __x var',
             'Name(i) Name( x) Name( FooBar) Name( FOO_BAR) Name( __x) '
-            'Name( var) Break() Eof()')
+            'Name( var) BreakToken() Eof()')
 
         self.assert_lex(
             'any interface void',
-            'Name(any) Name( interface) Name( void) Break() Eof()')
+            'Name(any) Name( interface) Name( void) BreakToken() Eof()')
 
     def test_int_literals(self):
         self.assert_lex(
             '0 00 1 0987654321 10002000300040005000600070008000',
             'IntLit(0) IntLit( 00) IntLit( 1) LexError( 0987654321) '
-            'IntLit( 10002000300040005000600070008000) Break() Eof()')
+            'IntLit( 10002000300040005000600070008000) BreakToken() Eof()')
 
     def test_hex_int_literals(self):
         self.assert_lex('0x0 0xabcedf0189 0xAFe 0X2',
@@ -62,16 +62,16 @@ class LexerSuite(Suite):
 
     def test_comments(self):
         self.assert_lex('# foo "" bar' + '\n' + 'x #x',
-                        'Name(# foo "" bar\\nx) Break( #x) Eof()')
+                        'Name(# foo "" bar\\nx) BreakToken( #x) Eof()')
 
     def test_empty_lines(self):
         self.assert_lex(r'\n1', r'IntLit(\n1) ...')
         self.assert_lex(r'\n\n1', r'IntLit(\n\n1) ...')
-        self.assert_lex(r'1\n\n2', r'IntLit(1) Break(\n\n) IntLit(2) ...')
+        self.assert_lex(r'1\n\n2', r'IntLit(1) BreakToken(\n\n) IntLit(2) ...')
 
     def test_line_breaks(self):
-        self.assert_lex('1\\r2', 'IntLit(1) Break(\\r) IntLit(2) ...')
-        self.assert_lex('1\\r\\n2', 'IntLit(1) Break(\\r\\n) IntLit(2) ...')
+        self.assert_lex('1\\r2', 'IntLit(1) BreakToken(\\r) IntLit(2) ...')
+        self.assert_lex('1\\r\\n2', 'IntLit(1) BreakToken(\\r\\n) IntLit(2) ...')
 
     def test_operators(self):
         self.assert_lex('- + < > == != <= >= .',
@@ -101,32 +101,32 @@ class LexerSuite(Suite):
     def test_basic_indentation(self):
         self.assert_lex(
             'y' + '\n' + '  x',
-            'Name(y) Break(\\n) Indent(  ) Name(x) Break() Dedent() Eof()')
+            'Name(y) BreakToken(\\n) Indent(  ) Name(x) BreakToken() Dedent() Eof()')
 
         self.assert_lex(
             'y' + '\n' + '  x' + '\n' + 'z',
-            'Name(y) Break(\\n) Indent(  ) Name(x) Break(\\n) Dedent() '
-            'Name(z) Break() Eof()')
+            'Name(y) BreakToken(\\n) Indent(  ) Name(x) BreakToken(\\n) Dedent() '
+            'Name(z) BreakToken() Eof()')
 
     def test_multiple_indent_levels(self):
         self.assert_lex('y' + '\n' +
                         '  x' + '\n' +
                         '  y' + '\n' +
                         '    z',
-                        'Name(y) Break(\\n) ' +
-                        'Indent(  ) Name(x) Break(\\n) ' +
-                        'Name(  y) Break(\\n) ' +
-                        'Indent(    ) Name(z) Break() ' +
+                        'Name(y) BreakToken(\\n) ' +
+                        'Indent(  ) Name(x) BreakToken(\\n) ' +
+                        'Name(  y) BreakToken(\\n) ' +
+                        'Indent(    ) Name(z) BreakToken() ' +
                         'Dedent() Dedent() Eof()')
 
         self.assert_lex('y' + '\n' +
                         '  x' + '\n' +
                         '    z' + '\n' +
                         '  y',
-                        'Name(y) Break(\\n) ' +
-                        'Indent(  ) Name(x) Break(\\n) ' +
-                        'Indent(    ) Name(z) Break(\\n) ' +
-                        'Dedent() Name(  y) Break() ' +
+                        'Name(y) BreakToken(\\n) ' +
+                        'Indent(  ) Name(x) BreakToken(\\n) ' +
+                        'Indent(    ) Name(z) BreakToken(\\n) ' +
+                        'Dedent() Name(  y) BreakToken() ' +
                         'Dedent() Eof()')
 
     def test_tab_indent(self):
@@ -134,10 +134,10 @@ class LexerSuite(Suite):
                         '\t' + 'x' + '\n' +
                         '        y' + '\n' +
                         ' ' + '\t' + 'z',
-                        'Name(y) Break(\\n) ' +
-                        'Indent(\\t) Name(x) Break(\\n) ' +
-                        'Name(        y) Break(\\n) ' +
-                        'Name( \\tz) Break() ' +
+                        'Name(y) BreakToken(\\n) ' +
+                        'Indent(\\t) Name(x) BreakToken(\\n) ' +
+                        'Name(        y) BreakToken(\\n) ' +
+                        'Name( \\tz) BreakToken() ' +
                         'Dedent() Eof()')
 
     def test_comment_after_dedent(self):
@@ -145,49 +145,49 @@ class LexerSuite(Suite):
                         '  x\n'
                         '# Foo\n'
                         'z',
-                        r'Name(y) Break(\n) Indent(  ) Name(x) '
-                        r'Break(\n# Foo\n) '
-                        r'Dedent() Name(z) Break() Eof()')
+                        r'Name(y) BreakToken(\n) Indent(  ) Name(x) '
+                        r'BreakToken(\n# Foo\n) '
+                        r'Dedent() Name(z) BreakToken() Eof()')
 
     def test_parens(self):
-        self.assert_lex('( x )', 'Punct(() Name( x) Punct( )) Break() Eof()')
+        self.assert_lex('( x )', 'Punct(() Name( x) Punct( )) BreakToken() Eof()')
         self.assert_lex(
             '( x' + '\n' + '  y )',
-            'Punct(() Name( x) Name(\\n  y) Punct( )) Break() Eof()')
+            'Punct(() Name( x) Name(\\n  y) Punct( )) BreakToken() Eof()')
 
         self.assert_lex('()' + '\n' + ' y',
-                        'Punct(() Punct()) Break(\\n) Indent( ) Name(y) '
-                        'Break() Dedent() Eof()')
+                        'Punct(() Punct()) BreakToken(\\n) Indent( ) Name(y) '
+                        'BreakToken() Dedent() Eof()')
 
         # [ ... ] and { ... }.
         self.assert_lex(
             '[ x' + '\n' + '  y ]',
-            'Punct([) Name( x) Name(\\n  y) Punct( ]) Break() Eof()')
+            'Punct([) Name( x) Name(\\n  y) Punct( ]) BreakToken() Eof()')
         self.assert_lex(
             '{ x' + '\n' + '  y }',
-            'Punct({) Name( x) Name(\\n  y) Punct( }) Break() Eof()')
+            'Punct({) Name( x) Name(\\n  y) Punct( }) BreakToken() Eof()')
 
         # Nested brackets.
         self.assert_lex(
             '({}' + '\n' + ' y)',
-            'Punct(() Punct({) Punct(}) Name(\\n y) Punct()) Break() Eof()')
+            'Punct(() Punct({) Punct(}) Name(\\n y) Punct()) BreakToken() Eof()')
 
     def test_brackets_and_line_breaks(self):
         # This used to fail.
         self.assert_lex('{}' + '\n' + '1',
-                        'Punct({) Punct(}) Break(\\n) IntLit(1) Break() Eof()')
+                        'Punct({) Punct(}) BreakToken(\\n) IntLit(1) BreakToken() Eof()')
 
     def test_str_literals(self):
         self.assert_lex("'' 'foo_bar'",
-                        "StrLit('') StrLit( 'foo_bar') Break() Eof()")
+                        "StrLit('') StrLit( 'foo_bar') BreakToken() Eof()")
         self.assert_lex('"" "foo_bar"',
-                        'StrLit("") StrLit( "foo_bar") Break() Eof()')
+                        'StrLit("") StrLit( "foo_bar") BreakToken() Eof()')
 
-        self.assert_lex('"\\"" 1', 'StrLit("\\"") IntLit( 1) Break() Eof()')
-        self.assert_lex("'\\'' 1", "StrLit('\\'') IntLit( 1) Break() Eof()")
+        self.assert_lex('"\\"" 1', 'StrLit("\\"") IntLit( 1) BreakToken() Eof()')
+        self.assert_lex("'\\'' 1", "StrLit('\\'') IntLit( 1) BreakToken() Eof()")
 
-        self.assert_lex('"\\\\" 1', 'StrLit("\\\\") IntLit( 1) Break() Eof()')
-        self.assert_lex("'\\\\' 1", "StrLit('\\\\') IntLit( 1) Break() Eof()")
+        self.assert_lex('"\\\\" 1', 'StrLit("\\\\") IntLit( 1) BreakToken() Eof()')
+        self.assert_lex("'\\\\' 1", "StrLit('\\\\') IntLit( 1) BreakToken() Eof()")
 
     def test_triple_quoted_string_literals(self):
         # Single-line
@@ -225,11 +225,11 @@ class LexerSuite(Suite):
         self.assert_lex("U'foo'", "UnicodeLit(U'foo') ...")
 
     def test_semicolons(self):
-        self.assert_lex('a;b', 'Name(a) Break(;) Name(b) ...')
-        self.assert_lex('a;', 'Name(a) Break(;) Eof()')
+        self.assert_lex('a;b', 'Name(a) BreakToken(;) Name(b) ...')
+        self.assert_lex('a;', 'Name(a) BreakToken(;) Eof()')
 
-        self.assert_lex(';a', 'Break(;) Name(a) ...')
-        self.assert_lex('a;;b', 'Name(a) Break(;) Break(;) Name(b) ...')
+        self.assert_lex(';a', 'BreakToken(;) Name(a) ...')
+        self.assert_lex('a;;b', 'Name(a) BreakToken(;) BreakToken(;) Name(b) ...')
 
     def test_raw_string(self):
         self.assert_lex("r'' r'foo bar'",
@@ -288,7 +288,7 @@ class LexerSuite(Suite):
         self.assert_lex('a\\' + '\n' + ' b', 'Name(a) Name(\\\\n b) ...')
         self.assert_lex(
             'a = \\' + '\n' + ' 1' + '\n' + '=',
-            'Name(a) Punct( =) IntLit( \\\\n 1) Break(\\n) Punct(=) ...')
+            'Name(a) Punct( =) IntLit( \\\\n 1) BreakToken(\\n) Punct(=) ...')
 
     def test_backslash_in_string(self):
         self.assert_lex("'foo\\" + '\n' + "bar'", "StrLit('foo\\\\nbar') ...")
@@ -310,29 +310,29 @@ class LexerSuite(Suite):
     def test_final_dedent(self):
         self.assert_lex(
             '1' + '\n' + ' 1' + '\n',
-            'IntLit(1) Break(\\n) Indent( ) IntLit(1) Break(\\n) Dedent() Eof()')
+            'IntLit(1) BreakToken(\\n) Indent( ) IntLit(1) BreakToken(\\n) Dedent() Eof()')
 
     def test_empty_line(self):
         self.assert_lex('1' + '\n' + ' 1' + '\n' + '\n',
-                        r'IntLit(1) Break(\n) Indent( ) IntLit(1) '
-                        r'Break(\n\n) Dedent() Eof()')
+                        r'IntLit(1) BreakToken(\n) Indent( ) IntLit(1) '
+                        r'BreakToken(\n\n) Dedent() Eof()')
 
     def test_comments_and_indents(self):
         self.assert_lex('1' + '\n' + ' #x' + '\n' + ' y',
-                        r'IntLit(1) Break(\n #x\n) Indent( ) Name(y) '
-                        r'Break() Dedent() Eof()')
+                        r'IntLit(1) BreakToken(\n #x\n) Indent( ) Name(y) '
+                        r'BreakToken() Dedent() Eof()')
         self.assert_lex('1' + '\n' + '#x' + '\n' + ' y',
-                        r'IntLit(1) Break(\n#x\n) Indent( ) Name(y) '
-                        r'Break() Dedent() Eof()')
+                        r'IntLit(1) BreakToken(\n#x\n) Indent( ) Name(y) '
+                        r'BreakToken() Dedent() Eof()')
 
     def test_form_feed(self):
         self.assert_lex('\x0c' + '\n' + 'x', 'Name(\x0c\\nx) ...')
 
     def test_comment_after_linebreak(self):
         self.assert_lex('1\n# foo\n2',
-                        'IntLit(1) Break(\\n# foo\\n) IntLit(2) ...')
+                        'IntLit(1) BreakToken(\\n# foo\\n) IntLit(2) ...')
         self.assert_lex('1\n# foo',
-                        'IntLit(1) Break(\\n# foo) Eof()')
+                        'IntLit(1) BreakToken(\\n# foo) Eof()')
 
     def test_line_numbers(self):
         self.assert_line('a\\nb', [1, 1, 2, 2, 2])
@@ -376,19 +376,19 @@ class LexerSuite(Suite):
 
     def test_invalid_indent(self):
         self.assert_lex('x\\n  y\\n z',
-                        'Name(x) Break(\\n) Indent(  ) Name(y) ' +
-                        'Break(\\n) Dedent() LexError( ) Name(z) ...')
+                        'Name(x) BreakToken(\\n) Indent(  ) Name(y) ' +
+                        'BreakToken(\\n) Dedent() LexError( ) Name(z) ...')
 
     def test_invalid_backslash(self):
-        self.assert_lex('\\ \\nx', 'LexError(\\) Break( \\n) Name(x) ...')
-        self.assert_lex('\\ \\nx', 'LexError(\\) Break( \\n) Name(x) ...')
+        self.assert_lex('\\ \\nx', 'LexError(\\) BreakToken( \\n) Name(x) ...')
+        self.assert_lex('\\ \\nx', 'LexError(\\) BreakToken( \\n) Name(x) ...')
 
     def test_non_terminated_string_literal(self):
         self.assert_lex("'", 'LexError(\') ...')
-        self.assert_lex("'\\na", 'LexError(\') Break(\\n) Name(a) ...')
+        self.assert_lex("'\\na", 'LexError(\') BreakToken(\\n) Name(a) ...')
 
         self.assert_lex('"', 'LexError(") ...')
-        self.assert_lex('"\\na', 'LexError(") Break(\\n) Name(a) ...')
+        self.assert_lex('"\\na', 'LexError(") BreakToken(\\n) Name(a) ...')
 
         self.assert_lex("r'", 'LexError(r\') ...')
         self.assert_lex('r"', 'LexError(r") ...')
@@ -410,21 +410,21 @@ class LexerSuite(Suite):
 
     def test_latin1_encoding(self):
         self.assert_lex(b'# coding: latin1\n"\xbb"',
-                        'StrLit(# coding: latin1\\n"\xbb") Break() Eof()')
+                        'StrLit(# coding: latin1\\n"\xbb") BreakToken() Eof()')
 
     def test_utf8_encoding(self):
         self.assert_lex('"\xbb"'.encode('utf8'),
-                        'StrLit("\xbb") Break() Eof()')
+                        'StrLit("\xbb") BreakToken() Eof()')
         self.assert_lex(b'"\xbb"',
                         "LexError('utf8' codec can't decode byte 187 in column 2) "
-                        'Break() Eof()')
+                        'BreakToken() Eof()')
         self.assert_lex(b'\n"abcde\xbc"',
                         "LexError('utf8' codec can't decode byte 188 in column 7) "
-                        'Break() Eof()')
+                        'BreakToken() Eof()')
 
     def test_byte_order_mark(self):
         self.assert_lex('\ufeff"\xbb"'.encode('utf8'),
-                        'Bom(\ufeff) StrLit("\xbb") Break() Eof()')
+                        'Bom(\ufeff) StrLit("\xbb") BreakToken() Eof()')
 
     def test_long_comment(self):
         prog = '# pass\n' * 1000
@@ -439,7 +439,7 @@ class LexerSuite(Suite):
             src = src.replace('\\r', '\r')
 
         if lexed.endswith(' ...'):
-            lexed = lexed[:-3] + 'Break() Eof()'
+            lexed = lexed[:-3] + 'BreakToken() Eof()'
 
         l = lex(src)[0]
         r = []

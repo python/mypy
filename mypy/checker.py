@@ -14,15 +14,15 @@ from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Node, MypyFile, Var, Expression,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
-    ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
-    TupleExpr, ListExpr, ExpressionStatement, ReturnStmt, IfStmt,
-    WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
-    RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
+    ClassDef, GDEF, Block, Assignment, NameExpr, MemberExpr, IndexExpr,
+    TupleExpr, ListExpr, ExpressionStatement, Return, If,
+    While, OperatorAssignment, With, Assert,
+    Raise, Try, For, Del, CallExpr, IntExpr, StrExpr,
     BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
+    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, Print,
+    LITERAL_TYPE, Break, Continue, ComparisonExpr, StarExpr,
     YieldFromExpr, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
@@ -1023,7 +1023,7 @@ class TypeChecker(NodeVisitor[Type]):
             if self.binder.breaking_out:
                 break
 
-    def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
+    def visit_assignment_stmt(self, s: Assignment) -> Type:
         """Type check an assignment statement.
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
@@ -1459,7 +1459,7 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_expression_stmt(self, s: ExpressionStatement) -> Type:
         self.accept(s.expr)
 
-    def visit_return_stmt(self, s: ReturnStmt) -> Type:
+    def visit_return_stmt(self, s: Return) -> Type:
         """Type check a return statement."""
         self.binder.breaking_out = True
         if self.is_within_function():
@@ -1526,7 +1526,7 @@ class TypeChecker(NodeVisitor[Type]):
                 return c
         return c
 
-    def visit_if_stmt(self, s: IfStmt) -> Type:
+    def visit_if_stmt(self, s: If) -> Type:
         """Type check an if statement."""
         breaking_out = True
         # This frame records the knowledge from previous if/elif clauses not being taken.
@@ -1571,12 +1571,12 @@ class TypeChecker(NodeVisitor[Type]):
             self.binder.breaking_out = True
         return None
 
-    def visit_while_stmt(self, s: WhileStmt) -> Type:
+    def visit_while_stmt(self, s: While) -> Type:
         """Type check a while statement."""
-        self.accept_loop(IfStmt([s.expr], [s.body], None), s.else_body)
+        self.accept_loop(If([s.expr], [s.body], None), s.else_body)
 
     def visit_operator_assignment_stmt(self,
-                                       s: OperatorAssignmentStmt) -> Type:
+                                       s: OperatorAssignment) -> Type:
         """Type check an operator assignment statement, e.g. x += 1."""
         lvalue_type = self.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
@@ -1589,7 +1589,7 @@ class TypeChecker(NodeVisitor[Type]):
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
 
-    def visit_assert_stmt(self, s: AssertStmt) -> Type:
+    def visit_assert_stmt(self, s: Assert) -> Type:
         self.accept(s.expr)
 
         # If this is asserting some isinstance check, bind that type in the following code
@@ -1602,7 +1602,7 @@ class TypeChecker(NodeVisitor[Type]):
             for var, type in true_map.items():
                 self.binder.push(var, type)
 
-    def visit_raise_stmt(self, s: RaiseStmt) -> Type:
+    def visit_raise_stmt(self, s: Raise) -> Type:
         """Type check a raise statement."""
         self.binder.breaking_out = True
         if s.expr:
@@ -1610,7 +1610,7 @@ class TypeChecker(NodeVisitor[Type]):
         if s.from_expr:
             self.type_check_raise(s.from_expr, s)
 
-    def type_check_raise(self, e: Node, s: RaiseStmt) -> None:
+    def type_check_raise(self, e: Node, s: Raise) -> None:
         typ = self.accept(e)
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
@@ -1634,7 +1634,7 @@ class TypeChecker(NodeVisitor[Type]):
                            self.named_type('builtins.BaseException'), s,
                            messages.INVALID_EXCEPTION)
 
-    def visit_try_stmt(self, s: TryStmt) -> Type:
+    def visit_try_stmt(self, s: Try) -> Type:
         """Type check a try statement."""
         # Our enclosing frame will get the result if the try/except falls through.
         # This one gets all possible intermediate states
@@ -1655,7 +1655,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.binder.breaking_out = breaking_out
         return None
 
-    def visit_try_without_finally(self, s: TryStmt) -> bool:
+    def visit_try_without_finally(self, s: Try) -> bool:
         """Type check a try statement, ignoring the finally block.
 
         Return whether we are guaranteed to be breaking out.
@@ -1728,7 +1728,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         return UnionType.make_simplified_union(all_types)
 
-    def visit_for_stmt(self, s: ForStmt) -> Type:
+    def visit_for_stmt(self, s: For) -> Type:
         """Type check a for statement."""
         if s.is_async:
             item_type = self.analyze_async_iterable_item_type(s.expr)
@@ -1796,7 +1796,7 @@ class TypeChecker(NodeVisitor[Type]):
         """Type check or infer for loop or list comprehension index vars."""
         self.check_assignment(index, self.temp_node(item_type, context))
 
-    def visit_del_stmt(self, s: DelStmt) -> Type:
+    def visit_del_stmt(self, s: Del) -> Type:
         if isinstance(s.expr, IndexExpr):
             e = s.expr
             m = MemberExpr(e.base, '__delitem__')
@@ -1861,7 +1861,7 @@ class TypeChecker(NodeVisitor[Type]):
                         base_attr.node.items[0].var.is_settable_property):
                     self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
-    def visit_with_stmt(self, s: WithStmt) -> Type:
+    def visit_with_stmt(self, s: With) -> Type:
         for expr, target in zip(s.expr, s.target):
             if s.is_async:
                 self.check_async_with_item(expr, target)
@@ -1895,7 +1895,7 @@ class TypeChecker(NodeVisitor[Type]):
         arg = self.temp_node(AnyType(), expr)
         echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)
 
-    def visit_print_stmt(self, s: PrintStmt) -> Type:
+    def visit_print_stmt(self, s: Print) -> Type:
         for arg in s.args:
             self.accept(arg)
         if s.target:
@@ -2000,12 +2000,12 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
 
-    def visit_break_stmt(self, s: BreakStmt) -> Type:
+    def visit_break_stmt(self, s: Break) -> Type:
         self.binder.breaking_out = True
         self.binder.allow_jump(self.binder.loop_frames[-1] - 1)
         return None
 
-    def visit_continue_stmt(self, s: ContinueStmt) -> Type:
+    def visit_continue_stmt(self, s: Continue) -> Type:
         self.binder.breaking_out = True
         self.binder.allow_jump(self.binder.loop_frames[-1])
         return None
