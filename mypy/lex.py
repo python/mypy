@@ -47,7 +47,7 @@ class Token:
 # Token classes
 
 
-class Break(Token):
+class BreakToken(Token):
     """Statement break (line break or semicolon)"""
 
 
@@ -379,12 +379,12 @@ class Lexer:
 
         # Append a break if there is no statement/block terminator at the end
         # of input.
-        if len(self.tok) > 0 and (not isinstance(self.tok[-1], Break) and
+        if len(self.tok) > 0 and (not isinstance(self.tok[-1], BreakToken) and
                                   not isinstance(self.tok[-1], Dedent)):
-            self.add_token(Break(''))
+            self.add_token(BreakToken(''))
 
-        # Attach any dangling comments/whitespace to a final Break token.
-        if self.tok and isinstance(self.tok[-1], Break):
+        # Attach any dangling comments/whitespace to a final BreakToken token.
+        if self.tok and isinstance(self.tok[-1], BreakToken):
             self.tok[-1].string += self.pre_whitespace
             self.pre_whitespace = ''
 
@@ -408,7 +408,7 @@ class Lexer:
             LexError('', DECODE_ERROR,
                      "%r codec can't decode byte %d in column %d" % (
                          self.enc, line[exc.start], exc.start + 1)))
-        self.add_token(Break(''))
+        self.add_token(BreakToken(''))
         self.add_token(Eof(''))
 
     def report_unknown_encoding(self, encoding_line: int) -> None:
@@ -416,7 +416,7 @@ class Lexer:
         self.add_token(
             LexError('', DECODE_ERROR,
                      "Unknown encoding %r" % self.enc))
-        self.add_token(Break(''))
+        self.add_token(BreakToken(''))
         self.add_token(Eof(''))
 
     def lex_number_or_dot(self) -> None:
@@ -735,7 +735,7 @@ class Lexer:
         """Analyse a line break."""
         s = self.match(self.break_exp)
         last_tok = self.tok[-1] if self.tok else None
-        if isinstance(last_tok, Break):
+        if isinstance(last_tok, BreakToken):
             was_semicolon = last_tok.string == ';'
             last_tok.string += self.pre_whitespace + s
             self.i += len(s)
@@ -747,12 +747,12 @@ class Lexer:
             self.add_pre_whitespace(s)
             self.line += 1
         else:
-            self.add_token(Break(s))
+            self.add_token(BreakToken(s))
             self.line += 1
             self.lex_indent()
 
     def lex_semicolon(self) -> None:
-        self.add_token(Break(';'))
+        self.add_token(BreakToken(';'))
 
     def lex_colon(self) -> None:
         self.add_token(Colon(':'))
@@ -838,7 +838,7 @@ class Lexer:
         characters and comments.
         """
         if (tok.string == '' and not isinstance(tok, Eof)
-                and not isinstance(tok, Break)
+                and not isinstance(tok, BreakToken)
                 and not isinstance(tok, LexError)
                 and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
@@ -856,7 +856,7 @@ class Lexer:
     def add_special_token(self, tok: Token, line: int, skip: int) -> None:
         """Like add_token, but caller sets the number of chars to skip."""
         if (tok.string == '' and not isinstance(tok, Eof)
-                and not isinstance(tok, Break)
+                and not isinstance(tok, BreakToken)
                 and not isinstance(tok, LexError)
                 and not isinstance(tok, Dedent)):
             raise ValueError('Empty token')
@@ -874,7 +874,7 @@ class Lexer:
         else:
             # Ignore break after another break or dedent.
             t = self.tok[-1]
-            return isinstance(t, Break) or isinstance(t, Dedent)
+            return isinstance(t, BreakToken) or isinstance(t, Dedent)
 
 
 if __name__ == '__main__':

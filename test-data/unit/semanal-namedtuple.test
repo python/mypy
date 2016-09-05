@@ -7,14 +7,14 @@ def f() -> N: pass
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any]))
   FuncDef:3(
     f
     def () -> Tuple[Any, fallback=__main__.N]
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testTwoItemNamedtuple]
 from collections import namedtuple
@@ -23,14 +23,14 @@ def f() -> N: pass
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any, Any]))
   FuncDef:3(
     f
     def () -> Tuple[Any, Any, fallback=__main__.N]
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testTwoItemNamedtupleWithShorthandSyntax]
 from collections import namedtuple
@@ -39,14 +39,14 @@ def f() -> N: pass
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any, Any]))
   FuncDef:3(
     f
     def () -> Tuple[Any, Any, fallback=__main__.N]
     Block:3(
-      PassStmt:3())))
+      Pass:3())))
 
 [case testNamedTupleWithItemTypes]
 from typing import NamedTuple
@@ -55,7 +55,7 @@ N = NamedTuple('N', [('a', int),
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
 
@@ -66,7 +66,7 @@ class A(N): pass
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
-  AssignmentStmt:2(
+  Assignment:2(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[Any]))
   ClassDef:3(
@@ -75,7 +75,7 @@ MypyFile:1(
       Tuple[Any, fallback=__main__.N])
     BaseType(
       __main__.N)
-    PassStmt:3()))
+    Pass:3()))
 
 [case testNamedTupleBaseClass2]
 from collections import namedtuple
@@ -89,7 +89,7 @@ MypyFile:1(
       Tuple[Any, fallback=__main__.N@2])
     BaseType(
       __main__.N@2)
-    PassStmt:2()))
+    Pass:2()))
 
 [case testNamedTupleBaseClassWithItemTypes]
 from typing import NamedTuple
@@ -103,7 +103,7 @@ MypyFile:1(
       Tuple[builtins.int, fallback=__main__.N@2])
     BaseType(
       __main__.N@2)
-    PassStmt:2()))
+    Pass:2()))
 
 -- Errors
 

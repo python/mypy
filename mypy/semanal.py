@@ -48,21 +48,21 @@ from typing import (
 )
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    MypyFile, TypeInfo, Node, Assignment, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
-    IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
-    RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
+    IndexExpr, TupleExpr, ListExpr, ExpressionStatement, Return,
+    Raise, Assert, OperatorAssignment, While,
+    For, Break, Continue, If, Try, With, Del,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
-    StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
+    StrExpr, BytesExpr, Print, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
+    YieldExpr, Exec, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr,
     Expression, EllipsisExpr, namedtuple_type_info,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
@@ -985,7 +985,7 @@ class SemanticAnalyzer(NodeVisitor):
             rvalue = NameExpr(imported_id)
             rvalue.kind = module_symbol.kind
             rvalue.node = module_symbol.node
-            assignment = AssignmentStmt([lvalue], rvalue)
+            assignment = Assignment([lvalue], rvalue)
             for node in assignment, lvalue, rvalue:
                 node.set_line(import_node)
             import_node.assignments.append(assignment)
@@ -1088,7 +1088,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return None
 
-    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+    def visit_assignment_stmt(self, s: Assignment) -> None:
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
         s.rvalue.accept(self)
@@ -1151,7 +1151,7 @@ class SemanticAnalyzer(NodeVisitor):
             return self.named_type_or_none('builtins.unicode')
         return None
 
-    def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
+    def check_and_set_up_type_alias(self, s: Assignment) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
         # For now, type aliases only work at the top level of a module.
         if (len(s.lvalues) == 1 and not self.is_func_scope() and not self.type
@@ -1326,7 +1326,7 @@ class SemanticAnalyzer(NodeVisitor):
             # This has been flagged elsewhere as an error, so just ignore here.
             pass
 
-    def process_newtype_declaration(self, s: AssignmentStmt) -> None:
+    def process_newtype_declaration(self, s: Assignment) -> None:
         """Check if s declares a NewType; if yes, store it in symbol table."""
         # Extract and check all information from newtype declaration
         name, call = self.analyze_newtype_declaration(s)
@@ -1359,7 +1359,7 @@ class SemanticAnalyzer(NodeVisitor):
         call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
 
     def analyze_newtype_declaration(self,
-            s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
+            s: Assignment) -> Tuple[Optional[str], Optional[CallExpr]]:
         """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
         name, call = None, None
         if (len(s.lvalues) == 1
@@ -1438,7 +1438,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         return info
 
-    def process_typevar_declaration(self, s: AssignmentStmt) -> None:
+    def process_typevar_declaration(self, s: Assignment) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
         call = self.get_typevar_declaration(s)
         if not call:
@@ -1490,7 +1490,7 @@ class SemanticAnalyzer(NodeVisitor):
             return False
         return True
 
-    def get_typevar_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
+    def get_typevar_declaration(self, s: Assignment) -> Optional[CallExpr]:
         """Returns the TypeVar() call expression if `s` is a type var declaration
         or None otherwise.
         """
@@ -1568,7 +1568,7 @@ class SemanticAnalyzer(NodeVisitor):
             variance = INVARIANT
         return (variance, upper_bound)
 
-    def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
+    def process_namedtuple_definition(self, s: Assignment) -> None:
         """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return
@@ -1826,41 +1826,41 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.type or self.is_func_scope():
             self.fail("'%s' used with a non-method" % decorator, context)
 
-    def visit_expression_stmt(self, s: ExpressionStmt) -> None:
+    def visit_expression_stmt(self, s: ExpressionStatement) -> None:
         s.expr.accept(self)
 
-    def visit_return_stmt(self, s: ReturnStmt) -> None:
+    def visit_return_stmt(self, s: Return) -> None:
         if not self.is_func_scope():
             self.fail("'return' outside function", s)
         if s.expr:
             s.expr.accept(self)
 
-    def visit_raise_stmt(self, s: RaiseStmt) -> None:
+    def visit_raise_stmt(self, s: Raise) -> None:
         if s.expr:
             s.expr.accept(self)
         if s.from_expr:
             s.from_expr.accept(self)
 
-    def visit_assert_stmt(self, s: AssertStmt) -> None:
+    def visit_assert_stmt(self, s: Assert) -> None:
         if s.expr:
             s.expr.accept(self)
 
     def visit_operator_assignment_stmt(self,
-                                       s: OperatorAssignmentStmt) -> None:
+                                       s: OperatorAssignment) -> None:
         s.lvalue.accept(self)
         s.rvalue.accept(self)
         if (isinstance(s.lvalue, NameExpr) and s.lvalue.name == '__all__' and
                 s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(*s.rvalue.items)
 
-    def visit_while_stmt(self, s: WhileStmt) -> None:
+    def visit_while_stmt(self, s: While) -> None:
         s.expr.accept(self)
         self.loop_depth += 1
         s.body.accept(self)
         self.loop_depth -= 1
         self.visit_block_maybe(s.else_body)
 
-    def visit_for_stmt(self, s: ForStmt) -> None:
+    def visit_for_stmt(self, s: For) -> None:
         s.expr.accept(self)
 
         # Bind index variables and check if they define new names.
@@ -1872,15 +1872,15 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.visit_block_maybe(s.else_body)
 
-    def visit_break_stmt(self, s: BreakStmt) -> None:
+    def visit_break_stmt(self, s: Break) -> None:
         if self.loop_depth == 0:
             self.fail("'break' outside loop", s, True, blocker=True)
 
-    def visit_continue_stmt(self, s: ContinueStmt) -> None:
+    def visit_continue_stmt(self, s: Continue) -> None:
         if self.loop_depth == 0:
             self.fail("'continue' outside loop", s, True, blocker=True)
 
-    def visit_if_stmt(self, s: IfStmt) -> None:
+    def visit_if_stmt(self, s: If) -> None:
         infer_reachability_of_if_statement(s,
             pyversion=self.options.python_version,
             platform=self.options.platform)
@@ -1889,10 +1889,10 @@ class SemanticAnalyzer(NodeVisitor):
             self.visit_block(s.body[i])
         self.visit_block_maybe(s.else_body)
 
-    def visit_try_stmt(self, s: TryStmt) -> None:
+    def visit_try_stmt(self, s: Try) -> None:
         self.analyze_try_stmt(s, self)
 
-    def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor,
+    def analyze_try_stmt(self, s: Try, visitor: NodeVisitor,
                          add_global: bool = False) -> None:
         s.body.accept(visitor)
         for type, var, handler in zip(s.types, s.vars, s.handlers):
@@ -1906,14 +1906,14 @@ class SemanticAnalyzer(NodeVisitor):
         if s.finally_body:
             s.finally_body.accept(visitor)
 
-    def visit_with_stmt(self, s: WithStmt) -> None:
+    def visit_with_stmt(self, s: With) -> None:
         for e, n in zip(s.expr, s.target):
             e.accept(self)
             if n:
                 self.analyze_lvalue(n)
         self.visit_block(s.body)
 
-    def visit_del_stmt(self, s: DelStmt) -> None:
+    def visit_del_stmt(self, s: Del) -> None:
         s.expr.accept(self)
         if not self.is_valid_del_target(s.expr):
             self.fail('Invalid delete target', s)
@@ -1949,13 +1949,13 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Name '{}' is nonlocal and global".format(name), d)
                 self.nonlocal_decls[-1].add(name)
 
-    def visit_print_stmt(self, s: PrintStmt) -> None:
+    def visit_print_stmt(self, s: Print) -> None:
         for arg in s.args:
             arg.accept(self)
         if s.target:
             s.target.accept(self)
 
-    def visit_exec_stmt(self, s: ExecStmt) -> None:
+    def visit_exec_stmt(self, s: Exec) -> None:
         s.expr.accept(self)
         if s.variables1:
             s.variables1.accept(self)
@@ -2627,7 +2627,7 @@ class FirstPass(NodeVisitor):
             node.accept(self)
         self.sem.block_depth[-1] -= 1
 
-    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+    def visit_assignment_stmt(self, s: Assignment) -> None:
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
@@ -2705,18 +2705,18 @@ class FirstPass(NodeVisitor):
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_top_level = True
 
-    def visit_while_stmt(self, s: WhileStmt) -> None:
+    def visit_while_stmt(self, s: While) -> None:
         s.body.accept(self)
         if s.else_body:
             s.else_body.accept(self)
 
-    def visit_for_stmt(self, s: ForStmt) -> None:
+    def visit_for_stmt(self, s: For) -> None:
         self.analyze_lvalue(s.index)
         s.body.accept(self)
         if s.else_body:
             s.else_body.accept(self)
 
-    def visit_with_stmt(self, s: WithStmt) -> None:
+    def visit_with_stmt(self, s: With) -> None:
         for n in s.target:
             if n:
                 self.analyze_lvalue(n)
@@ -2726,14 +2726,14 @@ class FirstPass(NodeVisitor):
         d.var._fullname = self.sem.qualified_name(d.var.name())
         self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
-    def visit_if_stmt(self, s: IfStmt) -> None:
+    def visit_if_stmt(self, s: If) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
         for node in s.body:
             node.accept(self)
         if s.else_body:
             s.else_body.accept(self)
 
-    def visit_try_stmt(self, s: TryStmt) -> None:
+    def visit_try_stmt(self, s: Try) -> None:
         self.sem.analyze_try_stmt(s, self, add_global=True)
 
     def analyze_lvalue(self, lvalue: Node, explicit_type: bool = False) -> None:
@@ -2833,7 +2833,7 @@ class ThirdPass(TraverserVisitor):
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
 
-    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+    def visit_assignment_stmt(self, s: Assignment) -> None:
         self.analyze(s.type)
         super().visit_assignment_stmt(s)
 
@@ -2962,7 +2962,7 @@ def remove_imported_names_from_symtable(names: SymbolTable,
         del names[name]
 
 
-def infer_reachability_of_if_statement(s: IfStmt,
+def infer_reachability_of_if_statement(s: If,
                                        pyversion: Tuple[int, int],
                                        platform: str) -> None:
     for i in range(len(s.expr)):

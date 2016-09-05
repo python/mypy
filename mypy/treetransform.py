@@ -8,18 +8,18 @@ from typing import List, Dict, cast
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
-    OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
-    RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
-    PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    OperatorAssignment, ExpressionStatement, Assignment, Return,
+    Raise, Assert, Del, Break, Continue,
+    Pass, GlobalDecl, While, For, If, Try, With,
     CastExpr, RevealTypeExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
-    SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
+    SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, Print,
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    YieldExpr, Exec, Argument, BackquoteExpr, AwaitExpr,
 )
 from mypy.types import Type, FunctionLike, Instance
 from mypy.traverser import TraverserVisitor
@@ -75,7 +75,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ImportAll(node.id, node.relative)
 
     def copy_argument(self, argument: Argument) -> Argument:
-        init_stmt = None  # type: AssignmentStmt
+        init_stmt = None  # type: Assignment
 
         if argument.initialization_statement:
             init_lvalue = cast(
@@ -83,7 +83,7 @@ class TransformVisitor(NodeVisitor[Node]):
                 self.node(argument.initialization_statement.lvalues[0]),
             )
             init_lvalue.set_line(argument.line)
-            init_stmt = AssignmentStmt(
+            init_stmt = Assignment(
                 [init_lvalue],
                 self.node(argument.initialization_statement.rvalue),
                 self.optional_type(argument.initialization_statement.type),
@@ -160,8 +160,8 @@ class TransformVisitor(NodeVisitor[Node]):
         new.line = original.line
 
     def duplicate_inits(self,
-                        inits: List[AssignmentStmt]) -> List[AssignmentStmt]:
-        result = []  # type: List[AssignmentStmt]
+                        inits: List[Assignment]) -> List[Assignment]:
+        result = []  # type: List[Assignment]
         for init in inits:
             if init:
                 result.append(self.duplicate_assignment(init))
@@ -229,85 +229,85 @@ class TransformVisitor(NodeVisitor[Node]):
         self.var_map[node] = new
         return new
 
-    def visit_expression_stmt(self, node: ExpressionStmt) -> Node:
-        return ExpressionStmt(self.node(node.expr))
+    def visit_expression_stmt(self, node: ExpressionStatement) -> Node:
+        return ExpressionStatement(self.node(node.expr))
 
-    def visit_assignment_stmt(self, node: AssignmentStmt) -> Node:
+    def visit_assignment_stmt(self, node: Assignment) -> Node:
         return self.duplicate_assignment(node)
 
-    def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
-        new = AssignmentStmt(self.nodes(node.lvalues),
-                             self.node(node.rvalue),
-                             self.optional_type(node.type))
+    def duplicate_assignment(self, node: Assignment) -> Assignment:
+        new = Assignment(self.nodes(node.lvalues),
+                         self.node(node.rvalue),
+                         self.optional_type(node.type))
         new.line = node.line
         return new
 
     def visit_operator_assignment_stmt(self,
-                                       node: OperatorAssignmentStmt) -> Node:
-        return OperatorAssignmentStmt(node.op,
-                                      self.node(node.lvalue),
-                                      self.node(node.rvalue))
+                                       node: OperatorAssignment) -> Node:
+        return OperatorAssignment(node.op,
+                                  self.node(node.lvalue),
+                                  self.node(node.rvalue))
 
-    def visit_while_stmt(self, node: WhileStmt) -> Node:
-        return WhileStmt(self.node(node.expr),
-                         self.block(node.body),
-                         self.optional_block(node.else_body))
+    def visit_while_stmt(self, node: While) -> Node:
+        return While(self.node(node.expr),
+                     self.block(node.body),
+                     self.optional_block(node.else_body))
 
-    def visit_for_stmt(self, node: ForStmt) -> Node:
-        return ForStmt(self.node(node.index),
-                       self.node(node.expr),
-                       self.block(node.body),
-                       self.optional_block(node.else_body))
+    def visit_for_stmt(self, node: For) -> Node:
+        return For(self.node(node.index),
+                   self.node(node.expr),
+                   self.block(node.body),
+                   self.optional_block(node.else_body))
 
-    def visit_return_stmt(self, node: ReturnStmt) -> Node:
-        return ReturnStmt(self.optional_node(node.expr))
+    def visit_return_stmt(self, node: Return) -> Node:
+        return Return(self.optional_node(node.expr))
 
-    def visit_assert_stmt(self, node: AssertStmt) -> Node:
-        return AssertStmt(self.node(node.expr))
+    def visit_assert_stmt(self, node: Assert) -> Node:
+        return Assert(self.node(node.expr))
 
-    def visit_del_stmt(self, node: DelStmt) -> Node:
-        return DelStmt(self.node(node.expr))
+    def visit_del_stmt(self, node: Del) -> Node:
+        return Del(self.node(node.expr))
 
-    def visit_if_stmt(self, node: IfStmt) -> Node:
-        return IfStmt(self.nodes(node.expr),
-                      self.blocks(node.body),
-                      self.optional_block(node.else_body))
+    def visit_if_stmt(self, node: If) -> Node:
+        return If(self.nodes(node.expr),
+                  self.blocks(node.body),
+                  self.optional_block(node.else_body))
 
-    def visit_break_stmt(self, node: BreakStmt) -> Node:
-        return BreakStmt()
+    def visit_break_stmt(self, node: Break) -> Node:
+        return Break()
 
-    def visit_continue_stmt(self, node: ContinueStmt) -> Node:
-        return ContinueStmt()
+    def visit_continue_stmt(self, node: Continue) -> Node:
+        return Continue()
 
-    def visit_pass_stmt(self, node: PassStmt) -> Node:
-        return PassStmt()
+    def visit_pass_stmt(self, node: Pass) -> Node:
+        return Pass()
 
-    def visit_raise_stmt(self, node: RaiseStmt) -> Node:
-        return RaiseStmt(self.optional_node(node.expr),
-                         self.optional_node(node.from_expr))
+    def visit_raise_stmt(self, node: Raise) -> Node:
+        return Raise(self.optional_node(node.expr),
+                     self.optional_node(node.from_expr))
 
-    def visit_try_stmt(self, node: TryStmt) -> Node:
-        return TryStmt(self.block(node.body),
-                       self.optional_names(node.vars),
-                       self.optional_nodes(node.types),
-                       self.blocks(node.handlers),
-                       self.optional_block(node.else_body),
-                       self.optional_block(node.finally_body))
+    def visit_try_stmt(self, node: Try) -> Node:
+        return Try(self.block(node.body),
+                   self.optional_names(node.vars),
+                   self.optional_nodes(node.types),
+                   self.blocks(node.handlers),
+                   self.optional_block(node.else_body),
+                   self.optional_block(node.finally_body))
 
-    def visit_with_stmt(self, node: WithStmt) -> Node:
-        return WithStmt(self.nodes(node.expr),
-                        self.optional_nodes(node.target),
-                        self.block(node.body))
+    def visit_with_stmt(self, node: With) -> Node:
+        return With(self.nodes(node.expr),
+                    self.optional_nodes(node.target),
+                    self.block(node.body))
 
-    def visit_print_stmt(self, node: PrintStmt) -> Node:
-        return PrintStmt(self.nodes(node.args),
-                         node.newline,
-                         self.optional_node(node.target))
+    def visit_print_stmt(self, node: Print) -> Node:
+        return Print(self.nodes(node.args),
+                     node.newline,
+                     self.optional_node(node.target))
 
-    def visit_exec_stmt(self, node: ExecStmt) -> Node:
-        return ExecStmt(self.node(node.expr),
-                        self.optional_node(node.variables1),
-                        self.optional_node(node.variables2))
+    def visit_exec_stmt(self, node: Exec) -> Node:
+        return Exec(self.node(node.expr),
+                    self.optional_node(node.variables1),
+                    self.optional_node(node.variables2))
 
     def visit_star_expr(self, node: StarExpr) -> Node:
         return StarExpr(node.expr)

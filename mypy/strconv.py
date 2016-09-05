@@ -18,7 +18,7 @@ class StrConv(NodeVisitor[str]):
 
       MypyFile:1(
         fnam
-        ExpressionStmt:1(
+        ExpressionStatement:1(
           IntExpr(1)))
     """
     def dump(self, nodes: List[Any], obj: 'mypy.nodes.Node') -> str:

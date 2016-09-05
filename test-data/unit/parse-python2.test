@@ -14,15 +14,15 @@ u'''bar'''
 b'foo'
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     StrExpr(bar))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     UnicodeExpr(foo))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     UnicodeExpr(foo))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     UnicodeExpr(bar))
-  ExpressionStmt:5(
+  ExpressionStatement:5(
     StrExpr(foo)))
 
 [case testSimplePrint]
@@ -31,14 +31,14 @@ print 2, 3
 print (4, 5)
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     IntExpr(1)
     Newline)
-  PrintStmt:2(
+  Print:2(
     IntExpr(2)
     IntExpr(3)
     Newline)
-  PrintStmt:3(
+  Print:3(
     TupleExpr:3(
       IntExpr(4)
       IntExpr(5))
@@ -48,14 +48,14 @@ MypyFile:1(
 print
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     Newline))
 
 [case testPrintWithTarget]
 print >>foo
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     Target(
       NameExpr(foo))
     Newline))
@@ -64,7 +64,7 @@ MypyFile:1(
 print >>foo, x
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     NameExpr(x)
     Target(
       NameExpr(foo))
@@ -74,7 +74,7 @@ MypyFile:1(
 print >>foo, x, y,
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     NameExpr(x)
     NameExpr(y)
     Target(
@@ -86,12 +86,12 @@ print 2, 3,
 print (4, 5),
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     IntExpr(1))
-  PrintStmt:2(
+  Print:2(
     IntExpr(2)
     IntExpr(3))
-  PrintStmt:3(
+  Print:3(
     TupleExpr:3(
       IntExpr(4)
       IntExpr(5))))
@@ -102,11 +102,11 @@ MypyFile:1(
 0377
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IntExpr(1))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     IntExpr(255)))
 
 [case testLongLiteral]
@@ -116,13 +116,13 @@ MypyFile:1(
 0x123l
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     IntExpr(0))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     IntExpr(123))
-  ExpressionStmt:3(
+  ExpressionStatement:3(
     IntExpr(10))
-  ExpressionStmt:4(
+  ExpressionStatement:4(
     IntExpr(291)))
 
 [case testTryExceptWithComma]
@@ -132,14 +132,14 @@ except Exception, e:
     y
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(x)))
     NameExpr(Exception)
     NameExpr(e)
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(y)))))
 
 [case testTryExceptWithNestedComma]
@@ -149,29 +149,29 @@ except (KeyError, IndexError):
     y
 [out]
 MypyFile:1(
-  TryStmt:1(
+  Try:1(
     Block:1(
-      ExpressionStmt:2(
+      ExpressionStatement:2(
         NameExpr(x)))
     TupleExpr:3(
       NameExpr(KeyError)
       NameExpr(IndexError))
     Block:3(
-      ExpressionStmt:4(
+      ExpressionStatement:4(
         NameExpr(y)))))
 
 [case testExecStatement]
 exec a
 [out]
 MypyFile:1(
-  ExecStmt:1(
+  Exec:1(
     NameExpr(a)))
 
 [case testExecStatementWithIn]
 exec a in globals()
 [out]
 MypyFile:1(
-  ExecStmt:1(
+  Exec:1(
     NameExpr(a)
     CallExpr:1(
       NameExpr(globals)
@@ -181,7 +181,7 @@ MypyFile:1(
 exec a in x, y
 [out]
 MypyFile:1(
-  ExecStmt:1(
+  Exec:1(
     NameExpr(a)
     NameExpr(x)
     NameExpr(y)))
@@ -195,16 +195,16 @@ u'foo' 'bar'
 'bar' u'foo'
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     UnicodeExpr(foobar))
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     UnicodeExpr(barfoo)))
 
 [case testLegacyInequality]
 1 <> 2
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ComparisonExpr:1(
       !=
       IntExpr(1)
@@ -214,7 +214,7 @@ MypyFile:1(
 ([ 0 for x in 1, 2 if 3 ])
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     ListComprehension:1(
       GeneratorExpr:1(
         IntExpr(0)
@@ -234,12 +234,12 @@ MypyFile:1(
       Var(x)
       Var(__tuple_arg_2))
     Block:1(
-      AssignmentStmt:1(
+      Assignment:1(
         TupleExpr:1(
           NameExpr(y)
           NameExpr(z))
         NameExpr(__tuple_arg_2))
-      PassStmt:1())))
+      Pass:1())))
 
 [case testTupleArgListWithTwoTupleArgsInPython2]
 def f((x, y), (z, zz)): pass
@@ -251,17 +251,17 @@ MypyFile:1(
       Var(__tuple_arg_1)
       Var(__tuple_arg_2))
     Block:1(
-      AssignmentStmt:1(
+      Assignment:1(
         TupleExpr:1(
           NameExpr(x)
           NameExpr(y))
         NameExpr(__tuple_arg_1))
-      AssignmentStmt:1(
+      Assignment:1(
         TupleExpr:1(
           NameExpr(z)
           NameExpr(zz))
         NameExpr(__tuple_arg_2))
-      PassStmt:1())))
+      Pass:1())))
 
 [case testTupleArgListWithInitializerInPython2]
 def f((y, z) = (1, 2)): pass
@@ -272,62 +272,62 @@ MypyFile:1(
     Args(
       Var(__tuple_arg_1))
     Init(
-      AssignmentStmt:1(
+      Assignment:1(
         NameExpr(__tuple_arg_1)
         TupleExpr:1(
           IntExpr(1)
           IntExpr(2))))
     Block:1(
-      AssignmentStmt:1(
+      Assignment:1(
         TupleExpr:1(
           NameExpr(y)
           NameExpr(z))
         NameExpr(__tuple_arg_1))
-      PassStmt:1())))
+      Pass:1())))
 
 [case testLambdaTupleArgListInPython2]
 lambda (x, y): z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     FuncExpr:1(
       Args(
         Var(__tuple_arg_1))
       Block:1(
-        AssignmentStmt:1(
+        Assignment:1(
           TupleExpr:1(
             NameExpr(x)
             NameExpr(y))
           NameExpr(__tuple_arg_1))
-        ReturnStmt:1(
+        Return:1(
           NameExpr(z))))))
 
 [case testLambdaSingletonTupleArgListInPython2]
 lambda (x,): z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     FuncExpr:1(
       Args(
         Var(__tuple_arg_1))
       Block:1(
-        AssignmentStmt:1(
+        Assignment:1(
           TupleExpr:1(
             NameExpr(x))
           NameExpr(__tuple_arg_1))
-        ReturnStmt:1(
+        Return:1(
           NameExpr(z))))))
 
 [case testLambdaNoTupleArgListInPython2]
 lambda (x): z
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     FuncExpr:1(
       Args(
         Var(x))
       Block:1(
-        ReturnStmt:1(
+        Return:1(
           NameExpr(z))))))
 
 [case testInvalidExprInTupleArgListInPython2_1]
@@ -371,7 +371,7 @@ MypyFile:1(
       Var(x)
       Var(y))
     Block:1(
-      PassStmt:1())))
+      Pass:1())))
 
 [case testDuplicateNameInTupleArgList_python2]
 def f(a, (a, b)):
@@ -388,7 +388,7 @@ main:3: error: Duplicate argument name "x"
 `1 + 2`
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     BackquoteExpr:1(
       OpExpr:1(
         +
@@ -399,7 +399,7 @@ MypyFile:1(
 `1, 2`
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     BackquoteExpr:1(
       TupleExpr:1(
         IntExpr(1)

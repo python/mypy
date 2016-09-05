@@ -63,56 +63,56 @@ class NodeVisitor(Generic[T]):
     def visit_block(self, o: 'mypy.nodes.Block') -> T:
         pass
 
-    def visit_expression_stmt(self, o: 'mypy.nodes.ExpressionStmt') -> T:
+    def visit_expression_stmt(self, o: 'mypy.nodes.ExpressionStatement') -> T:
         pass
 
-    def visit_assignment_stmt(self, o: 'mypy.nodes.AssignmentStmt') -> T:
+    def visit_assignment_stmt(self, o: 'mypy.nodes.Assignment') -> T:
         pass
 
     def visit_operator_assignment_stmt(self,
-                                       o: 'mypy.nodes.OperatorAssignmentStmt') -> T:
+                                       o: 'mypy.nodes.OperatorAssignment') -> T:
         pass
 
-    def visit_while_stmt(self, o: 'mypy.nodes.WhileStmt') -> T:
+    def visit_while_stmt(self, o: 'mypy.nodes.While') -> T:
         pass
 
-    def visit_for_stmt(self, o: 'mypy.nodes.ForStmt') -> T:
+    def visit_for_stmt(self, o: 'mypy.nodes.For') -> T:
         pass
 
-    def visit_return_stmt(self, o: 'mypy.nodes.ReturnStmt') -> T:
+    def visit_return_stmt(self, o: 'mypy.nodes.Return') -> T:
         pass
 
-    def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> T:
+    def visit_assert_stmt(self, o: 'mypy.nodes.Assert') -> T:
         pass
 
-    def visit_del_stmt(self, o: 'mypy.nodes.DelStmt') -> T:
+    def visit_del_stmt(self, o: 'mypy.nodes.Del') -> T:
         pass
 
-    def visit_if_stmt(self, o: 'mypy.nodes.IfStmt') -> T:
+    def visit_if_stmt(self, o: 'mypy.nodes.If') -> T:
         pass
 
-    def visit_break_stmt(self, o: 'mypy.nodes.BreakStmt') -> T:
+    def visit_break_stmt(self, o: 'mypy.nodes.Break') -> T:
         pass
 
-    def visit_continue_stmt(self, o: 'mypy.nodes.ContinueStmt') -> T:
+    def visit_continue_stmt(self, o: 'mypy.nodes.Continue') -> T:
         pass
 
-    def visit_pass_stmt(self, o: 'mypy.nodes.PassStmt') -> T:
+    def visit_pass_stmt(self, o: 'mypy.nodes.Pass') -> T:
         pass
 
-    def visit_raise_stmt(self, o: 'mypy.nodes.RaiseStmt') -> T:
+    def visit_raise_stmt(self, o: 'mypy.nodes.Raise') -> T:
         pass
 
-    def visit_try_stmt(self, o: 'mypy.nodes.TryStmt') -> T:
+    def visit_try_stmt(self, o: 'mypy.nodes.Try') -> T:
         pass
 
-    def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> T:
+    def visit_with_stmt(self, o: 'mypy.nodes.With') -> T:
         pass
 
-    def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> T:
+    def visit_print_stmt(self, o: 'mypy.nodes.Print') -> T:
         pass
 
-    def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> T:
+    def visit_exec_stmt(self, o: 'mypy.nodes.Exec') -> T:
         pass
 
     # Expressions

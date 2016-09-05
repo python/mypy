@@ -4,10 +4,10 @@ import sys
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
-    ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
-    ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
-    DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    ClassDef, Decorator, Block, Var, OperatorAssignment,
+    ExpressionStatement, Assignment, Return, Raise, Assert,
+    Del, Break, Continue, Pass, GlobalDecl,
+    While, For, If, Try, With,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
@@ -396,7 +396,7 @@ class ASTConverter(ast35.NodeTransformer):
     # Return(expr? value)
     @with_line
     def visit_Return(self, n: ast35.Return) -> Node:
-        return ReturnStmt(self.visit(n.value))
+        return Return(self.visit(n.value))
 
     # Delete(expr* targets)
     @with_line
@@ -404,9 +404,9 @@ class ASTConverter(ast35.NodeTransformer):
         if len(n.targets) > 1:
             tup = TupleExpr(self.visit_list(n.targets))
             tup.set_line(n.lineno)
-            return DelStmt(tup)
+            return Del(tup)
         else:
-            return DelStmt(self.visit(n.targets[0]))
+            return Del(self.visit(n.targets[0]))
 
     # Assign(expr* targets, expr value, string? type_comment)
     @with_line
@@ -415,69 +415,69 @@ class ASTConverter(ast35.NodeTransformer):
         if n.type_comment:
             typ = parse_type_comment(n.type_comment, n.lineno)
 
-        return AssignmentStmt(self.visit_list(n.targets),
-                              self.visit(n.value),
-                              type=typ)
+        return Assignment(self.visit_list(n.targets),
+                          self.visit(n.value),
+                          type=typ)
 
     # AugAssign(expr target, operator op, expr value)
     @with_line
     def visit_AugAssign(self, n: ast35.AugAssign) -> Node:
-        return OperatorAssignmentStmt(self.from_operator(n.op),
+        return OperatorAssignment(self.from_operator(n.op),
                               self.visit(n.target),
                               self.visit(n.value))
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     @with_line
     def visit_For(self, n: ast35.For) -> Node:
-        return ForStmt(self.visit(n.target),
-                       self.visit(n.iter),
-                       self.as_block(n.body, n.lineno),
-                       self.as_block(n.orelse, n.lineno))
+        return For(self.visit(n.target),
+                   self.visit(n.iter),
+                   self.as_block(n.body, n.lineno),
+                   self.as_block(n.orelse, n.lineno))
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
     @with_line
     def visit_AsyncFor(self, n: ast35.AsyncFor) -> Node:
-        r = ForStmt(self.visit(n.target),
-                    self.visit(n.iter),
-                    self.as_block(n.body, n.lineno),
-                    self.as_block(n.orelse, n.lineno))
+        r = For(self.visit(n.target),
+                self.visit(n.iter),
+                self.as_block(n.body, n.lineno),
+                self.as_block(n.orelse, n.lineno))
         r.is_async = True
         return r
 
     # While(expr test, stmt* body, stmt* orelse)
     @with_line
     def visit_While(self, n: ast35.While) -> Node:
-        return WhileStmt(self.visit(n.test),
-                         self.as_block(n.body, n.lineno),
-                         self.as_block(n.orelse, n.lineno))
+        return While(self.visit(n.test),
+                     self.as_block(n.body, n.lineno),
+                     self.as_block(n.orelse, n.lineno))
 
     # If(expr test, stmt* body, stmt* orelse)
     @with_line
     def visit_If(self, n: ast35.If) -> Node:
-        return IfStmt([self.visit(n.test)],
-                      [self.as_block(n.body, n.lineno)],
-                      self.as_block(n.orelse, n.lineno))
+        return If([self.visit(n.test)],
+                  [self.as_block(n.body, n.lineno)],
+                  self.as_block(n.orelse, n.lineno))
 
     # With(withitem* items, stmt* body, string? type_comment)
     @with_line
     def visit_With(self, n: ast35.With) -> Node:
-        return WithStmt([self.visit(i.context_expr) for i in n.items],
-                        [self.visit(i.optional_vars) for i in n.items],
-                        self.as_block(n.body, n.lineno))
+        return With([self.visit(i.context_expr) for i in n.items],
+                    [self.visit(i.optional_vars) for i in n.items],
+                    self.as_block(n.body, n.lineno))
 
     # AsyncWith(withitem* items, stmt* body)
     @with_line
     def visit_AsyncWith(self, n: ast35.AsyncWith) -> Node:
-        r = WithStmt([self.visit(i.context_expr) for i in n.items],
-                     [self.visit(i.optional_vars) for i in n.items],
-                     self.as_block(n.body, n.lineno))
+        r = With([self.visit(i.context_expr) for i in n.items],
+                 [self.visit(i.optional_vars) for i in n.items],
+                 self.as_block(n.body, n.lineno))
         r.is_async = True
         return r
 
     # Raise(expr? exc, expr? cause)
     @with_line
     def visit_Raise(self, n: ast35.Raise) -> Node:
-        return RaiseStmt(self.visit(n.exc), self.visit(n.cause))
+        return Raise(self.visit(n.exc), self.visit(n.cause))
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     @with_line
@@ -486,17 +486,17 @@ class ASTConverter(ast35.NodeTransformer):
         types = [self.visit(h.type) for h in n.handlers]
         handlers = [self.as_block(h.body, h.lineno) for h in n.handlers]
 
-        return TryStmt(self.as_block(n.body, n.lineno),
-                       vs,
-                       types,
-                       handlers,
-                       self.as_block(n.orelse, n.lineno),
-                       self.as_block(n.finalbody, n.lineno))
+        return Try(self.as_block(n.body, n.lineno),
+                   vs,
+                   types,
+                   handlers,
+                   self.as_block(n.orelse, n.lineno),
+                   self.as_block(n.finalbody, n.lineno))
 
     # Assert(expr test, expr? msg)
     @with_line
     def visit_Assert(self, n: ast35.Assert) -> Node:
-        return AssertStmt(self.visit(n.test))
+        return Assert(self.visit(n.test))
 
     # Import(alias* names)
     @with_line
@@ -532,22 +532,22 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Expr(self, n: ast35.Expr) -> Node:
         value = self.visit(n.value)
-        return ExpressionStmt(value)
+        return ExpressionStatement(value)
 
     # Pass
     @with_line
     def visit_Pass(self, n: ast35.Pass) -> Node:
-        return PassStmt()
+        return Pass()
 
     # Break
     @with_line
     def visit_Break(self, n: ast35.Break) -> Node:
-        return BreakStmt()
+        return Break()
 
     # Continue
     @with_line
     def visit_Continue(self, n: ast35.Continue) -> Node:
-        return ContinueStmt()
+        return Continue()
 
     # --- expr ---
     # BoolOp(boolop op, expr* values)

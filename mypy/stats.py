@@ -13,7 +13,7 @@ from mypy.types import (
 )
 from mypy import nodes
 from mypy.nodes import (
-    Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr,
+    Node, FuncDef, TypeApplication, Assignment, NameExpr, CallExpr,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
 )
 
@@ -85,7 +85,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.type(t)
         super().visit_type_application(o)
 
-    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+    def visit_assignment_stmt(self, o: Assignment) -> None:
         self.line = o.line
         if (isinstance(o.rvalue, nodes.CallExpr) and
                 isinstance(o.rvalue.analyzed, nodes.TypeVarExpr)):

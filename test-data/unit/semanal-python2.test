@@ -4,7 +4,7 @@
 print int, None
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     NameExpr(int [builtins.int])
     NameExpr(None [builtins.None])
     Newline))
@@ -13,7 +13,7 @@ MypyFile:1(
 print >>int, None
 [out]
 MypyFile:1(
-  PrintStmt:1(
+  Print:1(
     NameExpr(None [builtins.None])
     Target(
       NameExpr(int [builtins.int]))
@@ -25,12 +25,12 @@ exec None in int
 exec None in int, str
 [out]
 MypyFile:1(
-  ExecStmt:1(
+  Exec:1(
     NameExpr(None [builtins.None]))
-  ExecStmt:2(
+  Exec:2(
     NameExpr(None [builtins.None])
     NameExpr(int [builtins.int]))
-  ExecStmt:3(
+  Exec:3(
     NameExpr(None [builtins.None])
     NameExpr(int [builtins.int])
     NameExpr(str [builtins.str])))
@@ -42,7 +42,7 @@ cast(Tuple[int, ...], ())
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple, cast])
-  ExpressionStmt:2(
+  ExpressionStatement:2(
     CastExpr:2(
       TupleExpr:2()
       builtins.tuple[builtins.int])))
@@ -58,12 +58,12 @@ MypyFile:1(
       Var(x)
       Var(__tuple_arg_2))
     Block:1(
-      AssignmentStmt:1(
+      Assignment:1(
         TupleExpr:1(
           NameExpr(y* [l])
           NameExpr(z* [l]))
         NameExpr(__tuple_arg_2 [l]))
-      AssignmentStmt:2(
+      Assignment:2(
         NameExpr(x [l])
         NameExpr(y [l])))))
 
@@ -71,6 +71,6 @@ MypyFile:1(
 `object`
 [out]
 MypyFile:1(
-  ExpressionStmt:1(
+  ExpressionStatement:1(
     BackquoteExpr:1(
       NameExpr(object [builtins.object]))))
