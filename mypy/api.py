@@ -38,19 +38,19 @@ class CompilationError (ValidationError):
 # Validator options are those options in options.Options that are meant for production use
 class ValidatorOptions (options.Options):
 	def __init__ (self,
-        build_type = BuildType.STANDARD
-        python_version = defaults.PYTHON3_VERSION
-        platform = sys.platform
-        custom_typing_module = None # type: str
-        report_dirs = {} # type: Dict[str, str]
-        silent_imports = False
-        almost_silent = False
-        disallow_untyped_calls = False				# Disallow calling untyped functions from typed ones
-        disallow_untyped_defs = False				# Disallow defining untyped (or incompletely typed) functions
-        check_untyped_defs = False					# Type check unannotated functions
-        warn_incomplete_stub = False				# Also check typeshed for missing annotations
-        warn_redundant_casts = False				# Warn about casting an expression to its inferred type
-        warn_unused_ignores = False					# Warn about unused '# type: ignore' comments
+		build_type = BuildType.STANDARD
+		python_version = defaults.PYTHON3_VERSION
+		platform = sys.platform
+		custom_typing_module = None # type: str
+		report_dirs = {} # type: Dict[str, str]
+		silent_imports = False
+		almost_silent = False
+		disallow_untyped_calls = False				# Disallow calling untyped functions from typed ones
+		disallow_untyped_defs = False				# Disallow defining untyped (or incompletely typed) functions
+		check_untyped_defs = False					# Type check unannotated functions
+		warn_incomplete_stub = False				# Also check typeshed for missing annotations
+		warn_redundant_casts = False				# Warn about casting an expression to its inferred type
+		warn_unused_ignores = False					# Warn about unused '# type: ignore' comments
 	):
 		params = locals () .keys ()
 		self._options = options.Options ()
