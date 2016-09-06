@@ -26,7 +26,6 @@ from mypy.errors import Errors
 
 try:
     from typed_ast import ast35
-    from typed_ast import conversions
 except ImportError:
     if sys.version_info.minor > 2:
         print('You must install the typed_ast package before you can run mypy'

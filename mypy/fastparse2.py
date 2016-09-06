@@ -14,7 +14,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr,
+    AwaitExpr, Expression,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -323,8 +323,13 @@ class ASTConverter(ast27.NodeTransformer):
             if isinstance(arg, ast27.Name):
                 v = arg.id
             elif isinstance(arg, ast27.Tuple):
-                x = self.visit(arg)
-                raise RuntimeError("Ran into issue with args {} (found tuple {})".format(n, x))
+                # TODO: An `arg` object may be a Tuple instead of just an identifier in the
+                # case of Python 2 function definitions/lambdas that use the tuple unpacking
+                # syntax. The `typed_ast.conversions` module ended up just simply passing the
+                # the arg object unmodified (instead of converting it into more args, etc).
+                # This isn't typesafe, since we will no longer be always passing in a string
+                # to `Var`, but we'll do the same here for consistency.
+                v = arg  # type: ignore
             else:
                 raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
             return Var(v)
@@ -496,13 +501,13 @@ class ASTConverter(ast27.NodeTransformer):
                        types,
                        handlers_,
                        self.as_block(orelse, lineno),
-                       self.as_block([], lineno))
+                       self.as_block(finalbody, lineno))
 
     @with_line
     def visit_Print(self, n: ast27.Print) -> Node:
         keywords = []
         if n.dest is not None:
-            keywords.append(ast27.keyword("file", self.visit(n.dest)))
+            keywords.append(ast27.keyword("file", n.dest))
 
         if not n.nl:
             keywords.append(ast27.keyword("end", ast27.Str(" ", lineno=n.lineno, col_offset=-1)))
@@ -753,11 +758,11 @@ class ASTConverter(ast27.NodeTransformer):
             is_inverse = True
 
         expr = None  # type: Expression
-        if isinstance(new.n, int):
+        if isinstance(value, int):
             expr = IntExpr(value)
-        elif isinstance(new.n, float):
+        elif isinstance(value, float):
             expr = FloatExpr(value)
-        elif isinstance(new.n, complex):
+        elif isinstance(value, complex):
             expr = ComplexExpr(value)
         else:
             raise RuntimeError('num not implemented for ' + str(type(new.n)))
