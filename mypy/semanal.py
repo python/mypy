@@ -769,6 +769,8 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Cannot subclass NewType", defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
+                if self.options.disallow_subclassing_any:
+                    self.fail("Class cannot subclass value of type 'Any'", base_expr)
                 info.fallback_to_any = True
             else:
                 self.fail('Invalid base class', base_expr)

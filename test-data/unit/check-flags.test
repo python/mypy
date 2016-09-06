@@ -36,3 +36,32 @@ def f():
 [out]
 main: note: In function "f":
 main:2: error: Function is missing a type annotation
+
+[case testSubclassingAny]
+# flags: --disallow-subclassing-any
+from typing import Any
+FakeClass = None  # type: Any
+class Foo(FakeClass): pass  # E: Class cannot subclass value of type 'Any'
+[out]
+
+[case testSubclassingAnyMultipleBaseClasses]
+# flags: --disallow-subclassing-any
+from typing import Any
+FakeClass = None  # type: Any
+class ActualClass: pass
+class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass value of type 'Any'
+[out]
+
+[case testSubclassingAnySilentImports]
+# flags: --disallow-subclassing-any --silent-imports
+# cmd: mypy -m main
+
+[file main.py]
+from ignored_module import BaseClass
+class Foo(BaseClass): pass
+
+[file ignored_module.py]
+class BaseClass: pass
+
+[out]
+tmp/main.py:2: error: Class cannot subclass value of type 'Any'
