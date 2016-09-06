@@ -25,7 +25,6 @@ from mypy import experiments
 from mypy.errors import Errors
 
 try:
-    from typed_ast import ast27
     from typed_ast import ast35
     from typed_ast import conversions
 except ImportError:
@@ -59,11 +58,8 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     """
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
-        if pyversion[0] >= 3 or is_stub_file:
-            ast = ast35.parse(source, fnam, 'exec')
-        else:
-            ast2 = ast27.parse(source, fnam, 'exec')
-            ast = conversions.py2to3(ast2)
+        assert pyversion[0] >= 3 or is_stub_file
+        ast = ast35.parse(source, fnam, 'exec')
 
         tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,
@@ -801,6 +797,12 @@ class ASTConverter(ast35.NodeTransformer):
 class TypeConverter(ast35.NodeTransformer):
     def __init__(self, line: int = -1) -> None:
         self.line = line
+
+    def visit_raw_str(self, s: str) -> Type:
+        # An escape hatch that allows the AST walker in fastparse2 to
+        # directly hook into the Python 3.5 type converter in some cases
+        # without needing to create an intermediary `ast35.Str` object.
+        return parse_type_comment(s.strip(), line=self.line)
 
     def generic_visit(self, node: ast35.AST) -> None:
         raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line)
