@@ -95,6 +95,27 @@ function using the form ``# type: (...) -> rt``, where ``rt`` is the
 return type. Note that the  return type annotation contains literal
 three dots.
 
+Note that when using multi-line comments, you do not need to prefix the
+types of your ``*arg`` and ``**kwarg`` parameters with ``*`` or ``**``.
+For example, here is how you would annotate the first example using
+multi-line comments.
+
+.. code-block:: python
+
+    from typing import List
+
+    class Example:
+        def method(self,
+                   lst,      # type: List[str]
+                   opt=0,    # type: int
+                   *args,    # type: str
+                   **kwargs  # type: bool
+                   ):
+            # type: (...) -> int
+            """Docstring comes after type comment."""
+            ...
+
+
 Additional notes
 ----------------
 
