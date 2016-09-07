@@ -513,10 +513,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return 'int'
         if isinstance(rvalue, NameExpr) and rvalue.name in ('True', 'False'):
             return 'bool'
-        if isinstance(rvalue, NameExpr) and rvalue.name == 'None':
-            self.add_typing_import('Optional')
-            self.add_typing_import('Any')
-            return 'Optional[Any]'
         self.add_typing_import('Any')
         return 'Any'
 
