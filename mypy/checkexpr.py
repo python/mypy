@@ -670,7 +670,7 @@ class ExpressionChecker:
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
             elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
-                  actual_kinds[formal_to_actual[i][0]] != nodes.ARG_NAMED):
+                  actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
                     messages.too_many_positional_arguments(callee, context)

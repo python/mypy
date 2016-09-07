@@ -122,6 +122,15 @@ f(A(), B()) # E: Too many positional arguments for "f"
 class A: pass
 class B: pass
 
+[case testKwargsAfterBareArgs]
+from typing import Tuple, Any
+def f(a, *, b=None) -> None: pass
+a = None  # type: Any
+b = None  # type: Any
+f(a, **b)
+
+[builtins fixtures/dict.pyi]
+
 [case testKeywordArgAfterVarArgs]
 import typing
 def f(*a: 'A', b: 'B' = None,) -> None: pass
