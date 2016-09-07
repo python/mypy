@@ -254,7 +254,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if init_stmt:
                 if kind == ARG_NAMED and '*' not in args:
                     args.append('*')
-                typename = self.get_str_type_of_node(init_stmt.rvalue)
+                typename = self.get_str_type_of_node(init_stmt.rvalue, True)
                 arg = '{}: {} = ...'.format(name, typename)
             elif kind == ARG_STAR:
                 arg = '*%s' % name
@@ -500,7 +500,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__setstate__',
                                                      '__slots__'))
 
-    def get_str_type_of_node(self, rvalue: Node) -> str:
+    def get_str_type_of_node(self, rvalue: Node,
+                             can_infer_optional: bool = False) -> str:
         if isinstance(rvalue, IntExpr):
             return 'int'
         if isinstance(rvalue, StrExpr):
@@ -513,7 +514,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return 'int'
         if isinstance(rvalue, NameExpr) and rvalue.name in ('True', 'False'):
             return 'bool'
-        if isinstance(rvalue, NameExpr) and rvalue.name == 'None':
+        if can_infer_optional and \
+           isinstance(rvalue, NameExpr) and rvalue.name == 'None':
             self.add_typing_import('Optional')
             self.add_typing_import('Any')
             return 'Optional[Any]'
