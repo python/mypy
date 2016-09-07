@@ -1,4 +1,4 @@
-from typing import cast, List, Dict, Callable
+from typing import cast, List, Dict, Callable, Sequence
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
@@ -150,8 +150,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, CallableType):
             return is_callable_subtype(left, right)
         elif isinstance(right, Overloaded):
-            return all(is_subtype(left, item, self.check_type_parameter)
-                       for item in right.items())
+            return self.one_subtype_all(left, right.items())
         elif isinstance(right, Instance):
             return is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
@@ -162,33 +161,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
-        if isinstance(right, Instance):
-            if is_named_instance(right, 'builtins.object'):
-                return True
-            if is_named_instance(right, 'builtins.tuple'):
-                target_item_type = right.args[0]
-                return all(is_subtype(item, target_item_type)
-                           for item in left.items)
-            elif is_named_instance(right, 'typing.Sized'):
-                return True
-            elif (is_named_instance(right, 'typing.Iterable') or
-                  is_named_instance(right, 'typing.Container') or
-                  is_named_instance(right, 'typing.Sequence') or
-                  is_named_instance(right, 'typing.Reversible')):
-                iter_type = right.args[0]
-                return all(is_subtype(li, iter_type) for li in left.items)
+        if isinstance(right, TupleType):
+            return self.exact_zip_subtype(left.items + [left.fallback],
+                                          right.items + [right.fallback])
+        elif isinstance(right, Instance):
             if is_subtype(left.fallback, right, self.check_type_parameter):
                 return True
+            if is_named_instance(right, 'typing.Sized'):
+                return True
+            elif is_named_instance(right, 'builtins.tuple',
+                                   'typing.Iterable', 'typing.Container',
+                                   'typing.Sequence', 'typing.Reversible'):
+                return self.all_subtype_one(left.items, right.args[0])
             return False
-        elif isinstance(right, TupleType):
-            if len(left.items) != len(right.items):
-                return False
-            for l, r in zip(left.items, right.items):
-                if not is_subtype(l, r, self.check_type_parameter):
-                    return False
-            if not is_subtype(left.fallback, right.fallback, self.check_type_parameter):
-                return False
-            return True
         else:
             return False
 
@@ -196,20 +181,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, Instance):
             return is_subtype(left.fallback, right)
-        elif isinstance(right, CallableType) or is_named_instance(
-                right, 'builtins.type'):
-            for item in left.items():
-                if is_subtype(item, right, self.check_type_parameter):
-                    return True
-            return False
+        elif isinstance(right, CallableType) or is_named_instance(right, 'builtins.type'):
+            return self.either_subtype_one(left.items(), right)
         elif isinstance(right, Overloaded):
             # TODO: this may be too restrictive
-            if len(left.items()) != len(right.items()):
-                return False
-            for i in range(len(left.items())):
-                if not is_subtype(left.items()[i], right.items()[i], self.check_type_parameter):
-                    return False
-            return True
+            return self.exact_zip_subtype(left.items(), right.items())
         elif isinstance(right, UnboundType):
             return True
         elif isinstance(right, TypeType):
@@ -221,8 +197,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all(is_subtype(item, self.right, self.check_type_parameter)
-                   for item in left.items)
+        return self.all_subtype_one(left.items, self.right)
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
@@ -241,6 +216,23 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # treat builtins.object the same as Any.
             return True
         return False
+
+    # Helpers
+
+    def exact_zip_subtype(self, left_items: Sequence[Type], right_items: Sequence[Type]) -> bool:
+        return (len(left_items) == len(right_items)
+                and all(is_subtype(l, r, self.check_type_parameter)
+                        for l, r in zip(left_items, right_items)))
+
+    def all_subtype_one(self, items: Sequence[Type], t: Type) -> bool:
+        return all(is_subtype(item, t) for item in items)
+
+    def one_subtype_all(self, t: Type, items: Sequence[Type]) -> bool:
+        return all(is_subtype(t, item, self.check_type_parameter) for item in items)
+
+    def either_subtype_one(self, items, t: Type) -> bool:
+        return any(is_subtype(item, t, self.check_type_parameter)
+                   for item in items)
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,

@@ -749,6 +749,7 @@ class TupleType(Type):
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  implicit: bool = False) -> None:
+        assert isinstance(items, list)
         self.items = items
         self.fallback = fallback
         self.implicit = implicit
@@ -1427,10 +1428,11 @@ def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
     return t.copy_modified(arg_types=[self_type] + t.arg_types[1:])
 
 
-def is_named_instance(t: Type, fullname: str) -> bool:
-    return (isinstance(t, Instance) and
-            t.type is not None and
-            t.type.fullname() == fullname)
+def is_named_instance(t: Type, *fullnames: str) -> bool:
+    if not isinstance(t, Instance):
+        return False
+    return any(t.type is not None and t.type.fullname() == fullname
+               for fullname in fullnames)
 
 
 def copy_type(t: Type) -> Type:

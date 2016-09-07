@@ -324,8 +324,8 @@ class TypeOpsSuite(Suite):
 
     # Helpers
 
-    def tuple(self, *a):
-        return TupleType(a, self.fx.std_tuple)
+    def tuple(self, *args):
+        return TupleType(list(args), self.fx.std_tuple)
 
     def callable(self, vars, *a) -> CallableType:
         """callable(args, a1, ..., an, r) constructs a callable with
@@ -611,8 +611,8 @@ class JoinSuite(Suite):
             assert_true(is_subtype(t, result),
                         '{} not subtype of {}'.format(t, result))
 
-    def tuple(self, *a):
-        return TupleType(a, self.fx.std_tuple)
+    def tuple(self, *args):
+        return TupleType(list(args), self.fx.std_tuple)
 
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types
@@ -826,8 +826,8 @@ class MeetSuite(Suite):
             assert_true(is_subtype(result, t),
                         '{} not subtype of {}'.format(result, t))
 
-    def tuple(self, *a):
-        return TupleType(a, self.fx.std_tuple)
+    def tuple(self, *args):
+        return TupleType(list(args), self.fx.std_tuple)
 
     def callable(self, *a):
         """callable(a1, ..., an, r) constructs a callable with argument types

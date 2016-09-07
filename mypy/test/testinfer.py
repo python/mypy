@@ -87,7 +87,7 @@ class MapActualsToFormalsSuite(Suite):
             self.tuple(AnyType(), AnyType()))
 
     def tuple(self, *args):
-        return TupleType(args, None)
+        return TupleType(list(args), None)
 
     def test_named_args(self):
         self.assert_map(
