@@ -1,3 +1,19 @@
+"""
+This file is nearly identical to `fastparse.py`, except that it works with a Python 2
+AST instead of a Python 3 AST.
+
+Previously, how we handled Python 2 code was by first obtaining the Python 2 AST via
+typed_ast, converting it into a Python 3 AST by using typed_ast.conversion, then
+running it through mypy.fastparse.
+
+While this worked, it did add some overhead, especially in larger Python 2 codebases.
+This module allows us to skip the conversion step, saving us some time.
+
+The reason why this file is not easily merged with mypy.fastparse despite the large amount
+of redundancy is because the Python 2 AST and the Python 3 AST nodes belong to two completely
+different class heirarchies, which made it difficult to write a shared visitor between the
+two in a typesafe way.
+"""
 from functools import wraps
 import sys
 
@@ -512,6 +528,8 @@ class ASTConverter(ast27.NodeTransformer):
         if not n.nl:
             keywords.append(ast27.keyword("end", ast27.Str(" ", lineno=n.lineno, col_offset=-1)))
 
+        # TODO: Rather then desugaring Print into an intermediary ast27.Call object, it might
+        # be more efficient to just directly create a mypy.node.CallExpr object.
         call = ast27.Call(
             ast27.Name("print", ast27.Load(), lineno=n.lineno, col_offset=-1),
             n.values, keywords, None, None,
@@ -528,6 +546,7 @@ class ASTConverter(ast27.NodeTransformer):
         if new_locals is None:
             new_locals = ast27.Name("None", ast27.Load(), lineno=-1, col_offset=-1)
 
+        # TODO: Comment in visit_Print also applies here
         return self.visit(ast27.Expr(
             ast27.Call(
                 ast27.Name("exec", ast27.Load(), lineno=n.lineno, col_offset=-1),
@@ -538,6 +557,7 @@ class ASTConverter(ast27.NodeTransformer):
 
     @with_line
     def visit_Repr(self, n: ast27.Repr) -> Node:
+        # TODO: Comment in visit_Print also applies here
         return self.visit(ast27.Call(
             ast27.Name("repr", ast27.Load(), lineno=n.lineno, col_offset=-1),
             n.value,
