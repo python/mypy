@@ -407,6 +407,8 @@ class Argument(Node):
 
 class FuncItem(FuncBase):
     arguments = []  # type: List[Argument]
+    arg_names = []  # type: List[str]
+    arg_kinds = []  # type: List[int]
     # Minimum number of arguments
     min_args = 0
     # Maximum number of positional arguments, -1 if no explicit limit (*args not included)
@@ -430,8 +432,9 @@ class FuncItem(FuncBase):
     def __init__(self, arguments: List[Argument], body: 'Block',
                  typ: 'mypy.types.FunctionLike' = None) -> None:
         self.arguments = arguments
-        arg_kinds = [arg.kind for arg in self.arguments]
-        self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
+        self.arg_names = [arg.variable.name() for arg in self.arguments]
+        self.arg_kinds = [arg.kind for arg in self.arguments]
+        self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
         self.expanded = []
@@ -488,10 +491,17 @@ class FuncDef(FuncItem, Statement):
         return self.info is not None and self._name == '__init__'
 
     def serialize(self) -> JsonDict:
+        # We're deliberating omitting arguments and storing only arg_names and
+        # arg_kinds for space-saving reasons (arguments is not used in later
+        # stages of mypy).
+        # TODO: After a FuncDef is deserialized, the only time we use `arg_names`
+        # and `arg_kinds` is when `type` is None and we need to infer a type. Can
+        # we store the inferred type ahead of time?
         return {'.class': 'FuncDef',
                 'name': self._name,
                 'fullname': self._fullname,
-                'arguments': [a.serialize() for a in self.arguments],
+                'arg_names': self.arg_names,
+                'arg_kinds': self.arg_kinds,
                 'type': None if self.type is None else self.type.serialize(),
                 'flags': get_flags(self, FuncDef.FLAGS),
                 # TODO: Do we need expanded, original_def?
@@ -502,13 +512,19 @@ class FuncDef(FuncItem, Statement):
         assert data['.class'] == 'FuncDef'
         body = Block([])
         ret = FuncDef(data['name'],
-                      [Argument.deserialize(a) for a in data['arguments']],
+                      [],
                       body,
                       (None if data['type'] is None
                        else mypy.types.FunctionLike.deserialize(data['type'])))
         ret._fullname = data['fullname']
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
+        ret.arg_names = data['arg_names']
+        ret.arg_kinds = data['arg_kinds']
+        # Mark these as 'None' so that future uses will trigger an error
+        ret.arguments = None
+        ret.max_pos = None
+        ret.min_args = None
         return ret
 
 
@@ -2197,14 +2213,11 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         name = func.name()
         if name:
             name = '"{}"'.format(name)
-        names = []  # type: List[str]
-        for arg in fdef.arguments:
-            names.append(arg.variable.name())
 
         return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arguments),
-            [arg.kind for arg in fdef.arguments],
-            names,
+            [mypy.types.AnyType()] * len(fdef.arg_names),
+            fdef.arg_kinds,
+            fdef.arg_names,
             mypy.types.AnyType(),
             fallback,
             name,
