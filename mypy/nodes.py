@@ -387,11 +387,11 @@ class Argument(Node):
             self.initialization_statement.lvalues[0].set_line(self.line)
 
     def serialize(self) -> JsonDict:
+        # Note: we are deliberately not saving the type annotation since
+        # it is not used by later stages of mypy.
         data = {'.class': 'Argument',
                 'kind': self.kind,
                 'variable': self.variable.serialize(),
-                'type_annotation': (None if self.type_annotation is None
-                                    else self.type_annotation.serialize()),
                 }  # type: JsonDict
         # TODO: initializer?
         return data
@@ -400,14 +400,15 @@ class Argument(Node):
     def deserialize(cls, data: JsonDict) -> 'Argument':
         assert data['.class'] == 'Argument'
         return Argument(Var.deserialize(data['variable']),
-                        (None if data.get('type_annotation') is None
-                         else mypy.types.Type.deserialize(data['type_annotation'])),
+                        None,
                         None,  # TODO: initializer?
                         kind=data['kind'])
 
 
 class FuncItem(FuncBase):
     arguments = []  # type: List[Argument]
+    arg_names = []  # type: List[str]
+    arg_kinds = []  # type: List[int]
     # Minimum number of arguments
     min_args = 0
     # Maximum number of positional arguments, -1 if no explicit limit (*args not included)
@@ -423,11 +424,17 @@ class FuncItem(FuncBase):
     # Variants of function with type variables with values expanded
     expanded = None  # type: List[FuncItem]
 
+    FLAGS = [
+        'is_overload', 'is_generator', 'is_coroutine', 'is_awaitable_coroutine',
+        'is_static', 'is_class',
+    ]
+
     def __init__(self, arguments: List[Argument], body: 'Block',
                  typ: 'mypy.types.FunctionLike' = None) -> None:
         self.arguments = arguments
-        arg_kinds = [arg.kind for arg in self.arguments]
-        self.max_pos = arg_kinds.count(ARG_POS) + arg_kinds.count(ARG_OPT)
+        self.arg_names = [arg.variable.name() for arg in self.arguments]
+        self.arg_kinds = [arg.kind for arg in self.arguments]
+        self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
         self.expanded = []
@@ -462,6 +469,10 @@ class FuncDef(FuncItem, Statement):
     is_property = False
     original_def = None  # type: Union[None, FuncDef, Var]  # Original conditional definition
 
+    FLAGS = FuncItem.FLAGS + [
+        'is_decorated', 'is_conditional', 'is_abstract', 'is_property'
+    ]
+
     def __init__(self,
                  name: str,              # Function name
                  arguments: List[Argument],
@@ -480,20 +491,19 @@ class FuncDef(FuncItem, Statement):
         return self.info is not None and self._name == '__init__'
 
     def serialize(self) -> JsonDict:
+        # We're deliberating omitting arguments and storing only arg_names and
+        # arg_kinds for space-saving reasons (arguments is not used in later
+        # stages of mypy).
+        # TODO: After a FuncDef is deserialized, the only time we use `arg_names`
+        # and `arg_kinds` is when `type` is None and we need to infer a type. Can
+        # we store the inferred type ahead of time?
         return {'.class': 'FuncDef',
                 'name': self._name,
                 'fullname': self._fullname,
-                'arguments': [a.serialize() for a in self.arguments],
+                'arg_names': self.arg_names,
+                'arg_kinds': self.arg_kinds,
                 'type': None if self.type is None else self.type.serialize(),
-                'is_property': self.is_property,
-                'is_overload': self.is_overload,
-                'is_generator': self.is_generator,
-                'is_coroutine': self.is_coroutine,
-                'is_static': self.is_static,
-                'is_class': self.is_class,
-                'is_decorated': self.is_decorated,
-                'is_conditional': self.is_conditional,
-                'is_abstract': self.is_abstract,
+                'flags': get_flags(self, FuncDef.FLAGS),
                 # TODO: Do we need expanded, original_def?
                 }
 
@@ -502,21 +512,19 @@ class FuncDef(FuncItem, Statement):
         assert data['.class'] == 'FuncDef'
         body = Block([])
         ret = FuncDef(data['name'],
-                      [Argument.deserialize(a) for a in data['arguments']],
+                      [],
                       body,
                       (None if data['type'] is None
                        else mypy.types.FunctionLike.deserialize(data['type'])))
         ret._fullname = data['fullname']
-        ret.is_property = data['is_property']
-        ret.is_overload = data['is_overload']
-        ret.is_generator = data['is_generator']
-        ret.is_coroutine = data['is_coroutine']
-        ret.is_static = data['is_static']
-        ret.is_class = data['is_class']
-        ret.is_decorated = data['is_decorated']
-        ret.is_conditional = data['is_conditional']
-        ret.is_abstract = data['is_abstract']
+        set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
+        ret.arg_names = data['arg_names']
+        ret.arg_kinds = data['arg_kinds']
+        # Mark these as 'None' so that future uses will trigger an error
+        ret.arguments = None
+        ret.max_pos = None
+        ret.min_args = None
         return ret
 
 
@@ -587,6 +595,11 @@ class Var(SymbolNode, Statement):
     # parse for some reason (eg a silenced module)
     is_suppressed_import = False
 
+    FLAGS = [
+        'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
+        'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import'
+    ]
+
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name
         self.type = type
@@ -610,13 +623,7 @@ class Var(SymbolNode, Statement):
                 'name': self._name,
                 'fullname': self._fullname,
                 'type': None if self.type is None else self.type.serialize(),
-                'is_self': self.is_self,
-                'is_initialized_in_class': self.is_initialized_in_class,
-                'is_staticmethod': self.is_staticmethod,
-                'is_classmethod': self.is_classmethod,
-                'is_property': self.is_property,
-                'is_settable_property': self.is_settable_property,
-                'is_suppressed_import': self.is_suppressed_import,
+                'flags': get_flags(self, Var.FLAGS),
                 }  # type: JsonDict
         return data
 
@@ -627,13 +634,7 @@ class Var(SymbolNode, Statement):
         type = None if data['type'] is None else mypy.types.Type.deserialize(data['type'])
         v = Var(name, type)
         v._fullname = data['fullname']
-        v.is_self = data['is_self']
-        v.is_initialized_in_class = data['is_initialized_in_class']
-        v.is_staticmethod = data['is_staticmethod']
-        v.is_classmethod = data['is_classmethod']
-        v.is_property = data['is_property']
-        v.is_settable_property = data['is_settable_property']
-        v.is_suppressed_import = data['is_suppressed_import']
+        set_flags(v, data['flags'])
         return v
 
 
@@ -1837,6 +1838,11 @@ class TypeInfo(SymbolNode):
     # Alternative to fullname() for 'anonymous' classes.
     alt_fullname = None  # type: Optional[str]
 
+    FLAGS = [
+        'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
+        'is_newtype', 'is_dummy'
+    ]
+
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
         self.names = names
@@ -2000,16 +2006,12 @@ class TypeInfo(SymbolNode):
                 'alt_fullname': self.alt_fullname,
                 'names': self.names.serialize(self.alt_fullname or self.fullname()),
                 'defn': self.defn.serialize(),
-                'is_abstract': self.is_abstract,
                 'abstract_attributes': self.abstract_attributes,
-                'is_enum': self.is_enum,
-                'fallback_to_any': self.fallback_to_any,
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
-                'is_named_tuple': self.is_named_tuple,
-                'is_newtype': self.is_newtype,
+                'flags': get_flags(self, TypeInfo.FLAGS),
                 }
         return data
 
@@ -2022,18 +2024,14 @@ class TypeInfo(SymbolNode):
         ti._fullname = data['fullname']
         ti.alt_fullname = data['alt_fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
-        ti.is_abstract = data['is_abstract']
         ti.abstract_attributes = data['abstract_attributes']
-        ti.is_enum = data['is_enum']
-        ti.fallback_to_any = data['fallback_to_any']
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
                        else mypy.types.Type.deserialize(data['_promote']))
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
-        ti.is_named_tuple = data['is_named_tuple']
-        ti.is_newtype = data['is_newtype']
+        set_flags(ti, data['flags'])
         return ti
 
 
@@ -2215,14 +2213,11 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         name = func.name()
         if name:
             name = '"{}"'.format(name)
-        names = []  # type: List[str]
-        for arg in fdef.arguments:
-            names.append(arg.variable.name())
 
         return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arguments),
-            [arg.kind for arg in fdef.arguments],
-            names,
+            [mypy.types.AnyType()] * len(fdef.arg_names),
+            fdef.arg_kinds,
+            fdef.arg_names,
             mypy.types.AnyType(),
             fallback,
             name,
@@ -2292,3 +2287,12 @@ def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
         for s in seqs:
             if s[0] is head:
                 del s[0]
+
+
+def get_flags(node: Node, names: List[str]) -> List[str]:
+    return [name for name in names if getattr(node, name)]
+
+
+def set_flags(node: Node, flags: List[str]) -> None:
+    for name in flags:
+        setattr(node, name, True)
