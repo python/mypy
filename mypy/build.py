@@ -1630,15 +1630,14 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
         else:
             fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
-        if len(scc) == 1:
-            manager.log("Processing SCC singleton (%s) as %s" % (" ".join(scc), fresh_msg))
-        else:
-            manager.log("Processing SCC of size %d (%s) as %s" %
-                        (len(scc), " ".join(scc), fresh_msg))
+
+        scc_str = " ".join(scc)
         if fresh:
+            manager.log("Queuing fresh SCC (%s)" % scc_str)
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
+                manager.log("Processing the last {} queued SCCs".format(len(fresh_scc_queue)))
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.
                 #
@@ -1648,7 +1647,15 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 for prev_scc in fresh_scc_queue:
                     process_fresh_scc(graph, prev_scc)
                 fresh_scc_queue = []
+            size = len(scc)
+            if size == 1:
+                manager.log("Processing SCC singleton (%s) as %s" % (scc_str, fresh_msg))
+            else:
+                manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc)
+
+    sccs_left = len(fresh_scc_queue)
+    manager.log("{} fresh SCCs left in queue (and will remain unprocessed)".format(sccs_left))
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
