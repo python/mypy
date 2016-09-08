@@ -870,7 +870,7 @@ You may also optionally choose to create a subclass of ``Awaitable`` instead:
                yield from asyncio.sleep(0.1)
            return "Blastoff!"
 
-   def countdown_3(tag: str, count: int) -> Awaitable[None]:
+   def countdown_3(tag: str, count: int) -> Awaitable[str]:
        return MyAwaitable(tag, count)
 
    loop = asyncio.get_event_loop()
