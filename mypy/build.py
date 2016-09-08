@@ -1550,6 +1550,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     sccs = sorted_components(graph)
     manager.log("Found %d SCCs; largest has %d nodes" %
                 (len(sccs), max(len(scc) for scc in sccs)))
+
+    fresh_scc_queue = []  # type: List[List[str]]
+
     # We're processing SCCs from leaves (those without further
     # dependencies) to roots (those from which everything else can be
     # reached).
@@ -1633,8 +1636,18 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             manager.log("Processing SCC of size %d (%s) as %s" %
                         (len(scc), " ".join(scc), fresh_msg))
         if fresh:
-            process_fresh_scc(graph, scc)
+            fresh_scc_queue.append(scc)
         else:
+            if len(fresh_scc_queue) > 0:
+                # Defer processing fresh SCCs until we actually run into a stale SCC
+                # and need the earlier modules to be loaded.
+                #
+                # Note that `process_graph` may end with us not having processed every
+                # single fresh SCC. This is intentional -- we don't need those modules
+                # loaded if there are no more stale SCCs to be rechecked.
+                for prev_scc in fresh_scc_queue:
+                    process_fresh_scc(graph, prev_scc)
+                fresh_scc_queue = []
             process_stale_scc(graph, scc)
 
 
