@@ -154,6 +154,8 @@ def process_options(args: List[str],
                         " or with incomplete type annotations")
     parser.add_argument('--check-untyped-defs', action='store_true',
                         help="type check the interior of functions without type annotations")
+    parser.add_argument('--disallow-subclassing-any', action='store_true',
+                        help="disallow subclassing values of type 'Any' when defining classes")
     parser.add_argument('--warn-incomplete-stub', action='store_true',
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")

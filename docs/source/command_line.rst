@@ -11,7 +11,7 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM]
               [--py2] [-s] [--silent] [--almost-silent]
               [--disallow-untyped-calls] [--disallow-untyped-defs]
-              [--check-untyped-defs]
+              [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--warn-unused-ignores] [--fast-parser] [-i] [--cache-dir DIR]
               [--strict-optional] [-f] [--pdb] [--use-python-path] [--stats]
@@ -250,6 +250,14 @@ Here are some more useful flags:
 
 - ``--disallow-untyped-calls`` reports an error whenever a function
   with type annotations calls a function defined without annotations.
+
+- ``--disallow-subclassing-any`` reports an error whenever a class
+  inherits a value of type ``Any``. This often occurs when inheriting
+  a class that was imported from a module not typechecked by mypy while
+  using ``--silent-imports``. Since the module is silenced, the imported
+  class is given a type of ``Any``. By default, mypy will assume the
+  subclass correctly inherited the base class even though that may not
+  actually be the case. This flag makes mypy raise an error instead.
 
 - ``--incremental`` is an experimental option that enables incremental
   type checking. When enabled, mypy caches results from previous runs
