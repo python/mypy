@@ -797,7 +797,7 @@ decorator to convert a generator into a coroutine.
 Note that we set the ``YieldType`` of the generator to be ``Any`` in the
 following example. This is because the exact yield type is an implementation
 detail of the coroutine runner (e.g. the ``asyncio`` event loop) and your
-couroutine shouldn't have to know or care about what precisely that type is.
+coroutine shouldn't have to know or care about what precisely that type is.
 
 .. code-block:: python
 
