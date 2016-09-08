@@ -1644,6 +1644,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # Note that `process_graph` may end with us not having processed every
                 # single fresh SCC. This is intentional -- we don't need those modules
                 # loaded if there are no more stale SCCs to be rechecked.
+                #
+                # TODO: see if it's possible to determine if we need to process only a
+                # _subset_ of the past SCCs instead of having to process them all.
                 for prev_scc in fresh_scc_queue:
                     process_fresh_scc(graph, prev_scc)
                 fresh_scc_queue = []
