@@ -70,18 +70,18 @@ class ValidationMessage:
         self.identifier = None
         self.description = None
 
-        
+
 # Any ValidationMessage that isn't a ValidationError
 class ValidationRemark(ValidationMessage):
     pass
 
-    
+
 # Any error produced by the validator. Having a common (abstract) base class allows the use of
 # polymorphic, yet typed, error lists.
 class ValidationError(ValidationMessage):
     pass
 
-    
+
 # Any typing inconsistency in the code that is being validated
 class StaticTypingError(ValidationError):
     def __init__(self, error_info: errors.ErrorInfo) -> None:
@@ -140,17 +140,17 @@ class CompilationError(ValidationError):
 
         # END temporary hack.
 
-        
+
 # For future use.
 class SyntaxError(CompilationError):
     pass
 
-    
+
 # For future use.
 class InternalError(CompilationError):
     pass
 
-    
+
 # Private class, only a singleton instance is exported.
 class _TypeValidator:
     def __init__(self) -> None:
