@@ -32,6 +32,9 @@ class Options:
         # Type check unannotated functions
         self.check_untyped_defs = False
 
+        # Disallow subclassing values of type 'Any'
+        self.disallow_subclassing_any = False
+
         # Also check typeshed for missing annotations
         self.warn_incomplete_stub = False
 

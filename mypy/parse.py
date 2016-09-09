@@ -82,15 +82,23 @@ def parse(source: Union[str, bytes],
 
     The python_version (major, minor) option determines the Python syntax variant.
     """
-    if options.fast_parser:
-        import mypy.fastparse
-        return mypy.fastparse.parse(source,
-                                    fnam=fnam,
-                                    errors=errors,
-                                    pyversion=options.python_version,
-                                    custom_typing_module=options.custom_typing_module)
-
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
+    if options.fast_parser:
+        if options.python_version[0] >= 3 or is_stub_file:
+            import mypy.fastparse
+            return mypy.fastparse.parse(source,
+                                        fnam=fnam,
+                                        errors=errors,
+                                        pyversion=options.python_version,
+                                        custom_typing_module=options.custom_typing_module)
+        else:
+            import mypy.fastparse2
+            return mypy.fastparse2.parse(source,
+                                         fnam=fnam,
+                                         errors=errors,
+                                         pyversion=options.python_version,
+                                         custom_typing_module=options.custom_typing_module)
+
     parser = Parser(fnam,
                     errors,
                     options.python_version,

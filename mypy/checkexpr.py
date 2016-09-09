@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only
+    true_only, false_only, is_named_instance
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -670,7 +670,7 @@ class ExpressionChecker:
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
             elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
-                  actual_kinds[formal_to_actual[i][0]] != nodes.ARG_NAMED):
+                  actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
                     messages.too_many_positional_arguments(callee, context)
@@ -1408,11 +1408,26 @@ class ExpressionChecker:
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
-        ctx = None  # type: TupleType
         # Try to determine type context for type inference.
-        if isinstance(self.chk.type_context[-1], TupleType):
-            t = self.chk.type_context[-1]
-            ctx = t
+        type_context = self.chk.type_context[-1]
+        type_context_items = None
+        if isinstance(type_context, UnionType):
+            tuples_in_context = [t for t in type_context.items
+                                 if (isinstance(t, TupleType) and len(t.items) == len(e.items)) or
+                                 is_named_instance(t, 'builtins.tuple')]
+            if len(tuples_in_context) == 1:
+                type_context = tuples_in_context[0]
+            else:
+                # There are either no relevant tuples in the Union, or there is
+                # more than one.  Either way, we can't decide on a context.
+                pass
+
+        if isinstance(type_context, TupleType):
+            type_context_items = type_context.items
+        elif is_named_instance(type_context, 'builtins.tuple'):
+            assert isinstance(type_context, Instance)
+            if type_context.args:
+                type_context_items = [type_context.args[0]] * len(e.items)
         # NOTE: it's possible for the context to have a different
         # number of items than e.  In that case we use those context
         # items that match a position in e, and we'll worry about type
@@ -1421,7 +1436,7 @@ class ExpressionChecker:
         # Infer item types.  Give up if there's a star expression
         # that's not a Tuple.
         items = []  # type: List[Type]
-        j = 0  # Index into ctx.items; irrelevant if ctx is None.
+        j = 0  # Index into type_context_items; irrelevant if type_context_items is none
         for i in range(len(e.items)):
             item = e.items[i]
             tt = None  # type: Type
@@ -1441,10 +1456,10 @@ class ExpressionChecker:
                     # Treat the whole thing as a variable-length tuple.
                     return self.check_lst_expr(e.items, 'builtins.tuple', '<tuple>', e)
             else:
-                if not ctx or j >= len(ctx.items):
+                if not type_context_items or j >= len(type_context_items):
                     tt = self.accept(item)
                 else:
-                    tt = self.accept(item, ctx.items[j])
+                    tt = self.accept(item, type_context_items[j])
                     j += 1
                 self.check_usable_type(tt, e)
                 items.append(tt)
