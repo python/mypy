@@ -101,8 +101,8 @@ class StaticTypingError(ValidationError):
 class CompilationError(ValidationError):
     def __init__(self, compile_error: errors.CompileError) -> None:
         ValidationError.__init__(self)      # Make sure attributes exist, init explicitly below
-        
-        self._compile_error = compile_error                               # Private
+
+        self._compile_error = compile_error                                 # Private
         self._static_typing_errors = []  # type: List[StaticTypingError]    # Private
 
         # BEGIN tempory hack.
