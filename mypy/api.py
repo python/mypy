@@ -85,8 +85,7 @@ class ValidationError(ValidationMessage):
 # Any typing inconsistency in the code that is being validated
 class StaticTypingError(ValidationError):
     def __init__(self, error_info: errors.ErrorInfo) -> None:
-        ValidationError.__init__(self)      # Make sure all attributes are at least there,
-                                            # but init them explicitly below
+        ValidationError.__init__(self)		# Make attributes exist, init explicitly below
         self._error_info = error_info       # Private
 
         self.description = self._error_info.message
@@ -101,10 +100,10 @@ class StaticTypingError(ValidationError):
 # Any other error occuring during validation that isn't a StaticTypingError
 class CompilationError(ValidationError):
     def __init__(self, compile_error: errors.CompileError) -> None:
-        ValidationError.__init__(self)     # Make sure all attributes are at least there,
-                                           # but init them explicitly below
+        ValidationError.__init__(self)		# Make sure attributes exist, init explicitly below
+											# but init them explicitly below
         self._compile_error = compile_error                               # Private
-        self._static_typing_errors =[] # type: List[StaticTypingError]    # Private
+        self._static_typing_errors = []  # type: List[StaticTypingError]    # Private
 
         # BEGIN tempory hack.
 
@@ -114,7 +113,7 @@ class CompilationError(ValidationError):
         # code becoming dependent on this vulnerable part of the design.
         #
         # The long term solution is probably a thorough revision of the raise_error / CompileError
-        # mechanism, but currently the focus is on getting the external view of this API right
+        # mechanism, but currently the focus is on getting the external view of this API right.
         # Behind such a stable facade all kinds of future reconstruction activities may be
         # endeavoured, limiting their impact on hosts.
 
@@ -218,7 +217,7 @@ class _TypeValidator:
         old_error = None  # type: StaticTypingError
         for index, error in enumerate(sorted(
             static_typing_errors,
-            key = lambda error:(error.file_name, error.line_nr, error.description)
+            key = lambda error: (error.file_name, error.line_nr, error.description)
         )):
             if(index and(not(
                 error._error_info.only_once and
