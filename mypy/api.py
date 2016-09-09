@@ -121,7 +121,7 @@ class CompilationError (ValidationError):
                         function_or_member = None,
                         line = line_nr,
                         severity = severity,
-                        description = description,
+                        message = description,
                         blocker = None,
                         only_once = None
                     )))
