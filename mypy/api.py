@@ -119,7 +119,7 @@ class CompilationError (ValidationError):
                         file = file_name,
                         typ = None,
                         function_or_member = None,
-                        line = line_nr,
+                        line = int (line_nr),
                         severity = severity,
                         message = description,
                         blocker = None,
