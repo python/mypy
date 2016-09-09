@@ -85,7 +85,7 @@ class ValidationError(ValidationMessage):
 # Any typing inconsistency in the code that is being validated
 class StaticTypingError(ValidationError):
     def __init__(self, error_info: errors.ErrorInfo) -> None:
-        ValidationError.__init__(self)      # Make attributes exist, init explicitly below
+        ValidationError.__init__(self)      # Make sure attributes exist, init explicitly below
         self._error_info = error_info       # Private
 
         self.description = self._error_info.message
@@ -101,7 +101,7 @@ class StaticTypingError(ValidationError):
 class CompilationError(ValidationError):
     def __init__(self, compile_error: errors.CompileError) -> None:
         ValidationError.__init__(self)      # Make sure attributes exist, init explicitly below
-                                            # but init them explicitly below
+        
         self._compile_error = compile_error                               # Private
         self._static_typing_errors = []  # type: List[StaticTypingError]    # Private
 
