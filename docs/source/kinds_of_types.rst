@@ -852,7 +852,7 @@ will be a value of type ``Awaitable[T]``.
               yield
           return "placeholder"
 
-You may also optionally choose to create a subclass of ``Awaitable`` instead:
+You may also choose to create a subclass of ``Awaitable`` instead:
 
 .. code-block:: python
 
