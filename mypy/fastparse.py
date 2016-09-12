@@ -14,11 +14,9 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
-)
+    AwaitExpr, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, Statement)
 from mypy.types import (
-    Type, CallableType, FunctionLike, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
 )
 from mypy import defaults
 from mypy import experiments
@@ -128,6 +126,9 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_list(self, l: Sequence[ast35.AST]) -> List[Node]:
         return [self.visit(e) for e in l]
 
+    def visit_statement_list(self, l: Sequence[ast35.AST]) -> List[Statement]:
+        return [self.visit(e) for e in l]
+
     op_map = {
         ast35.Add: '+',
         ast35.Sub: '-',
@@ -176,12 +177,13 @@ class ASTConverter(ast35.NodeTransformer):
     def as_block(self, stmts: List[ast35.stmt], lineno: int) -> Block:
         b = None
         if stmts:
-            b = Block(self.fix_function_overloads(self.visit_list(stmts)))
+            stmt_list = self.visit_statement_list(stmts)
+            b = Block(self.fix_function_overloads(stmt_list))
             b.set_line(lineno)
         return b
 
-    def fix_function_overloads(self, stmts: List[Node]) -> List[Node]:
-        ret = []  # type: List[Node]
+    def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
+        ret = []  # type: List[Statement]
         current_overload = []
         current_overload_name = None
         # mypy doesn't actually check that the decorator is literally @overload
@@ -225,7 +227,7 @@ class ASTConverter(ast35.NodeTransformer):
         return id
 
     def visit_Module(self, mod: ast35.Module) -> Node:
-        body = self.fix_function_overloads(self.visit_list(mod.body))
+        body = self.fix_function_overloads(self.visit_statement_list(mod.body))
 
         return MypyFile(body,
                         self.imports,

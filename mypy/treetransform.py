@@ -19,9 +19,9 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, Statement
 )
-from mypy.types import Type, FunctionLike, Instance
+from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
 from mypy.visitor import NodeVisitor
 
@@ -57,7 +57,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_mypy_file(self, node: MypyFile) -> Node:
         # NOTE: The 'names' and 'imports' instance variables will be empty!
-        new = MypyFile(self.nodes(node.defs), [], node.is_bom,
+        new = MypyFile(self.statements(node.defs), [], node.is_bom,
                        ignored_lines=set(node.ignored_lines))
         new._name = node._name
         new._fullname = node._fullname
@@ -200,7 +200,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return NonlocalDecl(node.names[:])
 
     def visit_block(self, node: Block) -> Block:
-        return Block(self.nodes(node.body))
+        return Block(self.statements(node.body))
 
     def visit_decorator(self, node: Decorator) -> Decorator:
         # Note that a Decorator must be transformed to a Decorator.
@@ -523,6 +523,9 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def nodes(self, nodes: List[Node]) -> List[Node]:
         return [self.node(node) for node in nodes]
+
+    def statements(self, nodes: List[Statement]) -> List[Statement]:
+        return [cast(Statement, self.node(node)) for node in nodes]
 
     def optional_nodes(self, nodes: List[Node]) -> List[Node]:
         return [self.optional_node(node) for node in nodes]

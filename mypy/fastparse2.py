@@ -27,14 +27,12 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, FuncExpr, ComparisonExpr,
-    StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, Expression,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument, Expression,
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, Statement
 )
 from mypy.types import (
-    Type, CallableType, FunctionLike, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+    Type, CallableType, AnyType, UnboundType,
 )
 from mypy import defaults
 from mypy import experiments
@@ -44,7 +42,6 @@ from mypy.fastparse import TypeConverter
 try:
     from typed_ast import ast27
     from typed_ast import ast35
-    from typed_ast import conversions
 except ImportError:
     if sys.version_info.minor > 2:
         print('You must install the typed_ast package before you can run mypy'
@@ -147,6 +144,9 @@ class ASTConverter(ast27.NodeTransformer):
     def visit_list(self, l: Sequence[ast27.AST]) -> List[Node]:
         return [self.visit(e) for e in l]
 
+    def visit_statement_list(self, l: Sequence[ast27.AST]) -> List[Statement]:
+        return [self.visit(e) for e in l]
+
     op_map = {
         ast27.Add: '+',
         ast27.Sub: '-',
@@ -194,12 +194,12 @@ class ASTConverter(ast27.NodeTransformer):
     def as_block(self, stmts: List[ast27.stmt], lineno: int) -> Block:
         b = None
         if stmts:
-            b = Block(self.fix_function_overloads(self.visit_list(stmts)))
+            b = Block(self.fix_function_overloads(self.visit_statement_list(stmts)))
             b.set_line(lineno)
         return b
 
-    def fix_function_overloads(self, stmts: List[Node]) -> List[Node]:
-        ret = []  # type: List[Node]
+    def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
+        ret = []  # type: List[Statement]
         current_overload = []
         current_overload_name = None
         # mypy doesn't actually check that the decorator is literally @overload
@@ -243,7 +243,7 @@ class ASTConverter(ast27.NodeTransformer):
         return id
 
     def visit_Module(self, mod: ast27.Module) -> Node:
-        body = self.fix_function_overloads(self.visit_list(mod.body))
+        body = self.fix_function_overloads(self.visit_statement_list(mod.body))
 
         return MypyFile(body,
                         self.imports,
