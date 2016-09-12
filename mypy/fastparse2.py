@@ -685,7 +685,8 @@ class ASTConverter(ast27.NodeTransformer):
     # Dict(expr* keys, expr* values)
     @with_line
     def visit_Dict(self, n: ast27.Dict) -> DictExpr:
-        return DictExpr(list(zip(self.visit_list_expression(n.keys), self.visit_list_expression(n.values))))
+        return DictExpr(list(zip(self.visit_list_expression(n.keys),
+                                 self.visit_list_expression(n.values))))
 
     # Set(expr* elts)
     @with_line

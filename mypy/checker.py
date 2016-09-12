@@ -1039,7 +1039,8 @@ class TypeChecker(NodeVisitor[Type]):
             for lv in s.lvalues[:-1]:
                 self.check_assignment(lv, rvalue, s.type is None)
 
-    def check_assignment(self, lvalue: Expression, rvalue: Expression, infer_lvalue_type: bool = True) -> None:
+    def check_assignment(self, lvalue: Expression, rvalue: Expression,
+                         infer_lvalue_type: bool = True) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, lvalue,

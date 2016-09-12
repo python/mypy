@@ -448,7 +448,9 @@ class TransformVisitor(NodeVisitor[Node]):
         generator.set_line(node.generator.line)
         return SetComprehension(generator)
 
-    def visit_dictionary_comprehension(self, node: DictionaryComprehension) -> DictionaryComprehension:
+    def visit_dictionary_comprehension(self,
+                                       node: DictionaryComprehension
+                                       ) -> DictionaryComprehension:
         return DictionaryComprehension(self.node(node.key), self.node(node.value),
                              [self.node(index) for index in node.indices],
                              [self.node(s) for s in node.sequences],
