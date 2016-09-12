@@ -4,7 +4,7 @@ import os
 from abc import abstractmethod
 
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, NewType
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
 )
 
 from mypy.lex import Token
