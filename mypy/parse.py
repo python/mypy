@@ -26,8 +26,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
-    BackquoteExpr, Statement
-)
+    BackquoteExpr, Statement)
 from mypy import defaults
 from mypy import nodes
 from mypy.errors import Errors, CompileError
@@ -728,8 +727,7 @@ class Parser:
         arg_name = '__tuple_arg_{}'.format(index + 1)
         if self.pyversion[0] >= 3:
             self.fail('Tuples in argument lists only supported in Python 2 mode', line)
-        paren_arg = self.parse_parentheses()
-        self.verify_tuple_arg(paren_arg)
+        paren_arg = self.verify_tuple_arg(self.parse_parentheses())
         if isinstance(paren_arg, NameExpr):
             # This isn't a tuple. Revert to a normal argument.
             arg_name = paren_arg.name
@@ -749,14 +747,16 @@ class Parser:
         arg_names = self.find_tuple_arg_argument_names(paren_arg)
         return Argument(var, None, initializer, kind), decompose, arg_names
 
-    def verify_tuple_arg(self, paren_arg: Expression) -> None:
+    def verify_tuple_arg(self, paren_arg: Expression) -> Union[TupleExpr, NameExpr]:
+        if isinstance(paren_arg, NameExpr):
+            return paren_arg
         if isinstance(paren_arg, TupleExpr):
             if not paren_arg.items:
                 self.fail('Empty tuple not valid as an argument', paren_arg.line)
             for item in paren_arg.items:
                 self.verify_tuple_arg(item)
-        elif not isinstance(paren_arg, NameExpr):
-            self.fail('Invalid item in tuple argument', paren_arg.line)
+            return paren_arg
+        self.fail('Invalid item in tuple argument', paren_arg.line)
 
     def find_tuple_arg_argument_names(self, node: Expression) -> List[str]:
         result = []  # type: List[str]

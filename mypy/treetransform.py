@@ -3,7 +3,7 @@
 Subclass TransformVisitor to perform non-trivial transformations.
 """
 
-from typing import List, Dict, cast, TypeVar, Iterable
+from typing import List, Dict, cast, TypeVar, Iterable, Optional
 
 from mypy.nodes import (
     MypyFile, Import, Node, Expression, ImportAll, ImportFrom, FuncItem, FuncDef,
@@ -16,7 +16,7 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
-    ComparisonExpr, TempNode, StarExpr,
+    ComparisonExpr, TempNode, StarExpr, LvalueExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, Statement
@@ -58,9 +58,9 @@ class TransformVisitor(NodeVisitor[Node]):
         # transformed node).
         self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
 
-    def visit_mypy_file(self, node: MypyFile) -> Statement:
+    def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         # NOTE: The 'names' and 'imports' instance variables will be empty!
-        new = MypyFile(self.statements(node.defs), [], node.is_bom,
+        new = MypyFile(self.nodes(node.defs), [], node.is_bom,
                        ignored_lines=set(node.ignored_lines))
         new._name = node._name
         new._fullname = node._fullname
@@ -68,13 +68,13 @@ class TransformVisitor(NodeVisitor[Node]):
         new.names = SymbolTable()
         return new
 
-    def visit_import(self, node: Import) -> Statement:
+    def visit_import(self, node: Import) -> Import:
         return Import(node.ids[:])
 
-    def visit_import_from(self, node: ImportFrom) -> Statement:
+    def visit_import_from(self, node: ImportFrom) -> ImportFrom:
         return ImportFrom(node.id, node.relative, node.names[:])
 
-    def visit_import_all(self, node: ImportAll) -> Statement:
+    def visit_import_all(self, node: ImportAll) -> ImportAll:
         return ImportAll(node.id, node.relative)
 
     def copy_argument(self, argument: Argument) -> Argument:
@@ -146,7 +146,7 @@ class TransformVisitor(NodeVisitor[Node]):
         else:
             return new
 
-    def visit_func_expr(self, node: FuncExpr) -> Expression:
+    def visit_func_expr(self, node: FuncExpr) -> FuncExpr:
         new = FuncExpr([self.copy_argument(arg) for arg in node.arguments],
                        self.block(node.body),
                        cast(FunctionLike, self.optional_type(node.type)))
@@ -203,7 +203,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return NonlocalDecl(node.names[:])
 
     def visit_block(self, node: Block) -> Block:
-        return Block(self.statements(node.body))
+        return Block(self.nodes(node.body))
 
     def visit_decorator(self, node: Decorator) -> Decorator:
         # Note that a Decorator must be transformed to a Decorator.
@@ -239,7 +239,8 @@ class TransformVisitor(NodeVisitor[Node]):
         return self.duplicate_assignment(node)
 
     def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
-        new = AssignmentStmt(self.nodes(node.lvalues),
+        lvalues = cast(List[LvalueExpr], self.nodes(node.lvalues))
+        new = AssignmentStmt(lvalues,
                              self.node(node.rvalue),
                              self.optional_type(node.type))
         new.line = node.line
@@ -327,16 +328,16 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_unicode_expr(self, node: UnicodeExpr) -> UnicodeExpr:
         return UnicodeExpr(node.value)
 
-    def visit_float_expr(self, node: FloatExpr) -> Expression:
+    def visit_float_expr(self, node: FloatExpr) -> FloatExpr:
         return FloatExpr(node.value)
 
-    def visit_complex_expr(self, node: ComplexExpr) -> Expression:
+    def visit_complex_expr(self, node: ComplexExpr) -> ComplexExpr:
         return ComplexExpr(node.value)
 
-    def visit_ellipsis(self, node: EllipsisExpr) -> Expression:
+    def visit_ellipsis(self, node: EllipsisExpr) -> EllipsisExpr:
         return EllipsisExpr()
 
-    def visit_name_expr(self, node: NameExpr) -> Expression:
+    def visit_name_expr(self, node: NameExpr) -> NameExpr:
         return self.duplicate_name(node)
 
     def duplicate_name(self, node: NameExpr) -> NameExpr:
@@ -346,7 +347,7 @@ class TransformVisitor(NodeVisitor[Node]):
         self.copy_ref(new, node)
         return new
 
-    def visit_member_expr(self, node: MemberExpr) -> Expression:
+    def visit_member_expr(self, node: MemberExpr) -> MemberExpr:
         member = MemberExpr(self.node(node.expr),
                             node.name)
         if node.def_var:
@@ -375,7 +376,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_await_expr(self, node: AwaitExpr) -> AwaitExpr:
         return AwaitExpr(self.node(node.expr))
 
-    def visit_call_expr(self, node: CallExpr) -> Expression:
+    def visit_call_expr(self, node: CallExpr) -> CallExpr:
         return CallExpr(self.node(node.callee),
                         self.nodes(node.args),
                         node.arg_kinds[:],
@@ -396,7 +397,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return CastExpr(self.node(node.expr),
                         self.type(node.type))
 
-    def visit_reveal_type_expr(self, node: RevealTypeExpr) -> Expression:
+    def visit_reveal_type_expr(self, node: RevealTypeExpr) -> RevealTypeExpr:
         return RevealTypeExpr(self.node(node.expr))
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
@@ -457,7 +458,7 @@ class TransformVisitor(NodeVisitor[Node]):
                              [[self.node(cond) for cond in conditions]
                               for conditions in node.condlists])
 
-    def visit_generator_expr(self, node: GeneratorExpr) -> Expression:
+    def visit_generator_expr(self, node: GeneratorExpr) -> GeneratorExpr:
         return self.duplicate_generator(node)
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
@@ -509,7 +510,7 @@ class TransformVisitor(NodeVisitor[Node]):
     #
     # All the node helpers also propagate line numbers.
 
-    def optional_node(self, node: Expression) -> Expression:
+    def optional_node(self, node: T) -> Optional[T]:
         if node:
             return self.node(node)
         else:
@@ -529,10 +530,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def nodes(self, nodes: Iterable[T]) -> List[T]:
         return [self.node(node) for node in nodes]
 
-    def statements(self, nodes: List[Statement]) -> List[Statement]:
-        return [cast(Statement, self.node(node)) for node in nodes]
-
-    def optional_nodes(self, nodes: List[Expression]) -> List[Expression]:
+    def optional_nodes(self, nodes: List[T]) -> List[Optional[T]]:
         return [self.optional_node(node) for node in nodes]
 
     def blocks(self, blocks: List[Block]) -> List[Block]:
@@ -541,7 +539,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def names(self, names: List[NameExpr]) -> List[NameExpr]:
         return [self.duplicate_name(name) for name in names]
 
-    def optional_names(self, names: List[NameExpr]) -> List[NameExpr]:
+    def optional_names(self, names: List[NameExpr]) -> List[Optional[NameExpr]]:
         result = []  # type: List[NameExpr]
         for name in names:
             if name:
@@ -554,7 +552,7 @@ class TransformVisitor(NodeVisitor[Node]):
         # Override this method to transform types.
         return type
 
-    def optional_type(self, type: Type) -> Type:
+    def optional_type(self, type: Type) -> Optional[Type]:
         if type:
             return self.type(type)
         else:
@@ -563,7 +561,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def types(self, types: List[Type]) -> List[Type]:
         return [self.type(type) for type in types]
 
-    def optional_types(self, types: List[Type]) -> List[Type]:
+    def optional_types(self, types: List[Type]) -> List[Optional[Type]]:
         return [self.optional_type(type) for type in types]
 
 

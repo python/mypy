@@ -116,9 +116,6 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-# This is a placeholder for a future refactoring; see #1783.
-# For now it serves as (unchecked) documentation of what various
-# fields of Node subtypes are expected to contain.
 class Expression(Node):
     pass
 
@@ -292,7 +289,7 @@ class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
 
     # Type signature. This is usually CallableType or Overloaded, but it can be something else for
-    # decorated functions/
+    # decorated functions
     type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
@@ -353,7 +350,7 @@ class Argument(Node):
 
     variable = None  # type: Var
     type_annotation = None  # type: Optional[mypy.types.Type]
-    initializater = None  # type: Optional[Expression]
+    initializer = None  # type: Optional[Expression]
     kind = None  # type: int
     initialization_statement = None  # type: Optional[AssignmentStmt]
 
@@ -756,6 +753,9 @@ class ExpressionStmt(Statement):
         return visitor.visit_expression_stmt(self)
 
 
+LvalueExpr = Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']
+
+
 class AssignmentStmt(Statement):
     """Assignment statement
     The same node class is used for single assignment, multiple assignment
@@ -765,12 +765,12 @@ class AssignmentStmt(Statement):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
     """
 
-    lvalues = None  # type: List[Expression]
+    lvalues = None  # type: List[LvalueExpr]
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
 
-    def __init__(self, lvalues: List[Expression], rvalue: Expression,
+    def __init__(self, lvalues: List[LvalueExpr], rvalue: Expression,
                  type: 'mypy.types.Type' = None) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
@@ -1745,7 +1745,7 @@ class NewTypeExpr(Expression):
         return visitor.visit_newtype_expr(self)
 
 
-class AwaitExpr(Node):
+class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
     expr = None  # type: Expression
