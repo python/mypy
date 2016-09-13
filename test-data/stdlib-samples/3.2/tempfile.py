@@ -39,7 +39,7 @@ from random import Random as _Random
 from typing import (
     Any as _Any, Callable as _Callable, Iterator as _Iterator,
     List as _List, Tuple as _Tuple, Dict as _Dict, Iterable as _Iterable,
-    IO as _IO, cast as _cast,
+    IO as _IO, cast as _cast, Optional as _Optional, Type as _Type,
 )
 from types import TracebackType as _TracebackType
 
@@ -412,14 +412,14 @@ class _TemporaryFileWrapper:
 
         # Need to trap __exit__ as well to ensure the file gets
         # deleted when used in a with statement
-        def __exit__(self, exc: type, value: BaseException,
-                     tb: _TracebackType) -> bool:
+        def __exit__(self, exc: _Type[BaseException], value: BaseException,
+                     tb: _Optional[_TracebackType]) -> bool:
             result = self.file.__exit__(exc, value, tb)
             self.close()
             return result
     else:
-        def __exit__(self, exc: type, value: BaseException,
-                     tb: _TracebackType) -> bool:
+        def __exit__(self, exc: _Type[BaseException], value: BaseException,
+                     tb: _Optional[_TracebackType]) -> bool:
             self.file.__exit__(exc, value, tb)
 
 
