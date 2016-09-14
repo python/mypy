@@ -2369,9 +2369,7 @@ class TypeChecker(NodeVisitor[Type]):
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
-# NB: This should be `TypeMap = Optional[Dict[Expression, Type]]`!
-# But see https://github.com/python/mypy/issues/1637
-TypeMap = Dict[Expression, Type]
+TypeMap = Optional[Dict[Expression, Type]]
 
 
 def conditional_type_map(expr: Expression,
