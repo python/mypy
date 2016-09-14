@@ -235,7 +235,7 @@ class MessageBuilder:
                 for arg in itype.args:
                     a.append(strip_quotes(self.format(arg)))
                 s = ', '.join(a)
-                if len((base_str + s)) < 25:
+                if len((base_str + s)) < 250:
                     return '{}[{}]'.format(base_str, s)
                 else:
                     return '{}[...]'.format(base_str)
