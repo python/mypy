@@ -266,7 +266,7 @@ class MessageBuilder:
                 for t in typ.items:
                     items.append(strip_quotes(self.format(t)))
                 s = '"Union[{}]"'.format(', '.join(items))
-                if len(s) < 40:
+                if len(s) < 400:
                     return s
                 else:
                     return 'union type ({} items)'.format(len(items))
