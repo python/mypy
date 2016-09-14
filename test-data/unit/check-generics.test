@@ -577,7 +577,7 @@ from typing import Callable, TypeVar, Generic
 S = TypeVar('S')
 T = TypeVar('T')
 a = None # type: A[object, Callable[[], None]]
-f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "B"
+f(a) # E: Argument 1 to "f" has incompatible type A[object, Callable[[], None]]; expected "B"
 
 def f(a: 'B') -> None: pass
 class A(Generic[S, T]): pass
