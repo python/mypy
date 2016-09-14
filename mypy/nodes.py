@@ -753,9 +753,6 @@ class ExpressionStmt(Statement):
         return visitor.visit_expression_stmt(self)
 
 
-LvalueExpr = Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']
-
-
 class AssignmentStmt(Statement):
     """Assignment statement
     The same node class is used for single assignment, multiple assignment
@@ -765,12 +762,12 @@ class AssignmentStmt(Statement):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
     """
 
-    lvalues = None  # type: List[LvalueExpr]
+    lvalues = None  # type: List[Expression]
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
 
-    def __init__(self, lvalues: List[LvalueExpr], rvalue: Expression,
+    def __init__(self, lvalues: List[Expression], rvalue: Expression,
                  type: 'mypy.types.Type' = None) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue

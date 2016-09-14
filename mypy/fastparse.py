@@ -14,8 +14,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr, Expression,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, Statement,
-    LvalueExpr)
+    AwaitExpr, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, Statement)
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
 )
@@ -413,7 +412,7 @@ class ASTConverter(ast35.NodeTransformer):
         if n.type_comment:
             typ = parse_type_comment(n.type_comment, n.lineno)
 
-        lvalues = cast(List[LvalueExpr], self.visit_list_expression(n.targets))
+        lvalues = self.visit_list_expression(n.targets)
         return AssignmentStmt(lvalues,
                               self.visit(n.value),
                               type=typ)

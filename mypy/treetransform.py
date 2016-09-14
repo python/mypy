@@ -16,7 +16,7 @@ from mypy.nodes import (
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, FuncExpr, TypeApplication, PrintStmt,
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
-    ComparisonExpr, TempNode, StarExpr, LvalueExpr,
+    ComparisonExpr, TempNode, StarExpr,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, Statement
@@ -239,7 +239,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return self.duplicate_assignment(node)
 
     def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
-        lvalues = cast(List[LvalueExpr], self.nodes(node.lvalues))
+        lvalues = self.nodes(node.lvalues)
         new = AssignmentStmt(lvalues,
                              self.node(node.rvalue),
                              self.optional_type(node.type))
