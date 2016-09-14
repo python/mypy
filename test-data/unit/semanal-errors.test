@@ -224,7 +224,7 @@ from m import y
 [file m.py]
 x = 1
 [out]
-main:2: error: Module has no attribute 'y'
+main:2: error: Module 'm' has no attribute 'y'
 
 [case testMissingModule]
 import typing
@@ -1240,8 +1240,8 @@ main: note: In function "f":
 main:2: error: Name 'List' is not defined
 
 [case testImportObsoleteTypingFunction]
-from typing import Function # E: Module has no attribute 'Function' (it's now called 'typing.Callable')
-from _m import Function # E: Module has no attribute 'Function'
+from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
+from _m import Function # E: Module '_m' has no attribute 'Function'
 [file _m.py]
 [out]
 
@@ -1273,7 +1273,7 @@ with f() as 1: pass  # E: Invalid assignment target
 from typing import typevar
 t = typevar('t')
 [out]
-main:1: error: Module has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main:1: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 --' (this fixes syntax highlighting)
 
 [case testUseObsoleteNameForTypeVar2]
@@ -1286,7 +1286,7 @@ main:1: note: (Did you mean 'typing.TypeVar'?)
 import typing
 t = typing.typevar('t')
 [out]
-main:2: error: Module has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 --' (work around syntax highlighting :-/)
 
 [case testInvalidTypeAnnotation]
@@ -1314,16 +1314,16 @@ class A:
 
 [case testStubPackage]
 from m import x
-from m import y # E: Module has no attribute 'y'
+from m import y # E: Module 'm' has no attribute 'y'
 [file m/__init__.pyi]
 x = 1
 [out]
 
 [case testStubPackageSubModule]
 from m import x
-from m import y # E: Module has no attribute 'y'
+from m import y # E: Module 'm' has no attribute 'y'
 from m.m2 import y
-from m.m2 import z # E: Module has no attribute 'z'
+from m.m2 import z # E: Module 'm.m2' has no attribute 'z'
 [file m/__init__.pyi]
 x = 1
 [file m/m2.pyi]
