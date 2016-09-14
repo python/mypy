@@ -1001,7 +1001,7 @@ from typing import TypeVar
 a = TypeVar()       # E: Too few arguments for TypeVar()
 b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
 c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
-d = TypeVar('D')    # E: Unexpected TypeVar() argument value
+d = TypeVar('D')    # E: Argument 1 to TypeVar(...) does not match variable name
 e = TypeVar('e', int, str, x=1) # E: Unexpected argument to TypeVar(): x
 f = TypeVar('f', (int, str)) # E: Type expected
 g = TypeVar('g', x=(int, str)) # E: Unexpected argument to TypeVar(): x

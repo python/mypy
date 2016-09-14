@@ -1485,7 +1485,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
         if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected TypeVar() argument value", context)
+            self.fail("Argument 1 to TypeVar(...) does not match variable name", context)
             return False
         return True
 
