@@ -340,7 +340,7 @@ class OverloadedFuncDef(FuncBase, Statement):
         return res
 
 
-class Argument(Node):
+class Argument(Declaration):
     """A single argument in a FuncItem."""
 
     variable = None  # type: Var
