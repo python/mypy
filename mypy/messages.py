@@ -250,7 +250,7 @@ class MessageBuilder:
             for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
-            if len(s) < 40:
+            if len(s) < 400:
                 return s
             else:
                 return 'tuple(length {})'.format(len(items))
