@@ -533,14 +533,33 @@ D = TypeVar('D')
 E = TypeVar('E')
 F = TypeVar('F')
 G = TypeVar('G')
-class O: pass
-a = None # type: A[object, object, object, object, object, object]
+H = TypeVar('H')
+I = TypeVar('I')
+J = TypeVar('J')
+K = TypeVar('K')
+L = TypeVar('L')
+M = TypeVar('M')
+N = TypeVar('N')
+O = TypeVar('O')
+P = TypeVar('P')
+Q = TypeVar('Q')
+R = TypeVar('R')
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+W = TypeVar('W')
+X = TypeVar('X')
+Y = TypeVar('Y')
+Z = TypeVar('Z')
+class OO: pass
+a = None # type: A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]
 
-f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "O"
+f(a) # E: Argument 1 to "f" has incompatible type A[...]; expected "OO"
 
-def f(a: O) -> None:
+def f(a: OO) -> None:
     pass
-class A(Generic[B, C, D, E, F, G]): pass
+class A(Generic[B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z]): pass
 
 [case testErrorWithShorterGenericTypeName]
 from typing import TypeVar, Generic
