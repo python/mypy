@@ -116,17 +116,12 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-class Expression(Node):
-    pass
-
-
-class Statement(Node):
-    pass
-
-
-# For now, only Var is a declaration
-class Declaration(Node):
-    pass
+# These are placeholders for a future refactoring; see #1783.
+# For now they serve as (unchecked) documentation of what various
+# fields of Node subtypes are expected to contain.
+Statement = Node
+Expression = Node
+Declaration = Node
 
 
 class SymbolNode(Node):
