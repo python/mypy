@@ -14,7 +14,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr,
+    AwaitExpr, TempNode,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -415,7 +415,10 @@ class ASTConverter(ast35.NodeTransformer):
             else:
                 typ = TypeConverter(line=n.lineno).visit(n.type_comment)
         if n.value is None:  # treat 'x: int' as 'x = None # type: int'
-            n.value = ast35.NameConstant(value=None)
+            return AssignmentStmt(self.visit_list(n.targets),
+                              TempNode(AnyType()),
+                              type=typ)
+
         return AssignmentStmt(self.visit_list(n.targets),
                               self.visit(n.value),
                               type=typ)
