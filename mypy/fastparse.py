@@ -403,16 +403,18 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return DelStmt(self.visit(n.targets[0]))
 
-    # Assign(expr* targets, expr value, string? type_comment)
+    # Assign(expr* targets, expr? value, expr? type_comment)
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> Node:
         typ = None
         if n.type_comment:
-            if isinstance(n.type_comment, ast35.Str):
+            if isinstance(n.type_comment, str):  # backward-compatibility typed_ast
+                typ = parse_type_comment(n.type_comment, n.lineno)
+            elif isinstance(n.type_comment, ast35.Str):
                 typ = parse_type_comment(n.type_comment.s, n.lineno)
             else:
                 typ = TypeConverter(line=n.lineno).visit(n.type_comment)
-        if n.value is None:
+        if n.value is None:  # treat 'x: int' as 'x = None # type: int'
             n.value = ast35.NameConstant(value=None)
         return AssignmentStmt(self.visit_list(n.targets),
                               self.visit(n.value),
