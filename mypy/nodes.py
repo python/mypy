@@ -121,7 +121,6 @@ class Node(Context):
 # fields of Node subtypes are expected to contain.
 Statement = Node
 Expression = Node
-Declaration = Node
 
 
 class SymbolNode(Node):
@@ -340,7 +339,7 @@ class OverloadedFuncDef(FuncBase, Statement):
         return res
 
 
-class Argument(Declaration):
+class Argument(Node):
     """A single argument in a FuncItem."""
 
     variable = None  # type: Var
@@ -572,7 +571,7 @@ class Decorator(SymbolNode, Statement):
         return dec
 
 
-class Var(SymbolNode, Declaration):
+class Var(SymbolNode, Node):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
