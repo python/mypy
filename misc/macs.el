@@ -19,4 +19,4 @@
   )
 
 ; I like to bind this to ^X-t.
-(global-set-key "\C-xt" 'mypy-show)
+(global-set-key "\C-xt" 'mypy-show-region)
