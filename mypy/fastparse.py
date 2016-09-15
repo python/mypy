@@ -407,7 +407,8 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> Node:
         typ = None
-        if hasattr(n, 'new_syntax') and n.new_syntax == 1 and self.pyversion < (3, 6):
+        if (hasattr(n, 'new_syntax') and n.new_syntax == 1  # type: ignore
+           and self.pyversion < (3, 6)):
             raise TypeCommentParseError('Variable annotation syntax is only '
                                         'suppoted in Python 3.6, use type '
                                         'comment instead', n.lineno)
