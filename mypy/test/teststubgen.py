@@ -6,7 +6,7 @@ import shutil
 import sys
 import tempfile
 import time
-
+from contextlib import contextmanager
 import typing
 
 from mypy.myunit import Suite, AssertionFailure, assert_equal
