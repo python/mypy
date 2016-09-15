@@ -6,7 +6,7 @@ import shutil
 import sys
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import closing
 import typing
 
 from mypy.myunit import Suite, AssertionFailure, assert_equal
@@ -103,49 +103,38 @@ class StubgenPythonSuite(Suite):
         return c
 
 
-@contextmanager
-def mktempdir(out_dir):
-    os.mkdir(out_dir)
-    yield
-    shutil.rmtree(out_dir)
-
-
-@contextmanager
-def mktempfile():
-    handle = tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py',
-                                     dir='stubgen-test-path', delete=False)
-    yield handle
-    os.unlink(handle.name)
-
-
 def test_stubgen(testcase):
     if 'stubgen-test-path' not in sys.path:
         sys.path.insert(0, 'stubgen-test-path')
     os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
-    with mktempfile() as handle:
+    with closing(tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
+                                         delete=False)) as handle:
         handle.write(bytes(source, 'ascii'))
-        assert os.path.isabs(handle.name)
-        path = os.path.basename(handle.name)
-
-        name = path[:-3]
-        path = os.path.join('stubgen-test-path', path)
-        out_dir = '_out'
-        with mktempdir(out_dir):
-            # Without this we may sometimes be unable to import the module below, as importlib
-            # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
-            reset_importlib_caches()
-            try:
-                if testcase.name.endswith('_import'):
-                    generate_stub_for_module(name, out_dir, quiet=True)
-                else:
-                    generate_stub(path, out_dir)
-                a = load_output(out_dir)
-            except CompileError as e:
-                a = e.messages
-    assert_string_arrays_equal(testcase.output, a,
-                               'Invalid output ({}, line {})'.format(
-                                   testcase.file, testcase.line))
+    assert os.path.isabs(handle.name)
+    path = os.path.basename(handle.name)
+    name = path[:-3]
+    path = os.path.join('stubgen-test-path', path)
+    out_dir = '_out'
+    os.mkdir(out_dir)
+    try:
+        # Without this we may sometimes be unable to import the module below, as importlib
+        # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
+        reset_importlib_caches()
+        try:
+            if testcase.name.endswith('_import'):
+                generate_stub_for_module(name, out_dir, quiet=True)
+            else:
+                generate_stub(path, out_dir)
+            a = load_output(out_dir)
+        except CompileError as e:
+            a = e.messages
+        assert_string_arrays_equal(testcase.output, a,
+                                   'Invalid output ({}, line {})'.format(
+                                       testcase.file, testcase.line))
+    finally:
+        os.unlink(handle.name)
+        shutil.rmtree(out_dir)
 
 
 def reset_importlib_caches():
