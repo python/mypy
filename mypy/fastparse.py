@@ -407,6 +407,10 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> Node:
         typ = None
+        if hasattr(n, 'new_syntax') and n.new_syntax == 1 and self.pyversion < (3, 6):
+            raise TypeCommentParseError('Variable annotation syntax is only '
+                                        'suppoted in Python 3.6, use type '
+                                        'comment instead', n.lineno)
         if n.type_comment:
             if isinstance(n.type_comment, str):  # backward-compatibility typed_ast
                 typ = parse_type_comment(n.type_comment, n.lineno)
@@ -414,7 +418,7 @@ class ASTConverter(ast35.NodeTransformer):
                 typ = parse_type_comment(n.type_comment.s, n.lineno)
             else:
                 typ = TypeConverter(line=n.lineno).visit(n.type_comment)
-        if n.value is None:  # treat 'x: int' as 'x = None # type: int'
+        if n.value is None:  # always allow 'x: int' and 'x = None # type: int'
             return AssignmentStmt(self.visit_list(n.targets),
                               TempNode(AnyType()),
                               type=typ)

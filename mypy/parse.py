@@ -27,7 +27,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
-    BackquoteExpr
+    BackquoteExpr, TempNode
 )
 from mypy import defaults
 from mypy import nodes
@@ -996,6 +996,8 @@ class Parser:
             type = self.parse_type_comment(cur, signature=False)
         else:
             type = None
+        if type is not None and isinstance(expr, NameExpr) and expr.name == 'None':
+            expr = TempNode(AnyType())
         return AssignmentStmt(lvalues, expr, type)
 
     def parse_return_stmt(self) -> ReturnStmt:
