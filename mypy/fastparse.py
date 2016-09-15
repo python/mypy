@@ -19,7 +19,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, FunctionLike, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
-    replace_none
+    replace_none, protected_assign
 )
 from mypy import defaults
 from mypy import experiments
@@ -427,10 +427,12 @@ class ASTConverter(ast35.NodeTransformer):
             rvalue = TempNode(AnyType())  # type: Node
         else:
             rvalue = self.visit(n.value)
+        lvalues = self.visit_list(n.targets)
         # protect 'x, y = None, None # type: int, str' etc.
         if not n_synt and typ is not None and experiments.STRICT_OPTIONAL:
-            rvalue = replace_none(rvalue)
-        return AssignmentStmt(self.visit_list(n.targets),
+            if protected_assign(lvalues, rvalue):
+                rvalue = replace_none(rvalue)
+        return AssignmentStmt(lvalues,
                               rvalue,
                               type=typ)
 

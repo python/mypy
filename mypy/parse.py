@@ -997,8 +997,9 @@ class Parser:
         else:
             type = None
         # protect 'x, y = None, None # type: int, str' etc.
-        if (type is not None and experiments.STRICT_OPTIONAL):
-            expr = mypy.types.replace_none(expr)
+        if type is not None and experiments.STRICT_OPTIONAL:
+            if mypy.types.protected_assign(lvalues, expr):
+                expr = mypy.types.replace_none(expr)
         return AssignmentStmt(lvalues, expr, type)
 
     def parse_return_stmt(self) -> ReturnStmt:
