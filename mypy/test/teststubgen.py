@@ -108,8 +108,9 @@ def test_stubgen(testcase):
         sys.path.insert(0, 'stubgen-test-path')
     os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
-    with closing(tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
-                                         delete=False)) as handle:
+    with closing(tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py',
+                                             dir='stubgen-test-path',
+                                             delete=False)) as handle:
         handle.write(bytes(source, 'ascii'))
     assert os.path.isabs(handle.name)
     path = os.path.basename(handle.name)
