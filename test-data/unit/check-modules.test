@@ -885,7 +885,7 @@ from foo import B
 class C(B):
     pass
 [out]
-tmp/bar.py:1: error: Module has no attribute 'B'
+tmp/bar.py:1: error: Module 'foo' has no attribute 'B'
 
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main

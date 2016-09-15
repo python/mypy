@@ -966,7 +966,7 @@ class SemanticAnalyzer(NodeVisitor):
                                              module_public=module_public)
                     self.add_symbol(imported_id, symbol, imp)
                 else:
-                    message = "Module has no attribute '{}'".format(id)
+                    message = "Module '{}' has no attribute '{}'".format(import_id, id)
                     extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
                     if extra:
                         message += " {}".format(extra)
@@ -2163,9 +2163,10 @@ class SemanticAnalyzer(NodeVisitor):
                 # the build would terminate after semantic analysis
                 # and we wouldn't be able to report any type errors.
                 full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
+                mod_name = " '%s'" % file.fullname() if file is not None else ''
                 if full_name in obsolete_name_mapping:
-                    self.fail("Module has no attribute %r (it's now called %r)" % (
-                        expr.name, obsolete_name_mapping[full_name]), expr)
+                    self.fail("Module%s has no attribute %r (it's now called %r)" % (
+                        mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
         elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
             # This branch handles the case C.bar where C is a class
             # and bar is a module resulting from `import bar` inside
