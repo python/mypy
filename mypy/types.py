@@ -1488,3 +1488,17 @@ def true_or_false(t: Type) -> Type:
     new_t.can_be_true = type(new_t).can_be_true
     new_t.can_be_false = type(new_t).can_be_false
     return new_t
+
+
+def replace_none(n: mypy.nodes.Node) -> mypy.nodes.Node:
+    """Helper for parse and fastparse"""
+    if isinstance(n, mypy.nodes.NameExpr) and n.name == 'None':
+        return mypy.nodes.TempNode(AnyType())
+    elif isinstance(n, mypy.nodes.TupleExpr):
+        items = [replace_none(it) for it in n.items]
+        return mypy.nodes.TupleExpr(items)
+    elif isinstance(n, mypy.nodes.ListExpr):
+        items = [replace_none(it) for it in n.items]
+        return mypy.nodes.ListExpr(items)
+    else:
+        return n

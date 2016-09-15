@@ -19,6 +19,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, FunctionLike, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+    replace_none
 )
 from mypy import defaults
 from mypy import experiments
@@ -407,8 +408,11 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> Node:
         typ = None
-        if (hasattr(n, 'new_syntax') and n.new_syntax == 1  # type: ignore
-           and self.pyversion < (3, 6)):
+        if hasattr(n, 'new_syntax') and n.new_syntax == 1:  # type: ignore
+            n_synt = True
+        else:
+            n_synt = False
+        if n_synt and self.pyversion < (3, 6):
             raise TypeCommentParseError('Variable annotation syntax is only '
                                         'suppoted in Python 3.6, use type '
                                         'comment instead', n.lineno)
@@ -419,13 +423,15 @@ class ASTConverter(ast35.NodeTransformer):
                 typ = parse_type_comment(n.type_comment.s, n.lineno)
             else:
                 typ = TypeConverter(line=n.lineno).visit(n.type_comment)
-        if n.value is None:  # always allow 'x: int' and 'x = None # type: int'
-            return AssignmentStmt(self.visit_list(n.targets),
-                              TempNode(AnyType()),
-                              type=typ)
-
+        if n.value is None:  # always allow 'x: int'
+            rvalue = TempNode(AnyType())  # type: Node
+        else:
+            rvalue = self.visit(n.value)
+        # protect 'x, y = None, None # type: int, str' etc.
+        if not n_synt and typ is not None and experiments.STRICT_OPTIONAL:
+            rvalue = replace_none(rvalue)
         return AssignmentStmt(self.visit_list(n.targets),
-                              self.visit(n.value),
+                              rvalue,
                               type=typ)
 
     # AugAssign(expr target, operator op, expr value)

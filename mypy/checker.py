@@ -1076,7 +1076,8 @@ class TypeChecker(NodeVisitor[Type]):
                 elif (is_literal_none(rvalue) and
                         isinstance(lvalue, NameExpr) and
                         isinstance(lvalue.node, Var) and
-                        lvalue.node.is_initialized_in_class):
+                        lvalue.node.is_initialized_in_class and
+                        not experiments.STRICT_OPTIONAL):
                     # Allow None's to be assigned to class variables with non-Optional types.
                     rvalue_type = lvalue_type
                 else:
