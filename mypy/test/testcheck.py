@@ -5,6 +5,7 @@ import re
 import shutil
 import sys
 import time
+import typed_ast
 
 from typing import Tuple, List, Dict, Set
 
@@ -66,6 +67,11 @@ files = [
     'check-async-await.test',
     'check-newtype.test',
 ]
+
+if hasattr(typed_ast, '__version__'):
+    version_info = tuple(map(int, typed_ast.__version__.split('.')))  # type: ignore
+    if version_info >= (0, 5, 7):
+        files.append('check-newsyntax.test')
 
 
 class TypeCheckSuite(DataSuite):
