@@ -885,7 +885,7 @@ from foo import B
 class C(B):
     pass
 [out]
-tmp/bar.py:1: error: Module has no attribute 'B'
+tmp/bar.py:1: error: Module 'foo' has no attribute 'B'
 
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main
@@ -1131,3 +1131,20 @@ reveal_type(x)
 [out]
 main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:2: error: Revealed type is 'builtins.str'
+
+-- Scripts and __main__
+
+[case testScriptsAreModules]
+# flags: --scripts-are-modules
+[file a]
+pass
+[file b]
+pass
+
+[case testScriptsAreNotModules]
+# cmd: mypy a b
+[file a]
+pass
+[file b]
+pass
+[out]

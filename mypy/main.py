@@ -189,6 +189,8 @@ def process_options(args: List[str],
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    parser.add_argument('--scripts-are-modules', action='store_true',
+                        help="Script x becomes module x instead of __main__")
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -319,7 +321,8 @@ def process_options(args: List[str],
                          .format(f))
                 targets.extend(sub_targets)
             else:
-                targets.append(BuildSource(f, None, None))
+                mod = os.path.basename(f) if options.scripts_are_modules else None
+                targets.append(BuildSource(f, mod, None))
         return targets, options
 
 
