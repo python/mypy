@@ -108,16 +108,19 @@ def test_stubgen(testcase):
         sys.path.insert(0, 'stubgen-test-path')
     os.mkdir('stubgen-test-path')
     source = '\n'.join(testcase.input)
-    with closing(tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py',
-                                             dir='stubgen-test-path',
+    with closing(tempfile.NamedTemporaryFile(prefix='prog_', suffix='.py', dir='stubgen-test-path',
                                              delete=False)) as handle:
-        handle.write(bytes(source, 'ascii'))
-    assert os.path.isabs(handle.name)
-    path = os.path.basename(handle.name)
-    name = path[:-3]
-    path = os.path.join('stubgen-test-path', path)
-    out_dir = '_out'
-    os.mkdir(out_dir)
+        assert os.path.isabs(handle.name)
+        path = os.path.basename(handle.name)
+        name = path[:-3]
+        path = os.path.join('stubgen-test-path', path)
+        out_dir = '_out'
+        try:
+            handle.write(bytes(source, 'ascii'))
+            os.mkdir(out_dir)
+        except IOError:
+            os.unlink(handle.name)
+            raise
     try:
         # Without this we may sometimes be unable to import the module below, as importlib
         # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
@@ -130,12 +133,13 @@ def test_stubgen(testcase):
             a = load_output(out_dir)
         except CompileError as e:
             a = e.messages
-        assert_string_arrays_equal(testcase.output, a,
-                                   'Invalid output ({}, line {})'.format(
-                                       testcase.file, testcase.line))
     finally:
         os.unlink(handle.name)
         shutil.rmtree(out_dir)
+
+    assert_string_arrays_equal(testcase.output, a,
+                               'Invalid output ({}, line {})'.format(
+                                   testcase.file, testcase.line))
 
 
 def reset_importlib_caches():
