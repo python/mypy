@@ -47,6 +47,9 @@ class Options:
         # Files in which to allow strict-Optional related errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]
 
+        # Use script name instead of __main__
+        self.scripts_are_modules = False
+
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
