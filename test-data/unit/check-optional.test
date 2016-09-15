@@ -17,9 +17,9 @@ from typing import Optional
 x = 0  # type: Optional[int]
 
 [case testNoneNotMemberOfType]
+# this is a special case as proposed by Guido
+# and should be allowed even if --strict-optional
 x = None  # type: int
-[out]
-main:1: error: Incompatible types in assignment (expression has type None, variable has type "int")
 
 [case testTypeNotMemberOfNone]
 x = 0  # type: None

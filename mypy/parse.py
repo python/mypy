@@ -996,7 +996,9 @@ class Parser:
             type = self.parse_type_comment(cur, signature=False)
         else:
             type = None
-        if type is not None and isinstance(expr, NameExpr) and expr.name == 'None':
+        if (type is not None and isinstance(expr, NameExpr)
+           and expr.name == 'None'
+           and experiments.STRICT_OPTIONAL):  # protect 'x = None #type: int'
             expr = TempNode(AnyType())
         return AssignmentStmt(lvalues, expr, type)
 

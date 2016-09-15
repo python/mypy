@@ -1765,6 +1765,9 @@ class TempNode(Expression):
     def __init__(self, typ: 'mypy.types.Type') -> None:
         self.type = typ
 
+    def __repr__(self):
+        return 'TempNode(%s)' % str(self.type)
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
 
