@@ -90,3 +90,39 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named 'mod'
+
+[case testFlagsFile]
+# cmd: mypy @flagsfile
+[file flagsfile]
+-2
+main.py
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testConfigFile]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testAltConfigFile]
+# cmd: mypy --config-file config.ini main.py
+[file config.ini]
+[[mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err

@@ -100,7 +100,7 @@ class TypeCheckSuite(DataSuite):
             self.run_case_once(testcase)
 
     def clear_cache(self) -> None:
-        dn = defaults.MYPY_CACHE
+        dn = defaults.CACHE_DIR
 
         if os.path.exists(dn):
             shutil.rmtree(dn)

@@ -1,6 +1,7 @@
 """Mypy type checker command line tool."""
 
 import argparse
+import configparser
 import os
 import re
 import sys
@@ -125,6 +126,7 @@ def process_options(args: List[str],
     help_factory = (lambda prog:
                     argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
+                                     fromfile_prefix_chars='@',
                                      formatter_class=help_factory)
 
     # Unless otherwise specified, arguments will be parsed directly onto an
@@ -172,7 +174,7 @@ def process_options(args: List[str],
                         help="enable experimental module cache")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
-                        "(defaults to '{}')".format(defaults.MYPY_CACHE))
+                        "(defaults to '{}')".format(defaults.CACHE_DIR))
     parser.add_argument('--strict-optional', action='store_true',
                         dest='special-opts:strict_optional',
                         help="enable experimental strict Optional checks")
@@ -191,6 +193,9 @@ def process_options(args: List[str],
                         help="use a custom typing module")
     parser.add_argument('--scripts-are-modules', action='store_true',
                         help="Script x becomes module x instead of __main__")
+    parser.add_argument('--config-file',
+                        help="Configuration file, must have a [mypy] section "
+                        "(defaults to {})".format(defaults.CONFIG_FILE))
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -247,7 +252,18 @@ def process_options(args: List[str],
     code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
                             help="type-check given files or directories")
 
+    # Parse arguments once into a dummy namespace so we can get the
+    # filename for the config file.
+    dummy = argparse.Namespace()
+    parser.parse_args(args, dummy)
+    config_file = dummy.config_file or defaults.CONFIG_FILE
+
+    # Parse config file first, so command line can override.
     options = Options()
+    if config_file and os.path.exists(config_file):
+        parse_config_file(options, config_file)
+
+    # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
 
@@ -414,6 +430,60 @@ def get_init_file(dir: str) -> Optional[str]:
         if os.path.isfile(f):
             return f
     return None
+
+
+# For most options, the type of the default value set in options.py is
+# sufficient, and we don't have to do anything here.  This table
+# exists to specify types for values initialized to None or container
+# types.
+config_types = {
+    # TODO: Check validity of python version
+    'python_version': lambda s: tuple(map(int, s.split('.'))),
+    'strict_optional_whitelist': lambda s: s.split(),
+    'custom_typing_module': str,
+}
+
+
+def parse_config_file(options: Options, filename: str) -> None:
+    """Parse an options file.
+
+    Errors are written to stderr but are not fatal.
+    """
+    parser = configparser.RawConfigParser()
+    try:
+        parser.read(filename)
+    except configparser.Error as err:
+        print("%s: %s" % (filename, err), file=sys.stderr)
+        return
+    if 'mypy' not in parser:
+        print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
+        return
+    section = parser['mypy']
+    for key in section:
+        key = key.replace('-', '_')
+        if key in config_types:
+            ct = config_types[key]
+        else:
+            dv = getattr(options, key, None)
+            if dv is None:
+                print("%s: Unrecognized option: %s = %s" % (filename, key, section[key]),
+                      file=sys.stderr)
+                continue
+            ct = type(dv)
+        v = None  # type: Any
+        try:
+            if ct is bool:
+                v = section.getboolean(key)  # type: ignore  # Until better stub
+            elif callable(ct):
+                v = ct(section.get(key))
+            else:
+                print("%s: Don't know what type %s should have" % (filename, key), file=sys.stderr)
+                continue
+        except ValueError as err:
+            print("%s: %s: %s" % (filename, key, err), file=sys.stderr)
+            continue
+        if v != getattr(options, key, None):
+            setattr(options, key, v)
 
 
 def fail(msg: str) -> None:

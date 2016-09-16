@@ -67,7 +67,7 @@ class Options:
         # -- experimental options --
         self.fast_parser = False
         self.incremental = False
-        self.cache_dir = defaults.MYPY_CACHE
+        self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.suppress_error_context = False  # Suppress "note: In function "foo":" messages.
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
