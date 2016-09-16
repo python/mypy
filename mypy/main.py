@@ -468,6 +468,11 @@ def parse_config_file(options: Options, filename: str) -> None:
         else:
             dv = getattr(options, key, None)
             if dv is None:
+                if key.endswith('_report'):
+                    report_type = key[:-7].replace('_', '-')
+                    report_dir = section.get(key)
+                    options.report_dirs[report_type] = report_dir
+                    continue
                 print("%s: Unrecognized option: %s = %s" % (filename, key, section[key]),
                       file=sys.stderr)
                 continue
