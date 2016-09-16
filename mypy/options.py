@@ -51,7 +51,7 @@ class Options:
         self.scripts_are_modules = False
 
         # Config file name
-        self.config_file = None
+        self.config_file = None  # type: Optional[str]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
