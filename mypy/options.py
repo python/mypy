@@ -44,6 +44,9 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
+        # Apply strict None checking
+        self.strict_optional = False
+
         # Files in which to allow strict-Optional related errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]
 

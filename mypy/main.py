@@ -176,7 +176,7 @@ def process_options(args: List[str],
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
     parser.add_argument('--strict-optional', action='store_true',
-                        dest='special-opts:strict_optional',
+                        dest='strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -297,7 +297,9 @@ def process_options(args: List[str],
             parser.error("May only specify one of: module, package, files, or command.")
 
     # Set build flags.
-    if special_opts.strict_optional or options.strict_optional_whitelist is not None:
+    if options.strict_optional_whitelist is not None:
+        options.strict_optional = True
+    if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
 
     # Set reports.

@@ -113,6 +113,8 @@ class TypeCheckSuite(DataSuite):
         options = self.parse_options(original_program_text, testcase)
         options.use_builtins_fixtures = True
         set_show_tb(True)  # Show traceback on crash.
+        if 'optional' in testcase.file:
+            options.strict_optional = True
 
         if incremental:
             options.incremental = True
