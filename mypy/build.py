@@ -801,6 +801,8 @@ OPTIONS_AFFECTING_CACHE = [
     "disallow_untyped_defs",
     "check_untyped_defs",
     "debug_cache",
+    "strict_optional",
+    "strict_optional_whitelist",
 ]
 
 
