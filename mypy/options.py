@@ -50,6 +50,9 @@ class Options:
         # Use script name instead of __main__
         self.scripts_are_modules = False
 
+        # Config file name
+        self.config_file = None
+
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
