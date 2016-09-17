@@ -120,7 +120,7 @@ class TypeChecker(NodeVisitor[Type]):
     # Is this file a typeshed stub?
     is_typeshed_stub = False
     # Should strict Optional-related errors be suppressed in this file?
-    suppress_none_errors = False
+    suppress_none_errors = False  # TODO: Get it from options instead
     options = None  # type: Options
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
@@ -165,7 +165,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.module_type_map = {}
         self.module_refs = set()
         if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = False
+            self.suppress_none_errors = not self.options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern

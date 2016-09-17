@@ -51,7 +51,11 @@ class Options:
         self.strict_optional = False
 
         # Files in which to allow strict-Optional related errors
+        # TODO: Kill this in favor of show_none_errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]
+
+        # Alternate way to show/hide strict-None-checking related errors
+        self.show_none_errors = True
 
         # Use script name instead of __main__
         self.scripts_are_modules = False

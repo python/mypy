@@ -803,6 +803,7 @@ OPTIONS_AFFECTING_CACHE = [
     "debug_cache",
     "strict_optional",
     "strict_optional_whitelist",
+    "show_none_errors",
 ]
 
 

@@ -299,6 +299,7 @@ def process_options(args: List[str],
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
+        # TODO: Deprecate, then kill this flag
         options.strict_optional = True
     if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
@@ -474,6 +475,7 @@ def parse_config_file(options: Options, filename: str) -> None:
             glob = name[5:]
             prefix = '%s: [%s]' % (filename, name)
             updates, report_dirs = parse_section(prefix, options, section)
+            # TODO: Limit updates to flags that can be per-file.
             if report_dirs:
                 print("%s: Per-file sections should not specify reports" % prefix,
                       file=sys.stderr)
@@ -487,7 +489,7 @@ def parse_section(prefix: str, template: Options,
     Returns a dict of option values encountered, and a dict of report directories.
     """
     results = {}
-    report_dirs = {}
+    report_dirs = {}  # type: Dict[str, str]
     for key in section:
         key = key.replace('-', '_')
         if key in config_types:
