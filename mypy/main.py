@@ -242,9 +242,9 @@ def process_options(args: List[str],
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
                             dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
-    # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
-    # ignore A (last option wins).  Perhaps -c, -m and -p could just
-    # be command-line flags that modify how we interpret self.files?
+    # TODO: `mypy -p A -p B` currently silently ignores ignores A
+    # (last option wins).  Perhaps -c, -m and -p could just be
+    # command-line flags that modify how we interpret self.files?
     code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
                             dest='special-opts:command',
                             help="type-check program passed in as string")
