@@ -44,13 +44,13 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable, Iterable
 )
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
-    ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
+    ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr, Expression,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
@@ -1361,7 +1361,8 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
         node.node = newtype_class_info
-        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
+        call.analyzed = NewTypeExpr(newtype_class_info)
+        call.analyzed.set_line(call.line)
 
     def analyze_newtype_declaration(self,
             s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
@@ -1384,7 +1385,8 @@ class SemanticAnalyzer(NodeVisitor):
             # overwritten later with a fully complete NewTypeExpr if there are no other
             # errors with the NewType() call.
             call = s.rvalue
-            call.analyzed = NewTypeExpr(None).set_line(call.line)
+            call.analyzed = NewTypeExpr(None)
+            call.analyzed.set_line(call.line)
 
         return name, call
 
@@ -1505,7 +1507,7 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         return call
 
-    def process_typevar_parameters(self, args: List[Node],
+    def process_typevar_parameters(self, args: List[Expression],
                                    names: List[Optional[str]],
                                    kinds: List[int],
                                    has_values: bool,
@@ -1614,7 +1616,8 @@ class SemanticAnalyzer(NodeVisitor):
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
-        call.analyzed = NamedTupleExpr(info).set_line(call.line)
+        call.analyzed = NamedTupleExpr(info)
+        call.analyzed.set_line(call.line)
         return info
 
     def parse_namedtuple_args(self, call: CallExpr,
@@ -1661,7 +1664,7 @@ class SemanticAnalyzer(NodeVisitor):
                       + ', '.join(underscore), call)
         return items, types, ok
 
-    def parse_namedtuple_fields_with_types(self, nodes: List[Node],
+    def parse_namedtuple_fields_with_types(self, nodes: List[Expression],
                                            context: Context) -> Tuple[List[str], List[Type], bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
@@ -1766,7 +1769,7 @@ class SemanticAnalyzer(NodeVisitor):
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def analyze_types(self, items: List[Node]) -> List[Type]:
+    def analyze_types(self, items: Iterable[Node]) -> List[Type]:
         result = []  # type: List[Type]
         for node in items:
             try:

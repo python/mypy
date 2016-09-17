@@ -1,8 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-import re
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
@@ -284,7 +283,7 @@ class FuncBase(SymbolNode):
     """Abstract base class for function-like nodes"""
 
     # Type signature. This is usually CallableType or Overloaded, but it can be something else for
-    # decorated functions/
+    # decorated functions
     type = None  # type: mypy.types.Type
     # If method, reference to TypeInfo
     info = None  # type: TypeInfo
@@ -345,7 +344,7 @@ class Argument(Node):
 
     variable = None  # type: Var
     type_annotation = None  # type: Optional[mypy.types.Type]
-    initializater = None  # type: Optional[Expression]
+    initializer = None  # type: Optional[Expression]
     kind = None  # type: int
     initialization_statement = None  # type: Optional[AssignmentStmt]
 
@@ -572,7 +571,7 @@ class Decorator(SymbolNode, Statement):
         return dec
 
 
-class Var(SymbolNode, Statement):
+class Var(SymbolNode, Node):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
@@ -1737,12 +1736,12 @@ class NewTypeExpr(Expression):
         return visitor.visit_newtype_expr(self)
 
 
-class AwaitExpr(Node):
+class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

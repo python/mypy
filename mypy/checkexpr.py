@@ -10,7 +10,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
-    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
+    Expression, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
@@ -234,10 +234,10 @@ class ExpressionChecker:
         return self.check_call(callee_type, e.args, e.arg_kinds, e,
                                e.arg_names, callable_node=e.callee)[0]
 
-    def check_call(self, callee: Type, args: List[Node],
+    def check_call(self, callee: Type, args: List[Expression],
                    arg_kinds: List[int], context: Context,
                    arg_names: List[str] = None,
-                   callable_node: Node = None,
+                   callable_node: Expression = None,
                    arg_messages: MessageBuilder = None) -> Tuple[Type, Type]:
         """Type check a call.
 
@@ -370,7 +370,7 @@ class ExpressionChecker:
         return AnyType()
 
     def infer_arg_types_in_context(self, callee: Optional[CallableType],
-                                   args: List[Node]) -> List[Type]:
+                                   args: List[Expression]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
 
         For example, if callee argument 2 has type List[int], infer the
@@ -402,7 +402,7 @@ class ExpressionChecker:
         return res
 
     def infer_arg_types_in_context2(
-            self, callee: CallableType, args: List[Node], arg_kinds: List[int],
+            self, callee: CallableType, args: List[Expression], arg_kinds: List[int],
             formal_to_actual: List[List[int]]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
 
@@ -468,7 +468,7 @@ class ExpressionChecker:
                                                            error_context))
 
     def infer_function_type_arguments(self, callee_type: CallableType,
-                                      args: List[Node],
+                                      args: List[Expression],
                                       arg_kinds: List[int],
                                       formal_to_actual: List[List[int]],
                                       context: Context) -> CallableType:
@@ -533,7 +533,7 @@ class ExpressionChecker:
 
     def infer_function_type_arguments_pass2(
             self, callee_type: CallableType,
-            args: List[Node],
+            args: List[Expression],
             arg_kinds: List[int],
             formal_to_actual: List[List[int]],
             inferred_args: List[Type],
@@ -1048,7 +1048,7 @@ class ExpressionChecker:
         else:
             return nodes.op_methods[op]
 
-    def _check_op_for_errors(self, method: str, base_type: Type, arg: Node,
+    def _check_op_for_errors(self, method: str, base_type: Type, arg: Expression,
                              context: Context
                              ) -> Tuple[Tuple[Type, Type], MessageBuilder]:
         """Type check a binary operation which maps to a method call.
@@ -1062,7 +1062,7 @@ class ExpressionChecker:
                                      local_errors)
         return result, local_errors
 
-    def check_op_local(self, method: str, base_type: Type, arg: Node,
+    def check_op_local(self, method: str, base_type: Type, arg: Expression,
                        context: Context, local_errors: MessageBuilder) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
 
@@ -1074,7 +1074,7 @@ class ExpressionChecker:
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
-    def check_op(self, method: str, base_type: Type, arg: Node,
+    def check_op(self, method: str, base_type: Type, arg: Expression,
                  context: Context,
                  allow_reverse: bool = False) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
@@ -1336,7 +1336,7 @@ class ExpressionChecker:
 
         return left_type.slice(begin, stride, end)
 
-    def _get_value(self, index: Node) -> Optional[int]:
+    def _get_value(self, index: Expression) -> Optional[int]:
         if isinstance(index, IntExpr):
             return index.value
         elif isinstance(index, UnaryExpr):
@@ -1383,7 +1383,7 @@ class ExpressionChecker:
     def visit_set_expr(self, e: SetExpr) -> Type:
         return self.check_lst_expr(e.items, 'builtins.set', '<set>', e)
 
-    def check_lst_expr(self, items: List[Node], fullname: str,
+    def check_lst_expr(self, items: List[Expression], fullname: str,
                        tag: str, context: Context) -> Type:
         # Translate into type checking a generic function call.
         # Used for list and set expressions, as well as for tuples
@@ -1472,8 +1472,8 @@ class ExpressionChecker:
         Translate it into a call to dict(), with provisions for **expr.
         """
         # Collect function arguments, watching out for **expr.
-        args = []  # type: List[Node]  # Regular "key: value"
-        stargs = []  # type: List[Node]  # For "**expr"
+        args = []  # type: List[Expression]  # Regular "key: value"
+        stargs = []  # type: List[Expression]  # For "**expr"
         for key, value in e.items:
             if key is None:
                 stargs.append(value)
@@ -1734,8 +1734,8 @@ class ExpressionChecker:
 
         return res
 
-    def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
-                            node: Node, context: Optional[Type]) -> Type:
+    def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
+                            node: Expression, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context():
             if map:
                 for var, type in map.items():
@@ -1750,7 +1750,7 @@ class ExpressionChecker:
     # Helpers
     #
 
-    def accept(self, node: Node, context: Type = None) -> Type:
+    def accept(self, node: Expression, context: Type = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
 
