@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -220,6 +220,7 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
+    # TODO: dynamicall generate these based on valid_report_types
     report_group.add_argument('--html-report', metavar='DIR',
                               dest='special-opts:html_report')
     report_group.add_argument('--old-html-report', metavar='DIR',
@@ -445,9 +446,21 @@ config_types = {
     'custom_typing_module': str,
 }
 
+# Supported report types (must match --xxx-report flags above).
+valid_report_types = {
+    'html',
+    'old_html',
+    'xslt_html',
+    'xml',
+    'txt',
+    'xslt_txt',
+    'linecount',
+    'linecoverage',
+}
+
 
 def parse_config_file(options: Options, filename: str) -> None:
-    """Parse an options file.
+    """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
     """
@@ -460,20 +473,49 @@ def parse_config_file(options: Options, filename: str) -> None:
     if 'mypy' not in parser:
         print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
         return
+
     section = parser['mypy']
+    prefix = '%s: [%s]' % (filename, 'mypy')
+    updates, report_dirs = parse_section(prefix, options, section)
+    for k, v in updates.items():
+        setattr(options, k, v)
+    options.report_dirs.update(report_dirs)
+
+    for name, section in parser.items():
+        if name.startswith('mypy-'):
+            glob = name[5:]
+            prefix = '%s: [%s]' % (filename, name)
+            updates, report_dirs = parse_section(prefix, options, section)
+            if report_dirs:
+                print("%s: Per-file sections should not specify reports" % prefix,
+                      file=sys.stderr)
+            options.per_file_options[glob] = updates
+
+
+def parse_section(prefix: str, template: Options,
+                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
+    """Parse one section of a config file.
+
+    Returns a dict of option values encountered, and a dict of report directories.
+    """
+    results = {}
+    report_dirs = {}
     for key in section:
         key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
         else:
-            dv = getattr(options, key, None)
+            dv = getattr(template, key, None)
             if dv is None:
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
-                    report_dir = section.get(key)
-                    options.report_dirs[report_type] = report_dir
+                    if report_type in valid_report_types:
+                        report_dirs[report_type] = section.get(key)
+                    else:
+                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                              file=sys.stderr)
                     continue
-                print("%s: Unrecognized option: %s = %s" % (filename, key, section[key]),
+                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
                       file=sys.stderr)
                 continue
             ct = type(dv)
@@ -484,13 +526,13 @@ def parse_config_file(options: Options, filename: str) -> None:
             elif callable(ct):
                 v = ct(section.get(key))
             else:
-                print("%s: Don't know what type %s should have" % (filename, key), file=sys.stderr)
+                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
                 continue
         except ValueError as err:
-            print("%s: %s: %s" % (filename, key, err), file=sys.stderr)
+            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
-        if v != getattr(options, key, None):
-            setattr(options, key, v)
+        results[key] = v
+    return results, report_dirs
 
 
 def fail(msg: str) -> None:

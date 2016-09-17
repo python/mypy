@@ -1,7 +1,10 @@
-from mypy import defaults
+import fnmatch
 import pprint
 import sys
+
 from typing import Any, Optional, Tuple, List
+
+from mypy import defaults
 
 
 class BuildType:
@@ -56,6 +59,9 @@ class Options:
         # Config file name
         self.config_file = None  # type: Optional[str]
 
+        # Per-file options (raw)
+        self.per_file_options = {}  # type: Dict[str, Dict[str, object]]
+
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
@@ -86,3 +92,13 @@ class Options:
 
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
+
+    def clone_for_file(self, filename: str) -> 'Options':
+        new_options = Options()
+        new_options.__dict__.update(self.__dict__)
+        for glob in self.per_file_options:
+            if fnmatch.fnmatch(filename, glob):
+                updates = self.per_file_options[glob]
+                for k, v in updates.items():
+                    setattr(new_options, k, v)
+        return new_options

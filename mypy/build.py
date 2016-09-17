@@ -887,7 +887,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'dependencies': dependencies,
             'suppressed': suppressed,
             'child_modules': child_modules,
-            'options': select_options_affecting_cache(manager.options),
+            'options': select_options_affecting_cache(manager.options),  # TODO: per-file options
             'dep_prios': dep_prios,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,

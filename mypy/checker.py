@@ -153,6 +153,8 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
+        save_options = self.options
+        self.options = self.options.clone_for_file(path)
         self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
@@ -187,6 +189,8 @@ class TypeChecker(NodeVisitor[Type]):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
+
+        self.options = save_options
 
     def check_second_pass(self) -> None:
         """Run second pass of type checking which goes through deferred nodes."""
