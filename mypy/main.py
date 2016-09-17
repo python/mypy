@@ -117,6 +117,19 @@ def parse_version(v: str) -> Tuple[int, int]:
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
 
+# Supported report types.
+valid_report_types = {
+    'html',
+    'old_html',
+    'xslt_html',
+    'xml',
+    'txt',
+    'xslt_txt',
+    'linecount',
+    'linecoverage',
+}
+
+
 def process_options(args: List[str],
                     require_targets: bool = True
                     ) -> Tuple[List[BuildSource], Options]:
@@ -220,23 +233,10 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
-    # TODO: dynamicall generate these based on valid_report_types
-    report_group.add_argument('--html-report', metavar='DIR',
-                              dest='special-opts:html_report')
-    report_group.add_argument('--old-html-report', metavar='DIR',
-                              dest='special-opts:old_html_report')
-    report_group.add_argument('--xslt-html-report', metavar='DIR',
-                              dest='special-opts:xslt_html_report')
-    report_group.add_argument('--xml-report', metavar='DIR',
-                              dest='special-opts:xml_report')
-    report_group.add_argument('--txt-report', metavar='DIR',
-                              dest='special-opts:txt_report')
-    report_group.add_argument('--xslt-txt-report', metavar='DIR',
-                              dest='special-opts:xslt_txt_report')
-    report_group.add_argument('--linecount-report', metavar='DIR',
-                              dest='special-opts:linecount_report')
-    report_group.add_argument('--linecoverage-report', metavar='DIR',
-                              dest='special-opts:linecoverage_report')
+    for report_type in valid_report_types:
+        report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
+                                  metavar='DIR',
+                                  dest='special-opts:%s_report' % report_type)
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
@@ -444,18 +444,6 @@ config_types = {
     'python_version': lambda s: tuple(map(int, s.split('.'))),
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
-}
-
-# Supported report types (must match --xxx-report flags above).
-valid_report_types = {
-    'html',
-    'old_html',
-    'xslt_html',
-    'xml',
-    'txt',
-    'xslt_txt',
-    'linecount',
-    'linecoverage',
 }
 
 
