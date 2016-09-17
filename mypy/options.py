@@ -94,11 +94,13 @@ class Options:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
 
     def clone_for_file(self, filename: str) -> 'Options':
-        new_options = Options()
-        new_options.__dict__.update(self.__dict__)
+        updates = {}
         for glob in self.per_file_options:
             if fnmatch.fnmatch(filename, glob):
-                updates = self.per_file_options[glob]
-                for k, v in updates.items():
-                    setattr(new_options, k, v)
+                updates.update(self.per_file_options[glob])
+        if not updates:
+            return self
+        new_options = Options()
+        new_options.__dict__.update(self.__dict__)
+        new_options.__dict__.update(updates)
         return new_options
