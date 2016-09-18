@@ -1181,7 +1181,6 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 self.check_assignment(lv, self.temp_node(item_type, context),
                                       infer_lvalue_type)
-    
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
