@@ -130,11 +130,20 @@ a = C() # type: C[int, int]
 b = a.f('a')
 a.f(b) # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "str"
 
-[case testUnionMultiple]
-from typing import Union, Tuple
+[case testUnionMultissign]
+from typing import Union, Tuple, Any
 
 a = None  # type: Tuple[int]
-(x,) = a
+(a1,) = a
 
 b = None  # type: Union[Tuple[int], Tuple[float]]
-(z,) = b
+(b1,) = b
+
+c = None  # type: Union[Tuple[int, int], Tuple[float, float]]
+(c1, c2) = c
+
+d = None  # type: Union[Any, Tuple[float, float]]
+(d1, d2) = d
+
+e = None  # type: Union[Any, Tuple[float, float], int]
+(e1, e2) = e  # E: 'builtins.int' object is not iterable
