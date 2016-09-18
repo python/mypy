@@ -129,3 +129,12 @@ class C(Generic[T, U]):
 a = C() # type: C[int, int]
 b = a.f('a')
 a.f(b) # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "str"
+
+[case testUnionMultiple]
+from typing import Union, Tuple
+
+a = None  # type: Tuple[int]
+(x,) = a
+
+b = None  # type: Union[Tuple[int], Tuple[float]]
+(z,) = b

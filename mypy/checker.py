@@ -1098,6 +1098,7 @@ class TypeChecker(NodeVisitor[Type]):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
+            # Tuple is also special cased to handle mutually nested lists and tuples
 
             rvalues = rvalue.items
 
@@ -1123,7 +1124,8 @@ class TypeChecker(NodeVisitor[Type]):
                 for lv, rv in lr_pairs:
                     self.check_assignment(lv, rv, infer_lvalue_type)
         else:
-            self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
+            rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
+            self.check_multi_assignment(lvalues, rvalue, rvalue_type, context, infer_lvalue_type)
 
     def check_rvalue_count_in_assignment(self, lvalues: List[Lvalue], rvalue_count: int,
                                          context: Context) -> bool:
@@ -1140,13 +1142,11 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multi_assignment(self, lvalues: List[Lvalue],
                                rvalue: Expression,
+                               rvalue_type: Type,
                                context: Context,
-                               infer_lvalue_type: bool = True,
-                               msg: str = None) -> None:
+                               infer_lvalue_type: bool = True) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
-
         # Infer the type of an ordinary rvalue expression.
-        rvalue_type = self.accept(rvalue)  # TODO maybe elsewhere; redundant
         undefined_rvalue = False
 
         if isinstance(rvalue_type, AnyType):
@@ -1156,10 +1156,32 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
-                                                  context, undefined_rvalue, infer_lvalue_type)
-        else:
+                                                   context, undefined_rvalue, infer_lvalue_type)
+        elif isinstance(rvalue_type, UnionType):
+            for item in rvalue_type.items:
+                self.check_multi_assignment(lvalues, rvalue, item, context, infer_lvalue_type)
+        elif isinstance(rvalue_type, Instance) and self.type_is_iterable(rvalue_type):
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
-                                                     context, infer_lvalue_type)
+                                                      context, infer_lvalue_type)
+        else:
+            self.msg.type_not_iterable(rvalue_type, context)
+
+    def type_is_iterable(self, rvalue_type: Type) -> bool:
+        return is_subtype(rvalue_type, self.named_generic_type('typing.Iterable',
+                                                               [AnyType()]))
+
+    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Instance,
+                                             context: Context,
+                                             infer_lvalue_type: bool = True) -> None:
+        item_type = self.iterable_item_type(rvalue_type)
+        for lv in lvalues:
+            if isinstance(lv, StarExpr):
+                self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
+                                      infer_lvalue_type)
+            else:
+                self.check_assignment(lv, self.temp_node(item_type, context),
+                                      infer_lvalue_type)
+    
 
     def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
@@ -1241,26 +1263,6 @@ class TypeChecker(NodeVisitor[Type]):
         star = items[star_index:right_index]
         right = items[right_index:]
         return (left, star, right)
-
-    def type_is_iterable(self, type: Type) -> bool:
-        return (is_subtype(type, self.named_generic_type('typing.Iterable',
-                                                        [AnyType()])) and
-                isinstance(type, Instance))
-
-    def check_multi_assignment_from_iterable(self, lvalues: List[Lvalue], rvalue_type: Type,
-                                             context: Context,
-                                             infer_lvalue_type: bool = True) -> None:
-        if self.type_is_iterable(rvalue_type):
-            item_type = self.iterable_item_type(cast(Instance, rvalue_type))
-            for lv in lvalues:
-                if isinstance(lv, StarExpr):
-                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
-                                          infer_lvalue_type)
-                else:
-                    self.check_assignment(lv, self.temp_node(item_type, context),
-                                          infer_lvalue_type)
-        else:
-            self.msg.type_not_iterable(rvalue_type, context)
 
     def check_lvalue(self, lvalue: Lvalue) -> Tuple[Type, IndexExpr, Var]:
         lvalue_type = None  # type: Type
