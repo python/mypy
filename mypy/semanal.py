@@ -1400,7 +1400,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
         elif cast(StrExpr, call.args[0]).value != name:
-            self.fail("Argument 1 to NewType(...) does not match variable name", context)
+            msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
+            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
             has_failed = True
 
         # Check second argument
@@ -1485,7 +1486,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
         if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected TypeVar() argument value", context)
+            msg = "String argument 1 '{}' to TypeVar(...) does not match variable name '{}'"
+            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
             return False
         return True
 

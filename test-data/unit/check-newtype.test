@@ -244,7 +244,7 @@ tmp/m.py:14: error: Revealed type is 'builtins.int'
 [case testNewTypeBadInitializationFails]
 from typing import NewType
 
-a = NewType('b', int)  # E: Argument 1 to NewType(...) does not match variable name
+a = NewType('b', int)  # E: String argument 1 'b' to NewType(...) does not match variable name 'a'
 b = NewType('b', 3)  # E: Argument 2 to NewType(...) must be a valid type
 c = NewType(2, int)  # E: Argument 1 to NewType(...) must be a string literal
 foo = "d"
