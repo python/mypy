@@ -1007,9 +1007,12 @@ class IntExpr(Expression):
 
 # How mypy uses StrExpr, BytesExpr, and UnicodeExpr:
 # In Python 2 mode:
-# b'x', 'x' -> StrExpr
+# b'x' -> BytesExpr  [new!]
+# 'x' -> StrExpr
 # u'x' -> UnicodeExpr
-# BytesExpr is unused
+# However after `from __future__ import unicode_literals` [also new!]:
+# b'x' -> BytesExpr
+# 'x', u'x' -> UnicodeExpr
 #
 # In Python 3 mode:
 # b'x' -> BytesExpr
@@ -1033,7 +1036,7 @@ class StrExpr(Expression):
 class BytesExpr(Expression):
     """Bytes literal"""
 
-    value = ''  # TODO use bytes
+    value = ''
     literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
@@ -1047,7 +1050,7 @@ class BytesExpr(Expression):
 class UnicodeExpr(Expression):
     """Unicode literal (Python 2.x)"""
 
-    value = ''  # TODO use bytes
+    value = ''
     literal = LITERAL_YES
 
     def __init__(self, value: str) -> None:
