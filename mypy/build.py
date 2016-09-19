@@ -762,7 +762,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
 
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
-    current_options = select_options_affecting_cache(manager.options)
+    current_options = manager.options.select_options_affecting_cache()
     if cached_options != current_options:
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
@@ -788,23 +788,6 @@ def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) ->
         return False
     manager.log('Found {} {} (metadata is fresh)'.format(id, meta.data_json))
     return True
-
-
-def select_options_affecting_cache(options: Options) -> Mapping[str, bool]:
-    return {opt: getattr(options, opt) for opt in OPTIONS_AFFECTING_CACHE}
-
-
-OPTIONS_AFFECTING_CACHE = [
-    "silent_imports",
-    "almost_silent",
-    "disallow_untyped_calls",
-    "disallow_untyped_defs",
-    "check_untyped_defs",
-    "debug_cache",
-    "strict_optional",
-    "strict_optional_whitelist",
-    "show_none_errors",
-]
 
 
 def random_string() -> str:
@@ -889,7 +872,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'dependencies': dependencies,
             'suppressed': suppressed,
             'child_modules': child_modules,
-            'options': select_options_affecting_cache(options),
+            'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,

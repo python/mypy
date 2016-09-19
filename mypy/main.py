@@ -15,6 +15,7 @@ from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb, set_show_tb
 from mypy.options import Options, BuildType
+from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
@@ -115,19 +116,6 @@ def parse_version(v: str) -> Tuple[int, int]:
     else:
         raise argparse.ArgumentTypeError(
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
-
-
-# Supported report types.
-valid_report_types = {
-    'html',
-    'old_html',
-    'xslt_html',
-    'xml',
-    'txt',
-    'xslt_txt',
-    'linecount',
-    'linecoverage',
-}
 
 
 def process_options(args: List[str],
@@ -233,7 +221,7 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
-    for report_type in valid_report_types:
+    for report_type in reporter_classes:
         report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
                                   metavar='DIR',
                                   dest='special-opts:%s_report' % report_type)
@@ -477,7 +465,12 @@ def parse_config_file(options: Options, filename: str) -> None:
             updates, report_dirs = parse_section(prefix, options, section)
             # TODO: Limit updates to flags that can be per-file.
             if report_dirs:
-                print("%s: Per-file sections should not specify reports" % prefix,
+                print("%s: Per-file sections should not specify reports (%s)" %
+                      (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
+                      file=sys.stderr)
+            if set(updates) - Options.PER_FILE_OPTIONS:
+                print("%s: Per-file sections should only specify per-file flags (%s)" %
+                      (prefix, ', '.join(sorted(set(updates) - Options.PER_FILE_OPTIONS))),
                       file=sys.stderr)
             options.per_file_options[glob] = updates
 
@@ -499,9 +492,10 @@ def parse_section(prefix: str, template: Options,
             if dv is None:
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
-                    if report_type in valid_report_types:
+                    if report_type in reporter_classes:
                         report_dirs[report_type] = section.get(key)
                     else:
+                        import pdb; pdb.set_trace()
                         print("%s: Unrecognized report type: %s" % (prefix, key),
                               file=sys.stderr)
                     continue

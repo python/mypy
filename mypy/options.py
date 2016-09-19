@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Optional, Tuple, List
+from typing import Any, Mapping, Optional, Tuple, List
 
 from mypy import defaults
 
@@ -15,6 +15,20 @@ class BuildType:
 
 class Options:
     """Options collected from flags."""
+
+    PER_FILE_OPTIONS = {
+        "silent_imports",
+        "almost_silent",
+        "disallow_untyped_calls",
+        "disallow_untyped_defs",
+        "check_untyped_defs",
+        "debug_cache",
+        "strict_optional_whitelist",
+        "show_none_errors",
+    }
+
+    OPTIONS_AFFECTING_CACHE =  PER_FILE_OPTIONS | {"strict_optional"}
+
 
     def __init__(self) -> None:
         # -- build options --
@@ -108,3 +122,6 @@ class Options:
         new_options.__dict__.update(self.__dict__)
         new_options.__dict__.update(updates)
         return new_options
+
+    def select_options_affecting_cache(self) -> Mapping[str, bool]:
+        return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
