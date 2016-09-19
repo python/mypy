@@ -27,8 +27,7 @@ class Options:
         "show_none_errors",
     }
 
-    OPTIONS_AFFECTING_CACHE =  PER_FILE_OPTIONS | {"strict_optional"}
-
+    OPTIONS_AFFECTING_CACHE = PER_FILE_OPTIONS | {"strict_optional"}
 
     def __init__(self) -> None:
         # -- build options --

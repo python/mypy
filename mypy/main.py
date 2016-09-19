@@ -495,7 +495,6 @@ def parse_section(prefix: str, template: Options,
                     if report_type in reporter_classes:
                         report_dirs[report_type] = section.get(key)
                     else:
-                        import pdb; pdb.set_trace()
                         print("%s: Unrecognized report type: %s" % (prefix, key),
                               file=sys.stderr)
                     continue
