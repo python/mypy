@@ -1095,19 +1095,6 @@ class TypeChecker(NodeVisitor[Type]):
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
 
-    def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int,
-                                         context: Context) -> bool:
-        if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
-            if len(lvalues) - 1 > rvalue_count:
-                self.msg.wrong_number_values_to_unpack(rvalue_count,
-                                                       len(lvalues) - 1, context)
-                return False
-        elif rvalue_count != len(lvalues):
-            self.msg.wrong_number_values_to_unpack(rvalue_count,
-                            len(lvalues), context)
-            return False
-        return True
-
     def check_multi_assign_literal(self, lvalues: List[Expression],
                                    rvalue: Union[ListExpr, TupleExpr],
                                    context: Context, infer_lvalue_type: bool = True) -> None:
@@ -1133,6 +1120,19 @@ class TypeChecker(NodeVisitor[Type]):
             lr_pairs.extend(zip(right_lvs, right_rvs))
             for lv, rv in lr_pairs:
                 self.check_assignment(lv, rv, infer_lvalue_type)
+
+    def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int,
+                                         context: Context) -> bool:
+        if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
+            if len(lvalues) - 1 > rvalue_count:
+                self.msg.wrong_number_values_to_unpack(rvalue_count,
+                                                       len(lvalues) - 1, context)
+                return False
+        elif rvalue_count != len(lvalues):
+            self.msg.wrong_number_values_to_unpack(rvalue_count,
+                            len(lvalues), context)
+            return False
+        return True
 
     def check_multi_assign(self, lvalues: List[Expression],
                            rvalue: Expression, rvalue_type: Type,
