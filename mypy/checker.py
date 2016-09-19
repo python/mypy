@@ -1094,6 +1094,7 @@ class TypeChecker(NodeVisitor[Type]):
             if inferred:
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
+
     def check_rvalue_count_in_assignment(self, lvalues: List[Lvalue], rvalue_count: int,
                                          context: Context) -> bool:
         if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
