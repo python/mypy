@@ -130,7 +130,7 @@ a = C() # type: C[int, int]
 b = a.f('a')
 a.f(b) # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "str"
 
-[case testUnionMultissign]
+[case testUnionMultiassign1]
 from typing import Union, Tuple, Any
 
 a = None  # type: Tuple[int]
@@ -139,8 +139,17 @@ a = None  # type: Tuple[int]
 b = None  # type: Union[Tuple[int], Tuple[float]]
 (b1,) = b
 
-c = None  # type: Union[Tuple[int, int], Tuple[float, float]]
+[case testUnionMultiassign2]
+from typing import Union, Tuple
+
+c = None  # type: Union[Tuple[int, int], Tuple[int, str]]
+q = None  # type: Tuple[int, float]
 (c1, c2) = c
+reveal_type(c1)  # E: Revealed type is 'builtins.int'
+reveal_type(c2)  # E: Revealed type is 'builtins.object'
+
+[case testUnionMultiassign3]
+from typing import Union, Tuple, Any
 
 d = None  # type: Union[Any, Tuple[float, float]]
 (d1, d2) = d
