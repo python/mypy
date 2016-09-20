@@ -154,7 +154,7 @@ def g(a: int) -> int:
     return f(a)
 [out]
 z.py:1: error: Function is missing a type annotation
-z.py:4: error: call to untyped function "f" in typed context
+z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
 [case testConfigErrorNoSection]
