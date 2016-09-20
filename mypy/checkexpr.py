@@ -54,6 +54,9 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     output = set()  # type: Set[str]
     while expr.kind == MODULE_REF or expr.fullname is not None:
         if expr.kind == MODULE_REF and expr.fullname is not None:
+            # If it's None, something's wrong (perhaps due to an
+            # import cycle or a supressed error).  For now we just
+            # skip it.
             output.add(expr.fullname)
 
         if isinstance(expr, NameExpr):
