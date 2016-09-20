@@ -53,7 +53,7 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     MemberExpr."""
     output = set()  # type: Set[str]
     while expr.kind == MODULE_REF or expr.fullname is not None:
-        if expr.kind == MODULE_REF:
+        if expr.kind == MODULE_REF and expr.fullname is not None:
             output.add(expr.fullname)
 
         if isinstance(expr, NameExpr):
