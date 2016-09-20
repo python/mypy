@@ -217,6 +217,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.all_exports = set()  # type: Set[str]
 
     def visit_file(self, file_node: MypyFile, fnam: str) -> None:
+        save_options = self.options
+        self.options = self.options.clone_for_file(fnam)
         self.errors.set_file(fnam)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
@@ -245,6 +247,8 @@ class SemanticAnalyzer(NodeVisitor):
             for name, g in self.globals.items():
                 if name not in self.all_exports:
                     g.module_public = False
+
+        self.options = save_options
 
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]

@@ -120,7 +120,7 @@ class TypeChecker(NodeVisitor[Type]):
     # Is this file a typeshed stub?
     is_typeshed_stub = False
     # Should strict Optional-related errors be suppressed in this file?
-    suppress_none_errors = False
+    suppress_none_errors = False  # TODO: Get it from options instead
     options = None  # type: Options
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
@@ -153,6 +153,8 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_file(self, file_node: MypyFile, path: str) -> None:
         """Type check a mypy file with the given path."""
+        save_options = self.options
+        self.options = self.options.clone_for_file(path)
         self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
@@ -163,7 +165,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.module_type_map = {}
         self.module_refs = set()
         if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = False
+            self.suppress_none_errors = not self.options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
@@ -187,6 +189,8 @@ class TypeChecker(NodeVisitor[Type]):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
+
+        self.options = save_options
 
     def check_second_pass(self) -> None:
         """Run second pass of type checking which goes through deferred nodes."""

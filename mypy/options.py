@@ -1,7 +1,10 @@
-from mypy import defaults
+import fnmatch
 import pprint
 import sys
-from typing import Any, Optional, Tuple, List
+
+from typing import Any, Mapping, Optional, Tuple, List
+
+from mypy import defaults
 
 
 class BuildType:
@@ -12,6 +15,19 @@ class BuildType:
 
 class Options:
     """Options collected from flags."""
+
+    PER_FILE_OPTIONS = {
+        "silent_imports",
+        "almost_silent",
+        "disallow_untyped_calls",
+        "disallow_untyped_defs",
+        "check_untyped_defs",
+        "debug_cache",
+        "strict_optional_whitelist",
+        "show_none_errors",
+    }
+
+    OPTIONS_AFFECTING_CACHE = PER_FILE_OPTIONS | {"strict_optional"}
 
     def __init__(self) -> None:
         # -- build options --
@@ -44,11 +60,24 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
+        # Apply strict None checking
+        self.strict_optional = False
+
         # Files in which to allow strict-Optional related errors
+        # TODO: Kill this in favor of show_none_errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]
+
+        # Alternate way to show/hide strict-None-checking related errors
+        self.show_none_errors = True
 
         # Use script name instead of __main__
         self.scripts_are_modules = False
+
+        # Config file name
+        self.config_file = None  # type: Optional[str]
+
+        # Per-file options (raw)
+        self.per_file_options = {}  # type: Dict[str, Dict[str, object]]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -67,7 +96,7 @@ class Options:
         # -- experimental options --
         self.fast_parser = False
         self.incremental = False
-        self.cache_dir = defaults.MYPY_CACHE
+        self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.suppress_error_context = False  # Suppress "note: In function "foo":" messages.
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
@@ -80,3 +109,18 @@ class Options:
 
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
+
+    def clone_for_file(self, filename: str) -> 'Options':
+        updates = {}
+        for glob in self.per_file_options:
+            if fnmatch.fnmatch(filename, glob):
+                updates.update(self.per_file_options[glob])
+        if not updates:
+            return self
+        new_options = Options()
+        new_options.__dict__.update(self.__dict__)
+        new_options.__dict__.update(updates)
+        return new_options
+
+    def select_options_affecting_cache(self) -> Mapping[str, bool]:
+        return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
