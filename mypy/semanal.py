@@ -1339,6 +1339,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
 
         old_type = self.check_newtype_args(name, call, s)
+        call.analyzed = NewTypeExpr(name, old_type, line=call.line)
         if old_type is None:
             return
 
@@ -1360,8 +1361,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
-        node.node = newtype_class_info
-        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
+        call.analyzed.info = node.node = newtype_class_info
 
     def analyze_newtype_declaration(self,
             s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
@@ -1384,7 +1384,6 @@ class SemanticAnalyzer(NodeVisitor):
             # overwritten later with a fully complete NewTypeExpr if there are no other
             # errors with the NewType() call.
             call = s.rvalue
-            call.analyzed = NewTypeExpr(None).set_line(call.line)
 
         return name, call
 
