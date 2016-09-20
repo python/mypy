@@ -460,7 +460,6 @@ def parse_config_file(options: Options, filename: str) -> None:
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            glob = name[5:]
             prefix = '%s: [%s]' % (filename, name)
             updates, report_dirs = parse_section(prefix, options, section)
             # TODO: Limit updates to flags that can be per-file.
@@ -472,7 +471,10 @@ def parse_config_file(options: Options, filename: str) -> None:
                 print("%s: Per-file sections should only specify per-file flags (%s)" %
                       (prefix, ', '.join(sorted(set(updates) - Options.PER_FILE_OPTIONS))),
                       file=sys.stderr)
-            options.per_file_options[glob] = updates
+                updates = {k: v for k, v in updates.items() if k in Options.PER_FILE_OPTIONS}
+            globs = name[5:]
+            for glob in globs.split(','):
+                options.per_file_options[glob] = updates
 
 
 def parse_section(prefix: str, template: Options,
