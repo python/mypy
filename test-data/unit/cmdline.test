@@ -157,6 +157,36 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
+[case testPerFileConfigSectionMultipleMatches]
+# cmd: mypy xx.py xy.py yx.py yy.py
+[file mypy.ini]
+[[mypy]
+suppress_error_context = True
+[[mypy-*x*.py]
+disallow_untyped_defs = True
+[[mypy-*y*.py]
+disallow_untyped_calls = True
+[file xx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file xy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[out]
+yy.py:2: error: Call to untyped function "f" in typed context
+yx.py:1: error: Function is missing a type annotation
+yx.py:2: error: Call to untyped function "f" in typed context
+xy.py:1: error: Function is missing a type annotation
+xy.py:2: error: Call to untyped function "f" in typed context
+xx.py:1: error: Function is missing a type annotation
+
+
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass
 [file mypy.ini]
