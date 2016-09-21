@@ -7,9 +7,7 @@ from typing import (
 )
 
 import mypy.nodes
-from mypy.nodes import (
-    INVARIANT, SymbolNode, Node, TempNode, NameExpr, ListExpr, TupleExpr, StarExpr
-)
+from mypy.nodes import INVARIANT, SymbolNode
 
 from mypy import experiments
 
@@ -1490,49 +1488,3 @@ def true_or_false(t: Type) -> Type:
     new_t.can_be_true = type(new_t).can_be_true
     new_t.can_be_false = type(new_t).can_be_false
     return new_t
-
-
-def replace_none(n: Node) -> Node:
-    """
-    Helper for parse and fastparse.
-    Replace all Nones on the right of protected assignment with Any-like.
-    """
-    if isinstance(n, NameExpr) and n.name == 'None':
-        return TempNode(AnyType())
-    elif isinstance(n, TupleExpr):
-        return TupleExpr(_replace_inner(n.items))
-    elif isinstance(n, ListExpr):
-        return ListExpr(_replace_inner(n.items))
-    else:
-        return n
-
-
-def _replace_inner(ns: List[Node]) -> List[Node]:
-    ret = []  # type: List[Node]
-    for item in ns:
-        if isinstance(item, NameExpr) and item.name == 'None':
-            ret.append(TempNode(AnyType()))
-        else:
-            ret.append(item)
-    return ret
-
-
-def protected_assign(lvalues: List[Node], rvalue: Node) -> bool:
-    """
-    Determine whether this is a protected assignment,
-    i.e. assignment used in despair with old syntax::
-
-        x = None  # type: int  # we don't want to initialize x here
-    """
-    if len(lvalues) > 1:
-        return False
-    lvalue = lvalues[0]
-    if (not isinstance(lvalue, (TupleExpr, ListExpr, StarExpr))
-       and isinstance(rvalue, NameExpr) and rvalue.name == 'None'):
-        return True
-    if (isinstance(rvalue, (TupleExpr, ListExpr))
-       and isinstance(lvalue, (TupleExpr, ListExpr))
-       and len(lvalue.items) == len(rvalue.items)
-       and not any(isinstance(it, (TupleExpr, ListExpr, StarExpr)) for it in lvalue.items)):
-        return True
-    return False

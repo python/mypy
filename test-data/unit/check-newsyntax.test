@@ -62,8 +62,6 @@ TstInstance().a = 'ab'
 # flags: --fast-parser --strict-optional --python-version 3.6
 class CCC:
     a: str = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
-    x, y = None, None  # type: int, str
-    x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
 main: note: In class "CCC":
 
@@ -79,7 +77,6 @@ strict2: int = None  # E: Incompatible types in assignment (expression has type 
 def f() -> None:
     x: int
     x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-    y = None  # type: int
 [out]
 main: note: In function "f":
 

@@ -27,7 +27,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
-    BackquoteExpr, TempNode
+    BackquoteExpr
 )
 from mypy import defaults
 from mypy import nodes
@@ -996,10 +996,6 @@ class Parser:
             type = self.parse_type_comment(cur, signature=False)
         else:
             type = None
-        # protect 'x, y = None, None # type: int, str' etc.
-        if type is not None and experiments.STRICT_OPTIONAL:
-            if mypy.types.protected_assign(lvalues, expr):
-                expr = mypy.types.replace_none(expr)
         return AssignmentStmt(lvalues, expr, type)
 
     def parse_return_stmt(self) -> ReturnStmt:
