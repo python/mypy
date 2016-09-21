@@ -3,17 +3,17 @@ in 1
 def f():
   1 1
 [out]
-main:1: error: Parse error before in
+main:1:0: error: Parse error before in
 main: note: In function "f":
-main:3: error: Parse error before numeric literal
+main:3:4: error: Parse error before numeric literal
 
 [case testUndefinedVariableInGlobalStatement]
 import typing
 x
 y
 [out]
-main:2: error: Name 'x' is not defined
-main:3: error: Name 'y' is not defined
+main:2:0: error: Name 'x' is not defined
+main:3:0: error: Name 'y' is not defined
 
 [case testUndefinedVariableWithinFunctionContext]
 import typing
@@ -22,9 +22,9 @@ def f() -> None:
 y
 [out]
 main: note: In function "f":
-main:3: error: Name 'x' is not defined
+main:3:2: error: Name 'x' is not defined
 main: note: At top level:
-main:4: error: Name 'y' is not defined
+main:4:0: error: Name 'y' is not defined
 
 [case testMethodScope]
 import typing
@@ -32,7 +32,7 @@ class A:
   def f(self): pass
 f
 [out]
-main:4: error: Name 'f' is not defined
+main:4:0: error: Name 'f' is not defined
 
 [case testMethodScope2]
 import typing
@@ -44,8 +44,8 @@ class B:
     g # error
 [out]
 main: note: In function "g":
-main:6: error: Name 'f' is not defined
-main:7: error: Name 'g' is not defined
+main:6:4: error: Name 'f' is not defined
+main:7:4: error: Name 'g' is not defined
 
 [case testInvalidType]
 import typing
@@ -165,7 +165,7 @@ z, z2 = 1 # type: *object, (object, *object)
 [out]
 main:2: error: At most one star type allowed in a tuple
 main:3: error: At most one star type allowed in a tuple
-main:4: error: Star type only allowed for starred expressions
+main:4:0: error: Star type only allowed for starred expressions
 
 [case testGlobalVarRedefinition]
 import typing
@@ -173,7 +173,7 @@ class A: pass
 x = 0 # type: A
 x = 0 # type: A
 [out]
-main:4: error: Name 'x' already defined
+main:4:0: error: Name 'x' already defined
 
 [case testLocalVarRedefinition]
 import typing
@@ -183,7 +183,7 @@ def f() -> None:
   x = 0 # type: A
 [out]
 main: note: In function "f":
-main:5: error: Name 'x' already defined
+main:5:2: error: Name 'x' already defined
 
 [case testClassVarRedefinition]
 import typing
@@ -191,14 +191,14 @@ class A:
   x = 0 # type: object
   x = 0 # type: object
 [out]
-main:4: error: Name 'x' already defined
+main:4:2: error: Name 'x' already defined
 
 [case testMultipleClassDefinitions]
 import typing
 class A: pass
 class A: pass
 [out]
-main:3: error: Name 'A' already defined
+main:3:0: error: Name 'A' already defined
 
 [case testMultipleMixedDefinitions]
 import typing
@@ -206,8 +206,8 @@ x = 1
 def x(): pass
 class x: pass
 [out]
-main:3: error: Name 'x' already defined
-main:4: error: Name 'x' already defined
+main:3:0: error: Name 'x' already defined
+main:4:0: error: Name 'x' already defined
 
 [case testNameNotImported]
 import typing
@@ -216,7 +216,7 @@ x
 [file m.py]
 x = y = 1
 [out]
-main:3: error: Name 'x' is not defined
+main:3:0: error: Name 'x' is not defined
 
 [case testMissingNameInImportFrom]
 import typing
@@ -224,28 +224,28 @@ from m import y
 [file m.py]
 x = 1
 [out]
-main:2: error: Module 'm' has no attribute 'y'
+main:2:0: error: Module 'm' has no attribute 'y'
 
 [case testMissingModule]
 import typing
 import m
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2:0: error: Cannot find module named 'm'
+main:2:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2:0: error: Cannot find module named 'm'
+main:2:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2:0: error: Cannot find module named 'm'
+main:2:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -254,8 +254,8 @@ import m
 from .x import y
 [out]
 main:2: note: In module imported here:
-tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
-tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+tmp/m/__init__.py:1:0: error: Cannot find module named 'm.x'
+tmp/m/__init__.py:1:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -265,8 +265,8 @@ import m.a
 from .x import y
 [out]
 main:2: note: In module imported here:
-tmp/m/a.py:1: error: Cannot find module named 'm.x'
-tmp/m/a.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+tmp/m/a.py:1:0: error: Cannot find module named 'm.x'
+tmp/m/a.py:1:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testModuleNotImported]
 import typing
@@ -277,7 +277,7 @@ import _n
 [file _n.py]
 x = 1
 [out]
-main:3: error: Name '_n' is not defined
+main:3:0: error: Name '_n' is not defined
 
 [case testImportAsteriskPlusUnderscore]
 import typing
@@ -287,18 +287,18 @@ __x__
 [file _m.py]
 _x = __x__ = 1
 [out]
-main:3: error: Name '_x' is not defined
-main:4: error: Name '__x__' is not defined
+main:3:0: error: Name '_x' is not defined
+main:4:0: error: Name '__x__' is not defined
 
 [case testRelativeImportAtTopLevelModule]
 from . import m
 [out]
-main:1: error: No parent module -- cannot perform relative import
+main:1:0: error: No parent module -- cannot perform relative import
 
 [case testRelativeImportAtTopLevelModule2]
 from .. import m
 [out]
-main:1: error: No parent module -- cannot perform relative import
+main:1:0: error: No parent module -- cannot perform relative import
 
 [case testUndefinedTypeWithQualifiedName]
 import typing
@@ -316,18 +316,18 @@ main:4: error: Name 'n' is not defined
 import typing
 import m.n
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
-main:2: error: Cannot find module named 'm.n'
+main:2:0: error: Cannot find module named 'm'
+main:2:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2:0: error: Cannot find module named 'm.n'
 
 [case testMissingPackage]
 import typing
 from m.n import x
 from a.b import *
 [out]
-main:2: error: Cannot find module named 'm.n'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
-main:3: error: Cannot find module named 'a.b'
+main:2:0: error: Cannot find module named 'm.n'
+main:2:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:3:0: error: Cannot find module named 'a.b'
 
 [case testErrorInImportedModule]
 import m
@@ -336,7 +336,7 @@ import typing
 x = y
 [out]
 main:1: note: In module imported here:
-tmp/m.py:2: error: Name 'y' is not defined
+tmp/m.py:2:4: error: Name 'y' is not defined
 
 [case testErrorInImportedModule2]
 import m.n
@@ -349,7 +349,7 @@ x = y
 [out]
 tmp/m/n.py:1: note: In module imported here,
 main:1: note: ... from here:
-tmp/k.py:2: error: Name 'y' is not defined
+tmp/k.py:2:4: error: Name 'y' is not defined
 
 [case testPackageWithoutInitFile]
 import typing
@@ -358,42 +358,42 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
-main:2: error: Cannot find module named 'm.n'
+main:2:0: error: Cannot find module named 'm'
+main:2:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:2:0: error: Cannot find module named 'm.n'
 
 [case testBreakOutsideLoop]
 break
 def f():
   break
 [out]
-main:1: error: 'break' outside loop
+main:1:0: error: 'break' outside loop
 main: note: In function "f":
-main:3: error: 'break' outside loop
+main:3:2: error: 'break' outside loop
 
 [case testContinueOutsideLoop]
 continue
 def f():
   continue
 [out]
-main:1: error: 'continue' outside loop
+main:1:0: error: 'continue' outside loop
 main: note: In function "f":
-main:3: error: 'continue' outside loop
+main:3:2: error: 'continue' outside loop
 
 [case testReturnOutsideFunction]
 def f(): pass
 return
 return 1
 [out]
-main:2: error: 'return' outside function
-main:3: error: 'return' outside function
+main:2:0: error: 'return' outside function
+main:3:0: error: 'return' outside function
 
 [case testYieldOutsideFunction]
 yield 1
 yield
 [out]
-main:1: error: 'yield' outside function
-main:2: error: 'yield' outside function
+main:1:0: error: 'yield' outside function
+main:2:0: error: 'yield' outside function
 
 [case testInvalidLvalues]
 1 = 1
@@ -402,11 +402,11 @@ main:2: error: 'yield' outside function
 [1, 1] = 1
 () = 1
 [out]
-main:1: error: Invalid assignment target
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Can't assign to ()
+main:1:0: error: Invalid assignment target
+main:2:1: error: Invalid assignment target
+main:3:1: error: Invalid assignment target
+main:4:1: error: Invalid assignment target
+main:5:0: error: Can't assign to ()
 --' (hack to fix syntax highlighting)
 
 [case testInvalidLvalues2]
@@ -418,10 +418,10 @@ x, (y, (z, 1)) = 1
 x, (y) = 1 # ok
 x, (y, (z, z)) = 1 # ok
 [out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
+main:2:7: error: Invalid assignment target
+main:3:7: error: Invalid assignment target
+main:4:11: error: Invalid assignment target
+main:5:11: error: Invalid assignment target
 
 [case testInvalidLvalues3]
 x = 1
@@ -431,21 +431,21 @@ x + x = 1
 'x' = 1
 x() = 1
 [out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
-main:6: error: Invalid assignment target
+main:2:2: error: Invalid assignment target
+main:3:0: error: Invalid assignment target
+main:4:0: error: Invalid assignment target
+main:5:0: error: Invalid assignment target
+main:6:1: error: Invalid assignment target
 
 [case testInvalidStarType]
 a = 1  # type: *int
 [out]
-main:1: error: Star type only allowed for starred expressions
+main:1:0: error: Star type only allowed for starred expressions
 
 [case testInvalidStarType]
 *a, b = 1  # type: int, int
 [out]
-main:1: error: Star type expected for starred expression
+main:1:0: error: Star type expected for starred expression
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -453,9 +453,9 @@ a, *b, *c = 1
 a, (*b, *c) = 1
 [*a, *b] = 1
 [out]
-main:1: error: Two starred expressions in assignment
-main:3: error: Two starred expressions in assignment
-main:4: error: Two starred expressions in assignment
+main:1:1: error: Two starred expressions in assignment
+main:3:6: error: Two starred expressions in assignment
+main:4:0: error: Two starred expressions in assignment
 
 [case testTwoStarExpressionsInForStmt]
 z = 1
@@ -468,18 +468,18 @@ for a, (*b, *c) in z:
 for [*a, *b] in z:
     pass
 [out]
-main:2: error: Two starred expressions in assignment
-main:6: error: Two starred expressions in assignment
-main:8: error: Two starred expressions in assignment
+main:2:4: error: Two starred expressions in assignment
+main:6:10: error: Two starred expressions in assignment
+main:8:4: error: Two starred expressions in assignment
 
 [case testTwoStarExpressionsInGeneratorExpr]
 (a for a, *b, *c in [])
 (a for *a, (*b, c) in [])
 (a for a, (*b, *c) in [])
 [out]
-main:1: error: Two starred expressions in assignment
-main:1: error: Name 'a' is not defined
-main:3: error: Two starred expressions in assignment
+main:1:1: error: Name 'a' is not defined
+main:1:7: error: Two starred expressions in assignment
+main:3:13: error: Two starred expressions in assignment
 
 [case testStarExpressionRhs]
 b = 1
@@ -487,20 +487,20 @@ c = 1
 d = 1
 a = *b
 [out]
-main:4: error: Can use starred expression only as assignment target
+main:4:4: error: Can use starred expression only as assignment target
 
 [case testStarExpressionInExp]
 a = 1
 *a + 1
 [out]
-main:2: error: Can use starred expression only as assignment target
+main:2:0: error: Can use starred expression only as assignment target
 
 [case testInvalidDel]
 import typing
 x = 1
-del x(1)  # E: Invalid delete target
-del x + 1 # E: Invalid delete target
-del z     # E: Name 'z' is not defined
+del x(1)  # E:0: Invalid delete target
+del x + 1 # E:0: Invalid delete target
+del z     # E:4: Name 'z' is not defined
 [out]
 
 [case testFunctionTvarScope]
@@ -527,15 +527,15 @@ class c(Generic[t]):
 def f(y: t): x = t
 [out]
 main: note: In function "f":
-main:4: error: 't' is a type variable and only valid in type context
-main:5: error: 't' is a type variable and only valid in type context
+main:4:29: error: 't' is a type variable and only valid in type context
+main:5:17: error: 't' is a type variable and only valid in type context
 
 [case testMissingSelf]
 import typing
 class A:
   def f(): pass
 [out]
-main:3: error: Method must have at least one argument
+main:3:2: error: Method must have at least one argument
 
 [case testInvalidBaseClass]
 import typing
@@ -548,9 +548,9 @@ class A: pass
 super().x
 def f() -> None: super().y
 [out]
-main:2: error: "super" used outside class
+main:2:7: error: "super" used outside class
 main: note: In function "f":
-main:3: error: "super" used outside class
+main:3:24: error: "super" used outside class
 
 [case testMissingSelfInMethod]
 import typing
@@ -558,8 +558,8 @@ class A:
   def f() -> None: pass
   def g(): pass
 [out]
-main:3: error: Method must have at least one argument
-main:4: error: Method must have at least one argument
+main:3:2: error: Method must have at least one argument
+main:4:2: error: Method must have at least one argument
 
 [case testMultipleMethodDefinition]
 import typing
@@ -568,7 +568,7 @@ class A:
   def g(self) -> None: pass
   def f(self, x: object) -> None: pass
 [out]
-main:5: error: Name 'f' already defined
+main:5:2: error: Name 'f' already defined
 
 [case testInvalidGlobalDecl]
 import typing
@@ -577,7 +577,7 @@ def f() -> None:
     x = None
 [out]
 main: note: In function "f":
-main:4: error: Name 'x' is not defined
+main:4:4: error: Name 'x' is not defined
 
 [case testInvalidNonlocalDecl]
 import typing
@@ -587,8 +587,8 @@ def f():
        x = None
 [out]
 main: note: In function "g":
-main:4: error: No binding for nonlocal 'x' found
-main:5: error: Name 'x' is not defined
+main:4:7: error: No binding for nonlocal 'x' found
+main:5:7: error: Name 'x' is not defined
 
 [case testNonlocalDeclNotMatchingGlobal]
 import typing
@@ -598,8 +598,8 @@ def f() -> None:
     x = None
 [out]
 main: note: In function "f":
-main:4: error: No binding for nonlocal 'x' found
-main:5: error: Name 'x' is not defined
+main:4:4: error: No binding for nonlocal 'x' found
+main:5:4: error: Name 'x' is not defined
 
 [case testNonlocalDeclConflictingWithParameter]
 import typing
@@ -610,13 +610,13 @@ def g():
         x = None
 [out]
 main: note: In function "f":
-main:5: error: Name 'x' is already defined in local scope before nonlocal declaration
+main:5:8: error: Name 'x' is already defined in local scope before nonlocal declaration
 
 [case testNonlocalDeclOutsideFunction]
 x = 2
 nonlocal x
 [out]
-main:2: error: nonlocal declaration not allowed at module level
+main:2:0: error: nonlocal declaration not allowed at module level
 
 [case testGlobalAndNonlocalDecl]
 import typing
@@ -629,7 +629,7 @@ def f():
        x = None
 [out]
 main: note: In function "g":
-main:7: error: Name 'x' is nonlocal and global
+main:7:7: error: Name 'x' is nonlocal and global
 
 [case testNonlocalAndGlobalDecl]
 import typing
@@ -642,7 +642,7 @@ def f():
        x = None
 [out]
 main: note: In function "g":
-main:7: error: Name 'x' is nonlocal and global
+main:7:7: error: Name 'x' is nonlocal and global
 
 [case testNestedFunctionAndScoping]
 import typing
@@ -654,8 +654,8 @@ def f(x) -> None:
     x
 [out]
 main: note: In function "f":
-main:5: error: Name 'z' is not defined
-main:6: error: Name 'y' is not defined
+main:5:4: error: Name 'z' is not defined
+main:6:4: error: Name 'y' is not defined
 
 [case testMultipleNestedFunctionDef]
 import typing
@@ -665,7 +665,7 @@ def f(x) -> None:
     def g(): pass
 [out]
 main: note: In function "f":
-main:5: error: Name 'g' already defined
+main:5:4: error: Name 'g' already defined
 
 [case testRedefinedOverloadedFunction]
 from typing import overload, Any
@@ -678,7 +678,7 @@ def f() -> None:
     def p(): pass # fail
 [out]
 main: note: In function "f":
-main:8: error: Name 'p' already defined
+main:8:4: error: Name 'p' already defined
 
 [case testNestedFunctionInMethod]
 import typing
@@ -689,15 +689,15 @@ class A:
        y
 [out]
 main: note: In function "g":
-main:5: error: Name 'x' is not defined
+main:5:11: error: Name 'x' is not defined
 main: note: In function "f":
-main:6: error: Name 'y' is not defined
+main:6:7: error: Name 'y' is not defined
 
 [case testImportScope]
 import typing
 def f() -> None:
     import x
-x.y # E: Name 'x' is not defined
+x.y # E:0: Name 'x' is not defined
 [file x.py]
 y = 1
 [out]
@@ -707,7 +707,7 @@ import typing
 def f() -> None:
     from x import y
     y
-y # E: Name 'y' is not defined
+y # E:0: Name 'y' is not defined
 [file x.py]
 y = 1
 [out]
@@ -717,7 +717,7 @@ import typing
 def f() -> None:
     from x import *
     y
-y # E: Name 'y' is not defined
+y # E:0: Name 'y' is not defined
 [file x.py]
 y = 1
 [out]
@@ -727,7 +727,7 @@ import typing
 class A:
     from x import *
     y
-y # E: Name 'y' is not defined
+y # E:0: Name 'y' is not defined
 [file x.py]
 y = 1
 [out]
@@ -737,14 +737,14 @@ import typing
 def f():
     class A: pass
     A
-A # E: Name 'A' is not defined
+A # E:0: Name 'A' is not defined
 [out]
 
 [case testScopeOfNestedClass2]
 import typing
 class A:
     class B: pass
-B # E: Name 'B' is not defined
+B # E:0: Name 'B' is not defined
 [out]
 
 [case testScopeOfNestedClass3]
@@ -752,8 +752,8 @@ import typing
 class A:
     def f(self):
         class B: pass
-    B # E: Name 'B' is not defined
-B # E: Name 'B' is not defined
+    B # E:4: Name 'B' is not defined
+B # E:0: Name 'B' is not defined
 [out]
 
 [case testInvalidNestedClassReferenceInDecl]
@@ -775,7 +775,7 @@ class A(Generic[t]):
 [out]
 
 [case testTestExtendPrimitives]
-class C(bool): pass # E: 'bool' is not a valid base class
+class C(bool): pass # E:0: 'bool' is not a valid base class
 class A(int): pass # ok
 class B(float): pass # ok
 class D(str): pass # ok
@@ -783,22 +783,22 @@ class D(str): pass # ok
 [out]
 
 [case testCyclicInheritance]
-class A(A): pass # E: Cycle in inheritance hierarchy
+class A(A): pass # E:0: Cycle in inheritance hierarchy
 [out]
 
 [case testAssignToTypeDef]
 import typing
 class A: pass
-A = None # E: Invalid assignment target
+A = None # E:0: Invalid assignment target
 [out]
 
 [case testInvalidCastTargetSyntax]
 from typing import cast, TypeVar, Generic
 t = TypeVar('t')
 class C(Generic[t]): pass
-cast(str + str, None)    # E: Cast target is not a type
-cast(C[str][str], None)  # E: Cast target is not a type
-cast(C[str + str], None) # E: Cast target is not a type
+cast(str + str, None)    # E:4: Cast target is not a type
+cast(C[str][str], None)  # E:4: Cast target is not a type
+cast(C[str + str], None) # E:4: Cast target is not a type
 cast([int, str], None)   # E: Invalid type
 [out]
 
@@ -818,20 +818,20 @@ cast(str[str], None) # E: "str" expects no type arguments, but 1 given
 
 [case testInvalidNumberOfArgsToCast]
 from typing import cast
-cast(str) # E: 'cast' expects 2 arguments
-cast(str, None, None) # E: 'cast' expects 2 arguments
+cast(str) # E:4: 'cast' expects 2 arguments
+cast(str, None, None) # E:4: 'cast' expects 2 arguments
 [out]
 
 [case testInvalidKindsOfArgsToCast]
 from typing import cast
-cast(str, *None) # E: 'cast' must be called with 2 positional arguments
-cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
+cast(str, *None) # E:4: 'cast' must be called with 2 positional arguments
+cast(str, target=None) # E:4: 'cast' must be called with 2 positional arguments
 [out]
 
 [case testInvalidArgsToAny]
 from typing import Any
-Any(str, None) # E: 'Any' expects 1 argument
-Any(arg=str)   # E: 'Any' must be called with 1 positional argument
+Any(str, None) # E:3: 'Any' expects 1 argument
+Any(arg=str)   # E:3: 'Any' must be called with 1 positional argument
 [out]
 
 [case testTypeListAsType]
@@ -856,7 +856,7 @@ from abc import abstractmethod
 @abstractmethod
 def foo(): pass
 [out]
-main:3: error: 'abstractmethod' used with a non-method
+main:3:0: error: 'abstractmethod' used with a non-method
 
 [case testAbstractNestedFunction]
 import typing
@@ -866,26 +866,26 @@ def g() -> None:
   def foo(): pass
 [out]
 main: note: In function "g":
-main:4: error: 'abstractmethod' used with a non-method
+main:4:2: error: 'abstractmethod' used with a non-method
 
 [case testInvalidTypeDeclaration]
 import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Invalid assignment target
+main:3:1: error: Invalid assignment target
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
 None[1] = 1 # type: int
 [out]
-main:2: error: Unexpected type declaration
+main:2:4: error: Unexpected type declaration
 
 [case testNonSelfMemberAssignmentWithTypeDeclaration]
 import typing
 None.x = 1 # type: int
 [out]
-main:2: error: Type cannot be declared in assignment to non-self attribute
+main:2:4: error: Type cannot be declared in assignment to non-self attribute
 
 [case testNonSelfMemberAssignmentWithTypeDeclarationInMethod]
 import typing
@@ -894,7 +894,7 @@ class A:
     x.y = 1 # type: int
 [out]
 main: note: In function "f":
-main:4: error: Type cannot be declared in assignment to non-self attribute
+main:4:5: error: Type cannot be declared in assignment to non-self attribute
 
 [case testInvalidTypeInTypeApplication]
 from typing import TypeVar, Generic
@@ -907,51 +907,51 @@ A[TypeVar] # E: Invalid type "typing.TypeVar"
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
-A[1] # E: Type expected within [...]
+A[1] # E:1: Type expected within [...]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypes]
-x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
+x, y = 1, 2 # type: int, str, int # E:1: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested]
-x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
+x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E:5: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested2]
-x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
+x, (y, z) = 1, (2, 3) # type: int, (str, ) # E:5: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested3]
-x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
+x, (y, z) = 1, (2, 3) # type: int, str # E:5: Tuple type expected for multiple variables
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested4]
-x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
+x, (y, z) = 1, (2, 3) # type: int, str, int # E:1: Incompatible number of tuple items
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested5]
-x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
+x, (y, ) = 1, (2, ) # type: int, str # E:5: Tuple type expected for multiple variables
 [out]
 
 [case testVariableDeclWithInvalidType]
-x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
+x, y = 1, 2 # type: int # E:1: Tuple type expected for multiple variables
 [out]
 
 [case testInvalidLvalueWithExplicitType]
 a = 1
-a[1] = None # type: int # E: Unexpected type declaration
+a[1] = None # type: int # E:1: Unexpected type declaration
 a.x = None # type: int \
-    # E: Type cannot be declared in assignment to non-self attribute
-a() = None # type: int  # E: Invalid assignment target
+    # E:1: Type cannot be declared in assignment to non-self attribute
+a() = None # type: int  # E:1: Invalid assignment target
 [out]
 
 [case testInvalidLvalueWithExplicitType3]
 a = 1
 a.y, a.x = None, None # type: int, int \
-    # E: Type cannot be declared in assignment to non-self attribute
+    # E:1: Type cannot be declared in assignment to non-self attribute
 a[1], a[2] = None, None # type: int, int \
-    # E: Unexpected type declaration
+    # E:1: Unexpected type declaration
 [out]
 
 [case testMissingGenericImport]
@@ -979,54 +979,54 @@ from typing import Generic, TypeVar
 T = TypeVar('T')
 S = TypeVar('S')
 class A(Generic[T], Generic[S]): pass \
-      # E: Duplicate Generic in bases
+      # E:0: Duplicate Generic in bases
 [out]
 
 [case testInvalidMetaclass]
-class A(metaclass=x): pass # E: Name 'x' is not defined
+class A(metaclass=x): pass # E:0: Name 'x' is not defined
 [out]
 
 [case testInvalidQualifiedMetaclass]
 import abc
-class A(metaclass=abc.Foo): pass # E: Name 'abc.Foo' is not defined
+class A(metaclass=abc.Foo): pass # E:0: Name 'abc.Foo' is not defined
 [out]
 
 [case testNonClassMetaclass]
 def f(): pass
-class A(metaclass=f): pass # E: Invalid metaclass 'f'
+class A(metaclass=f): pass # E:0: Invalid metaclass 'f'
 [out]
 
 [case testInvalidTypevarArguments]
 from typing import TypeVar
-a = TypeVar()       # E: Too few arguments for TypeVar()
-b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
-c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
-d = TypeVar('D')    # E: String argument 1 'D' to TypeVar(...) does not match variable name 'd'
-e = TypeVar('e', int, str, x=1) # E: Unexpected argument to TypeVar(): x
-f = TypeVar('f', (int, str)) # E: Type expected
-g = TypeVar('g', x=(int, str)) # E: Unexpected argument to TypeVar(): x
-h = TypeVar('h', bound=1) # E: TypeVar 'bound' must be a type
+a = TypeVar()       # E:0: Too few arguments for TypeVar()
+b = TypeVar(x='b')  # E:0: TypeVar() expects a string literal as first argument
+c = TypeVar(1)      # E:0: TypeVar() expects a string literal as first argument
+d = TypeVar('D')    # E:0: String argument 1 'D' to TypeVar(...) does not match variable name 'd'
+e = TypeVar('e', int, str, x=1) # E:0: Unexpected argument to TypeVar(): x
+f = TypeVar('f', (int, str)) # E:21: Type expected
+g = TypeVar('g', x=(int, str)) # E:0: Unexpected argument to TypeVar(): x
+h = TypeVar('h', bound=1) # E:23: TypeVar 'bound' must be a type
 [out]
 
 [case testMoreInvalidTypevarArguments]
 from typing import TypeVar
-T = TypeVar('T', int, str, bound=bool) # E: TypeVar cannot have both values and an upper bound
+T = TypeVar('T', int, str, bound=bool) # E:0: TypeVar cannot have both values and an upper bound
 S = TypeVar('S', covariant=True, contravariant=True) \
-    # E: TypeVar cannot be both covariant and contravariant
+    # E:0: TypeVar cannot be both covariant and contravariant
 [builtins fixtures/bool.pyi]
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
-b = TypeVar('b', *[int]) # E: Unexpected argument to TypeVar()
-c = TypeVar('c', int, 2) # E: Type expected
+b = TypeVar('b', *[int]) # E:0: Unexpected argument to TypeVar()
+c = TypeVar('c', int, 2) # E:22: Type expected
 [out]
 
 [case testObsoleteTypevarValuesSyntax]
 from typing import TypeVar
 a = TypeVar('a', values=(int, str))
 [out]
-main:2: error: TypeVar 'values' argument not supported
-main:2: error: Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))
+main:2:0: error: TypeVar 'values' argument not supported
+main:2:0: error: Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))
 
 [case testLocalTypevarScope]
 from typing import TypeVar
@@ -1047,36 +1047,36 @@ main: note: In function "g":
 [case testRedefineVariableAsTypevar]
 from typing import TypeVar
 x = 0
-x = TypeVar('x') # E: Cannot redefine 'x' as a type variable
+x = TypeVar('x') # E:0: Cannot redefine 'x' as a type variable
 [out]
 
 [case testTypevarWithType]
 from typing import TypeVar
-x = TypeVar('x') # type: int # E: Cannot declare the type of a type variable
+x = TypeVar('x') # type: int # E:0: Cannot declare the type of a type variable
 [out]
 
 [case testRedefineTypevar]
 from typing import TypeVar
 t = TypeVar('t')
-t = 1 # E: Invalid assignment target
+t = 1 # E:0: Invalid assignment target
 [out]
 
 [case testRedefineTypevar2]
 from typing import TypeVar
 t = TypeVar('t')
-def t(): pass # E: Name 't' already defined
+def t(): pass # E:0: Name 't' already defined
 [out]
 
 [case testRedefineTypevar3]
 from typing import TypeVar
 t = TypeVar('t')
-class t: pass # E: Name 't' already defined
+class t: pass # E:0: Name 't' already defined
 [out]
 
 [case testRedefineTypevar4]
 from typing import TypeVar
 t = TypeVar('t')
-from typing import Generic as t # E: Name 't' already defined
+from typing import Generic as t # E:0: Name 't' already defined
 [out]
 
 [case testInvalidStrLiteralType]
@@ -1085,7 +1085,7 @@ def f(x: 'foo'): pass # E: Name 'foo' is not defined
 main: note: In function "f":
 
 [case testInvalidStrLiteralType2]
-def f(x: 'int['): pass # E: Parse error before end of line
+def f(x: 'int['): pass # E:4: Parse error before end of line
 [out]
 main: note: In function "f":
 
@@ -1094,14 +1094,14 @@ from typing import overload
 def dec(x): pass
 @overload
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E:0: 'overload' decorator expected
 def f(): pass
 [out]
 
 [case testInconsistentOverload2]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E:0: 'overload' decorator expected
 def f(): pass
 @overload
 def f(): pass
@@ -1110,9 +1110,9 @@ def f(): pass
 [case testMissingOverloadDecorator]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E:0: 'overload' decorator expected
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@dec  # E:0: 'overload' decorator expected
 def f(): pass
 [out]
 
@@ -1124,9 +1124,9 @@ def g(x): # type: () -> int
   pass
 [out]
 main: note: In function "f":
-main:2: error: Type signature has too many arguments
+main:2:0: error: Type signature has too many arguments
 main: note: In function "g":
-main:4: error: Type signature has too few arguments
+main:4:0: error: Type signature has too few arguments
 
 [case testStaticmethodAndNonMethod]
 import typing
@@ -1138,9 +1138,9 @@ class A:
     def h(): pass
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:2: error: 'staticmethod' used with a non-method
+main:2:0: error: 'staticmethod' used with a non-method
 main: note: In function "g":
-main:6: error: 'staticmethod' used with a non-method
+main:6:4: error: 'staticmethod' used with a non-method
 
 [case testClassmethodAndNonMethod]
 import typing
@@ -1152,13 +1152,13 @@ class A:
     def h(): pass
 [builtins fixtures/classmethod.pyi]
 [out]
-main:2: error: 'classmethod' used with a non-method
+main:2:0: error: 'classmethod' used with a non-method
 main: note: In function "g":
-main:6: error: 'classmethod' used with a non-method
+main:6:4: error: 'classmethod' used with a non-method
 
 [case testNonMethodProperty]
 import typing
-@property  # E: 'property' used with a non-method
+@property  # E:0: 'property' used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -1167,19 +1167,19 @@ def f() -> int: pass
 import typing
 class A:
     @property
-    def f(self, x) -> int: pass  # E: Too many arguments
+    def f(self, x) -> int: pass  # E:4: Too many arguments
     @property
-    def g() -> int: pass   # E: Method must have at least one argument
+    def g() -> int: pass   # E:4: Method must have at least one argument
 [builtins fixtures/property.pyi]
 [out]
 
 [case testOverloadedProperty]
 from typing import overload
 class A:
-    @overload  # E: Decorated property not supported
+    @overload  # E:4: Decorated property not supported
     @property
     def f(self) -> int: pass
-    @property  # E: Decorated property not supported
+    @property  # E:4: Decorated property not supported
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
@@ -1190,7 +1190,7 @@ from typing import overload
 class A:
     @overload
     def f(self) -> int: pass
-    @property  # E: Decorated property not supported
+    @property  # E:4: Decorated property not supported
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
@@ -1200,10 +1200,10 @@ class A:
 import typing
 def dec(f): pass
 class A:
-    @dec  # E: Decorated property not supported
+    @dec  # E:4: Decorated property not supported
     @property
     def f(self) -> int: pass
-    @property  # E: Decorated property not supported
+    @property  # E:4: Decorated property not supported
     @dec
     def g(self) -> int: pass
 [builtins fixtures/property.pyi]
@@ -1213,7 +1213,7 @@ class A:
 import typing
 def f() -> None:
     import x
-    import y as x # E: Name 'x' already defined
+    import y as x # E:4: Name 'x' already defined
     x.y
 [file x.py]
 y = 1
@@ -1224,7 +1224,7 @@ main: note: In function "f":
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
 import x
-import y as x # E: Name 'x' already defined
+import y as x # E:0: Name 'x' already defined
 x.y
 [file x.py]
 y = 1
@@ -1240,8 +1240,8 @@ main: note: In function "f":
 main:2: error: Name 'List' is not defined
 
 [case testImportObsoleteTypingFunction]
-from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
-from _m import Function # E: Module '_m' has no attribute 'Function'
+from typing import Function # E:0: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
+from _m import Function # E:0: Module '_m' has no attribute 'Function'
 [file _m.py]
 [out]
 
@@ -1266,27 +1266,27 @@ main:1: note: (Did you mean 'typing.Callable'?)
 
 [case testInvalidWithTarget]
 def f(): pass
-with f() as 1: pass  # E: Invalid assignment target
+with f() as 1: pass  # E:12: Invalid assignment target
 [out]
 
 [case testUseObsoleteNameForTypeVar]
 from typing import typevar
 t = typevar('t')
 [out]
-main:1: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main:1:0: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 --' (this fixes syntax highlighting)
 
 [case testUseObsoleteNameForTypeVar2]
 t = typevar('t')
 [out]
-main:1: error: Name 'typevar' is not defined
-main:1: note: (Did you mean 'typing.TypeVar'?)
+main:1:4: error: Name 'typevar' is not defined
+main:1:4: note: (Did you mean 'typing.TypeVar'?)
 
 [case testUseObsoleteNameForTypeVar3]
 import typing
 t = typing.typevar('t')
 [out]
-main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
+main:2:10: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 --' (work around syntax highlighting :-/)
 
 [case testInvalidTypeAnnotation]
@@ -1295,7 +1295,7 @@ def f() -> None:
     1[2] = 1  # type: int
 [out]
 main: note: In function "f":
-main:3: error: Unexpected type declaration
+main:3:5: error: Unexpected type declaration
 
 [case testInvalidTypeAnnotation2]
 import typing
@@ -1303,27 +1303,27 @@ def f() -> None:
     f() = 1  # type: int
 [out]
 main: note: In function "f":
-main:3: error: Invalid assignment target
+main:3:5: error: Invalid assignment target
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:
     class X: pass
     class B:
-        y = X  # E: Name 'X' is not defined
+        y = X  # E:12: Name 'X' is not defined
 [out]
 
 [case testStubPackage]
 from m import x
-from m import y # E: Module 'm' has no attribute 'y'
+from m import y # E:0: Module 'm' has no attribute 'y'
 [file m/__init__.pyi]
 x = 1
 [out]
 
 [case testStubPackageSubModule]
 from m import x
-from m import y # E: Module 'm' has no attribute 'y'
+from m import y # E:0: Module 'm' has no attribute 'y'
 from m.m2 import y
-from m.m2 import z # E: Module 'm.m2' has no attribute 'z'
+from m.m2 import z # E:0: Module 'm.m2' has no attribute 'z'
 [file m/__init__.pyi]
 x = 1
 [file m/m2.pyi]
@@ -1333,22 +1333,22 @@ y = 1
 [case testMissingStubForThirdPartyModule]
 import nosexcover
 [out]
-main:1: error: No library stub file for module 'nosexcover'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
+main:1:0: error: No library stub file for module 'nosexcover'
+main:1:0: note: (Stub files are from https://github.com/python/typeshed)
 
 [case testMissingStubForStdLibModule]
 import tabnanny
 [out]
-main:1: error: No library stub file for standard library module 'tabnanny'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
+main:1:0: error: No library stub file for standard library module 'tabnanny'
+main:1:0: note: (Stub files are from https://github.com/python/typeshed)
 
 [case testMissingStubForTwoModules]
 import tabnanny
 import xdrlib
 [out]
-main:1: error: No library stub file for standard library module 'tabnanny'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-main:2: error: No library stub file for standard library module 'xdrlib'
+main:1:0: error: No library stub file for standard library module 'tabnanny'
+main:1:0: note: (Stub files are from https://github.com/python/typeshed)
+main:2:0: error: No library stub file for standard library module 'xdrlib'
 
 [case testListComprehensionSpecialScoping]
 class A:
@@ -1357,5 +1357,5 @@ class A:
     z = 1
     [x for i in z if y]
 [out]
-main:5: error: Name 'y' is not defined
-main:5: error: Name 'x' is not defined
+main:5:5: error: Name 'x' is not defined
+main:5:21: error: Name 'y' is not defined

@@ -89,7 +89,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     except (SyntaxError, TypeCommentParseError) as e:
         if errors:
             errors.set_file('<input>' if fnam is None else fnam)
-            errors.report(e.lineno, e.msg)
+            errors.report(e.lineno, e.offset, e.msg)
         else:
             raise
 

@@ -564,8 +564,8 @@ class A(None): pass
 class B(Any): pass
 class C(Callable[[], int]): pass
 [out]
-main:2: error: Invalid base class
-main:4: error: Invalid base class
+main:2:8: error: Invalid base class
+main:4:16: error: Invalid base class
 
 [case testTupleAsBaseClass]
 import m

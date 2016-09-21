@@ -11,7 +11,7 @@ def f(): pass
 PY3 = f()
 if PY3:
     t = int
-    x = object() + 'x' # E: Unsupported left operand type for + ("object")
+    x = object() + 'x' # E:17: Unsupported left operand type for + ("object")
 else:
     t = str
     y = 'x' / 1
@@ -27,7 +27,7 @@ if PY3:
     x = object() + 'x'
 else:
     t = str
-    y = 'x' / 1 # E: "str" has no attribute "__div__"
+    y = 'x' / 1 # E:12: "str" has no attribute "__div__"
 y
 z = '' # type: t
 
@@ -38,7 +38,7 @@ PY2 = f()
 if PY2:
     x = object() + 'x'
 else:
-    y = 'x' / 1 # E: Unsupported left operand type for / ("str")
+    y = 'x' / 1 # E:12: Unsupported left operand type for / ("str")
 y
 
 [case testConditionalAssignmentPY2_python2]
@@ -46,7 +46,7 @@ import typing
 def f(): pass
 PY2 = f()
 if PY2:
-    x = object() + 'x' # E: Unsupported left operand type for + ("object")
+    x = object() + 'x' # E:17: Unsupported left operand type for + ("object")
 else:
     y = 'x' / 1
 x
@@ -67,7 +67,7 @@ x = 1
 x = 'a'
 [out]
 main:9: note: In module imported here:
-tmp/m.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/m.py:3:0: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNegatedMypyConditional]
 import typing
@@ -78,14 +78,14 @@ else:
     import pow123 # E
 [builtins fixtures/bool.pyi]
 [out]
-main:6: error: Cannot find module named 'pow123'
-main:6: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+main:6:0: error: Cannot find module named 'pow123'
+main:6:0: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
 [case testMypyConditional]
 import typing
 MYPY = 0
 if MYPY:
-    None + 1 # E: Unsupported left operand type for + (None)
+    None + 1 # E:9: Unsupported left operand type for + (None)
 else:
     None + ''
 [builtins fixtures/bool.pyi]
@@ -271,7 +271,7 @@ import sys
 if sys.version_info >= (3, 5, 0):
     def foo() -> int: return 0
 else:
-    def foo() -> str: return ''  # E: All conditional function variants must have identical signatures
+    def foo() -> str: return ''  # E:4: All conditional function variants must have identical signatures
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -282,7 +282,7 @@ import sys
 if sys.version_info[1:] >= (5, 0):
     def foo() -> int: return 0
 else:
-    def foo() -> str: return ''  # E: All conditional function variants must have identical signatures
+    def foo() -> str: return ''  # E:4: All conditional function variants must have identical signatures
 [builtins fixtures/ops.pyi]
 [out]
 

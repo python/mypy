@@ -25,10 +25,10 @@ b = f(b)
 b = f(C()) # Fail
 [out]
 main: note: In function "g":
-main:12: error: Type argument 1 of "f" has incompatible value "U"
+main:12:12: error: Type argument 1 of "f" has incompatible value "U"
 main: note: At top level:
-main:16: error: Type argument 1 of "f" has incompatible value "D"
-main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
+main:16:1: error: Type argument 1 of "f" has incompatible value "D"
+main:20:0: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 
 [case testBoundOnGenericClass]
@@ -44,7 +44,7 @@ class G(Generic[T]):
 v = None # type: G[A]
 w = None # type: G[B]
 x = None # type: G[str] # E: Type argument "builtins.str" of "G" must be a subtype of "__main__.A"
-y = G('a') # E: Type argument 1 of "G" has incompatible value "str"
+y = G('a') # E:5: Type argument 1 of "G" has incompatible value "str"
 z = G(A())
 z = G(B())
 
@@ -58,7 +58,7 @@ class C(Generic[T]):
         return self.t
 c1 = None # type: C[None]
 c1.get()
-d = c1.get() # E: Function does not return a value
+d = c1.get() # E:10: Function does not return a value
 
 
 [case testBoundAny]
@@ -84,7 +84,7 @@ def f(g: Callable[[], T]) -> T:
     return g()
 def h() -> None: pass
 f(h)
-a = f(h) # E: "h" does not return a value
+a = f(h) # E:5: "h" does not return a value
 
 
 [case testBoundInheritance]
@@ -128,9 +128,9 @@ def k(x: TA) -> B:
     return x # Fail
 [out]
 main: note: In function "g2":
-main:16: error: Type argument 1 of "h" has incompatible value "TA"
+main:16:12: error: Type argument 1 of "h" has incompatible value "TA"
 main: note: In function "k":
-main:21: error: Incompatible return value type (got "TA", expected "B")
+main:21:4: error: Incompatible return value type (got "TA", expected "B")
 
 
 [case testBoundMethodUsage]
@@ -203,6 +203,6 @@ def foo(x: int) -> int:
 
 a = 1
 b = foo(a)
-b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-twice(a) # E: Type argument 1 of "twice" has incompatible value "int"
+b = 'a' # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
+twice(a) # E:5: Type argument 1 of "twice" has incompatible value "int"
 [builtins fixtures/args.pyi]

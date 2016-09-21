@@ -12,8 +12,8 @@ class B:
 class A(B):
   def f(self) -> 'A':
     a, b = None, None # type: (A, B)
-    a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = super().g() # E: "g" undefined in superclass
+    a = super().f() # E:4: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = super().g() # E:15: "g" undefined in superclass
     b = super().f()
 [out]
 main: note: In member "f" of class "A":
@@ -25,7 +25,7 @@ class B:
 class A(B):
   def f(self, x: Any) -> None:
     a, b = None, None # type: (A, B)
-    super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
+    super().f(b) # E:13: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
     super().f(a)
     self.f(b)
     self.f(a)
@@ -38,8 +38,8 @@ class B:
     def __init__(self, x: A) -> None: pass
 class A(B):
   def __init__(self) -> None:
-    super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"; expected "A"
-    super().__init__()       # E: Too few arguments for "__init__" of "B"
+    super().__init__(B(None)) # E:20: Argument 1 to "__init__" of "B" has incompatible type "B"; expected "A"
+    super().__init__()       # E:20: Too few arguments for "__init__" of "B"
     super().__init__(A())
 [out]
 main: note: In member "__init__" of class "A":
@@ -51,7 +51,7 @@ class C:
 class B(C): pass
 class A(B):
   def f(self) -> None:
-    super().g() # E: "g" undefined in superclass
+    super().g() # E:11: "g" undefined in superclass
     super().f()
 [out]
 main: note: In member "f" of class "A":
@@ -65,7 +65,7 @@ class B(A):
         super().f = None
 [out]
 main: note: In function "g":
-main:6: error: Invalid assignment target
+main:6:15: error: Invalid assignment target
 
 [case testSuperWithMultipleInheritance]
 import typing
@@ -77,9 +77,9 @@ class C(A, B):
     def f(self) -> None:
         super().f()
         super().g(1)
-        super().f(1) # E: Too many arguments for "f" of "A"
-        super().g() # E: Too few arguments for "g" of "B"
-        super().not_there() # E: "not_there" undefined in superclass
+        super().f(1) # E:17: Too many arguments for "f" of "A"
+        super().g() # E:17: Too few arguments for "g" of "B"
+        super().not_there() # E:15: "not_there" undefined in superclass
 [out]
 main: note: In member "f" of class "C":
 
@@ -97,9 +97,9 @@ B(1) # E
 [builtins fixtures/__new__.pyi]
 [out]
 main: note: In member "__new__" of class "B":
-main:8: error: Argument 2 to "__new__" of "A" has incompatible type "str"; expected "int"
+main:8:23: error: Argument 2 to "__new__" of "A" has incompatible type "str"; expected "int"
 main: note: At top level:
-main:10: error: Argument 1 to "B" has incompatible type "int"; expected "str"
+main:10:1: error: Argument 1 to "B" has incompatible type "int"; expected "str"
 
 [case testSuperWithUnknownBase]
 from typing import Any

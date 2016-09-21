@@ -278,7 +278,7 @@ finally:
     loop.close()
 [out]
 _program.py: note: In function "test":
-_program.py:13: error: Function does not return a value
+_program.py:13:8: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 from typing import Generator, Any
@@ -302,7 +302,7 @@ loop.close()
 
 [out]
 _program.py: note: In function "compute":
-_program.py:9: error: Incompatible return value type (got "str", expected "int")
+_program.py:9:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testErrorSetFutureDifferentInternalType]
 from typing import Generator, Any
@@ -322,7 +322,7 @@ print(future.result())
 loop.close()
 [out]
 _program.py: note: In function "slow_operation":
-_program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
+_program.py:8:21: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
 
 
 [case testErrorUsingDifferentFutureType]
@@ -342,7 +342,7 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py:12: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
+_program.py:12:27: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
 
 [case testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType]
 from typing import Generator, Any
@@ -362,9 +362,9 @@ print(future.result())
 loop.close()
 [out]
 _program.py: note: In function "slow_operation":
-_program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
+_program.py:8:21: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
 _program.py: note: At top level:
-_program.py:12: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
+_program.py:12:27: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
 
 [case testErrorSettingCallbackWithDifferentFutureType]
 import typing
@@ -391,7 +391,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:18: error: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Callable[[Future[str]], Any]
+_program.py:18:24: error: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Callable[[Future[str]], Any]
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
@@ -428,7 +428,7 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py: note: In function "h3":
-_program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[Future[Future[int]]])
+_program.py:18:4: error: Incompatible return value type (got Future[Future[int]], expected Future[Future[Future[int]]])
 
 [case testErrorOneLessFutureInReturnType]
 import typing
@@ -463,7 +463,7 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py: note: In function "h3":
-_program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[int])
+_program.py:18:4: error: Incompatible return value type (got Future[Future[int]], expected Future[int])
 
 [case testErrorAssignmentDifferentType]
 import typing
@@ -491,4 +491,4 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py: note: In function "h":
-_program.py:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+_program.py:16:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")

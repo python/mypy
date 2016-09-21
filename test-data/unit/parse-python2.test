@@ -187,7 +187,7 @@ MypyFile:1(
     NameExpr(y)))
 
 [case testEllipsisInExpression_python2]
-x = ... # E: Parse error before ...
+x = ... # E:4: Parse error before ...
 [out]
 
 [case testStrLiteralConcatenationWithMixedLiteralTypes]
@@ -340,26 +340,26 @@ main: error: Empty tuple not valid as an argument
 def f(x, (y, x[1])): pass
 [out]
 main: note: In function "f":
-main:1: error: Invalid item in tuple argument
+main:1:14: error: Invalid item in tuple argument
 
 [case testListLiteralAsTupleArgInPython2]
 def f(x, [x]): pass
 [out]
 main: note: In function "f":
-main:1: error: Parse error before [
-main:1: error: Parse error before end of line
+main:1:9: error: Parse error before [
+main:1:19: error: Parse error before end of line
 
 [case testTupleArgAfterStarArgInPython2]
 def f(*a, (b, c)): pass
 [out]
 main: note: In function "f":
-main:1: error: Invalid argument list
+main:1:5: error: Invalid argument list
 
 [case testTupleArgAfterStarStarArgInPython2]
 def f(*a, (b, c)): pass
 [out]
 main: note: In function "f":
-main:1: error: Invalid argument list
+main:1:5: error: Invalid argument list
 
 [case testParenthesizedArgumentInPython2]
 def f(x, (y)): pass
@@ -380,9 +380,9 @@ def g((x, (x, y))):
     pass
 [out]
 main: note: In function "f":
-main:1: error: Duplicate argument name "a"
+main:1:15: error: Duplicate argument name "a"
 main: note: In function "g":
-main:3: error: Duplicate argument name "x"
+main:3:17: error: Duplicate argument name "x"
 
 [case testBackquotesInPython2]
 `1 + 2`

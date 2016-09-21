@@ -7,7 +7,7 @@ T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
 f(1)
 f('x')
-f(object()) # E: Type argument 1 of "f" has incompatible value "object"
+f(object()) # E:1: Type argument 1 of "f" has incompatible value "object"
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingContext]
 from typing import TypeVar, List
@@ -18,7 +18,7 @@ s = ['x']
 o = [object()]
 i = f(1)
 s = f('')
-o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
+o = f(1) # E:5: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
@@ -246,7 +246,7 @@ class A(Generic[X]):
 A(1)
 A('x')
 A(Any(object()))
-A(object()) # E: Type argument 1 of "A" has incompatible value "object"
+A(object()) # E:1: Type argument 1 of "A" has incompatible value "object"
 
 [case testGenericTypeWithTypevarValuesAndTypevarArgument]
 from typing import TypeVar, Generic
@@ -279,7 +279,7 @@ y = C(S())
 x = y
 y = x
 c_int = C(1) # type: C[int]
-y = c_int # E: Incompatible types in assignment (expression has type C[int], variable has type C[str])
+y = c_int # E:0: Incompatible types in assignment (expression has type C[int], variable has type C[str])
 
 [case testGenericTypeBodyWithTypevarValues]
 from typing import TypeVar, Generic
@@ -318,10 +318,10 @@ class C(Generic[X]):
     x = None  # type: X
 cn = C() # type: C[int]
 cn.x = 1
-cn.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+cn.x = '' # E:2: Incompatible types in assignment (expression has type "str", variable has type "int")
 cs = C() # type: C[str]
 cs.x = ''
-cs.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+cs.x = 1 # E:2: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testInferredAttributeInGenericClassBodyWithTypevarValues]
 from typing import TypeVar, Generic
@@ -329,7 +329,7 @@ X = TypeVar('X', int, str)
 class C(Generic[X]):
     x = 1
 C.x = 1
-C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+C.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testMultipleClassTypevarsWithValues1]
 from typing import TypeVar, Generic
@@ -368,8 +368,8 @@ Y = TypeVar('Y', int, str)
 def f(x: X, y: Y) -> None: pass
 f(A(), '')
 f(B(), 1)
-f(A(), A()) # E: Type argument 2 of "f" has incompatible value "A"
-f(1, 1) # E: Type argument 1 of "f" has incompatible value "int"
+f(A(), A()) # E:1: Type argument 2 of "f" has incompatible value "A"
+f(1, 1) # E:1: Type argument 1 of "f" has incompatible value "int"
 
 [case testGenericFunctionWithNormalAndRestrictedTypevar]
 from typing import TypeVar, Generic
@@ -401,8 +401,8 @@ def g(x: T) -> T: pass
 c1(g(''))
 c2(g(1))
 c3(g(''))
-c2(g(''))  # E: Argument 1 to "c2" has incompatible type "str"; expected "int"
-c3(g(1))   # E: Argument 1 to "c3" has incompatible type "int"; expected "str"
+c2(g(''))  # E:2: Argument 1 to "c2" has incompatible type "str"; expected "int"
+c3(g(1))   # E:2: Argument 1 to "c3" has incompatible type "int"; expected "str"
 
 [case testTypeVarWithValueInferredFromObjectReturnTypeContext2]
 from typing import TypeVar
@@ -413,8 +413,8 @@ def g(x: T) -> T: pass
 c(g(''))
 c(g(1))
 [out]
-main:6: error: Argument 1 to "c" has incompatible type "str"; expected "ss"
-main:7: error: Argument 1 to "c" has incompatible type "int"; expected "ss"
+main:6:1: error: Argument 1 to "c" has incompatible type "str"; expected "ss"
+main:7:1: error: Argument 1 to "c" has incompatible type "int"; expected "ss"
 
 
 -- Special cases
@@ -433,7 +433,7 @@ class B(A[str]):
     def f(self) -> 'B': pass
 class C(A[str]):
     @abstractmethod
-    def f(self) -> int: # E: Return type of "f" incompatible with supertype "A"
+    def f(self) -> int: # E:4: Return type of "f" incompatible with supertype "A"
         pass
 [out]
 main: note: In class "C":
@@ -478,7 +478,7 @@ a = f
 a = g
 b = g
 b = g
-b = f # E: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[U], U])
+b = f # E:0: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[U], U])
 
 [case testInnerFunctionWithTypevarValues]
 from typing import TypeVar

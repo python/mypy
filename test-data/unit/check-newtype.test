@@ -10,8 +10,8 @@ UserId = NewType('UserId', int)
 def name_by_id(user_id: UserId) -> str:
     return "foo"
 
-UserId('user')  # E: Argument 1 to "UserId" has incompatible type "str"; expected "int"
-name_by_id(42)  # E: Argument 1 to "name_by_id" has incompatible type "int"; expected "UserId"
+UserId('user')  # E:6: Argument 1 to "UserId" has incompatible type "str"; expected "int"
+name_by_id(42)  # E:10: Argument 1 to "name_by_id" has incompatible type "int"; expected "UserId"
 name_by_id(UserId(42))
 
 id = UserId(5)
@@ -36,14 +36,14 @@ tcp_packet = TcpPacketId(packet)
 tcp_packet = TcpPacketId(127, 0)
 
 [out]
-main:12: error: Too many arguments for "TcpPacketId"
-main:12: error: Argument 1 to "TcpPacketId" has incompatible type "int"; expected "PacketId"
+main:12:24: error: Too many arguments for "TcpPacketId"
+main:12:24: error: Argument 1 to "TcpPacketId" has incompatible type "int"; expected "PacketId"
 
 [case testNewTypeWithTuples]
 from typing import NewType, Tuple
 TwoTuple = NewType('TwoTuple', Tuple[int, str])
 a = TwoTuple((3, "a"))
-b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
+b = TwoTuple(("a", 3))  # E:12: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
 
 reveal_type(a[0])  # E: Revealed type is 'builtins.int'
 reveal_type(a[1])  # E: Revealed type is 'builtins.str'
@@ -55,10 +55,10 @@ from typing import NewType, List
 UserId = NewType('UserId', int)
 IdList = NewType('IdList', List[UserId])
 
-bad1 = IdList([1])  # E: List item 0 has incompatible type "int"
+bad1 = IdList([1])  # E:14: List item 0 has incompatible type "int"
 
 foo = IdList([])
-foo.append(3)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "UserId"
+foo.append(3)  # E:10: Argument 1 to "append" of "list" has incompatible type "int"; expected "UserId"
 foo.append(UserId(3))
 foo.extend([UserId(1), UserId(2), UserId(3)])
 foo.extend(IdList([UserId(1), UserId(2), UserId(3)]))
@@ -88,7 +88,7 @@ Derived1 = NewType('Derived1', Base[str])
 Derived2 = NewType('Derived2', Base)       # Implicit 'Any'
 Derived3 = NewType('Derived3', Base[Any])  # Explicit 'Any'
 
-Derived1(Base(1))  # E: Argument 1 to "Base" has incompatible type "int"; expected "str"
+Derived1(Base(1))  # E:13: Argument 1 to "Base" has incompatible type "int"; expected "str"
 Derived1(Base('a'))
 Derived2(Base(1))
 Derived2(Base('a'))
@@ -167,7 +167,7 @@ def func() -> None:
     A = NewType('A', str)
     B = NewType('B', str)
 
-    a = A(3)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+    a = A(3)  # E:9: Argument 1 to "A" has incompatible type "int"; expected "str"
     a = A('xyz')
     b = B('xyz')
 
@@ -186,7 +186,7 @@ main: note: In function "func":
 import a
 import b
 list1 = [a.UserId(1), a.UserId(2)]
-list1.append(b.UserId(3))  # E: Argument 1 to "append" of "list" has incompatible type "b.UserId"; expected "a.UserId"
+list1.append(b.UserId(3))  # E:12: Argument 1 to "append" of "list" has incompatible type "b.UserId"; expected "a.UserId"
 
 [file a.py]
 from typing import NewType
@@ -244,28 +244,28 @@ tmp/m.py:14: error: Revealed type is 'builtins.int'
 [case testNewTypeBadInitializationFails]
 from typing import NewType
 
-a = NewType('b', int)  # E: String argument 1 'b' to NewType(...) does not match variable name 'a'
-b = NewType('b', 3)  # E: Argument 2 to NewType(...) must be a valid type
-c = NewType(2, int)  # E: Argument 1 to NewType(...) must be a string literal
+a = NewType('b', int)  # E:0: String argument 1 'b' to NewType(...) does not match variable name 'a'
+b = NewType('b', 3)  # E:0: Argument 2 to NewType(...) must be a valid type
+c = NewType(2, int)  # E:0: Argument 1 to NewType(...) must be a string literal
 foo = "d"
-d = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
-e = NewType(name='e', tp=int)  # E: NewType(...) expects exactly two positional arguments
-f = NewType('f', tp=int)  # E: NewType(...) expects exactly two positional arguments
+d = NewType(foo, int)  # E:0: Argument 1 to NewType(...) must be a string literal
+e = NewType(name='e', tp=int)  # E:0: NewType(...) expects exactly two positional arguments
+f = NewType('f', tp=int)  # E:0: NewType(...) expects exactly two positional arguments
 [out]
 
 [case testNewTypeWithAnyFails]
 from typing import NewType, Any
-A = NewType('A', Any)  # E: Argument 2 to NewType(...) must be subclassable (got Any)
+A = NewType('A', Any)  # E:0: Argument 2 to NewType(...) must be subclassable (got Any)
 [out]
 
 [case testNewTypeWithUnionsFails]
 from typing import NewType, Union
-Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got Union[builtins.int, builtins.float])
+Foo = NewType('Foo', Union[int, float])  # E:0: Argument 2 to NewType(...) must be subclassable (got Union[builtins.int, builtins.float])
 [out]
 
 [case testNewTypeWithTypeTypeFails]
 from typing import NewType, Type
-Foo = NewType('Foo', Type[int])  # E: Argument 2 to NewType(...) must be subclassable (got Type[builtins.int])
+Foo = NewType('Foo', Type[int])  # E:0: Argument 2 to NewType(...) must be subclassable (got Type[builtins.int])
 a = Foo(type(3))
 [builtins fixtures/args.pyi]
 [out]
@@ -278,16 +278,16 @@ B = NewType('B', List[T])
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: Invalid type "__main__.T"
-main:3: error: Argument 2 to NewType(...) must be subclassable (got T?)
+main:3:0: error: Argument 2 to NewType(...) must be subclassable (got T?)
 main:4: error: Invalid type "__main__.T"
 
 [case testNewTypeWithNewTypeFails]
 from typing import NewType
 A = NewType('A', int)
-B = NewType('B', A)  # E: Argument 2 to NewType(...) cannot be another NewType
+B = NewType('B', A)  # E:0: Argument 2 to NewType(...) cannot be another NewType
 C = A
 D = C
-E = NewType('E', D)  # E: Argument 2 to NewType(...) cannot be another NewType
+E = NewType('E', D)  # E:0: Argument 2 to NewType(...) cannot be another NewType
 [out]
 
 [case testNewTypeRedefiningVariablesFails]
@@ -301,21 +301,21 @@ b = NewType('b', float)  # this line throws two errors
 
 c = NewType('c', str)   # type: str
 [out]
-main:4: error: Cannot redefine 'a' as a NewType
-main:7: error: Invalid assignment target
-main:7: error: Cannot redefine 'b' as a NewType
-main:9: error: Cannot declare the type of a NewType declaration
+main:4:0: error: Cannot redefine 'a' as a NewType
+main:7:0: error: Invalid assignment target
+main:7:0: error: Cannot redefine 'b' as a NewType
+main:9:0: error: Cannot declare the type of a NewType declaration
 
 [case testNewTypeAddingExplicitTypesFails]
 from typing import NewType
 UserId = NewType('UserId', int)
 
-a = 3  # type: UserId  # E: Incompatible types in assignment (expression has type "int", variable has type "UserId")
+a = 3  # type: UserId  # E:0: Incompatible types in assignment (expression has type "int", variable has type "UserId")
 [out]
 
 [case testNewTypeTestSubclassingFails]
 from typing import NewType
 class A: pass
 B = NewType('B', A)
-class C(B): pass  # E: Cannot subclass NewType
+class C(B): pass  # E:0: Cannot subclass NewType
 [out]

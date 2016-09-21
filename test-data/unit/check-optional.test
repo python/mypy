@@ -2,11 +2,11 @@
 
 [case testImplicitNoneType]
 x = None
-x()  # E: None not callable
+x()  # E:1: None not callable
 
 [case testExplicitNoneType]
 x = None  # type: None
-x()  # E: None not callable
+x()  # E:1: None not callable
 
 [case testNoneMemberOfOptional]
 from typing import Optional
@@ -19,18 +19,18 @@ x = 0  # type: Optional[int]
 [case testNoneNotMemberOfType]
 x = None  # type: int
 [out]
-main:1: error: Incompatible types in assignment (expression has type None, variable has type "int")
+main:1:0: error: Incompatible types in assignment (expression has type None, variable has type "int")
 
 [case testTypeNotMemberOfNone]
 x = 0  # type: None
 [out]
-main:1: error: Incompatible types in assignment (expression has type "int", variable has type None)
+main:1:0: error: Incompatible types in assignment (expression has type "int", variable has type None)
 
 [case testOptionalNotMemberOfType]
 from typing import Optional
 def f(a: int) -> None: pass
 x = None  # type:  Optional[int]
-f(x)  # E: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
+f(x)  # E:1: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
 
 [case testIsinstanceCases]
 from typing import Optional
@@ -111,7 +111,7 @@ f(None)
 
 [case testInferOptionalFromDefaultNone]
 def f(x: int = None) -> None:
-  x + 1  # E: Unsupported left operand type for + (some union)
+  x + 1  # E:4: Unsupported left operand type for + (some union)
 f(None)
 [out]
 main: note: In function "f":
@@ -119,7 +119,7 @@ main: note: In function "f":
 [case testInferOptionalFromDefaultNoneWithFastParser]
 # flags: --fast-parser
 def f(x: int = None) -> None:
-  x + 1  # E: Unsupported left operand type for + (some union)
+  x + 1  # E:2: Unsupported left operand type for + (some union)
 f(None)
 [out]
 main: note: In function "f":
@@ -127,7 +127,7 @@ main: note: In function "f":
 [case testInferOptionalFromDefaultNoneComment]
 def f(x=None):
   # type: (int) -> None
-  x + 1  # E: Unsupported left operand type for + (some union)
+  x + 1  # E:4: Unsupported left operand type for + (some union)
 f(None)
 [out]
 main: note: In function "f":
@@ -136,7 +136,7 @@ main: note: In function "f":
 # flags: --fast-parser
 def f(x=None):
   # type: (int) -> None
-  x + 1  # E: Unsupported left operand type for + (some union)
+  x + 1  # E:2: Unsupported left operand type for + (some union)
 f(None)
 [out]
 main: note: In function "f":
@@ -174,7 +174,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.list[Union[builtins.int, builtin
 [case testInferNonOptionalListType]
 x = []
 x.append(1)
-x()  # E: List[int] not callable
+x()  # E:1: List[int] not callable
 [builtins fixtures/list.pyi]
 
 [case testInferOptionalDictKeyValueTypes]
@@ -186,7 +186,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.dict[Union[builtins.str, builtin
 [case testInferNonOptionalDictType]
 x = {}
 x["bar"] = 1
-x()  # E: Dict[str, int] not callable
+x()  # E:1: Dict[str, int] not callable
 [builtins fixtures/dict.pyi]
 
 [case testNoneClassVariable]
@@ -201,7 +201,7 @@ from typing import Optional
 class C:
     x = None  # type: int
     def __init__(self) -> None:
-        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.x = None  # E:12: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
 main: note: In member "__init__" of class "C":
 
@@ -210,8 +210,8 @@ from typing import Optional
 class C:
     x, y = None, None  # type: int, str
     def __init__(self) -> None:
-        self.x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
-        self.y = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
+        self.x = None  # E:12: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.y = None  # E:12: Incompatible types in assignment (expression has type None, variable has type "str")
 [out]
 main: note: In member "__init__" of class "C":
 
@@ -263,7 +263,7 @@ def f(a: Optional[int], b: int) -> int:
     return b or a
 [out]
 main: note: In function "f":
-main:3: error: Incompatible return value type (got "Optional[int]", expected "int")
+main:3:4: error: Incompatible return value type (got "Optional[int]", expected "int")
 
 [case testOptionalTypeOrTypeNoTriggerTypeVar]
 from typing import Optional, TypeVar
@@ -272,7 +272,7 @@ def f(a: Optional[T], b: T) -> T:
     return b or a
 [out]
 main: note: In function "f":
-main:4: error: Incompatible return value type (got "Optional[T]", expected "T")
+main:4:4: error: Incompatible return value type (got "Optional[T]", expected "T")
 
 [case testNoneOrStringIsString]
 def f() -> str:
@@ -336,9 +336,9 @@ def f() -> None:
 def g(x: Optional[int]) -> int:
   pass
 
-x = f()  # E: Function does not return a value
-f() + 1  # E: Function does not return a value
-g(f())  # E: Function does not return a value
+x = f()  # E:5: Function does not return a value
+f() + 1  # E:4: Function does not return a value
+g(f())  # E:1: Function does not return a value
 
 [case testEmptyReturn]
 def f() -> None:
@@ -370,7 +370,7 @@ def lookup_field(name, obj):
         attr = None
 [out]
 main: note: In function "lookup_field":
-main:10: error: Need type annotation for variable
+main:10:8: error: Need type annotation for variable
 
 [case testTernaryWithNone]
 reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
@@ -410,7 +410,7 @@ x + 1
 1 + "foo"
 [out]
 main:3: note: In module imported here:
-tmp/b.py:4: error: Unsupported operand types for + ("int" and "str")
+tmp/b.py:4:2: error: Unsupported operand types for + ("int" and "str")
 
 [case testOptionalWhitelistPermitsWhitelistedFiles]
 # flags: --strict-optional-whitelist **/a.py
@@ -427,4 +427,4 @@ x = None  # type: Optional[int]
 x + 1
 [out]
 main:2: note: In module imported here:
-tmp/a.py:3: error: Unsupported left operand type for + (some union)
+tmp/a.py:3:2: error: Unsupported left operand type for + (some union)

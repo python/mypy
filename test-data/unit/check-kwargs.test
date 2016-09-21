@@ -4,20 +4,20 @@
 [case testTypeErrorInKeywordArgument]
 import typing
 def f(o: object) -> None: pass
-f(o=None()) # E: None not callable
+f(o=None()) # E:8: None not callable
 
 [case testSimpleKeywordArgument]
 import typing
 def f(a: 'A') -> None: pass
 f(a=A())
-f(a=object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
+f(a=object()) # E:1: Argument 1 to "f" has incompatible type "object"; expected "A"
 class A: pass
 
 [case testTwoKeywordArgumentsNotInOrder]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(b=A(), a=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
-f(b=B(), a=B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
+f(b=A(), a=A()) # E:1: Argument 1 to "f" has incompatible type "A"; expected "B"
+f(b=B(), a=B()) # E:1: Argument 2 to "f" has incompatible type "B"; expected "A"
 f(a=A(), b=B())
 f(b=B(), a=A())
 class A: pass
@@ -30,10 +30,10 @@ f(a=A())
 f(b=B())
 f(c=C())
 f(b=B(), c=C())
-f(a=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(b=A()) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
-f(c=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
-f(b=B(), c=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "C"
+f(a=B()) # E:1: Argument 1 to "f" has incompatible type "B"; expected "A"
+f(b=A()) # E:1: Argument 1 to "f" has incompatible type "A"; expected "B"
+f(c=B()) # E:1: Argument 1 to "f" has incompatible type "B"; expected "C"
+f(b=B(), c=A()) # E:1: Argument 2 to "f" has incompatible type "A"; expected "C"
 class A: pass
 class B: pass
 class C: pass
@@ -41,7 +41,7 @@ class C: pass
 [case testBothPositionalAndKeywordArguments]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(A(), b=A()) # E:1: Argument 2 to "f" has incompatible type "A"; expected "B"
 f(A(), b=B())
 class A: pass
 class B: pass
@@ -56,22 +56,22 @@ class A: pass
 [case testGivingSameKeywordArgumentTwice]
 import typing
 def f(a: 'A', b: 'B') -> None: pass
-f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
-f(b=B(), a=A(), b=B()) # E: "f" gets multiple values for keyword argument "b"
+f(a=A(), b=B(), a=A()) # E:1: "f" gets multiple values for keyword argument "a"
+f(b=B(), a=A(), b=B()) # E:1: "f" gets multiple values for keyword argument "b"
 class A: pass
 class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg]
 import typing
 def f(a: 'A', b: 'B' = None) -> None: pass
-f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
+f(A(), a=A()) # E:1: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg2]
 import typing
 def f(a: 'A' = None, b: 'B' = None) -> None: pass
-f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
+f(A(), a=A()) # E:1: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
 
@@ -83,15 +83,15 @@ def g(): f(0, a=1)
 
 [case testInvalidKeywordArgument]
 import typing
-def f(a: 'A') -> None: pass # N: "f" defined here
-f(b=object()) # E: Unexpected keyword argument "b" for "f"
+def f(a: 'A') -> None: pass # N:0: "f" defined here
+f(b=object()) # E:1: Unexpected keyword argument "b" for "f"
 class A: pass
 
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
 f = None # type: Any
-f(x=f(), z=None()) # E: None not callable
-f(f, zz=None()) # E: None not callable
+f(x=f(), z=None()) # E:15: None not callable
+f(f, zz=None()) # E:12: None not callable
 f(x=None)
 
 [case testDuplicateKeywordArgumentWithDynamicallyTypedCallable]
@@ -108,9 +108,9 @@ f(A(), b=B())
 class A: pass
 class B: pass
 [out]
-main:3: error: Unexpected keyword argument "a"
-main:3: error: Unexpected keyword argument "b"
-main:4: error: Unexpected keyword argument "b"
+main:3:1: error: Unexpected keyword argument "a"
+main:3:1: error: Unexpected keyword argument "b"
+main:4:1: error: Unexpected keyword argument "b"
 
 [case testKeywordOnlyArguments]
 import typing
@@ -118,7 +118,7 @@ def f(a: 'A', *, b: 'B' = None) -> None: pass
 f(A(), b=B())
 f(b=B(), a=A())
 f(A())
-f(A(), B()) # E: Too many positional arguments for "f"
+f(A(), B()) # E:1: Too many positional arguments for "f"
 class A: pass
 class B: pass
 
@@ -140,9 +140,9 @@ f(A(), A())
 f(b=B())
 f(A(), b=B())
 f(A(), A(), b=B())
-f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(b=A())    # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+f(B())      # E:1: Argument 1 to "f" has incompatible type "B"; expected "A"
+f(A(), B()) # E:1: Argument 2 to "f" has incompatible type "B"; expected "A"
+f(b=A())    # E:1: Argument 1 to "f" has incompatible type "A"; expected "B"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -156,9 +156,9 @@ f(A(), *a)
 f(b=B())
 f(*a, b=B())
 f(A(), *a, b=B())
-f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
-f(A(), b=A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-f(*a, b=A())  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(A(), B())   # E:1: Argument 2 to "f" has incompatible type "B"; expected "A"
+f(A(), b=A()) # E:1: Argument 2 to "f" has incompatible type "A"; expected "B"
+f(*a, b=A())  # E:1: Argument 2 to "f" has incompatible type "A"; expected "B"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -168,16 +168,16 @@ import typing
 def f(x, y=A()): pass
 f(x=A(), y=A())
 f(y=A(), x=A())
-f(y=A())      # E: Missing positional argument "x" in call to "f"
-f(A(), z=A()) # E: Unexpected keyword argument "z" for "f"
+f(y=A())      # E:1: Missing positional argument "x" in call to "f"
+f(A(), z=A()) # E:1: Unexpected keyword argument "z" for "f"
 class A: pass
 
 [case testKwargsArgumentInFunctionBody]
 from typing import Dict, Any
 def f( **kwargs: 'A') -> None:
     d1 = kwargs # type: Dict[str, A]
-    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[A, Any])
-    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[Any, str])
+    d2 = kwargs # type: Dict[A, Any] # E:4: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[A, Any])
+    d3 = kwargs # type: Dict[Any, str] # E:4: Incompatible types in assignment (expression has type Dict[str, A], variable has type Dict[Any, str])
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
@@ -188,7 +188,7 @@ from typing import Dict, Any
 def f(**kwargs) -> None:
     d1 = kwargs # type: Dict[str, A]
     d2 = kwargs # type: Dict[str, str]
-    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[A, Any])
+    d3 = kwargs # type: Dict[A, Any] # E:4: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[A, Any])
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
@@ -200,8 +200,8 @@ def f( **kwargs: 'A') -> None: pass
 f()
 f(x=A())
 f(y=A(), z=A())
-f(x=B()) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(A())   # E: Too many arguments for "f"
+f(x=B()) # E:1: Argument 1 to "f" has incompatible type "B"; expected "A"
+f(A())   # E:1: Too many arguments for "f"
 # Perhaps a better message would be "Too many *positional* arguments..."
 class A: pass
 class B: pass
@@ -214,8 +214,8 @@ d = None # type: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2 = None # type: Dict[str, B]
-f(**d2)        # E: Argument 1 to "f" has incompatible type **Dict[str, B]; expected "A"
-f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type **Dict[str, B]; expected "A"
+f(**d2)        # E:1: Argument 1 to "f" has incompatible type **Dict[str, B]; expected "A"
+f(x=A(), **d2) # E:1: Argument 2 to "f" has incompatible type **Dict[str, B]; expected "A"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -224,8 +224,8 @@ class B: pass
 from typing import Dict
 def f( **kwargs: 'A') -> None: pass
 d = None # type: Dict[A, A]
-f(**d)         # E: Keywords must be strings
-f(**A())       # E: Argument after ** must be a dictionary
+f(**d)         # E:1: Keywords must be strings
+f(**A())       # E:1: Argument after ** must be a dictionary
 class A: pass
 [builtins fixtures/dict.pyi]
 
@@ -235,7 +235,7 @@ def f(a: 'A', b: 'B') -> None: pass
 d = None # type: Dict[str, Any]
 f(**d)
 d2 = None # type: Dict[str, A]
-f(**d2) # E: Argument 1 to "f" has incompatible type **Dict[str, A]; expected "B"
+f(**d2) # E:1: Argument 1 to "f" has incompatible type **Dict[str, A]; expected "B"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -251,20 +251,20 @@ class A: pass
 
 [case testKeywordArgumentAndCommentSignature]
 import typing
-def f(x): # type: (int) -> str # N: "f" defined here
+def f(x): # type: (int) -> str # N:0: "f" defined here
     pass
-f(x='') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(x='') # E:1: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(x=0)
-f(y=0) # E: Unexpected keyword argument "y" for "f"
+f(y=0) # E:1: Unexpected keyword argument "y" for "f"
 
 [case testKeywordArgumentAndCommentSignature2]
 import typing
 class A:
     def f(self, x): # type: (int) -> str
         pass
-A().f(x='') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(x='') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 A().f(x=0)
-A().f(y=0) # E: Unexpected keyword argument "y" for "f" of "A"
+A().f(y=0) # E:5: Unexpected keyword argument "y" for "f" of "A"
 
 [case testKeywordVarArgsAndCommentSignature]
 import typing
@@ -272,8 +272,8 @@ def f(**kwargs): # type: (**int) -> None
     pass
 f(z=1)
 f(x=1, y=1)
-f(x='', y=1) # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-f(x=1, y='') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+f(x='', y=1) # E:1: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(x=1, y='') # E:1: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testFunctionWithBareAsteriskAndVarArgs]
@@ -291,9 +291,9 @@ f(1, '', '', z=B(), y=A())
 class A: pass
 class B: pass
 def f(x: int, *args: str, *, y: A = None, **kw: B) -> None: pass
-f(1, 2) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-f(1, y=1) # E: Argument 2 to "f" has incompatible type "int"; expected "A"
-f(1, z=1) # E: Argument 2 to "f" has incompatible type "int"; expected "B"
+f(1, 2) # E:1: Argument 2 to "f" has incompatible type "int"; expected "str"
+f(1, y=1) # E:1: Argument 2 to "f" has incompatible type "int"; expected "A"
+f(1, z=1) # E:1: Argument 2 to "f" has incompatible type "int"; expected "B"
 [builtins fixtures/dict.pyi]
 
 [case testCallsWithStars]
@@ -301,21 +301,21 @@ def f(a: int) -> None:
     pass
 
 s = ('',)
-f(*s) # E: Argument 1 to "f" has incompatible type *"Tuple[str]"; expected "int"
+f(*s) # E:1: Argument 1 to "f" has incompatible type *"Tuple[str]"; expected "int"
 
 a = {'': 0}
-f(a) # E: Argument 1 to "f" has incompatible type Dict[str, int]; expected "int"
+f(a) # E:1: Argument 1 to "f" has incompatible type Dict[str, int]; expected "int"
 f(**a) # okay
 
 b = {'': ''}
-f(b) # E: Argument 1 to "f" has incompatible type Dict[str, str]; expected "int"
-f(**b) # E: Argument 1 to "f" has incompatible type **Dict[str, str]; expected "int"
+f(b) # E:1: Argument 1 to "f" has incompatible type Dict[str, str]; expected "int"
+f(**b) # E:1: Argument 1 to "f" has incompatible type **Dict[str, str]; expected "int"
 
 c = {0: 0}
-f(**c) # E: Keywords must be strings
+f(**c) # E:1: Keywords must be strings
 [builtins fixtures/dict.pyi]
 
 [case testCallStar2WithStar]
 def f(**k): pass
-f(*(1, 2))  # E: Too many arguments for "f"
+f(*(1, 2))  # E:1: Too many arguments for "f"
 [builtins fixtures/dict.pyi]

@@ -1,10 +1,10 @@
 [case testFastParseSyntaxError]
 # flags: --fast-parser
-1 +  # E: invalid syntax
+1 +  # E:28: invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 # flags: --fast-parser
-x = None # type: a : b  # E: syntax error in type comment
+x = None # type: a : b  # E:3: syntax error in type comment
 
 [case testFastParseInvalidTypeComment]
 # flags: --fast-parser
@@ -14,7 +14,7 @@ x = None # type: a + b  # E: invalid type comment
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 # flags: --fast-parser
-def f():  # E: syntax error in type comment
+def f():  # E:0: syntax error in type comment
   # type: None -> None
   pass
 
@@ -90,14 +90,14 @@ def f(a,        # type: A
     reveal_type(d)      # E: Revealed type is '__main__.D'
     reveal_type(e)      # E: Revealed type is '__main__.E'
     reveal_type(kwargs) # E: Revealed type is 'builtins.dict[builtins.str, __main__.F]'
-    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+    return "not an int"  # E:4: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
 [out]
 main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 # flags: --fast-parser
-def f(*, # type: int  # E: bare * has associated type comment
+def f(*, # type: int  # E:17: bare * has associated type comment
       x  # type: str
       ):
       # type: (...) -> int
@@ -112,7 +112,7 @@ def f(*,
       ):
       # type: (...) -> int
     reveal_type(x) # E: Revealed type is 'builtins.str'
-    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+    return "not an int"  # E:4: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
 [out]
 main: note: In function "f":
@@ -150,14 +150,14 @@ def f(a,        # type: A
     reveal_type(a)      # E: Revealed type is '__main__.A'
     reveal_type(b)      # E: Revealed type is '__main__.B'
     reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
-    return "not an int"  # E: Incompatible return value type (got "str", expected "int")
+    return "not an int"  # E:4: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
 [out]
 main: note: In function "f":
 
 [case testFasterParseTooManyArgumentsAnnotation]
 # flags: --fast-parser
-def f():  # E: Type signature has too many arguments
+def f():  # E:0: Type signature has too many arguments
     # type: (int) -> None
     pass
 [out]
@@ -165,7 +165,7 @@ main: note: In function "f":
 
 [case testFasterParseTooFewArgumentsAnnotation]
 # flags: --fast-parser
-def f(x):  # E: Type signature has too few arguments
+def f(x):  # E:0: Type signature has too few arguments
     # type: () -> None
     pass
 [out]

@@ -15,10 +15,10 @@ a = None # type: A
 b = None # type: B
 c = None # type: C
 
-j = c  # E: Incompatible types in assignment (expression has type "C", variable has type "J")
-a = i  # E: Incompatible types in assignment (expression has type "I", variable has type "A")
-a = j  # E: Incompatible types in assignment (expression has type "J", variable has type "A")
-b = i  # E: Incompatible types in assignment (expression has type "I", variable has type "B")
+j = c  # E:0: Incompatible types in assignment (expression has type "C", variable has type "J")
+a = i  # E:0: Incompatible types in assignment (expression has type "I", variable has type "A")
+a = j  # E:0: Incompatible types in assignment (expression has type "J", variable has type "A")
+b = i  # E:0: Incompatible types in assignment (expression has type "I", variable has type "B")
 
 i = a
 i = b
@@ -46,11 +46,11 @@ j = None # type: J
 a = None # type: A
 o = None # type: object
 
-j = i # E: Incompatible types in assignment (expression has type "I", variable has type "J")
-a = i # E: Incompatible types in assignment (expression has type "I", variable has type "A")
-a = j # E: Incompatible types in assignment (expression has type "J", variable has type "A")
-i = o # E: Incompatible types in assignment (expression has type "object", variable has type "I")
-j = o # E: Incompatible types in assignment (expression has type "object", variable has type "J")
+j = i # E:0: Incompatible types in assignment (expression has type "I", variable has type "J")
+a = i # E:0: Incompatible types in assignment (expression has type "I", variable has type "A")
+a = j # E:0: Incompatible types in assignment (expression has type "J", variable has type "A")
+i = o # E:0: Incompatible types in assignment (expression has type "object", variable has type "I")
+j = o # E:0: Incompatible types in assignment (expression has type "object", variable has type "J")
 
 i = a
 j = a
@@ -72,8 +72,8 @@ i = None # type: I
 a = None # type: A
 b = None # type: B
 
-i = a # E: Incompatible types in assignment (expression has type "A", variable has type "I")
-b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+i = a # E:0: Incompatible types in assignment (expression has type "A", variable has type "I")
+b = a # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a = b
 i = b
@@ -116,7 +116,7 @@ class B: pass
 i, a, b = None, None, None # type: (I, A, B)
 o = None # type: object
 
-a = cast(I, o) # E: Incompatible types in assignment (expression has type "I", variable has type "A")
+a = cast(I, o) # E:0: Incompatible types in assignment (expression has type "I", variable has type "A")
 b = cast(B, i) # Ok; a subclass of B might inherit I
 i = cast(I, b) # Ok; a subclass of B might inherit I
 
@@ -142,7 +142,7 @@ class B(metaclass=ABCMeta):
   @abstractmethod
   def f(self): pass
 A() # OK
-B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
+B() # E:1: Cannot instantiate abstract class 'B' with abstract attribute 'f'
 [out]
 
 [case testInstantiatingClassWithInheritedAbstractMethod]
@@ -154,7 +154,7 @@ class A(metaclass=ABCMeta):
   @abstractmethod
   def g(self): pass
 class B(A): pass
-B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
+B()# E:1: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
 [case testInstantiatingClassWithInheritedAbstractMethodAndSuppression]
@@ -181,7 +181,7 @@ class A(metaclass=ABCMeta):
     def i(self): pass
     @abstractmethod
     def j(self): pass
-a = A() # E: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', ... and 'j' (7 methods suppressed)
+a = A() # E:5: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', ... and 'j' (7 methods suppressed)
 [out]
 
 
@@ -199,7 +199,7 @@ class A(metaclass=ABCMeta):
     def g(self, x: int) -> int: pass
 class B(A):
     def f(self, x: str) -> int: \
-            # E: Argument 1 of "f" incompatible with supertype "A"
+            # E:4: Argument 1 of "f" incompatible with supertype "A"
         pass
     def g(self, x: int) -> int: pass
 [out]
@@ -216,9 +216,9 @@ class J(metaclass=ABCMeta):
     def g(self, x: str) -> str: pass
 class A(I, J):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" incompatible with supertype "I"
+        # E:4: Argument 1 of "f" incompatible with supertype "I"
     def g(self, x: str) -> int: pass \
-        # E: Return type of "g" incompatible with supertype "J"
+        # E:4: Return type of "g" incompatible with supertype "J"
     def h(self) -> int: pass # Not related to any base class
 [out]
 main: note: In class "A":
@@ -232,7 +232,7 @@ class J(metaclass=ABCMeta):
 class I(J): pass
 class A(I):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" incompatible with supertype "J"
+        # E:4: Argument 1 of "f" incompatible with supertype "J"
 [out]
 main: note: In class "A":
 
@@ -244,7 +244,7 @@ class J(metaclass=ABCMeta):
     def f(self, x: 'J') -> None: pass
 class I(J):
     @abstractmethod
-    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" incompatible with supertype "J"
+    def f(self, x: 'I') -> None: pass # E:4: Argument 1 of "f" incompatible with supertype "J"
 [out]
 main: note: In class "I":
 
@@ -267,8 +267,8 @@ class A(I):
         pass
 [out]
 main: note: In class "A":
-main:11: error: Argument 1 of "h" incompatible with supertype "I"
-main:11: error: Return type of "h" incompatible with supertype "I"
+main:11:4: error: Argument 1 of "h" incompatible with supertype "I"
+main:11:4: error: Return type of "h" incompatible with supertype "I"
 
 
 -- Accessing abstract members
@@ -285,9 +285,9 @@ class I(metaclass=ABCMeta):
 
 i, a, b = None, None, None # type: (I, int, str)
 
-a = i.f(a) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-b = i.f(b) # E: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
-i.g()      # E: "I" has no attribute "g"
+a = i.f(a) # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
+b = i.f(b) # E:7: Argument 1 to "f" of "I" has incompatible type "str"; expected "int"
+i.g()      # E:1: "I" has no attribute "g"
 
 b = i.f(a)
 
@@ -302,7 +302,7 @@ class I(J): pass
 
 i, a, b = None, None, None # type: (I, int, str)
 
-a = i.f(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = i.f(1) # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
 b = i.f(1)
 
 
@@ -321,7 +321,7 @@ class I(metaclass=ABCMeta):
 class A(I):
     def f(self, x): pass
     def g(self, x, y) -> None: pass \
-        # E: Signature of "g" incompatible with supertype "I"
+        # E:4: Signature of "g" incompatible with supertype "I"
 [out]
 main: note: In class "A":
 
@@ -383,8 +383,8 @@ class C(A, B): pass
 x = None # type: C
 x.f()
 x.g()
-x.f(x) # E: Too many arguments for "f" of "A"
-x.g(x) # E: Too many arguments for "g" of "B"
+x.f(x) # E:3: Too many arguments for "f" of "A"
+x.g(x) # E:3: Too many arguments for "g" of "B"
 
 [case testInstantiatingAbstractClassWithMultipleBaseClasses]
 
@@ -403,8 +403,8 @@ class D(A, B):
 class E(A, B):
   def f(self) -> None: pass
   def g(self) -> None: pass
-C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'g'
-D() # E: Cannot instantiate abstract class 'D' with abstract attribute 'f'
+C() # E:1: Cannot instantiate abstract class 'C' with abstract attribute 'g'
+D() # E:1: Cannot instantiate abstract class 'D' with abstract attribute 'f'
 E()
 
 [case testInconsistentMro]
@@ -413,7 +413,7 @@ import typing
 
 class A(metaclass=ABCMeta): pass
 class B(object, A): pass \
-      # E: Cannot determine consistent method resolution order (MRO) for "B"
+      # E:0: Cannot determine consistent method resolution order (MRO) for "B"
 
 [case testOverloadedAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -432,13 +432,13 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
+A() # E:1: Cannot instantiate abstract class 'A' with abstract attribute 'f'
 B()
 B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E:3: No overload variant of "f" of "A" matches argument types [__main__.B]
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
 from abc import abstractmethod, ABCMeta
@@ -457,13 +457,13 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
+A() # E:1: Cannot instantiate abstract class 'A' with abstract attribute 'f'
 B()
 B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E:3: No overload variant of "f" of "A" matches argument types [__main__.B]
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
 from abc import abstractmethod, ABCMeta
@@ -514,14 +514,14 @@ class B(metaclass=ABCMeta):
 class C(A, B): pass
 [out]
 main: note: In class "C":
-main:8: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main:8:0: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testCallAbstractMethodBeforeDefinition]
 import typing
 from abc import abstractmethod, ABCMeta
 class A(metaclass=ABCMeta):
     def f(self) -> None:
-        self.g(1) # E: Argument 1 to "g" of "A" has incompatible type "int"; expected "str"
+        self.g(1) # E:14: Argument 1 to "g" of "A" has incompatible type "int"; expected "str"
     @abstractmethod
     def g(self, x: str) -> None: pass
 [out]
@@ -560,16 +560,16 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
 def f(a: A) -> None:
-    a.x() # E: "int" not callable
-    a.x = 1  # E: Property "x" defined in "A" is read-only
+    a.x() # E:7: "int" not callable
+    a.x = 1  # E:5: Property "x" defined in "A" is read-only
 [out]
 main: note: In function "f":
 
 [case testReadOnlyAbstractPropertyForwardRef]
 from abc import abstractproperty, ABCMeta
 def f(a: A) -> None:
-    a.x() # E: "int" not callable
-    a.x = 1  # E: Property "x" defined in "A" is read-only
+    a.x() # E:7: "int" not callable
+    a.x = 1  # E:5: Property "x" defined in "A" is read-only
 class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
@@ -579,7 +579,7 @@ main: note: In function "f":
 [case testReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
 def f(a: A) -> None:
-    a.x.y # E: "int" has no attribute "y"
+    a.x.y # E:7: "int" has no attribute "y"
     a.x = 1
 class A(metaclass=ABCMeta):
     @abstractproperty
@@ -595,7 +595,7 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
 class B(A): pass
-b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+b = B() # E:5: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 
 [case testInstantiateClassWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -605,7 +605,7 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x: int) -> None: pass
 class B(A): pass
-b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+b = B() # E:5: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 
 [case testImplementAbstractPropertyViaProperty]
 from abc import abstractproperty, ABCMeta
@@ -616,7 +616,7 @@ class B(A):
     @property
     def x(self) -> int: pass
 b = B()
-b.x() # E: "int" not callable
+b.x() # E:3: "int" not callable
 [builtins fixtures/property.pyi]
 
 [case testImplementReradWriteAbstractPropertyViaProperty]
@@ -632,7 +632,7 @@ class B(A):
     @x.setter
     def x(self, v: int) -> None: pass
 b = B()
-b.x.y # E: "int" has no attribute "y"
+b.x.y # E:3: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
 
 [case testImplementAbstractPropertyViaPropertyInvalidType]
@@ -648,9 +648,9 @@ b.x() # E
 [builtins fixtures/property.pyi]
 [out]
 main: note: In class "B":
-main:7: error: Return type of "x" incompatible with supertype "A"
+main:7:4: error: Return type of "x" incompatible with supertype "A"
 main: note: At top level:
-main:9: error: "str" not callable
+main:9:3: error: "str" not callable
 
 [case testCantImplementAbstractPropertyViaInstanceVariable]
 from abc import abstractproperty, ABCMeta
@@ -665,10 +665,10 @@ b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
 main: note: In member "__init__" of class "B":
-main:7: error: Property "x" defined in "B" is read-only
+main:7:12: error: Property "x" defined in "B" is read-only
 main: note: At top level:
-main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
-main:9: error: "int" has no attribute "y"
+main:8:5: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+main:9:3: error: "int" has no attribute "y"
 
 [case testSuperWithAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -678,7 +678,7 @@ class A(metaclass=ABCMeta):
 class B(A):
     @property
     def x(self) -> int:
-        return super().x.y # E: "int" has no attribute "y"
+        return super().x.y # E:24: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
 [out]
 main: note: In member "x" of class "B":
@@ -700,9 +700,9 @@ class B(A):
 [builtins fixtures/property.pyi]
 [out]
 main: note: In member "x" of class "B":
-main:10: error: "int" has no attribute "y"
+main:10:24: error: "int" has no attribute "y"
 main: note: In function "x":
-main:13: error: Invalid assignment target
+main:13:15: error: Invalid assignment target
 
 [case testOnlyImplementGetterOfReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -719,9 +719,9 @@ b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
 main: note: In class "B":
-main:8: error: Read-only property cannot override read-write property
+main:8:4: error: Read-only property cannot override read-write property
 main: note: At top level:
-main:11: error: "int" has no attribute "y"
+main:11:3: error: "int" has no attribute "y"
 
 [case testDynamicallyTypedReadOnlyAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -730,7 +730,7 @@ class A(metaclass=ABCMeta):
     def x(self): pass
 def f(a: A) -> None:
     a.x.y
-    a.x = 1  # E: Property "x" defined in "A" is read-only
+    a.x = 1  # E:5: Property "x" defined in "A" is read-only
 [out]
 main: note: In function "f":
 
@@ -738,7 +738,7 @@ main: note: In function "f":
 from abc import abstractproperty, ABCMeta
 def f(a: A) -> None:
     a.x.y
-    a.x = 1  # E: Property "x" defined in "A" is read-only
+    a.x = 1  # E:5: Property "x" defined in "A" is read-only
 class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self): pass

@@ -57,7 +57,7 @@ async def f(x: T) -> T:
     reveal_type(y)
 [out]
 main: note: In function "f":
-main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
+main:5:14: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
 
 [case testAwaitGeneratorError]
@@ -71,7 +71,7 @@ async def f() -> int:
     return x
 [out]
 main: note: In function "f":
-main:7: error: Incompatible types in await (actual type Generator[int, None, str], expected type "Awaitable")
+main:7:8: error: Incompatible types in await (actual type Generator[int, None, str], expected type "Awaitable")
 
 [case testAwaitIteratorError]
 # flags: --fast-parser
@@ -83,7 +83,7 @@ async def f() -> int:
     return x
 [out]
 main: note: In function "f":
-main:6: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
+main:6:8: error: Incompatible types in await (actual type Iterator[Any], expected type "Awaitable")
 
 [case testAwaitArgumentError]
 # flags: --fast-parser
@@ -95,7 +95,7 @@ async def f() -> int:
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:5: error: Incompatible types in await (actual type "int", expected type "Awaitable")
+main:5:8: error: Incompatible types in await (actual type "int", expected type "Awaitable")
 
 [case testAwaitResultError]
 # flags: --fast-parser
@@ -106,7 +106,7 @@ async def f() -> str:
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:5:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAwaitReturnError]
 # flags: --fast-parser
@@ -118,7 +118,7 @@ async def f() -> str:
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:6: error: Incompatible return value type (got "int", expected "str")
+main:6:4: error: Incompatible return value type (got "int", expected "str")
 
 [case testAsyncFor]
 # flags: --fast-parser
@@ -141,8 +141,8 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:4: error: AsyncIterable expected
-main:4: error: List[int] has no attribute "__aiter__"
+main:4:19: error: AsyncIterable expected
+main:4:19: error: List[int] has no attribute "__aiter__"
 
 [case testAsyncWith]
 # flags: --fast-parser
@@ -167,8 +167,8 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:6: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
-main:6: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
+main:6:15: error: "C" has no attribute "__aenter__"; maybe "__enter__"?
+main:6:15: error: "C" has no attribute "__aexit__"; maybe "__exit__"?
 
 [case testAsyncWithErrorBadAenter]
 # flags: --fast-parser
@@ -176,7 +176,7 @@ class C:
     def __aenter__(self) -> int: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable")
+    async with C() as x:  # E:15: Incompatible types in "async with" for __aenter__ (actual type "int", expected type "Awaitable")
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -188,7 +188,7 @@ class C:
     def __aenter__(self) -> None: pass
     async def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x:  # E: "__aenter__" of "C" does not return a value
+    async with C() as x:  # E:15: "__aenter__" of "C" does not return a value
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -200,7 +200,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> int: pass
 async def f() -> None:
-    async with C() as x: # E: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable")
+    async with C() as x: # E:15: Incompatible types in "async with" for __aexit__ (actual type "int", expected type "Awaitable")
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -212,7 +212,7 @@ class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> None: pass
 async def f() -> None:
-    async with C() as x: # E: "__aexit__" of "C" does not return a value
+    async with C() as x: # E:15: "__aexit__" of "C" does not return a value
         pass
 [builtins fixtures/async_await.pyi]
 [out]
@@ -229,11 +229,11 @@ async def h():
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:3: error: 'yield' in async function
+main:3:4: error: 'yield' in async function
 main: note: In function "g":
-main:5: error: 'yield' in async function
+main:5:4: error: 'yield' in async function
 main: note: In function "h":
-main:7: error: 'yield' in async function
+main:7:8: error: 'yield' in async function
 
 [case testNoYieldFromInAsyncDef]
 # flags: --fast-parser
@@ -244,13 +244,13 @@ async def g():
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
-main:3: error: 'yield from' in async function
+main:3:4: error: 'yield from' in async function
 main: note: In function "g":
-main:5: error: 'yield from' in async function
+main:5:8: error: 'yield from' in async function
 
 [case testNoAsyncDefInPY2_python2]
 # flags: --fast-parser
-async def f():  # E: invalid syntax
+async def f():  # E:9: invalid syntax
     pass
 
 [case testYieldFromNoAwaitable]
@@ -264,7 +264,7 @@ def g() -> Generator[Any, None, str]:
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "g":
-main:6: error: "yield from" can't be applied to Awaitable[str]
+main:6:8: error: "yield from" can't be applied to Awaitable[str]
 
 [case testAwaitableSubclass]
 # flags: --fast-parser
@@ -301,12 +301,12 @@ from types import coroutine
 @coroutine
 def f() -> Generator[int, str, int]:
     x = yield 0
-    x = yield ''  # E: Incompatible types in yield (actual type "str", expected type "int")
+    x = yield ''  # E:8: Incompatible types in yield (actual type "str", expected type "int")
     reveal_type(x)  # E: Revealed type is 'builtins.str'
     if x:
         return 0
     else:
-        return ''  # E: Incompatible return value type (got "str", expected "int")
+        return ''  # E:8: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/async_await.pyi]
 [out]
 main: note: In function "f":
@@ -361,19 +361,19 @@ def plain_host_generator() -> Generator[str, None, None]:
     yield 'a'
     x = 0
     x = yield from plain_generator()
-    x = yield from plain_coroutine()  # E: "yield from" can't be applied to Awaitable[int]
+    x = yield from plain_coroutine()  # E:8: "yield from" can't be applied to Awaitable[int]
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to AwaitableGenerator[Any, Any, int, Awaitable[int]]
+    x = yield from decorated_coroutine()  # E:8: "yield from" can't be applied to AwaitableGenerator[Any, Any, int, Awaitable[int]]
     x = yield from other_iterator()
-    x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
+    x = yield from other_coroutine()  # E:8: "yield from" can't be applied to "Aw"
 
 async def plain_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
+    x = await plain_generator()  # E:8: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
+    x = await other_iterator()  # E:8: Incompatible types in await (actual type "It", expected type "Awaitable")
     x = await other_coroutine()
 
 @coroutine
@@ -385,16 +385,16 @@ def decorated_host_generator() -> Generator[str, None, None]:
     x = yield from decorated_generator()
     x = yield from decorated_coroutine()
     x = yield from other_iterator()
-    x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
+    x = yield from other_coroutine()  # E:8: "yield from" can't be applied to "Aw"
 
 @coroutine
 async def decorated_host_coroutine() -> None:
     x = 0
-    x = await plain_generator()  # E: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
+    x = await plain_generator()  # E:8: Incompatible types in await (actual type Generator[str, None, int], expected type "Awaitable")
     x = await plain_coroutine()
     x = await decorated_generator()
     x = await decorated_coroutine()
-    x = await other_iterator()  # E: Incompatible types in await (actual type "It", expected type "Awaitable")
+    x = await other_iterator()  # E:8: Incompatible types in await (actual type "It", expected type "Awaitable")
     x = await other_coroutine()
 
 [builtins fixtures/async_await.pyi]
