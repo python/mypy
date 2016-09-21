@@ -169,6 +169,8 @@ class SemanticAnalyzer(NodeVisitor):
     tvar_stack = None  # type: List[List[SymbolTableNode]]
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
+    # Per-file options
+    options = None  # type: Options
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -190,9 +192,7 @@ class SemanticAnalyzer(NodeVisitor):
     errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self,
-                 lib_path: List[str],
-                 errors: Errors,
-                 options: Options) -> None:
+                 lib_path: List[str], errors: Errors) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -211,14 +211,12 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
-        self.options = options
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
 
-    def visit_file(self, file_node: MypyFile, fnam: str) -> None:
-        save_options = self.options
-        self.options = self.options.clone_for_file(fnam)
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+        self.options = options
         self.errors.set_file(fnam)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
@@ -248,7 +246,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if name not in self.all_exports:
                     g.module_public = False
 
-        self.options = save_options
+        del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -2571,10 +2569,8 @@ class FirstPass(NodeVisitor):
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
-        self.pyversion = sem.options.python_version
-        self.platform = sem.options.platform
 
-    def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
+    def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
         """Perform the first analysis pass.
 
         Populate module global table.  Resolve the full names of
@@ -2590,6 +2586,9 @@ class FirstPass(NodeVisitor):
         analysis.
         """
         sem = self.sem
+        self.sem.options = options  # Needed because we sometimes call into it
+        self.pyversion = options.python_version
+        self.platform = options.platform
         sem.cur_mod_id = mod_id
         sem.errors.set_file(fnam)
         sem.globals = SymbolTable()
@@ -2633,6 +2632,8 @@ class FirstPass(NodeVisitor):
                 v = Var(name, typ)
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+
+        del self.sem.options
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:

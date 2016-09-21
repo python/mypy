@@ -127,14 +127,13 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
-        self.options = options
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
         self.module_type_map = {}
@@ -151,10 +150,9 @@ class TypeChecker(NodeVisitor[Type]):
         self.current_node_deferred = False
         self.module_refs = set()
 
-    def visit_file(self, file_node: MypyFile, path: str) -> None:
+    def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
         """Type check a mypy file with the given path."""
-        save_options = self.options
-        self.options = self.options.clone_for_file(path)
+        self.options = options
         self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
@@ -190,7 +188,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-        self.options = save_options
+        del self.options
 
     def check_second_pass(self) -> None:
         """Run second pass of type checking which goes through deferred nodes."""
