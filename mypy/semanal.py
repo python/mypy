@@ -1365,9 +1365,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
-        call.analyzed.info = node.node = NewTypeExpr(newtype_class_info)\
-            .set_line(call.line)\
-            .set_column(call.column)
+        call.analyzed.info = node.node = newtype_class_info
 
     def analyze_newtype_declaration(self,
             s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
@@ -1621,7 +1619,7 @@ class SemanticAnalyzer(NodeVisitor):
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
-        call.analyzed.info = NamedTupleExpr(info)\
+        call.analyzed = NamedTupleExpr(info)\
             .set_line(call.line)\
             .set_column(call.column)
         return info
