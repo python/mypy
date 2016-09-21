@@ -84,10 +84,20 @@ from mypy.options import Options
 T = TypeVar('T')
 
 
-# Inferred value of an expression.
-ALWAYS_TRUE = 0
-ALWAYS_FALSE = 1
-TRUTH_VALUE_UNKNOWN = 2
+# Inferred truth value of an expression.
+ALWAYS_TRUE = 1
+MYPY_TRUE = 2  # True in mypy, False at runtime
+ALWAYS_FALSE = 3
+MYPY_FALSE = 4  # False in mypy, True at runtime
+TRUTH_VALUE_UNKNOWN = 5
+
+inverted_truth_mapping = {
+    ALWAYS_TRUE: ALWAYS_FALSE,
+    ALWAYS_FALSE: ALWAYS_TRUE,
+    TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
+    MYPY_TRUE: MYPY_FALSE,
+    MYPY_FALSE: MYPY_TRUE,
+}
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -3082,12 +3092,16 @@ def infer_reachability_of_if_statement(s: IfStmt,
                                        platform: str) -> None:
     for i in range(len(s.expr)):
         result = infer_if_condition_value(s.expr[i], pyversion, platform)
-        if result == ALWAYS_FALSE:
+        if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
-        elif result == ALWAYS_TRUE:
+        elif result in (ALWAYS_TRUE, MYPY_TRUE):
             # This condition is always true, so all of the remaining
             # elif/else bodies will never be executed.
+            if result == MYPY_TRUE:
+                # This condition is false at runtime; this will affect
+                # import priorities.
+                mark_block_mypy_only(s.body[i])
             for body in s.body[i + 1:]:
                 mark_block_unreachable(body)
             if s.else_body:
@@ -3099,7 +3113,8 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
-    and TRUTH_VALUE_UNKNOWN otherwise.
+    MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
+    false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
     name = ''
     negated = False
@@ -3123,12 +3138,9 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
         elif name == 'PY3':
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
         elif name == 'MYPY' or name == 'TYPE_CHECKING':
-            result = ALWAYS_TRUE
+            result = MYPY_TRUE
     if negated:
-        if result == ALWAYS_TRUE:
-            result = ALWAYS_FALSE
-        elif result == ALWAYS_FALSE:
-            result = ALWAYS_TRUE
+        result = inverted_truth_mapping[result]
     return result
 
 
@@ -3301,6 +3313,23 @@ class MarkImportsUnreachableVisitor(TraverserVisitor):
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_unreachable = True
+
+
+def mark_block_mypy_only(block: Block) -> None:
+    block.accept(MarkImportsMypyOnlyVisitor())
+
+
+class MarkImportsMypyOnlyVisitor(TraverserVisitor):
+    """Visitor that sets is_mypy_only (which affects priority)."""
+
+    def visit_import(self, node: Import) -> None:
+        node.is_mypy_only = True
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        node.is_mypy_only = True
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        node.is_mypy_only = True
 
 
 def is_identity_signature(sig: Type) -> bool:

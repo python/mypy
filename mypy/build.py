@@ -24,7 +24,8 @@ from os.path import dirname, basename
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
                     NamedTuple, Optional, Set, Tuple, Union)
 
-from mypy.nodes import (MypyFile, Import, ImportFrom, ImportAll)
+from mypy.types import Type
+from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
@@ -307,7 +308,20 @@ PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
 PRI_INDIRECT = 30  # an indirect dependency
+PRI_MYPY = 40  # inside "if MYPY" or "if typing.TYPE_CHECKING"
 PRI_ALL = 99  # include all priorities
+
+
+def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
+    """Compute import priority from an import node."""
+    if imp.is_mypy_only:
+        # Inside "if MYPY" or "if typing.TYPE_CHECKING"
+        return PRI_MYPY
+    if not imp.is_top_level:
+        # Inside a function
+        return PRI_LOW
+    # A regular import; priority determined by argument.
+    return toplevel_priority
 
 
 # TODO: Get rid of all_types.  It's not used except for one log message.
@@ -395,20 +409,21 @@ class BuildManager:
         for imp in file.imports:
             if not imp.is_unreachable:
                 if isinstance(imp, Import):
-                    pri = PRI_MED if imp.is_top_level else PRI_LOW
+                    pri = import_priority(imp, PRI_MED)
+                    ancestor_pri = import_priority(imp, PRI_LOW)
                     for id, _ in imp.ids:
                         ancestor_parts = id.split(".")[:-1]
                         ancestors = []
                         for part in ancestor_parts:
                             ancestors.append(part)
-                            res.append((PRI_LOW, ".".join(ancestors), imp.line))
+                            res.append((ancestor_pri, ".".join(ancestors), imp.line))
                         res.append((pri, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
-                    pri = PRI_MED if imp.is_top_level else PRI_LOW
+                    pri = import_priority(imp, PRI_MED)
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
@@ -421,10 +436,10 @@ class BuildManager:
                     # cur_id is also a dependency, and we should
                     # insert it *before* any submodules.
                     if not all_are_submodules:
-                        pri = PRI_HIGH if imp.is_top_level else PRI_LOW
+                        pri = import_priority(imp, PRI_HIGH)
                         res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
-                    pri = PRI_HIGH if imp.is_top_level else PRI_LOW
+                    pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
 
         return res
