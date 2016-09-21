@@ -3023,7 +3023,7 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], platform: s
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
         elif name == 'PY3':
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-        elif name == 'MYPY':
+        elif name == 'MYPY' or name == 'TYPE_CHECKING':
             result = ALWAYS_TRUE
     if negated:
         if result == ALWAYS_TRUE:

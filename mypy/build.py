@@ -1472,6 +1472,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
+        # TODO: This could also be a per-file option.
         manager.errors.generate_unused_ignore_notes()
 
 
