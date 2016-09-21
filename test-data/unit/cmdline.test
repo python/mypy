@@ -153,9 +153,9 @@ def f(a):
 def g(a: int) -> int:
     return f(a)
 [out]
-z.py:1: error: Function is missing a type annotation
-z.py:4: error: Call to untyped function "f" in typed context
-x.py:1: error: Function is missing a type annotation
+z.py:1:0: error: Function is missing a type annotation
+z.py:4:12: error: Call to untyped function "f" in typed context
+x.py:1:0: error: Function is missing a type annotation
 
 [case testPerFileConfigSectionMultipleMatches]
 # cmd: mypy xx.py xy.py yx.py yy.py
@@ -179,12 +179,12 @@ def g(a: int) -> int: return f(a)
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [out]
-yy.py:2: error: Call to untyped function "f" in typed context
-yx.py:1: error: Function is missing a type annotation
-yx.py:2: error: Call to untyped function "f" in typed context
-xy.py:1: error: Function is missing a type annotation
-xy.py:2: error: Call to untyped function "f" in typed context
-xx.py:1: error: Function is missing a type annotation
+yy.py:2:30: error: Call to untyped function "f" in typed context
+yx.py:1:0: error: Function is missing a type annotation
+yx.py:2:30: error: Call to untyped function "f" in typed context
+xy.py:1:0: error: Function is missing a type annotation
+xy.py:2:30: error: Call to untyped function "f" in typed context
+xx.py:1:0: error: Function is missing a type annotation
 
 [case testMultipleGlobConfigSection]
 # cmd: mypy x.py y.py z.py
@@ -200,8 +200,8 @@ def f(a): pass
 [file z.py]
 def f(a): pass
 [out]
-z.py:1: error: Function is missing a type annotation
-x.py:1: error: Function is missing a type annotation
+z.py:1:0: error: Function is missing a type annotation
+x.py:1:0: error: Function is missing a type annotation
 
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass

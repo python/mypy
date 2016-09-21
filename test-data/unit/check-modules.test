@@ -913,9 +913,9 @@ x = "foo"
 def y() -> str: return "foo"
 class z: pass
 [out]
-main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
-main:2: error: Incompatible import of "y" (imported name has type Callable[[], str], local name has type Callable[[], int])
-main:2: error: Incompatible import of "z" (imported name has type "z" (type object), local name has type "z" (type object))
+main:2:0: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
+main:2:0: error: Incompatible import of "y" (imported name has type Callable[[], str], local name has type Callable[[], int])
+main:2:0: error: Incompatible import of "z" (imported name has type "z" (type object), local name has type "z" (type object))
 
 -- Misc
 
