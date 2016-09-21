@@ -27,6 +27,7 @@ class Token:
         self.string = string
         self.pre = pre
         self.line = 0
+        self.column = 0
 
     def __repr__(self) -> str:
         """The representation is of form 'Keyword(  if)'."""
@@ -273,9 +274,10 @@ def escape_repl(m: Match[str], prefix: str) -> str:
 class Lexer:
     """Lexical analyzer."""
 
-    i = 0      # Current string index (into s)
-    s = ''     # The string being analyzed
-    line = 0   # Current line number
+    i = 0       # Current string index (into s)
+    s = ''      # The string being analyzed
+    line = 0    # Current line number
+    column = 0  # Current column number
     pre_whitespace = ''     # Whitespace and comments before the next token
     enc = ''                # Encoding
 
@@ -339,6 +341,7 @@ class Lexer:
         """Lexically analyze a string, storing the tokens at the tok list."""
         self.i = 0
         self.line = first_line
+        self.column = 0
 
         if isinstance(text, bytes):
             if text.startswith(b'\xef\xbb\xbf'):
@@ -612,6 +615,7 @@ class Lexer:
         line = self.line
         ss = self.s[self.i:self.i + len(prefix) + 3]
         self.i += len(prefix) + 3
+        self.column += len(prefix) + 3
         while True:
             m = re3end.match(self.s, self.i)
             if m is not None:
@@ -625,6 +629,7 @@ class Lexer:
             ss += s
             self.line += 1
             self.i += len(s)
+            self.column += len(s)
         lit = None  # type: Token
         if 'b' in prefix or 'B' in prefix:
             lit = BytesLit(ss + m.group(0))
@@ -642,6 +647,7 @@ class Lexer:
         """
         line = self.line
         self.i += len(prefix)
+        self.column += len(prefix)
         ss = prefix
         while True:
             m = self.match(re_end)
@@ -652,6 +658,7 @@ class Lexer:
             ss += m
             self.line += 1
             self.i += len(m)
+            self.column += len(m)
             if not m.endswith('\n') and not m.endswith('\r'): break
         self.add_special_token(StrLit(ss), line, 0)  # TODO bytes
 
@@ -740,15 +747,18 @@ class Lexer:
             last_tok.string += self.pre_whitespace + s
             self.i += len(s)
             self.line += 1
+            self.column = 0
             self.pre_whitespace = ''
             if was_semicolon:
                 self.lex_indent()
         elif self.ignore_break():
             self.add_pre_whitespace(s)
             self.line += 1
+            self.column = 0
         else:
             self.add_token(Break(s))
             self.line += 1
+            self.column = 0
             self.lex_indent()
 
     def lex_semicolon(self) -> None:
@@ -828,6 +838,7 @@ class Lexer:
         """
         self.pre_whitespace += s
         self.i += len(s)
+        self.column += len(s)
 
     type_ignore_exp = re.compile(r'[ \t]*#[ \t]*type:[ \t]*ignore\b')
 
@@ -849,8 +860,10 @@ class Lexer:
                 delta += 1
             self.ignored_lines.add(self.line - delta)
         tok.line = self.line
+        tok.column = self.column
         self.tok.append(tok)
         self.i += len(tok.string)
+        self.column += len(tok.string)
         self.pre_whitespace = ''
 
     def add_special_token(self, tok: Token, line: int, skip: int) -> None:
@@ -864,6 +877,7 @@ class Lexer:
         tok.line = line
         self.tok.append(tok)
         self.i += skip
+        self.column += skip
         self.pre_whitespace = ''
 
     def ignore_break(self) -> bool:
