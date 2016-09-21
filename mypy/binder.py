@@ -178,6 +178,7 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
+        print(expr, type, declared_type)
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)

@@ -1044,7 +1044,9 @@ class TypeChecker(NodeVisitor[Type]):
             # Infer the type of an ordinary rvalue expression.
             # TODO maybe elsewhere; redundant
             rvalue_type = self.accept(rvalue)
-            self.check_multi_assign(lvalue.items, rvalue, rvalue_type, lvalue, infer_lvalue_type)
+            self.check_multi_assign(lvalue.items, rvalue, rvalue_type, lvalue,
+                                    undefined_rvalue=False,
+                                    infer_lvalue_type=infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             if lvalue_type:
@@ -1134,49 +1136,59 @@ class TypeChecker(NodeVisitor[Type]):
             return False
         return True
 
-    def check_multi_assign(self, lvalues: List[Expression],
-                           rvalue: Expression, rvalue_type: Type,
-                           context: Context, infer_lvalue_type: bool = True,
-                           undefined_rvalue = False) -> None:
+    def check_multi_assign_from_any(self, lvalues: List[Expression], rvalue: Expression,
+                                    rvalue_type: AnyType, context: Context,
+                                    undefined_rvalue: bool,
+                                    infer_lvalue_type: bool) -> None:
+        for lv in lvalues:
+            if isinstance(lv, StarExpr):
+                lv = lv.expr
+            self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
 
+    def check_multi_assign(self, lvalues: List[Expression], rvalue: Expression,
+                           rvalue_type: Type, context: Context, *,
+                           undefined_rvalue: bool = False,
+                           infer_lvalue_type: bool = True) -> None:
         if isinstance(rvalue_type, AnyType):
-            for lv in lvalues:
-                if isinstance(lv, StarExpr):
-                    lv = lv.expr
-                self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
+            self.check_multi_assign_from_any(lvalues, rvalue, rvalue_type,
+                                             context, undefined_rvalue, infer_lvalue_type)
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assign_from_tuple(lvalues, rvalue, rvalue_type,
                                                context, undefined_rvalue, infer_lvalue_type)
         elif isinstance(rvalue_type, UnionType):
             self.check_multi_assign_from_union(lvalues, rvalue, rvalue_type,
-                                               context, infer_lvalue_type)
-        elif isinstance(rvalue_type, Instance) and self.type_is_iterable(rvalue_type):
-            self.check_multi_assign_from_iterable(lvalues, rvalue_type,
-                                                  context, infer_lvalue_type)
+                                               context, undefined_rvalue, infer_lvalue_type)
+        elif isinstance(rvalue_type, Instance) and self.instance_is_iterable(rvalue_type):
+            self.check_multi_assign_from_iterable(lvalues, rvalue, rvalue_type,
+                                                  context, undefined_rvalue, infer_lvalue_type)
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
     def check_multi_assign_from_union(self, lvalues: List[Expression], rvalue: Expression,
                                       rvalue_type: UnionType, context: Context,
+                                      undefined_rvalue: bool,
                                       infer_lvalue_type: bool) -> None:
-        union_types = tuple([] for _ in lvalues)  # type: Tuple[List[Type], ...]
+        transposed = tuple([] for _ in lvalues)  # type: Tuple[List[Type], ...]
         for item in rvalue_type.items:
-            self.check_multi_assign(lvalues, rvalue, item, context, infer_lvalue_type,
-                                    undefined_rvalue=True)
-            for t, lv in zip(union_types, lvalues):
+            self.check_multi_assign(lvalues, rvalue, item, context,
+                                    undefined_rvalue=True,
+                                    infer_lvalue_type=infer_lvalue_type)
+            for t, lv in zip(transposed, lvalues):
                 t.append(self.type_map[lv])
-        for ut, lv in zip(union_types, lvalues):
+        union_types = tuple(join_type_list(col) for col in transposed)
+        for union, lv in zip(union_types, lvalues):
             _1, _2, inferred = self.check_lvalue(lv)
-            union = join_type_list(ut)
             if inferred:
                 self.set_inferred_type(inferred, lv, union)
             else:
                 self.store_type(lv, union)
+            print(lv.literal)
+            self.binder.assign_type(lv, union, self.binder.get_declaration(lv))
 
     def check_multi_assign_from_tuple(self, lvalues: List[Expression], rvalue: Expression,
                                       rvalue_type: TupleType, context: Context,
                                       undefined_rvalue: bool,
-                                      infer_lvalue_type: bool = True) -> None:
+                                      infer_lvalue_type: bool) -> None:
         if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
             star_index = next((i for i, lv in enumerate(lvalues)
                                if isinstance(lv, StarExpr)), len(lvalues))
@@ -1254,13 +1266,14 @@ class TypeChecker(NodeVisitor[Type]):
         right = items[right_index:]
         return (left, star, right)
 
-    def type_is_iterable(self, rvalue_type: Type) -> bool:
-        return is_subtype(rvalue_type, self.named_generic_type('typing.Iterable',
+    def instance_is_iterable(self, instance: Instance) -> bool:
+        return is_subtype(instance, self.named_generic_type('typing.Iterable',
                                                                [AnyType()]))
 
-    def check_multi_assign_from_iterable(self, lvalues: List[Expression], rvalue_type: Instance,
-                                         context: Context,
-                                         infer_lvalue_type: bool = True) -> None:
+    def check_multi_assign_from_iterable(self, lvalues: List[Expression], rvalue: Expression,
+                                         rvalue_type: Instance, context: Context,
+                                         undefined_rvalue: bool,
+                                         infer_lvalue_type: bool) -> None:
         item_type = self.iterable_item_type(rvalue_type)
         for lv in lvalues:
             if isinstance(lv, StarExpr):
