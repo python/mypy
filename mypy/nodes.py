@@ -19,6 +19,9 @@ class Context:
     @abstractmethod
     def get_line(self) -> int: pass
 
+    @abstractmethod
+    def get_column(self) -> int: pass
+
 
 if False:
     # break import cycle only needed for mypy
@@ -92,6 +95,7 @@ class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
     line = -1
+    column = -1
 
     literal = LITERAL_NO
     literal_hash = None  # type: Any
@@ -112,6 +116,17 @@ class Node(Context):
     def get_line(self) -> int:
         # TODO this should be just 'line'
         return self.line
+
+    def set_column(self, target: Union[Token, 'Node', int]) -> 'Node':
+        if isinstance(target, int):
+            self.column = target
+        else:
+            self.column = target.column
+        return self
+
+    def get_column(self) -> int:
+        # TODO this should be just 'column'
+        return self.column
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
@@ -390,6 +405,10 @@ class Argument(Node):
             self.initialization_statement.set_line(self.line)
             self.initialization_statement.lvalues[0].set_line(self.line)
 
+    def set_column(self, target: Union[Token, Node, int]) -> Node:
+        super().set_column(target)
+        return self
+
     def serialize(self) -> JsonDict:
         # Note: we are deliberately not saving the type annotation since
         # it is not used by later stages of mypy.
@@ -455,6 +474,10 @@ class FuncItem(FuncBase):
         super().set_line(target)
         for arg in self.arguments:
             arg.set_line(self.line)
+        return self
+
+    def set_column(self, target: Union[Token, Node, int]) -> Node:
+        super().set_column(target)
         return self
 
     def is_dynamic(self) -> bool:
