@@ -867,4 +867,3 @@ class ASTConverter(ast27.NodeTransformer):
     # Index(expr value)
     def visit_Index(self, n: ast27.Index) -> Node:
         return self.visit(n.value)
-        
