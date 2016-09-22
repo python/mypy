@@ -55,7 +55,7 @@ class StringFormatterChecker:
         self.exprchk = exprchk
         self.msg = msg
 
-    def check_byte_interpolation(self, str: StrExpr, replacements: Node) -> Type:
+    def check_byte_interpolation(self, str: BytesExpr, replacements: Node) -> Type:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
