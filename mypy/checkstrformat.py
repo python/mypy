@@ -55,6 +55,20 @@ class StringFormatterChecker:
         self.exprchk = exprchk
         self.msg = msg
 
+    def check_byte_interpolation(self, str: StrExpr, replacements: Node) -> Type:
+        """Check the types of the 'replacements' in a string interpolation
+        expression: str % replacements
+        """
+        specifiers = self.parse_conversion_specifiers(str.value)
+        has_mapping_keys = self.analyze_conversion_specifiers(specifiers, str)
+        if has_mapping_keys is None:
+            pass  # Error was reported
+        elif has_mapping_keys:
+            self.check_mapping_str_interpolation(specifiers, replacements)
+        else:
+            self.check_simple_str_interpolation(specifiers, replacements)
+        return self.named_type('builtins.bytes')
+
     def check_str_interpolation(self, str: StrExpr, replacements: Node) -> Type:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
