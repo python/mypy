@@ -9,17 +9,21 @@ flag (or its long form ``--help``)::
 
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM]
-              [--py2] [-s] [--silent] [--almost-silent]
-              [--disallow-untyped-calls] [--disallow-untyped-defs]
-              [--check-untyped-defs] [--disallow-subclassing-any]
-              [--warn-incomplete-stub] [--warn-redundant-casts]
-              [--warn-unused-ignores] [--fast-parser] [-i] [--cache-dir DIR]
-              [--strict-optional] [-f] [--pdb] [--use-python-path] [--stats]
-              [--inferstats] [--custom-typing MODULE] [--html-report DIR]
-              [--old-html-report DIR] [--xslt-html-report DIR]
-              [--xml-report DIR] [--txt-report DIR] [--xslt-txt-report DIR]
-              [--linecount-report DIR] [-m MODULE] [-c PROGRAM_TEXT]
-              [-p PACKAGE]
+              [-2] [-s] [--almost-silent] [--disallow-untyped-calls]
+              [--disallow-untyped-defs] [--check-untyped-defs]
+              [--disallow-subclassing-any] [--warn-incomplete-stub]
+              [--warn-redundant-casts] [--warn-unused-ignores]
+              [--suppress-error-context] [--fast-parser] [-i]
+              [--cache-dir DIR] [--strict-optional]
+              [--strict-optional-whitelist [GLOB [GLOB ...]]] [--pdb]
+              [--show-traceback] [--stats] [--inferstats]
+              [--custom-typing MODULE] [--scripts-are-modules]
+              [--config-file CONFIG_FILE] [--linecount-report DIR]
+              [--linecoverage-report DIR] [--old-html-report DIR]
+              [--memory-xml-report DIR] [--xml-report DIR]
+              [--xslt-html-report DIR] [--xslt-txt-report DIR]
+              [--html-report DIR] [--txt-report DIR] [-m MODULE]
+              [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
   (etc., too long to show everything here)
 
@@ -99,6 +103,25 @@ example::
 will type check that little program (and complain that ``List[int]``
 is not callable).
 
+Reading a list of files from a file
+***********************************
+
+Finally, any command-line argument starting with ``@`` reads additional
+command-line arguments from the file following the ``@`` character.
+This is primarily useful if you have a file containing a list of files
+that you want to be type-checked: instead of using shell syntax like::
+
+  mypy $(cat file_of_files)
+
+you can use this instead::
+
+  mypy @file_of_files
+
+Such a file can also contain other flags, but a preferred way of
+reading flags (not files) from a file is to use a
+:ref:`configuration file <config-file>`.
+
+
 How imports are found
 *********************
 
@@ -145,6 +168,8 @@ in the earlier directory is used.)
 NOTE: These rules are relevant to the following section too:
 the ``-s`` flag described below is applied _after_ the above algorithm
 has determined which package, stub or module to use.
+
+.. _silent-imports:
 
 Following imports or not?
 *************************
@@ -208,6 +233,8 @@ probably contains a subtle misspelling of the super method; however if
 ``somewhere`` is ignored by ``-s``, the type of ``BaseClass`` will be
 ``Any``, and mypy will assume there may in fact be a ``finnagle()``
 method, so it won't flag the error.
+
+.. _almost-silent:
 
 For an effect similar to ``-s`` that's a little less silent you can
 use ``--almost-silent``.  This uses the same rules for deciding
@@ -278,6 +305,14 @@ Here are some more useful flags:
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+.. _config-file-flag:
+
+- ``--config-file CONFIG_FILE`` causes configuration settings to be
+  read from the given file.  By default settings are read from ``mypy.ini``
+  in the current directory.  Settings override mypy's built-in defaults
+  and command line flags can override settings.  See :ref:`config-file`
+  for the syntax of configuration files.
   
 For the remaining flags you can read the full ``mypy -h`` output.
 
