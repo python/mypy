@@ -14,7 +14,6 @@ from mypy.lex import (
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
     EllipsisToken
 )
-import mypy.types
 from mypy.nodes import (
     MypyFile, Import, Node, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -27,14 +26,14 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
-    BackquoteExpr
+    BackquoteExpr, Statement
 )
 from mypy import defaults
 from mypy import nodes
 from mypy.errors import Errors, CompileError
 from mypy.types import Type, CallableType, AnyType, UnboundType
 from mypy.parsetype import (
-    parse_type, parse_types, parse_signature, TypeParseError, parse_str_as_signature
+    parse_type, parse_types, parse_signature, TypeParseError
 )
 from mypy.options import Options
 
@@ -235,7 +234,7 @@ class Parser:
             return 'builtins'
         return id
 
-    def parse_import_from(self) -> Node:
+    def parse_import_from(self) -> Statement:
         self.expect('from')
 
         # Build the list of beginning relative tokens.
@@ -318,8 +317,8 @@ class Parser:
 
     # Parsing global definitions
 
-    def parse_defs(self) -> List[Node]:
-        defs = []  # type: List[Node]
+    def parse_defs(self) -> List[Statement]:
+        defs = []  # type: List[Statement]
         while not self.eof():
             try:
                 defn, is_simple = self.parse_statement()
@@ -394,7 +393,7 @@ class Parser:
     def parse_super_type(self) -> Node:
         return self.parse_expression(precedence[','])
 
-    def parse_decorated_function_or_class(self) -> Node:
+    def parse_decorated_function_or_class(self) -> Statement:
         decorators = []
         no_type_checks = False
         while self.current_str() == '@':
@@ -868,7 +867,7 @@ class Parser:
             brk = self.expect_break()
             type = self.parse_type_comment(brk, signature=True)
             self.expect_indent()
-            stmt_list = []  # type: List[Node]
+            stmt_list = []  # type: List[Statement]
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
                 try:
@@ -886,7 +885,7 @@ class Parser:
             node.set_line(colon)
             return node, type
 
-    def try_combine_overloads(self, s: Node, stmt: List[Node]) -> bool:
+    def try_combine_overloads(self, s: Node, stmt: List[Statement]) -> bool:
         if isinstance(s, Decorator) and stmt:
             fdef = s
             n = fdef.func.name()
@@ -898,8 +897,8 @@ class Parser:
                 return True
         return False
 
-    def parse_statement(self) -> Tuple[Node, bool]:
-        stmt = None  # type: Node
+    def parse_statement(self) -> Tuple[Statement, bool]:
+        stmt = None  # type: Statement
         t = self.current()
         ts = self.current_str()
         is_simple = True  # Is this a non-block statement?
@@ -964,7 +963,7 @@ class Parser:
             stmt.set_line(t)
         return stmt, is_simple
 
-    def parse_expression_or_assignment(self) -> Node:
+    def parse_expression_or_assignment(self) -> Statement:
         expr = self.parse_expression(star_expr_allowed=True)
         if self.current_str() == '=':
             return self.parse_assignment(expr)
@@ -978,7 +977,7 @@ class Parser:
             # Expression statement.
             return ExpressionStmt(expr)
 
-    def parse_assignment(self, lvalue: Any) -> Node:
+    def parse_assignment(self, lvalue: Any) -> AssignmentStmt:
         """Parse an assignment statement.
 
         Assume that lvalue has been parsed already, and the current token is '='.
@@ -1184,7 +1183,7 @@ class Parser:
         else:
             return None
 
-    def parse_try_stmt(self) -> Node:
+    def parse_try_stmt(self) -> Statement:
         self.expect('try')
         body, _ = self.parse_block()
         is_error = False
@@ -1813,7 +1812,9 @@ class Parser:
 
         expr = self.parse_expression(precedence[','])
 
-        nodes = [ReturnStmt(expr).set_line(lambda_tok)]
+        ret = ReturnStmt(expr)
+        ret.set_line(lambda_tok)
+        nodes = [ret]  # type: List[Statement]
         # Potentially insert extra assignment statements to the beginning of the
         # body, used to decompose Python 2 tuple arguments.
         nodes[:0] = extra_stmts

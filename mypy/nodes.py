@@ -1,8 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-import re
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
@@ -117,11 +116,19 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-# These are placeholders for a future refactoring; see #1783.
-# For now they serve as (unchecked) documentation of what various
+# This is a placeholder for a future refactoring; see #1783.
+# For now it serves as (unchecked) documentation of what various
 # fields of Node subtypes are expected to contain.
-Statement = Node
 Expression = Node
+
+
+class Statement(Node):
+    pass
+
+
+# For now, only Var is a declaration
+class Declaration(Node):
+    pass
 
 
 class SymbolNode(Node):
@@ -576,7 +583,7 @@ class Decorator(SymbolNode, Statement):
         return dec
 
 
-class Var(SymbolNode, Statement):
+class Var(SymbolNode, Declaration):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
