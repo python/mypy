@@ -1178,12 +1178,11 @@ class TypeChecker(NodeVisitor[Type]):
         union_types = tuple(join_type_list(col) for col in transposed)
         for union, lv in zip(union_types, lvalues):
             _1, _2, inferred = self.check_lvalue(lv)
+            # self.binder.assign_type(lv, union, self.binder.get_declaration(lv))
             if inferred:
                 self.set_inferred_type(inferred, lv, union)
             else:
                 self.store_type(lv, union)
-            print(lv.literal)
-            self.binder.assign_type(lv, union, self.binder.get_declaration(lv))
 
     def check_multi_assign_from_tuple(self, lvalues: List[Expression], rvalue: Expression,
                                       rvalue_type: TupleType, context: Context,
