@@ -1718,8 +1718,8 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     each SCC thus found.  The recursion is bounded because at each
     recursion the spread in priorities is (at least) one less.
 
-    In practice there are only a few priority levels (currently
-    N=3) and in the worst case we just carry out the same algorithm
+    In practice there are only a few priority levels (less than a
+    dozen) and in the worst case we just carry out the same algorithm
     for finding SCCs N times.  Thus the complexity is no worse than
     the complexity of the original SCC-finding algorithm -- see
     strongly_connected_components() below for a reference.

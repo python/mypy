@@ -3093,11 +3093,11 @@ def infer_reachability_of_if_statement(s: IfStmt,
     for i in range(len(s.expr)):
         result = infer_if_condition_value(s.expr[i], pyversion, platform)
         if result in (ALWAYS_FALSE, MYPY_FALSE):
-            # The condition is always false, so we skip the if/elif body.
+            # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
         elif result in (ALWAYS_TRUE, MYPY_TRUE):
-            # This condition is always true, so all of the remaining
-            # elif/else bodies will never be executed.
+            # This condition is considered always true, so all of the remaining
+            # elif/else bodies should not be checked.
             if result == MYPY_TRUE:
                 # This condition is false at runtime; this will affect
                 # import priorities.
