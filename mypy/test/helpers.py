@@ -96,26 +96,13 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         ind = old.find(PREFIX)
         if ind != -1 and old[:ind] == new[:ind]:
             old, new = old[ind + len(PREFIX):], new[ind + len(PREFIX):]
-        else:
-            # be resilient to column number differences
-            pattern = re.compile('(?P<file>.+):(?P<line>\d+)(:(?P<col>\d+))?: error:')
-            oldmatch = pattern.match(old)
-            newmatch = pattern.match(new)
-            if (oldmatch is not None and
-                newmatch is not None and
-                oldmatch.group('file') == newmatch.group('file') and
-                    oldmatch.group('line') == newmatch.group('line')):
-                    old, new = old[oldmatch.end():], new[newmatch.end():]
-                    oldcol = str(oldmatch.group('col')) + ':' if oldmatch.group('col') else ''
-                    old = '# E:' + oldcol + old
-                    newcol = str(newmatch.group('col')) + ':' if newmatch.group('col') else ''
-                    new = '# E:' + newcol + new
 
         mapping.setdefault(old, []).append(new)
 
     for old in mapping:
         if test.count(old) == len(mapping[old]):
             betweens = test.split(old)
+
             # Interleave betweens and mapping[old]
             from itertools import chain
             interleaved = [betweens[0]] + \
