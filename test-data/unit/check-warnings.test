@@ -44,7 +44,7 @@ c = add([cast(A, b)], [a])
 a = 1
 a = 'a' # type: ignore
 a = 2 # type: ignore # N: unused 'type: ignore' comment
-a = 'b' # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = 'b' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testUnusedTypeIgnoreImport]
 # flags: --warn-unused-ignores

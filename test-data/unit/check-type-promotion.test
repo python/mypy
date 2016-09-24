@@ -8,7 +8,7 @@ f(1)
 
 [case testCantPromoteFloatToInt]
 def f(x: int) -> None: pass
-f(1.1) # E:1: Argument 1 to "f" has incompatible type "float"; expected "int"
+f(1.1) # E: Argument 1 to "f" has incompatible type "float"; expected "int"
 [builtins fixtures/primitives.pyi]
 
 [case testPromoteFloatToComplex]
@@ -29,11 +29,11 @@ f(bytearray())
 [case testNarrowingDownFromPromoteTargetType]
 y = 0.0
 y = 1
-y() # E:1: "int" not callable
+y() # E: "int" not callable
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownFromPromoteTargetType2]
 y = 0.0
 y = 1
-y.x # E:1: "int" has no attribute "x"
+y.x # E: "int" has no attribute "x"
 [builtins fixtures/primitives.pyi]

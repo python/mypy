@@ -5,11 +5,11 @@
 from typing import overload
 @overload
 def f(x: 'A'):
-    x = B() # E:4: Incompatible types in assignment (expression has type "B", variable has type "A")
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     x = A()
 @overload
 def f(x: 'B'):
-    x = A() # E:4: Incompatible types in assignment (expression has type "A", variable has type "B")
+    x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     x = B()
 class A: pass
 class B: pass
@@ -21,11 +21,11 @@ from typing import overload
 class A:
     @overload
     def f(self, x: 'A'):
-        x = B() # E:8: Incompatible types in assignment (expression has type "B", variable has type "A")
+        x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         x = A()
     @overload
     def f(self, x: 'B'):
-        x = A() # E:8: Incompatible types in assignment (expression has type "A", variable has type "B")
+        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         x = B()
 class B: pass
 [out]
@@ -33,7 +33,7 @@ main: note: In member "f" of class "A":
 
 [case testCallToOverloadedFunction]
 from typing import overload
-f(C()) # E:1: No overload variant of "f" matches argument types [__main__.C]
+f(C()) # E: No overload variant of "f" matches argument types [__main__.C]
 f(A())
 f(B())
 
@@ -49,8 +49,8 @@ class C: pass
 [case testOverloadedFunctionReturnValue]
 from typing import overload
 a, b = None, None # type: (A, B)
-b = f(a) # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f(b) # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = f(a)
 b = f(b)
 
@@ -63,7 +63,7 @@ class B: pass
 
 [case testCallToOverloadedMethod]
 from typing import overload
-A().f(C()) # E:5: No overload variant of "f" of "A" matches argument types [__main__.C]
+A().f(C()) # E: No overload variant of "f" of "A" matches argument types [__main__.C]
 A().f(A())
 A().f(B())
 
@@ -79,8 +79,8 @@ class C: pass
 [case testOverloadedMethodReturnValue]
 from typing import overload
 a, b = None, None # type: (A, B)
-b = a.f(a) # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = a.f(b) # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = a.f(b) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = a.f(a)
 b = a.f(b)
 
@@ -95,12 +95,12 @@ class B: pass
 from typing import overload
 a, b = None, None # type: (A, B)
 a = f(a)
-b = f(a) # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-f(b)     # E:1: No overload variant of "f" matches argument types [__main__.B]
+b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+f(b)     # E: No overload variant of "f" matches argument types [__main__.B]
 b = f(b, a)
-a = f(b, a) # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
-f(a, a)     # E:1: No overload variant of "f" matches argument types [__main__.A, __main__.A]
-f(b, b)     # E:1: No overload variant of "f" matches argument types [__main__.B, __main__.B]
+a = f(b, a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+f(a, a)     # E: No overload variant of "f" matches argument types [__main__.A, __main__.A]
+f(b, b)     # E: No overload variant of "f" matches argument types [__main__.B, __main__.B]
 
 @overload
 def f(x: 'A') -> 'A': pass
@@ -115,9 +115,9 @@ t = TypeVar('t')
 ab, ac, b, c = None, None, None, None # type: (A[B], A[C], B, C)
 b = f(ab)
 c = f(ac)
-b = f(ac) # E:0: Incompatible types in assignment (expression has type "C", variable has type "B")
+b = f(ac) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
 b = f(b)
-c = f(b)  # E:0: Incompatible types in assignment (expression has type "B", variable has type "C")
+c = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
 @overload
 def f(x: 'A[t]') -> t: pass
 @overload
@@ -131,7 +131,7 @@ from typing import overload
 a, b = None, None # type: (A, B)
 a = A(a)
 a = A(b)
-a = A(object()) # E:5: No overload variant of "A" matches argument types [builtins.object]
+a = A(object()) # E: No overload variant of "A" matches argument types [builtins.object]
 
 class A:
   @overload
@@ -145,7 +145,7 @@ from typing import overload, Callable
 o = None # type: object
 a = None # type: A
 
-a = f # E:0: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
+a = f # E: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
 o = f
 
 @overload
@@ -158,7 +158,7 @@ class A: pass
 from typing import overload
 t, a = None, None # type: (type, A)
 
-a = A # E:0: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
 t = A
 
 class A:
@@ -172,9 +172,9 @@ class B: pass
 from typing import overload
 a, b = None, None # type: int, str
 a = A()[a]
-b = A()[a] # E:0: Incompatible types in assignment (expression has type "int", variable has type "str")
+b = A()[a] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 b = A()[b]
-a = A()[b] # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = A()[b] # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 class A:
     @overload
@@ -187,9 +187,9 @@ from typing import TypeVar, Generic, overload
 t = TypeVar('t')
 a, b, c = None, None, None # type: (A, B, C[A])
 a = c[a]
-b = c[a] # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = c[b]
-b = c[b] # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = c[b] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 class C(Generic[t]):
     @overload
@@ -238,7 +238,7 @@ f(A(), A, A)
 f(B())
 f(B(), B)
 f(B(), B, B)
-f(object()) # E:1: No overload variant of "f" matches argument types [builtins.object]
+f(object()) # E: No overload variant of "f" matches argument types [builtins.object]
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -251,8 +251,8 @@ def f(x: 'A', *more: 'B') -> 'A': pass
 def f(x: 'B', *more: 'A') -> 'A': pass
 f(A(), B())
 f(A(), B(), B())
-f(A(), A(), B()) # E:1: No overload variant of "f" matches argument types [__main__.A, __main__.A, __main__.B]
-f(A(), B(), A()) # E:1: No overload variant of "f" matches argument types [__main__.A, __main__.B, __main__.A]
+f(A(), A(), B()) # E: No overload variant of "f" matches argument types [__main__.A, __main__.A, __main__.B]
+f(A(), B(), A()) # E: No overload variant of "f" matches argument types [__main__.A, __main__.B, __main__.A]
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -278,8 +278,8 @@ def f(t: 'A') -> 'B': pass
 a, b = None, None # type: (A, B)
 a = f(A)
 b = f(a)
-b = f(A) # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f(a) # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(A) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A:
    @overload
    def __init__(self) -> None: pass
@@ -301,9 +301,9 @@ n = f(list_int)
 m = f(list_str)
 n = 1
 m = 1
-n = 'x' # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
-m = 'x' # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
-f(list_object) # E:1: Argument 1 to "f" has incompatible type List[object]; expected List[int]
+n = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+m = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+f(list_object) # E: Argument 1 to "f" has incompatible type List[object]; expected List[int]
 [builtins fixtures/list.pyi]
 
 [case testOverlappingOverloadSignatures]
@@ -311,7 +311,7 @@ from typing import overload
 class A: pass
 class B(A): pass
 @overload
-def f(x: B) -> int: pass # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: B) -> int: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(x: A) -> str: pass
 
@@ -330,7 +330,7 @@ from typing import overload
 class A: pass
 class B(A): pass
 @overload
-def f(x: B) -> A: pass # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: B) -> A: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(x: A) -> B: pass
 
@@ -371,7 +371,7 @@ def g(x: Any) -> Any: pass
 [case testContravariantOverlappingOverloadSignaturesWithAnyType]
 from typing import Any, overload
 @overload
-def g(x: Any) -> Any: pass # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(x: Any) -> Any: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def g(x: int) -> int: pass
 
@@ -393,8 +393,8 @@ A() < A()
 A() < B()
 B() < A()
 B() < B()
-A() < object() # E:4: Unsupported operand types for < ("A" and "object")
-B() < object() # E:4: No overload variant of "__lt__" of "B" matches argument types [builtins.object]
+A() < object() # E: Unsupported operand types for < ("A" and "object")
+B() < object() # E: No overload variant of "__lt__" of "B" matches argument types [builtins.object]
 
 [case testOverloadedForwardMethodAndCallingReverseMethod]
 from typing import overload
@@ -408,7 +408,7 @@ class B:
 A() + A()
 A() + 1
 A() + B()
-A() + '' # E:4: No overload variant of "__add__" of "A" matches argument types [builtins.str]
+A() + '' # E: No overload variant of "__add__" of "A" matches argument types [builtins.str]
 
 [case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
 from typing import overload, builtinclass
@@ -477,8 +477,8 @@ def f(n: B) -> B:
 def f(n: A) -> A:
     return n
 
-f(B()) + 'x'  # E:7: Unsupported left operand type for + ("B")
-f(A()) + 'x'  # E:7: Unsupported left operand type for + ("A")
+f(B()) + 'x'  # E: Unsupported left operand type for + ("B")
+f(A()) + 'x'  # E: Unsupported left operand type for + ("A")
 
 [case testOverloadingAndIntFloatSubtyping]
 from typing import overload
@@ -489,7 +489,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E:1: No overload variant of "f" matches argument types [Tuple[]]
+f(()) # E: No overload variant of "f" matches argument types [Tuple[]]
 [builtins fixtures/primitives.pyi]
 [out]
 
@@ -519,7 +519,7 @@ def f(x: A) -> A: pass
 @overload
 def f(x: B) -> B: pass
 
-f(A() + B())() # E:12: "B" not callable
+f(A() + B())() # E: "B" not callable
 
 [case testKeywordArgOverload]
 from typing import overload
@@ -527,8 +527,8 @@ from typing import overload
 def f(x: int, y: str) -> int: pass
 @overload
 def f(x: str, y: int) -> str: pass
-f(x=1, y='')() # E:12: "int" not callable
-f(y=1, x='')() # E:12: "str" not callable
+f(x=1, y='')() # E: "int" not callable
+f(y=1, x='')() # E: "str" not callable
 
 [case testIgnoreOverloadVariantBasedOnKeywordArg]
 from typing import overload
@@ -536,8 +536,8 @@ from typing import overload
 def f(x: int) -> int: pass
 @overload
 def f(y: int) -> str: pass
-f(x=1)() # E:6: "int" not callable
-f(y=1)() # E:6: "str" not callable
+f(x=1)() # E: "int" not callable
+f(y=1)() # E: "str" not callable
 
 [case testOverloadWithTupleVarArg]
 from typing import overload
@@ -545,10 +545,10 @@ from typing import overload
 def f(x: int, y: str) -> int: pass
 @overload
 def f(*x: str) -> str: pass
-f(*(1,))() # E:1: No overload variant of "f" matches argument types [Tuple[builtins.int]]
-f(*('',))() # E:9: "str" not callable
-f(*(1, ''))() # E:11: "int" not callable
-f(*(1, '', 1))() # E:1: No overload variant of "f" matches argument types [Tuple[builtins.int, builtins.str, builtins.int]]
+f(*(1,))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int]]
+f(*('',))() # E: "str" not callable
+f(*(1, ''))() # E: "int" not callable
+f(*(1, '', 1))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int, builtins.str, builtins.int]]
 
 [case testPreferExactSignatureMatchInOverload]
 from typing import overload, List
@@ -556,10 +556,10 @@ from typing import overload, List
 def f(x: int, y: List[int] = None) -> int: pass
 @overload
 def f(x: int, y: List[str] = None) -> int: pass
-f(y=[1], x=0)() # E:13: "int" not callable
-f(y=[''], x=0)() # E:14: "int" not callable
-a = f(y=[['']], x=0) # E:8: List item 0 has incompatible type List[str]
-a() # E:1: "int" not callable
+f(y=[1], x=0)() # E: "int" not callable
+f(y=[''], x=0)() # E: "int" not callable
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type List[str]
+a() # E: "int" not callable
 [builtins fixtures/list.pyi]
 
 [case testOverloadWithDerivedFromAny]
@@ -587,10 +587,10 @@ def f(x: T) -> T: pass
 def f(x: int) -> bool: pass
 class mystr(str): pass
 
-f('x')() # E:6: "str" not callable
-f(1)() # E:4: "bool" not callable
-f(1.1) # E:1: No overload variant of "f" matches argument types [builtins.float]
-f(mystr())() # E:10: "mystr" not callable
+f('x')() # E: "str" not callable
+f(1)() # E: "bool" not callable
+f(1.1) # E: No overload variant of "f" matches argument types [builtins.float]
+f(mystr())() # E: "mystr" not callable
 [builtins fixtures/primitives.pyi]
 
 [case testOverloadedCallWithVariableTypes]
@@ -605,11 +605,11 @@ class mystr(str): pass
 U = TypeVar('U', bound=mystr)
 V = TypeVar('V')
 def g(x: U, y: V) -> None:
-    f(x)() # E:8: "mystr" not callable
-    f(y) # E:5: No overload variant of "f" matches argument types [V`-2]
-    a = f([x]) # E:9: "f" does not return a value
-    f([y]) # E:5: Type argument 1 of "f" has incompatible value "V"
-    f([x, y]) # E:5: Type argument 1 of "f" has incompatible value "object"
+    f(x)() # E: "mystr" not callable
+    f(y) # E: No overload variant of "f" matches argument types [V`-2]
+    a = f([x]) # E: "f" does not return a value
+    f([y]) # E: Type argument 1 of "f" has incompatible value "V"
+    f([x, y]) # E: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.pyi]
 [out]
 main: note: In function "g":
@@ -623,7 +623,7 @@ def f(x: Sequence[T]) -> None: pass
 def f(x: Sequence[int]) -> int: pass
 # These are considered overlapping despite the bound on T due to runtime type erasure.
 [out]
-main:4:0: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
+main:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
 
 [case testOverlapWithTypeVarsWithValues]
 from typing import overload, TypeVar
@@ -634,10 +634,10 @@ def f(x: int) -> int: pass
 @overload
 def f(x: AnyStr) -> str: pass
 
-f(1)() # E:4: "int" not callable
-f('1')() # E:6: "str" not callable
-f(b'1')() # E:7: "str" not callable
-f(1.0) # E:1: No overload variant of "f" matches argument types [builtins.float]
+f(1)() # E: "int" not callable
+f('1')() # E: "str" not callable
+f(b'1')() # E: "str" not callable
+f(1.0) # E: No overload variant of "f" matches argument types [builtins.float]
 
 @overload
 def g(x: AnyStr, *a: AnyStr) -> None: pass
@@ -646,10 +646,10 @@ def g(x: int, *a: AnyStr) -> None: pass
 
 g('foo')
 g('foo', 'bar')
-g('foo', b'bar') # E:1: Type argument 1 of "g" has incompatible value "object"
+g('foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
 g(1)
 g(1, 'foo')
-g(1, 'foo', b'bar') # E:1: Type argument 1 of "g" has incompatible value "object"
+g(1, 'foo', b'bar') # E: Type argument 1 of "g" has incompatible value "object"
 [builtins fixtures/primitives.pyi]
 
 [case testBadOverlapWithTypeVarsWithValues]
@@ -657,7 +657,7 @@ from typing import overload, TypeVar
 AnyStr = TypeVar('AnyStr', bytes, str)
 
 @overload
-def f(x: AnyStr) -> None: pass # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: AnyStr) -> None: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(x: str) -> bool: pass
 [builtins fixtures/primitives.pyi]
@@ -669,7 +669,7 @@ class B(A): pass
 @overload
 def f(x: int) -> None: pass
 @overload
-def f(x: B) -> str: pass # E:0: Overloaded function signatures 2 and 3 overlap with incompatible return types
+def f(x: B) -> str: pass # E: Overloaded function signatures 2 and 3 overlap with incompatible return types
 @overload
 def f(x: A) -> int: pass
 
@@ -688,7 +688,7 @@ class A(Generic[T]):
 
 b = A()  # type: A[Tuple[int, int]]
 b.f((0, 0))
-b.f((0, '')) # E:3: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
+b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
 
 [case testSingleOverload]
 from typing import overload
@@ -696,8 +696,8 @@ from typing import overload
 def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
-main:2:0: error: Single overload definition, multiple required
-main:4:0: error: Name 'f' already defined
+main:2: error: Single overload definition, multiple required
+main:4: error: Name 'f' already defined
 
 [case testSingleOverload2]
 from typing import overload
@@ -705,8 +705,8 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-main:3:0: error: Name 'f' already defined
-main:3:0: error: Single overload definition, multiple required
+main:3: error: Name 'f' already defined
+main:3: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloads]
 from typing import overload
@@ -716,9 +716,9 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-main:2:0: error: Single overload definition, multiple required
-main:5:0: error: Name 'f' already defined
-main:5:0: error: Single overload definition, multiple required
+main:2: error: Single overload definition, multiple required
+main:5: error: Name 'f' already defined
+main:5: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingFirstOverload]
 from typing import overload
@@ -727,8 +727,8 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-main:4:0: error: Name 'f' already defined
-main:4:0: error: Single overload definition, multiple required
+main:4: error: Name 'f' already defined
+main:4: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingLaterOverload]
 from typing import overload
@@ -737,8 +737,8 @@ def f(a: int) -> None: pass
 1
 def f(a: str) -> None: pass
 [out]
-main:2:0: error: Single overload definition, multiple required
-main:5:0: error: Name 'f' already defined
+main:2: error: Single overload definition, multiple required
+main:5: error: Name 'f' already defined
 
 [case testOverloadTuple]
 from typing import overload, Tuple
@@ -747,12 +747,12 @@ def f(x: int, y: Tuple[str, ...]) -> None: pass
 @overload
 def f(x: int, y: str) -> None: pass
 f(1, ('2', '3'))
-f(1, (2, '3')) # E:1: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected Tuple[str, ...]
+f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected Tuple[str, ...]
 f(1, ('2',))
 f(1, '2')
-f(1, (2, 3)) # E:1: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected Tuple[str, ...]
+f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected Tuple[str, ...]
 x = ('2', '3')  # type: Tuple[str, ...]
 f(1, x)
 y = (2, 3)  # type: Tuple[int, ...]
-f(1, y) # E:1: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected Tuple[str, ...]
+f(1, y) # E: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected Tuple[str, ...]
 [builtins fixtures/tuple.pyi]

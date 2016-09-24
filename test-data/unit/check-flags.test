@@ -3,14 +3,14 @@
 def f(x): pass
 [out]
 main: note: In function "f":
-main:2:0: error: Function is missing a type annotation
+main:2: error: Function is missing a type annotation
 
 [case testUnannotatedArgument]
 # flags: --disallow-untyped-defs
 def f(x) -> int: pass
 [out]
 main: note: In function "f":
-main:2:0: error: Function is missing a type annotation for one or more arguments
+main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testNoArgumentFunction]
 # flags: --disallow-untyped-defs
@@ -22,7 +22,7 @@ def f() -> int: pass
 def f(x: int): pass
 [out]
 main: note: In function "f":
-main:2:0: error: Function is missing a return type annotation
+main:2: error: Function is missing a return type annotation
 
 [case testLambda]
 # flags: --disallow-untyped-defs
@@ -35,13 +35,13 @@ def f():
     1 + "str"
 [out]
 main: note: In function "f":
-main:2:0: error: Function is missing a type annotation
+main:2: error: Function is missing a type annotation
 
 [case testSubclassingAny]
 # flags: --disallow-subclassing-any
 from typing import Any
 FakeClass = None  # type: Any
-class Foo(FakeClass): pass  # E:10: Class cannot subclass 'FakeClass' (has type 'Any')
+class Foo(FakeClass): pass  # E: Class cannot subclass 'FakeClass' (has type 'Any')
 [out]
 
 [case testSubclassingAnyMultipleBaseClasses]
@@ -49,7 +49,7 @@ class Foo(FakeClass): pass  # E:10: Class cannot subclass 'FakeClass' (has type 
 from typing import Any
 FakeClass = None  # type: Any
 class ActualClass: pass
-class Foo(ActualClass, FakeClass): pass  # E:23: Class cannot subclass 'FakeClass' (has type 'Any')
+class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass 'FakeClass' (has type 'Any')
 [out]
 
 [case testSubclassingAnySilentImports]
@@ -64,7 +64,7 @@ class Foo(BaseClass): pass
 class BaseClass: pass
 
 [out]
-tmp/main.py:2:10: error: Class cannot subclass 'BaseClass' (has type 'Any')
+tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
 
 [case testSubclassingAnySilentImports2]
 # flags: --disallow-subclassing-any --silent-imports
@@ -78,4 +78,4 @@ class Foo(ignored_module.BaseClass): pass
 class BaseClass: pass
 
 [out]
-tmp/main.py:2:24: error: Class cannot subclass 'BaseClass' (has type 'Any')
+tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')

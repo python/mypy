@@ -96,7 +96,11 @@ class Errors:
     # Set to True to suppress "In function "foo":" messages.
     suppress_error_context = False  # type: bool
 
-    def __init__(self, suppress_error_context: bool = False) -> None:
+    # Set to True to show column numbers in error messages
+    show_column_numbers = False  # type: bool
+
+    def __init__(self, suppress_error_context: bool = False,
+                 show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
         self.type_name = [None]
@@ -105,6 +109,7 @@ class Errors:
         self.used_ignored_lines = defaultdict(set)
         self.only_once_messages = set()
         self.suppress_error_context = suppress_error_context
+        self.show_column_numbers = show_column_numbers
 
     def copy(self) -> 'Errors':
         new = Errors(self.suppress_error_context)
@@ -252,7 +257,8 @@ class Errors:
         for file, line, column, severity, message in errors:
             s = ''
             if file is not None:
-                if line is not None and line >= 0 and column is not None and column >= 0:
+                if self.show_column_numbers and line is not None and line >= 0 \
+                        and column is not None and column >= 0:
                     srcloc = '{}:{}:{}'.format(file, line, column)
                 elif line is not None and line >= 0:
                     srcloc = '{}:{}'.format(file, line)

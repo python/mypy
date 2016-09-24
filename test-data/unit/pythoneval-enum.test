@@ -15,7 +15,7 @@ class Medal(Enum):
 m = Medal.gold
 m = 1
 [out]
-_program.py:7:0: error: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+_program.py:7: error: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
 [case testEnumNameAndValue]
 from enum import Enum
@@ -39,7 +39,7 @@ class E(enum.Enum):
 x = 1
 x = E.x
 [out]
-_program.py:7:0: error: Incompatible types in assignment (expression has type "E", variable has type "int")
+_program.py:7: error: Incompatible types in assignment (expression has type "E", variable has type "int")
 
 [case testIntEnum_assignToIntVariable]
 from enum import IntEnum
@@ -51,7 +51,7 @@ n = N.x  # Subclass of int, so it's okay
 s = ''
 s = N.y
 [out]
-_program.py:8:0: error: Incompatible types in assignment (expression has type "N", variable has type "str")
+_program.py:8: error: Incompatible types in assignment (expression has type "N", variable has type "str")
 
 [case testIntEnum_functionTakingIntEnum]
 from enum import IntEnum
@@ -63,7 +63,7 @@ takes_some_int_enum(SomeIntEnum.x)
 takes_some_int_enum(1)  # Error
 takes_some_int_enum(SomeIntEnum(1))  # How to deal with the above
 [out]
-_program.py:7:19: error: Argument 1 to "takes_some_int_enum" has incompatible type "int"; expected "SomeIntEnum"
+_program.py:7: error: Argument 1 to "takes_some_int_enum" has incompatible type "int"; expected "SomeIntEnum"
 
 [case testIntEnum_functionTakingInt]
 from enum import IntEnum
@@ -101,8 +101,8 @@ class Color(Enum):
 Color.red.m('')
 Color.m2('')
 [out]
-_program.py:11:11: error: Argument 1 to "m" of "Color" has incompatible type "str"; expected "int"
-_program.py:12:8: error: Argument 1 to "m2" of "Color" has incompatible type "str"; expected "int"
+_program.py:11: error: Argument 1 to "m" of "Color" has incompatible type "str"; expected "int"
+_program.py:12: error: Argument 1 to "m2" of "Color" has incompatible type "str"; expected "int"
 
 [case testIntEnum_ExtendedIntEnum_functionTakingExtendedIntEnum]
 from enum import IntEnum

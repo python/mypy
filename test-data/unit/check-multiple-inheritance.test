@@ -16,9 +16,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E:3: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 c.g('')
-c.g(1)  # E:3: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
+c.g(1)  # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
 
 [case testSimpleMultipleInheritanceAndMethods2]
 import typing
@@ -29,7 +29,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E:3: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 c.g('')
 c.g(1)
 
@@ -44,9 +44,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 c.y = ''
-c.y = 1  # E:1: Incompatible types in assignment (expression has type "int", variable has type "str")
+c.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testSimpleMultipleInheritanceAndInstanceVariableInClassBody]
 import typing
@@ -57,9 +57,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 c.y = ''
-c.y = 1  # E:1: Incompatible types in assignment (expression has type "int", variable has type "str")
+c.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testSimpleMultipleInheritanceAndClassVariable]
 import typing
@@ -69,9 +69,9 @@ class B:
     y = ''
 class C(A, B): pass
 C.x = 1
-C.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C.y = ''
-C.y = 1  # E:1: Incompatible types in assignment (expression has type "int", variable has type "str")
+C.y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
 -- Name collisions
@@ -87,7 +87,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.f(1)
-c.f('') # E:3: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+c.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testInstanceVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
 import typing
@@ -100,7 +100,7 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testClassVarNameOverlapInMultipleInheritanceWithCompatibleTypes]
 import typing
@@ -111,9 +111,9 @@ class B:
 class C(A, B): pass
 c = C()
 c.x = 1
-c.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+c.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C.x = 1
-C.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+C.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs]
 import typing
@@ -124,7 +124,7 @@ class B:
 class C(A, B): pass
 [out]
 main: note: In class "C":
-main:6:0: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs2]
 import typing
@@ -136,9 +136,9 @@ class C(A, B): pass
 class D(B, A): pass
 [out]
 main: note: In class "C":
-main:6:0: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 main: note: In class "D":
-main:7:0: error: Definition of "f" in base class "B" is incompatible with definition in base class "A"
+main:7: error: Definition of "f" in base class "B" is incompatible with definition in base class "A"
 
 
 [case testMethodOverridingWithBothDynamicallyAndStaticallyTypedMethods]
@@ -161,7 +161,7 @@ class B:
 class C(A, B): pass
 [out]
 main: note: In class "C":
-main:8:0: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+main:8: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes]
 import typing
@@ -172,7 +172,7 @@ class B:
 class C(A, B): pass
 [out]
 main: note: In class "C":
-main:6:0: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+main:6: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodOverlapsWithClassVariableInMultipleInheritance]
 from typing import Callable
@@ -183,7 +183,7 @@ class B:
 class C(A, B): pass
 [out]
 main: note: In class "C":
-main:6:0: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodOverlapsWithInstanceVariableInMultipleInheritance]
 from typing import Callable
@@ -195,7 +195,7 @@ class B:
 class C(A, B): pass
 [out]
 main: note: In class "C":
-main:7:0: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+main:7: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMultipleInheritanceAndInit]
 import typing
@@ -216,7 +216,7 @@ class C(B, A): pass
 class D(A, B): pass
 [out]
 main: note: In class "D":
-main:8:0: error: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
+main:8: error: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
 
 
 -- Special cases
@@ -247,5 +247,5 @@ def dec(f: Callable[..., T]) -> Callable[..., T]:
     return f
 [out]
 main: note: In class "A":
-main:3:0: error: Cannot determine type of 'f' in base class 'B'
-main:3:0: error: Cannot determine type of 'f' in base class 'C'
+main:3: error: Cannot determine type of 'f' in base class 'B'
+main:3: error: Cannot determine type of 'f' in base class 'C'

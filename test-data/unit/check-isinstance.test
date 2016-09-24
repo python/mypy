@@ -1,7 +1,7 @@
 [case testForcedAssignment]
 x = 1 # type: object
 y = 1
-y = x # E:0: Incompatible types in assignment (expression has type "object", variable has type "int")
+y = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 x = 2
 y = x
 [case testJoinAny]
@@ -65,7 +65,7 @@ class B(A): y = 1
 x =  A()
 
 def foo(x: A = B()):
-    x.y   # E:5: "A" has no attribute "y"
+    x.y   # E: "A" has no attribute "y"
 [builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "foo":
@@ -101,7 +101,7 @@ x = A()
 x = B()
 x.z
 x = foo()
-x.z          # E:1: "A" has no attribute "z"
+x.z          # E: "A" has no attribute "z"
 x.y
 
 [case testSingleMultiAssignment-skip]
@@ -115,10 +115,10 @@ from typing import Union
 x = None # type: Union[int, str]
 x = 1
 x = 'a'
-x + 1    # E:2: Unsupported operand types for + ("str" and "int")
+x + 1    # E: Unsupported operand types for + ("str" and "int")
 x = 1
 (x, y) = ('a', 1)
-x + 1    # E:2: Unsupported operand types for + ("str" and "int")
+x + 1    # E: Unsupported operand types for + ("str" and "int")
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -178,7 +178,7 @@ def bar() -> None:
     while 1:
         x + 'a'
         while 1:
-            x + 'a'         # E:14: Unsupported operand types for + (likely involving Union)
+            x + 'a'         # E: Unsupported operand types for + (likely involving Union)
             x = foo()
             if 1:
                 continue
@@ -204,7 +204,7 @@ try:
     x.z
 except:
     pass
-x.z           # E:1: "A" has no attribute "z"
+x.z           # E: "A" has no attribute "z"
 
 
 [case testUnionTryExcept2]
@@ -214,12 +214,12 @@ class B(A): z = 1
 
 x = A()
 try:
-    x.z # E:5: "A" has no attribute "z"
+    x.z # E: "A" has no attribute "z"
     x = A()
     x = B()
     x.z
 except:
-    x.z # E:5: "A" has no attribute "z"
+    x.z # E: "A" has no attribute "z"
     x = B()
     x.z
 else:
@@ -243,7 +243,7 @@ try:
     raise BaseException()
 except:
     pass
-x.z           # E:1: "A" has no attribute "z"
+x.z           # E: "A" has no attribute "z"
 x = B()
 try:
     pass
@@ -255,13 +255,13 @@ try:
     x = A()
 except:
     pass
-x.z           # E:1: "A" has no attribute "z"
+x.z           # E: "A" has no attribute "z"
 x = B()
 try:
     pass
 except:
     x = A()
-x.z           # E:1: "A" has no attribute "z"
+x.z           # E: "A" has no attribute "z"
 [builtins fixtures/exception.pyi]
 [case testUnionTryExcept4]
 
@@ -271,7 +271,7 @@ class B(A): z = 1
 x = A()
 while 1:
     try:
-        x.z # E:9: "A" has no attribute "z"
+        x.z # E: "A" has no attribute "z"
         x = A()
     except:
         x = B()
@@ -287,10 +287,10 @@ x = A()
 x = B()
 try:
     x = A()
-    x.b # E:5: "A" has no attribute "b"
+    x.b # E: "A" has no attribute "b"
     x = B()
 finally:
-    x.b  # E:5: "A" has no attribute "b"
+    x.b  # E: "A" has no attribute "b"
 x.b
 [case testUnionTryFinally2]
 class A: pass
@@ -305,7 +305,7 @@ except:
     pass
 finally:
     pass
-x.b      # E:1: "A" has no attribute "b"
+x.b      # E: "A" has no attribute "b"
 [case testUnionTryFinally3]
 class A: pass
 class B(A): b = 1
@@ -333,7 +333,7 @@ while 2:
     except:
         pass
     finally:
-        x.b     # E:9: "A" has no attribute "b"
+        x.b     # E: "A" has no attribute "b"
         if not isinstance(x, B):
             break
     x.b
@@ -348,7 +348,7 @@ while 2:
         x = A()
         x = B()
     finally:
-        x.b    # E:9: "A" has no attribute "b"
+        x.b    # E: "A" has no attribute "b"
         break
         x.b
     x.b
@@ -368,15 +368,15 @@ def f(x: Union[List[int], List[str], int]) -> None:
         a = x[0]
         if isinstance(a, int):
             a + 1
-            a + 'x' # E:14: Unsupported operand types for + ("int" and "str")
+            a + 'x' # E: Unsupported operand types for + ("int" and "str")
 
         # type of a?
-        x + 1 # E:10: Unsupported operand types for + (likely involving Union)
+        x + 1 # E: Unsupported operand types for + (likely involving Union)
     else:
-        x[0] # E:9: Value of type "int" is not indexable
+        x[0] # E: Value of type "int" is not indexable
         x + 1
-    x[0] # E:5: Value of type "int" is not indexable
-    x + 1 # E:6: Unsupported operand types for + (likely involving Union)
+    x[0] # E: Value of type "int" is not indexable
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 [out]
 main: note: In function "f":
@@ -408,9 +408,9 @@ x = foo()
 x = 1
 x = x + 1
 x = foo()
-x = x + 1                # E:6: Unsupported operand types for + (likely involving Union)
+x = x + 1                # E: Unsupported operand types for + (likely involving Union)
 if isinstance(x, str):
-   x = x + 1             # E:9: Unsupported operand types for + ("str" and "int")
+   x = x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
    x = x + 1
 
@@ -423,7 +423,7 @@ class A: pass
 class B(A): y = 1
 
 x = A()
-x.y        # E:1: "A" has no attribute "y"
+x.y        # E: "A" has no attribute "y"
 x = B()
 x.y        # OK: x is known to be a B
 
@@ -435,10 +435,10 @@ from typing import Union
 x = None # type: Union[int, str]
 
 if isinstance(x, str):
-    x = x + 1   # E:10: Unsupported operand types for + ("str" and "int")
+    x = x + 1   # E: Unsupported operand types for + ("str" and "int")
     x = x + 'a'
 else:
-    x = x + 'a' # E:10: Unsupported operand types for + ("int" and "str")
+    x = x + 'a' # E: Unsupported operand types for + ("int" and "str")
     x = x + 1
 [builtins fixtures/isinstancelist.pyi]
 
@@ -450,9 +450,9 @@ j = [x]
 
 if isinstance(j[0], str):
     j[0] = j[0] + 'a'
-    j[0] = j[0] + 1   # E:16: Unsupported operand types for + ("str" and "int")
+    j[0] = j[0] + 1   # E: Unsupported operand types for + ("str" and "int")
 else:
-    j[0] = j[0] + 'a' # E:16: Unsupported operand types for + ("int" and "str")
+    j[0] = j[0] + 'a' # E: Unsupported operand types for + ("int" and "str")
     j[0] = j[0] + 1
 [builtins fixtures/isinstancelist.pyi]
 
@@ -477,13 +477,13 @@ while 1:
     if isinstance(h.pet, Dog):
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
-        y = h.pet.paws + 1   # E:23: Unsupported operand types for + (likely involving Union)
-        z = h.pet.paws + 'a' # E:23: Unsupported operand types for + (likely involving Union)
+        y = h.pet.paws + 1   # E: Unsupported operand types for + (likely involving Union)
+        z = h.pet.paws + 'a' # E: Unsupported operand types for + (likely involving Union)
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
             break
         y = h.pet.paws + 1
-        z = h.pet.paws + 'a' # E:23: Unsupported operand types for + ("int" and "str")
+        z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstancelist.pyi]
 [case testIsInstanceSubClassReset]
 class A: pass
@@ -493,11 +493,11 @@ class C:
     a = A()
 
 x = C()
-x.a.b                   # E:3: "A" has no attribute "b"
+x.a.b                   # E: "A" has no attribute "b"
 if isinstance(x.a, B):
     x.a.b
     x = C()
-    x.a.b               # E:7: "A" has no attribute "b"
+    x.a.b               # E: "A" has no attribute "b"
 [builtins fixtures/isinstance.pyi]
 [case testIsinstanceTuple]
 from typing import Union
@@ -520,7 +520,7 @@ v = A() # type: Union[A, B, C]
 
 if isinstance(v, (B, C)):
     v.method2(123)
-    v.method3('xyz') # E:5: Some element of union has no attribute "method3"
+    v.method3('xyz') # E: Some element of union has no attribute "method3"
 [builtins fixtures/isinstance.pyi]
 
 [case testMemberAssignmentChanges-skip]
@@ -601,7 +601,7 @@ def foo() -> None:
             break
     else:
         pass
-    y = x + 'asdad'    # E:10: Unsupported operand types for + (likely involving Union)
+    y = x + 'asdad'    # E: Unsupported operand types for + (likely involving Union)
 
 foo()
 [builtins fixtures/isinstancelist.pyi]
@@ -619,8 +619,8 @@ while 1:
         x + 'a'
     else:
         x + [1]
-    x + 'a'           # E:6: Unsupported operand types for + (likely involving Union)
-x + [1]               # E:2: Unsupported operand types for + (likely involving Union)
+    x + 'a'           # E: Unsupported operand types for + (likely involving Union)
+x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
 [case testIsInstanceThreeUnion2]
@@ -636,8 +636,8 @@ while 1:
         x + 'a'
         break
     x + [1]
-    x + 'a'           # E:6: Unsupported operand types for + ("list" and "str")
-x + [1]               # E:2: Unsupported operand types for + (likely involving Union)
+    x + 'a'           # E: Unsupported operand types for + ("list" and "str")
+x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -655,7 +655,7 @@ while 1:
         break
     x + [1]           # These lines aren't reached because x was an int
     x + 'a'
-x + [1]               # E:2: Unsupported operand types for + (likely involving Union)
+x + [1]               # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -666,24 +666,24 @@ def foo() -> Union[int, str]: pass
 
 for i in [1, 2]:
     x = foo()
-    x + 'a'                 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
-    x + 'a'                 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
-    x + 'a'                 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
     if isinstance(x, int):
         break
     x + 'a'
 
-x + 'a'                    # E:2: Unsupported operand types for + (likely involving Union)
+x + 'a'                    # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -695,20 +695,20 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x + 1     # E:2: Unsupported operand types for + (likely involving Union)
-x + 'a'   # E:2: Unsupported operand types for + (likely involving Union)
+x + 1     # E: Unsupported operand types for + (likely involving Union)
+x + 'a'   # E: Unsupported operand types for + (likely involving Union)
 
 x = 1
 x + 1
-x + 'a'   # E:2: Unsupported operand types for + ("int" and "str")
+x + 'a'   # E: Unsupported operand types for + ("int" and "str")
 
 x = 'a'
-x + 1     # E:2: Unsupported operand types for + ("str" and "int")
+x + 1     # E: Unsupported operand types for + ("str" and "int")
 x + 'a'
 
 x = foo()
-x + 1     # E:2: Unsupported operand types for + (likely involving Union)
-x + 'a'   # E:2: Unsupported operand types for + (likely involving Union)
+x + 1     # E: Unsupported operand types for + (likely involving Union)
+x + 'a'   # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -718,14 +718,14 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x + 1      # E:2: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + (likely involving Union)
 x = 'a'
-x + 1      # E:2: Unsupported operand types for + ("str" and "int")
+x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
 x + 1
 
 while 1:
-      x + 1    # E:8: Unsupported operand types for + (likely involving Union)
+      x + 1    # E: Unsupported operand types for + (likely involving Union)
       x = 'a'
 [builtins fixtures/isinstancelist.pyi]
 
@@ -735,16 +735,16 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x + 1      # E:2: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + (likely involving Union)
 x = 'a'
-x + 1      # E:2: Unsupported operand types for + ("str" and "int")
+x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
 x + 1
 
 for i in [1]:
       x = 'a'
 
-x + 1    # E:2: Unsupported operand types for + (likely involving Union)
+x + 1    # E: Unsupported operand types for + (likely involving Union)
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -763,7 +763,7 @@ while 1:
     break
 else:
     x + 1
-x + 1      # E:2: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + (likely involving Union)
 x = 1
 for y in [1]:
     x + 1
@@ -771,7 +771,7 @@ for y in [1]:
     break
 else:
     x + 1
-x + 1      # E:2: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopWhile4]
@@ -793,12 +793,12 @@ else:
 x + 'a'
 x = 1
 while 1:
-    x + 1 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
     if 1:
         x = 'a'
         continue
 else:
-    x + 1 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -821,12 +821,12 @@ else:
 x + 'a'
 x = 1
 for y in [1]:
-    x + 1 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
     if 1:
         x = 'a'
         continue
 else:
-    x + 1 # E:6: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + (likely involving Union)
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -846,7 +846,7 @@ for y in [1]:
         break
 else:
     x + 1
-x + 1 # E:2: Unsupported operand types for + (likely involving Union)
+x + 1 # E: Unsupported operand types for + (likely involving Union)
 x = 1
 while 1:
     while 1:
@@ -856,7 +856,7 @@ while 1:
         break
 else:
     x + 1
-x + 1 # E:2: Unsupported operand types for + (likely involving Union)
+x + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopLong]
@@ -868,16 +868,16 @@ def foo() -> Union[int, str, A]: pass
 
 def bar() -> None:
     x = foo()
-    x + 1  # E:6: Unsupported left operand type for + (some union)
+    x + 1  # E: Unsupported left operand type for + (some union)
     if isinstance(x, A):
        x.a
     else:
        if isinstance(x, int):
           x + 1
-          x + 'a'  # E:12: Unsupported operand types for + ("int" and "str")
+          x + 'a'  # E: Unsupported operand types for + ("int" and "str")
        else:
           x + 'a'
-          x.a      # E:11: "str" has no attribute "a"
+          x.a      # E: "str" has no attribute "a"
        x = A()
 
     if isinstance(x, str):
@@ -901,7 +901,7 @@ def bar() -> None:
           if isinstance(x, int):
              x + 1
           else:
-             x.a     # E:14: Some element of union has no attribute "a"
+             x.a     # E: Some element of union has no attribute "a"
           x = 'a'
 
 [builtins fixtures/isinstancelist.pyi]
@@ -923,7 +923,7 @@ y = 1 # type: int
 if isinstance(x, str):
     x = y
 x + 1
-x + 'a'   # E:2: Unsupported operand types for + ("int" and "str")
+x + 'a'   # E: Unsupported operand types for + ("int" and "str")
 
 [builtins fixtures/isinstancelist.pyi]
 
@@ -932,7 +932,7 @@ x + 'a'   # E:2: Unsupported operand types for + ("int" and "str")
 x = 1 # type: int
 
 while 1:
-    x = 'a'           # E:4: Incompatible types in assignment (expression has type "str", variable has type "int")
+    x = 'a'           # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     break
     x = 'a'           # Note: no error because unreachable code
 [builtins fixtures/isinstancelist.pyi]
@@ -972,11 +972,11 @@ x = B() # type: A
 
 if isinstance(x, B) and x.flag:
     pass
-if isinstance(x, B) or x.flag: # E:24: "A" has no attribute "flag"
+if isinstance(x, B) or x.flag: # E: "A" has no attribute "flag"
     pass
 if not isinstance(x, B) or x.flag:
     pass
-if not isinstance(x, B) and x.flag: # E:29: "A" has no attribute "flag"
+if not isinstance(x, B) and x.flag: # E: "A" has no attribute "flag"
     pass
 [builtins fixtures/isinstancelist.pyi]
 [case testIsinstanceExpression]
@@ -990,7 +990,7 @@ x = B() # type: A
 
 x.flag if isinstance(x, B) else 0
 0 if not isinstance(x, B) else x.flag
-0 if isinstance(x, B) else x.flag # E:28: "A" has no attribute "flag"
+0 if isinstance(x, B) else x.flag # E: "A" has no attribute "flag"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceMultiAnd]
@@ -1009,11 +1009,11 @@ y = C() # type: A
 if isinstance(x, B) and isinstance(y, C):
     x.flag += 1
     y.glaf += 1
-    x() # E:5: "B" not callable
-    y() # E:5: "C" not callable
+    x() # E: "B" not callable
+    y() # E: "C" not callable
 else:
-    x() # E:5: "A" not callable
-    y() # E:5: "A" not callable
+    x() # E: "A" not callable
+    y() # E: "A" not callable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceMultiAndSpecialCase]
@@ -1041,7 +1041,7 @@ from typing import Union
 def f(x: Union[int, str]) -> None:
     if not isinstance(x, int):
         return foo()
-    x()  # E:5: "int" not callable
+    x()  # E: "int" not callable
 def foo(): pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
@@ -1074,7 +1074,7 @@ from typing import Optional
 def h(a: bool, x: object) -> Optional[int]:
     if a or isinstance(x, int):
         return None
-    return x # E:4: Incompatible return value type (got "object", expected "int")
+    return x # E: Incompatible return value type (got "object", expected "int")
 [builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "h":
@@ -1118,7 +1118,7 @@ def f(x: Union[str, int]):
 from typing import Any
 def f(x: Any):
     assert isinstance(x, int)  # this should narrow x to type int
-    x + "foo"  # E:6: Unsupported operand types for + ("int" and "str")
+    x + "foo"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstance.pyi]
 [out]
 main: note: In function "f":
@@ -1131,7 +1131,7 @@ def f(x: Union[List[int], str]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 main: note: In function "f":
-main:4:12: error: "int" not callable
+main:4: error: "int" not callable
 
 [case testIsinstanceOrIsinstance]
 class A: pass
@@ -1149,7 +1149,7 @@ else:
 x2 = A()
 if isinstance(x2, A) or isinstance(x2, C):
     reveal_type(x2) # E: Revealed type is '__main__.A'
-    f = x2.flag # E:10: "A" has no attribute "flag"
+    f = x2.flag # E: "A" has no attribute "flag"
 else:
     # unreachable
     1()
@@ -1170,7 +1170,7 @@ reveal_type(d) # E: Revealed type is 'builtins.dict[builtins.int*, builtins.int*
 class A:
     m = 1
 def f(x: object) -> None:
-    if x.m and isinstance(x, A) or False:  # E:8: "object" has no attribute "m"
+    if x.m and isinstance(x, A) or False:  # E: "object" has no attribute "m"
         pass
 [builtins fixtures/isinstance.pyi]
 [out]

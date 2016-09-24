@@ -6,13 +6,13 @@ x = None  # type: X
 a, b = x
 b = x[0]
 a = x[1]
-a, b, c = x # E:1: Need more than 2 values to unpack (3 expected)
-x[2] # E:1: Tuple index out of range
+a, b, c = x # E: Need more than 2 values to unpack (3 expected)
+x[2] # E: Tuple index out of range
 
 [case testNamedTupleNoUnderscoreFields]
 from collections import namedtuple
 
-X = namedtuple('X', 'x, _y, _z')  # E:14: namedtuple() Field names cannot start with an underscore: _y, _z
+X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() Field names cannot start with an underscore: _y, _z
 
 [case testNamedTupleAccessingAttributes]
 from collections import namedtuple
@@ -21,7 +21,7 @@ X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 x.x
 x.y
-x.z # E:1: "X" has no attribute "z"
+x.z # E: "X" has no attribute "z"
 
 
 [case testNamedTupleAttributesAreReadOnly]
@@ -29,14 +29,14 @@ from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
-x.x = 5 # E:1: Property "x" defined in "X" is read-only
-x.y = 5 # E:1: Property "y" defined in "X" is read-only
-x.z = 5 # E:1: "X" has no attribute "z"
+x.x = 5 # E: Property "x" defined in "X" is read-only
+x.y = 5 # E: Property "y" defined in "X" is read-only
+x.z = 5 # E: "X" has no attribute "z"
 
 class A(X): pass
 a = None  # type: A
-a.x = 5 # E:1: Property "x" defined in "A" is read-only
-a.y = 5 # E:1: Property "y" defined in "A" is read-only
+a.x = 5 # E: Property "x" defined in "A" is read-only
+a.y = 5 # E: Property "y" defined in "A" is read-only
 -- a.z = 5 # not supported yet
 
 
@@ -46,9 +46,9 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = X(1, 'x')
 x.x
-x.z      # E:1: "X" has no attribute "z"
-x = X(1) # E:5: Too few arguments for "X"
-x = X(1, 2, 3)  # E:5: Too many arguments for "X"
+x.z      # E: "X" has no attribute "z"
+x = X(1) # E: Too few arguments for "X"
+x = X(1, 2, 3)  # E: Too many arguments for "X"
 
 [case testCreateNamedTupleWithKeywordArguments]
 from collections import namedtuple
@@ -56,8 +56,8 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = X(x=1, y='x')
 x = X(1, y='x')
-x = X(x=1, z=1) # E:5: Unexpected keyword argument "z" for "X"
-x = X(y=1) # E:5: Missing positional argument "x" in call to "X"
+x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
+x = X(y=1) # E: Missing positional argument "x" in call to "X"
 
 
 [case testNamedTupleCreateAndUseAsTuple]
@@ -66,7 +66,7 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = X(1, 'x')
 a, b = x
-a, b, c = x  # E:1: Need more than 2 values to unpack (3 expected)
+a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
 
 
 [case testNamedTupleWithItemTypes]
@@ -74,20 +74,20 @@ from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
 n = N(1, 'x')
-s = n.a # type: str  # E:0: Incompatible types in assignment (expression has type "int", \
+s = n.a # type: str  # E: Incompatible types in assignment (expression has type "int", \
                           variable has type "str")
-i = n.b # type: int  # E:0: Incompatible types in assignment (expression has type "str", \
+i = n.b # type: int  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 x, y = n
-x = y  # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
+x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 [case testNamedTupleConstructorArgumentTypes]
 from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
-n = N('x', 'x') # E:5: Argument 1 to "N" has incompatible type "str"; expected "int"
-n = N(1, b=2)   # E:5: Argument 2 to "N" has incompatible type "int"; expected "str"
+n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "int"
+n = N(1, b=2)   # E: Argument 2 to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
 
@@ -97,38 +97,38 @@ N = NamedTuple('N', [('a', int),
                      ('b', str)])
 class X(N):
     pass
-x = X(1, 2)  # E:5: Argument 2 to "X" has incompatible type "int"; expected "str"
+x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
 s = ''
 i = 0
-s = x.a  # E:0: Incompatible types in assignment (expression has type "int", variable has type "str")
+s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 i, s = x
-s, s = x # E:0: Incompatible types in assignment (expression has type "int", variable has type "str")
+s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testNamedTupleAsBaseClass2]
 from typing import NamedTuple
 class X(NamedTuple('N', [('a', int),
                          ('b', str)])):
     pass
-x = X(1, 2)  # E:5: Argument 2 to "X" has incompatible type "int"; expected "str"
+x = X(1, 2)  # E: Argument 2 to "X" has incompatible type "int"; expected "str"
 s = ''
 i = 0
-s = x.a  # E:0: Incompatible types in assignment (expression has type "int", variable has type "str")
+s = x.a  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 i, s = x
-s, s = x # E:0: Incompatible types in assignment (expression has type "int", variable has type "str")
+s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
 [case testNamedTuplesTwoAsBaseClasses]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int)])
 B = NamedTuple('B', [('a', int)])
-class X(A, B):  # E:0: Class has two incompatible bases derived from tuple
+class X(A, B):  # E: Class has two incompatible bases derived from tuple
     pass
 
 
 [case testNamedTuplesTwoAsBaseClasses2]
 from typing import NamedTuple
 A = NamedTuple('A', [('a', int)])
-class X(A, NamedTuple('B', [('a', int)])): # E:0: Class has two incompatible bases derived from tuple
+class X(A, NamedTuple('B', [('a', int)])): # E: Class has two incompatible bases derived from tuple
     pass
 
 
@@ -138,11 +138,11 @@ A = NamedTuple('A', [('a', int), ('b', str)])
 class B(A):
     def f(self, x: int) -> None:
         self.f(self.a)
-        self.f(self.b)  # E:14: Argument 1 to "f" of "B" has incompatible type "str"; expected "int"
+        self.f(self.b)  # E: Argument 1 to "f" of "B" has incompatible type "str"; expected "int"
         i = 0
         s = ''
         i, s = self
-        i, i = self  # E:11: Incompatible types in assignment (expression has type "str", \
+        i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 
 
@@ -159,9 +159,9 @@ class B(A):
         self = x
         i, s = x
         i, s = x.a, x.b
-        i, s = x.a, x.a  # E:11: Incompatible types in assignment (expression has type "int", \
+        i, s = x.a, x.a  # E: Incompatible types in assignment (expression has type "int", \
                               variable has type "str")
-        i, i = self  # E:11: Incompatible types in assignment (expression has type "str", \
+        i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 
 [out]
@@ -174,9 +174,9 @@ class B(A): pass
 a = A(1, '')
 b = B(1, '')
 t = None  # type: Tuple[int, str]
-b = a  # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = t  # E:0: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
-b = t  # E:0: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
+b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
+b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
 t = a
 t = (1, '')
 t = b
@@ -190,16 +190,16 @@ l = [A(1), A(2)]
 a = A(1)
 a = l[0]
 (i,) = l[0]
-i, i = l[0]  # E:1: Need more than 1 value to unpack (2 expected)
+i, i = l[0]  # E: Need more than 1 value to unpack (2 expected)
 l = [A(1)]
-a = (1,)  # E:0: Incompatible types in assignment (expression has type "Tuple[int]", \
+a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
                variable has type "A")
 [builtins fixtures/list.pyi]
 
 [case testNamedTupleMissingClassAttribute]
 import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
-MyNamedTuple.x # E:12: "MyNamedTuple" has no attribute "x"
+MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
 
 
 [case testNamedTupleEmptyItems]
@@ -238,8 +238,8 @@ reveal_type(x._replace())  # E: Revealed type is 'Tuple[Any, Any, fallback=__mai
 x._replace(y=5)
 x._replace(x=3)
 x._replace(x=3, y=5)
-x._replace(z=5)  # E:10: Unexpected keyword argument "z" for X._replace
-x._replace(5)  # E:10: Too many positional arguments for X._replace
+x._replace(z=5)  # E: Unexpected keyword argument "z" for X._replace
+x._replace(5)  # E: Too many positional arguments for X._replace
 
 [case testNamedTupleReplaceAsClass]
 from collections import namedtuple
@@ -247,7 +247,7 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 X._replace(x, x=1, y=2)
-X._replace(x=1, y=2)  # E:10: Missing positional argument "self" in call to X._replace
+X._replace(x=1, y=2)  # E: Missing positional argument "self" in call to X._replace
 
 
 [case testNamedTupleReplaceTyped]
@@ -257,7 +257,7 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
 reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
-x._replace(y=5)  # E:10: Argument 1 to X._replace has incompatible type "int"; expected "str"
+x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
 
 
 [case testNamedTupleMake]
@@ -265,7 +265,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
-X._make('a b')  # E:7: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
+X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
 -- # FIX: not a proper class method 
 -- x = None  # type: X
@@ -294,7 +294,7 @@ from typing import NamedTuple
 X = NamedTuple('X', [])
 x = X()  # type: X
 x._replace()
-x._fields[0]  # E:9: Tuple index out of range
+x._fields[0]  # E: Tuple index out of range
 
 [case testNamedTupleJoinNamedTuple]
 from typing import NamedTuple
@@ -340,6 +340,6 @@ class C: pass
 def g(x: C) -> None: pass
 class D(NamedTuple('D', []), A): pass
 
-g(D())  # E:1: Argument 1 to "g" has incompatible type "D"; expected "C"
+g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
 y = None  # type: C
-y = D()  # E:0: Incompatible types in assignment (expression has type "D", variable has type "C")
+y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")

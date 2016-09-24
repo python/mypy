@@ -18,8 +18,8 @@ class A:
 class B:
     def bar(self, x: 'B', y: A) -> None: pass
 [out]
-main:5:5: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
-main:6:1: error: "A" has no attribute "bar"
+main:5: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
+main:6: error: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]
 
@@ -34,7 +34,7 @@ class A:
     def bar(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main:5:5: error: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
+main:5: error: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
 
 [case testInheritingMethod]
 
@@ -46,7 +46,7 @@ class A:
     def foo(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main:3:5: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
+main:3: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
 [case testMethodCallWithInvalidNumberOfArguments]
 
@@ -57,9 +57,9 @@ a.foo(object(), A())  # Fail
 class A:
     def foo(self, x: 'A') -> None: pass
 [out]
-main:3:5: error: Too few arguments for "foo" of "A"
-main:4:5: error: Too many arguments for "foo" of "A"
-main:4:5: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
+main:3: error: Too few arguments for "foo" of "A"
+main:4: error: Too many arguments for "foo" of "A"
+main:4: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
 
 [case testMethodBody]
 import typing
@@ -68,7 +68,7 @@ class A:
         a = object() # type: A    # Fail
 [out]
 main: note: In member "f" of class "A":
-main:4:8: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testMethodArguments]
 import typing
@@ -83,9 +83,9 @@ class A:
 class B: pass
 [out]
 main: note: In member "f" of class "A":
-main:4:8: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:5:8: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:9:8: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:5: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testReturnFromMethod]
 import typing
@@ -96,7 +96,7 @@ class A:
 class B: pass
 [out]
 main: note: In member "f" of class "A":
-main:4:8: error: Incompatible return value type (got "B", expected "A")
+main:4: error: Incompatible return value type (got "B", expected "A")
 
 [case testSelfArgument]
 import typing
@@ -109,14 +109,14 @@ class A:
 class B: pass
 [out]
 main: note: In member "f" of class "A":
-main:4:8: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:5:12: error: "A" has no attribute "g"
+main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:5: error: "A" has no attribute "g"
 
 [case testAssignToMethodViaInstance]
 import typing
 class A:
     def f(self): pass
-A().f = None # E:3: Cannot assign to a method
+A().f = None # E: Cannot assign to a method
 
 
 -- Attributes
@@ -134,8 +134,8 @@ a.y = object()
 a.x
 a.x = object()
 [out]
-main:6:1: error: "A" has no attribute "y"
-main:7:1: error: "A" has no attribute "y"
+main:6: error: "A" has no attribute "y"
+main:7: error: "A" has no attribute "y"
 
 [case testArgumentTypeInference]
 
@@ -152,9 +152,9 @@ b.a     # Fail
 a.a = a
 a.b = b
 [out]
-main:9:1: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:10:1: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:11:1: error: "B" has no attribute "a"
+main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+main:10: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:11: error: "B" has no attribute "a"
 
 [case testExplicitAttributeInBody]
 
@@ -164,7 +164,7 @@ a.x = A()
 class A:
   x = None # type: A
 [out]
-main:3:1: error: Incompatible types in assignment (expression has type "object", variable has type "A")
+main:3: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testAttributeDefinedInNonInitMethod]
 import typing
@@ -176,8 +176,8 @@ class A:
 a = A()
 a.x = 1
 a.y = ''
-a.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
-a.z = 0  # E:1: "A" has no attribute "z"
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.z = 0  # E: "A" has no attribute "z"
 
 [case testInheritanceAndAttributeAssignment]
 import typing
@@ -186,7 +186,7 @@ class A:
         self.x = 0
 class B(A):
     def f(self) -> None:
-        self.x = '' # E:12: Incompatible types in assignment (expression has type "str", variable has type "int")
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: note: In member "f" of class "B":
 
@@ -201,9 +201,9 @@ class A:
         self.x = '' # Fail
 [out]
 main: note: In member "g" of class "A":
-main:6:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main: note: In member "__init__" of class "A":
-main:8:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 -- Method overriding
@@ -244,8 +244,8 @@ class B(A):
   def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
 main: note: In class "B":
-main:7:2: error: Argument 1 of "f" incompatible with supertype "A"
-main:9:2: error: Return type of "h" incompatible with supertype "A"
+main:7: error: Argument 1 of "f" incompatible with supertype "A"
+main:9: error: Return type of "h" incompatible with supertype "A"
 
 [case testMethodOverridingWithIncompatibleArgumentCount]
 import typing
@@ -257,8 +257,8 @@ class B(A):
     def g(self, x: A) -> A: pass # Fail
 [out]
 main: note: In class "B":
-main:6:4: error: Signature of "f" incompatible with supertype "A"
-main:7:4: error: Signature of "g" incompatible with supertype "A"
+main:6: error: Signature of "f" incompatible with supertype "A"
+main:7: error: Signature of "g" incompatible with supertype "A"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy1]
 import typing
@@ -270,7 +270,7 @@ class C(B): # with gap in implementations
         pass
 [out]
 main: note: In class "C":
-main:6:4: error: Argument 1 of "f" incompatible with supertype "A"
+main:6: error: Argument 1 of "f" incompatible with supertype "A"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy2]
 import typing
@@ -283,7 +283,7 @@ class C(B): # with multiple implementations
         pass
 [out]
 main: note: In class "C":
-main:7:4: error: Return type of "f" incompatible with supertype "B"
+main:7: error: Return type of "f" incompatible with supertype "B"
 
 [case testMethodOverridingWithVoidReturnValue]
 import typing
@@ -295,8 +295,8 @@ class B(A):
     def g(self) -> None: pass  # Fail
 [out]
 main: note: In class "B":
-main:6:4: error: Return type of "f" incompatible with supertype "A"
-main:7:4: error: Return type of "g" incompatible with supertype "A"
+main:6: error: Return type of "f" incompatible with supertype "A"
+main:7: error: Return type of "g" incompatible with supertype "A"
 
 [case testOverride__new__WithDifferentSignature]
 class A:
@@ -328,7 +328,7 @@ class A:
     def __init__(self) -> None: pass
 class B: pass
 [out]
-main:3:0: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testConstructor]
 import typing
@@ -339,8 +339,8 @@ class A:
     def __init__(self, x: 'B') -> None: pass
 class B: pass
 [out]
-main:3:6: error: Argument 1 to "A" has incompatible type "object"; expected "B"
-main:4:0: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:3: error: Argument 1 to "A" has incompatible type "object"; expected "B"
+main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testConstructorWithTwoArguments]
 import typing
@@ -351,7 +351,7 @@ class A:
 class B: pass
 class C(B): pass
 [out]
-main:2:5: error: Argument 2 to "A" has incompatible type "B"; expected "C"
+main:2: error: Argument 2 to "A" has incompatible type "B"; expected "C"
 
 [case testInheritedConstructor]
 import typing
@@ -363,7 +363,7 @@ class B(A): pass
 class C: pass
 class D: pass
 [out]
-main:3:5: error: Argument 1 to "B" has incompatible type "D"; expected "C"
+main:3: error: Argument 1 to "B" has incompatible type "D"; expected "C"
 
 [case testOverridingWithIncompatibleConstructor]
 import typing
@@ -377,8 +377,8 @@ class B(A):
     def __init__(self) -> None: pass
 class C: pass
 [out]
-main:2:1: error: Too few arguments for "A"
-main:3:1: error: Too many arguments for "B"
+main:2: error: Too few arguments for "A"
+main:3: error: Too many arguments for "B"
 
 [case testConstructorWithReturnValueType]
 import typing
@@ -386,7 +386,7 @@ class A:
     def __init__(self) -> 'A': pass
 [out]
 main: note: In member "__init__" of class "A":
-main:3:16: error: The return type of "__init__" must be None
+main:3: error: The return type of "__init__" must be None
 
 [case testConstructorWithImplicitReturnValueType]
 import typing
@@ -394,7 +394,7 @@ class A:
     def __init__(self, x: int): pass
 [out]
 main: note: In member "__init__" of class "A":
-main:3:16: error: The return type of "__init__" must be None
+main:3: error: The return type of "__init__" must be None
 
 [case testGlobalFunctionInitWithReturnType]
 import typing
@@ -404,14 +404,14 @@ def __init__() -> 'A': pass
 class A: pass
 class B: pass
 [out]
-main:3:0: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testAccessingInit]
 from typing import Any
 class A:
     def __init__(self, a: 'A') -> None: pass
 a = None # type: A
-a.__init__(a)  # E:1: Cannot access "__init__" directly
+a.__init__(a)  # E: Cannot access "__init__" directly
 (Any(a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]
@@ -431,10 +431,10 @@ class C(B): pass
 class D(C): pass
 class D2(C): pass
 [out]
-main:2:0: error: Incompatible types in assignment (expression has type "C", variable has type "D")
-main:3:0: error: Incompatible types in assignment (expression has type "B", variable has type "D")
-main:4:0: error: Incompatible types in assignment (expression has type "A", variable has type "D")
-main:5:0: error: Incompatible types in assignment (expression has type "D2", variable has type "D")
+main:2: error: Incompatible types in assignment (expression has type "C", variable has type "D")
+main:3: error: Incompatible types in assignment (expression has type "B", variable has type "D")
+main:4: error: Incompatible types in assignment (expression has type "A", variable has type "D")
+main:5: error: Incompatible types in assignment (expression has type "D2", variable has type "D")
 
 
 -- Attribute access in class body
@@ -449,8 +449,8 @@ class A:
     y = x
     b = x # type: B
     b = x
-    c = x # type: A # E:4: Incompatible types in assignment (expression has type "B", variable has type "A")
-    c = b   # E:4: Incompatible types in assignment (expression has type "B", variable has type "A")
+    c = x # type: A # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    c = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [out]
 main: note: In class "A":
 
@@ -463,8 +463,8 @@ class A:
     h = f # type: Callable[[A], None]
     h = f
     g = h
-    ff = f # type: Callable[[B], None]  # E:4: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[B], None])
-    g = ff                # E:4: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Callable[[A], None])
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[B], None])
+    g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Callable[[A], None])
 [out]
 main: note: In class "A":
 
@@ -479,10 +479,10 @@ class B: pass
 class A:
     for x in [A()]:
         y = x
-        y = B() # E:8: Incompatible types in assignment (expression has type "B", variable has type "A")
+        y = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     x = A()
     y = A()
-    x = B() # E:4: Incompatible types in assignment (expression has type "B", variable has type "A")
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [builtins fixtures/for.pyi]
 [out]
 main: note: In class "A":
@@ -497,9 +497,9 @@ import typing
 class A:
     def f(self) -> None: pass
 A.f(A())
-A.f(object())     # E:3: Argument 1 to "f" of "A" has incompatible type "object"; expected "A"
-A.f()             # E:3: Too few arguments for "f" of "A"
-A.f(None, None)   # E:3: Too many arguments for "f" of "A"
+A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"; expected "A"
+A.f()             # E: Too few arguments for "f" of "A"
+A.f(None, None)   # E: Too many arguments for "f" of "A"
 
 [case testAccessAttributeViaClass]
 import typing
@@ -507,12 +507,12 @@ class B: pass
 class A:
     x = None # type: A
 a = A.x # type: A
-b = A.x # type: B # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = A.x # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testAccessingUndefinedAttributeViaClass]
 import typing
 class A: pass
-A.x # E:1: "A" has no attribute "x"
+A.x # E: "A" has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
 from typing import overload
@@ -521,7 +521,7 @@ class A:
     def __init__(self): pass
     @overload
     def __init__(self, x): pass
-A.x # E:1: "A" has no attribute "x"
+A.x # E: "A" has no attribute "x"
 
 [case testAccessMethodOfClassWithOverloadedInit]
 from typing import overload, Any
@@ -532,7 +532,7 @@ class A:
     def __init__(self, x: Any) -> None: pass
     def f(self) -> None: pass
 A.f(A())
-A.f()    # E:3: Too few arguments for "f" of "A"
+A.f()    # E: Too few arguments for "f" of "A"
 
 [case testAssignmentToClassDataAttribute]
 import typing
@@ -540,7 +540,7 @@ class B: pass
 class A:
     x = None # type: B
 A.x = B()
-A.x = object()  # E:1: Incompatible types in assignment (expression has type "object", variable has type "B")
+A.x = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "B")
 
 [case testAssignmentToInferredClassDataAttribute]
 import typing
@@ -548,7 +548,7 @@ class B: pass
 class A:
      x = B()
 A.x = B()
-A.x = A()   # E:1: Incompatible types in assignment (expression has type "A", variable has type "B")
+A.x = A()   # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testInitMethodUnbound]
 
@@ -558,23 +558,23 @@ class A:
 a = None # type: A
 b = None # type: B
 A.__init__(a, b)
-A.__init__(b, b) # E:10: Argument 1 to "__init__" of "A" has incompatible type "B"; expected "A"
-A.__init__(a, a) # E:10: Argument 2 to "__init__" of "A" has incompatible type "A"; expected "B"
+A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"; expected "A"
+A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"; expected "B"
 
 [case testAssignToMethodViaClass]
 import typing
 class A:
     def f(self): pass
-A.f = None # E:1: Cannot assign to a method
+A.f = None # E: Cannot assign to a method
 
 [case testAssignToNestedClassViaClass]
 import typing
 class A:
     class B: pass
-A.B = None # E:1: Cannot assign to a type
+A.B = None # E: Cannot assign to a type
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
-x = C.x # E:5: Cannot determine type of 'x'
+x = C.x # E: Cannot determine type of 'x'
 def f() -> int: return 1
 class C:
     x = f()
@@ -587,7 +587,7 @@ x = C.x
 [builtins fixtures/list.pyi]
 [out]
 main: note: In class "C":
-main:2:4: error: Need type annotation for variable
+main:2: error: Need type annotation for variable
 
 
 -- Nested classes
@@ -601,7 +601,7 @@ def f() -> None:
         def g(self) -> None: pass
     a = None # type: A
     a.g()
-    a.g(a) # E:7: Too many arguments for "g" of "A"
+    a.g(a) # E: Too many arguments for "g" of "A"
 [out]
 main: note: In function "f":
 
@@ -610,8 +610,8 @@ import typing
 class A:
     class B: pass
     b = B()
-    b = A() # E:4: Incompatible types in assignment (expression has type "A", variable has type "B")
-    b = B(b) # E:9: Too many arguments for "B"
+    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = B(b) # E: Too many arguments for "B"
 [out]
 main: note: In class "A":
 
@@ -622,8 +622,8 @@ class A:
         class B:
             def __init__(self, a: 'A') -> None: pass
         b = B(A())
-        b = A() # E:8: Incompatible types in assignment (expression has type "A", variable has type "B")
-        b = B() # E:13: Too few arguments for "B"
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        b = B() # E: Too few arguments for "B"
 [out]
 main: note: In member "f" of class "A":
 
@@ -633,7 +633,7 @@ def f() -> None:
     class A: pass
     a = None # type: A
     a = A()
-    a = object() # E:4: Incompatible types in assignment (expression has type "object", variable has type "A")
+    a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [out]
 main: note: In function "f":
 
@@ -643,8 +643,8 @@ class A:
     class B: pass
 b = None # type: A.B
 b = A.B()
-b = A() # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-b = A.B(b) # E:7: Too many arguments for "B"
+b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = A.B(b) # E: Too many arguments for "B"
 
 
 -- Declaring attribute type in method
@@ -658,13 +658,13 @@ class A:
         self.x = None # type: int
 a = None # type: A
 a.x = 1
-a.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testAccessAttributeDeclaredInInitBeforeDeclaration]
 
 a = None # type: A
 a.x = 1
-a.x = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 class A:
     def __init__(self):
         self.x = None # type: int
@@ -680,7 +680,7 @@ A()
 class A: pass
 class A: pass
 [out]
-main:4:0: error: Name 'A' already defined
+main:4: error: Name 'A' already defined
 
 [case testDocstringInClass]
 import typing
@@ -700,9 +700,9 @@ class A:
         b = None
 [out]
 main: note: In function "g":
-main:5:12: error: Need type annotation for variable
+main:5: error: Need type annotation for variable
 main: note: In member "f" of class "A":
-main:6:8: error: Need type annotation for variable
+main:6: error: Need type annotation for variable
 
 
 -- Static methods
@@ -716,14 +716,14 @@ class A:
   def f(x: int) -> None: pass
 A.f(1)
 A().f(1)
-A.f('') # E:3: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins fixtures/staticmethod.pyi]
 
 [case testBuiltinStaticMethod]
 import typing
 int.from_bytes(b'', '')
-int.from_bytes('', '') # E:14: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
+int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
 [builtins fixtures/staticmethod.pyi]
 
 [case testAssignStaticMethodOnInstance]
@@ -731,7 +731,7 @@ import typing
 class A:
   @staticmethod
   def f(x: int) -> None: pass
-A().f = A.f # E:3: Cannot assign to a method
+A().f = A.f # E: Cannot assign to a method
 [builtins fixtures/staticmethod.pyi]
 
 
@@ -746,14 +746,14 @@ class A:
   def f(cls, x: int) -> None: pass
 A.f(1)
 A().f(1)
-A.f('') # E:3: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins fixtures/classmethod.pyi]
 
 [case testBuiltinClassMethod]
 import typing
 int.from_bytes(b'', '')
-int.from_bytes('', '') # E:14: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
+int.from_bytes('', '') # E: Argument 1 to "from_bytes" of "int" has incompatible type "str"; expected "bytes"
 [builtins fixtures/classmethod.pyi]
 
 [case testAssignClassMethodOnClass]
@@ -761,7 +761,7 @@ import typing
 class A:
   @classmethod
   def f(cls, x: int) -> None: pass
-A.f = A.f # E:1: Cannot assign to a method
+A.f = A.f # E: Cannot assign to a method
 [builtins fixtures/classmethod.pyi]
 
 [case testAssignClassMethodOnInstance]
@@ -769,7 +769,7 @@ import typing
 class A:
   @classmethod
   def f(cls, x: int) -> None: pass
-A().f = A.f # E:3: Cannot assign to a method
+A().f = A.f # E: Cannot assign to a method
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodCalledInClassMethod]
@@ -780,10 +780,10 @@ class C:
   @classmethod
   def bar(cls) -> None:
     cls()
-    cls(1)      # E:7: Too many arguments for "C"
+    cls(1)      # E: Too many arguments for "C"
     cls.bar()
-    cls.bar(1)  # E:11: Too many arguments for "bar" of "C"
-    cls.bozo()  # E:7: "C" has no attribute "bozo"
+    cls.bar(1)  # E: Too many arguments for "bar" of "C"
+    cls.bozo()  # E: "C" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In member "bar" of class "C":
@@ -794,8 +794,8 @@ class C:
   @classmethod
   def foo(cls) -> None: pass
 C.foo()
-C.foo(1)  # E:5: Too many arguments for "foo" of "C"
-C.bozo()  # E:1: "C" has no attribute "bozo"
+C.foo(1)  # E: Too many arguments for "foo" of "C"
+C.bozo()  # E: "C" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodCalledOnInstance]
@@ -804,8 +804,8 @@ class C:
   @classmethod
   def foo(cls) -> None: pass
 C().foo()
-C().foo(1)  # E:7: Too many arguments for "foo" of "C"
-C.bozo()    # E:1: "C" has no attribute "bozo"
+C().foo(1)  # E: Too many arguments for "foo" of "C"
+C.bozo()    # E: "C" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassMethodMayCallAbstractMethod]
@@ -833,7 +833,7 @@ class A:
 a = A() # type. A
 s = ''  # type: str
 s = a.f
-a = a.f  # E:0: Incompatible types in assignment (expression has type "str", variable has type "A")
+a = a.f  # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 [builtins fixtures/property.pyi]
 
 [case testAssigningToReadOnlyProperty]
@@ -841,7 +841,7 @@ import typing
 class A:
     @property
     def f(self) -> str: pass
-A().f = '' # E:3: Property "f" defined in "A" is read-only
+A().f = '' # E: Property "f" defined in "A" is read-only
 [builtins fixtures/property.pyi]
 
 [case testPropertyGetterBody]
@@ -850,7 +850,7 @@ class A:
     @property
     def f(self) -> str:
         self.x = 1
-        self.x = '' # E:12: Incompatible types in assignment (expression has type "str", variable has type "int")
+        self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.pyi]
 [out]
 main: note: In member "f" of class "A":
@@ -862,7 +862,7 @@ class A:
     def f(self): pass
 a = A() # type. A
 a.f.xx
-a.f = '' # E:1: Property "f" defined in "A" is read-only
+a.f = '' # E: Property "f" defined in "A" is read-only
 [builtins fixtures/property.pyi]
 
 [case testPropertyWithSetter]
@@ -876,8 +876,8 @@ class A:
         pass
 a = A()
 a.f = a.f
-a.f.x # E:3: "int" has no attribute "x"
-a.f = '' # E:1: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.f.x # E: "int" has no attribute "x"
+a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.pyi]
 
 [case testPropertyWithDeleterButNoSetter]
@@ -890,8 +890,8 @@ class A:
     def f(self, x) -> None:
         pass
 a = A()
-a.f = a.f # E:1: Property "f" defined in "A" is read-only
-a.f.x # E:3: "int" has no attribute "x"
+a.f = a.f # E: Property "f" defined in "A" is read-only
+a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
 
@@ -925,7 +925,7 @@ class A: pass
 class B: pass
 a = None  # type: A
 b = None  # type: B
-b = a # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
+b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = b
 
 [case testDucktypeTransitivityDecorator]
@@ -937,7 +937,7 @@ class B: pass
 class C: pass
 a = None  # type: A
 c = None  # type: C
-c = a # E:0: Incompatible types in assignment (expression has type "A", variable has type "C")
+c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
 a = c
 
 
@@ -1097,7 +1097,7 @@ class C:
     def __radd__(self, other: C) -> C: return C()
 [out]
 main: note: In member "__radd__" of class "C":
-main:5:4: error: Forward operator "__add__" is not callable
+main:5: error: Forward operator "__add__" is not callable
 
 [case testOverloadedReverseOperatorMethodArgumentType]
 from typing import overload, Any
@@ -1154,7 +1154,7 @@ class X:
     def __add__(self, x): pass
 [out]
 main: note: In member "__radd__" of class "B":
-main:6:4: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
+main:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
 [case testUnsafeOverlappingWithLineNo]
 from typing import TypeVar
@@ -1180,7 +1180,7 @@ class B:
 class C(A): pass
 [out]
 main: note: In class "A":
-main:5:4: error: Signatures of "__iadd__" and "__add__" are incompatible
+main:5: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testOverloadedNormalAndInplaceOperatorMethod]
 from typing import overload
@@ -1219,10 +1219,10 @@ class D(A):
     def __iadd__(self, x: 'A') -> 'B': pass
 [out]
 main: note: In class "B":
-main:6:4: error: Return type of "__iadd__" incompatible with "__add__" of supertype "A"
+main:6: error: Return type of "__iadd__" incompatible with "__add__" of supertype "A"
 main: note: In class "C":
-main:8:4: error: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
-main:8:4: error: Signatures of "__iadd__" and "__add__" are incompatible
+main:8: error: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
+main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 
 [case testGetAttr]
@@ -1236,7 +1236,7 @@ class B: pass
 a = a.foo
 b = a.bar
 [out]
-main:9:0: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 
 [case testGetAttrSignature]
@@ -1250,9 +1250,9 @@ class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
 main: note: In member "__getattr__" of class "B":
-main:4:4: error: Invalid signature "def (self: __main__.B, x: __main__.A) -> __main__.B"
+main:4: error: Invalid signature "def (self: __main__.B, x: __main__.A) -> __main__.B"
 main: note: In member "__getattr__" of class "C":
-main:6:4: error: Invalid signature "def (self: __main__.C, x: builtins.str, y: builtins.str) -> __main__.C"
+main:6: error: Invalid signature "def (self: __main__.C, x: builtins.str, y: builtins.str) -> __main__.C"
 
 
 -- CallableType objects
@@ -1264,11 +1264,11 @@ import typing
 a = A()
 b = B()
 
-a()  # E:1: Too few arguments for "__call__" of "A"
-a(a, a)  # E:1: Too many arguments for "__call__" of "A"
+a()  # E: Too few arguments for "__call__" of "A"
+a(a, a)  # E: Too many arguments for "__call__" of "A"
 a = a(a)
-a = a(b)  # E:5: Argument 1 to "__call__" of "A" has incompatible type "B"; expected "A"
-b = a(a)  # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = a(b)  # E: Argument 1 to "__call__" of "A" has incompatible type "B"; expected "A"
+b = a(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 class A:
     def __call__(self, x: A) -> A:
@@ -1287,8 +1287,8 @@ class C:
         return obj
 
 x = C(foo=12)
-x.a # E:1: "C" has no attribute "a"
-C(foo='') # E:1: Argument 1 to "C" has incompatible type "str"; expected "int"
+x.a # E: "C" has no attribute "a"
+C(foo='') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
@@ -1299,8 +1299,8 @@ class C:
 
 x = C(foo=12)
 x = C(foo='x')
-x.a # E:1: "C" has no attribute "a"
-C(bar='') # E:1: Unexpected keyword argument "bar" for "C"
+x.a # E: "C" has no attribute "a"
+C(bar='') # E: Unexpected keyword argument "bar" for "C"
 [builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType]
@@ -1311,7 +1311,7 @@ class C:
 def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
-g(C) # E:1: Argument 1 to "g" has incompatible type "C"; expected "int"
+g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType2]
@@ -1322,7 +1322,7 @@ class C:
 def f(x: type) -> None: pass
 def g(x: int) -> None: pass
 f(C)
-g(C) # E:1: Argument 1 to "g" has incompatible type "C"; expected "int"
+g(C) # E: Argument 1 to "g" has incompatible type "C"; expected "int"
 [builtins fixtures/__new__.pyi]
 
 [case testGenericClassWith__new__]
@@ -1335,7 +1335,7 @@ class C(Generic[T]):
     def set(self, x: T) -> None: pass
 c = C('')
 c.set('')
-c.set(1) # E:5: Argument 1 to "set" of "C" has incompatible type "int"; expected "str"
+c.set(1) # E: Argument 1 to "set" of "C" has incompatible type "int"; expected "str"
 [builtins fixtures/__new__.pyi]
 
 [case testOverloaded__new__]
@@ -1350,9 +1350,9 @@ class C:
         obj = object.__new__(cls)
         return obj
 c = C(1)
-c.a # E:1: "C" has no attribute "a"
+c.a # E: "C" has no attribute "a"
 C('', '')
-C('') # E:1: No overload variant of "C" matches argument types [builtins.str]
+C('') # E: No overload variant of "C" matches argument types [builtins.str]
 [builtins fixtures/__new__.pyi]
 
 
@@ -1366,11 +1366,11 @@ class A(int): pass
 n = 0
 n = A()
 a = A()
-a = 0 # E:0: Incompatible types in assignment (expression has type "int", variable has type "A")
+a = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 
 [case testForwardReferenceToNestedClass]
 def f(o: 'B.C') -> None:
-    o.f('') # E:7: Argument 1 to "f" of "C" has incompatible type "str"; expected "int"
+    o.f('') # E: Argument 1 to "f" of "C" has incompatible type "str"; expected "int"
 
 class B:
     class C:
@@ -1380,7 +1380,7 @@ main: note: In function "f":
 
 [case testForwardReferenceToNestedClassDeep]
 def f(o: 'B.C.D') -> None:
-    o.f('') # E:7: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
+    o.f('') # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
 
 class B:
     class C:
@@ -1392,7 +1392,7 @@ main: note: In function "f":
 [case testForwardReferenceToNestedClassWithinClass]
 class B:
     def f(self, o: 'C.D') -> None:
-        o.f('') # E:11: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
+        o.f('') # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"
 
     class C:
         class D:
@@ -1403,7 +1403,7 @@ main: note: In member "f" of class "B":
 [case testClassVsInstanceDisambiguation]
 class A: pass
 def f(x: A) -> None: pass
-f(A) # E:1: Argument 1 to "f" has incompatible type "A" (type object); expected "A"
+f(A) # E: Argument 1 to "f" has incompatible type "A" (type object); expected "A"
 [out]
 
 -- TODO
@@ -1439,7 +1439,7 @@ from typing import Type
 class B:
     pass
 def f(A: Type[B]) -> None:
-    A(0)  # E:5: Too many arguments for "B"
+    A(0)  # E: Too many arguments for "B"
     A()
 [out]
 main: note: In function "f":
@@ -1450,7 +1450,7 @@ class B:
     def __init__(self, a: int) -> None: pass
 def f(A: Type[B]) -> None:
     A(0)
-    A()  # E:5: Too few arguments for "B"
+    A()  # E: Too few arguments for "B"
 [out]
 main: note: In function "f":
 
@@ -1478,7 +1478,7 @@ class B:
 T = TypeVar('T', bound=B)
 def f(A: Type[T]) -> None:
     A()
-    A(0)  # E:5: Too many arguments for "B"
+    A(0)  # E: Too many arguments for "B"
 [out]
 main: note: In function "f":
 
@@ -1488,7 +1488,7 @@ class B:
     def __init__(self, a: int) -> None: pass
 T = TypeVar('T', bound=B)
 def f(A: Type[T]) -> None:
-    A()  # E:5: Too few arguments for "B"
+    A()  # E: Too few arguments for "B"
     A(0)
 [out]
 main: note: In function "f":
@@ -1510,8 +1510,8 @@ def error(u_c: Type[U]) -> P:
 [out]
 main:11: error: Revealed type is '__main__.WizUser*'
 main: note: In function "error":
-main:13:4: error: Incompatible return value type (got "U", expected "P")
-main:13:18: error: Type argument 1 of "new_pro" has incompatible value "U"
+main:13: error: Incompatible return value type (got "U", expected "P")
+main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar
@@ -1529,7 +1529,7 @@ class User: pass
 def new_user(user_class: Type[User]):
     return user_class()
 def foo(arg: Type[int]):
-    new_user(arg)  # E:12: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
+    new_user(arg)  # E: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
 [out]
 main: note: In function "foo":
 
@@ -1591,7 +1591,7 @@ def process(cls: Type[User]):
     obj = cls()
     reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
     cls.mro()  # Defined in class type
-    cls.error  # E:7: Type[User] has no attribute "error"
+    cls.error  # E: Type[User] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
@@ -1606,11 +1606,11 @@ class User:
 class ProUser(User): pass
 class BasicUser(User): pass
 def process(cls: Type[Union[BasicUser, ProUser]]):
-    cls.foo()  # E:7: Type[Union[BasicUser, ProUser]] has no attribute "foo"
+    cls.foo()  # E: Type[Union[BasicUser, ProUser]] has no attribute "foo"
     obj = cls()
-    cls.bar(obj)  # E:7: Type[Union[BasicUser, ProUser]] has no attribute "bar"
+    cls.bar(obj)  # E: Type[Union[BasicUser, ProUser]] has no attribute "bar"
     cls.mro()  # Defined in class type
-    cls.error  # E:7: Type[Union[BasicUser, ProUser]] has no attribute "error"
+    cls.error  # E: Type[Union[BasicUser, ProUser]] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
@@ -1627,7 +1627,7 @@ def process(cls: Type[U]):
     obj = cls()
     reveal_type(cls.bar(obj))  # E: Revealed type is 'builtins.int'
     cls.mro()  # Defined in class type
-    cls.error  # E:7: Type[U] has no attribute "error"
+    cls.error  # E: Type[U] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
@@ -1643,11 +1643,11 @@ class ProUser(User): pass
 class BasicUser(User): pass
 U = TypeVar('U', bound=Union[ProUser, BasicUser])
 def process(cls: Type[U]):
-    cls.foo()  # E:7: Type[U] has no attribute "foo"
+    cls.foo()  # E: Type[U] has no attribute "foo"
     obj = cls()
-    cls.bar(obj)  # E:7: Type[U] has no attribute "bar"
+    cls.bar(obj)  # E: Type[U] has no attribute "bar"
     cls.mro()  # Defined in class type
-    cls.error  # E:7: Type[U] has no attribute "error"
+    cls.error  # E: Type[U] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "process":
@@ -1683,8 +1683,8 @@ u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In function "new":
-main:16:10: error: No overload variant of "User" matches argument types [builtins.str]
-main:17:9: error: Too many arguments for "foo" of "User"
+main:16: error: No overload variant of "User" matches argument types [builtins.str]
+main:17: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
 from typing import TypeVar, Type
@@ -1821,7 +1821,7 @@ def f(a: int) -> None: pass
 def mock() -> type: return User
 
 f(User)
-f(mock())  # E:1: No overload variant of "f" matches argument types [builtins.type]
+f(mock())  # E: No overload variant of "f" matches argument types [builtins.type]
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -1835,7 +1835,7 @@ def f(a: Type[User]) -> None: pass
 @overload
 def f(a: type) -> None: pass
 
-f(3)  # E:1: No overload variant of "f" matches argument types [builtins.int]
+f(3)  # E: No overload variant of "f" matches argument types [builtins.int]
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -1850,7 +1850,7 @@ def f(a: Type[User]) -> None: pass
 def f(a: int) -> None: pass
 
 f(User)
-f(User())  # E:1: No overload variant of "f" matches argument types [__main__.User]
+f(User())  # E: No overload variant of "f" matches argument types [__main__.User]
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -1869,10 +1869,10 @@ def f(a: Type[B]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-f(A)  # E:1: No overload variant of "f" matches argument types [def () -> __main__.A]
+f(A)  # E: No overload variant of "f" matches argument types [def () -> __main__.A]
 f(B)
 f(C)
-f(AType)  # E:1: No overload variant of "f" matches argument types [Type[__main__.A]]
+f(AType)  # E: No overload variant of "f" matches argument types [Type[__main__.A]]
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]
@@ -1886,7 +1886,7 @@ class A: pass
 class B(A): pass
 
 @overload
-def f(a: Type[A]) -> int: pass  # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(a: Type[A]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(a: Type[B]) -> str: pass
 [builtins fixtures/classmethod.pyi]
@@ -1927,12 +1927,12 @@ from typing import Type, overload
 class User: pass
 
 @overload
-def f(a: Type[User]) -> int: pass  # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(a: object) -> str: pass
 
 @overload
-def g(a: Type[User]) -> int: pass  # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def g(a: type) -> str: pass
 [builtins fixtures/classmethod.pyi]
@@ -1944,7 +1944,7 @@ from typing import Type, overload
 class User: pass
 
 @overload
-def f(a: type) -> int: pass  # E:0: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(a: type) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(a: object) -> str: pass
 [builtins fixtures/classmethod.pyi]
@@ -1963,7 +1963,7 @@ u = User()
 reveal_type(type(u))  # E: Revealed type is 'Type[__main__.User]'
 reveal_type(type(u).test_class_method())  # E: Revealed type is 'builtins.int'
 reveal_type(type(u).test_static_method())  # E: Revealed type is 'builtins.str'
-type(u).test_instance_method()  # E:28: Too few arguments for "test_instance_method" of "User"
+type(u).test_instance_method()  # E: Too few arguments for "test_instance_method" of "User"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2043,26 +2043,25 @@ int.__eq__(int)
 int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
-main:33:10: error: Too few arguments for "__eq__" of "int"
-main:33:10: error: Unsupported operand types for == ("int" and "int")
+main:33: error: Too few arguments for "__eq__" of "int"
+main:33: error: Unsupported operand types for == ("int" and "int")
 
 [case testMroSetAfterError]
 class C(str, str):
     foo = 0
     bar = foo
 [out]
-main:1:0: error: Duplicate base class "str"
+main:1: error: Duplicate base class "str"
 
 [case testCannotDetermineMro]
 class A: pass
 class B(A): pass
 class C(B): pass
-class D(A, B): pass # E:0: Cannot determine consistent method resolution order (MRO) for "D"
-class E(C, D): pass # E:0: Cannot determine consistent method resolution order (MRO) for "E"
+class D(A, B): pass # E: Cannot determine consistent method resolution order (MRO) for "D"
+class E(C, D): pass # E: Cannot determine consistent method resolution order (MRO) for "E"
 
 [case testInconsistentMroLocalRef]
 class A: pass
-class B(object, A): # E:0: Cannot determine consistent method resolution order (MRO) for "B"
+class B(object, A): # E: Cannot determine consistent method resolution order (MRO) for "B"
     def readlines(self): pass
     __iter__ = readlines
-

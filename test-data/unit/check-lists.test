@@ -8,7 +8,7 @@ a2, b2, c2 = None, None, None # type: (A, B, C)
 
 a1, [b1, c1] = a2, [b2, c2]
 a1, [a1, [b1, c1]] = a2, [a2, [b2, c2]]
-a1, [a1, [a1, b1]] = a1, [a1, [a1, c1]]  # E:14: Incompatible types in assignment (expression has type "C", variable has type "B")
+a1, [a1, [a1, b1]] = a1, [a1, [a1, c1]]  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
 
 class A: pass
 class B: pass
@@ -21,8 +21,8 @@ from typing import List
 a, b, c = None, None, None # type: (A, B, C)
 
 a, b = [a, b]
-a, b = [a]  # E:1: Need more than 1 value to unpack (2 expected)
-a, b = [a, b, c]  # E:1: Too many values to unpack (2 expected, 3 provided)
+a, b = [a]  # E: Need more than 1 value to unpack (2 expected)
+a, b = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
 
 class A: pass
 class B: pass
@@ -36,9 +36,9 @@ a, b, c = None, None, None # type: (A, B, C)
 t = a, b
 
 [a, b], c = t, c
-[a, c], c = t, c  # E:4: Incompatible types in assignment (expression has type "B", variable has type "C")
-[a, a, a], c = t, c  # E:0: Need more than 2 values to unpack (3 expected)
-[a], c = t, c  # E:0: Too many values to unpack (1 expected, 2 provided)
+[a, c], c = t, c  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
+[a, a, a], c = t, c  # E: Need more than 2 values to unpack (3 expected)
+[a], c = t, c  # E: Too many values to unpack (1 expected, 2 provided)
 
 class A: pass
 class B: pass
@@ -52,8 +52,8 @@ a, b, c = None, None, None # type: (A, B, C)
 
 def f() -> None: # needed because test parser tries to parse [a, b] as section header
     [a, b] = [a, b]
-    [a, b] = [a]  # E:4: Need more than 1 value to unpack (2 expected)
-    [a, b] = [a, b, c]  # E:4: Too many values to unpack (2 expected, 3 provided)
+    [a, b] = [a]  # E: Need more than 1 value to unpack (2 expected)
+    [a, b] = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
 
 class A: pass
 class B: pass

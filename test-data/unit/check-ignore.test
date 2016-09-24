@@ -1,23 +1,23 @@
 [case testIgnoreTypeError]
 x = 1
 x() # type: ignore
-x() # E:1: "int" not callable
+x() # E: "int" not callable
 
 [case testIgnoreUndefinedName]
 x = 1
 y # type: ignore
-z # E:0: Name 'z' is not defined
+z # E: Name 'z' is not defined
 
 [case testIgnoreImportError]
 import xyz_m # type: ignore
 xyz_m.foo
-1() # E:1: "int" not callable
+1() # E: "int" not callable
 
 [case testIgnoreImportFromError]
 from xyz_m import a, b # type: ignore
 a.foo
 b()
-1() # E:1: "int" not callable
+1() # E: "int" not callable
 
 [case testIgnoreImportFromErrorMultiline]
 from xyz_m import ( # type: ignore
@@ -25,12 +25,12 @@ from xyz_m import ( # type: ignore
 )
 a.foo
 b()
-1() # E:1: "int" not callable
+1() # E: "int" not callable
 
 [case testIgnoreImportAllError]
 from xyz_m import * # type: ignore
-x   # E:0: Name 'x' is not defined
-1() # E:1: "int" not callable
+x   # E: Name 'x' is not defined
+1() # E: "int" not callable
 
 [case testIgnoreImportBadModule]
 import m # type: ignore
@@ -39,7 +39,7 @@ from m import a # type: ignore
 +
 [out]
 main:1: note: In module imported here:
-tmp/m.py:1:1: error: Parse error before end of line
+tmp/m.py:1: error: Parse error before end of line
 
 [case testIgnoreAppliesOnlyToMissing]
 import a # type: ignore
@@ -47,7 +47,7 @@ import b # type: ignore
 reveal_type(a.foo) # E: Revealed type is 'Any'
 reveal_type(b.foo) # E: Revealed type is 'builtins.int'
 a.bar()
-b.bar() # E:1: "module" has no attribute "bar"
+b.bar() # E: "module" has no attribute "bar"
 
 [file b.py]
 foo = 3
@@ -61,12 +61,12 @@ from m import * # type: ignore
 +
 [out]
 main:1: note: In module imported here:
-tmp/m.py:1:1: error: Parse error before end of line
+tmp/m.py:1: error: Parse error before end of line
 
 [case testIgnoreAssignmentTypeError]
 x = 1
 x = '' # type: ignore
-x = '' # E:0: Incompatible types in assignment (expression has type "str", variable has type "int")
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testIgnoreInvalidOverride]
 class A:
@@ -78,7 +78,7 @@ class B(A):
 import m
 m.x = object # type: ignore
 m.f() # type: ignore
-m.y # E:1: "module" has no attribute "y"
+m.y # E: "module" has no attribute "y"
 [file m.py]
 [builtins fixtures/module.pyi]
 
@@ -105,9 +105,9 @@ z = y
 from m1 import *
 from m2 import * # type: ignore
 # We should still import things that don't conflict.
-y() # E:1: "str" not callable
-z() # E:1: "int" not callable
-x() # E:1: "int" not callable
+y() # E: "str" not callable
+z() # E: "int" not callable
+x() # E: "int" not callable
 [file m1.py]
 x = 1
 y = ''
@@ -120,7 +120,7 @@ from m import B # type: ignore
 
 class C(B):
     def f(self) -> None:
-        self.f(1) # E:14: Too many arguments for "f" of "C"
+        self.f(1) # E: Too many arguments for "f" of "C"
         self.g(1)
 [out]
 main: note: In member "f" of class "C":
@@ -132,7 +132,7 @@ class C(m.B):
     def f(self) -> None: ...
 
 c = C()
-c.f(1) # E:3: Too many arguments for "f" of "C"
+c.f(1) # E: Too many arguments for "f" of "C"
 c.g(1)
 c.x = 1
 [out]
@@ -144,7 +144,7 @@ class C(m.B):
     @staticmethod
     def f() -> None: pass
 
-C.f(1) # E:3: Too many arguments for "f" of "C"
+C.f(1) # E: Too many arguments for "f" of "C"
 C.g(1)
 C.x = 1
 [builtins fixtures/staticmethod.pyi]
@@ -156,7 +156,7 @@ from m import B # type: ignore
 class C: pass
 class D(C, B):
     def f(self) -> None:
-        self.f(1) # E:14: Too many arguments for "f" of "D"
+        self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
 main: note: In member "f" of class "D":
@@ -167,7 +167,7 @@ from m import B # type: ignore
 class C(B): pass
 class D(C):
     def f(self) -> None:
-        self.f(1) # E:14: Too many arguments for "f" of "D"
+        self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
 main: note: In member "f" of class "D":
@@ -199,7 +199,7 @@ foo(Child())
 def bar(x: Base[str, str]) -> None: pass
 bar(Child())
 [out]
-main:19:3: error: Argument 1 to "bar" has incompatible type "Child"; expected Base[str, str]
+main:19: error: Argument 1 to "bar" has incompatible type "Child"; expected Base[str, str]
 
 [case testTypeIgnoreLineNumberWithinFile]
 import m
@@ -209,8 +209,8 @@ m.f(kw=1)
 pass
 def f() -> None: pass
 [out]
-main:3:3: error: Unexpected keyword argument "kw" for "f"
-tmp/m.py:2:0: note: "f" defined here
+main:3: error: Unexpected keyword argument "kw" for "f"
+tmp/m.py:2: note: "f" defined here
 
 [case testCannotIgnoreBlockingError]
-yield  # type: ignore  # E:0: 'yield' outside function
+yield  # type: ignore  # E: 'yield' outside function

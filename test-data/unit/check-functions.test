@@ -12,10 +12,10 @@
 from typing import Callable
 f = None # type: Callable[[A], B]
 a, b = None, None # type: (A, B)
-a = f(a)    # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E:5: Argument 1 has incompatible type "B"; expected "A"
-b = f()     # E:5: Too few arguments
-b = f(a, a) # E:5: Too many arguments
+a = f(a)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
+b = f()     # E: Too few arguments
+b = f(a, a) # E: Too many arguments
 b = f(a)
 
 class A: pass
@@ -30,10 +30,10 @@ class B(A): pass
 f = None # type: Callable[[B], A]
 g = None # type: Callable[[A], A]  # subtype of f
 h = None # type: Callable[[B], B]  # subtype of f
-g = h  # E:0: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[A], A])
-h = f  # E:0: Incompatible types in assignment (expression has type Callable[[B], A], variable has type Callable[[B], B])
-h = g  # E:0: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[B], B])
-g = f  # E:0: Incompatible types in assignment (expression has type Callable[[B], A], variable has type Callable[[A], A])
+g = h  # E: Incompatible types in assignment (expression has type Callable[[B], B], variable has type Callable[[A], A])
+h = f  # E: Incompatible types in assignment (expression has type Callable[[B], A], variable has type Callable[[B], B])
+h = g  # E: Incompatible types in assignment (expression has type Callable[[A], A], variable has type Callable[[B], B])
+g = f  # E: Incompatible types in assignment (expression has type Callable[[B], A], variable has type Callable[[A], A])
 f = g
 f = h
 f = f
@@ -44,10 +44,10 @@ h = h
 from typing import Callable
 f = None # type: Callable[[], None]
 a, o = None, None # type: (A, object)
-a = f   # E:0: Incompatible types in assignment (expression has type Callable[[], None], variable has type "A")
-f = a   # E:0: Incompatible types in assignment (expression has type "A", variable has type Callable[[], None])
-f = o   # E:0: Incompatible types in assignment (expression has type "object", variable has type Callable[[], None])
-f = f() # E:0: Function does not return a value
+a = f   # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "A")
+f = a   # E: Incompatible types in assignment (expression has type "A", variable has type Callable[[], None])
+f = o   # E: Incompatible types in assignment (expression has type "object", variable has type Callable[[], None])
+f = f() # E: Function does not return a value
 
 f = f
 f = None
@@ -59,8 +59,8 @@ class A: pass
 from typing import Callable
 f = None # type: Callable[[], None]
 g = None # type: Callable[[], object]
-f = g  # E:0: Incompatible types in assignment (expression has type Callable[[], object], variable has type Callable[[], None])
-g = f  # E:0: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], object])
+f = g  # E: Incompatible types in assignment (expression has type Callable[[], object], variable has type Callable[[], None])
+g = f  # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], object])
 
 f = f
 g = g
@@ -70,9 +70,9 @@ from typing import Callable
 f = None # type: Callable[[A, A], None]
 g = None # type: Callable[[A, B], None]
 h = None # type: Callable[[B, B], None]
-f = g  # E:0: Incompatible types in assignment (expression has type Callable[[A, B], None], variable has type Callable[[A, A], None])
-f = h  # E:0: Incompatible types in assignment (expression has type Callable[[B, B], None], variable has type Callable[[A, A], None])
-g = h  # E:0: Incompatible types in assignment (expression has type Callable[[B, B], None], variable has type Callable[[A, B], None])
+f = g  # E: Incompatible types in assignment (expression has type Callable[[A, B], None], variable has type Callable[[A, A], None])
+f = h  # E: Incompatible types in assignment (expression has type Callable[[B, B], None], variable has type Callable[[A, A], None])
+g = h  # E: Incompatible types in assignment (expression has type Callable[[B, B], None], variable has type Callable[[A, B], None])
 g = f
 h = f
 h = g
@@ -89,10 +89,10 @@ f = None # type: Callable[[], None]
 g = None # type: Callable[[A], None]
 h = None # type: Callable[[A, A], None]
 
-f = g   # E:0: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[], None])
-f = h   # E:0: Incompatible types in assignment (expression has type Callable[[A, A], None], variable has type Callable[[], None])
-h = f   # E:0: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[A, A], None])
-h = g   # E:0: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[A, A], None])
+f = g   # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[], None])
+f = h   # E: Incompatible types in assignment (expression has type Callable[[A, A], None], variable has type Callable[[], None])
+h = f   # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[A, A], None])
+h = g   # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[A, A], None])
 
 f = f
 g = g
@@ -106,8 +106,8 @@ class A: pass
 t = None # type: type
 a = None # type: A
 
-a = A # E:0: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
-t = f # E:0: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
+a = A # E: Incompatible types in assignment (expression has type "A" (type object), variable has type "A")
+t = f # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type "type")
 t = A
 
 class A:
@@ -121,7 +121,7 @@ f = None # type: Callable[[AA], A]
 g = None # type: Callable[[B], B]
 h = None # type: Callable[[A], AA]
 
-h = i  # E:0: Incompatible types in assignment (expression has type overloaded function, variable has type Callable[[A], AA])
+h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type Callable[[A], AA])
 f = j
 
 f = i
@@ -155,10 +155,10 @@ g3 = None # type: Callable[[C], C]
 g4 = None # type: Callable[[A], B]
 a, b, c = None, None, None # type: (A, B, C)
 
-b = f(a)  # E:0: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = f(b)  # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(c)  # E:0: Incompatible types in assignment (expression has type "C", variable has type "B")
-g4 = f    # E:0: Incompatible types in assignment (expression has type overloaded function, variable has type Callable[[A], B])
+b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a = f(b)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(c)  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+g4 = f    # E: Incompatible types in assignment (expression has type overloaded function, variable has type Callable[[A], B])
 
 g1 = f
 g2 = f
@@ -182,10 +182,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E:2: List item 0 has incompatible type
+f([C])  # E: List item 0 has incompatible type
 class D:
     def __init__(self, a, b): pass
-f([D])  # E:2: List item 0 has incompatible type
+f([D])  # E: List item 0 has incompatible type
 [builtins fixtures/list.pyi]
 
 -- Default argument values
@@ -195,9 +195,9 @@ f([D])  # E:2: List item 0 has incompatible type
 [case testCallingFunctionsWithDefaultArgumentValues]
 
 a, b = None, None # type: (A, B)
-a = f()     # E:0: Incompatible types in assignment (expression has type "B", variable has type "A")
-b = f(b)    # E:5: Argument 1 to "f" has incompatible type "B"; expected "A"
-b = f(a, a) # E:5: Too many arguments for "f"
+a = f()     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+b = f(b)    # E: Argument 1 to "f" has incompatible type "B"; expected "A"
+b = f(a, a) # E: Too many arguments for "f"
 
 b = f()
 b = f(a)
@@ -212,7 +212,7 @@ class B: pass
 [case testDefaultArgumentExpressions]
 import typing
 def f(x: 'A' = A()) -> None:
-    b = x # type: B # E:4: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = x # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
@@ -223,7 +223,7 @@ main: note: In function "f":
 [case testDefaultArgumentExpressions2]
 import typing
 def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = x # type: B      # E:4: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = x # type: B      # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x # type: A
 
 class B: pass
@@ -271,7 +271,7 @@ def f(x = 1): # type: (int) -> str
     pass
 f()
 f(1)
-f('') # E:1: Argument 1 to "f" has incompatible type "str"; expected "int"
+f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodDefaultArgumentsAndSignatureAsComment]
 import typing
@@ -280,7 +280,7 @@ class A:
         pass
 A().f()
 A().f(1)
-A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 
 -- Access to method defined as a data attribute
@@ -297,8 +297,8 @@ class A:
 a = None # type: A
 a.f()
 a.g(B())
-a.f(a) # E:3: Too many arguments
-a.g()  # E:3: Too few arguments
+a.f(a) # E: Too many arguments
+a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
 from typing import Any, Callable
@@ -308,8 +308,8 @@ class A:
     f = x # type: Callable[[], None]
     g = x # type: Callable[[B], None]
 a = None # type: A
-a.f() # E:1: Invalid method type
-a.g() # E:1: Invalid method type
+a.f() # E: Invalid method type
+a.g() # E: Invalid method type
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
 from typing import Any, Callable
@@ -319,7 +319,7 @@ class A:
     f = x # type: Callable[[Any], Any]
 a = None # type: A
 a.f()
-a.f(a) # E:3: Too many arguments
+a.f(a) # E: Too many arguments
 
 [case testOverloadedMethodAsDataAttribute]
 from typing import overload
@@ -333,7 +333,7 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E:3: No overload variant matches argument types [__main__.A]
+a.g(a) # E: No overload variant matches argument types [__main__.A]
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 
@@ -342,8 +342,8 @@ class A:
     g = f
 a = None # type: A
 a.g(object())
-a.g(a, a) # E:3: Too many arguments
-a.g()     # E:3: Too few arguments
+a.g(a, a) # E: Too many arguments
+a.g()     # E: Too few arguments
 
 [case testMethodAsDataAttributeInGenericClass]
 from typing import TypeVar, Generic
@@ -354,7 +354,7 @@ class A(Generic[t]):
     g = f
 a = None # type: A[B]
 a.g(B())
-a.g(a)   # E:3: Argument 1 has incompatible type A[B]; expected "B"
+a.g(a)   # E: Argument 1 has incompatible type A[B]; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
 from typing import Any, TypeVar, Generic, Callable
@@ -367,7 +367,7 @@ class A(Generic[t]):
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
-ac.f()   # E:2: Invalid method type
+ac.f()   # E: Invalid method type
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
 from typing import Any, TypeVar, Generic, Callable
@@ -391,8 +391,8 @@ class A:
 a = A(None)
 a.f()
 a.g()
-a.f(a) # E:3: Too many arguments
-a.g(a) # E:3: Too many arguments
+a.f(a) # E: Too many arguments
+a.g(a) # E: Too many arguments
 
 
 -- Nested functions
@@ -412,9 +412,9 @@ class A: pass
 class B: pass
 [out]
 main: note: In function "g":
-main:4:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 main: note: In function "f":
-main:7:5: error: Argument 1 to "g" has incompatible type "A"; expected "B"
+main:7: error: Argument 1 to "g" has incompatible type "A"; expected "B"
 
 [case testReturnAndNestedFunction]
 import typing
@@ -428,16 +428,16 @@ class A: pass
 class B: pass
 [out]
 main: note: In function "g":
-main:4:8: error: Incompatible return value type (got "A", expected "B")
+main:4: error: Incompatible return value type (got "A", expected "B")
 main: note: In function "f":
-main:6:4: error: Incompatible return value type (got "B", expected "A")
+main:6: error: Incompatible return value type (got "B", expected "A")
 
 [case testDynamicallyTypedNestedFunction]
 import typing
 def f(x: object) -> None:
     def g(y):
         pass
-    g() # E:5: Too few arguments for "g"
+    g() # E: Too few arguments for "g"
     g(x)
 [out]
 main: note: In function "f":
@@ -453,9 +453,9 @@ class A:
         g(A()) # fail
 [out]
 main: note: In function "g":
-main:6:12: error: Incompatible types in assignment (expression has type "int", variable has type "A")
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main: note: In member "f" of class "A":
-main:8:9: error: Argument 1 to "g" has incompatible type "A"; expected "int"
+main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
 [case testMutuallyRecursiveNestedFunctions]
 def f() -> None:
@@ -467,9 +467,9 @@ def f() -> None:
         g(1) # E
 [out]
 main: note: In function "g":
-main:4:9: error: Argument 1 to "h" has incompatible type "str"; expected "int"
+main:4: error: Argument 1 to "h" has incompatible type "str"; expected "int"
 main: note: In function "h":
-main:7:9: error: Too many arguments for "g"
+main:7: error: Too many arguments for "g"
 
 [case testMutuallyRecursiveDecoratedFunctions]
 from typing import Callable, Any
@@ -485,9 +485,9 @@ def f() -> None:
         g.x # E
 [out]
 main: note: In function "g":
-main:7:9: error: Callable[..., Any] has no attribute "x"
+main:7: error: Callable[..., Any] has no attribute "x"
 main: note: In function "h":
-main:11:9: error: Callable[..., Any] has no attribute "x"
+main:11: error: Callable[..., Any] has no attribute "x"
 
 [case testNestedGenericFunctions]
 from typing import TypeVar
@@ -527,7 +527,7 @@ def dec(f: t) -> t:
 @dec
 def f(x: int) -> None: pass
 f(1)
-f('x') # E:1: Argument 1 to "f" has incompatible type "str"; expected "int"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testTrivialStaticallyTypedMethodDecorator]
 from typing import TypeVar
@@ -538,7 +538,7 @@ class A:
     @dec
     def f(self, x: int) -> None: pass
 A().f(1)
-A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 class B: pass
 
 [case testTrivialDecoratedNestedFunction]
@@ -550,7 +550,7 @@ def g() -> None:
     @dec
     def f(x: int) -> None: pass
     f(1)
-    f('') # E:5: Argument 1 to "f" has incompatible type "str"; expected "int"
+    f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
 main: note: In function "g":
 
@@ -560,7 +560,7 @@ def dec(f): pass
 @dec
 def f(x: 'A') -> None:
     a = x # type: A
-    x = object() # E:4: Incompatible types in assignment (expression has type "object", variable has type "A")
+    x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [out]
 main: note: In function "f":
@@ -571,7 +571,7 @@ def dec(x) -> Callable[[], None]: pass
 @dec
 def f(y): pass
 f()
-f(None) # E:1: Too many arguments for "f"
+f(None) # E: Too many arguments for "f"
 
 [case testDecoratorThatSwitchesTypeWithMethod]
 from typing import Any, Callable
@@ -581,7 +581,7 @@ class A:
     def f(self, a, b, c): pass
 a = None # type: A
 a.f()
-a.f(None) # E:3: Too many arguments for "f" of "A"
+a.f(None) # E: Too many arguments for "f" of "A"
 
 [case testNestedDecorators]
 from typing import Any, Callable
@@ -591,13 +591,13 @@ def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
 @dec2
 def f(x, y): pass
 f()
-f(None) # E:1: Too many arguments for "f"
+f(None) # E: Too many arguments for "f"
 
 [case testInvalidDecorator1]
 from typing import Any, Callable
 def dec1(f: Callable[[Any], None]) -> Callable[[], None]: pass
 def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
-@dec1 # E:0: Argument 1 to "dec2" has incompatible type Callable[[Any], Any]; expected Callable[[Any, Any], None]
+@dec1 # E: Argument 1 to "dec2" has incompatible type Callable[[Any], Any]; expected Callable[[Any, Any], None]
 @dec2
 def f(x): pass
 
@@ -605,7 +605,7 @@ def f(x): pass
 from typing import Any, Callable
 def dec1(f: Callable[[Any, Any], None]) -> Callable[[], None]: pass
 def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
-@dec1 # E:0: Argument 1 to "dec1" has incompatible type Callable[[Any], None]; expected Callable[[Any, Any], None]
+@dec1 # E: Argument 1 to "dec1" has incompatible type Callable[[Any], None]; expected Callable[[Any, Any], None]
 @dec2
 def f(x, y): pass
 
@@ -690,9 +690,9 @@ from typing import TypeVar
 
 def f(self) -> None:
     g()
-    g(1) # E:5: Too many arguments for "g"
-    h(1).x # E:8: "str" has no attribute "x"
-    h('') # E:5: Argument 1 to "h" has incompatible type "str"; expected "int"
+    g(1) # E: Too many arguments for "g"
+    h(1).x # E: "str" has no attribute "x"
+    h('') # E: Argument 1 to "h" has incompatible type "str"; expected "int"
 
 T = TypeVar('T')
 def dec(f: T) -> T:
@@ -721,8 +721,8 @@ def dec(f): return f
 from typing import TypeVar
 
 def f(self) -> None:
-    A().f(1).y # E:12: "str" has no attribute "y"
-    A().f('') # E:9: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+    A().f(1).y # E: "str" has no attribute "y"
+    A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 class A:
     @dec
@@ -745,7 +745,7 @@ class A:
 
 [case testForwardReferenceToStaticallyTypedProperty]
 def f(self) -> None:
-    A().x.y # E:9: "int" has no attribute "y"
+    A().x.y # E: "int" has no attribute "y"
 
 class A:
     @property
@@ -757,7 +757,7 @@ main: note: In function "f":
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E:7: Too few arguments for "x"
+    A.x() # E: Too few arguments for "x"
 
 class A:
     @staticmethod
@@ -768,8 +768,8 @@ main: note: In function "f":
 
 [case testForwardReferenceToStaticallyTypedStaticMethod]
 def f(self) -> None:
-    A.x(1).y # E:10: "str" has no attribute "y"
-    A.x('') # E:7: Argument 1 to "x" of "A" has incompatible type "str"; expected "int"
+    A.x(1).y # E: "str" has no attribute "y"
+    A.x('') # E: Argument 1 to "x" of "A" has incompatible type "str"; expected "int"
 
 class A:
     @staticmethod
@@ -781,7 +781,7 @@ main: note: In function "f":
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E:7: Too few arguments for "x"
+    A.x() # E: Too few arguments for "x"
 
 class A:
     @classmethod
@@ -792,8 +792,8 @@ main: note: In function "f":
 
 [case testForwardReferenceToStaticallyTypedClassMethod]
 def f(self) -> None:
-    A.x(1).y # E:10: "str" has no attribute "y"
-    A.x('') # E:7: Argument 1 to "x" of "A" has incompatible type "str"; expected "int"
+    A.x(1).y # E: "str" has no attribute "y"
+    A.x('') # E: Argument 1 to "x" of "A" has incompatible type "str"; expected "int"
 
 class A:
     @classmethod
@@ -806,7 +806,7 @@ main: note: In function "f":
 import m
 
 def f(self) -> None:
-    g(1).x # E:8: "str" has no attribute "x"
+    g(1).x # E: "str" has no attribute "x"
 
 @m.dec
 def g(x: int) -> str: pass
@@ -892,9 +892,9 @@ def dec(f: T) -> T: return f
 [out]
 tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
-tmp/b.py:5:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+tmp/b.py:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 main:1: note: In module imported here:
-tmp/a.py:5:3: error: Argument 1 to "g" has incompatible type "int"; expected "str"
+tmp/a.py:5: error: Argument 1 to "g" has incompatible type "int"; expected "str"
 
 [case testDecoratorWithNoAnnotationInImportCycle]
 import a
@@ -940,9 +940,9 @@ def dec(f: Callable[[int], str]) -> Callable[[int], str]: return f
 [out]
 tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
-tmp/b.py:5:6: error: "str" not callable
+tmp/b.py:5: error: "str" not callable
 main:1: note: In module imported here:
-tmp/a.py:5:6: error: "str" not callable
+tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycle]
 import a
@@ -968,9 +968,9 @@ def dec() -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 [out]
 tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
-tmp/b.py:5:6: error: "str" not callable
+tmp/b.py:5: error: "str" not callable
 main:1: note: In module imported here:
-tmp/a.py:5:6: error: "str" not callable
+tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycleAndDecoratorArgs]
 import a
@@ -996,11 +996,11 @@ def dec(x: str) -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 [out]
 tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
-tmp/b.py:3:4: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
-tmp/b.py:5:6: error: "str" not callable
+tmp/b.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
+tmp/b.py:5: error: "str" not callable
 main:1: note: In module imported here:
-tmp/a.py:3:4: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
-tmp/a.py:5:6: error: "str" not callable
+tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
+tmp/a.py:5: error: "str" not callable
 
 [case testUndefinedDecoratorInImportCycle]
 # cmd: mypy -m foo.base
@@ -1014,7 +1014,7 @@ class Base:
     @decorator
     def method(self) -> None: pass
 [out]
-tmp/foo/base.py:3:5: error: Name 'decorator' is not defined
+tmp/foo/base.py:3: error: Name 'decorator' is not defined
 
 
 -- Conditional function definition
@@ -1027,7 +1027,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None:
         x = 1
-        x = '' # E:8: Incompatible types in assignment (expression has type "str", variable has type "int")
+        x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: note: In function "f":
 
@@ -1037,9 +1037,9 @@ x = None # type: Any
 if x:
     def f(x: int) -> None:  pass
     f(1)
-    f('x') # E:5: Argument 1 to "f" has incompatible type "str"; expected "int"
+    f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 f(1)
-f('x') # E:1: Argument 1 to "f" has incompatible type "str"; expected "int"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testConditionalFunctionDefinitionWithIfElse]
 from typing import Any
@@ -1056,10 +1056,10 @@ f(1)
 f('x') # fail
 [out]
 main: note: In function "f":
-main:5:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:9:10: error: Unsupported operand types for + ("int" and "str")
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:9: error: Unsupported operand types for + ("int" and "str")
 main: note: At top level:
-main:12:1: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testNestedConditionalFunctionDefinitionWithIfElse]
 from typing import Any
@@ -1077,17 +1077,17 @@ def top() -> None:
     f('x') # fail
 [out]
 main: note: In function "f":
-main:6:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10:14: error: Unsupported operand types for + ("int" and "str")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:10: error: Unsupported operand types for + ("int" and "str")
 main: note: In function "top":
-main:13:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+main:13: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
 from typing import Any
 x = None # type: Any
 if x:
     def f(): pass
-def f(): pass # E:0: Name 'f' already defined
+def f(): pass # E: Name 'f' already defined
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1095,7 +1095,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x): pass # E:4: All conditional function variants must have identical signatures
+    def f(x): pass # E: All conditional function variants must have identical signatures
 
 [case testIncompatibleConditionalFunctionDefinition2]
 from typing import Any
@@ -1103,7 +1103,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(y: int) -> None: pass # E:4: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
 
 [case testIncompatibleConditionalFunctionDefinition3]
 from typing import Any
@@ -1111,23 +1111,23 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass
 else:
-    def f(x: int = 0) -> None: pass # E:4: All conditional function variants must have identical signatures
+    def f(x: int = 0) -> None: pass # E: All conditional function variants must have identical signatures
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
 def f(x: str) -> None: pass
 x = None # type: Any
 if x:
-    def f(x: int) -> None: pass # E:4: All conditional function variants must have identical signatures
+    def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
 from typing import Any
-def f(x: int) -> None: pass # N:0: "f" defined here
+def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
 if x:
-    def f(y: int) -> None: pass # E:4: All conditional function variants must have identical signatures
+    def f(y: int) -> None: pass # E: All conditional function variants must have identical signatures
 f(x=1) # The first definition takes precedence.
-f(y=1) # E:1: Unexpected keyword argument "y" for "f"
+f(y=1) # E: Unexpected keyword argument "y" for "f"
 
 [case testRedefineFunctionDefinedAsVariable]
 def g(): pass
@@ -1135,7 +1135,7 @@ f = g
 if g():
     def f(): pass
 f()
-f(1) # E:1: Too many arguments
+f(1) # E: Too many arguments
 
 [case testRedefineFunctionDefinedAsVariableInitializedToNone]
 def g(): pass
@@ -1143,16 +1143,16 @@ f = None
 if g():
     def f(): pass
 f()
-f(1) # E:1: Too many arguments for "f"
+f(1) # E: Too many arguments for "f"
 
 [case testRedefineNestedFunctionDefinedAsVariableInitializedToNone]
 def g() -> None:
     f = None
     if object():
         def f(x: int) -> None: pass
-    f() # E:5: Too few arguments for "f"
+    f() # E: Too few arguments for "f"
     f(1)
-    f('') # E:5: Argument 1 to "f" has incompatible type "str"; expected "int"
+    f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
 main: note: In function "g":
 
@@ -1160,7 +1160,7 @@ main: note: In function "g":
 def g(): pass
 f = g
 if g():
-    def f(x): pass  # E:4: Incompatible redefinition (redefinition with type Callable[[Any], Any], original type Callable[[], Any])
+    def f(x): pass  # E: Incompatible redefinition (redefinition with type Callable[[Any], Any], original type Callable[[], Any])
 
 [case testRedefineFunctionDefinedAsVariableWithVariance1]
 class B: pass
@@ -1179,9 +1179,9 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E:0: Need type annotation for variable
+f = [] # E: Need type annotation for variable
 if object():
-    def f(): pass # E:4: Incompatible redefinition
+    def f(): pass # E: Incompatible redefinition
 f()
 f(1)
 [builtins fixtures/list.pyi]
@@ -1198,7 +1198,7 @@ class A:
     if x:
         def f(self, x: int) -> None:
             x = 1
-            x = '' # E:12: Incompatible types in assignment (expression has type "str", variable has type "int")
+            x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
 main: note: In member "f" of class "A":
 
@@ -1209,9 +1209,9 @@ class A:
     if x:
         def f(self, x: int) -> None:  pass
         f(x, 1)
-        f(x, 'x') # E:9: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
+        f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
     f(x, 1)
-    f(x, 'x') # E:5: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
+    f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
 [out]
 main: note: In class "A":
 
@@ -1222,7 +1222,7 @@ class A:
     if x:
          def f(self, x: int) -> None: pass
 A().f(1)
-A().f('x') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f('x') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testConditionalMethodDefinitionWithIfElse]
 from typing import Any
@@ -1240,10 +1240,10 @@ A().f(1)
 A().f('x') # fail
 [out]
 main: note: In member "f" of class "A":
-main:6:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10:14: error: Unsupported operand types for + ("int" and "str")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:10: error: Unsupported operand types for + ("int" and "str")
 main: note: At top level:
-main:13:5: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+main:13: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]
 from typing import Any
@@ -1251,7 +1251,7 @@ x = None # type: Any
 class A:
     if x:
         def f(self): pass
-    def f(self): pass # E:4: Name 'f' already defined
+    def f(self): pass # E: Name 'f' already defined
 
 [case testIncompatibleConditionalMethodDefinition]
 from typing import Any
@@ -1260,7 +1260,7 @@ class A:
     if x:
         def f(self, x: int) -> None: pass
     else:
-        def f(self, x): pass # E:8: All conditional function variants must have identical signatures
+        def f(self, x): pass # E: All conditional function variants must have identical signatures
 [out]
 main: note: In class "A":
 
@@ -1271,9 +1271,9 @@ try:
 except:
     def g(x: str) -> None: pass
 f(1)
-f('x') # E:1: Argument 1 to "f" has incompatible type "str"; expected "int"
+f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
-g(1) # E:1: Argument 1 to "g" has incompatible type "int"; expected "str"
+g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
 
 -- Callable[..., T]
@@ -1286,7 +1286,7 @@ def f(x: Callable[..., int]) -> None:
     x()
     x(1)
     x(z=1)
-    x() + '' # E:8: Unsupported operand types for + ("int" and "str")
+    x() + '' # E: Unsupported operand types for + ("int" and "str")
 [out]
 main: note: In function "f":
 
@@ -1299,12 +1299,12 @@ def f(x: Callable[..., int]) -> None:
 [case testCastWithCallableAndArbitraryArgs]
 from typing import Callable, cast
 f = cast(Callable[..., int], None)
-f(x=4) + '' # E:7: Unsupported operand types for + ("int" and "str")
+f(x=4) + '' # E: Unsupported operand types for + ("int" and "str")
 
 [case testCallableWithArbitraryArgsInErrorMessage]
 from typing import Callable
 def f(x: Callable[..., int]) -> None:
-    x = 1  # E:4: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
+    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
 [out]
 main: note: In function "f":
 
@@ -1314,7 +1314,7 @@ T = TypeVar('T')
 def f(x: Callable[..., T]) -> T: pass
 def g(*x: int) -> str: pass
 x = f(g)
-x + 1 # E:2: Unsupported left operand type for + ("str")
+x + 1 # E: Unsupported left operand type for + ("str")
 [builtins fixtures/list.pyi]
 
 [case testCallableWithArbitraryArgsSubtyping]
@@ -1327,7 +1327,7 @@ def g4(*, y: int) -> str: pass
 f(g1)
 f(g2)
 f(g3)
-f(g4) # E:1: Argument 1 to "f" has incompatible type Callable[[int], str]; expected Callable[..., int]
+f(g4) # E: Argument 1 to "f" has incompatible type Callable[[int], str]; expected Callable[..., int]
 
 [case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
 from typing import Callable, TypeVar
@@ -1360,7 +1360,7 @@ f(x=1, y="hello", z=[])
 from typing import Dict
 def f(x, **kwargs): # type: (...) -> None
     success_dict_type = kwargs # type: Dict[str, str]
-    failure_dict_type = kwargs # type: Dict[int, str] # E:4: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[int, str])
+    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type Dict[str, Any], variable has type Dict[int, str])
 f(1, thing_in_kwargs=["hey"])
 [builtins fixtures/dict.pyi]
 [out]
@@ -1370,7 +1370,7 @@ main: note: In function "f":
 from typing import Tuple, Any
 def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
-    fail_tuple_type = args # type: None # E:4: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type Tuple[Any, ...], variable has type None)
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1400,14 +1400,14 @@ def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
 main: note: In function "f":
-main:1:9: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
 main: note: In function "f":
-main:1:9: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic
@@ -1460,11 +1460,11 @@ def f(x): pass
 def g(x, y): pass
 def h(y): pass
 f = h
-f = g # E:0: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
+f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
 
 [case testRedefineFunction2]
 def f() -> None: pass
-def f() -> None: pass # E:0: Name 'f' already defined
+def f() -> None: pass # E: Name 'f' already defined
 
 
 -- Special cases
@@ -1506,7 +1506,7 @@ a = 1  # type: Any
 with a:
     def f() -> None:
         pass
-    f(1) # E:5: Too many arguments for "f"
+    f(1) # E: Too many arguments for "f"
 
 
 [case testNameForDecoratorMethod]
@@ -1515,7 +1515,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E:14: Too few arguments for "g" of "A"
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass

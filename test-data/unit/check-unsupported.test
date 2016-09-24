@@ -11,5 +11,5 @@ def g(): pass
 @d # E
 def g(x): pass
 [out]
-main:5:0: error: Name 'f' already defined
-main:7:0: error: Name 'g' already defined
+main:5: error: Name 'f' already defined
+main:7: error: Name 'g' already defined

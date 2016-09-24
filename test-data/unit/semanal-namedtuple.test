@@ -109,36 +109,36 @@ MypyFile:1(
 
 [case testNamedTupleWithTooFewArguments]
 from collections import namedtuple
-N = namedtuple('N') # E:14: Too few arguments for namedtuple()
+N = namedtuple('N') # E: Too few arguments for namedtuple()
 
 [case testNamedTupleWithTooManyArguments]
 from collections import namedtuple
-N = namedtuple('N', ['x'], 'y') # E:14: Too many arguments for namedtuple()
+N = namedtuple('N', ['x'], 'y') # E: Too many arguments for namedtuple()
 
 [case testNamedTupleWithInvalidName]
 from collections import namedtuple
-N = namedtuple(1, ['x']) # E:14: namedtuple() expects a string literal as the first argument
+N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first argument
 
 [case testNamedTupleWithInvalidItems]
 from collections import namedtuple
-N = namedtuple('N', 1) # E:14: List literal expected as the second argument to namedtuple()
+N = namedtuple('N', 1) # E: List literal expected as the second argument to namedtuple()
 
 [case testNamedTupleWithInvalidItems2]
 from collections import namedtuple
-N = namedtuple('N', ['x', 1]) # E:14: String literal expected as namedtuple() item
+N = namedtuple('N', ['x', 1]) # E: String literal expected as namedtuple() item
 
 [case testNamedTupleWithInvalidArgs]
 from collections import namedtuple
-N = namedtuple('N', x=['x']) # E:14: Unexpected arguments to namedtuple()
+N = namedtuple('N', x=['x']) # E: Unexpected arguments to namedtuple()
 
 [case testInvalidNamedTupleBaseClass]
 from typing import NamedTuple
-class A(NamedTuple('N', [1])): pass # E:25: Tuple expected as NamedTuple() field
+class A(NamedTuple('N', [1])): pass # E: Tuple expected as NamedTuple() field
 class B(A): pass
 
 [case testInvalidNamedTupleBaseClass2]
 class A(NamedTuple('N', [1])): pass
 class B(A): pass
 [out]
-main:1:8: error: Name 'NamedTuple' is not defined
-main:1:18: error: Invalid base class
+main:1: error: Name 'NamedTuple' is not defined
+main:1: error: Invalid base class

@@ -107,8 +107,8 @@ abs(1) + 'x'  # Error
 f = abs(1.1)
 abs(1.1) + 'x'  # Error
 [out]
-_program.py:5:7: error: Unsupported operand types for + ("int" and "str")
-_program.py:7:9: error: Unsupported operand types for + ("float" and "str")
+_program.py:5: error: Unsupported operand types for + ("int" and "str")
+_program.py:7: error: Unsupported operand types for + ("float" and "str")
 
 [case testRound]
 from typing import SupportsRound
@@ -367,7 +367,7 @@ b'zar'
 import typing
 cast(int, 2)
 [out]
-_program.py:2:0: error: Name 'cast' is not defined
+_program.py:2: error: Name 'cast' is not defined
 
 [case testBinaryIOType]
 from typing import BinaryIO
@@ -389,9 +389,9 @@ txt(sys.stdout)
 bin(sys.stdout)
 [out]
 _program.py: note: In function "txt":
-_program.py:5:11: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
+_program.py:5: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
 _program.py: note: At top level:
-_program.py:10:3: error: Argument 1 to "bin" has incompatible type "TextIO"; expected IO[bytes]
+_program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected IO[bytes]
 
 [case testBuiltinOpen]
 f = open('x')
@@ -399,7 +399,7 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-_program.py:4:1: error: IO[Any] has no attribute "foobar"
+_program.py:4: error: IO[Any] has no attribute "foobar"
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -472,7 +472,7 @@ n = abs(2)
 f = abs(2.2)
 abs(2.2) + 'x'
 [out]
-_program.py:6:9: error: Unsupported operand types for + ("float" and "str")
+_program.py:6: error: Unsupported operand types for + ("float" and "str")
 
 [case testROperatorMethods]
 
@@ -484,7 +484,7 @@ b = b'foo' * 5
 s = 5 * 'foo'
 s = 'foo' * 5
 [out]
-_program.py:4:0: error: Incompatible types in assignment (expression has type "bytes", variable has type "str")
+_program.py:4: error: Incompatible types in assignment (expression has type "bytes", variable has type "str")
 
 [case testROperatorMethods2]
 import typing
@@ -536,7 +536,7 @@ b = C()
 print(A() + b)
 [out]
 _program.py: note: In member "__radd__" of class "B":
-_program.py:9:4: error: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+_program.py:9: error: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
 [case testBytesAndBytearrayComparisons]
 import typing
@@ -553,10 +553,10 @@ b'' < ''
 '' < bytearray()
 bytearray() < ''
 [out]
-_program.py:2:3: error: Unsupported operand types for > ("bytes" and "str")
-_program.py:3:4: error: Unsupported operand types for > ("str" and "bytes")
-_program.py:4:3: error: Unsupported operand types for > ("bytearray" and "str")
-_program.py:5:12: error: Unsupported operand types for > ("str" and "bytearray")
+_program.py:2: error: Unsupported operand types for > ("bytes" and "str")
+_program.py:3: error: Unsupported operand types for > ("str" and "bytes")
+_program.py:4: error: Unsupported operand types for > ("bytearray" and "str")
+_program.py:5: error: Unsupported operand types for > ("str" and "bytearray")
 
 [case testInplaceOperatorMethod]
 import typing
@@ -579,7 +579,7 @@ print(tuple(a))
 import typing
 [1] + iter([2, 3])
 [out]
-_program.py:2:4: error: Unsupported operand types for + ("list" and Iterator[int])
+_program.py:2: error: Unsupported operand types for + ("list" and Iterator[int])
 
 [case testInferHeterogeneousListOfIterables]
 from typing import Sequence
@@ -759,7 +759,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4:3: error: Argument 1 to "map" has incompatible type Callable[[str], str]; expected Callable[[int], str]
+_program.py:4: error: Argument 1 to "map" has incompatible type Callable[[str], str]; expected Callable[[int], str]
 
 [case testMapStr]
 import typing
@@ -767,7 +767,7 @@ x = range(3)
 a = list(map(str, x))
 a + 1
 [out]
-_program.py:4:2: error: Unsupported operand types for + (List[str] and "int")
+_program.py:4: error: Unsupported operand types for + (List[str] and "int")
 
 [case testNamedTuple]
 import typing
@@ -794,7 +794,7 @@ X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 x.c
 [out]
-_program.py:5:1: error: "X" has no attribute "c"
+_program.py:5: error: "X" has no attribute "c"
 
 [case testNamedTupleTupleOperations]
 from typing import Iterable
@@ -859,7 +859,7 @@ def f(x):
 import typing
 def f(x: str) -> None: pass
 [out]
-_program.py:2:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+_program.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
 [case testAssignToComplexReal]
 import typing
@@ -868,8 +868,8 @@ y = x.real
 y = x         # Error
 x.real = 2.0  # Error
 [out]
-_program.py:4:0: error: Incompatible types in assignment (expression has type "complex", variable has type "float")
-_program.py:5:1: error: Property "real" defined in "complex" is read-only
+_program.py:4: error: Incompatible types in assignment (expression has type "complex", variable has type "float")
+_program.py:5: error: Property "real" defined in "complex" is read-only
 
 [case testComplexArithmetic]
 import typing
@@ -888,8 +888,8 @@ x = ''
 y = 3j * 2.0
 y = ''
 [out]
-_program.py:3:0: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
-_program.py:5:0: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
+_program.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
+_program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
 
 [case testUnionTypeAlias]
 from typing import Union
@@ -897,7 +897,7 @@ U = Union[int, str]
 u = 1 # type: U
 u = 1.1
 [out]
-_program.py:4:0: error: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
+_program.py:4: error: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -905,7 +905,7 @@ A = Tuple[int, str]
 u = 1, 'x' # type: A
 u = 1
 [out]
-_program.py:4:0: error: Incompatible types in assignment (expression has type "int", variable has type "Tuple[int, str]")
+_program.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "Tuple[int, str]")
 
 [case testCallableTypeAlias]
 from typing import Callable
@@ -915,7 +915,7 @@ def f(x: A) -> None:
     x('')
 [out]
 _program.py: note: In function "f":
-_program.py:5:5: error: Argument 1 has incompatible type "str"; expected "int"
+_program.py:5: error: Argument 1 has incompatible type "str"; expected "int"
 
 [case testSuperNew]
 from typing import Dict, Any
@@ -971,7 +971,7 @@ def f(*x: int) -> None:
 f(1)
 [out]
 _program.py: note: In function "f":
-_program.py:3:5: error: Tuple[int, ...] has no attribute "append"
+_program.py:3: error: Tuple[int, ...] has no attribute "append"
 
 [case testExit]
 print('a')
@@ -1045,23 +1045,23 @@ def p(t: Tuple[str, ...]) -> None:
 ''.startswith(('x', b'y'))
 [out]
 _program.py: note: In function "p":
-_program.py:6:9: error: "str" not callable
+_program.py:6: error: "str" not callable
 _program.py: note: At top level:
-_program.py:8:13: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[str, bytes]"; expected "Union[str, Tuple[str, ...]]"
+_program.py:8: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[str, bytes]"; expected "Union[str, Tuple[str, ...]]"
 
 [case testMultiplyTupleByInteger]
 n = 4
 t = ('',) * n
 t + 1
 [out]
-_program.py:3:2: error: Unsupported operand types for + (Tuple[str, ...] and "int")
+_program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
 t = n * ('',)
 t + 1
 [out]
-_program.py:3:2: error: Unsupported operand types for + (Tuple[str, ...] and "int")
+_program.py:3: error: Unsupported operand types for + (Tuple[str, ...] and "int")
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -1072,8 +1072,8 @@ d3.xyz # E
 d4 = dict(a=1, b='') # type: Dict[str, Any]
 result = dict(x=[], y=[]) # type: Dict[str, List[str]]
 [out]
-_program.py:3:9: error: List item 1 has incompatible type "Tuple[str, str]"
-_program.py:5:2: error: Dict[str, int] has no attribute "xyz"
+_program.py:3: error: List item 1 has incompatible type "Tuple[str, str]"
+_program.py:5: error: Dict[str, int] has no attribute "xyz"
 
 [case testDefaultDict]
 import typing as t
@@ -1101,11 +1101,11 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6:16: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
-_program.py:9:10: error: Invalid index type "str" for "dict"
-_program.py:9:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19:22: error: List item 0 has incompatible type "Tuple[str, List[None]]"
-_program.py:23:13: error: Invalid index type "str" for "dict"
+_program.py:6: error: Argument 1 to "defaultdict" has incompatible type List[_T]; expected Callable[[], str]
+_program.py:9: error: Invalid index type "str" for "dict"
+_program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
+_program.py:19: error: List item 0 has incompatible type "Tuple[str, List[None]]"
+_program.py:23: error: Invalid index type "str" for "dict"
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
@@ -1119,7 +1119,7 @@ class A:
         super().__setattr__(1, 'a')
 [out]
 _program.py: note: In member "__init__" of class "A":
-_program.py:4:27: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
+_program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
 
 [case testMetaclassAndSuper]
 class A(type):
@@ -1185,8 +1185,8 @@ re.subn(bpat, b'', b'')[0] + b''
 re.subn(bre, lambda m: b'', b'')[0] + b''
 re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_program.py:7:9: error: Type argument 1 of "search" has incompatible value "object"
-_program.py:9:9: error: Cannot infer type argument 1 of "search"
+_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testReModuleString]
 # Regression tests for various overloads in the re module -- string version
@@ -1209,8 +1209,8 @@ re.subn(spat, '', '')[0] + ''
 re.subn(sre, lambda m: '', '')[0] + ''
 re.subn(spat, lambda m: '', '')[0] + ''
 [out]
-_program.py:7:9: error: Type argument 1 of "search" has incompatible value "object"
-_program.py:9:9: error: Cannot infer type argument 1 of "search"
+_program.py:7: error: Type argument 1 of "search" has incompatible value "object"
+_program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testListSetitemTuple]
 from typing import List, Tuple
@@ -1219,4 +1219,4 @@ a[0] = 'x', 1
 a[1] = 2, 'y'
 a[:] = [('z', 3)]
 [out]
-_program.py:4:8: error: Incompatible types in assignment (expression has type "Tuple[int, str]", target has type "Tuple[str, int]")
+_program.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, str]", target has type "Tuple[str, int]")
