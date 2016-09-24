@@ -115,7 +115,9 @@ def with_line_and_column(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTC
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno)
-        node.set_column(ast.col_offset)
+        if hasattr(ast, 'col_offset'):
+            # some ast nodes (e.g. Return) do not come with col_offset
+            node.set_column(ast.col_offset)
         return node
     return wrapper
 
