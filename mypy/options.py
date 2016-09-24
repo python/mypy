@@ -100,6 +100,7 @@ class Options:
         self.debug_cache = False
         self.suppress_error_context = False  # Suppress "note: In function "foo":" messages.
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
+        self.show_column_numbers = False  # type: bool
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__

@@ -112,7 +112,7 @@ class Errors:
         self.show_column_numbers = show_column_numbers
 
     def copy(self) -> 'Errors':
-        new = Errors(self.suppress_error_context)
+        new = Errors(self.suppress_error_context, self.show_column_numbers)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
