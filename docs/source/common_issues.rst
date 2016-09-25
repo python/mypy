@@ -260,17 +260,16 @@ imports to a module and those imports cause cycles that didn't exist
 before.  If those cycles become a problem when running your program,
 there's a trick: if the import is only needed for type annotations in
 forward references (string literals) or comments, you can write the
-imports inside ``if False:`` so that they are not executed at runtime.
-The reason this works is that mypy (currently) does not analyze
-unreachable code like this.  Example:
+imports inside ``if TYPE_CHECKING:`` so that they are not executed at runtime.
+Example:
 
 File ``foo.py``:
 
 .. code-block:: python
 
-   from typing import List
+   from typing import List, TYPE_CHECKING
 
-   if False:
+   if TYPE_CHECKING:
        import bar
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
@@ -289,7 +288,5 @@ File ``bar.py``:
 
 .. note::
 
-   It is possible that in the future, mypy will change its dead code
-   analysis and this trick will stop working.  We will then offer an
-   alternative, e.g. a constant defined by the ``typing`` module that
+   The ``TYPE_CHECKING`` constant defined by the ``typing`` module
    is ``False`` at runtime but ``True`` while type checking.
