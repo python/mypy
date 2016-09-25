@@ -65,6 +65,7 @@ files = [
     'check-warnings.test',
     'check-async-await.test',
     'check-newtype.test',
+    'check-columns.test',
 ]
 
 
