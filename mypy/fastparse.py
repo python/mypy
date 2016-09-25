@@ -95,8 +95,7 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
     @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
-        # some ast nodes (e.g. Return) do not come with col_offset
-        node.set_line(ast.lineno, getattr(ast, 'col_offset', -1))
+        node.set_line(ast.lineno, ast.col_offset)
         return node
     return wrapper
 
@@ -261,8 +260,7 @@ class ASTConverter(ast35.NodeTransformer):
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
             except SyntaxError:
-                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno,
-                                            getattr(n, 'col_offset', -1))
+                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
             assert isinstance(func_type_ast, ast35.FunctionType)
             # for ellipsis arg
             if (len(func_type_ast.argtypes) == 1 and
@@ -602,6 +600,7 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_Lambda(self, n: ast35.Lambda) -> Node:
         body = ast35.Return(n.body)
         body.lineno = n.lineno
+        body.col_offset = n.col_offset
 
         return FuncExpr(self.transform_args(n.args, n.lineno),
                         self.as_block([body], n.lineno))
