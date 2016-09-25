@@ -197,6 +197,9 @@ def process_options(args: List[str],
     parser.add_argument('--config-file',
                         help="Configuration file, must have a [mypy] section "
                         "(defaults to {})".format(defaults.CONFIG_FILE))
+    parser.add_argument('--show-column-numbers', action='store_true',
+                        dest='show_column_numbers',
+                        help="Show column numbers in error messages")
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more

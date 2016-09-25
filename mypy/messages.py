@@ -148,6 +148,7 @@ class MessageBuilder:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
+                               context.get_column() if context else -1,
                                msg.strip(), severity=severity, file=file)
 
     def fail(self, msg: str, context: Context, file: str = None) -> None:
