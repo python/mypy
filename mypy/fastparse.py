@@ -261,7 +261,8 @@ class ASTConverter(ast35.NodeTransformer):
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
             except SyntaxError:
-                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno,
+                                            getattr(n, 'col_offset', -1))
             assert isinstance(func_type_ast, ast35.FunctionType)
             # for ellipsis arg
             if (len(func_type_ast.argtypes) == 1 and
@@ -805,8 +806,8 @@ class TypeConverter(ast35.NodeTransformer):
         return parse_type_comment(s.strip(), line=self.line)
 
     def generic_visit(self, node: ast35.AST) -> None:
-        # TODO: specify column
-        raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line, -1)
+        raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line,
+                                    getattr(node, 'col_offset', -1))
 
     def visit_NoneType(self, n: Any) -> Type:
         return None

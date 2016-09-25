@@ -1152,7 +1152,7 @@ class Parser:
             index = index_items[0]
         else:
             index = TupleExpr(index_items)
-            index.set_line(index_items[0].get_line(), index_items[0].get_column())
+            index.set_line(index_items[0])
 
         return index
 
