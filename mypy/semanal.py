@@ -995,7 +995,6 @@ class SemanticAnalyzer(NodeVisitor):
             assignment = AssignmentStmt([lvalue], rvalue)
             for node in assignment, lvalue, rvalue:
                 node.set_line(import_node)
-                node.set_column(import_node)
             import_node.assignments.append(assignment)
             return True
         return False
@@ -1225,7 +1224,6 @@ class SemanticAnalyzer(NodeVisitor):
                 v.info = self.type
                 v.is_initialized_in_class = True
                 v.set_line(lval)
-                v.set_column(lval.column)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = MDEF
@@ -1619,9 +1617,8 @@ class SemanticAnalyzer(NodeVisitor):
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
-        call.analyzed = NamedTupleExpr(info)\
-            .set_line(call.line)\
-            .set_column(call.column)
+        call.analyzed = NamedTupleExpr(info)
+        call.analyzed.set_line(call.line, call.column)
         return info
 
     def parse_namedtuple_args(self, call: CallExpr,
@@ -2122,7 +2119,6 @@ class SemanticAnalyzer(NodeVisitor):
         expr = DictExpr([(StrExpr(key), value)
                          for key, value in zip(call.arg_names, call.args)])
         expr.set_line(call)
-        expr.set_column(call)
         expr.accept(self)
         return expr
 
@@ -2683,8 +2679,7 @@ class FirstPass(NodeVisitor):
         self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
         info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
-        info.set_line(cdef.line)
-        info.set_column(cdef.column)
+        info.set_line(cdef.line, cdef.column)
         cdef.info = info
         self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info,
                                                       self.sem.cur_mod_id)
