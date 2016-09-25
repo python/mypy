@@ -110,7 +110,7 @@ def parse_type_comment(type_comment: str, line: int) -> Type:
         return TypeConverter(line=line).visit(typ.body)
 
 
-def with_line_and_column(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
+def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
     @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
@@ -259,7 +259,7 @@ class ASTConverter(ast27.NodeTransformer):
     #             stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
-    @with_line_and_column
+    @with_line
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Node:
         converter = TypeConverter(line=n.lineno)
         args = self.transform_args(n.args, n.lineno)
@@ -395,7 +395,7 @@ class ASTConverter(ast27.NodeTransformer):
     #  keyword* keywords,
     #  stmt* body,
     #  expr* decorator_list)
-    @with_line_and_column
+    @with_line
     def visit_ClassDef(self, n: ast27.ClassDef) -> Node:
         self.class_nesting += 1
 
@@ -409,12 +409,12 @@ class ASTConverter(ast27.NodeTransformer):
         return cdef
 
     # Return(expr? value)
-    @with_line_and_column
+    @with_line
     def visit_Return(self, n: ast27.Return) -> Node:
         return ReturnStmt(self.visit(n.value))
 
     # Delete(expr* targets)
-    @with_line_and_column
+    @with_line
     def visit_Delete(self, n: ast27.Delete) -> Node:
         if len(n.targets) > 1:
             tup = TupleExpr(self.visit_list(n.targets))
@@ -424,7 +424,7 @@ class ASTConverter(ast27.NodeTransformer):
             return DelStmt(self.visit(n.targets[0]))
 
     # Assign(expr* targets, expr value, string? type_comment)
-    @with_line_and_column
+    @with_line
     def visit_Assign(self, n: ast27.Assign) -> Node:
         typ = None
         if n.type_comment:
@@ -435,14 +435,14 @@ class ASTConverter(ast27.NodeTransformer):
                               type=typ)
 
     # AugAssign(expr target, operator op, expr value)
-    @with_line_and_column
+    @with_line
     def visit_AugAssign(self, n: ast27.AugAssign) -> Node:
         return OperatorAssignmentStmt(self.from_operator(n.op),
                               self.visit(n.target),
                               self.visit(n.value))
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
-    @with_line_and_column
+    @with_line
     def visit_For(self, n: ast27.For) -> Node:
         return ForStmt(self.visit(n.target),
                        self.visit(n.iter),
@@ -450,27 +450,27 @@ class ASTConverter(ast27.NodeTransformer):
                        self.as_block(n.orelse, n.lineno))
 
     # While(expr test, stmt* body, stmt* orelse)
-    @with_line_and_column
+    @with_line
     def visit_While(self, n: ast27.While) -> Node:
         return WhileStmt(self.visit(n.test),
                          self.as_block(n.body, n.lineno),
                          self.as_block(n.orelse, n.lineno))
 
     # If(expr test, stmt* body, stmt* orelse)
-    @with_line_and_column
+    @with_line
     def visit_If(self, n: ast27.If) -> Node:
         return IfStmt([self.visit(n.test)],
                       [self.as_block(n.body, n.lineno)],
                       self.as_block(n.orelse, n.lineno))
 
     # With(withitem* items, stmt* body, string? type_comment)
-    @with_line_and_column
+    @with_line
     def visit_With(self, n: ast27.With) -> Node:
         return WithStmt([self.visit(n.context_expr)],
                         [self.visit(n.optional_vars)],
                         self.as_block(n.body, n.lineno))
 
-    @with_line_and_column
+    @with_line
     def visit_Raise(self, n: ast27.Raise) -> Node:
         e = None
         if n.type is not None:
@@ -486,11 +486,11 @@ class ASTConverter(ast27.NodeTransformer):
         return RaiseStmt(self.visit(e), None)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
-    @with_line_and_column
+    @with_line
     def visit_TryExcept(self, n: ast27.TryExcept) -> Node:
         return self.try_handler(n.body, n.handlers, n.orelse, [], n.lineno)
 
-    @with_line_and_column
+    @with_line
     def visit_TryFinally(self, n: ast27.TryFinally) -> Node:
         if len(n.body) == 1 and isinstance(n.body[0], ast27.TryExcept):
             return self.try_handler([n.body[0]], [], [], n.finalbody, n.lineno)
@@ -522,7 +522,7 @@ class ASTConverter(ast27.NodeTransformer):
                        self.as_block(orelse, lineno),
                        self.as_block(finalbody, lineno))
 
-    @with_line_and_column
+    @with_line
     def visit_Print(self, n: ast27.Print) -> Node:
         keywords = []
         if n.dest is not None:
@@ -539,7 +539,7 @@ class ASTConverter(ast27.NodeTransformer):
             lineno=n.lineno, col_offset=-1)
         return self.visit(ast27.Expr(call, lineno=n.lineno, col_offset=-1))
 
-    @with_line_and_column
+    @with_line
     def visit_Exec(self, n: ast27.Exec) -> Node:
         new_globals = n.globals
         new_locals = n.locals
@@ -558,7 +558,7 @@ class ASTConverter(ast27.NodeTransformer):
                 lineno=n.lineno, col_offset=-1),
             lineno=n.lineno, col_offset=-1))
 
-    @with_line_and_column
+    @with_line
     def visit_Repr(self, n: ast27.Repr) -> Node:
         # TODO: Comment in visit_Print also applies here
         return self.visit(ast27.Call(
@@ -568,19 +568,19 @@ class ASTConverter(ast27.NodeTransformer):
             lineno=n.lineno, col_offset=-1))
 
     # Assert(expr test, expr? msg)
-    @with_line_and_column
+    @with_line
     def visit_Assert(self, n: ast27.Assert) -> Node:
         return AssertStmt(self.visit(n.test))
 
     # Import(alias* names)
-    @with_line_and_column
+    @with_line
     def visit_Import(self, n: ast27.Import) -> Node:
         i = Import([(self.translate_module_id(a.name), a.asname) for a in n.names])
         self.imports.append(i)
         return i
 
     # ImportFrom(identifier? module, alias* names, int? level)
-    @with_line_and_column
+    @with_line
     def visit_ImportFrom(self, n: ast27.ImportFrom) -> Node:
         i = None  # type: ImportBase
         if len(n.names) == 1 and n.names[0].name == '*':
@@ -593,34 +593,34 @@ class ASTConverter(ast27.NodeTransformer):
         return i
 
     # Global(identifier* names)
-    @with_line_and_column
+    @with_line
     def visit_Global(self, n: ast27.Global) -> Node:
         return GlobalDecl(n.names)
 
     # Expr(expr value)
-    @with_line_and_column
+    @with_line
     def visit_Expr(self, n: ast27.Expr) -> Node:
         value = self.visit(n.value)
         return ExpressionStmt(value)
 
     # Pass
-    @with_line_and_column
+    @with_line
     def visit_Pass(self, n: ast27.Pass) -> Node:
         return PassStmt()
 
     # Break
-    @with_line_and_column
+    @with_line
     def visit_Break(self, n: ast27.Break) -> Node:
         return BreakStmt()
 
     # Continue
-    @with_line_and_column
+    @with_line
     def visit_Continue(self, n: ast27.Continue) -> Node:
         return ContinueStmt()
 
     # --- expr ---
     # BoolOp(boolop op, expr* values)
-    @with_line_and_column
+    @with_line
     def visit_BoolOp(self, n: ast27.BoolOp) -> Node:
         # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
         assert len(n.values) >= 2
@@ -642,7 +642,7 @@ class ASTConverter(ast27.NodeTransformer):
         return group(self.visit_list(n.values))
 
     # BinOp(expr left, operator op, expr right)
-    @with_line_and_column
+    @with_line
     def visit_BinOp(self, n: ast27.BinOp) -> Node:
         op = self.from_operator(n.op)
 
@@ -652,7 +652,7 @@ class ASTConverter(ast27.NodeTransformer):
         return OpExpr(op, self.visit(n.left), self.visit(n.right))
 
     # UnaryOp(unaryop op, expr operand)
-    @with_line_and_column
+    @with_line
     def visit_UnaryOp(self, n: ast27.UnaryOp) -> Node:
         op = None
         if isinstance(n.op, ast27.Invert):
@@ -670,7 +670,7 @@ class ASTConverter(ast27.NodeTransformer):
         return UnaryExpr(op, self.visit(n.operand))
 
     # Lambda(arguments args, expr body)
-    @with_line_and_column
+    @with_line
     def visit_Lambda(self, n: ast27.Lambda) -> Node:
         body = ast27.Return(n.body)
         body.lineno = n.lineno
@@ -679,34 +679,34 @@ class ASTConverter(ast27.NodeTransformer):
                         self.as_block([body], n.lineno))
 
     # IfExp(expr test, expr body, expr orelse)
-    @with_line_and_column
+    @with_line
     def visit_IfExp(self, n: ast27.IfExp) -> Node:
         return ConditionalExpr(self.visit(n.test),
                                self.visit(n.body),
                                self.visit(n.orelse))
 
     # Dict(expr* keys, expr* values)
-    @with_line_and_column
+    @with_line
     def visit_Dict(self, n: ast27.Dict) -> Node:
         return DictExpr(list(zip(self.visit_list(n.keys), self.visit_list(n.values))))
 
     # Set(expr* elts)
-    @with_line_and_column
+    @with_line
     def visit_Set(self, n: ast27.Set) -> Node:
         return SetExpr(self.visit_list(n.elts))
 
     # ListComp(expr elt, comprehension* generators)
-    @with_line_and_column
+    @with_line
     def visit_ListComp(self, n: ast27.ListComp) -> Node:
         return ListComprehension(self.visit_GeneratorExp(cast(ast27.GeneratorExp, n)))
 
     # SetComp(expr elt, comprehension* generators)
-    @with_line_and_column
+    @with_line
     def visit_SetComp(self, n: ast27.SetComp) -> Node:
         return SetComprehension(self.visit_GeneratorExp(cast(ast27.GeneratorExp, n)))
 
     # DictComp(expr key, expr value, comprehension* generators)
-    @with_line_and_column
+    @with_line
     def visit_DictComp(self, n: ast27.DictComp) -> Node:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
@@ -718,7 +718,7 @@ class ASTConverter(ast27.NodeTransformer):
                                        ifs_list)
 
     # GeneratorExp(expr elt, comprehension* generators)
-    @with_line_and_column
+    @with_line
     def visit_GeneratorExp(self, n: ast27.GeneratorExp) -> GeneratorExpr:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
@@ -729,12 +729,12 @@ class ASTConverter(ast27.NodeTransformer):
                              ifs_list)
 
     # Yield(expr? value)
-    @with_line_and_column
+    @with_line
     def visit_Yield(self, n: ast27.Yield) -> Node:
         return YieldExpr(self.visit(n.value))
 
     # Compare(expr left, cmpop* ops, expr* comparators)
-    @with_line_and_column
+    @with_line
     def visit_Compare(self, n: ast27.Compare) -> Node:
         operators = [self.from_comp_operator(o) for o in n.ops]
         operands = self.visit_list([n.left] + n.comparators)
@@ -742,7 +742,7 @@ class ASTConverter(ast27.NodeTransformer):
 
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
-    @with_line_and_column
+    @with_line
     def visit_Call(self, n: ast27.Call) -> Node:
         arg_types = []  # type: List[ast27.expr]
         arg_kinds = []  # type: List[int]
@@ -772,7 +772,7 @@ class ASTConverter(ast27.NodeTransformer):
                         cast("List[str]", signature))
 
     # Num(object n) -- a number as a PyObject.
-    @with_line_and_column
+    @with_line
     def visit_Num(self, new: ast27.Num) -> Node:
         value = new.n
         is_inverse = False
@@ -796,7 +796,7 @@ class ASTConverter(ast27.NodeTransformer):
         return expr
 
     # Str(string s)
-    @with_line_and_column
+    @with_line
     def visit_Str(self, s: ast27.Str) -> Node:
         # Hack: assume all string literals in Python 2 stubs are normal
         # strs (i.e. not unicode).  All stubs are parsed with the Python 3
@@ -825,7 +825,7 @@ class ASTConverter(ast27.NodeTransformer):
         return EllipsisExpr()
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    @with_line_and_column
+    @with_line
     def visit_Attribute(self, n: ast27.Attribute) -> Node:
         if (isinstance(n.value, ast27.Call) and
                 isinstance(n.value.func, ast27.Name) and
@@ -835,22 +835,22 @@ class ASTConverter(ast27.NodeTransformer):
         return MemberExpr(self.visit(n.value), n.attr)
 
     # Subscript(expr value, slice slice, expr_context ctx)
-    @with_line_and_column
+    @with_line
     def visit_Subscript(self, n: ast27.Subscript) -> Node:
         return IndexExpr(self.visit(n.value), self.visit(n.slice))
 
     # Name(identifier id, expr_context ctx)
-    @with_line_and_column
+    @with_line
     def visit_Name(self, n: ast27.Name) -> Node:
         return NameExpr(n.id)
 
     # List(expr* elts, expr_context ctx)
-    @with_line_and_column
+    @with_line
     def visit_List(self, n: ast27.List) -> Node:
         return ListExpr([self.visit(e) for e in n.elts])
 
     # Tuple(expr* elts, expr_context ctx)
-    @with_line_and_column
+    @with_line
     def visit_Tuple(self, n: ast27.Tuple) -> Node:
         return TupleExpr([self.visit(e) for e in n.elts])
 
