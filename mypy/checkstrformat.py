@@ -2,13 +2,13 @@
 
 import re
 
-from typing import cast, List, Tuple, Dict, Callable
+from typing import cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
 )
 from mypy.nodes import (
-    Node, StrExpr, BytesExpr, TupleExpr, DictExpr, Context
+    Node, StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context
 )
 if False:
     # break import cycle only needed for mypy
@@ -55,7 +55,7 @@ class StringFormatterChecker:
         self.exprchk = exprchk
         self.msg = msg
 
-    def check_byte_interpolation(self, str: BytesExpr, replacements: Node) -> Type:
+    def check_str_interpolation(self, str: Union[StrExpr, BytesExpr, UnicodeExpr], replacements: Node) -> Type:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
@@ -67,21 +67,13 @@ class StringFormatterChecker:
             self.check_mapping_str_interpolation(specifiers, replacements)
         else:
             self.check_simple_str_interpolation(specifiers, replacements)
-        return self.named_type('builtins.bytes')
 
-    def check_str_interpolation(self, str: StrExpr, replacements: Node) -> Type:
-        """Check the types of the 'replacements' in a string interpolation
-        expression: str % replacements
-        """
-        specifiers = self.parse_conversion_specifiers(str.value)
-        has_mapping_keys = self.analyze_conversion_specifiers(specifiers, str)
-        if has_mapping_keys is None:
-            pass  # Error was reported
-        elif has_mapping_keys:
-            self.check_mapping_str_interpolation(specifiers, replacements)
+        if isinstance(str, BytesExpr):
+            return self.named_type('builtins.bytes')
+        elif isinstance(str, UnicodeExpr):
+            return self.named_type('builtins.unicode')
         else:
-            self.check_simple_str_interpolation(specifiers, replacements)
-        return self.named_type('builtins.str')
+            return self.named_type('builtins.str')
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
         key_regex = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters
