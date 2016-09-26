@@ -820,3 +820,20 @@ from typing import List, Tuple
 def f() -> Tuple[List[str], ...]:
     return ([],)
 [builtins fixtures/tuple.pyi]
+
+[case testTupleWithoutArgs]
+from typing import Tuple
+def f(a: Tuple) -> None: pass
+f(())
+f((1,))
+f(('', ''))
+[builtins fixtures/tuple.pyi]
+
+[case testTupleSingleton]
+# flags: --fast-parser
+from typing import Tuple
+def f(a: Tuple[()]) -> None: pass
+f(())
+f((1,))  # E
+f(('', ''))  # #
+[builtins fixtures/tuple.pyi]
