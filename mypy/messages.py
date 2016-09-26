@@ -247,6 +247,8 @@ class MessageBuilder:
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
             if typ.fallback.type.fullname() != 'builtins.tuple':
                 return self.format_simple(typ.fallback)
+            if not typ.items:
+                return '"Tuple[()]"'  # Avoid "Tuple[]"
             items = []
             for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
@@ -492,6 +494,7 @@ class MessageBuilder:
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = self.format_distinctly(arg_type, expected_type)
+            if 'Tuple[]' in expected_type_str: import pdb; pdb.set_trace()
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
