@@ -833,12 +833,15 @@ class TypeConverter(ast35.NodeTransformer):
         assert isinstance(value, UnboundType)
         assert not value.args
 
+        empty_tuple_index = False
         if isinstance(n.slice.value, ast35.Tuple):
             params = self.visit_list(n.slice.value.elts)
+            if len(n.slice.value.elts) == 0:
+                empty_tuple_index = True
         else:
             params = [self.visit(n.slice.value)]
 
-        return UnboundType(value.name, params, line=self.line)
+        return UnboundType(value.name, params, line=self.line, empty_tuple_index=empty_tuple_index)
 
     def visit_Tuple(self, n: ast35.Tuple) -> Type:
         return TupleType(self.visit_list(n.elts), None, implicit=True, line=self.line)

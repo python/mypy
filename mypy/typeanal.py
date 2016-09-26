@@ -107,7 +107,8 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
-                if len(t.args) == 0:  # Bare 'Tuple' is same as 'tuple'
+                if len(t.args) == 0 and not t.empty_tuple_index:
+                    # Bare 'Tuple' is same as 'tuple'
                     return self.builtin_type('builtins.tuple', [AnyType()])
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
