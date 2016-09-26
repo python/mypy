@@ -1111,6 +1111,19 @@ main:4: error: Incompatible types in string interpolation (expression has type "
 [case testStringInterpolationSpaceKey]
 '%( )s' % {' ': 'foo'}
 
+[case testByteByteInterpolation]
+def foo(a: bytes, b: bytes):
+    b'%s:%s' % (a, b)
+foo(b'a', b'b') == b'a:b'
+
+[case testBytePercentInterpolationSupported]
+b'%s' % (b'xyz',)
+b'%(name)s' % {'name': 'jane'}
+b'%c' % (123)
+
+[case testUnicodeInterpolation_python2]
+u'%s' % (u'abc',)
+
 -- Lambdas
 -- -------
 
