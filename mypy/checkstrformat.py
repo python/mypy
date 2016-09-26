@@ -77,8 +77,10 @@ class StringFormatterChecker:
             return self.named_type('builtins.bytes')
         elif isinstance(str, UnicodeExpr):
             return self.named_type('builtins.unicode')
-        else:
+        elif isinstance(str, StrExpr):
             return self.named_type('builtins.str')
+        else:
+            assert False
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
         key_regex = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters
