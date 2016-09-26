@@ -40,6 +40,7 @@ import imp
 import importlib
 import json
 import os.path
+import pkgutil
 import subprocess
 import sys
 import textwrap
@@ -574,6 +575,16 @@ def get_qualified_name(o: Node) -> str:
         return '<ERROR>'
 
 
+def walk_packages(packages: List[str]):
+    for package_name in packages:
+        package = __import__(package_name)
+        yield package.__name__
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+                                                                     prefix=package.__name__ + ".",
+                                                                     onerror=lambda r: None):
+            yield qualified_name
+
+
 def main() -> None:
     options = parse_options()
     if not os.path.isdir('out'):
@@ -589,21 +600,29 @@ def main() -> None:
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
-    for module in options.modules:
-        generate_stub_for_module(module, 'out',
-                                 add_header=True,
-                                 sigs=sigs,
-                                 class_sigs=class_sigs,
-                                 pyversion=options.pyversion,
-                                 no_import=options.no_import,
-                                 search_path=options.search_path,
-                                 interpreter=options.interpreter)
+    for module in (options.modules if not options.recursive else walk_packages(options.modules)):
+        try:
+            generate_stub_for_module(module, 'out',
+                                     add_header=True,
+                                     sigs=sigs,
+                                     class_sigs=class_sigs,
+                                     pyversion=options.pyversion,
+                                     no_import=options.no_import,
+                                     search_path=options.search_path,
+                                     interpreter=options.interpreter)
+        except Exception as e:
+            if not options.lenient:
+                raise e
+            else:
+                print("Stub generation failed for : ", module)
 
 
 def parse_options() -> Options:
     args = sys.argv[1:]
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
+    recursive = False
+    lenient = False
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
@@ -619,6 +638,10 @@ def parse_options() -> Options:
         elif args[0] == '-p':
             interpreter = args[1]
             args = args[1:]
+        elif args[0] == '--recursive':
+            recursive = True
+        elif args[0] == '--lenient':
+            lenient = True
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
         elif args[0] == '--no-import':
@@ -664,6 +687,8 @@ def usage() -> None:
 
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
+          --recursive     traverse listed modules to generate inner package modules as well
+          --lenient       ignore exceptions when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
                           respect __all__)
