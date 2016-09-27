@@ -414,7 +414,7 @@ class ASTConverter(ast35.NodeTransformer):
         if n_synt and self.pyversion < (3, 6):
             raise TypeCommentParseError('Variable annotation syntax is only '
                                         'suppoted in Python 3.6, use type '
-                                        'comment instead', n.lineno)
+                                        'comment instead', n.lineno, n.col_offset)
         if n.type_comment is not None:
             typ = parse_type_comment(n.type_comment, n.lineno)
         elif n_synt:
