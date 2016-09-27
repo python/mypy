@@ -1028,7 +1028,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None)
+        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.n_synt)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
@@ -1039,7 +1039,8 @@ class TypeChecker(NodeVisitor[Type]):
             for lv in s.lvalues[:-1]:
                 self.check_assignment(lv, rvalue, s.type is None)
 
-    def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
+    def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True,
+                         n_synt: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, lvalue,
@@ -1077,7 +1078,7 @@ class TypeChecker(NodeVisitor[Type]):
                         isinstance(lvalue, NameExpr) and
                         isinstance(lvalue.node, Var) and
                         lvalue.node.is_initialized_in_class and
-                        not self.options.fast_parser):
+                        not n_synt):
                     # Allow None's to be assigned to class variables with non-Optional types.
                     rvalue_type = lvalue_type
                 else:

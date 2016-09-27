@@ -1,5 +1,5 @@
 [case testNewSyntaxRequire36]
-# flags: --fast-parser
+# flags: --fast-parser --python-version 3.5
 x: int = 5  # E: Variable annotation syntax is only suppoted in Python 3.6, use type comment instead
 [out]
 

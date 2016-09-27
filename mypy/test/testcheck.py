@@ -70,7 +70,7 @@ files = [
 
 if hasattr(typed_ast, '__version__'):
     version_info = tuple(map(int, typed_ast.__version__.split('.')))  # type: ignore
-    if version_info >= (0, 5, 7):
+    if version_info >= (0, 6, 0):
         files.append('check-newsyntax.test')
 
 
