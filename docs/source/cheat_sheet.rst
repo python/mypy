@@ -175,8 +175,9 @@ Other stuff
 
 .. code-block:: python
 
+   import sys
    # typing.Match describes regex matches from the re module.
-   from typing import Match, AnyStr
+   from typing import Match, AnyStr, IO
    x = re.match(r'[0-9]+', "15") # type: Match[str]
 
    # Use AnyStr for functions that should accept any kind of string
@@ -186,7 +187,16 @@ Other stuff
    concat(u"foo", u"bar")  # type: unicode
    concat(b"foo", b"bar")  # type: bytes
 
-   # TODO: add typing.IO: e.g., sys.stdout has type IO[str]
+   # Use IO[] for functions that should accept or return any
+   # object that comes from an open() call. The IO[] does not
+   # distinguish between reading, writing or other modes.
+   def get_sys_IO(mode='w') -> IO[str]:
+       if mode == 'w':
+           return sys.stdout
+       elif mode == 'r':
+           return sys.stdin
+       else:
+           return sys.stdout
 
    # TODO: add TypeVar and a simple generic function
 

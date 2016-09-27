@@ -873,6 +873,49 @@ reveal_type(foo)
 main:1: note: In module imported here:
 tmp/parent/child.py:4: error: Revealed type is 'parent.common.SomeClass'
 
+-- Tests repeated imports
+
+[case testIdenticalImportFromTwice]
+from a import x, y, z
+from b import x, y, z
+[file a.py]
+from common import x, y, z
+[file b.py]
+from common import x, y, z
+[file common.py]
+x = 3
+def y() -> int: return 3
+class z: pass
+[out]
+
+[case testIdenticalImportStarTwice]
+from a import *
+from b import *
+[file a.py]
+from common import x, y, z
+[file b.py]
+from common import x, y, z
+[file common.py]
+x = 3
+def y() -> int: return 3
+class z: pass
+[out]
+
+[case testDifferentImportSameNameTwice]
+from a import x, y, z
+from b import x, y, z
+[file a.py]
+x = 3
+def y() -> int: return 1
+class z: pass
+[file b.py]
+x = "foo"
+def y() -> str: return "foo"
+class z: pass
+[out]
+main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
+main:2: error: Incompatible import of "y" (imported name has type Callable[[], str], local name has type Callable[[], int])
+main:2: error: Incompatible import of "z" (imported name has type "z" (type object), local name has type "z" (type object))
 
 -- Misc
 
@@ -1131,3 +1174,20 @@ reveal_type(x)
 [out]
 main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:2: error: Revealed type is 'builtins.str'
+
+-- Scripts and __main__
+
+[case testScriptsAreModules]
+# flags: --scripts-are-modules
+[file a]
+pass
+[file b]
+pass
+
+[case testScriptsAreNotModules]
+# cmd: mypy a b
+[file a]
+pass
+[file b]
+pass
+[out]

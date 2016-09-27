@@ -1,11 +1,12 @@
 """Mypy type checker command line tool."""
 
 import argparse
+import configparser
 import os
 import re
 import sys
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
@@ -14,6 +15,7 @@ from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError, set_drop_into_pdb, set_show_tb
 from mypy.options import Options, BuildType
+from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
@@ -125,6 +127,7 @@ def process_options(args: List[str],
     help_factory = (lambda prog:
                     argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
+                                     fromfile_prefix_chars='@',
                                      formatter_class=help_factory)
 
     # Unless otherwise specified, arguments will be parsed directly onto an
@@ -172,9 +175,9 @@ def process_options(args: List[str],
                         help="enable experimental module cache")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
-                        "(defaults to '{}')".format(defaults.MYPY_CACHE))
+                        "(defaults to '{}')".format(defaults.CACHE_DIR))
     parser.add_argument('--strict-optional', action='store_true',
-                        dest='special-opts:strict_optional',
+                        dest='strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -189,6 +192,11 @@ def process_options(args: List[str],
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    parser.add_argument('--scripts-are-modules', action='store_true',
+                        help="Script x becomes module x instead of __main__")
+    parser.add_argument('--config-file',
+                        help="Configuration file, must have a [mypy] section "
+                        "(defaults to {})".format(defaults.CONFIG_FILE))
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -213,30 +221,18 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
-    report_group.add_argument('--html-report', metavar='DIR',
-                              dest='special-opts:html_report')
-    report_group.add_argument('--old-html-report', metavar='DIR',
-                              dest='special-opts:old_html_report')
-    report_group.add_argument('--xslt-html-report', metavar='DIR',
-                              dest='special-opts:xslt_html_report')
-    report_group.add_argument('--xml-report', metavar='DIR',
-                              dest='special-opts:xml_report')
-    report_group.add_argument('--txt-report', metavar='DIR',
-                              dest='special-opts:txt_report')
-    report_group.add_argument('--xslt-txt-report', metavar='DIR',
-                              dest='special-opts:xslt_txt_report')
-    report_group.add_argument('--linecount-report', metavar='DIR',
-                              dest='special-opts:linecount_report')
-    report_group.add_argument('--linecoverage-report', metavar='DIR',
-                              dest='special-opts:linecoverage_report')
+    for report_type in reporter_classes:
+        report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
+                                  metavar='DIR',
+                                  dest='special-opts:%s_report' % report_type)
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
                             dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
-    # TODO: `mypy -c A -c B` and `mypy -p A -p B` currently silently
-    # ignore A (last option wins).  Perhaps -c, -m and -p could just
-    # be command-line flags that modify how we interpret self.files?
+    # TODO: `mypy -p A -p B` currently silently ignores ignores A
+    # (last option wins).  Perhaps -c, -m and -p could just be
+    # command-line flags that modify how we interpret self.files?
     code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
                             dest='special-opts:command',
                             help="type-check program passed in as string")
@@ -245,7 +241,18 @@ def process_options(args: List[str],
     code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
                             help="type-check given files or directories")
 
+    # Parse arguments once into a dummy namespace so we can get the
+    # filename for the config file.
+    dummy = argparse.Namespace()
+    parser.parse_args(args, dummy)
+    config_file = dummy.config_file or defaults.CONFIG_FILE
+
+    # Parse config file first, so command line can override.
     options = Options()
+    if config_file and os.path.exists(config_file):
+        parse_config_file(options, config_file)
+
+    # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
 
@@ -279,7 +286,10 @@ def process_options(args: List[str],
             parser.error("May only specify one of: module, package, files, or command.")
 
     # Set build flags.
-    if special_opts.strict_optional or options.strict_optional_whitelist is not None:
+    if options.strict_optional_whitelist is not None:
+        # TODO: Deprecate, then kill this flag
+        options.strict_optional = True
+    if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
 
     # Set reports.
@@ -319,7 +329,8 @@ def process_options(args: List[str],
                          .format(f))
                 targets.extend(sub_targets)
             else:
-                targets.append(BuildSource(f, None, None))
+                mod = os.path.basename(f) if options.scripts_are_modules else None
+                targets.append(BuildSource(f, mod, None))
         return targets, options
 
 
@@ -411,6 +422,102 @@ def get_init_file(dir: str) -> Optional[str]:
         if os.path.isfile(f):
             return f
     return None
+
+
+# For most options, the type of the default value set in options.py is
+# sufficient, and we don't have to do anything here.  This table
+# exists to specify types for values initialized to None or container
+# types.
+config_types = {
+    # TODO: Check validity of python version
+    'python_version': lambda s: tuple(map(int, s.split('.'))),
+    'strict_optional_whitelist': lambda s: s.split(),
+    'custom_typing_module': str,
+}
+
+
+def parse_config_file(options: Options, filename: str) -> None:
+    """Parse a config file into an Options object.
+
+    Errors are written to stderr but are not fatal.
+    """
+    parser = configparser.RawConfigParser()
+    try:
+        parser.read(filename)
+    except configparser.Error as err:
+        print("%s: %s" % (filename, err), file=sys.stderr)
+        return
+    if 'mypy' not in parser:
+        print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
+        return
+
+    section = parser['mypy']
+    prefix = '%s: [%s]' % (filename, 'mypy')
+    updates, report_dirs = parse_section(prefix, options, section)
+    for k, v in updates.items():
+        setattr(options, k, v)
+    options.report_dirs.update(report_dirs)
+
+    for name, section in parser.items():
+        if name.startswith('mypy-'):
+            prefix = '%s: [%s]' % (filename, name)
+            updates, report_dirs = parse_section(prefix, options, section)
+            # TODO: Limit updates to flags that can be per-file.
+            if report_dirs:
+                print("%s: Per-file sections should not specify reports (%s)" %
+                      (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
+                      file=sys.stderr)
+            if set(updates) - Options.PER_FILE_OPTIONS:
+                print("%s: Per-file sections should only specify per-file flags (%s)" %
+                      (prefix, ', '.join(sorted(set(updates) - Options.PER_FILE_OPTIONS))),
+                      file=sys.stderr)
+                updates = {k: v for k, v in updates.items() if k in Options.PER_FILE_OPTIONS}
+            globs = name[5:]
+            for glob in globs.split(','):
+                options.per_file_options[glob] = updates
+
+
+def parse_section(prefix: str, template: Options,
+                  section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
+    """Parse one section of a config file.
+
+    Returns a dict of option values encountered, and a dict of report directories.
+    """
+    results = {}
+    report_dirs = {}  # type: Dict[str, str]
+    for key in section:
+        key = key.replace('-', '_')
+        if key in config_types:
+            ct = config_types[key]
+        else:
+            dv = getattr(template, key, None)
+            if dv is None:
+                if key.endswith('_report'):
+                    report_type = key[:-7].replace('_', '-')
+                    if report_type in reporter_classes:
+                        report_dirs[report_type] = section.get(key)
+                    else:
+                        print("%s: Unrecognized report type: %s" % (prefix, key),
+                              file=sys.stderr)
+                    continue
+                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                      file=sys.stderr)
+                continue
+            ct = type(dv)
+        v = None  # type: Any
+        try:
+            if ct is bool:
+                v = section.getboolean(key)  # type: ignore  # Until better stub
+            elif callable(ct):
+                v = ct(section.get(key))
+            else:
+                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
+                continue
+        except ValueError as err:
+            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+            continue
+        results[key] = v
+    return results, report_dirs
 
 
 def fail(msg: str) -> None:

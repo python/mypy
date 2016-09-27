@@ -170,3 +170,12 @@ def f(x):  # E: Type signature has too few arguments
     pass
 [out]
 main: note: In function "f":
+
+[case testFasterParseTypeCommentError_python2]
+# flags: --fast-parser
+from typing import Tuple
+def f(a):
+    # type: (Tuple(int, int)) -> int
+    pass
+[out]
+main:3: error: invalid type comment

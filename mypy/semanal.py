@@ -169,6 +169,8 @@ class SemanticAnalyzer(NodeVisitor):
     tvar_stack = None  # type: List[List[SymbolTableNode]]
     # Do weak type checking in this file
     weak_opts = set()        # type: Set[str]
+    # Per-file options
+    options = None  # type: Options
 
     # Stack of functions being analyzed
     function_stack = None  # type: List[FuncItem]
@@ -190,9 +192,7 @@ class SemanticAnalyzer(NodeVisitor):
     errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self,
-                 lib_path: List[str],
-                 errors: Errors,
-                 options: Options) -> None:
+                 lib_path: List[str], errors: Errors) -> None:
         """Construct semantic analyzer.
 
         Use lib_path to search for modules, and report analysis errors
@@ -211,12 +211,12 @@ class SemanticAnalyzer(NodeVisitor):
         self.lib_path = lib_path
         self.errors = errors
         self.modules = {}
-        self.options = options
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
 
-    def visit_file(self, file_node: MypyFile, fnam: str) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
+        self.options = options
         self.errors.set_file(fnam)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
@@ -245,6 +245,8 @@ class SemanticAnalyzer(NodeVisitor):
             for name, g in self.globals.items():
                 if name not in self.all_exports:
                     g.module_public = False
+
+        del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -981,7 +983,7 @@ class SemanticAnalyzer(NodeVisitor):
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
         if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
-                isinstance(existing_symbol.node, (Var, FuncDef))):
+                isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
             # This is a valid import over an existing definition in the file. Construct a dummy
             # assignment that we'll use to type check the import.
             lvalue = NameExpr(imported_id)
@@ -1339,6 +1341,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
 
         old_type = self.check_newtype_args(name, call, s)
+        call.analyzed = NewTypeExpr(name, old_type, line=call.line)
         if old_type is None:
             return
 
@@ -1360,8 +1363,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
-        node.node = newtype_class_info
-        call.analyzed = NewTypeExpr(newtype_class_info).set_line(call.line)
+        call.analyzed.info = node.node = newtype_class_info
 
     def analyze_newtype_declaration(self,
             s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
@@ -1384,7 +1386,6 @@ class SemanticAnalyzer(NodeVisitor):
             # overwritten later with a fully complete NewTypeExpr if there are no other
             # errors with the NewType() call.
             call = s.rvalue
-            call.analyzed = NewTypeExpr(None).set_line(call.line)
 
         return name, call
 
@@ -1400,7 +1401,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
         elif cast(StrExpr, call.args[0]).value != name:
-            self.fail("Argument 1 to NewType(...) does not match variable name", context)
+            msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
+            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
             has_failed = True
 
         # Check second argument
@@ -1485,7 +1487,8 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
         if cast(StrExpr, call.args[0]).value != name:
-            self.fail("Unexpected TypeVar() argument value", context)
+            msg = "String argument 1 '{}' to TypeVar(...) does not match variable name '{}'"
+            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
             return False
         return True
 
@@ -2566,10 +2569,8 @@ class FirstPass(NodeVisitor):
 
     def __init__(self, sem: SemanticAnalyzer) -> None:
         self.sem = sem
-        self.pyversion = sem.options.python_version
-        self.platform = sem.options.platform
 
-    def analyze(self, file: MypyFile, fnam: str, mod_id: str) -> None:
+    def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
         """Perform the first analysis pass.
 
         Populate module global table.  Resolve the full names of
@@ -2585,6 +2586,9 @@ class FirstPass(NodeVisitor):
         analysis.
         """
         sem = self.sem
+        self.sem.options = options  # Needed because we sometimes call into it
+        self.pyversion = options.python_version
+        self.platform = options.platform
         sem.cur_mod_id = mod_id
         sem.errors.set_file(fnam)
         sem.globals = SymbolTable()
@@ -2628,6 +2632,8 @@ class FirstPass(NodeVisitor):
                 v = Var(name, typ)
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
+
+        del self.sem.options
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
@@ -3017,7 +3023,7 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], platform: s
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
         elif name == 'PY3':
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
-        elif name == 'MYPY':
+        elif name == 'MYPY' or name == 'TYPE_CHECKING':
             result = ALWAYS_TRUE
         elif name == 'TYPE_CHECKING':
             result = ALWAYS_TRUE

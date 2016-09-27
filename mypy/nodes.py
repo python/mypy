@@ -256,6 +256,8 @@ class Import(ImportBase):
 class ImportFrom(ImportBase):
     """from m import x [as y], ..."""
 
+    id = None  # type: str
+    relative = None  # type: int
     names = None  # type: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
 
     def __init__(self, id: str, relative: int, names: List[Tuple[str, Optional[str]]]) -> None:
@@ -270,6 +272,8 @@ class ImportFrom(ImportBase):
 
 class ImportAll(ImportBase):
     """from m import *"""
+    id = None  # type: str
+    relative = None  # type: int
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
@@ -1727,11 +1731,14 @@ class PromoteExpr(Expression):
 
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
+    name = None  # type: str
+    old_type = None  # type: mypy.types.Type
 
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, info: Optional['TypeInfo']) -> None:
-        self.info = info
+    def __init__(self, name: str, old_type: 'mypy.types.Type', line: int) -> None:
+        self.name = name
+        self.old_type = old_type
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)

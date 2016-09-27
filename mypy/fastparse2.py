@@ -39,7 +39,7 @@ from mypy.types import (
 from mypy import defaults
 from mypy import experiments
 from mypy.errors import Errors
-from mypy.fastparse import TypeConverter
+from mypy.fastparse import TypeConverter, TypeCommentParseError
 
 try:
     from typed_ast import ast27
@@ -866,9 +866,3 @@ class ASTConverter(ast27.NodeTransformer):
     # Index(expr value)
     def visit_Index(self, n: ast27.Index) -> Node:
         return self.visit(n.value)
-
-
-class TypeCommentParseError(Exception):
-    def __init__(self, msg: str, lineno: int) -> None:
-        self.msg = msg
-        self.lineno = lineno
