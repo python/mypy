@@ -70,7 +70,7 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('modules', List[str]),
                                  ('ignore_errors', bool),
                                  ('recursive', bool),
-                                ])
+                                 ])
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
