@@ -69,7 +69,8 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('interpreter', str),
                                  ('modules', List[str]),
                                  ('ignore_errors', bool),
-                                 ('recursive', bool)])
+                                 ('recursive', bool),
+                                ])
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
@@ -618,7 +619,7 @@ def main() -> None:
             if not options.ignore_errors:
                 raise e
             else:
-                print("Stub generation failed for : ", module)
+                print("Stub generation failed for", module, file=sys.stderr)
 
 
 def parse_options() -> Options:
