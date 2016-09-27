@@ -186,7 +186,66 @@ reveal_type(obj)  # E: Revealed type is 'builtins.int'
 
 [builtins fixtures/list.pyi]
 
--- [case testUnionListInit]
--- from typing import Union, List
--- a = []  # type: Union[List[int], List[str]]
--- [builtins fixtures/list.pyi]
+[case testUnionMultiassignAlreadyDeclared]
+from typing import Union, Tuple
+
+a = None  # type: Union[Tuple[int, int], Tuple[int, float]]
+a1 = None  # type: object
+a2 = None  # type: int
+
+(a1, a2) = a  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+
+b = None  # type: Union[Tuple[float, int], Tuple[int, int]]
+b1 = None  # type: object
+b2 = None  # type: int
+
+(b1, b2) = a  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+
+c = None  # type: Union[Tuple[int, int], Tuple[int, int]]
+c1 = None  # type: object
+c2 = None  # type: int
+
+(c1, c2) = c
+reveal_type(c1)  # E: Revealed type is 'builtins.int'
+reveal_type(c2)  # E: Revealed type is 'builtins.int'
+
+d = None  # type: Union[Tuple[int, int], Tuple[int, float]]
+d1 = None  # type: object
+
+(d1, d2) = d
+reveal_type(d1)  # E: Revealed type is 'builtins.int'
+reveal_type(d2)  # E: Revealed type is 'builtins.float'
+
+[case testUnionMultiassignIndexed]
+from typing import Union, Tuple, List
+
+class B:
+    x = None  # type: object
+
+x = None  # type: List[int]
+b = None  # type: B
+
+a = None  # type: Union[Tuple[int, int], Tuple[int, object]]
+(x[0], b.x) = a
+
+# I don't know why is it incomplete type
+reveal_type(x[0])  # E: Revealed type is 'builtins.int*'
+reveal_type(b.x)  # E: Revealed type is 'builtins.object'
+
+[builtins fixtures/list.pyi]
+
+[case testUnionMultiassignPacked]
+from typing import Union, Tuple, List
+
+a = None  # type: Union[Tuple[int, int, int], Tuple[int, int, str]]
+a1 = None  # type: int
+a2 = None  # type: object
+--FIX: allow proper rebinding of packed
+xs = None  # type: List[int]
+(a1, *xs, a2) = a 
+
+reveal_type(a1)  # E: Revealed type is 'builtins.int'
+reveal_type(xs)  # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(a2)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/list.pyi]
