@@ -1510,8 +1510,8 @@ def error(u_c: Type[U]) -> P:
 [out]
 main:11: error: Revealed type is '__main__.WizUser*'
 main: note: In function "error":
-main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
 main:13: error: Incompatible return value type (got "U", expected "P")
+main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar

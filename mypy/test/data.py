@@ -335,16 +335,22 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
 
 
 def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
-    """Transform comments such as '# E: message' in input.
+    """Transform comments such as '# E: message' or
+    '# E:3: message' in input.
 
     The result is lines like 'fnam:line: error: message'.
     """
 
     for i in range(len(input)):
-        m = re.search('# ([EN]): (.*)$', input[i])
+        m = re.search('# ([EN]):((?P<col>\d+):)? (?P<message>.*)$', input[i])
         if m:
             severity = 'error' if m.group(1) == 'E' else 'note'
-            output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group(2)))
+            col = m.group('col')
+            if col is None:
+                output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
+            else:
+                output.append('{}:{}:{}: {}: {}'.format(
+                    fnam, i + 1, col, severity, m.group('message')))
 
 
 def fix_win_path(line: str) -> str:

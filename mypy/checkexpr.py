@@ -965,8 +965,9 @@ class ExpressionChecker:
         if e.op == '*' and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
-        if e.op == '%' and isinstance(e.left, (StrExpr, BytesExpr)):
-            return self.strfrm_checker.check_str_interpolation(cast(StrExpr, e.left), e.right)
+        if e.op == '%':
+            if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
+                return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:
