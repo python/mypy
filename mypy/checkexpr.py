@@ -88,6 +88,7 @@ class ExpressionChecker:
     This class works closely together with checker.TypeChecker.
     """
 
+    pyversion = None # type: Tuple[int, int]
     # Some services are provided by a TypeChecker instance.
     chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
@@ -97,11 +98,13 @@ class ExpressionChecker:
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
-                 msg: MessageBuilder) -> None:
+                 msg: MessageBuilder,
+                 pyversion: Tuple[int, int]) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
-        self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
+        self.pyversion = pyversion
+        self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg, self.pyversion)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.

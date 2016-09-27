@@ -79,6 +79,7 @@ class TypeChecker(NodeVisitor[Type]):
     Type check mypy source files that have been semantically analyzed.
     """
 
+    pyversion = None
     # Are we type checking a stub?
     is_stub = False
     # Error message reporter
@@ -127,7 +128,7 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], pyversion: Tuple[int, int]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -138,7 +139,8 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_map = {}
         self.module_type_map = {}
         self.binder = ConditionalTypeBinder()
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.pyversion = pyversion
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.pyversion)
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
