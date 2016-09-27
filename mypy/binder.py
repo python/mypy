@@ -1,8 +1,9 @@
-from typing import (Any, Dict, List, Set, Iterator)
+from typing import (Any, Dict, List, Set, Iterator, Optional, DefaultDict, Tuple)
 from contextlib import contextmanager
+from collections import defaultdict
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Node, Var)
+from mypy.nodes import (Expression, Var)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -37,6 +38,7 @@ class ConditionalTypeBinder:
     reveal_type(lst[0].a) # str
     ```
     """
+    type_assignments = None  # type: Optional[DefaultDict[Expression, List[Tuple[Type, Type]]]]
 
     def __init__(self) -> None:
         # The set of frames currently used.  These map
@@ -96,7 +98,7 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Node, typ: Type) -> None:
+    def push(self, expr: Expression, typ: Type) -> None:
         if not expr.literal:
             return
         key = expr.literal_hash
@@ -105,11 +107,11 @@ class ConditionalTypeBinder:
             self._add_dependencies(key)
         self._push(key, typ)
 
-    def get(self, expr: Node) -> Type:
+    def get(self, expr: Expression) -> Type:
         return self._get(expr.literal_hash)
 
-    def cleanse(self, expr: Node) -> None:
-        """Remove all references to a Node from the binder."""
+    def cleanse(self, expr: Expression) -> None:
+        """Remove all references to an Expression from the binder."""
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -174,11 +176,20 @@ class ConditionalTypeBinder:
         else:
             return None
 
-    def assign_type(self, expr: Node,
+    @contextmanager
+    def accumulate_type_assignments(self) -> Iterator[DefaultDict[Expression,
+                                                                  List[Tuple[Type, Type]]]]:
+        self.type_assignments = defaultdict(list)
+        yield self.type_assignments
+        self.type_assignments = None
+
+    def assign_type(self, expr: Expression,
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        print(expr, type, declared_type)
+        if self.type_assignments is not None:
+            self.type_assignments[expr].append((type, declared_type))
+            return
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
@@ -213,7 +224,7 @@ class ConditionalTypeBinder:
             # just copy this variable into a single stored frame.
             self.allow_jump(i)
 
-    def invalidate_dependencies(self, expr: Node) -> None:
+    def invalidate_dependencies(self, expr: Expression) -> None:
         """Invalidate knowledge of types that include expr, but not expr itself.
 
         For example, when expr is foo.bar, invalidate foo.bar.baz.
@@ -224,7 +235,7 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: Node, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: Expression, type: Type) -> Type:
         if isinstance(type, AnyType):
             return self.get_declaration(expr)
         key = expr.literal_hash

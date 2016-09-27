@@ -1169,16 +1169,22 @@ class TypeChecker(NodeVisitor[Type]):
                                       undefined_rvalue: bool,
                                       infer_lvalue_type: bool) -> None:
         transposed = tuple([] for _ in lvalues)  # type: Tuple[List[Type], ...]
-        for item in rvalue_type.items:
-            self.check_multi_assign(lvalues, rvalue, item, context,
-                                    undefined_rvalue=True,
-                                    infer_lvalue_type=infer_lvalue_type)
-            for t, lv in zip(transposed, lvalues):
-                t.append(self.type_map[lv])
+        with self.binder.accumulate_type_assignments() as assignments:
+            for item in rvalue_type.items:
+                self.check_multi_assign(lvalues, rvalue, item, context,
+                                        undefined_rvalue=True,
+                                        infer_lvalue_type=infer_lvalue_type)
+                for t, lv in zip(transposed, lvalues):
+                    t.append(self.type_map[lv])
         union_types = tuple(join_type_list(col) for col in transposed)
+        for expr, items in assignments.items():
+            types, declared_types = zip(*items)
+            self.binder.assign_type(expr,
+                                    join_type_list(types),
+                                    join_type_list(declared_types),
+                                    self.typing_mode_weak())
         for union, lv in zip(union_types, lvalues):
             _1, _2, inferred = self.check_lvalue(lv)
-            # self.binder.assign_type(lv, union, self.binder.get_declaration(lv))
             if inferred:
                 self.set_inferred_type(inferred, lv, union)
             else:
@@ -1267,7 +1273,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def instance_is_iterable(self, instance: Instance) -> bool:
         return is_subtype(instance, self.named_generic_type('typing.Iterable',
-                                                               [AnyType()]))
+                                                            [AnyType()]))
 
     def check_multi_assign_from_iterable(self, lvalues: List[Expression], rvalue: Expression,
                                          rvalue_type: Instance, context: Context,
