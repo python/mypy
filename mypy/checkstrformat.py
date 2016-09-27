@@ -67,7 +67,6 @@ class StringFormatterChecker:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
-        print('pyversion at check_str_interpolation: %s' % (self.pyversion,))
         if isinstance(str, BytesExpr) and self.pyversion[0] == 3 and self.pyversion[1] < 5:
             assert False
         specifiers = self.parse_conversion_specifiers(str.value)
