@@ -1,5 +1,6 @@
-from typing import (Any, Dict, List, Set, Iterator, Union)
+from typing import (Any, Dict, List, Set, Iterator, Optional, DefaultDict, Tuple, Union)
 from contextlib import contextmanager
+from collections import defaultdict
 
 from mypy.types import Type, AnyType, PartialType
 from mypy.nodes import (Node, Expression, Var, RefExpr, SymbolTableNode)
@@ -37,6 +38,7 @@ class ConditionalTypeBinder:
     reveal_type(lst[0].a) # str
     ```
     """
+    type_assignments = None  # type: Optional[DefaultDict[Expression, List[Tuple[Type, Type]]]]
 
     def __init__(self) -> None:
         # The set of frames currently used.  These map
@@ -174,11 +176,20 @@ class ConditionalTypeBinder:
         else:
             return None
 
+    @contextmanager
+    def accumulate_type_assignments(self) -> Iterator[DefaultDict[Expression,
+                                                                  List[Tuple[Type, Type]]]]:
+        self.type_assignments = defaultdict(list)
+        yield self.type_assignments
+        self.type_assignments = None
+
     def assign_type(self, expr: Expression,
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        print(expr, type, declared_type)
+        if self.type_assignments is not None:
+            self.type_assignments[expr].append((type, declared_type))
+            return
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
