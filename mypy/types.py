@@ -181,6 +181,8 @@ class UnboundType(Type):
     optional = False
     # is this type a return type?
     is_ret_type = False
+    # special case for X[()]
+    empty_tuple_index = False
 
     def __init__(self,
                  name: str,
@@ -188,13 +190,15 @@ class UnboundType(Type):
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
-                 is_ret_type: bool = False) -> None:
+                 is_ret_type: bool = False,
+                 empty_tuple_index: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
         self.optional = optional
         self.is_ret_type = is_ret_type
+        self.empty_tuple_index = empty_tuple_index
         super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
