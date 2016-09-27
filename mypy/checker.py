@@ -1175,7 +1175,7 @@ class TypeChecker(NodeVisitor[Type]):
                                         undefined_rvalue=True,
                                         infer_lvalue_type=infer_lvalue_type)
                 for t, lv in zip(transposed, lvalues):
-                    t.append(self.type_map[lv])
+                    t.append(self.type_map.get(lv, AnyType()))
         union_types = tuple(join_type_list(col) for col in transposed)
         for expr, items in assignments.items():
             types, declared_types = zip(*items)
