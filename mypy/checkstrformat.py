@@ -39,7 +39,7 @@ class StringFormatterChecker:
     This class works closely together with checker.ExpressionChecker.
     """
 
-    pyversion = None # type: Tuple[int, int]
+    pyversion = None  # type: Tuple[int, int]
     # Some services are provided by a TypeChecker instance.
     chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.

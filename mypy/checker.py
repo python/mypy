@@ -128,7 +128,10 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], pyversion: Tuple[int, int]) -> None:
+    def __init__(self,
+                 errors: Errors,
+                 modules: Dict[str, MypyFile],
+                 pyversion: Tuple[int, int]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.

@@ -88,7 +88,7 @@ class ExpressionChecker:
     This class works closely together with checker.TypeChecker.
     """
 
-    pyversion = None # type: Tuple[int, int]
+    pyversion = None  # type: Tuple[int, int]
     # Some services are provided by a TypeChecker instance.
     chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
