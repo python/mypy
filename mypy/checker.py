@@ -120,21 +120,20 @@ class TypeChecker(NodeVisitor[Type]):
     # Is this file a typeshed stub?
     is_typeshed_stub = False
     # Should strict Optional-related errors be suppressed in this file?
-    suppress_none_errors = False
+    suppress_none_errors = False  # TODO: Get it from options instead
     options = None  # type: Options
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
-        self.options = options
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
         self.module_type_map = {}
@@ -151,8 +150,9 @@ class TypeChecker(NodeVisitor[Type]):
         self.current_node_deferred = False
         self.module_refs = set()
 
-    def visit_file(self, file_node: MypyFile, path: str) -> None:
+    def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
         """Type check a mypy file with the given path."""
+        self.options = options
         self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
@@ -163,7 +163,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.module_type_map = {}
         self.module_refs = set()
         if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = False
+            self.suppress_none_errors = not self.options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
@@ -187,6 +187,8 @@ class TypeChecker(NodeVisitor[Type]):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
+
+        del self.options
 
     def check_second_pass(self) -> None:
         """Run second pass of type checking which goes through deferred nodes."""

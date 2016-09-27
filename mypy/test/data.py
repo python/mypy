@@ -58,14 +58,13 @@ def parse_test_cases(
                 elif p[i].id in ('builtins', 'builtins_py2'):
                     # Use a custom source file for the std module.
                     mpath = os.path.join(os.path.dirname(path), p[i].arg)
-                    f = open(mpath)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
                         # Python 2
                         fnam = '__builtin__.pyi'
-                    files.append((os.path.join(base_path, fnam), f.read()))
-                    f.close()
+                    with open(mpath) as f:
+                        files.append((os.path.join(base_path, fnam), f.read()))
                 elif p[i].id == 'stale':
                     if p[i].arg is None:
                         stale_modules = set()
@@ -156,9 +155,8 @@ class DataDrivenTestCase(TestCase):
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
-            f = open(path, 'w')
-            f.write(content)
-            f.close()
+            with open(path, 'w') as f:
+                f.write(content)
             self.clean_up.append((False, path))
             encountered_files.add(path)
             if path.endswith(".next"):
@@ -329,25 +327,30 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()
-            f = open(os.path.join(base_path, fn))
-            res.extend(f.readlines())
-            f.close()
+            with open(os.path.join(base_path, fn)) as f:
+                res.extend(f.readlines())
         else:
             res.append(s)
     return res
 
 
 def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
-    """Transform comments such as '# E: message' in input.
+    """Transform comments such as '# E: message' or
+    '# E:3: message' in input.
 
     The result is lines like 'fnam:line: error: message'.
     """
 
     for i in range(len(input)):
-        m = re.search('# ([EN]): (.*)$', input[i])
+        m = re.search('# ([EN]):((?P<col>\d+):)? (?P<message>.*)$', input[i])
         if m:
             severity = 'error' if m.group(1) == 'E' else 'note'
-            output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group(2)))
+            col = m.group('col')
+            if col is None:
+                output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
+            else:
+                output.append('{}:{}:{}: {}: {}'.format(
+                    fnam, i + 1, col, severity, m.group('message')))
 
 
 def fix_win_path(line: str) -> str:

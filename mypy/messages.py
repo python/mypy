@@ -148,6 +148,7 @@ class MessageBuilder:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
+                               context.get_column() if context else -1,
                                msg.strip(), severity=severity, file=file)
 
     def fail(self, msg: str, context: Context, file: str = None) -> None:
@@ -417,7 +418,7 @@ class MessageBuilder:
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callee.name if callee.name is not None else '(unknown)'
-        self.fail('call to untyped function {} in typed context'.format(name), context)
+        self.fail('Call to untyped function {} in typed context'.format(name), context)
         return AnyType()
 
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,

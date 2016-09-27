@@ -820,3 +820,22 @@ from typing import List, Tuple
 def f() -> Tuple[List[str], ...]:
     return ([],)
 [builtins fixtures/tuple.pyi]
+
+[case testTupleWithoutArgs]
+from typing import Tuple
+def f(a: Tuple) -> None: pass
+f(())
+f((1,))
+f(('', ''))
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ...]
+[builtins fixtures/tuple.pyi]
+
+[case testTupleSingleton]
+# flags: --fast-parser
+from typing import Tuple
+def f(a: Tuple[()]) -> None: pass
+f(())
+f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[]"
+f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[]"
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[]"
+[builtins fixtures/tuple.pyi]

@@ -484,7 +484,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return TypeAliasExpr(node.type)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
-        return NewTypeExpr(node.info)
+        res = NewTypeExpr(node.name, node.old_type, line=node.line)
+        res.info = node.info
+        return res
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> Node:
         return NamedTupleExpr(node.info)

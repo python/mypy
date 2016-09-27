@@ -90,6 +90,48 @@ else:
     None + ''
 [builtins fixtures/bool.pyi]
 
+[case testTypeCheckingConditional]
+import typing
+if typing.TYPE_CHECKING:
+    import pow123 # E
+else:
+    import xyz753
+[out]
+main:3: error: Cannot find module named 'pow123'
+main:3: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+
+[case testTypeCheckingConditionalFromImport]
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import pow123 # E
+else:
+    import xyz753
+[out]
+main:3: error: Cannot find module named 'pow123'
+main:3: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+
+[case testNegatedTypeCheckingConditional]
+import typing
+if not typing.TYPE_CHECKING:
+    import pow123 # E
+else:
+    import xyz753
+[builtins fixtures/bool.pyi]
+[out]
+main:5: error: Cannot find module named 'xyz753'
+main:5: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+
+[case testUndefinedTypeCheckingConditional]
+if not TYPE_CHECKING: # E
+    import pow123
+else:
+    import xyz753
+[builtins fixtures/bool.pyi]
+[out]
+main:1: error: Name 'TYPE_CHECKING' is not defined
+main:4: error: Cannot find module named 'xyz753'
+main:4: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+
 [case testConditionalClassDefPY3]
 def f(): pass
 PY3 = f()

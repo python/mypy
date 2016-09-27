@@ -39,7 +39,7 @@ from mypy.types import (
 from mypy import defaults
 from mypy import experiments
 from mypy.errors import Errors
-from mypy.fastparse import TypeConverter
+from mypy.fastparse import TypeConverter, TypeCommentParseError
 
 try:
     from typed_ast import ast27
@@ -89,7 +89,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     except (SyntaxError, TypeCommentParseError) as e:
         if errors:
             errors.set_file('<input>' if fnam is None else fnam)
-            errors.report(e.lineno, e.msg)
+            errors.report(e.lineno, e.offset, e.msg)
         else:
             raise
 
@@ -103,8 +103,8 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 def parse_type_comment(type_comment: str, line: int) -> Type:
     try:
         typ = ast35.parse(type_comment, '<type_comment>', 'eval')
-    except SyntaxError:
-        raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, line)
+    except SyntaxError as e:
+        raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, line, e.offset)
     else:
         assert isinstance(typ, ast35.Expression)
         return TypeConverter(line=line).visit(typ.body)
@@ -114,7 +114,7 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
     @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
-        node.set_line(ast.lineno)
+        node.set_line(ast.lineno, ast.col_offset)
         return node
     return wrapper
 
@@ -268,7 +268,7 @@ class ASTConverter(ast27.NodeTransformer):
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
             except SyntaxError:
-                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno)
+                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
             assert isinstance(func_type_ast, ast35.FunctionType)
             # for ellipsis arg
             if (len(func_type_ast.argtypes) == 1 and
@@ -671,6 +671,7 @@ class ASTConverter(ast27.NodeTransformer):
     def visit_Lambda(self, n: ast27.Lambda) -> Node:
         body = ast27.Return(n.body)
         body.lineno = n.lineno
+        body.col_offset = n.col_offset
 
         return FuncExpr(self.transform_args(n.args, n.lineno),
                         self.as_block([body], n.lineno))
@@ -866,9 +867,3 @@ class ASTConverter(ast27.NodeTransformer):
     # Index(expr value)
     def visit_Index(self, n: ast27.Index) -> Node:
         return self.visit(n.value)
-
-
-class TypeCommentParseError(Exception):
-    def __init__(self, msg: str, lineno: int) -> None:
-        self.msg = msg
-        self.lineno = lineno

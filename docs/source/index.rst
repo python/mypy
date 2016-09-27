@@ -27,6 +27,7 @@ Mypy is a static type checker for Python.
    supported_python_features
    additional_features
    command_line
+   config_file
    faq
    cheat_sheet
    revision_history

@@ -343,17 +343,17 @@ class BuildManager:
                  version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.suppress_error_context)
+        self.errors = Errors(options.suppress_error_context, options.show_column_numbers)
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
         self.reports = reports
         self.options = options
         self.version_id = version_id
-        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors, options=options)
+        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
-        self.type_checker = TypeChecker(self.errors, self.modules, options=options)
+        self.type_checker = TypeChecker(self.errors, self.modules)
         self.indirection_detector = TypeIndirectionVisitor()
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
@@ -454,15 +454,15 @@ class BuildManager:
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
                 (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
             self.errors.report(
-                line, "No library stub file for standard library module '{}'".format(id))
-            self.errors.report(line, stub_msg, severity='note', only_once=True)
+                line, 0, "No library stub file for standard library module '{}'".format(id))
+            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         elif moduleinfo.is_third_party_module(id):
-            self.errors.report(line, "No library stub file for module '{}'".format(id))
-            self.errors.report(line, stub_msg, severity='note', only_once=True)
+            self.errors.report(line, 0, "No library stub file for module '{}'".format(id))
+            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         else:
-            self.errors.report(line, "Cannot find module named '{}'".format(id))
-            self.errors.report(line, '(Perhaps setting MYPYPATH '
-                                     'or using the "--silent-imports" flag would help)',
+            self.errors.report(line, 0, "Cannot find module named '{}'".format(id))
+            self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
+                               'or using the "--silent-imports" flag would help)',
                                severity='note', only_once=True)
 
     def report_file(self, file: MypyFile) -> None:
@@ -762,7 +762,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
 
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
-    current_options = select_options_affecting_cache(manager.options)
+    current_options = manager.options.select_options_affecting_cache()
     if cached_options != current_options:
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None
@@ -788,20 +788,6 @@ def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) ->
         return False
     manager.log('Found {} {} (metadata is fresh)'.format(id, meta.data_json))
     return True
-
-
-def select_options_affecting_cache(options: Options) -> Mapping[str, bool]:
-    return {opt: getattr(options, opt) for opt in OPTIONS_AFFECTING_CACHE}
-
-
-OPTIONS_AFFECTING_CACHE = [
-    "silent_imports",
-    "almost_silent",
-    "disallow_untyped_calls",
-    "disallow_untyped_defs",
-    "check_untyped_defs",
-    "debug_cache",
-]
 
 
 def random_string() -> str:
@@ -877,6 +863,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     st = manager.get_stat(path)  # TODO: Handle errors
     mtime = st.st_mtime
     size = st.st_size
+    options = manager.options.clone_for_file(path)
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
@@ -885,7 +872,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'dependencies': dependencies,
             'suppressed': suppressed,
             'child_modules': child_modules,
-            'options': select_options_affecting_cache(manager.options),
+            'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
@@ -1092,6 +1079,9 @@ class State:
     # Contains a hash of the public interface in incremental mode
     interface_hash = ""  # type: str
 
+    # Options, specialized for this file
+    options = None  # type: Options
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1113,9 +1103,10 @@ class State:
         else:
             self.import_context = []
         self.id = id or '__main__'
+        self.options = manager.options.clone_for_file(path or '')
         if not path and source is None:
             file_id = id
-            if id == 'builtins' and manager.options.python_version[0] == 2:
+            if id == 'builtins' and self.options.python_version[0] == 2:
                 # The __builtin__ module is called internally by mypy
                 # 'builtins' in Python 2 mode (similar to Python 3),
                 # but the stub file is __builtin__.pyi.  The reason is
@@ -1128,7 +1119,7 @@ class State:
             path = find_module(file_id, manager.lib_path)
             if path:
                 # In silent mode, don't import .py files, except from stubs.
-                if (manager.options.silent_imports and
+                if (self.options.silent_imports and
                         path.endswith('.py') and (caller_state or ancestor_for)):
                     # (Never silence builtins, even if it's a .py file;
                     # this can happen in tests!)
@@ -1136,7 +1127,7 @@ class State:
                         not ((caller_state and
                               caller_state.tree and
                               caller_state.tree.is_stub))):
-                        if manager.options.almost_silent:
+                        if self.options.almost_silent:
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
                             else:
@@ -1149,8 +1140,8 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    suppress_message = ((manager.options.silent_imports and
-                                        not manager.options.almost_silent) or
+                    suppress_message = ((self.options.silent_imports and
+                                        not self.options.almost_silent) or
                                         (caller_state.tree is not None and
                                          'import' in caller_state.tree.weak_opts))
                     if not suppress_message:
@@ -1168,7 +1159,7 @@ class State:
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
-        if path and source is None and manager.options.incremental:
+        if path and source is None and self.options.incremental:
             self.meta = find_cache_meta(self.id, self.path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
@@ -1199,11 +1190,11 @@ class State:
         manager = self.manager
         manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
-        manager.errors.report(-1, "Ancestor package '%s' silently ignored" % (id,),
+        manager.errors.report(-1, -1, "Ancestor package '%s' silently ignored" % (id,),
                               severity='note', only_once=True)
-        manager.errors.report(-1, "(Using --silent-imports, submodule passed on command line)",
+        manager.errors.report(-1, -1, "(Using --silent-imports, submodule passed on command line)",
                               severity='note', only_once=True)
-        manager.errors.report(-1, "(This note brought to you by --almost-silent)",
+        manager.errors.report(-1, -1, "(This note brought to you by --almost-silent)",
                               severity='note', only_once=True)
 
     def skipping_module(self, id: str, path: str) -> None:
@@ -1213,11 +1204,13 @@ class State:
         manager.errors.set_import_context(self.caller_state.import_context)
         manager.errors.set_file(self.caller_state.xpath)
         line = self.caller_line
-        manager.errors.report(line, "Import of '%s' silently ignored" % (id,),
+        manager.errors.report(line, 0,
+                              "Import of '%s' silently ignored" % (id,),
                               severity='note')
-        manager.errors.report(line, "(Using --silent-imports, module not passed on command line)",
+        manager.errors.report(line, 0,
+                              "(Using --silent-imports, module not passed on command line)",
                               severity='note', only_once=True)
-        manager.errors.report(line, "(This note courtesy of --almost-silent)",
+        manager.errors.report(line, 0, "(This note courtesy of --almost-silent)",
                               severity='note', only_once=True)
         manager.errors.set_import_context(save_import_context)
 
@@ -1310,7 +1303,7 @@ class State:
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
-        silent_mode = self.manager.options.silent_imports or self.manager.options.almost_silent
+        silent_mode = self.options.silent_imports or self.options.almost_silent
         if not silent_mode:
             return
 
@@ -1343,7 +1336,7 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = read_with_python_encoding(path, manager.options.python_version)
+                    source = read_with_python_encoding(path, self.options.python_version)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
@@ -1359,7 +1352,7 @@ class State:
         # this before processing imports, since this may mark some
         # import statements as unreachable.
         first = FirstPass(manager.semantic_analyzer)
-        first.analyze(self.tree, self.xpath, self.id)
+        first.visit_file(self.tree, self.xpath, self.id, self.options)
 
         # Initialize module symbol table, which was populated by the
         # semantic analyzer.
@@ -1387,7 +1380,8 @@ class State:
             if id == '':
                 # Must be from a relative import.
                 manager.errors.set_file(self.xpath)
-                manager.errors.report(line, "No parent module -- cannot perform relative import",
+                manager.errors.report(line, 0,
+                                      "No parent module -- cannot perform relative import",
                                       blocker=True)
                 continue
             if id not in dep_line_map:
@@ -1411,25 +1405,25 @@ class State:
 
     def semantic_analysis(self) -> None:
         with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath)
+            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options)
 
     def semantic_analysis_pass_three(self) -> None:
         with self.wrap_context():
             self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
-            if self.manager.options.dump_type_stats:
+            if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
 
     def type_check(self) -> None:
         manager = self.manager
-        if manager.options.semantic_analysis_only:
+        if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            manager.type_checker.visit_file(self.tree, self.xpath)
+            manager.type_checker.visit_file(self.tree, self.xpath, self.options)
 
-            if manager.options.incremental:
+            if self.options.incremental:
                 self._patch_indirect_dependencies(manager.type_checker.module_refs)
 
-            if manager.options.dump_inference_stats:
+            if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
                                 typemap=manager.type_checker.type_map)
             manager.report_file(self.tree)
@@ -1460,7 +1454,7 @@ class State:
         return valid_refs
 
     def write_cache(self) -> None:
-        if self.path and self.manager.options.incremental and not self.manager.errors.is_errors():
+        if self.path and self.options.incremental and not self.manager.errors.is_errors():
             dep_prios = [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
             new_interface_hash = write_cache(
                 self.id, self.path, self.tree,
@@ -1481,6 +1475,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
+        # TODO: This could also be a per-file option.
         manager.errors.generate_unused_ignore_notes()
 
 
@@ -1500,7 +1495,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath)
-            manager.errors.report(-1, "Duplicate module named '%s'" % st.id)
+            manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)

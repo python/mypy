@@ -53,7 +53,10 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     MemberExpr."""
     output = set()  # type: Set[str]
     while expr.kind == MODULE_REF or expr.fullname is not None:
-        if expr.kind == MODULE_REF:
+        if expr.kind == MODULE_REF and expr.fullname is not None:
+            # If it's None, something's wrong (perhaps due to an
+            # import cycle or a supressed error).  For now we just
+            # skip it.
             output.add(expr.fullname)
 
         if isinstance(expr, NameExpr):
@@ -962,8 +965,9 @@ class ExpressionChecker:
         if e.op == '*' and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
-        if e.op == '%' and isinstance(e.left, (StrExpr, BytesExpr)):
-            return self.strfrm_checker.check_str_interpolation(cast(StrExpr, e.left), e.right)
+        if e.op == '%':
+            if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
+                return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:

@@ -19,6 +19,9 @@ class Context:
     @abstractmethod
     def get_line(self) -> int: pass
 
+    @abstractmethod
+    def get_column(self) -> int: pass
+
 
 if False:
     # break import cycle only needed for mypy
@@ -92,6 +95,7 @@ class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
     line = -1
+    column = -1
 
     literal = LITERAL_NO
     literal_hash = None  # type: Any
@@ -102,16 +106,27 @@ class Node(Context):
             return repr(self)
         return ans
 
-    def set_line(self, target: Union[Token, 'Node', int]) -> 'Node':
+    def set_line(self, target: Union[Token, 'Node', int], column: int = None) -> None:
+        """If target is a node or token, pull line (and column) information
+        into this node. If column is specified, this will override any column
+        information coming from a node/token.
+        """
         if isinstance(target, int):
             self.line = target
         else:
             self.line = target.line
-        return self
+            self.column = target.column
+
+        if column is not None:
+            self.column = column
 
     def get_line(self) -> int:
         # TODO this should be just 'line'
         return self.line
+
+    def get_column(self) -> int:
+        # TODO this should be just 'column'
+        return self.column
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
@@ -256,6 +271,8 @@ class Import(ImportBase):
 class ImportFrom(ImportBase):
     """from m import x [as y], ..."""
 
+    id = None  # type: str
+    relative = None  # type: int
     names = None  # type: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
 
     def __init__(self, id: str, relative: int, names: List[Tuple[str, Optional[str]]]) -> None:
@@ -270,6 +287,8 @@ class ImportFrom(ImportBase):
 
 class ImportAll(ImportBase):
     """from m import *"""
+    id = None  # type: str
+    relative = None  # type: int
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
@@ -374,17 +393,17 @@ class Argument(Node):
         assign = AssignmentStmt([lvalue], rvalue)
         return assign
 
-    def set_line(self, target: Union[Token, Node, int]) -> Node:
-        super().set_line(target)
+    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+        super().set_line(target, column)
 
         if self.initializer:
-            self.initializer.set_line(self.line)
+            self.initializer.set_line(self.line, self.column)
 
-        self.variable.set_line(self.line)
+        self.variable.set_line(self.line, self.column)
 
         if self.initialization_statement:
-            self.initialization_statement.set_line(self.line)
-            self.initialization_statement.lvalues[0].set_line(self.line)
+            self.initialization_statement.set_line(self.line, self.column)
+            self.initialization_statement.lvalues[0].set_line(self.line, self.column)
 
     def serialize(self) -> JsonDict:
         # Note: we are deliberately not saving the type annotation since
@@ -447,11 +466,10 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(self, target: Union[Token, Node, int]) -> Node:
-        super().set_line(target)
+    def set_line(self, target: Union[Token, Node, int], column: int = None) -> None:
+        super().set_line(target, column)
         for arg in self.arguments:
-            arg.set_line(self.line)
-        return self
+            arg.set_line(self.line, self.column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
@@ -1729,11 +1747,14 @@ class PromoteExpr(Expression):
 
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
+    name = None  # type: str
+    old_type = None  # type: mypy.types.Type
 
     info = None  # type: Optional[TypeInfo]
 
-    def __init__(self, info: Optional['TypeInfo']) -> None:
-        self.info = info
+    def __init__(self, name: str, old_type: 'mypy.types.Type', line: int) -> None:
+        self.name = name
+        self.old_type = old_type
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)

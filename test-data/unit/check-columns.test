@@ -1,0 +1,73 @@
+[case testColumnsSyntaxError]
+# flags: --show-column-numbers
+1 +
+[out]
+main:2:3: error: Parse error before end of line
+
+
+[case testColumnsNestedFunctions]
+# flags: --show-column-numbers
+import typing
+def f() -> 'A':
+    def g() -> 'B':
+        return A() # fail
+    return B() # fail
+class A: pass
+class B: pass
+[out]
+main: note: In function "g":
+main:5:8: error: Incompatible return value type (got "A", expected "B")
+main: note: In function "f":
+main:6:4: error: Incompatible return value type (got "B", expected "A")
+
+[case testColumnsNestedFunctionsWithFastParse]
+# flags: --show-column-numbers --fast-parser
+import typing
+def f() -> 'A':
+    def g() -> 'B':
+        return A() # fail
+    return B() # fail
+class A: pass
+class B: pass
+[out]
+main: note: In function "g":
+main:5:8: error: Incompatible return value type (got "A", expected "B")
+main: note: In function "f":
+main:6:4: error: Incompatible return value type (got "B", expected "A")
+
+
+[case testColumnsMethodDefaultArgumentsAndSignatureAsComment]
+# flags: --show-column-numbers
+import typing
+class A:
+    def f(self, x = 1, y = 'hello'): # type: (int, str) -> str
+        pass
+A().f()
+A().f(1)
+A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(1, 1) # E:5: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+A().f(1, 'hello', 'hi') # E:5: Too many arguments for "f" of "A"
+
+[case testColumnsMultipleStatementsPerLine]
+# flags: --show-column-numbers
+x = 1
+y = 'hello'
+x = 2; y = x; y += 1
+[out]
+main:4:7: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4:14: error: Unsupported operand types for + ("str" and "int")
+
+[case testColumnsSimpleIsinstance]
+# flags: --show-column-numbers
+import typing
+def f(x: object, n: int, s: str) -> None:
+    n = x # E:4: Incompatible types in assignment (expression has type "object", variable has type "int")
+    if isinstance(x, int):
+        n = x
+        s = x # E:8: Incompatible types in assignment (expression has type "int", variable has type "str")
+    n = x # E:4: Incompatible types in assignment (expression has type "object", variable has type "int")
+[builtins fixtures/isinstance.pyi]
+[out]
+main: note: In function "f":
+
+

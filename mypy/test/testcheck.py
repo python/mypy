@@ -66,6 +66,7 @@ files = [
     'check-warnings.test',
     'check-async-await.test',
     'check-newtype.test',
+    'check-columns.test',
 ]
 
 if hasattr(typed_ast, '__version__'):
@@ -106,7 +107,7 @@ class TypeCheckSuite(DataSuite):
             self.run_case_once(testcase)
 
     def clear_cache(self) -> None:
-        dn = defaults.MYPY_CACHE
+        dn = defaults.CACHE_DIR
 
         if os.path.exists(dn):
             shutil.rmtree(dn)
@@ -119,6 +120,8 @@ class TypeCheckSuite(DataSuite):
         options = self.parse_options(original_program_text, testcase)
         options.use_builtins_fixtures = True
         set_show_tb(True)  # Show traceback on crash.
+        if 'optional' in testcase.file:
+            options.strict_optional = True
 
         if incremental:
             options.incremental = True
