@@ -67,7 +67,9 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('doc_dir', str),
                                  ('search_path', List[str]),
                                  ('interpreter', str),
-                                 ('modules', List[str])])
+                                 ('modules', List[str]),
+                                 ('ignore_errors', bool),
+                                 ('recursive', bool)])
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
@@ -589,6 +591,8 @@ def main() -> None:
     options = parse_options()
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
+    if options.recursive and options.no_import:
+        raise SystemExit('recursive stub generation without importing is not currently supported')
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     if options.doc_dir:
@@ -611,7 +615,7 @@ def main() -> None:
                                      search_path=options.search_path,
                                      interpreter=options.interpreter)
         except Exception as e:
-            if not options.lenient:
+            if not options.ignore_errors:
                 raise e
             else:
                 print("Stub generation failed for : ", module)
@@ -622,7 +626,7 @@ def parse_options() -> Options:
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
     recursive = False
-    lenient = False
+    ignore_errors = False
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
@@ -640,8 +644,8 @@ def parse_options() -> Options:
             args = args[1:]
         elif args[0] == '--recursive':
             recursive = True
-        elif args[0] == '--lenient':
-            lenient = True
+        elif args[0] == '--ignore-errors':
+            ignore_errors = True
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
         elif args[0] == '--no-import':
@@ -660,7 +664,9 @@ def parse_options() -> Options:
                    doc_dir=doc_dir,
                    search_path=search_path,
                    interpreter=interpreter,
-                   modules=args)
+                   modules=args,
+                   ignore_errors=ignore_errors,
+                   recursive=recursive)
 
 
 def default_python2_interpreter() -> str:
@@ -688,7 +694,7 @@ def usage() -> None:
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
           --recursive     traverse listed modules to generate inner package modules as well
-          --lenient       ignore exceptions when trying to generate stubs for modules
+          --ignore-errors ignore errors when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
                           respect __all__)
