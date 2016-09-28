@@ -70,9 +70,8 @@ files = [
     'check-columns.test',
 ]
 
-if hasattr(typed_ast, '__version__'):
-    if 'annotation' in typed_ast.ast35.Assign._fields:
-        files.append('check-newsyntax.test')
+if 'annotation' in typed_ast.ast35.Assign._fields:
+    files.append('check-newsyntax.test')
 
 
 class TypeCheckSuite(DataSuite):
