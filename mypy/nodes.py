@@ -779,14 +779,15 @@ class AssignmentStmt(Statement):
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
-    n_synt = False  # type: bool
+    # This indicates usage of PEP 526 type annotation syntax in assignment.
+    new_syntax = False  # type: bool
 
     def __init__(self, lvalues: List[Expression], rvalue: Expression,
-                 type: 'mypy.types.Type' = None, n_synt: bool = False) -> None:
+                 type: 'mypy.types.Type' = None, new_syntax: bool = False) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
-        self.n_synt = n_synt
+        self.new_syntax = new_syntax
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)

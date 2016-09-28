@@ -6,6 +6,7 @@ import shutil
 import sys
 import time
 import typed_ast
+import typed_ast.ast35
 
 from typing import Tuple, List, Dict, Set
 
@@ -70,8 +71,7 @@ files = [
 ]
 
 if hasattr(typed_ast, '__version__'):
-    version_info = tuple(map(int, typed_ast.__version__.split('.')))  # type: ignore
-    if version_info >= (0, 6, 0):
+    if 'annotation' in typed_ast.ast35.Assign._fields:
         files.append('check-newsyntax.test')
 
 
