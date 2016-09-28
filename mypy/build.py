@@ -1578,7 +1578,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         for id in scc:
             deps.update(graph[id].dependencies)
         deps -= ascc
-        deps &= set(graph)
+        deps &= set(graph)  # See issue #2028.
         stale_deps = {id for id in deps if not graph[id].is_interface_fresh()}
         fresh = fresh and not stale_deps
         undeps = set()
