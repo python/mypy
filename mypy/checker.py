@@ -29,13 +29,12 @@ from mypy.nodes import (
     AwaitExpr,
     CONTRAVARIANT, COVARIANT
 )
-from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
-    true_only, false_only
+    true_only, false_only, function_type, method_type_with_fallback
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -840,7 +839,7 @@ class TypeChecker(NodeVisitor[Type]):
                     assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
-                    method_type(original_type),
+                    original_type.method_type(),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
@@ -979,8 +978,8 @@ class TypeChecker(NodeVisitor[Type]):
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
-            first_sig = method_type(first_type)
-            second_sig = method_type(second_type)
+            first_sig = first_type.method_type()
+            second_sig = second_type.method_type()
             ok = is_subtype(first_sig, second_sig)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)

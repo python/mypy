@@ -72,8 +72,9 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType)
-from mypy.nodes import function_type, implicit_module_attrs
+    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType,
+    function_type)
+from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -331,7 +332,11 @@ class SemanticAnalyzer(NodeVisitor):
                 if func.is_class:
                     leading_type = self.class_type(self.type)
                 else:
-                    leading_type = self_type(self.type)
+                    leading_type = func.arguments[0].type_annotation
+                    if leading_type is not None:
+                        print(leading_type)
+                    else:
+                        leading_type = self_type(self.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:

@@ -513,6 +513,9 @@ class FunctionLike(Type):
     def deserialize(cls, data: JsonDict) -> 'FunctionLike':
         return cast(FunctionLike, super().deserialize(data))
 
+    @abstractmethod
+    def method_type(self) -> 'FunctionLike': pass
+
 
 _dummy = object()  # type: Any
 
@@ -678,6 +681,19 @@ class CallableType(FunctionLike):
                             implicit=data['implicit'],
                             is_classmethod_class=data['is_classmethod_class'],
                             )
+    
+    def method_callable(self) -> 'CallableType':
+        if self.arg_kinds and self.arg_kinds[0] == mypy.nodes.ARG_STAR:
+            # The signature is of the form 'def foo(*args, ...)'.
+            # In this case we shouldn't drop the first arg,
+            # since self will be absorbed by the *args.
+            return self
+        return self.copy_modified(arg_types=self.arg_types[1:],
+                                  arg_kinds=self.arg_kinds[1:],
+                                  arg_names=self.arg_names[1:])
+
+    def method_type(self) -> 'CallableType':
+        return self.method_callable()
 
 
 class Overloaded(FunctionLike):
@@ -730,6 +746,12 @@ class Overloaded(FunctionLike):
     def deserialize(self, data: JsonDict) -> 'Overloaded':
         assert data['.class'] == 'Overloaded'
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
+
+    def method_type(self) -> 'FunctionLike':
+        items = []  # type: List[mypy.types.CallableType]
+        for c in self.items():
+            items.append(c.method_callable())
+        return Overloaded(items)
 
 
 class TupleType(Type):
@@ -1488,3 +1510,32 @@ def true_or_false(t: Type) -> Type:
     new_t.can_be_true = type(new_t).can_be_true
     new_t.can_be_false = type(new_t).can_be_false
     return new_t
+
+
+def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
+    if func.type:
+        assert isinstance(func.type, mypy.types.FunctionLike)
+        return func.type
+    else:
+        # Implicit type signature with dynamic types.
+        # Overloaded functions always have a signature, so func must be an ordinary function.
+        fdef = cast(mypy.nodes.FuncDef, func)
+        name = func.name()
+        if name:
+            name = '"{}"'.format(name)
+
+        return mypy.types.CallableType(
+            [mypy.types.AnyType()] * len(fdef.arg_names),
+            fdef.arg_kinds,
+            fdef.arg_names,
+            mypy.types.AnyType(),
+            fallback,
+            name,
+            implicit=True,
+        )
+
+
+def method_type_with_fallback(func: mypy.nodes.FuncBase,
+                              fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
+    """Return the signature of a method (omit self)."""
+    return function_type(func, fallback).method_type()

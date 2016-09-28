@@ -2065,3 +2065,21 @@ class A: pass
 class B(object, A): # E: Cannot determine consistent method resolution order (MRO) for "B"
     def readlines(self): pass
     __iter__ = readlines
+
+[case testSelfType]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+class A:
+    def copy(self: T) -> T: ...
+
+class B(A):
+    pass
+
+reveal_type(A.copy)
+reveal_type(B.copy)
+reveal_type(A().copy)
+reveal_type(B().copy)
+reveal_type(A().copy())
+reveal_type(B().copy())

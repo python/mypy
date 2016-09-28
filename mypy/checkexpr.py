@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance
+    true_only, false_only, is_named_instance, function_type
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -18,7 +18,6 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
 )
-from mypy.nodes import function_type
 from mypy import nodes
 import mypy.checker
 from mypy import types

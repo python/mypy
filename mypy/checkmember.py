@@ -5,15 +5,14 @@ from typing import cast, Callable, List, Dict, Optional
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarId, TypeVarDef,
     Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType
+    DeletedType, NoneTyp, TypeType, function_type, method_type_with_fallback
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, OpExpr, ComparisonExpr
-from mypy.nodes import function_type, Decorator, OverloadedFuncDef
+from mypy.nodes import Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
-from mypy.nodes import method_type, method_type_with_fallback
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
@@ -245,7 +244,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = method_type(functype)
+                signature = functype.method_type()
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
