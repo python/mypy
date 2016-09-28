@@ -1590,3 +1590,28 @@ pass
 [rechecked a, a.c]
 [stale a, a.c]
 [out]
+
+[case testIncrementalNestedClassRef]
+import top
+
+[file top.py]
+from funcs import callee
+from classes import Outer
+def caller(a: Outer.Inner) -> None:
+    callee(a)
+
+[file funcs.py]
+from classes import Outer
+def callee(a: Outer.Inner) -> None:
+    pass
+
+[file classes.py]
+class Outer:
+    class Inner:
+        pass
+
+[file top.py.next]
+from funcs import callee
+from classes import Outer
+def caller(a: Outer.Inner) -> int:
+    callee(a)
