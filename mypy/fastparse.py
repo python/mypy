@@ -14,7 +14,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr,
+    AwaitExpr, TempNode,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -403,16 +403,31 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return DelStmt(self.visit(n.targets[0]))
 
-    # Assign(expr* targets, expr value, string? type_comment)
+    # Assign(expr* targets, expr? value, string? type_comment, expr? annotation)
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> Node:
         typ = None
-        if n.type_comment:
+        if hasattr(n, 'annotation') and n.annotation is not None:  # type: ignore
+            new_syntax = True
+        else:
+            new_syntax = False
+        if new_syntax and self.pyversion < (3, 6):
+            raise TypeCommentParseError('Variable annotation syntax is only '
+                                        'suppoted in Python 3.6, use type '
+                                        'comment instead', n.lineno, n.col_offset)
+        # typed_ast prevents having both type_comment and annotation.
+        if n.type_comment is not None:
             typ = parse_type_comment(n.type_comment, n.lineno)
-
-        return AssignmentStmt(self.visit_list(n.targets),
-                              self.visit(n.value),
-                              type=typ)
+        elif new_syntax:
+            typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+        if n.value is None:  # always allow 'x: int'
+            rvalue = TempNode(AnyType())  # type: Node
+        else:
+            rvalue = self.visit(n.value)
+        lvalues = self.visit_list(n.targets)
+        return AssignmentStmt(lvalues,
+                              rvalue,
+                              type=typ, new_syntax=new_syntax)
 
     # AugAssign(expr target, operator op, expr value)
     @with_line
