@@ -1567,3 +1567,26 @@ class Outer:
 [out2]
 main:1: note: In module imported here:
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalPartialSubmoduleUpdate]
+# cmd: mypy -m a
+# cmd2: mypy -m a a.c
+# flags: --silent-imports
+
+[file a/__init__.py]
+from .b import B
+from .c import C
+
+[file a/b.py]
+class B: pass
+
+[file a/c.py]
+class C: pass
+
+[file a/c.py.next]
+class C: pass
+pass
+
+[rechecked a, a.c]
+[stale a, a.c]
+[out]

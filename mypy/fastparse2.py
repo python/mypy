@@ -572,7 +572,17 @@ class ASTConverter(ast27.NodeTransformer):
     # Import(alias* names)
     @with_line
     def visit_Import(self, n: ast27.Import) -> Node:
-        i = Import([(self.translate_module_id(a.name), a.asname) for a in n.names])
+        names = []  # type: List[Tuple[str, str]]
+        for alias in n.names:
+            name = self.translate_module_id(alias.name)
+            asname = alias.asname
+            if asname is None and name != alias.name:
+                # if the module name has been translated (and it's not already
+                # an explicit import-as), make it an implicit import-as the
+                # original name
+                asname = alias.name
+            names.append((name, asname))
+        i = Import(names)
         self.imports.append(i)
         return i
 
