@@ -87,7 +87,7 @@ The following global flags may only be set in the global section
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
   info in the given folder in incremental mode.
 
-- ``suppress_error_context`` (Boolean, default False) suppresses
+- ``hide_error_context`` (Boolean, default False) hides
   context notes before errors.
 
 

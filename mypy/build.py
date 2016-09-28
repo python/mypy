@@ -343,7 +343,7 @@ class BuildManager:
                  version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.suppress_error_context, options.show_column_numbers)
+        self.errors = Errors(options.hide_error_context, options.show_column_numbers)
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
