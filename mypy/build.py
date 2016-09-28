@@ -1536,6 +1536,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
+            g.fix_suppressed_dependencies(graph)
             g.mark_interface_stale()
     return graph
 
