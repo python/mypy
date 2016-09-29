@@ -31,7 +31,7 @@ from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.semanal import self_type
+from mypy.semanal import fill_typevars
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
@@ -1606,7 +1606,7 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.typing_mode_full():
                         return AnyType()
-                    return analyze_member_access(e.name, self_type(e.info), e,
+                    return analyze_member_access(e.name, fill_typevars(e.info), e,
                                                  is_lvalue, True, False,
                                                  self.named_type, self.not_ready_callback,
                                                  self.msg, base, chk=self.chk)

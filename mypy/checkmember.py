@@ -13,7 +13,7 @@ from mypy.nodes import Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
-from mypy.semanal import self_type
+from mypy.semanal import fill_typevars
 from mypy import messages
 from mypy import subtypes
 if TYPE_CHECKING:  # import for forward declaration only
@@ -65,7 +65,8 @@ def analyze_member_access(name: str,
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
             if name == '__new__':
-                # __new__ is special and behaves like a static method -- don't strip the first argument.
+                # __new__ is special and behaves like a static method
+                # -- don't strip the first argument.
                 pass
             else:
                 signature = signature.bind_self(typ)
@@ -194,8 +195,9 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         if not is_lvalue:
             method = info.get_method('__getattr__')
             if method:
+                function = function_type(method, builtin_type('builtins.function'))
+                bound_method = function.bind_self(itype)
                 typ = map_instance_to_supertype(itype, method.info)
-                bound_method = function_type(method, builtin_type('builtins.function')).bind_self(itype)
                 getattr_type = expand_type_by_instance(bound_method, typ)
                 if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
@@ -455,7 +457,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     variables.extend(init_type.variables)
 
     callable_type = init_type.copy_modified(
-        ret_type=self_type(info), fallback=type_type, name=None, variables=variables,
+        ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
     c.is_classmethod_class = True
@@ -476,7 +478,7 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     Now S in the context of D would be mapped to E[T] in the context of C.
     """
     # Create the type of self in subtype, of form t[a1, ...].
-    inst_type = self_type(sub_info)
+    inst_type = fill_typevars(sub_info)
     if isinstance(inst_type, TupleType):
         inst_type = inst_type.fallback
     # Map the type of self to supertype. This gets us a description of the

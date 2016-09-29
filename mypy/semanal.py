@@ -330,7 +330,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if func.is_class:
                     leading_type = self.class_type(self.type)
                 else:
-                    leading_type = self_type(self.type)
+                    leading_type = fill_typevars(self.type)
                 sig = cast(FunctionLike, func.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
@@ -1737,7 +1737,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
         # TODO: SelfType should be bind to actual 'self'
-        this_type = self_type(info)
+        this_type = fill_typevars(info)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
@@ -2885,7 +2885,7 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
-def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
+def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """

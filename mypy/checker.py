@@ -47,7 +47,7 @@ from mypy.subtypes import (
     is_more_precise, restrict_subtype_away
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.semanal import self_type, set_callable_name, refers_to_fullname
+from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.visitor import NodeVisitor
@@ -750,7 +750,7 @@ class TypeChecker(NodeVisitor[Type]):
         cls = defn.info
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
-            instance = self_type(cls)
+            instance = fill_typevars(cls)
             typ2 = self.expr_checker.analyze_external_member_access(
                 other_method, instance, defn)
             fail = False
