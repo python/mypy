@@ -682,7 +682,7 @@ class CallableType(FunctionLike):
                             is_classmethod_class=data['is_classmethod_class'],
                             )
 
-    def bind_self(self, self_type: Type = None) -> 'CallableType':
+    def bind_self(self, actual_self: Type = None) -> 'CallableType':
         if self.arg_kinds and self.arg_kinds[0] == mypy.nodes.ARG_STAR:
             # The signature is of the form 'def foo(*args, ...)'.
             # In this case we shouldn't drop the first arg,
@@ -690,17 +690,18 @@ class CallableType(FunctionLike):
             return self
         ret_type = self.ret_type
         variables = list(self.variables)
-        if self.arg_types and self_type is not None:
+        arg_types = self.arg_types[1:]
+        if self.arg_types and actual_self is not None:
             self_arg = self.arg_types[0]
             if isinstance(self_arg, TypeType):
-                print(self_arg)
                 self_arg = self_arg.item
-                print(self_arg)
             if isinstance(self_arg, TypeVarType):
+                instantiator = TypeVarInstantiator(self_arg.id, actual_self)
+                arg_types = [t.accept(instantiator) for t in arg_types]
+                ret_type = ret_type.accept(instantiator)
                 variables = variables[1:]
-                if isinstance(ret_type, TypeVarType) and self_arg.name == ret_type.name:
-                    ret_type = self_type
-        return self.copy_modified(arg_types=self.arg_types[1:],
+
+        return self.copy_modified(arg_types=arg_types,
                                   arg_kinds=self.arg_kinds[1:],
                                   arg_names=self.arg_names[1:],
                                   variables=variables,
@@ -1534,3 +1535,14 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
             name,
             implicit=True,
         )
+
+
+class TypeVarInstantiator(TypeTranslator):
+    def __init__(self, formal: TypeVarId, actual: Type) -> None:
+        self.formal = formal
+        self.actual = actual
+
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if t.id == self.formal:
+            return self.actual
+        return t

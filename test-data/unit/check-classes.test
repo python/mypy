@@ -2164,8 +2164,30 @@ class B(A):
 [out]
 main: note: In member "copy" of class "B":
 
+[case testSelfTypeRecursiveBinding]
+from typing import TypeVar, Callable, Type
+ 
+T = TypeVar('T')
+class A:
+    def copy(self: T, factory: Callable[[T], T]) -> T:
+        return factory(self)
+
+    @classmethod
+    def new(cls: Type[T], factory: Callable[[T], T]) -> T:
+        return cls()
+
+class B(A):
+    pass
+
+reveal_type(A().copy) # E: Revealed type is 'def (factory: def (__main__.A) -> __main__.A) -> __main__.A'
+reveal_type(B().copy) # E: Revealed type is 'def (factory: def (__main__.B) -> __main__.B) -> __main__.B'
+reveal_type(A.new) # E: Revealed type is 'def (factory: def (__main__.A) -> __main__.A) -> __main__.A'
+reveal_type(B.new) # E: Revealed type is 'def (factory: def (__main__.B) -> __main__.B) -> __main__.B'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testSelfTypeCallable]
-from typing import TypeVar, cast, Callable
+from typing import TypeVar, Callable
  
 T = TypeVar('T', 'A')
 -- FIX: make this bound implicit
@@ -2176,8 +2198,8 @@ class A:
 
 Q = TypeVar('Q', 'B')
 class B(A):
-   def copy(self: Q, factory: Callable[[Q], Q]) -> Q: # E: Signature of "copy" incompatible with supertype "A"
-       return factory(self)
-
+    def copy(self: Q, factory: Callable[[Q], Q]) -> Q: # E: Signature of "copy" incompatible with supertype "A"
+        return factory(self)
+ 
 [out]
 main: note: In class "B":
