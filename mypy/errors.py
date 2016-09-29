@@ -94,12 +94,12 @@ class Errors:
     only_once_messages = None  # type: Set[str]
 
     # Set to True to suppress "In function "foo":" messages.
-    suppress_error_context = False  # type: bool
+    hide_error_context = False  # type: bool
 
     # Set to True to show column numbers in error messages
     show_column_numbers = False  # type: bool
 
-    def __init__(self, suppress_error_context: bool = False,
+    def __init__(self, hide_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []
@@ -108,11 +108,11 @@ class Errors:
         self.ignored_lines = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
         self.only_once_messages = set()
-        self.suppress_error_context = suppress_error_context
+        self.hide_error_context = hide_error_context
         self.show_column_numbers = show_column_numbers
 
     def copy(self) -> 'Errors':
-        new = Errors(self.suppress_error_context, self.show_column_numbers)
+        new = Errors(self.hide_error_context, self.show_column_numbers)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.type_name = self.type_name[:]
@@ -309,7 +309,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if self.suppress_error_context:
+            if self.hide_error_context:
                 pass
             elif (e.function_or_member != prev_function_or_member or
                     e.type != prev_type):

@@ -13,7 +13,7 @@ flag (or its long form ``--help``)::
               [--disallow-untyped-defs] [--check-untyped-defs]
               [--disallow-subclassing-any] [--warn-incomplete-stub]
               [--warn-redundant-casts] [--warn-unused-ignores]
-              [--suppress-error-context] [--fast-parser] [-i]
+              [--hide-error-context] [--fast-parser] [-i]
               [--cache-dir DIR] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]] [--pdb]
               [--show-traceback] [--stats] [--inferstats]

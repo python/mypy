@@ -166,9 +166,9 @@ def process_options(args: List[str],
                         help="warn about casting an expression to its inferred type")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
-    parser.add_argument('--suppress-error-context', action='store_true',
-                        dest='suppress_error_context',
-                        help="Suppress context notes before errors")
+    parser.add_argument('--hide-error-context', action='store_true',
+                        dest='hide_error_context',
+                        help="Hide context notes before errors")
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable experimental fast parser")
     parser.add_argument('-i', '--incremental', action='store_true',
