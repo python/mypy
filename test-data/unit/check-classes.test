@@ -2082,6 +2082,30 @@ reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B'
 reveal_type(A().copy())  # E: Revealed type is '__main__.A'
 reveal_type(B().copy())  # E: Revealed type is '__main__.B'
 
+
+[case testSelfTypeReturn]
+from typing import TypeVar, Type
+
+T = TypeVar('T')
+
+def _type(self: T) -> Type[T]: ...
+
+class A:
+    def copy(self: T) -> T:
+        if B():
+            return A()
+        elif A():
+            return B()
+        return _type(self)()
+
+class B(A):
+    pass
+
+[out]
+main: note: In member "copy" of class "A":
+main:10: error: Incompatible return value type (got "A", expected "T")
+main:12: error: Incompatible return value type (got "B", expected "T")
+
 [case testSelfTypeClass]
 from typing import TypeVar, Type
 
@@ -2131,8 +2155,12 @@ class A:
 
 class B(A):
     def copy(self: T) -> T:
-        reveal_type(super().copy()) # E: Revealed type is '__main__.B'
-        cast(T, B())
+        reveal_type(self)  # E: Revealed type is 'T`-1'
+        # TODO:
+        # reveal_type(super().copy())  # Revealed type is 'T`-1'
+        # return super().copy()
+        return cast(T, super().copy())
+
 [out]
 main: note: In member "copy" of class "B":
 
@@ -2143,13 +2171,12 @@ T = TypeVar('T', 'A')
 -- FIX: make this bound implicit
 
 class A:
-    def copy(self: T, factory: Callable[['A'], T]) -> T:
-        # This seems to work only by accident
+    def copy(self: T, factory: Callable[[T], T]) -> T:
         return factory(self)
 
 Q = TypeVar('Q', 'B')
 class B(A):
-   def copy(self: Q, factory: Callable[['B'], Q]) -> Q: # E: Signature of "copy" incompatible with supertype "A"
+   def copy(self: Q, factory: Callable[[Q], Q]) -> Q: # E: Signature of "copy" incompatible with supertype "A"
        return factory(self)
 
 [out]
