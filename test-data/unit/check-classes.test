@@ -2077,9 +2077,24 @@ class A:
 class B(A):
     pass
 
-reveal_type(A.copy)
-reveal_type(B.copy)
-reveal_type(A().copy)
-reveal_type(B().copy)
-reveal_type(A().copy())
-reveal_type(B().copy())
+reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A'
+reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B'
+reveal_type(A().copy())  # E: Revealed type is '__main__.A'
+reveal_type(B().copy())  # E: Revealed type is '__main__.B'
+
+# [case testSelfTypeOverride]
+# from typing import TypeVar
+# 
+# T = TypeVar('T')
+# 
+# class A:
+#     def copy(self: T) -> T: ...
+# 
+# class B(A):
+#     pass
+# 
+# class C(B):
+#     def copy(self: T) -> T: ...
+# 
+-- # reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.B'
+-- # reveal_type(C().copy())  # E: Revealed type is '__main__.C'

@@ -7,7 +7,7 @@ from typing import (
 )
 
 import mypy.nodes
-from mypy.nodes import INVARIANT, SymbolNode
+from mypy.nodes import INVARIANT, COVARIANT, SymbolNode
 
 from mypy import experiments
 
@@ -514,7 +514,7 @@ class FunctionLike(Type):
         return cast(FunctionLike, super().deserialize(data))
 
     @abstractmethod
-    def method_type(self) -> 'FunctionLike': pass
+    def bind_self(self, self_type=None) -> 'FunctionLike': pass
 
 
 _dummy = object()  # type: Any
@@ -681,19 +681,26 @@ class CallableType(FunctionLike):
                             implicit=data['implicit'],
                             is_classmethod_class=data['is_classmethod_class'],
                             )
-    
-    def method_callable(self) -> 'CallableType':
+
+    def bind_self(self, self_type: Type = None) -> 'CallableType':
         if self.arg_kinds and self.arg_kinds[0] == mypy.nodes.ARG_STAR:
             # The signature is of the form 'def foo(*args, ...)'.
             # In this case we shouldn't drop the first arg,
             # since self will be absorbed by the *args.
             return self
+        ret_type = self.ret_type
+        variables = self.variables
+        if self.arg_types and self_type is not None:
+            self_arg = self.arg_types[0]
+            if isinstance(self_arg, TypeVarType) and isinstance(ret_type, TypeVarType):
+                if self_arg.name == ret_type.name:
+                    ret_type = self_type
+                    variables = variables[1:]
         return self.copy_modified(arg_types=self.arg_types[1:],
                                   arg_kinds=self.arg_kinds[1:],
-                                  arg_names=self.arg_names[1:])
-
-    def method_type(self) -> 'CallableType':
-        return self.method_callable()
+                                  arg_names=self.arg_names[1:],
+                                  variables=variables,
+                                  ret_type=ret_type)
 
 
 class Overloaded(FunctionLike):
@@ -747,11 +754,8 @@ class Overloaded(FunctionLike):
         assert data['.class'] == 'Overloaded'
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
 
-    def method_type(self) -> 'FunctionLike':
-        items = []  # type: List[mypy.types.CallableType]
-        for c in self.items():
-            items.append(c.method_callable())
-        return Overloaded(items)
+    def bind_self(self, self_type: Type = None) -> 'FunctionLike':
+        return Overloaded([c.bind_self(self_type) for c in self.items()])
 
 
 class TupleType(Type):
@@ -1441,14 +1445,6 @@ def strip_type(typ: Type) -> Type:
         return typ
 
 
-def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
-    """Return a copy of a callable type with a different self argument type.
-
-    Assume that the callable is the signature of a method.
-    """
-    return t.copy_modified(arg_types=[self_type] + t.arg_types[1:])
-
-
 def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
             t.type is not None and
@@ -1514,28 +1510,23 @@ def true_or_false(t: Type) -> Type:
 
 def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
     if func.type:
-        assert isinstance(func.type, mypy.types.FunctionLike)
+        assert isinstance(func.type, FunctionLike)
         return func.type
     else:
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an ordinary function.
-        fdef = cast(mypy.nodes.FuncDef, func)
+        assert isinstance(func, mypy.nodes.FuncItem), str(func)
+        fdef = cast(mypy.nodes.FuncItem, func)
         name = func.name()
         if name:
             name = '"{}"'.format(name)
 
-        return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arg_names),
+        return CallableType(
+            [AnyType()] * len(fdef.arg_names),
             fdef.arg_kinds,
             fdef.arg_names,
-            mypy.types.AnyType(),
+            AnyType(),
             fallback,
             name,
             implicit=True,
         )
-
-
-def method_type_with_fallback(func: mypy.nodes.FuncBase,
-                              fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
-    """Return the signature of a method (omit self)."""
-    return function_type(func, fallback).method_type()

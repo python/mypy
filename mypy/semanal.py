@@ -72,8 +72,7 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType,
-    function_type)
+    TupleType, UnionType, StarType, EllipsisType, function_type)
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -327,16 +326,12 @@ class SemanticAnalyzer(NodeVisitor):
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif func.type:
-                sig = cast(FunctionLike, func.type)
+            elif func.type and func.arguments[0].type_annotation is None:
                 if func.is_class:
                     leading_type = self.class_type(self.type)
                 else:
-                    leading_type = func.arguments[0].type_annotation
-                    if leading_type is not None:
-                        print(leading_type)
-                    else:
-                        leading_type = self_type(self.type)
+                    leading_type = self_type(self.type)
+                sig = cast(FunctionLike, func.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
@@ -2905,7 +2900,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
-        return replace_leading_arg_type(sig, new)
+        return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
     else:
         sig = cast(Overloaded, sig)
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))

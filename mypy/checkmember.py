@@ -1,14 +1,14 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Dict, Optional
+from typing import cast, Callable, List, Optional, TYPE_CHECKING
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarId, TypeVarDef,
-    Overloaded, TypeVarType, TypeTranslator, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType, function_type, method_type_with_fallback
+    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
+    Overloaded, TypeVarType, UnionType, PartialType,
+    DeletedType, NoneTyp, TypeType, function_type
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
-from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, OpExpr, ComparisonExpr
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2
 from mypy.nodes import Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -16,7 +16,7 @@ from mypy.expandtype import expand_type_by_instance
 from mypy.semanal import self_type
 from mypy import messages
 from mypy import subtypes
-if False:  # import for forward declaration only
+if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
 
 
@@ -63,13 +63,13 @@ def analyze_member_access(name: str,
                                    not_ready_callback)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
-            typ = map_instance_to_supertype(typ, method.info)
+            signature = function_type(method, builtin_type('builtins.function'))
             if name == '__new__':
-                # __new__ is special and behaves like a static method -- don't strip
-                # the first argument.
-                signature = function_type(method, builtin_type('builtins.function'))
+                # __new__ is special and behaves like a static method -- don't strip the first argument.
+                pass
             else:
-                signature = method_type_with_fallback(method, builtin_type('builtins.function'))
+                signature = signature.bind_self(typ)
+            typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(signature, typ)
         else:
             # Not a method.
@@ -195,8 +195,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             method = info.get_method('__getattr__')
             if method:
                 typ = map_instance_to_supertype(itype, method.info)
-                getattr_type = expand_type_by_instance(
-                    method_type_with_fallback(method, builtin_type('builtins.function')), typ)
+                bound_method = function_type(method, builtin_type('builtins.function')).bind_self(info)
+                getattr_type = expand_type_by_instance(bound_method, typ)
                 if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
 
@@ -244,7 +244,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = functype.method_type()
+                signature = functype.bind_self(info)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
@@ -422,7 +422,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
                                    fallback: Instance) -> FunctionLike:
-    signature = method_type_with_fallback(init_or_new, fallback)
+    signature = function_type(init_or_new, fallback).bind_self(info)
 
     # The __init__ method might come from a generic superclass
     # (init_or_new.info) with type variables that do not map
