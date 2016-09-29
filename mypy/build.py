@@ -308,18 +308,17 @@ PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
 PRI_INDIRECT = 30  # an indirect dependency
-PRI_MYPY = 40  # inside "if MYPY" or "if typing.TYPE_CHECKING"
 PRI_ALL = 99  # include all priorities
 
 
 def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     """Compute import priority from an import node."""
-    if imp.is_mypy_only:
-        # Inside "if MYPY" or "if typing.TYPE_CHECKING"
-        return PRI_MYPY
     if not imp.is_top_level:
         # Inside a function
         return PRI_LOW
+    if imp.is_mypy_only:
+        # Inside "if MYPY" or "if typing.TYPE_CHECKING"
+        return max(PRI_MED, toplevel_priority)
     # A regular import; priority determined by argument.
     return toplevel_priority
 
