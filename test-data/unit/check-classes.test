@@ -2135,3 +2135,22 @@ class B(A):
         cast(T, B())
 [out]
 main: note: In member "copy" of class "B":
+
+[case testSelfTypeCallable]
+from typing import TypeVar, cast, Callable
+ 
+T = TypeVar('T', 'A')
+-- FIX: make this bound implicit
+
+class A:
+    def copy(self: T, factory: Callable[['A'], T]) -> T:
+        # This seems to work only by accident
+        return factory(self)
+
+Q = TypeVar('Q', 'B')
+class B(A):
+   def copy(self: Q, factory: Callable[['B'], Q]) -> Q: # E: Signature of "copy" incompatible with supertype "A"
+       return factory(self)
+
+[out]
+main: note: In class "B":
