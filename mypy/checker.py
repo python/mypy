@@ -746,7 +746,7 @@ class TypeChecker(NodeVisitor[Type]):
         method = defn.name()
         if method not in nodes.inplace_operator_methods:
             return
-        typ = self.function_type(defn).bind_self(defn.info)
+        typ = self.function_type(defn).bind_self()
         cls = defn.info
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
@@ -826,7 +826,7 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = self.function_type(defn).bind_self(defn.info)
+            typ = self.function_type(defn).bind_self()
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
@@ -839,7 +839,7 @@ class TypeChecker(NodeVisitor[Type]):
                     assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
-                    original_type.bind_self(defn.info),
+                    original_type.bind_self(),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
@@ -978,8 +978,8 @@ class TypeChecker(NodeVisitor[Type]):
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
-            first_sig = first_type.bind_self(base1)
-            second_sig = second_type.bind_self(base1)
+            first_sig = first_type.bind_self()
+            second_sig = second_type.bind_self()
             ok = is_subtype(first_sig, second_sig)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)

@@ -2102,19 +2102,19 @@ reveal_type(B.new())  # E: Revealed type is '__main__.B'
 
 [builtins fixtures/classmethod.pyi]
 
-# [case testSelfTypeOverride]
-# from typing import TypeVar
-# 
-# T = TypeVar('T')
-# 
-# class A:
-#     def copy(self: T) -> T: ...
-# 
-# class B(A):
-#     pass
-# 
-# class C(B):
-#     def copy(self: T) -> T: ...
-# 
--- # reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.B'
--- # reveal_type(C().copy())  # E: Revealed type is '__main__.C'
+[case testSelfTypeOverride]
+from typing import TypeVar
+ 
+T = TypeVar('T')
+ 
+class A:
+    def copy(self: T) -> T: ...
+
+class B(A):
+    def copy(self: T) -> T: ...
+
+class C(A):
+    def copy(self: T) -> T: ...
+ 
+reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C'
+reveal_type(C().copy())  # E: Revealed type is '__main__.C'
