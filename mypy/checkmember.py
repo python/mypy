@@ -195,7 +195,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             method = info.get_method('__getattr__')
             if method:
                 typ = map_instance_to_supertype(itype, method.info)
-                bound_method = function_type(method, builtin_type('builtins.function')).bind_self(info)
+                bound_method = function_type(method, builtin_type('builtins.function')).bind_self(itype)
                 getattr_type = expand_type_by_instance(bound_method, typ)
                 if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
@@ -244,7 +244,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = functype.bind_self(info)
+                signature = functype.bind_self()
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
@@ -342,7 +342,7 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(t, PartialType):
             return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
-        return add_class_tvars(t, itype.type, is_classmethod, builtin_type)
+        return add_class_tvars(t, itype, is_classmethod, builtin_type)
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
         return AnyType()
@@ -361,23 +361,18 @@ def analyze_class_attribute_access(itype: Instance,
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
 
-def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
+def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
                     builtin_type: Callable[[str], Instance]) -> Type:
+    info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
-        arg_types = t.arg_types
-        arg_kinds = t.arg_kinds
-        arg_names = t.arg_names
         if is_classmethod:
-            arg_types = arg_types[1:]
-            arg_kinds = arg_kinds[1:]
-            arg_names = arg_names[1:]
-        return t.copy_modified(arg_types=arg_types, arg_kinds=arg_kinds, arg_names=arg_names,
-                               variables=vars + t.variables)
+            t = t.bind_self(itype)
+        return t.copy_modified(variables=vars + t.variables)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(CallableType, add_class_tvars(i, info, is_classmethod,
+        return Overloaded([cast(CallableType, add_class_tvars(i, itype, is_classmethod,
                                                               builtin_type))
                            for i in t.items()])
     return t
@@ -422,7 +417,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
                                    fallback: Instance) -> FunctionLike:
-    signature = function_type(init_or_new, fallback).bind_self(info)
+    signature = function_type(init_or_new, fallback).bind_self()
 
     # The __init__ method might come from a generic superclass
     # (init_or_new.info) with type variables that do not map

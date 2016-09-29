@@ -2066,7 +2066,7 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     def readlines(self): pass
     __iter__ = readlines
 
-[case testSelfType]
+[case testSelfTypeInstance]
 from typing import TypeVar
 
 T = TypeVar('T')
@@ -2081,6 +2081,26 @@ reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B'
 reveal_type(A().copy())  # E: Revealed type is '__main__.A'
 reveal_type(B().copy())  # E: Revealed type is '__main__.B'
+
+[case testSelfTypeClass]
+from typing import TypeVar, Type
+
+T = TypeVar('T')
+
+class A:
+    @classmethod
+    def new(cls: Type[T]) -> T:
+        return cls()
+
+class B(A):
+    pass
+
+reveal_type(A.new)  # E: Revealed type is 'def () -> __main__.A'
+reveal_type(B.new)  # E: Revealed type is 'def () -> __main__.B'
+reveal_type(A.new())  # E: Revealed type is '__main__.A'
+reveal_type(B.new())  # E: Revealed type is '__main__.B'
+
+[builtins fixtures/classmethod.pyi]
 
 # [case testSelfTypeOverride]
 # from typing import TypeVar

@@ -689,13 +689,17 @@ class CallableType(FunctionLike):
             # since self will be absorbed by the *args.
             return self
         ret_type = self.ret_type
-        variables = self.variables
+        variables = list(self.variables)
         if self.arg_types and self_type is not None:
             self_arg = self.arg_types[0]
-            if isinstance(self_arg, TypeVarType) and isinstance(ret_type, TypeVarType):
-                if self_arg.name == ret_type.name:
+            if isinstance(self_arg, TypeType):
+                print(self_arg)
+                self_arg = self_arg.item
+                print(self_arg)
+            if isinstance(self_arg, TypeVarType):
+                variables = variables[1:]
+                if isinstance(ret_type, TypeVarType) and self_arg.name == ret_type.name:
                     ret_type = self_type
-                    variables = variables[1:]
         return self.copy_modified(arg_types=self.arg_types[1:],
                                   arg_kinds=self.arg_kinds[1:],
                                   arg_names=self.arg_names[1:],
