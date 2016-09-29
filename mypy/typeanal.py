@@ -107,8 +107,6 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
-                if len(t.args) == 0:
-                    t.args = [AnyType(), EllipsisType()]
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
                     node = self.lookup_fqn_func('builtins.tuple')
