@@ -2111,10 +2111,12 @@ class A:
     def copy(self: T) -> T: ...
 
 class B(A):
-    def copy(self: T) -> T: ...
+    pass
 
 class C(A):
     def copy(self: T) -> T: ...
- 
+
 reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C'
 reveal_type(C().copy())  # E: Revealed type is '__main__.C'
+reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A'
+reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A' 
