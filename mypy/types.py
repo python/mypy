@@ -182,7 +182,7 @@ class UnboundType(Type):
     # is this type a return type?
     is_ret_type = False
 
-    # is this the type of the self parameter in a method?
+    # If it's annotation for `self` parameter, the type of the enclosing class
     enclosing_type = None  # type: Type
 
     # special case for X[()]
