@@ -273,7 +273,7 @@ class Parser:
                     if targets or self.current_str() == ',':
                         self.fail('You cannot import any other modules when you '
                                   'import a custom typing module',
-                                  self.current().line)
+                                  self.current().line, self.current().column)
                     node = Import([('typing', as_id)])
                     self.skip_until_break()
                     break
@@ -445,7 +445,7 @@ class Parser:
                 # The function has a # type: ... signature.
                 if typ:
                     self.errors.report(
-                        def_tok.line, 'Function has duplicate type signatures')
+                        def_tok.line, def_tok.column, 'Function has duplicate type signatures')
                 sig = cast(CallableType, comment_type)
                 if sig.is_ellipsis_args:
                     # When we encounter an ellipsis, fill in the arg_types with
@@ -457,11 +457,12 @@ class Parser:
                         arg_names,
                         sig.ret_type,
                         None,
-                        line=def_tok.line)
+                        line=def_tok.line,
+                        column=def_tok.column)
                 elif is_method and len(sig.arg_kinds) < len(arg_kinds):
                     self.check_argument_kinds(arg_kinds,
                                               [nodes.ARG_POS] + sig.arg_kinds,
-                                              def_tok.line)
+                                              def_tok.line, def_tok.column)
                     # Add implicit 'self' argument to signature.
                     first_arg = [AnyType()]  # type: List[Type]
                     typ = CallableType(
@@ -470,17 +471,19 @@ class Parser:
                         arg_names,
                         sig.ret_type,
                         None,
-                        line=def_tok.line)
+                        line=def_tok.line,
+                        column=def_tok.column)
                 else:
                     self.check_argument_kinds(arg_kinds, sig.arg_kinds,
-                                              def_tok.line)
+                                              def_tok.line, def_tok.column)
                     typ = CallableType(
                         sig.arg_types,
                         arg_kinds,
                         arg_names,
                         sig.ret_type,
                         None,
-                        line=def_tok.line)
+                        line=def_tok.line,
+                        column=def_tok.column)
 
             # If there was a serious error, we really cannot build a parse tree
             # node.
@@ -504,7 +507,7 @@ class Parser:
             self.is_class_body = is_method
 
     def check_argument_kinds(self, funckinds: List[int], sigkinds: List[int],
-                             line: int) -> None:
+                             line: int, column: int) -> None:
         """Check that arguments are consistent.
 
         This verifies that they have the same number and the kinds correspond.
@@ -515,9 +518,9 @@ class Parser:
         """
         if len(funckinds) != len(sigkinds):
             if len(funckinds) > len(sigkinds):
-                self.fail("Type signature has too few arguments", line)
+                self.fail("Type signature has too few arguments", line, column)
             else:
-                self.fail("Type signature has too many arguments", line)
+                self.fail("Type signature has too many arguments", line, column)
             return
         for kind, token in [(nodes.ARG_STAR, '*'),
                             (nodes.ARG_STAR2, '**')]:
@@ -525,7 +528,7 @@ class Parser:
                     (kind in funckinds and sigkinds.index(kind) != funckinds.index(kind))):
                 self.fail(
                     "Inconsistent use of '{}' in function "
-                    "signature".format(token), line)
+                    "signature".format(token), line, column)
 
     def parse_function_header(
             self, no_type_checks: bool=False) -> Tuple[str,
@@ -588,21 +591,21 @@ class Parser:
             ret_type = None
 
         arg_kinds = [arg.kind for arg in args]
-        self.verify_argument_kinds(arg_kinds, lparen.line)
+        self.verify_argument_kinds(arg_kinds, lparen.line, lparen.column)
 
         annotation = self.build_func_annotation(
-            ret_type, args, lparen.line)
+            ret_type, args, lparen.line, lparen.column)
 
         return args, annotation, extra_stmts
 
     def build_func_annotation(self, ret_type: Type, args: List[Argument],
-            line: int, is_default_ret: bool = False) -> CallableType:
+            line: int, column: int, is_default_ret: bool = False) -> CallableType:
         arg_types = [arg.type_annotation for arg in args]
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
                 or arg_types != [None] * len(arg_types)):
             # Yes. Construct a type for the function signature.
-            return self.construct_function_type(args, ret_type, line)
+            return self.construct_function_type(args, ret_type, line, column)
         else:
             return None
 
@@ -688,7 +691,7 @@ class Parser:
         for name in names:
             if name in found:
                 self.fail('Duplicate argument name "{}"'.format(name),
-                          self.current().line)
+                          self.current().line, self.current().column)
             found.add(name)
 
     def parse_asterisk_arg(self,
@@ -725,10 +728,11 @@ class Parser:
         However, if the argument is (x,) then it *is* a (singleton) tuple.
         """
         line = self.current().line
+        column = self.current().column
         # Generate a new argument name that is very unlikely to clash with anything.
         arg_name = '__tuple_arg_{}'.format(index + 1)
         if self.pyversion[0] >= 3:
-            self.fail('Tuples in argument lists only supported in Python 2 mode', line)
+            self.fail('Tuples in argument lists only supported in Python 2 mode', line, column)
         paren_arg = self.parse_parentheses()
         self.verify_tuple_arg(paren_arg)
         if isinstance(paren_arg, NameExpr):
@@ -739,7 +743,7 @@ class Parser:
             rvalue = NameExpr(arg_name)
             rvalue.set_line(line)
             decompose = AssignmentStmt([paren_arg], rvalue)
-            decompose.set_line(line)
+            decompose.set_line(line, column)
         kind = nodes.ARG_POS
         initializer = None
         if self.current_str() == '=':
@@ -753,11 +757,11 @@ class Parser:
     def verify_tuple_arg(self, paren_arg: Node) -> None:
         if isinstance(paren_arg, TupleExpr):
             if not paren_arg.items:
-                self.fail('Empty tuple not valid as an argument', paren_arg.line)
+                self.fail('Empty tuple not valid as an argument', paren_arg.line, paren_arg.column)
             for item in paren_arg.items:
                 self.verify_tuple_arg(item)
         elif not isinstance(paren_arg, NameExpr):
-            self.fail('Invalid item in tuple argument', paren_arg.line)
+            self.fail('Invalid item in tuple argument', paren_arg.line, paren_arg.column)
 
     def find_tuple_arg_argument_names(self, node: Node) -> List[str]:
         result = []  # type: List[str]
@@ -816,21 +820,21 @@ class Parser:
         else:
             return None
 
-    def verify_argument_kinds(self, kinds: List[int], line: int) -> None:
+    def verify_argument_kinds(self, kinds: List[int], line: int, column: int) -> None:
         found = set()  # type: Set[int]
         for i, kind in enumerate(kinds):
             if kind == nodes.ARG_POS and found & set([nodes.ARG_OPT,
                                                       nodes.ARG_STAR,
                                                       nodes.ARG_STAR2]):
-                self.fail('Invalid argument list', line)
+                self.fail('Invalid argument list', line, column)
             elif kind == nodes.ARG_STAR and nodes.ARG_STAR in found:
-                self.fail('Invalid argument list', line)
+                self.fail('Invalid argument list', line, column)
             elif kind == nodes.ARG_STAR2 and i != len(kinds) - 1:
-                self.fail('Invalid argument list', line)
+                self.fail('Invalid argument list', line, column)
             found.add(kind)
 
     def construct_function_type(self, args: List[Argument], ret_type: Type,
-                                line: int) -> CallableType:
+                                line: int, column: int) -> CallableType:
         # Complete the type annotation by replacing omitted types with 'Any'.
         arg_types = [arg.type_annotation for arg in args]
         for i in range(len(arg_types)):
@@ -841,7 +845,7 @@ class Parser:
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]
         return CallableType(arg_types, arg_kinds, arg_names, ret_type, None, name=None,
-                        variables=None, line=line)
+                        variables=None, line=line, column=column)
 
     # Parsing statements
 
@@ -1148,7 +1152,7 @@ class Parser:
             index = index_items[0]
         else:
             index = TupleExpr(index_items)
-            index.set_line(index_items[0].get_line())
+            index.set_line(index_items[0])
 
         return index
 
@@ -1196,7 +1200,9 @@ class Parser:
             if not isinstance(self.current(), Colon):
                 try:
                     t = self.current()
-                    types.append(self.parse_expression(precedence[',']).set_line(t))
+                    expr = self.parse_expression(precedence[','])
+                    expr.set_line(t)
+                    types.append(expr)
                     if self.current_str() == 'as':
                         self.expect('as')
                         vars.append(self.parse_name_expr())
@@ -1488,7 +1494,9 @@ class Parser:
             return expr
         else:
             t = self.current()
-            return self.parse_tuple_expr(expr, prec).set_line(t)
+            tuple_expr = self.parse_tuple_expr(expr, prec)
+            tuple_expr.set_line(t)
+            return tuple_expr
 
     def parse_conditional_expr(self, left_expr: Node) -> ConditionalExpr:
         self.expect('if')
@@ -1713,7 +1721,7 @@ class Parser:
                     break
                 items.append(self.parse_slice_item())
             index = TupleExpr(items)
-            index.set_line(items[0].line)
+            index.set_line(items[0])
         self.expect(']')
         node = IndexExpr(base, index)
         return node
@@ -1743,7 +1751,8 @@ class Parser:
                 self.expect(':')
                 if self.current_str() not in (']', ','):
                     stride = self.parse_expression(precedence[','])
-            item = SliceExpr(index, end_index, stride).set_line(colon.line)
+            item = SliceExpr(index, end_index, stride)
+            item.set_line(colon)
         return item
 
     def parse_bin_op_expr(self, left: Node, prec: int) -> OpExpr:
@@ -1807,13 +1816,15 @@ class Parser:
         # less precise.
         ret_type = UnboundType('__builtins__.object')
         typ = self.build_func_annotation(ret_type, args,
-                                         lambda_tok.line, is_default_ret=True)
+                                         lambda_tok.line, lambda_tok.column, is_default_ret=True)
 
         colon = self.expect(':')
 
         expr = self.parse_expression(precedence[','])
 
-        nodes = [ReturnStmt(expr).set_line(lambda_tok)]
+        return_stmt = ReturnStmt(expr)
+        return_stmt.set_line(lambda_tok)
+        nodes = [return_stmt]  # type: List[Node]
         # Potentially insert extra assignment statements to the beginning of the
         # body, used to decompose Python 2 tuple arguments.
         nodes[:0] = extra_stmts
@@ -1839,11 +1850,11 @@ class Parser:
         if isinstance(self.current(), Indent):
             return self.expect_type(Indent)
         else:
-            self.fail('Expected an indented block', self.current().line)
+            self.fail('Expected an indented block', self.current().line, self.current().column)
             return none
 
-    def fail(self, msg: str, line: int) -> None:
-        self.errors.report(line, msg)
+    def fail(self, msg: str, line: int, column: int) -> None:
+        self.errors.report(line, column, msg)
 
     def expect_type(self, typ: type) -> Token:
         current = self.current()
@@ -1883,7 +1894,7 @@ class Parser:
             formatted_reason = ": {}".format(reason) if reason else ""
             msg = 'Parse error before {}{}'.format(token_repr(tok), formatted_reason)
 
-        self.errors.report(tok.line, msg)
+        self.errors.report(tok.line, tok.column, msg)
 
         if skip:
             self.skip_until_next_line()
@@ -1936,7 +1947,7 @@ class Parser:
             tokens = lex.lex(type_as_str, token.line)[0]
             if len(tokens) < 2:
                 # Empty annotation (only Eof token)
-                self.errors.report(token.line, 'Empty type annotation')
+                self.errors.report(token.line, token.column, 'Empty type annotation')
                 return None
             try:
                 if not signature:

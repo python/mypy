@@ -477,8 +477,8 @@ main:8: error: Two starred expressions in assignment
 (a for *a, (*b, c) in [])
 (a for a, (*b, *c) in [])
 [out]
-main:1: error: Two starred expressions in assignment
 main:1: error: Name 'a' is not defined
+main:1: error: Two starred expressions in assignment
 main:3: error: Two starred expressions in assignment
 
 [case testStarExpressionRhs]
@@ -1357,5 +1357,5 @@ class A:
     z = 1
     [x for i in z if y]
 [out]
-main:5: error: Name 'y' is not defined
 main:5: error: Name 'x' is not defined
+main:5: error: Name 'y' is not defined

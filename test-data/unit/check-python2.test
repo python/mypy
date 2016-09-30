@@ -213,3 +213,8 @@ def bar(key: Callable[[Tuple[int, int]], int]) -> int:
 def foo() -> int:
     return bar(key=lambda (a, b): a)
 [out]
+
+[case testImportBuiltins]
+# flags: --fast-parser
+import __builtin__
+__builtin__.str

@@ -40,6 +40,7 @@ import imp
 import importlib
 import json
 import os.path
+import pkgutil
 import subprocess
 import sys
 import textwrap
@@ -66,7 +67,10 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('doc_dir', str),
                                  ('search_path', List[str]),
                                  ('interpreter', str),
-                                 ('modules', List[str])])
+                                 ('modules', List[str]),
+                                 ('ignore_errors', bool),
+                                 ('recursive', bool),
+                                 ])
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
@@ -574,10 +578,22 @@ def get_qualified_name(o: Node) -> str:
         return '<ERROR>'
 
 
+def walk_packages(packages: List[str]):
+    for package_name in packages:
+        package = __import__(package_name)
+        yield package.__name__
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+                                                                     prefix=package.__name__ + ".",
+                                                                     onerror=lambda r: None):
+            yield qualified_name
+
+
 def main() -> None:
     options = parse_options()
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
+    if options.recursive and options.no_import:
+        raise SystemExit('recursive stub generation without importing is not currently supported')
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     if options.doc_dir:
@@ -589,21 +605,29 @@ def main() -> None:
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
-    for module in options.modules:
-        generate_stub_for_module(module, 'out',
-                                 add_header=True,
-                                 sigs=sigs,
-                                 class_sigs=class_sigs,
-                                 pyversion=options.pyversion,
-                                 no_import=options.no_import,
-                                 search_path=options.search_path,
-                                 interpreter=options.interpreter)
+    for module in (options.modules if not options.recursive else walk_packages(options.modules)):
+        try:
+            generate_stub_for_module(module, 'out',
+                                     add_header=True,
+                                     sigs=sigs,
+                                     class_sigs=class_sigs,
+                                     pyversion=options.pyversion,
+                                     no_import=options.no_import,
+                                     search_path=options.search_path,
+                                     interpreter=options.interpreter)
+        except Exception as e:
+            if not options.ignore_errors:
+                raise e
+            else:
+                print("Stub generation failed for", module, file=sys.stderr)
 
 
 def parse_options() -> Options:
     args = sys.argv[1:]
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
+    recursive = False
+    ignore_errors = False
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
@@ -619,6 +643,10 @@ def parse_options() -> Options:
         elif args[0] == '-p':
             interpreter = args[1]
             args = args[1:]
+        elif args[0] == '--recursive':
+            recursive = True
+        elif args[0] == '--ignore-errors':
+            ignore_errors = True
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
         elif args[0] == '--no-import':
@@ -637,7 +665,9 @@ def parse_options() -> Options:
                    doc_dir=doc_dir,
                    search_path=search_path,
                    interpreter=interpreter,
-                   modules=args)
+                   modules=args,
+                   ignore_errors=ignore_errors,
+                   recursive=recursive)
 
 
 def default_python2_interpreter() -> str:
@@ -664,6 +694,8 @@ def usage() -> None:
 
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
+          --recursive     traverse listed modules to generate inner package modules as well
+          --ignore-errors ignore errors when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
                           respect __all__)

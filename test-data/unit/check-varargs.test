@@ -544,8 +544,8 @@ class B: pass
 main:9: error: Incompatible types in assignment (expression has type List[A], variable has type "A")
 main:9: error: Incompatible types in assignment (expression has type List[None], variable has type List[A])
 main:10: error: Incompatible types in assignment (expression has type List[None], variable has type "A")
-main:11: error: Argument 1 to "f" of "G" has incompatible type *List[A]; expected "B"
 main:11: error: Incompatible types in assignment (expression has type List[None], variable has type List[A])
+main:11: error: Argument 1 to "f" of "G" has incompatible type *List[A]; expected "B"
 
 
 -- Comment signatures

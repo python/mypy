@@ -17,6 +17,7 @@ filed as issues in our trackers:
   for discussion of new type system features (PEP 484 changes) and
   runtime bugs in the typing module
 
+**NEW:** We have an experimental [gitter chat community](https://gitter.im/python-mypy/Lobby).
 
 What is mypy?
 -------------
