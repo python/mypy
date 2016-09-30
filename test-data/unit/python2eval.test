@@ -90,6 +90,7 @@ print f(b'')
 print f(u'')
 [out]
 foo
+qux
 zar
 
 [case testGenericPatterns_python2]

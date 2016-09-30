@@ -122,7 +122,7 @@ TYPE_PROMOTIONS_PYTHON3.update({
 TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'builtins.unicode',
-    'builtins.bytearray': 'builtins.str',
+    'builtins.bytearray': 'builtins.bytes',
 })
 
 # When analyzing a function, should we analyze the whole function in one go, or
