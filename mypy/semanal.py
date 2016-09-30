@@ -323,16 +323,21 @@ class SemanticAnalyzer(NodeVisitor):
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
+        functype = func.type
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif func.type and func.arguments[0].type_annotation is None:
-                if func.is_class:
-                    leading_type = self.class_type(self.type)
-                else:
-                    leading_type = fill_typevars(self.type)
-                sig = cast(FunctionLike, func.type)
-                func.type = replace_implicit_first_type(sig, leading_type)
+            elif isinstance(functype, CallableType):
+                self_type = functype.arg_types[0]
+                if isinstance(self_type, AnyType):
+                    if func.is_class:
+                        leading_type = self.class_type(self.type)
+                    else:
+                        leading_type = fill_typevars(self.type)
+                    sig = cast(FunctionLike, func.type)
+                    func.type = replace_implicit_first_type(sig, leading_type)
+                elif isinstance(self_type, UnboundType):
+                    self_type.enclosing_type = fill_typevars(self.type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?

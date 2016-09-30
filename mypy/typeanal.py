@@ -98,7 +98,11 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Type variable "{}" used with arguments'.format(
                         t.name), t)
                 assert sym.tvar_def is not None
-                return TypeVarType(sym.tvar_def, t.line)
+                ret = TypeVarType(sym.tvar_def, t.line)
+                if t.enclosing_type:
+                    # TODO: ret.variance = nodes.SELF_VARIANCE
+                    ret.upper_bound = t.enclosing_type
+                return ret
             elif fullname == 'builtins.None':
                 if experiments.STRICT_OPTIONAL:
                     return NoneTyp(is_ret_type=t.is_ret_type)

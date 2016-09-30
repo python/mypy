@@ -2081,6 +2081,9 @@ reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B'
 reveal_type(A().copy())  # E: Revealed type is '__main__.A'
 reveal_type(B().copy())  # E: Revealed type is '__main__.B'
+# FIX: Why partial type?
+# reveal_type(A.copy(A()))
+# reveal_type(B.copy(B()))
 
 
 [case testSelfTypeReturn]
@@ -2156,7 +2159,8 @@ class A:
 class B(A):
     def copy(self: T) -> T:
         reveal_type(self)  # E: Revealed type is 'T`-1'
-        # TODO:
+        ## TODO:
+        ## super() dispatch is A.copy, but the type binding should be T=B
         # reveal_type(super().copy())  # Revealed type is 'T`-1'
         # return super().copy()
         return cast(T, super().copy())
@@ -2186,20 +2190,24 @@ reveal_type(B.new) # E: Revealed type is 'def (factory: def (__main__.B) -> __ma
 
 [builtins fixtures/classmethod.pyi]
 
-[case testSelfTypeCallable]
-from typing import TypeVar, Callable
+[case testSelfTypeBound]
+from typing import TypeVar, Callable, cast
  
-T = TypeVar('T', 'A')
--- FIX: make this bound implicit
+T = TypeVar('T')
 
 class A:
-    def copy(self: T, factory: Callable[[T], T]) -> T:
-        return factory(self)
+    def copy(self: T) -> T:
+        ...
 
-Q = TypeVar('Q', 'B')
 class B(A):
-    def copy(self: Q, factory: Callable[[Q], Q]) -> Q: # E: Signature of "copy" incompatible with supertype "A"
-        return factory(self)
- 
+    x = 1
+    def copy(self: T) -> T:
+        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        return cast(T, None)
 [out]
-main: note: In class "B":
+main: note: In member "copy" of class "B":
+
+-- TODO: fail for this
+-- [case testSelfTypeBare]
+-- class E:
+--     def copy(self: T, other: T) -> T: ...

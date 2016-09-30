@@ -7,7 +7,7 @@ from typing import (
 )
 
 import mypy.nodes
-from mypy.nodes import INVARIANT, COVARIANT, SymbolNode
+from mypy.nodes import INVARIANT, SymbolNode
 
 from mypy import experiments
 
@@ -170,6 +170,8 @@ class UnboundType(Type):
     optional = False
     # is this type a return type?
     is_ret_type = False
+    # is this the type of the self parameter in a method?
+    enclosing_type = None  # type: Type
 
     def __init__(self,
                  name: str,
