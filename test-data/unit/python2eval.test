@@ -81,9 +81,12 @@ from typing import AnyStr
 def f(x): # type: (AnyStr) -> AnyStr
     if isinstance(x, str):
         return 'foo'
+    elif isinstance(x, bytes):
+        return b'qux'
     else:
         return u'zar'
 print f('')
+print f(b'')
 print f(u'')
 [out]
 foo
