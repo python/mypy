@@ -525,3 +525,26 @@ f = None # type: Optional[Callable[[int], None]]
 f = lambda x: None
 f(0)
 [builtins fixtures/function.pyi]
+
+[case testOptionalAndAnyBaseClass]
+from typing import Any, Optional
+class C(Any):
+    pass
+x = None  # type: Optional[C]
+x.foo()  # E: Some element of union has no attribute "foo"
+
+[case testUnionSimplificationWithStrictOptional]
+from typing import Any, TypeVar, Union
+class C(Any): pass
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+a = None # type: Any
+
+# Test both orders
+reveal_type(u(C(), None))  # E: Revealed type is 'Union[builtins.None, __main__.C*]'
+reveal_type(u(None, C()))  # E: Revealed type is 'Union[__main__.C*, builtins.None]'
+reveal_type(u(a, None))  # E: Revealed type is 'Union[builtins.None, Any]'
+reveal_type(u(None, a))  # E: Revealed type is 'Union[Any, builtins.None]'
+reveal_type(u(1, None))  # E: Revealed type is 'Union[builtins.None, builtins.int*]'
+reveal_type(u(None, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.None]'

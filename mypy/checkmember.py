@@ -107,11 +107,17 @@ def analyze_member_access(name: str,
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
+        old_num_messages = msg.num_messages()
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
                                          original_type=original_type, chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
+        if msg.num_messages() != old_num_messages and any(isinstance(t, AnyType)
+                                                          for t in results):
+            # If there was an error, return AnyType to avoid generating multiple messages for the
+            # same error.
+            return AnyType()
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
