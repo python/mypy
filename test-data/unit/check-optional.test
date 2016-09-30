@@ -428,3 +428,10 @@ x + 1
 [out]
 main:2: note: In module imported here:
 tmp/a.py:3: error: Unsupported left operand type for + (some union)
+
+[case testOptionalFallbackToNone]
+from typing import Any, Optional
+class C(Any):
+    pass
+x = None  # type: Optional[C]
+x.foo()  # E: Some element of union has no attribute "foo"
