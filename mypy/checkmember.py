@@ -65,8 +65,8 @@ def analyze_member_access(name: str,
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
             if name == '__new__':
-                # __new__ is special and behaves like a static method
-                # -- don't strip the first argument.
+                # __new__ is special and behaves like a static method -- don't strip
+                # the first argument.
                 pass
             else:
                 signature = signature.bind_self(typ)
