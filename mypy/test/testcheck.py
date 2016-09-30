@@ -5,6 +5,8 @@ import re
 import shutil
 import sys
 import time
+import typed_ast
+import typed_ast.ast35
 
 from typing import Tuple, List, Dict, Set
 
@@ -65,7 +67,11 @@ files = [
     'check-warnings.test',
     'check-async-await.test',
     'check-newtype.test',
+    'check-columns.test',
 ]
+
+if 'annotation' in typed_ast.ast35.Assign._fields:
+    files.append('check-newsyntax.test')
 
 
 class TypeCheckSuite(DataSuite):

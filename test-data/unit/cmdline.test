@@ -131,7 +131,7 @@ def f():
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-suppress_error_context = True
+hide_error_context = True
 disallow_untyped_defs = True
 [[mypy-y*]
 disallow_untyped_defs = False
@@ -161,7 +161,7 @@ x.py:1: error: Function is missing a type annotation
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
 [[mypy]
-suppress_error_context = True
+hide_error_context = True
 [[mypy-*x*.py]
 disallow_untyped_defs = True
 [[mypy-*y*.py]
@@ -190,7 +190,7 @@ xx.py:1: error: Function is missing a type annotation
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-suppress_error_context = True
+hide_error_context = True
 [[mypy-x*py,z*py]
 disallow_untyped_defs = True
 [file x.py]

@@ -1111,6 +1111,19 @@ main:4: error: Incompatible types in string interpolation (expression has type "
 [case testStringInterpolationSpaceKey]
 '%( )s' % {' ': 'foo'}
 
+[case testByteByteInterpolation]
+def foo(a: bytes, b: bytes):
+    b'%s:%s' % (a, b)
+foo(b'a', b'b') == b'a:b'
+
+[case testBytePercentInterpolationSupported]
+b'%s' % (b'xyz',)
+b'%(name)s' % {'name': 'jane'}
+b'%c' % (123)
+
+[case testUnicodeInterpolation_python2]
+u'%s' % (u'abc',)
+
 -- Lambdas
 -- -------
 
@@ -1122,8 +1135,8 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible return value type (got "str", expected "int")
 main:4: error: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
+main:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testVoidLambda]
 import typing
@@ -1246,8 +1259,8 @@ class C: pass
 def f(b: A) -> C: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 main:4: error: Value expression in dictionary comprehension has incompatible type "C"; expected type "B"
+main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 
 -- Generator expressions
@@ -1565,8 +1578,8 @@ reveal_type(1) # E: Revealed type is 'builtins.int'
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: error: Name 'x' is not defined
 main:1: error: Revealed type is 'Any'
+main:1: error: Name 'x' is not defined
 
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass

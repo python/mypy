@@ -21,14 +21,19 @@ class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
     line = 0
+    column = 0
     can_be_true = True
     can_be_false = True
 
-    def __init__(self, line: int = -1) -> None:
+    def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
+        self.column = column
 
     def get_line(self) -> int:
         return self.line
+
+    def get_column(self) -> int:
+        return self.column
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         raise RuntimeError('Not implemented')
@@ -110,9 +115,11 @@ class TypeVarDef(mypy.nodes.Context):
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
     line = 0
+    column = 0
 
     def __init__(self, name: str, id: Union[TypeVarId, int], values: Optional[List[Type]],
-                 upper_bound: Type, variance: int = INVARIANT, line: int = -1) -> None:
+                 upper_bound: Type, variance: int = INVARIANT, line: int = -1,
+                 column: int = -1) -> None:
         self.name = name
         if isinstance(id, int):
             id = TypeVarId(id)
@@ -121,15 +128,19 @@ class TypeVarDef(mypy.nodes.Context):
         self.upper_bound = upper_bound
         self.variance = variance
         self.line = line
+        self.column = column
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarDef(old.name, new_id, old.values,
-                          old.upper_bound, old.variance, old.line)
+                          old.upper_bound, old.variance, old.line, old.column)
 
     def get_line(self) -> int:
         return self.line
+
+    def get_column(self) -> int:
+        return self.column
 
     def __repr__(self) -> str:
         if self.values:
@@ -170,22 +181,29 @@ class UnboundType(Type):
     optional = False
     # is this type a return type?
     is_ret_type = False
+
     # is this the type of the self parameter in a method?
     enclosing_type = None  # type: Type
+
+    # special case for X[()]
+    empty_tuple_index = False
 
     def __init__(self,
                  name: str,
                  args: List[Type] = None,
                  line: int = -1,
+                 column: int = -1,
                  optional: bool = False,
-                 is_ret_type: bool = False) -> None:
+                 is_ret_type: bool = False,
+                 empty_tuple_index: bool = False) -> None:
         if not args:
             args = []
         self.name = name
         self.args = args
         self.optional = optional
         self.is_ret_type = is_ret_type
-        super().__init__(line)
+        self.empty_tuple_index = empty_tuple_index
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_unbound_type(self)
@@ -220,8 +238,8 @@ class TypeList(Type):
 
     items = None  # type: List[Type]
 
-    def __init__(self, items: List[Type], line: int = -1) -> None:
-        super().__init__(line)
+    def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
         self.items = items
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -241,8 +259,8 @@ class TypeList(Type):
 class AnyType(Type):
     """The type 'Any'."""
 
-    def __init__(self, implicit: bool = False, line: int = -1) -> None:
-        super().__init__(line)
+    def __init__(self, implicit: bool = False, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
         self.implicit = implicit
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -267,15 +285,15 @@ class Void(Type):
     can_be_true = False
     source = ''   # May be None; function that generated this value
 
-    def __init__(self, source: str = None, line: int = -1) -> None:
+    def __init__(self, source: str = None, line: int = -1, column: int = -1) -> None:
         self.source = source
-        super().__init__(line)
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_void(self)
 
     def with_source(self, source: str) -> 'Void':
-        return Void(source, self.line)
+        return Void(source, self.line, self.column)
 
     def serialize(self) -> JsonDict:
         return {'.class': 'Void'}
@@ -303,8 +321,8 @@ class UninhabitedType(Type):
     can_be_true = False
     can_be_false = False
 
-    def __init__(self, line: int = -1) -> None:
-        super().__init__(line)
+    def __init__(self, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_uninhabited_type(self)
@@ -338,8 +356,8 @@ class NoneTyp(Type):
 
     can_be_true = False
 
-    def __init__(self, is_ret_type: bool = False, line: int = -1) -> None:
-        super().__init__(line)
+    def __init__(self, is_ret_type: bool = False, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
         self.is_ret_type = is_ret_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -375,9 +393,9 @@ class DeletedType(Type):
 
     source = ''   # May be None; name that generated this value
 
-    def __init__(self, source: str = None, line: int = -1) -> None:
+    def __init__(self, source: str = None, line: int = -1, column: int = -1) -> None:
         self.source = source
-        super().__init__(line)
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_deleted_type(self)
@@ -403,11 +421,11 @@ class Instance(Type):
     erased = False      # True if result of type variable substitution
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
-                 line: int = -1, erased: bool = False) -> None:
+                 line: int = -1, column: int = -1, erased: bool = False) -> None:
         self.type = typ
         self.args = args
         self.erased = erased
-        super().__init__(line)
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
@@ -450,13 +468,13 @@ class TypeVarType(Type):
     # See comments in TypeVarDef for more about variance.
     variance = INVARIANT  # type: int
 
-    def __init__(self, binder: TypeVarDef, line: int = -1) -> None:
+    def __init__(self, binder: TypeVarDef, line: int = -1, column: int = -1) -> None:
         self.name = binder.name
         self.id = binder.id
         self.values = binder.values
         self.upper_bound = binder.upper_bound
         self.variance = binder.variance
-        super().__init__(line)
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
@@ -556,6 +574,7 @@ class CallableType(FunctionLike):
                  definition: SymbolNode = None,
                  variables: List[TypeVarDef] = None,
                  line: int = -1,
+                 column: int = -1,
                  is_ellipsis_args: bool = False,
                  implicit: bool = False,
                  is_classmethod_class: bool = False,
@@ -577,7 +596,7 @@ class CallableType(FunctionLike):
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
         self.special_sig = special_sig
-        super().__init__(line)
+        super().__init__(line, column)
 
     def copy_modified(self,
                       arg_types: List[Type] = _dummy,
@@ -589,6 +608,7 @@ class CallableType(FunctionLike):
                       definition: SymbolNode = _dummy,
                       variables: List[TypeVarDef] = _dummy,
                       line: int = _dummy,
+                      column: int = _dummy,
                       is_ellipsis_args: bool = _dummy,
                       special_sig: Optional[str] = _dummy) -> 'CallableType':
         return CallableType(
@@ -601,6 +621,7 @@ class CallableType(FunctionLike):
             definition=definition if definition is not _dummy else self.definition,
             variables=variables if variables is not _dummy else self.variables,
             line=line if line is not _dummy else self.line,
+            column=column if column is not _dummy else self.column,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
             implicit=self.implicit,
@@ -724,7 +745,7 @@ class Overloaded(FunctionLike):
     def __init__(self, items: List[CallableType]) -> None:
         self._items = items
         self.fallback = items[0].fallback
-        super().__init__(items[0].line)
+        super().__init__(items[0].line, items[0].column)
 
     def items(self) -> List[CallableType]:
         return self._items
@@ -781,13 +802,13 @@ class TupleType(Type):
     implicit = False
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
-                 implicit: bool = False) -> None:
+                 column: int = -1, implicit: bool = False) -> None:
         self.items = items
         self.fallback = fallback
         self.implicit = implicit
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.items) == 0
-        super().__init__(line)
+        super().__init__(line, column)
 
     def length(self) -> int:
         return len(self.items)
@@ -815,11 +836,11 @@ class TupleType(Type):
             fallback = self.fallback
         if items is None:
             items = self.items
-        return TupleType(items, fallback, self.line)
+        return TupleType(items, fallback, self.line, self.column)
 
     def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.fallback,
-                         self.line, self.implicit)
+                         self.line, self.column, self.implicit)
 
 
 class StarType(Type):
@@ -830,9 +851,9 @@ class StarType(Type):
 
     type = None  # type: Type
 
-    def __init__(self, type: Type, line: int = -1) -> None:
+    def __init__(self, type: Type, line: int = -1, column: int = -1) -> None:
         self.type = type
-        super().__init__(line)
+        super().__init__(line, column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_star_type(self)
@@ -843,16 +864,16 @@ class UnionType(Type):
 
     items = None  # type: List[Type]
 
-    def __init__(self, items: List[Type], line: int = -1) -> None:
+    def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
         self.items = items
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
-        super().__init__(line)
+        super().__init__(line, column)
 
     @staticmethod
-    def make_union(items: List[Type], line: int = -1) -> Type:
+    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
         if len(items) > 1:
-            return UnionType(items, line)
+            return UnionType(items, line, column)
         elif len(items) == 1:
             return items[0]
         else:
@@ -862,7 +883,7 @@ class UnionType(Type):
                 return Void()
 
     @staticmethod
-    def make_simplified_union(items: List[Type], line: int = -1) -> Type:
+    def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:
         while any(isinstance(typ, UnionType) for typ in items):
             all_items = []  # type: List[Type]
             for typ in items:
@@ -1006,8 +1027,8 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Type, *, line: int = -1) -> None:
-        super().__init__(line)
+    def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
         self.item = item
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -1145,7 +1166,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        return Instance(t.type, self.translate_types(t.args), t.line)
+        return Instance(t.type, self.translate_types(t.args), t.line, t.column)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
@@ -1161,13 +1182,13 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
                          cast(Any, t.fallback.accept(self)),
-                         t.line)
+                         t.line, t.column)
 
     def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line)
+        return StarType(t.type.accept(self), t.line, t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.translate_types(t.items), t.line)
+        return UnionType(self.translate_types(t.items), t.line, t.column)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
         return t
@@ -1190,7 +1211,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line)
+        return TypeType(t.item.accept(self), line=t.line, column=t.column)
 
 
 class TypeStrVisitor(TypeVisitor[str]):
@@ -1471,14 +1492,14 @@ def true_only(t: Type) -> Type:
     """
     if not t.can_be_true:
         # All values of t are False-ish, so there are no true values in it
-        return UninhabitedType(line=t.line)
+        return UninhabitedType(line=t.line, column=t.column)
     elif not t.can_be_false:
         # All values of t are already True-ish, so true_only is idempotent in this case
         return t
     elif isinstance(t, UnionType):
         # The true version of a union type is the union of the true versions of its components
         new_items = [true_only(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line)
+        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
     else:
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -1498,7 +1519,7 @@ def false_only(t: Type) -> Type:
     elif isinstance(t, UnionType):
         # The false version of a union type is the union of the false versions of its components
         new_items = [false_only(item) for item in t.items]
-        return UnionType.make_simplified_union(new_items, line=t.line)
+        return UnionType.make_simplified_union(new_items, line=t.line, column=t.column)
     else:
         new_t = copy_type(t)
         new_t.can_be_true = False

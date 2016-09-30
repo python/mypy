@@ -343,7 +343,7 @@ class BuildManager:
                  version_id: str) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
-        self.errors = Errors(options.suppress_error_context)
+        self.errors = Errors(options.hide_error_context, options.show_column_numbers)
         self.errors.set_ignore_prefix(ignore_prefix)
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
@@ -454,15 +454,15 @@ class BuildManager:
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
                 (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
             self.errors.report(
-                line, "No library stub file for standard library module '{}'".format(id))
-            self.errors.report(line, stub_msg, severity='note', only_once=True)
+                line, 0, "No library stub file for standard library module '{}'".format(id))
+            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         elif moduleinfo.is_third_party_module(id):
-            self.errors.report(line, "No library stub file for module '{}'".format(id))
-            self.errors.report(line, stub_msg, severity='note', only_once=True)
+            self.errors.report(line, 0, "No library stub file for module '{}'".format(id))
+            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         else:
-            self.errors.report(line, "Cannot find module named '{}'".format(id))
-            self.errors.report(line, '(Perhaps setting MYPYPATH '
-                                     'or using the "--silent-imports" flag would help)',
+            self.errors.report(line, 0, "Cannot find module named '{}'".format(id))
+            self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
+                               'or using the "--silent-imports" flag would help)',
                                severity='note', only_once=True)
 
     def report_file(self, file: MypyFile) -> None:
@@ -1190,11 +1190,11 @@ class State:
         manager = self.manager
         manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
-        manager.errors.report(-1, "Ancestor package '%s' silently ignored" % (id,),
+        manager.errors.report(-1, -1, "Ancestor package '%s' silently ignored" % (id,),
                               severity='note', only_once=True)
-        manager.errors.report(-1, "(Using --silent-imports, submodule passed on command line)",
+        manager.errors.report(-1, -1, "(Using --silent-imports, submodule passed on command line)",
                               severity='note', only_once=True)
-        manager.errors.report(-1, "(This note brought to you by --almost-silent)",
+        manager.errors.report(-1, -1, "(This note brought to you by --almost-silent)",
                               severity='note', only_once=True)
 
     def skipping_module(self, id: str, path: str) -> None:
@@ -1204,11 +1204,13 @@ class State:
         manager.errors.set_import_context(self.caller_state.import_context)
         manager.errors.set_file(self.caller_state.xpath)
         line = self.caller_line
-        manager.errors.report(line, "Import of '%s' silently ignored" % (id,),
+        manager.errors.report(line, 0,
+                              "Import of '%s' silently ignored" % (id,),
                               severity='note')
-        manager.errors.report(line, "(Using --silent-imports, module not passed on command line)",
+        manager.errors.report(line, 0,
+                              "(Using --silent-imports, module not passed on command line)",
                               severity='note', only_once=True)
-        manager.errors.report(line, "(This note courtesy of --almost-silent)",
+        manager.errors.report(line, 0, "(This note courtesy of --almost-silent)",
                               severity='note', only_once=True)
         manager.errors.set_import_context(save_import_context)
 
@@ -1378,7 +1380,8 @@ class State:
             if id == '':
                 # Must be from a relative import.
                 manager.errors.set_file(self.xpath)
-                manager.errors.report(line, "No parent module -- cannot perform relative import",
+                manager.errors.report(line, 0,
+                                      "No parent module -- cannot perform relative import",
                                       blocker=True)
                 continue
             if id not in dep_line_map:
@@ -1492,7 +1495,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath)
-            manager.errors.report(-1, "Duplicate module named '%s'" % st.id)
+            manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)
@@ -1533,6 +1536,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     for id, g in graph.items():
         if g.has_new_submodules():
             g.parse_file()
+            g.fix_suppressed_dependencies(graph)
             g.mark_interface_stale()
     return graph
 

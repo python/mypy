@@ -14,7 +14,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr,
+    AwaitExpr, TempNode,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -70,7 +70,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     except (SyntaxError, TypeCommentParseError) as e:
         if errors:
             errors.set_file('<input>' if fnam is None else fnam)
-            errors.report(e.lineno, e.msg)
+            errors.report(e.lineno, e.offset, e.msg)
         else:
             raise
 
@@ -84,8 +84,8 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 def parse_type_comment(type_comment: str, line: int) -> Type:
     try:
         typ = ast35.parse(type_comment, '<type_comment>', 'eval')
-    except SyntaxError:
-        raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, line)
+    except SyntaxError as e:
+        raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, line, e.offset)
     else:
         assert isinstance(typ, ast35.Expression)
         return TypeConverter(line=line).visit(typ.body)
@@ -95,7 +95,7 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
     @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
-        node.set_line(ast.lineno)
+        node.set_line(ast.lineno, ast.col_offset)
         return node
     return wrapper
 
@@ -260,7 +260,7 @@ class ASTConverter(ast35.NodeTransformer):
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
             except SyntaxError:
-                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno)
+                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
             assert isinstance(func_type_ast, ast35.FunctionType)
             # for ellipsis arg
             if (len(func_type_ast.argtypes) == 1 and
@@ -403,16 +403,31 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return DelStmt(self.visit(n.targets[0]))
 
-    # Assign(expr* targets, expr value, string? type_comment)
+    # Assign(expr* targets, expr? value, string? type_comment, expr? annotation)
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> Node:
         typ = None
-        if n.type_comment:
+        if hasattr(n, 'annotation') and n.annotation is not None:  # type: ignore
+            new_syntax = True
+        else:
+            new_syntax = False
+        if new_syntax and self.pyversion < (3, 6):
+            raise TypeCommentParseError('Variable annotation syntax is only '
+                                        'suppoted in Python 3.6, use type '
+                                        'comment instead', n.lineno, n.col_offset)
+        # typed_ast prevents having both type_comment and annotation.
+        if n.type_comment is not None:
             typ = parse_type_comment(n.type_comment, n.lineno)
-
-        return AssignmentStmt(self.visit_list(n.targets),
-                              self.visit(n.value),
-                              type=typ)
+        elif new_syntax:
+            typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+        if n.value is None:  # always allow 'x: int'
+            rvalue = TempNode(AnyType())  # type: Node
+        else:
+            rvalue = self.visit(n.value)
+        lvalues = self.visit_list(n.targets)
+        return AssignmentStmt(lvalues,
+                              rvalue,
+                              type=typ, new_syntax=new_syntax)
 
     # AugAssign(expr target, operator op, expr value)
     @with_line
@@ -496,7 +511,17 @@ class ASTConverter(ast35.NodeTransformer):
     # Import(alias* names)
     @with_line
     def visit_Import(self, n: ast35.Import) -> Node:
-        i = Import([(self.translate_module_id(a.name), a.asname) for a in n.names])
+        names = []  # type: List[Tuple[str, str]]
+        for alias in n.names:
+            name = self.translate_module_id(alias.name)
+            asname = alias.asname
+            if asname is None and name != alias.name:
+                # if the module name has been translated (and it's not already
+                # an explicit import-as), make it an implicit import-as the
+                # original name
+                asname = alias.name
+            names.append((name, asname))
+        i = Import(names)
         self.imports.append(i)
         return i
 
@@ -600,6 +625,7 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_Lambda(self, n: ast35.Lambda) -> Node:
         body = ast35.Return(n.body)
         body.lineno = n.lineno
+        body.col_offset = n.col_offset
 
         return FuncExpr(self.transform_args(n.args, n.lineno),
                         self.as_block([body], n.lineno))
@@ -804,7 +830,8 @@ class TypeConverter(ast35.NodeTransformer):
         return parse_type_comment(s.strip(), line=self.line)
 
     def generic_visit(self, node: ast35.AST) -> None:
-        raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line)
+        raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line,
+                                    getattr(node, 'col_offset', -1))
 
     def visit_NoneType(self, n: Any) -> Type:
         return None
@@ -831,12 +858,15 @@ class TypeConverter(ast35.NodeTransformer):
         assert isinstance(value, UnboundType)
         assert not value.args
 
+        empty_tuple_index = False
         if isinstance(n.slice.value, ast35.Tuple):
             params = self.visit_list(n.slice.value.elts)
+            if len(n.slice.value.elts) == 0:
+                empty_tuple_index = True
         else:
             params = [self.visit(n.slice.value)]
 
-        return UnboundType(value.name, params, line=self.line)
+        return UnboundType(value.name, params, line=self.line, empty_tuple_index=empty_tuple_index)
 
     def visit_Tuple(self, n: ast35.Tuple) -> Type:
         return TupleType(self.visit_list(n.elts), None, implicit=True, line=self.line)
@@ -860,6 +890,7 @@ class TypeConverter(ast35.NodeTransformer):
 
 
 class TypeCommentParseError(Exception):
-    def __init__(self, msg: str, lineno: int) -> None:
+    def __init__(self, msg: str, lineno: int, offset: int) -> None:
         self.msg = msg
         self.lineno = lineno
+        self.offset = offset

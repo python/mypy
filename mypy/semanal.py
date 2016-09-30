@@ -1622,7 +1622,8 @@ class SemanticAnalyzer(NodeVisitor):
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
-        call.analyzed = NamedTupleExpr(info).set_line(call.line)
+        call.analyzed = NamedTupleExpr(info)
+        call.analyzed.set_line(call.line, call.column)
         return info
 
     def parse_namedtuple_args(self, call: CallExpr,
@@ -2541,7 +2542,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
-        self.errors.report(ctx.get_line(), msg, blocker=blocker)
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
@@ -2551,7 +2552,7 @@ class SemanticAnalyzer(NodeVisitor):
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
-        self.errors.report(ctx.get_line(), msg, severity='note')
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note')
 
     def undefined_name_extra_info(self, fullname: str) -> Optional[str]:
         if fullname in obsolete_name_mapping:
@@ -2683,7 +2684,7 @@ class FirstPass(NodeVisitor):
         self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
         info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
-        info.set_line(cdef.line)
+        info.set_line(cdef.line, cdef.column)
         cdef.info = info
         self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info,
                                                       self.sem.cur_mod_id)
@@ -2878,7 +2879,7 @@ class ThirdPass(TraverserVisitor):
             type.accept(analyzer)
 
     def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
-        self.errors.report(ctx.get_line(), msg)
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
