@@ -53,11 +53,11 @@ def parse_test_cases(
             while i < len(p) and p[i].id != 'case':
                 if p[i].id == 'file':
                     # Record an extra file needed for the test case.
-                    files.append((os.path.join(base_path, p[i].arg),
+                    files.append((os.path.join(base_path, p[i].arg or ''),
                                   '\n'.join(p[i].data)))
                 elif p[i].id in ('builtins', 'builtins_py2'):
                     # Use a custom source file for the std module.
-                    mpath = os.path.join(os.path.dirname(path), p[i].arg)
+                    mpath = os.path.join(os.path.dirname(path), p[i].arg or '')
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
@@ -66,15 +66,17 @@ def parse_test_cases(
                     with open(mpath) as f:
                         files.append((os.path.join(base_path, fnam), f.read()))
                 elif p[i].id == 'stale':
-                    if p[i].arg is None:
+                    arg = p[i].arg
+                    if arg is None:
                         stale_modules = set()
                     else:
-                        stale_modules = {item.strip() for item in p[i].arg.split(',')}
+                        stale_modules = {item.strip() for item in arg.split(',')}
                 elif p[i].id == 'rechecked':
-                    if p[i].arg is None:
+                    arg = p[i].arg
+                    if arg is None:
                         rechecked_modules = set()
                     else:
-                        rechecked_modules = {item.strip() for item in p[i].arg.split(',')}
+                        rechecked_modules = {item.strip() for item in arg.split(',')}
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
                     if native_sep and os.path.sep == '\\':
@@ -95,7 +97,9 @@ def parse_test_cases(
                 # If the set of rechecked modules isn't specified, make it the same as the set of
                 # modules with a stale public interface.
                 rechecked_modules = stale_modules
-            if stale_modules is not None and not stale_modules.issubset(rechecked_modules):
+            if (stale_modules is not None
+                    and rechecked_modules is not None
+                    and not stale_modules.issubset(rechecked_modules)):
                 raise ValueError(
                     'Stale modules must be a subset of rechecked modules ({})'.format(path))
 
@@ -225,7 +229,7 @@ class TestItem:
     """
 
     id = ''
-    arg = ''
+    arg = ''  # type: Optional[str]
 
     # Text data, array of 8-bit strings
     data = None  # type: List[str]
@@ -233,7 +237,7 @@ class TestItem:
     file = ''
     line = 0  # Line number in file
 
-    def __init__(self, id: str, arg: str, data: List[str], file: str,
+    def __init__(self, id: str, arg: Optional[str], data: List[str], file: str,
                  line: int) -> None:
         self.id = id
         self.arg = arg
@@ -248,8 +252,8 @@ def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     ret = []  # type: List[TestItem]
     data = []  # type: List[str]
 
-    id = None  # type: str
-    arg = None  # type: str
+    id = None  # type: Optional[str]
+    arg = None  # type: Optional[str]
 
     i = 0
     i0 = 0
