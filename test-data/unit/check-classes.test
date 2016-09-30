@@ -2199,12 +2199,30 @@ class A:
     def copy(self: T) -> T:
         ...
 
+class C(A):    
+    def copy(self: C) -> C:
+        ...
+
+class D(A):    
+    def copy(self: A) -> A:
+        ...
+
+class E(A):    
+    def copy(self: A) -> E:
+        ...
+
 class B(A):
     x = 1
     def copy(self: T) -> T:
         reveal_type(self.x)  # E: Revealed type is 'builtins.int'
         return cast(T, None)
 [out]
+main: note: In class "C":
+main:10: error: Return type of "copy" incompatible with supertype "A"
+main: note: In class "D":
+main:14: error: Return type of "copy" incompatible with supertype "A"
+main: note: In class "E":
+main:18: error: Return type of "copy" incompatible with supertype "A"
 main: note: In member "copy" of class "B":
 
 -- TODO: fail for this

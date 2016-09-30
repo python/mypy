@@ -101,6 +101,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 ret = TypeVarType(sym.tvar_def, t.line)
                 if t.enclosing_type:
                     # TODO: ret.variance = nodes.SELF_VARIANCE
+                    ret.variance = nodes.INVARIANT
                     ret.upper_bound = t.enclosing_type
                 return ret
             elif fullname == 'builtins.None':
