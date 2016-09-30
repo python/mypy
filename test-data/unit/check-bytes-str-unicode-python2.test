@@ -1,0 +1,49 @@
+-- Test cases for bytes/str/unicode in Python 2.x.
+
+[case testBytesStrUnicodeBasics]
+# flags: --hide-error-context --fast-parser
+def needs_bytes(b):
+    # type: (bytes) -> None
+    needs_bytes(b)
+    needs_str(b)  # E: Argument 1 to "needs_str" has incompatible type "bytes"; expected "str"
+    needs_unicode(b)  # E: Argument 1 to "needs_unicode" has incompatible type "bytes"; expected "unicode"
+
+def needs_str(s):
+    # type: (str) -> None
+    # TODO: The following line should not be an error
+    needs_bytes(s)  # E: Argument 1 to "needs_bytes" has incompatible type "str"; expected "bytes"
+    needs_str(s)
+    needs_unicode(s)
+
+def needs_unicode(u):
+    # type: (unicode) -> None
+    needs_bytes(u)  # E: Argument 1 to "needs_bytes" has incompatible type "unicode"; expected "bytes"
+    needs_str(u)  # E: Argument 1 to "needs_str" has incompatible type "unicode"; expected "str"
+    needs_unicode(u)
+[builtins_py2 fixtures/bytes.pyi]
+
+[case testBytesStrUnicodeLiterals]
+# flags: --fast-parser
+def needs_bytes(b):
+    # type: (bytes) -> None
+    pass
+def needs_str(s):
+    # type: (str) -> None
+    pass
+def needs_unicode(u):
+    # type: (unicode) -> None
+    pass
+
+needs_bytes(b'x')
+# TODO: The following line should not be an error
+needs_bytes('x')  # E: Argument 1 to "needs_bytes" has incompatible type "str"; expected "bytes"
+needs_bytes(u'x')  # E: Argument 1 to "needs_bytes" has incompatible type "unicode"; expected "bytes"
+
+needs_str(b'x')  # E: Argument 1 to "needs_str" has incompatible type "bytes"; expected "str"
+needs_str('x')
+needs_str(u'x')  # E: Argument 1 to "needs_str" has incompatible type "unicode"; expected "str"
+
+needs_unicode(b'x')  # E: Argument 1 to "needs_unicode" has incompatible type "bytes"; expected "unicode"
+needs_unicode('x')
+needs_unicode(u'x')
+[builtins_py2 fixtures/bytes.pyi]
