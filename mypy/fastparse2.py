@@ -784,7 +784,7 @@ class ASTConverter(ast27.NodeTransformer):
     def visit_Num(self, new: ast27.Num) -> Node:
         value = new.n
         is_inverse = False
-        if new.n < 0:
+        if str(new.n).startswith('-'):  # Hackish because of complex.
             value = -new.n
             is_inverse = True
 
