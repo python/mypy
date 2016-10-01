@@ -128,7 +128,7 @@ class Node(Context):
         return self.column
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        raise RuntimeError('Not implemented: {}.accept({})'.format(type(self), type(visitor)))
+        raise RuntimeError('Not implemented')
 
 
 # These are placeholders for a future refactoring; see #1783.

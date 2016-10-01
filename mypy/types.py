@@ -215,7 +215,7 @@ class UnboundType(Type):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'UnboundType':
+    def deserialize(cls, data: JsonDict) -> 'UnboundType':
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
                            [Type.deserialize(a) for a in data['args']])
@@ -251,7 +251,7 @@ class TypeList(Type):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'TypeList':
+    def deserialize(cls, data: JsonDict) -> 'TypeList':
         assert data['.class'] == 'TypeList'
         return TypeList([Type.deserialize(t) for t in data['items']])
 
@@ -369,7 +369,7 @@ class NoneTyp(Type):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'NoneTyp':
+    def deserialize(cls, data: JsonDict) -> 'NoneTyp':
         assert data['.class'] == 'NoneTyp'
         return NoneTyp(is_ret_type=data['is_ret_type'])
 
@@ -405,7 +405,7 @@ class DeletedType(Type):
                 'source': self.source}
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'DeletedType':
+    def deserialize(cls, data: JsonDict) -> 'DeletedType':
         assert data['.class'] == 'DeletedType'
         return DeletedType(data['source'])
 
@@ -778,7 +778,7 @@ class Overloaded(FunctionLike):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'Overloaded':
+    def deserialize(cls, data: JsonDict) -> 'Overloaded':
         assert data['.class'] == 'Overloaded'
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
 
@@ -990,7 +990,7 @@ class EllipsisType(Type):
         return {'.class': 'EllipsisType'}
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'EllipsisType':
+    def deserialize(cls, data: JsonDict) -> 'EllipsisType':
         assert data['.class'] == 'EllipsisType'
         return EllipsisType()
 
