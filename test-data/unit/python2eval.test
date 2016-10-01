@@ -79,10 +79,10 @@ x = 1.5
 [case testAnyStr_python2]
 from typing import AnyStr
 def f(x): # type: (AnyStr) -> AnyStr
-    if isinstance(x, str):
+    if isinstance(x, bytes):
+        return b'foo'
+    elif isinstance(x, str):
         return 'foo'
-    elif isinstance(x, bytes):
-        return b'qux'
     else:
         return u'zar'
 print f('')
@@ -90,7 +90,7 @@ print f(b'')
 print f(u'')
 [out]
 foo
-qux
+foo
 zar
 
 [case testGenericPatterns_python2]
@@ -156,13 +156,16 @@ f(**params)
 
 [case testFromFutureImportUnicodeLiterals2_python2]
 from __future__ import unicode_literals
-def f(x: str) -> None: pass
+def f(x):
+    # type: (str) -> None
+    pass
 f(b'')
 f(u'')
 f('')
 [out]
-_program.py:4: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
-_program.py:5: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py:5: error: Argument 1 to "f" has incompatible type "bytes"; expected "str"
+_program.py:6: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
+_program.py:7: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 
 [case testStrUnicodeCompatibility_python2]
 import typing
@@ -237,7 +240,7 @@ u'\x89'
 import typing
 import io
 c = io.BytesIO()
-c.write('\x89')
+c.write(b'\x89')
 print(repr(c.getvalue()))
 [out]
 '\x89'
@@ -400,11 +403,12 @@ def f(x: unicode) -> int: pass
 def f(x: bytearray) -> int: pass
 [out]
 _program.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+_program.py:5: error: No overload variant of "f" matches argument types [builtins.bytes]
 
 [case testByteArrayStrCompatibility_python2]
-def f(x): # type: (str) -> None
+def f(x): # type: (bytes) -> None
     pass
-f(bytearray('foo'))
+f(bytearray(b'foo'))
 
 [case testAbstractProperty_python2]
 from abc import abstractproperty, ABCMeta
@@ -469,7 +473,8 @@ re.subn(upat, lambda m: u'', u'')[0] + u''
 
 [case testYieldRegressionTypingAwaitable_python2]
 # Make sure we don't reference typing.Awaitable in Python 2 mode.
-def g() -> int:
+def g():
+    # type: () -> int
     yield
 [out]
 _program.py: note: In function "g":

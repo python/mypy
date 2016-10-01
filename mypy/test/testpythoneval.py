@@ -62,6 +62,7 @@ def test_python_evaluation(testcase):
         interpreter = python3_path
         args = []
         py2 = False
+    args.append('--fast-parser')  # Some tests require this now.
     args.append('--tb')  # Show traceback on crash.
     # Write the program to a file.
     program = '_program.py'
