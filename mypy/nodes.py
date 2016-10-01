@@ -1747,7 +1747,7 @@ class TypeAliasExpr(Expression):
 
 
 class NamedTupleExpr(Expression):
-    """Named tuple expression namedtuple(...)."""
+    """Named tuple expression namedtuple(...) or NamedTuple(...)."""
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
@@ -1758,6 +1758,19 @@ class NamedTupleExpr(Expression):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)
+
+
+class TypedDictExpr(Expression):
+    """Typed dict expression TypedDict(...)."""
+
+    # The class representation of this typed dict
+    info = None  # type: TypeInfo
+
+    def __init__(self, info: 'TypeInfo') -> None:
+        self.info = info
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_typeddict_expr(self)
 
 
 class PromoteExpr(Expression):
@@ -1882,6 +1895,9 @@ class TypeInfo(SymbolNode):
     # Is this a named tuple type?
     is_named_tuple = False
 
+    # Is this a typed dict type?
+    is_typed_dict = False
+
     # Is this a newtype type?
     is_newtype = False
 
@@ -1893,7 +1909,7 @@ class TypeInfo(SymbolNode):
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype', 'is_dummy'
+        'is_typed_dict', 'is_newtype', 'is_dummy'
     ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
