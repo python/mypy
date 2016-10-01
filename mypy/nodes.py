@@ -137,6 +137,7 @@ class Node(Context):
 # fields of Node subtypes are expected to contain.
 Statement = Node
 Expression = Node
+Lvalue = Expression
 
 
 class SymbolNode(Node):
