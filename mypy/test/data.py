@@ -61,7 +61,7 @@ def parse_test_cases(
                     # Use a custom source file for the std module.
                     arg = p[i].arg
                     assert arg is not None
-                    mpath = os.path.join(os.path.dirname(path), p[i].arg)
+                    mpath = os.path.join(os.path.dirname(path), arg)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
