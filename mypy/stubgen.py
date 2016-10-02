@@ -53,7 +53,7 @@ import mypy.errors
 import mypy.traverser
 from mypy import defaults
 from mypy.nodes import (
-    Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
+    Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
     IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
@@ -360,7 +360,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if all(foundl):
             self._state = VAR
 
-    def is_namedtuple(self, expr: Node) -> bool:
+    def is_namedtuple(self, expr: Expression) -> bool:
         if not isinstance(expr, CallExpr):
             return False
         callee = expr.callee
@@ -445,7 +445,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add_import_line('import %s as %s\n' % (id, target_name))
                 self.record_name(target_name)
 
-    def get_init(self, lvalue: str, rvalue: Node) -> str:
+    def get_init(self, lvalue: str, rvalue: Expression) -> str:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.
@@ -504,7 +504,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__setstate__',
                                                      '__slots__'))
 
-    def get_str_type_of_node(self, rvalue: Node,
+    def get_str_type_of_node(self, rvalue: Expression,
                              can_infer_optional: bool = False) -> str:
         if isinstance(rvalue, IntExpr):
             return 'int'
@@ -543,8 +543,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
-def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Node]]:
-    results = []  # type: List[Tuple[str, Node]]
+def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
+    results = []  # type: List[Tuple[str, Expression]]
 
     class SelfTraverser(mypy.traverser.TraverserVisitor):
         def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
@@ -558,7 +558,7 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Node]]:
     return results
 
 
-def find_classes(node: Node) -> Set[str]:
+def find_classes(node: MypyFile) -> Set[str]:
     results = set()  # type: Set[str]
 
     class ClassTraverser(mypy.traverser.TraverserVisitor):
@@ -569,7 +569,7 @@ def find_classes(node: Node) -> Set[str]:
     return results
 
 
-def get_qualified_name(o: Node) -> str:
+def get_qualified_name(o: Expression) -> str:
     if isinstance(o, NameExpr):
         return o.name
     elif isinstance(o, MemberExpr):

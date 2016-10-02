@@ -135,9 +135,7 @@ class Node(Context):
 # These are placeholders for a future refactoring; see #1783.
 # For now they serve as (unchecked) documentation of what various
 # fields of Node subtypes are expected to contain.
-class Statement(Node):
-    pass
-
+Statement = Node
 Expression = Node
 Lvalue = Expression
 
@@ -1767,9 +1765,9 @@ class NewTypeExpr(Expression):
 class AwaitExpr(Node):
     """Await expression (await ...)."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

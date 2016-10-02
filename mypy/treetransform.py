@@ -188,7 +188,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        node.metaclass)
         new.fullname = node.fullname
         new.info = node.info
-        new.decorators = [decorator.accept(self)
+        new.decorators = [self.expr(decorator)
                           for decorator in node.decorators]
         new.is_builtinclass = node.is_builtinclass
         return new

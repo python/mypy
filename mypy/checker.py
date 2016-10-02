@@ -2218,7 +2218,7 @@ class TypeChecker(NodeVisitor[Type]):
         if not is_equivalent(t1, t2):
             self.fail(msg, node)
 
-    def store_type(self, node: Expression, typ: Type) -> None:
+    def store_type(self, node: Node, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
         if typ is not None:
