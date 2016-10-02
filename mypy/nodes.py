@@ -1762,12 +1762,12 @@ class NewTypeExpr(Expression):
         return visitor.visit_newtype_expr(self)
 
 
-class AwaitExpr(Node):
+class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
