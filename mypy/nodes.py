@@ -135,7 +135,9 @@ class Node(Context):
 # These are placeholders for a future refactoring; see #1783.
 # For now they serve as (unchecked) documentation of what various
 # fields of Node subtypes are expected to contain.
-Statement = Node
+class Statement(Node):
+    pass
+
 Expression = Node
 Lvalue = Expression
 

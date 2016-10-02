@@ -125,8 +125,22 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_NoneType(self, n: Any) -> Optional[Node]:
         return None
 
-    def visit_list(self, l: Sequence[ast35.AST]) -> List[Expression]:
-        return [self.visit(e) for e in l]
+    def translate_expr_list(self, l: Sequence[ast35.AST]) -> List[Expression]:
+        res = []  # type: List[Expression]
+        for e in l:
+            exp = self.visit(e)
+            assert exp is None or isinstance(exp, Expression)
+            res.append(exp)
+        return res
+
+    def translate_stmt_list(self, l: Sequence[ast35.AST]) -> List[Statement]:
+        res = []  # type: List[Statement]
+        for e in l:
+            stmt = self.visit(e)
+            assert stmt is None or isinstance(stmt, Statement)
+            res.append(stmt)
+        return res
+
 
     op_map = {
         ast35.Add: '+',
@@ -176,7 +190,7 @@ class ASTConverter(ast35.NodeTransformer):
     def as_block(self, stmts: List[ast35.stmt], lineno: int) -> Block:
         b = None
         if stmts:
-            b = Block(self.fix_function_overloads(self.visit_list(stmts)))
+            b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             b.set_line(lineno)
         return b
 
@@ -225,7 +239,7 @@ class ASTConverter(ast35.NodeTransformer):
         return id
 
     def visit_Module(self, mod: ast35.Module) -> MypyFile:
-        body = self.fix_function_overloads(self.visit_list(mod.body))
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
 
         return MypyFile(body,
                         self.imports,
@@ -269,7 +283,7 @@ class ASTConverter(ast35.NodeTransformer):
                              for a in args]
             else:
                 arg_types = [a if a is not None else AnyType() for
-                            a in TypeConverter(line=n.lineno).visit_list(func_type_ast.argtypes)]
+                            a in TypeConverter(line=n.lineno).translate_expr_list(func_type_ast.argtypes)]
             return_type = TypeConverter(line=n.lineno).visit(func_type_ast.returns)
 
             # add implicit self type
@@ -312,7 +326,7 @@ class ASTConverter(ast35.NodeTransformer):
             func_def.is_decorated = True
             func_def.set_line(n.lineno + len(n.decorator_list))
             func_def.body.set_line(func_def.get_line())
-            return Decorator(func_def, self.visit_list(n.decorator_list), var)
+            return Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
         else:
             return func_def
 
@@ -382,9 +396,9 @@ class ASTConverter(ast35.NodeTransformer):
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
                         None,
-                        self.visit_list(n.bases),
+                        self.translate_expr_list(n.bases),
                         metaclass=metaclass)
-        cdef.decorators = self.visit_list(n.decorator_list)
+        cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.class_nesting -= 1
         return cdef
 
@@ -397,7 +411,7 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Delete(self, n: ast35.Delete) -> DelStmt:
         if len(n.targets) > 1:
-            tup = TupleExpr(self.visit_list(n.targets))
+            tup = TupleExpr(self.translate_expr_list(n.targets))
             tup.set_line(n.lineno)
             return DelStmt(tup)
         else:
@@ -424,7 +438,7 @@ class ASTConverter(ast35.NodeTransformer):
             rvalue = TempNode(AnyType())  # type: Expression
         else:
             rvalue = self.visit(n.value)
-        lvalues = self.visit_list(n.targets)
+        lvalues = self.translate_expr_list(n.targets)
         return AssignmentStmt(lvalues,
                               rvalue,
                               type=typ, new_syntax=new_syntax)
@@ -590,7 +604,7 @@ class ASTConverter(ast35.NodeTransformer):
             else:
                 return OpExpr(op, vals[0], group(vals[1:]))
 
-        return group(self.visit_list(n.values))
+        return group(self.translate_expr_list(n.values))
 
     # BinOp(expr left, operator op, expr right)
     @with_line
@@ -640,12 +654,12 @@ class ASTConverter(ast35.NodeTransformer):
     # Dict(expr* keys, expr* values)
     @with_line
     def visit_Dict(self, n: ast35.Dict) -> DictExpr:
-        return DictExpr(list(zip(self.visit_list(n.keys), self.visit_list(n.values))))
+        return DictExpr(list(zip(self.translate_expr_list(n.keys), self.translate_expr_list(n.values))))
 
     # Set(expr* elts)
     @with_line
     def visit_Set(self, n: ast35.Set) -> SetExpr:
-        return SetExpr(self.visit_list(n.elts))
+        return SetExpr(self.translate_expr_list(n.elts))
 
     # ListComp(expr elt, comprehension* generators)
     @with_line
@@ -662,7 +676,7 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_DictComp(self, n: ast35.DictComp) -> DictionaryComprehension:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
-        ifs_list = [self.visit_list(c.ifs) for c in n.generators]
+        ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
         return DictionaryComprehension(self.visit(n.key),
                                        self.visit(n.value),
                                        targets,
@@ -674,7 +688,7 @@ class ASTConverter(ast35.NodeTransformer):
     def visit_GeneratorExp(self, n: ast35.GeneratorExp) -> GeneratorExpr:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
-        ifs_list = [self.visit_list(c.ifs) for c in n.generators]
+        ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
         return GeneratorExpr(self.visit(n.elt),
                              targets,
                              iters,
@@ -700,7 +714,7 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Compare(self, n: ast35.Compare) -> ComparisonExpr:
         operators = [self.from_comp_operator(o) for o in n.ops]
-        operands = self.visit_list([n.left] + n.comparators)
+        operands = self.translate_expr_list([n.left] + n.comparators)
         return ComparisonExpr(operators, operands)
 
     # Call(expr func, expr* args, keyword* keywords)
@@ -710,7 +724,7 @@ class ASTConverter(ast35.NodeTransformer):
         def is_star2arg(k: ast35.keyword) -> bool:
             return k.arg is None
 
-        arg_types = self.visit_list(
+        arg_types = self.translate_expr_list(
             [a.value if isinstance(a, ast35.Starred) else a for a in n.args] +
             [k.value for k in n.keywords])
         arg_kinds = ([ARG_STAR if isinstance(a, ast35.Starred) else ARG_POS for a in n.args] +
@@ -812,7 +826,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast35.ExtSlice) -> TupleExpr:
-        return TupleExpr(self.visit_list(n.dims))
+        return TupleExpr(self.translate_expr_list(n.dims))
 
     # Index(expr value)
     def visit_Index(self, n: ast35.Index) -> Node:
@@ -836,7 +850,7 @@ class TypeConverter(ast35.NodeTransformer):
     def visit_NoneType(self, n: Any) -> Type:
         return None
 
-    def visit_list(self, l: Sequence[ast35.AST]) -> List[Type]:
+    def translate_expr_list(self, l: Sequence[ast35.AST]) -> List[Type]:
         return [self.visit(e) for e in l]
 
     def visit_Name(self, n: ast35.Name) -> Type:
@@ -860,7 +874,7 @@ class TypeConverter(ast35.NodeTransformer):
 
         empty_tuple_index = False
         if isinstance(n.slice.value, ast35.Tuple):
-            params = self.visit_list(n.slice.value.elts)
+            params = self.translate_expr_list(n.slice.value.elts)
             if len(n.slice.value.elts) == 0:
                 empty_tuple_index = True
         else:
@@ -869,7 +883,7 @@ class TypeConverter(ast35.NodeTransformer):
         return UnboundType(value.name, params, line=self.line, empty_tuple_index=empty_tuple_index)
 
     def visit_Tuple(self, n: ast35.Tuple) -> Type:
-        return TupleType(self.visit_list(n.elts), None, implicit=True, line=self.line)
+        return TupleType(self.translate_expr_list(n.elts), None, implicit=True, line=self.line)
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: ast35.Attribute) -> Type:
@@ -886,7 +900,7 @@ class TypeConverter(ast35.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast35.List) -> Type:
-        return TypeList(self.visit_list(n.elts), line=self.line)
+        return TypeList(self.translate_expr_list(n.elts), line=self.line)
 
 
 class TypeCommentParseError(Exception):
