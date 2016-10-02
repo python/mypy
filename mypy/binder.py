@@ -2,7 +2,7 @@ from typing import (Any, Dict, List, Set, Iterator)
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Node, Var)
+from mypy.nodes import (Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -96,7 +96,7 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Node, typ: Type) -> None:
+    def push(self, expr: Expression, typ: Type) -> None:
         if not expr.literal:
             return
         key = expr.literal_hash
@@ -105,10 +105,10 @@ class ConditionalTypeBinder:
             self._add_dependencies(key)
         self._push(key, typ)
 
-    def get(self, expr: Node) -> Type:
+    def get(self, expr: Expression) -> Type:
         return self._get(expr.literal_hash)
 
-    def cleanse(self, expr: Node) -> None:
+    def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
         self._cleanse_key(expr.literal_hash)
 
@@ -165,8 +165,8 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, expr: Any) -> Type:
-        if hasattr(expr, 'node') and isinstance(expr.node, Var):
+    def get_declaration(self, expr: Expression) -> Type:
+        if isinstance(expr, (RefExpr, SymbolTableNode)) and isinstance(expr.node, Var):
             type = expr.node.type
             if isinstance(type, PartialType):
                 return None
@@ -174,7 +174,7 @@ class ConditionalTypeBinder:
         else:
             return None
 
-    def assign_type(self, expr: Node,
+    def assign_type(self, expr: Expression,
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
@@ -212,7 +212,7 @@ class ConditionalTypeBinder:
             # just copy this variable into a single stored frame.
             self.allow_jump(i)
 
-    def invalidate_dependencies(self, expr: Node) -> None:
+    def invalidate_dependencies(self, expr: Expression) -> None:
         """Invalidate knowledge of types that include expr, but not expr itself.
 
         For example, when expr is foo.bar, invalidate foo.bar.baz.
@@ -223,7 +223,7 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: Node, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: Expression, type: Type) -> Type:
         if isinstance(type, AnyType):
             return self.get_declaration(expr)
         key = expr.literal_hash

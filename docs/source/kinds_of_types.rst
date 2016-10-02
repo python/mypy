@@ -797,7 +797,7 @@ decorator to convert a generator into a coroutine.
 Note that we set the ``YieldType`` of the generator to be ``Any`` in the
 following example. This is because the exact yield type is an implementation
 detail of the coroutine runner (e.g. the ``asyncio`` event loop) and your
-couroutine shouldn't have to know or care about what precisely that type is.
+coroutine shouldn't have to know or care about what precisely that type is.
 
 .. code-block:: python
 
@@ -852,7 +852,7 @@ will be a value of type ``Awaitable[T]``.
               yield
           return "placeholder"
 
-You may also optionally choose to create a subclass of ``Awaitable`` instead:
+You may also choose to create a subclass of ``Awaitable`` instead:
 
 .. code-block:: python
 
@@ -870,7 +870,7 @@ You may also optionally choose to create a subclass of ``Awaitable`` instead:
                yield from asyncio.sleep(0.1)
            return "Blastoff!"
 
-   def countdown_3(tag: str, count: int) -> Awaitable[None]:
+   def countdown_3(tag: str, count: int) -> Awaitable[str]:
        return MyAwaitable(tag, count)
 
    loop = asyncio.get_event_loop()

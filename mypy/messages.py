@@ -148,6 +148,7 @@ class MessageBuilder:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
+                               context.get_column() if context else -1,
                                msg.strip(), severity=severity, file=file)
 
     def fail(self, msg: str, context: Context, file: str = None) -> None:
@@ -235,7 +236,7 @@ class MessageBuilder:
                 for arg in itype.args:
                     a.append(strip_quotes(self.format(arg)))
                 s = ', '.join(a)
-                if len((base_str + s)) < 25:
+                if len((base_str + s)) < 150:
                     return '{}[{}]'.format(base_str, s)
                 else:
                     return '{}[...]'.format(base_str)
@@ -250,7 +251,7 @@ class MessageBuilder:
             for t in typ.items:
                 items.append(strip_quotes(self.format(t)))
             s = '"Tuple[{}]"'.format(', '.join(items))
-            if len(s) < 40:
+            if len(s) < 400:
                 return s
             else:
                 return 'tuple(length {})'.format(len(items))
@@ -266,7 +267,7 @@ class MessageBuilder:
                 for t in typ.items:
                     items.append(strip_quotes(self.format(t)))
                 s = '"Union[{}]"'.format(', '.join(items))
-                if len(s) < 40:
+                if len(s) < 400:
                     return s
                 else:
                     return 'union type ({} items)'.format(len(items))
@@ -417,7 +418,7 @@ class MessageBuilder:
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callee.name if callee.name is not None else '(unknown)'
-        self.fail('call to untyped function {} in typed context'.format(name), context)
+        self.fail('Call to untyped function {} in typed context'.format(name), context)
         return AnyType()
 
     def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,

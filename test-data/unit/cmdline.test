@@ -90,3 +90,154 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named 'mod'
+
+[case testFlagsFile]
+# cmd: mypy @flagsfile
+[file flagsfile]
+-2
+main.py
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testConfigFile]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testAltConfigFile]
+# cmd: mypy --config-file config.ini main.py
+[file config.ini]
+[[mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testPerFileConfigSection]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+hide_error_context = True
+disallow_untyped_defs = True
+[[mypy-y*]
+disallow_untyped_defs = False
+[[mypy-z*]
+disallow_untyped_calls = True
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[file y.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[file z.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+z.py:1: error: Function is missing a type annotation
+z.py:4: error: Call to untyped function "f" in typed context
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionMultipleMatches]
+# cmd: mypy xx.py xy.py yx.py yy.py
+[file mypy.ini]
+[[mypy]
+hide_error_context = True
+[[mypy-*x*.py]
+disallow_untyped_defs = True
+[[mypy-*y*.py]
+disallow_untyped_calls = True
+[file xx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file xy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[out]
+yy.py:2: error: Call to untyped function "f" in typed context
+yx.py:1: error: Function is missing a type annotation
+yx.py:2: error: Call to untyped function "f" in typed context
+xy.py:1: error: Function is missing a type annotation
+xy.py:2: error: Call to untyped function "f" in typed context
+xx.py:1: error: Function is missing a type annotation
+
+[case testMultipleGlobConfigSection]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+hide_error_context = True
+[[mypy-x*py,z*py]
+disallow_untyped_defs = True
+[file x.py]
+def f(a): pass
+[file y.py]
+def f(a): pass
+[file z.py]
+def f(a): pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testConfigErrorNoSection]
+# cmd: mypy -c pass
+[file mypy.ini]
+[out]
+mypy.ini: No [mypy] section in config file
+
+[case testConfigErrorUnknownFlag]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+bad = 0
+[out]
+mypy.ini: [mypy]: Unrecognized option: bad = 0
+
+[case testConfigErrorUnknownReport]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+bad_report = .
+[out]
+mypy.ini: [mypy]: Unrecognized report type: bad_report
+
+[case testConfigErrorBadBoolean]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+silent_imports = nah
+[out]
+mypy.ini: [mypy]: silent_imports: Not a boolean: nah
+
+[case testConfigErrorNotPerFile]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+[[mypy-*]
+strict_optional = True
+[out]
+mypy.ini: [mypy-*]: Per-file sections should only specify per-file flags (strict_optional)

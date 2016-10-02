@@ -1,18 +1,15 @@
 """Mypy type checker."""
 
 import itertools
-import contextlib
 import fnmatch
-import os
-import os.path
 
 from typing import (
-    Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
 )
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, Var, Expression,
+    SymbolTable, Node, MypyFile, Var, Expression, Lvalue,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -41,7 +38,6 @@ from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy.checkmember import map_type_from_supertype
-from mypy import defaults
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype,
@@ -50,7 +46,7 @@ from mypy.subtypes import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import self_type, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
@@ -120,21 +116,20 @@ class TypeChecker(NodeVisitor[Type]):
     # Is this file a typeshed stub?
     is_typeshed_stub = False
     # Should strict Optional-related errors be suppressed in this file?
-    suppress_none_errors = False
+    suppress_none_errors = False  # TODO: Get it from options instead
     options = None  # type: Options
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
-        self.options = options
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
         self.module_type_map = {}
@@ -151,8 +146,9 @@ class TypeChecker(NodeVisitor[Type]):
         self.current_node_deferred = False
         self.module_refs = set()
 
-    def visit_file(self, file_node: MypyFile, path: str) -> None:
+    def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
         """Type check a mypy file with the given path."""
+        self.options = options
         self.pass_num = 0
         self.is_stub = file_node.is_stub
         self.errors.set_file(path)
@@ -163,7 +159,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.module_type_map = {}
         self.module_refs = set()
         if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = False
+            self.suppress_none_errors = not self.options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
@@ -187,6 +183,8 @@ class TypeChecker(NodeVisitor[Type]):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
+
+        del self.options
 
     def check_second_pass(self) -> None:
         """Run second pass of type checking which goes through deferred nodes."""
@@ -229,7 +227,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             return typ
 
-    def accept_loop(self, body: Node, else_body: Node = None) -> Type:
+    def accept_loop(self, body: Union[IfStmt, Block], else_body: Block = None) -> Type:
         """Repeatedly type check a loop body until the frame doesn't change.
 
         Then check the else_body.
@@ -1028,7 +1026,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None)
+        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if len(s.lvalues) > 1:
             # Chained assignment (e.g. x = y = ...).
@@ -1039,7 +1037,8 @@ class TypeChecker(NodeVisitor[Type]):
             for lv in s.lvalues[:-1]:
                 self.check_assignment(lv, rvalue, s.type is None)
 
-    def check_assignment(self, lvalue: Node, rvalue: Node, infer_lvalue_type: bool = True) -> None:
+    def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
+                         new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, lvalue,
@@ -1076,7 +1075,8 @@ class TypeChecker(NodeVisitor[Type]):
                 elif (is_literal_none(rvalue) and
                         isinstance(lvalue, NameExpr) and
                         isinstance(lvalue.node, Var) and
-                        lvalue.node.is_initialized_in_class):
+                        lvalue.node.is_initialized_in_class and
+                        not new_syntax):
                     # Allow None's to be assigned to class variables with non-Optional types.
                     rvalue_type = lvalue_type
                 else:
@@ -1094,7 +1094,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
 
-    def check_assignment_to_multiple_lvalues(self, lvalues: List[Node], rvalue: Node,
+    def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
                                              infer_lvalue_type: bool = True) -> None:
         if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
@@ -1129,7 +1129,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
 
-    def check_rvalue_count_in_assignment(self, lvalues: List[Node], rvalue_count: int,
+    def check_rvalue_count_in_assignment(self, lvalues: List[Lvalue], rvalue_count: int,
                                          context: Context) -> bool:
         if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
             if len(lvalues) - 1 > rvalue_count:
@@ -1142,8 +1142,8 @@ class TypeChecker(NodeVisitor[Type]):
             return False
         return True
 
-    def check_multi_assignment(self, lvalues: List[Node],
-                               rvalue: Node,
+    def check_multi_assignment(self, lvalues: List[Lvalue],
+                               rvalue: Expression,
                                context: Context,
                                infer_lvalue_type: bool = True,
                                msg: str = None) -> None:
@@ -1165,7 +1165,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
                                                      context, infer_lvalue_type)
 
-    def check_multi_assignment_from_tuple(self, lvalues: List[Node], rvalue: Node,
+    def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
                                           undefined_rvalue: bool,
                                           infer_lvalue_type: bool = True) -> None:
@@ -1188,14 +1188,14 @@ class TypeChecker(NodeVisitor[Type]):
             for lv, rv_type in zip(left_lvs, left_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
             if star_lv:
-                nodes = [self.temp_node(rv_type, context) for rv_type in star_rv_types]
-                list_expr = ListExpr(nodes)
+                list_expr = ListExpr([self.temp_node(rv_type, context)
+                                      for rv_type in star_rv_types])
                 list_expr.set_line(context.get_line())
                 self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
 
-    def lvalue_type_for_inference(self, lvalues: List[Node], rvalue_type: TupleType) -> Type:
+    def lvalue_type_for_inference(self, lvalues: List[Lvalue], rvalue_type: TupleType) -> Type:
         star_index = next((i for i, lv in enumerate(lvalues)
                            if isinstance(lv, StarExpr)), len(lvalues))
         left_lvs = lvalues[:star_index]
@@ -1206,7 +1206,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         type_parameters = []  # type: List[Type]
 
-        def append_types_for_inference(lvs: List[Node], rv_types: List[Type]) -> None:
+        def append_types_for_inference(lvs: List[Expression], rv_types: List[Type]) -> None:
             for lv, rv_type in zip(lvs, rv_types):
                 sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
                 if sub_lvalue_type:
@@ -1251,7 +1251,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                         [AnyType()])) and
                 isinstance(type, Instance))
 
-    def check_multi_assignment_from_iterable(self, lvalues: List[Node], rvalue_type: Type,
+    def check_multi_assignment_from_iterable(self, lvalues: List[Lvalue], rvalue_type: Type,
                                              context: Context,
                                              infer_lvalue_type: bool = True) -> None:
         if self.type_is_iterable(rvalue_type):
@@ -1266,7 +1266,7 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
-    def check_lvalue(self, lvalue: Node) -> Tuple[Type, IndexExpr, Var]:
+    def check_lvalue(self, lvalue: Lvalue) -> Tuple[Type, IndexExpr, Var]:
         lvalue_type = None  # type: Type
         index_lvalue = None  # type: IndexExpr
         inferred = None  # type: Var
@@ -1296,7 +1296,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         return lvalue_type, index_lvalue, inferred
 
-    def is_definition(self, s: Node) -> bool:
+    def is_definition(self, s: Lvalue) -> bool:
         if isinstance(s, NameExpr):
             if s.is_def:
                 return True
@@ -1312,7 +1312,7 @@ class TypeChecker(NodeVisitor[Type]):
             return s.is_def
         return False
 
-    def infer_variable_type(self, name: Var, lvalue: Node,
+    def infer_variable_type(self, name: Var, lvalue: Lvalue,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
         if self.typing_mode_weak():
@@ -1339,7 +1339,7 @@ class TypeChecker(NodeVisitor[Type]):
 
             self.set_inferred_type(name, lvalue, init_type)
 
-    def infer_partial_type(self, name: Var, lvalue: Node, init_type: Type) -> bool:
+    def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         if isinstance(init_type, (NoneTyp, UninhabitedType)):
             partial_type = PartialType(None, name, [init_type])
         elif isinstance(init_type, Instance):
@@ -1358,7 +1358,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.partial_types[-1][name] = lvalue
         return True
 
-    def set_inferred_type(self, var: Var, lvalue: Node, type: Type) -> None:
+    def set_inferred_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store inferred variable type.
 
         Store the type to both the variable node and the expression node that
@@ -1368,7 +1368,7 @@ class TypeChecker(NodeVisitor[Type]):
             var.type = type
             self.store_type(lvalue, type)
 
-    def set_inference_error_fallback_type(self, var: Var, lvalue: Node, type: Type,
+    def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
                                           context: Context) -> None:
         """If errors on context line are ignored, store dummy type for variable.
 
@@ -1383,7 +1383,7 @@ class TypeChecker(NodeVisitor[Type]):
         if context.get_line() in self.errors.ignored_lines[self.errors.file]:
             self.set_inferred_type(var, lvalue, AnyType())
 
-    def narrow_type_from_binder(self, expr: Node, known_type: Type) -> Type:
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
             if restriction:
@@ -1391,8 +1391,8 @@ class TypeChecker(NodeVisitor[Type]):
                 return ans
         return known_type
 
-    def check_simple_assignment(self, lvalue_type: Type, rvalue: Node,
-                                context: Node,
+    def check_simple_assignment(self, lvalue_type: Type, rvalue: Expression,
+                                context: Context,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                 lvalue_name: str = 'variable',
                                 rvalue_name: str = 'expression') -> Type:
@@ -1414,7 +1414,7 @@ class TypeChecker(NodeVisitor[Type]):
             return rvalue_type
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
-                                 rvalue: Node, context: Context) -> None:
+                                 rvalue: Expression, context: Context) -> None:
         """Type check indexed assignment base[index] = rvalue.
 
         The lvalue argument is the base[index] expression.
@@ -1429,7 +1429,7 @@ class TypeChecker(NodeVisitor[Type]):
                                      context)
 
     def try_infer_partial_type_from_indexed_assignment(
-            self, lvalue: IndexExpr, rvalue: Node) -> None:
+            self, lvalue: IndexExpr, rvalue: Expression) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
         if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
             var = lvalue.base.node
@@ -1610,7 +1610,7 @@ class TypeChecker(NodeVisitor[Type]):
         if s.from_expr:
             self.type_check_raise(s.from_expr, s)
 
-    def type_check_raise(self, e: Node, s: RaiseStmt) -> None:
+    def type_check_raise(self, e: Expression, s: RaiseStmt) -> None:
         typ = self.accept(e)
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
@@ -1701,7 +1701,7 @@ class TypeChecker(NodeVisitor[Type]):
                 breaking_out = breaking_out and self.binder.last_pop_breaking_out
         return breaking_out
 
-    def visit_except_handler_test(self, n: Node) -> Type:
+    def visit_except_handler_test(self, n: Expression) -> Type:
         """Type check an exception handler test clause."""
         type = self.accept(n)
 
@@ -1737,7 +1737,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.analyze_index_variables(s.index, item_type, s)
         self.accept_loop(s.body, s.else_body)
 
-    def analyze_async_iterable_item_type(self, expr: Node) -> Type:
+    def analyze_async_iterable_item_type(self, expr: Expression) -> Type:
         """Analyse async iterable expression and return iterator item type."""
         iterable = self.accept(expr)
 
@@ -1756,7 +1756,7 @@ class TypeChecker(NodeVisitor[Type]):
         return self.check_awaitable_expr(awaitable, expr,
                                          messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
 
-    def analyze_iterable_item_type(self, expr: Node) -> Type:
+    def analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Analyse iterable expression and return iterator item type."""
         iterable = self.accept(expr)
 
@@ -1791,7 +1791,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                          expr)
             return echk.check_call(method, [], [], expr)[0]
 
-    def analyze_index_variables(self, index: Node, item_type: Type,
+    def analyze_index_variables(self, index: Expression, item_type: Type,
                                 context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
         self.check_assignment(index, self.temp_node(item_type, context))
@@ -1805,7 +1805,7 @@ class TypeChecker(NodeVisitor[Type]):
             c.line = s.line
             return c.accept(self)
         else:
-            def flatten(t: Node) -> List[Node]:
+            def flatten(t: Expression) -> List[Expression]:
                 """Flatten a nested sequence of tuples/lists into one list of nodes."""
                 if isinstance(t, TupleExpr) or isinstance(t, ListExpr):
                     return [b for a in t.items for b in flatten(a)]
@@ -2218,7 +2218,7 @@ class TypeChecker(NodeVisitor[Type]):
         if not is_equivalent(t1, t2):
             self.fail(msg, node)
 
-    def store_type(self, node: Node, typ: Type) -> None:
+    def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
         if typ is not None:
@@ -2330,7 +2330,7 @@ class TypeChecker(NodeVisitor[Type]):
         if self.is_unusable_type(typ):
             self.msg.does_not_return_value(typ, context)
 
-    def temp_node(self, t: Type, context: Context = None) -> Node:
+    def temp_node(self, t: Type, context: Context = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""
         temp = TempNode(t)
         if context:
@@ -2368,12 +2368,10 @@ class TypeChecker(NodeVisitor[Type]):
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
-# NB: This should be `TypeMap = Optional[Dict[Node, Type]]`!
-# But see https://github.com/python/mypy/issues/1637
-TypeMap = Dict[Node, Type]
+TypeMap = Optional[Dict[Node, Type]]
 
 
-def conditional_type_map(expr: Node,
+def conditional_type_map(expr: Expression,
                          current_type: Optional[Type],
                          proposed_type: Optional[Type],
                          *,
@@ -2405,7 +2403,7 @@ def conditional_type_map(expr: Node,
             return {}, {}
 
 
-def is_literal_none(n: Node) -> bool:
+def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
@@ -2453,7 +2451,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     return result
 
 
-def find_isinstance_check(node: Node,
+def find_isinstance_check(node: Expression,
                           type_map: Dict[Node, Type],
                           weak: bool=False
                           ) -> Tuple[TypeMap, TypeMap]:
@@ -2546,8 +2544,8 @@ def find_isinstance_check(node: Node,
     return {}, {}
 
 
-def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
-    type = type_map[node]
+def get_isinstance_type(expr: Expression, type_map: Dict[Node, Type]) -> Type:
+    type = type_map[expr]
 
     if isinstance(type, TupleType):
         all_types = type.items
@@ -2573,7 +2571,7 @@ def get_isinstance_type(node: Node, type_map: Dict[Node, Type]) -> Type:
         return UnionType(types)
 
 
-def expand_node(defn: Node, map: Dict[TypeVarId, Type]) -> Node:
+def expand_node(defn: FuncItem, map: Dict[TypeVarId, Type]) -> Node:
     visitor = TypeTransformVisitor(map)
     return defn.accept(visitor)
 

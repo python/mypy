@@ -13,4 +13,4 @@ install:
   - python setup.py install
 
 script:
-  - python runtests.py -v
+  - python runtests.py

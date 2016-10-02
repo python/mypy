@@ -573,13 +573,13 @@ class A:
 [case testLargeTuplesInErrorMessages]
 
 a = None # type: LongTypeName
-a + (a, a, a, a, a, a, a) # Fail
+a + (a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a) # Fail
 
 class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Unsupported operand types for + ("LongTypeName" and tuple(length 7))
+main:3: error: Unsupported operand types for + ("LongTypeName" and tuple(length 50))
 
 
 -- Tuple methods
@@ -807,4 +807,35 @@ a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[i
 
 [case testTupleWithoutContext]
 a = (1, [])  # E: Need type annotation for variable
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithUnionContext]
+from typing import List, Union, Tuple
+def f() -> Union[int, Tuple[List[str]]]:
+    return ([],)
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithVariableSizedTupleContext]
+from typing import List, Tuple
+def f() -> Tuple[List[str], ...]:
+    return ([],)
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithoutArgs]
+from typing import Tuple
+def f(a: Tuple) -> None: pass
+f(())
+f((1,))
+f(('', ''))
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ...]
+[builtins fixtures/tuple.pyi]
+
+[case testTupleSingleton]
+# flags: --fast-parser
+from typing import Tuple
+def f(a: Tuple[()]) -> None: pass
+f(())
+f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[]"
+f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[]"
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[]"
 [builtins fixtures/tuple.pyi]

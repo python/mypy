@@ -5,6 +5,8 @@ import re
 import shutil
 import sys
 import time
+import typed_ast
+import typed_ast.ast35
 
 from typing import Tuple, List, Dict, Set
 
@@ -65,7 +67,11 @@ files = [
     'check-warnings.test',
     'check-async-await.test',
     'check-newtype.test',
+    'check-columns.test',
 ]
+
+if 'annotation' in typed_ast.ast35.Assign._fields:
+    files.append('check-newsyntax.test')
 
 
 class TypeCheckSuite(DataSuite):
@@ -100,7 +106,7 @@ class TypeCheckSuite(DataSuite):
             self.run_case_once(testcase)
 
     def clear_cache(self) -> None:
-        dn = defaults.MYPY_CACHE
+        dn = defaults.CACHE_DIR
 
         if os.path.exists(dn):
             shutil.rmtree(dn)
@@ -113,6 +119,8 @@ class TypeCheckSuite(DataSuite):
         options = self.parse_options(original_program_text, testcase)
         options.use_builtins_fixtures = True
         set_show_tb(True)  # Show traceback on crash.
+        if 'optional' in testcase.file:
+            options.strict_optional = True
 
         if incremental:
             options.incremental = True

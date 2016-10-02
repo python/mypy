@@ -90,9 +90,6 @@ class NodeFixer(NodeVisitor[None]):
             func.info = self.current_info
         if func.type is not None:
             func.type.accept(self.type_fixer)
-        for arg in func.arguments:
-            if arg.type_annotation is not None:
-                arg.type_annotation.accept(self.type_fixer)
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         if self.current_info is not None:
@@ -236,9 +233,9 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
     while True:
         assert '.' in head, "Cannot find %s" % (name,)
         head, tail = head.rsplit('.', 1)
+        rest.append(tail)
         mod = modules.get(head)
         if mod is not None:
-            rest.append(tail)
             break
     names = mod.names
     while True:

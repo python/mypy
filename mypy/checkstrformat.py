@@ -2,13 +2,13 @@
 
 import re
 
-from typing import cast, List, Tuple, Dict, Callable
+from typing import cast, List, Tuple, Dict, Callable, Union
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
 )
 from mypy.nodes import (
-    Node, StrExpr, BytesExpr, TupleExpr, DictExpr, Context
+    Node, StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context
 )
 if False:
     # break import cycle only needed for mypy
@@ -55,7 +55,12 @@ class StringFormatterChecker:
         self.exprchk = exprchk
         self.msg = msg
 
-    def check_str_interpolation(self, str: StrExpr, replacements: Node) -> Type:
+    # TODO: In Python 3, the bytes formatting has a more restricted set of options
+    # compared to string formatting.
+    # TODO: Bytes formatting in Python 3 is only supported in 3.5 and up.
+    def check_str_interpolation(self,
+                                str: Union[StrExpr, BytesExpr, UnicodeExpr],
+                                replacements: Node) -> Type:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
@@ -67,7 +72,15 @@ class StringFormatterChecker:
             self.check_mapping_str_interpolation(specifiers, replacements)
         else:
             self.check_simple_str_interpolation(specifiers, replacements)
-        return self.named_type('builtins.str')
+
+        if isinstance(str, BytesExpr):
+            return self.named_type('builtins.bytes')
+        elif isinstance(str, UnicodeExpr):
+            return self.named_type('builtins.unicode')
+        elif isinstance(str, StrExpr):
+            return self.named_type('builtins.str')
+        else:
+            assert False
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
         key_regex = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters

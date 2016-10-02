@@ -40,6 +40,7 @@ import imp
 import importlib
 import json
 import os.path
+import pkgutil
 import subprocess
 import sys
 import textwrap
@@ -66,7 +67,10 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('doc_dir', str),
                                  ('search_path', List[str]),
                                  ('interpreter', str),
-                                 ('modules', List[str])])
+                                 ('modules', List[str]),
+                                 ('ignore_errors', bool),
+                                 ('recursive', bool),
+                                 ])
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
@@ -239,8 +243,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add('\n')
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
-            for init in self_inits:
-                init_code = self.get_init(init)
+            for init, value in self_inits:
+                init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
         self.add("%sdef %s(" % (self._indent, o.name()))
@@ -254,22 +258,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if init_stmt:
                 if kind == ARG_NAMED and '*' not in args:
                     args.append('*')
-                arg = '%s=' % name
-                rvalue = init_stmt.rvalue
-                if isinstance(rvalue, IntExpr):
-                    arg += str(rvalue.value)
-                elif isinstance(rvalue, StrExpr):
-                    arg += "''"
-                elif isinstance(rvalue, BytesExpr):
-                    arg += "b''"
-                elif isinstance(rvalue, FloatExpr):
-                    arg += "0.0"
-                elif isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
-                    arg += '-%s' % rvalue.expr.value
-                elif isinstance(rvalue, NameExpr) and rvalue.name in ('None', 'True', 'False'):
-                    arg += rvalue.name
-                else:
-                    arg += '...'
+                typename = self.get_str_type_of_node(init_stmt.rvalue, True)
+                arg = '{}: {} = ...'.format(name, typename)
             elif kind == ARG_STAR:
                 arg = '*%s' % name
             elif kind == ARG_STAR2:
@@ -277,8 +267,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             else:
                 arg = name
             args.append(arg)
+        retname = None
+        if o.name() == '__init__':
+            retname = 'None'
+        retfield = ''
+        if retname is not None:
+            retfield = ' -> ' + retname
+
         self.add(', '.join(args))
-        self.add("): ...\n")
+        self.add("){}: ...\n".format(retfield))
         self._state = FUNC
 
     def visit_decorator(self, o: Decorator) -> None:
@@ -349,7 +346,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             found = False
             for item in items:
                 if isinstance(item, NameExpr):
-                    init = self.get_init(item.name)
+                    init = self.get_init(item.name, o.rvalue)
                     if init:
                         found = True
                         if not sep and not self._indent and \
@@ -448,7 +445,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add_import_line('import %s as %s\n' % (id, target_name))
                 self.record_name(target_name)
 
-    def get_init(self, lvalue: str) -> str:
+    def get_init(self, lvalue: str, rvalue: Node) -> str:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.
@@ -460,8 +457,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self.is_private_name(lvalue) or self.is_not_in_all(lvalue):
             return None
         self._vars[-1].append(lvalue)
-        self.add_typing_import('Any')
-        return '%s%s = ...  # type: Any\n' % (self._indent, lvalue)
+        typename = self.get_str_type_of_node(rvalue)
+        return '%s%s = ...  # type: %s\n' % (self._indent, lvalue, typename)
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
@@ -484,7 +481,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Return the text for the stub."""
         imports = ''
         if self._imports:
-            imports += 'from typing import %s\n' % ", ".join(self._imports)
+            imports += 'from typing import %s\n' % ", ".join(sorted(self._imports))
         if self._import_lines:
             imports += ''.join(self._import_lines)
         if imports and self._output:
@@ -507,6 +504,28 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__setstate__',
                                                      '__slots__'))
 
+    def get_str_type_of_node(self, rvalue: Node,
+                             can_infer_optional: bool = False) -> str:
+        if isinstance(rvalue, IntExpr):
+            return 'int'
+        if isinstance(rvalue, StrExpr):
+            return 'str'
+        if isinstance(rvalue, BytesExpr):
+            return 'bytes'
+        if isinstance(rvalue, FloatExpr):
+            return 'float'
+        if isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
+            return 'int'
+        if isinstance(rvalue, NameExpr) and rvalue.name in ('True', 'False'):
+            return 'bool'
+        if can_infer_optional and \
+           isinstance(rvalue, NameExpr) and rvalue.name == 'None':
+            self.add_typing_import('Optional')
+            self.add_typing_import('Any')
+            return 'Optional[Any]'
+        self.add_typing_import('Any')
+        return 'Any'
+
     def is_top_level(self) -> bool:
         """Are we processing the top level of a file?"""
         return self._indent == ''
@@ -524,8 +543,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
-def find_self_initializers(fdef: FuncBase) -> List[str]:
-    results = []  # type: List[str]
+def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Node]]:
+    results = []  # type: List[Tuple[str, Node]]
 
     class SelfTraverser(mypy.traverser.TraverserVisitor):
         def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
@@ -533,7 +552,7 @@ def find_self_initializers(fdef: FuncBase) -> List[str]:
             if (isinstance(lvalue, MemberExpr) and
                     isinstance(lvalue.expr, NameExpr) and
                     lvalue.expr.name == 'self'):
-                results.append(lvalue.name)
+                results.append((lvalue.name, o.rvalue))
 
     fdef.accept(SelfTraverser())
     return results
@@ -559,10 +578,22 @@ def get_qualified_name(o: Node) -> str:
         return '<ERROR>'
 
 
+def walk_packages(packages: List[str]):
+    for package_name in packages:
+        package = __import__(package_name)
+        yield package.__name__
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+                                                                     prefix=package.__name__ + ".",
+                                                                     onerror=lambda r: None):
+            yield qualified_name
+
+
 def main() -> None:
     options = parse_options()
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
+    if options.recursive and options.no_import:
+        raise SystemExit('recursive stub generation without importing is not currently supported')
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     if options.doc_dir:
@@ -574,21 +605,29 @@ def main() -> None:
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
-    for module in options.modules:
-        generate_stub_for_module(module, 'out',
-                                 add_header=True,
-                                 sigs=sigs,
-                                 class_sigs=class_sigs,
-                                 pyversion=options.pyversion,
-                                 no_import=options.no_import,
-                                 search_path=options.search_path,
-                                 interpreter=options.interpreter)
+    for module in (options.modules if not options.recursive else walk_packages(options.modules)):
+        try:
+            generate_stub_for_module(module, 'out',
+                                     add_header=True,
+                                     sigs=sigs,
+                                     class_sigs=class_sigs,
+                                     pyversion=options.pyversion,
+                                     no_import=options.no_import,
+                                     search_path=options.search_path,
+                                     interpreter=options.interpreter)
+        except Exception as e:
+            if not options.ignore_errors:
+                raise e
+            else:
+                print("Stub generation failed for", module, file=sys.stderr)
 
 
 def parse_options() -> Options:
     args = sys.argv[1:]
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
+    recursive = False
+    ignore_errors = False
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
@@ -604,6 +643,10 @@ def parse_options() -> Options:
         elif args[0] == '-p':
             interpreter = args[1]
             args = args[1:]
+        elif args[0] == '--recursive':
+            recursive = True
+        elif args[0] == '--ignore-errors':
+            ignore_errors = True
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
         elif args[0] == '--no-import':
@@ -622,7 +665,9 @@ def parse_options() -> Options:
                    doc_dir=doc_dir,
                    search_path=search_path,
                    interpreter=interpreter,
-                   modules=args)
+                   modules=args,
+                   ignore_errors=ignore_errors,
+                   recursive=recursive)
 
 
 def default_python2_interpreter() -> str:
@@ -649,6 +694,8 @@ def usage() -> None:
 
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
+          --recursive     traverse listed modules to generate inner package modules as well
+          --ignore-errors ignore errors when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
                           respect __all__)

@@ -20,38 +20,42 @@ def g(arg): ...
 def f(a, b=2): ...
 def g(b=-1, c=0): ...
 [out]
-def f(a, b=2): ...
-def g(b=-1, c=0): ...
+def f(a, b: int = ...): ...
+def g(b: int = ..., c: int = ...): ...
 
 [case testDefaultArgNone]
 def f(x=None): ...
 [out]
-def f(x=None): ...
+from typing import Any, Optional
+
+def f(x: Optional[Any] = ...): ...
 
 [case testDefaultArgBool]
 def f(x=True, y=False): ...
 [out]
-def f(x=True, y=False): ...
+def f(x: bool = ..., y: bool = ...): ...
 
 [case testDefaultArgStr]
 def f(x='foo'): ...
 [out]
-def f(x=''): ...
+def f(x: str = ...): ...
 
 [case testDefaultArgBytes]
 def f(x=b'foo'): ...
 [out]
-def f(x=b''): ...
+def f(x: bytes = ...): ...
 
 [case testDefaultArgFloat]
 def f(x=1.2): ...
 [out]
-def f(x=0.0): ...
+def f(x: float = ...): ...
 
 [case testDefaultArgOther]
 def f(x=ord): ...
 [out]
-def f(x=...): ...
+from typing import Any
+
+def f(x: Any = ...): ...
 
 [case testVarArgs]
 def f(x, *y): ...
@@ -77,26 +81,20 @@ def g(): ...
 [case testVariable]
 x = 1
 [out]
-from typing import Any
-
-x = ...  # type: Any
+x = ...  # type: int
 
 [case testMultipleVariable]
 x = y = 1
 [out]
-from typing import Any
-
-x = ...  # type: Any
-y = ...  # type: Any
+x = ...  # type: int
+y = ...  # type: int
 
 [case testClassVariable]
 class C:
     x = 1
 [out]
-from typing import Any
-
 class C:
-    x = ...  # type: Any
+    x = ...  # type: int
 
 [case testSelfAssignment]
 class C:
@@ -104,11 +102,9 @@ class C:
         self.x = 1
         x.y = 2
 [out]
-from typing import Any
-
 class C:
-    x = ...  # type: Any
-    def __init__(self): ...
+    x = ...  # type: int
+    def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]
 x = 1
@@ -118,13 +114,11 @@ class C:
         self.x = 1
         self.x = 1
 [out]
-from typing import Any
-
-x = ...  # type: Any
+x = ...  # type: int
 
 class C:
-    x = ...  # type: Any
-    def __init__(self): ...
+    x = ...  # type: int
+    def __init__(self) -> None: ...
 
 [case testEmptyClass]
 class A: ...
@@ -189,8 +183,8 @@ y = ...  # type: Any
 def f(x, *, y=1): ...
 def g(x, *, y=1, z=2): ...
 [out]
-def f(x, *, y=1): ...
-def g(x, *, y=1, z=2): ...
+def f(x, *, y: int = ...): ...
+def g(x, *, y: int = ..., z: int = ...): ...
 
 [case testProperty]
 class A:
@@ -311,10 +305,8 @@ class A:
     x = 1
     def f(self): ...
 [out]
-from typing import Any
-
 class A:
-    x = ...  # type: Any
+    x = ...  # type: int
     def f(self): ...
 
 [case testMultiplePrivateDefs]
@@ -332,10 +324,9 @@ from re import match, search, sub
 __all__ = ['match', 'sub', 'x']
 x = 1
 [out]
-from typing import Any
 from re import match as match, sub as sub
 
-x = ...  # type: Any
+x = ...  # type: int
 
 [case testExportModule_import]
 import re
@@ -343,10 +334,9 @@ __all__ = ['re', 'x']
 x = 1
 y = 2
 [out]
-from typing import Any
 import re as re
 
-x = ...  # type: Any
+x = ...  # type: int
 
 [case testExportModuleAs_import]
 import re as rex
@@ -354,10 +344,9 @@ __all__ = ['rex', 'x']
 x = 1
 y = 2
 [out]
-from typing import Any
 import re as rex
 
-x = ...  # type: Any
+x = ...  # type: int
 
 [case testExportModuleInPackage_import]
 import urllib.parse as p
@@ -384,11 +373,9 @@ x = 1
 class C:
     def g(self): ...
 [out]
-from typing import Any
-
 def f(): ...
 
-x = ...  # type: Any
+x = ...  # type: int
 
 class C:
     def g(self): ...
@@ -521,11 +508,9 @@ class A:
         def f(self): ...
     def g(self): ...
 [out]
-from typing import Any
-
 class A:
     class B:
-        x = ...  # type: Any
+        x = ...  # type: int
         def f(self): ...
     def g(self): ...
 
@@ -557,6 +542,18 @@ def syslog(a): pass
 def syslog(a): pass
 [out]
 def syslog(a): ...
+
+[case testInferOptionalOnlyFunc]
+class A:
+    x = None
+    def __init__(self, a=None) -> None:
+        self.x = []
+[out]
+from typing import Any, Optional
+
+class A:
+    x = ...  # type: Any
+    def __init__(self, a: Optional[Any] = ...) -> None: ...
 
 -- More features/fixes:
 --   do not export deleted names
