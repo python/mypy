@@ -2,7 +2,6 @@
 
 import cgi
 import os.path
-import re
 
 from typing import Any, Dict, List, cast, Tuple
 
@@ -13,7 +12,7 @@ from mypy.types import (
 )
 from mypy import nodes
 from mypy.nodes import (
-    Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr,
+    Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
 )
 
@@ -198,7 +197,7 @@ class StatisticsVisitor(TraverserVisitor):
                                   self.line_map.get(line, TYPE_PRECISE))
 
 
-def dump_type_stats(tree: Node, path: str, inferred: bool = False,
+def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
                     typemap: Dict[Node, Type] = None) -> None:
     if is_special_module(path):
         return
@@ -266,7 +265,7 @@ def is_complex(t: Type) -> bool:
 html_files = []  # type: List[Tuple[str, str, int, int]]
 
 
-def generate_html_report(tree: Node, path: str, type_map: Dict[Node, Type],
+def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Node, Type],
                          output_dir: str) -> None:
     if is_special_module(path):
         return

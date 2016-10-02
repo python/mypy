@@ -22,18 +22,14 @@ import time
 from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
-                    NamedTuple, Optional, Set, Tuple, Union, Mapping)
+                    NamedTuple, Optional, Set, Tuple, Union)
 
-from mypy.types import Type
-from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
-                        SymbolTableNode, MODULE_REF)
+from mypy.nodes import (MypyFile, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
-from mypy import fixup
 from mypy.report import Reports
-from mypy import defaults
 from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two

@@ -1,7 +1,8 @@
-"""Translate an expression (Node) to a Type value."""
+"""Translate an Expression to a Type value."""
 
 from mypy.nodes import (
-    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, BytesExpr, EllipsisExpr
+    Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
+    ListExpr, StrExpr, BytesExpr, EllipsisExpr
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
@@ -11,7 +12,7 @@ class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
 
-def expr_to_unanalyzed_type(expr: Node) -> Type:
+def expr_to_unanalyzed_type(expr: Expression) -> Type:
     """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.
