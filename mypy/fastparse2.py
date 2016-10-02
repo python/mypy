@@ -158,7 +158,6 @@ class ASTConverter(ast27.NodeTransformer):
             res.append(stmt)
         return res
 
-
     op_map = {
         ast27.Add: '+',
         ast27.Sub: '-',
@@ -708,7 +707,8 @@ class ASTConverter(ast27.NodeTransformer):
     # Dict(expr* keys, expr* values)
     @with_line
     def visit_Dict(self, n: ast27.Dict) -> DictExpr:
-        return DictExpr(list(zip(self.translate_expr_list(n.keys), self.translate_expr_list(n.values))))
+        return DictExpr(list(zip(self.translate_expr_list(n.keys),
+                                 self.translate_expr_list(n.values))))
 
     # Set(expr* elts)
     @with_line

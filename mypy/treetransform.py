@@ -80,12 +80,12 @@ class TransformVisitor(NodeVisitor[Node]):
         if argument.initialization_statement:
             init_lvalue = cast(
                 NameExpr,
-                self.node(argument.initialization_statement.lvalues[0]),
+                self.expr(argument.initialization_statement.lvalues[0]),
             )
             init_lvalue.set_line(argument.line)
             init_stmt = AssignmentStmt(
                 [init_lvalue],
-                self.node(argument.initialization_statement.rvalue),
+                self.expr(argument.initialization_statement.rvalue),
                 self.optional_type(argument.initialization_statement.type),
             )
 
@@ -230,14 +230,14 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_expression_stmt(self, node: ExpressionStmt) -> ExpressionStmt:
-        return ExpressionStmt(self.node(node.expr))
+        return ExpressionStmt(self.expr(node.expr))
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> AssignmentStmt:
         return self.duplicate_assignment(node)
 
     def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
         new = AssignmentStmt(self.expressions(node.lvalues),
-                             self.node(node.rvalue),
+                             self.expr(node.rvalue),
                              self.optional_type(node.type))
         new.line = node.line
         return new
@@ -245,28 +245,28 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_operator_assignment_stmt(self,
                                        node: OperatorAssignmentStmt) -> OperatorAssignmentStmt:
         return OperatorAssignmentStmt(node.op,
-                                      self.node(node.lvalue),
-                                      self.node(node.rvalue))
+                                      self.expr(node.lvalue),
+                                      self.expr(node.rvalue))
 
     def visit_while_stmt(self, node: WhileStmt) -> WhileStmt:
-        return WhileStmt(self.node(node.expr),
+        return WhileStmt(self.expr(node.expr),
                          self.block(node.body),
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> ForStmt:
-        return ForStmt(self.node(node.index),
-                       self.node(node.expr),
+        return ForStmt(self.expr(node.index),
+                       self.expr(node.expr),
                        self.block(node.body),
                        self.optional_block(node.else_body))
 
     def visit_return_stmt(self, node: ReturnStmt) -> ReturnStmt:
-        return ReturnStmt(self.optional_node(node.expr))
+        return ReturnStmt(self.optional_expr(node.expr))
 
     def visit_assert_stmt(self, node: AssertStmt) -> AssertStmt:
-        return AssertStmt(self.node(node.expr))
+        return AssertStmt(self.expr(node.expr))
 
     def visit_del_stmt(self, node: DelStmt) -> DelStmt:
-        return DelStmt(self.node(node.expr))
+        return DelStmt(self.expr(node.expr))
 
     def visit_if_stmt(self, node: IfStmt) -> IfStmt:
         return IfStmt(self.expressions(node.expr),
@@ -283,8 +283,8 @@ class TransformVisitor(NodeVisitor[Node]):
         return PassStmt()
 
     def visit_raise_stmt(self, node: RaiseStmt) -> RaiseStmt:
-        return RaiseStmt(self.optional_node(node.expr),
-                         self.optional_node(node.from_expr))
+        return RaiseStmt(self.optional_expr(node.expr),
+                         self.optional_expr(node.from_expr))
 
     def visit_try_stmt(self, node: TryStmt) -> TryStmt:
         return TryStmt(self.block(node.body),
@@ -302,12 +302,12 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
         return PrintStmt(self.expressions(node.args),
                          node.newline,
-                         self.optional_node(node.target))
+                         self.optional_expr(node.target))
 
     def visit_exec_stmt(self, node: ExecStmt) -> ExecStmt:
-        return ExecStmt(self.node(node.expr),
-                        self.optional_node(node.variables1),
-                        self.optional_node(node.variables2))
+        return ExecStmt(self.expr(node.expr),
+                        self.optional_expr(node.variables1),
+                        self.optional_expr(node.variables2))
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
@@ -344,7 +344,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_member_expr(self, node: MemberExpr) -> MemberExpr:
-        member = MemberExpr(self.node(node.expr),
+        member = MemberExpr(self.expr(node.expr),
                             node.name)
         if node.def_var:
             member.def_var = self.visit_var(node.def_var)
@@ -364,23 +364,23 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_def = original.is_def
 
     def visit_yield_from_expr(self, node: YieldFromExpr) -> YieldFromExpr:
-        return YieldFromExpr(self.node(node.expr))
+        return YieldFromExpr(self.expr(node.expr))
 
     def visit_yield_expr(self, node: YieldExpr) -> YieldExpr:
-        return YieldExpr(self.node(node.expr))
+        return YieldExpr(self.expr(node.expr))
 
     def visit_await_expr(self, node: AwaitExpr) -> AwaitExpr:
-        return AwaitExpr(self.node(node.expr))
+        return AwaitExpr(self.expr(node.expr))
 
     def visit_call_expr(self, node: CallExpr) -> CallExpr:
-        return CallExpr(self.node(node.callee),
+        return CallExpr(self.expr(node.callee),
                         self.expressions(node.args),
                         node.arg_kinds[:],
                         node.arg_names[:],
-                        self.optional_node(node.analyzed))
+                        self.optional_expr(node.analyzed))
 
     def visit_op_expr(self, node: OpExpr) -> OpExpr:
-        new = OpExpr(node.op, self.node(node.left), self.node(node.right))
+        new = OpExpr(node.op, self.expr(node.left), self.expr(node.right))
         new.method_type = self.optional_type(node.method_type)
         return new
 
@@ -390,11 +390,11 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_cast_expr(self, node: CastExpr) -> CastExpr:
-        return CastExpr(self.node(node.expr),
+        return CastExpr(self.expr(node.expr),
                         self.type(node.type))
 
     def visit_reveal_type_expr(self, node: RevealTypeExpr) -> RevealTypeExpr:
-        return RevealTypeExpr(self.node(node.expr))
+        return RevealTypeExpr(self.expr(node.expr))
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
         new = SuperExpr(node.name)
@@ -402,7 +402,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
-        new = UnaryExpr(node.op, self.node(node.expr))
+        new = UnaryExpr(node.op, self.expr(node.expr))
         new.method_type = self.optional_type(node.method_type)
         return new
 
@@ -410,7 +410,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ListExpr(self.expressions(node.items))
 
     def visit_dict_expr(self, node: DictExpr) -> DictExpr:
-        return DictExpr([(self.node(key), self.node(value))
+        return DictExpr([(self.expr(key), self.expr(value))
                          for key, value in node.items])
 
     def visit_tuple_expr(self, node: TupleExpr) -> TupleExpr:
@@ -420,7 +420,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return SetExpr(self.expressions(node.items))
 
     def visit_index_expr(self, node: IndexExpr) -> IndexExpr:
-        new = IndexExpr(self.node(node.base), self.node(node.index))
+        new = IndexExpr(self.expr(node.base), self.expr(node.index))
         if node.method_type:
             new.method_type = self.type(node.method_type)
         if node.analyzed:
@@ -432,7 +432,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_type_application(self, node: TypeApplication) -> TypeApplication:
-        return TypeApplication(self.node(node.expr),
+        return TypeApplication(self.expr(node.expr),
                                self.types(node.types))
 
     def visit_list_comprehension(self, node: ListComprehension) -> ListComprehension:
@@ -445,35 +445,36 @@ class TransformVisitor(NodeVisitor[Node]):
         generator.set_line(node.generator.line)
         return SetComprehension(generator)
 
-    def visit_dictionary_comprehension(self, node: DictionaryComprehension) -> DictionaryComprehension:
-        return DictionaryComprehension(self.node(node.key), self.node(node.value),
-                             [self.node(index) for index in node.indices],
-                             [self.node(s) for s in node.sequences],
-                             [[self.node(cond) for cond in conditions]
+    def visit_dictionary_comprehension(self, node: DictionaryComprehension
+                                       ) -> DictionaryComprehension:
+        return DictionaryComprehension(self.expr(node.key), self.expr(node.value),
+                             [self.expr(index) for index in node.indices],
+                             [self.expr(s) for s in node.sequences],
+                             [[self.expr(cond) for cond in conditions]
                               for conditions in node.condlists])
 
     def visit_generator_expr(self, node: GeneratorExpr) -> GeneratorExpr:
         return self.duplicate_generator(node)
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
-        return GeneratorExpr(self.node(node.left_expr),
-                             [self.node(index) for index in node.indices],
-                             [self.node(s) for s in node.sequences],
-                             [[self.node(cond) for cond in conditions]
+        return GeneratorExpr(self.expr(node.left_expr),
+                             [self.expr(index) for index in node.indices],
+                             [self.expr(s) for s in node.sequences],
+                             [[self.expr(cond) for cond in conditions]
                               for conditions in node.condlists])
 
     def visit_slice_expr(self, node: SliceExpr) -> SliceExpr:
-        return SliceExpr(self.optional_node(node.begin_index),
-                         self.optional_node(node.end_index),
-                         self.optional_node(node.stride))
+        return SliceExpr(self.optional_expr(node.begin_index),
+                         self.optional_expr(node.end_index),
+                         self.optional_expr(node.stride))
 
     def visit_conditional_expr(self, node: ConditionalExpr) -> ConditionalExpr:
-        return ConditionalExpr(self.node(node.cond),
-                               self.node(node.if_expr),
-                               self.node(node.else_expr))
+        return ConditionalExpr(self.expr(node.cond),
+                               self.expr(node.if_expr),
+                               self.expr(node.else_expr))
 
     def visit_backquote_expr(self, node: BackquoteExpr) -> BackquoteExpr:
-        return BackquoteExpr(self.node(node.expr))
+        return BackquoteExpr(self.expr(node.expr))
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> TypeVarExpr:
         return TypeVarExpr(node.name(), node.fullname(),
@@ -502,13 +503,31 @@ class TransformVisitor(NodeVisitor[Node]):
         new.set_line(node.line)
         return new
 
+    def mypyfile(self, node: MypyFile) -> MypyFile:
+        new = node.accept(self)
+        assert isinstance(new, MypyFile)
+        new.set_line(node.line)
+        return new
+
+    def expr(self, expr: Expression) -> Expression:
+        new = expr.accept(self)
+        assert isinstance(new, Expression)
+        new.set_line(expr.line)
+        return new
+
+    def stmt(self, stmt: Statement) -> Statement:
+        new = stmt.accept(self)
+        assert isinstance(new, Statement)
+        new.set_line(stmt.line)
+        return new
+
     # Helpers
     #
     # All the node helpers also propagate line numbers.
 
-    def optional_node(self, node: Node) -> Node:
-        if node:
-            return self.node(node)
+    def optional_expr(self, expr: Expression) -> Expression:
+        if expr:
+            return self.expr(expr)
         else:
             return None
 
@@ -524,28 +543,13 @@ class TransformVisitor(NodeVisitor[Node]):
             return None
 
     def statements(self, statements: List[Statement]) -> List[Statement]:
-        res = []
-        for node in statements:
-            stmt = self.node(node)
-            assert isinstance(stmt, Statement)
-            res.append(stmt)
-        return res
+        return [self.stmt(stmt) for stmt in statements]
 
     def expressions(self, expressions: List[Expression]) -> List[Expression]:
-        res = []
-        for node in expressions:
-            expr = self.node(node)
-            assert isinstance(expr, Expression)
-            res.append(expr)
-        return res
+        return [self.expr(expr) for expr in expressions]
 
     def optional_expressions(self, expressions: List[Expression]) -> List[Expression]:
-        res = []
-        for node in expressions:
-            expr = self.optional_node(node)
-            assert expr is None or isinstance(expr, Expression)
-            res.append(expr)
-        return res
+        return [self.optional_expr(expr) for expr in expressions]
 
     def blocks(self, blocks: List[Block]) -> List[Block]:
         return [self.block(block) for block in blocks]

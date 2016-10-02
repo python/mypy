@@ -141,7 +141,6 @@ class ASTConverter(ast35.NodeTransformer):
             res.append(stmt)
         return res
 
-
     op_map = {
         ast35.Add: '+',
         ast35.Sub: '-',
@@ -282,8 +281,10 @@ class ASTConverter(ast35.NodeTransformer):
                 arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
                              for a in args]
             else:
-                arg_types = [a if a is not None else AnyType() for
-                            a in TypeConverter(line=n.lineno).translate_expr_list(func_type_ast.argtypes)]
+                translated_args = (TypeConverter(line=n.lineno)
+                                   .translate_expr_list(func_type_ast.argtypes))
+                arg_types = [a if a is not None else AnyType()
+                             for a in translated_args]
             return_type = TypeConverter(line=n.lineno).visit(func_type_ast.returns)
 
             # add implicit self type
@@ -654,7 +655,8 @@ class ASTConverter(ast35.NodeTransformer):
     # Dict(expr* keys, expr* values)
     @with_line
     def visit_Dict(self, n: ast35.Dict) -> DictExpr:
-        return DictExpr(list(zip(self.translate_expr_list(n.keys), self.translate_expr_list(n.values))))
+        return DictExpr(list(zip(self.translate_expr_list(n.keys),
+                                 self.translate_expr_list(n.values))))
 
     # Set(expr* elts)
     @with_line
