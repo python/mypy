@@ -234,7 +234,8 @@ class ASTConverter(ast27.NodeTransformer):
         """
         if id == self.custom_typing_module:
             return 'typing'
-        elif id == '__builtin__' and self.pyversion[0] == 2:
+        elif id == '__builtin__':
+            assert self.pyversion[0] == 2
             # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
             #   is named __builtin__.py (there is another layer of translation elsewhere).
             return 'builtins'
@@ -817,11 +818,16 @@ class ASTConverter(ast27.NodeTransformer):
             contents = str(n)[2:-1]
 
             if self.pyversion[0] >= 3:
+                assert False  # Shouldn't get here with an ast27.Str
                 return BytesExpr(contents)
             else:
-                return StrExpr(contents)
+                if s.has_b:
+                    return BytesExpr(contents)
+                else:
+                    return StrExpr(contents)
         else:
             if self.pyversion[0] >= 3 or self.is_stub:
+                assert False  # Shouldn't get here with an ast27.Str
                 return StrExpr(s.s)
             else:
                 return UnicodeExpr(s.s)

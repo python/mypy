@@ -28,6 +28,7 @@ from mypy import experiments
 # List of files that contain test case descriptions.
 files = [
     'check-basic.test',
+    'check-bytes-str-unicode-python2.test',
     'check-classes.test',
     'check-expressions.test',
     'check-statements.test',
