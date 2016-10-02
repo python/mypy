@@ -49,7 +49,7 @@ from typing import (
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
-    ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import,
+    ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
@@ -405,7 +405,7 @@ class SemanticAnalyzer(NodeVisitor):
             assert False, 'Unsupported type %s' % type
         return result
 
-    def is_defined_type_var(self, tvar: str, context: Node) -> bool:
+    def is_defined_type_var(self, tvar: str, context: Context) -> bool:
         return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -606,7 +606,7 @@ class SemanticAnalyzer(NodeVisitor):
         if self.bound_tvars:
             enable_typevars(self.bound_tvars)
 
-    def analyze_class_decorator(self, defn: ClassDef, decorator: Node) -> None:
+    def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
 
     def setup_is_builtinclass(self, defn: ClassDef) -> None:
@@ -801,7 +801,7 @@ class SemanticAnalyzer(NodeVisitor):
         if info.mro and info.mro[-1].fullname() != 'builtins.object':
             info.mro.append(self.object_type().type)
 
-    def expr_to_analyzed_type(self, expr: Node) -> Type:
+    def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.check_namedtuple(expr)
@@ -1135,7 +1135,7 @@ class SemanticAnalyzer(NodeVisitor):
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(*s.rvalue.items)
 
-    def analyze_simple_literal_type(self, rvalue: Node) -> Optional[Type]:
+    def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
         if self.weak_opts or self.options.semantic_analysis_only or self.function_stack:
             # Skip this if any weak options are set.
@@ -1177,7 +1177,7 @@ class SemanticAnalyzer(NodeVisitor):
                         #       just an alias for the type.
                         self.globals[lvalue.name].node = node
 
-    def analyze_lvalue(self, lval: Node, nested: bool = False,
+    def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target.
@@ -1300,11 +1300,11 @@ class SemanticAnalyzer(NodeVisitor):
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
 
-    def check_lvalue_validity(self, node: Node, ctx: Context) -> None:
+    def check_lvalue_validity(self, node: Expression, ctx: Context) -> None:
         if isinstance(node, (TypeInfo, TypeVarExpr)):
             self.fail('Invalid assignment target', ctx)
 
-    def store_declared_types(self, lvalue: Node, typ: Type) -> None:
+    def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
             self.fail('Star type only allowed for starred expressions', lvalue)
         if isinstance(lvalue, RefExpr):
@@ -1508,7 +1508,7 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         return call
 
-    def process_typevar_parameters(self, args: List[Node],
+    def process_typevar_parameters(self, args: List[Expression],
                                    names: List[Optional[str]],
                                    kinds: List[int],
                                    has_values: bool,
@@ -1585,7 +1585,7 @@ class SemanticAnalyzer(NodeVisitor):
         # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Node, var_name: str = None) -> TypeInfo:
+    def check_namedtuple(self, node: Expression, var_name: str = None) -> TypeInfo:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
@@ -1665,7 +1665,7 @@ class SemanticAnalyzer(NodeVisitor):
                       + ', '.join(underscore), call)
         return items, types, ok
 
-    def parse_namedtuple_fields_with_types(self, nodes: List[Node],
+    def parse_namedtuple_fields_with_types(self, nodes: List[Expression],
                                            context: Context) -> Tuple[List[str], List[Type], bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
@@ -1770,7 +1770,7 @@ class SemanticAnalyzer(NodeVisitor):
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def analyze_types(self, items: List[Node]) -> List[Type]:
+    def analyze_types(self, items: List[Expression]) -> List[Type]:
         result = []  # type: List[Type]
         for node in items:
             try:
@@ -1931,7 +1931,7 @@ class SemanticAnalyzer(NodeVisitor):
         if not self.is_valid_del_target(s.expr):
             self.fail('Invalid delete target', s)
 
-    def is_valid_del_target(self, s: Node) -> bool:
+    def is_valid_del_target(self, s: Expression) -> bool:
         if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
             return True
         elif isinstance(s, TupleExpr):
@@ -2502,7 +2502,7 @@ class SemanticAnalyzer(NodeVisitor):
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
-    def add_exports(self, *exps: Node) -> None:
+    def add_exports(self, *exps: Expression) -> None:
         for exp in exps:
             if isinstance(exp, StrExpr):
                 self.all_exports.add(exp.value)
@@ -2753,7 +2753,7 @@ class FirstPass(NodeVisitor):
     def visit_try_stmt(self, s: TryStmt) -> None:
         self.sem.analyze_try_stmt(s, self, add_global=True)
 
-    def analyze_lvalue(self, lvalue: Node, explicit_type: bool = False) -> None:
+    def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False) -> None:
         self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)
 
 
@@ -2919,12 +2919,12 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
         return sig
 
 
-def refers_to_fullname(node: Node, fullname: str) -> bool:
+def refers_to_fullname(node: Expression, fullname: str) -> bool:
     """Is node a name or member expression with the given full name?"""
     return isinstance(node, RefExpr) and node.fullname == fullname
 
 
-def refers_to_class_or_function(node: Node) -> bool:
+def refers_to_class_or_function(node: Expression) -> bool:
     """Does semantically analyzed node refer to a class?"""
     return (isinstance(node, RefExpr) and
             isinstance(node.node, (TypeInfo, FuncDef, OverloadedFuncDef)))
@@ -2997,7 +2997,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], platform: str) -> int:
+def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platform: str) -> int:
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
@@ -3034,7 +3034,7 @@ def infer_if_condition_value(expr: Node, pyversion: Tuple[int, int], platform: s
     return result
 
 
-def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
+def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> int:
     """Consider whether expr is a comparison involving sys.version_info.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -3076,7 +3076,7 @@ def consider_sys_version_info(expr: Node, pyversion: Tuple[int, ...]) -> int:
     return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_platform(expr: Node, platform: str) -> int:
+def consider_sys_platform(expr: Expression, platform: str) -> int:
     """Consider whether expr is a comparison involving sys.platform.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -3135,7 +3135,8 @@ def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
     return TRUTH_VALUE_UNKNOWN
 
 
-def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
+def contains_int_or_tuple_of_ints(expr: Expression
+                                  ) -> Union[None, int, Tuple[int], Tuple[int, ...]]:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, TupleExpr):
@@ -3149,7 +3150,8 @@ def contains_int_or_tuple_of_ints(expr: Node) -> Union[None, int, Tuple[int], Tu
     return None
 
 
-def contains_sys_version_info(expr: Node) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
+def contains_sys_version_info(expr: Expression
+                              ) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
     if is_sys_attr(expr, 'version_info'):
         return (None, None)  # Same as sys.version_info[:]
     if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
@@ -3173,7 +3175,7 @@ def contains_sys_version_info(expr: Node) -> Union[None, int, Tuple[Optional[int
     return None
 
 
-def is_sys_attr(expr: Node, name: str) -> bool:
+def is_sys_attr(expr: Expression, name: str) -> bool:
     # TODO: This currently doesn't work with code like this:
     # - import sys as _sys
     # - from sys import version_info
@@ -3211,7 +3213,7 @@ def is_identity_signature(sig: Type) -> bool:
     return False
 
 
-def returns_any_if_called(expr: Node) -> bool:
+def returns_any_if_called(expr: Expression) -> bool:
     """Return True if we can predict that expr will return Any if called.
 
     This only uses information available during semantic analysis so this
@@ -3234,7 +3236,7 @@ def returns_any_if_called(expr: Node) -> bool:
     return False
 
 
-def find_fixed_callable_return(expr: Node) -> Optional[CallableType]:
+def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, FuncDef):
             typ = expr.node.type
