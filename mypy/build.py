@@ -1619,7 +1619,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         elif stale_scc:
             fresh_msg = "inherently stale"
             if stale_scc != ascc:
-                fresh_msg += " (%s)" %  " ".join(sorted(stale_scc))
+                fresh_msg += " (%s)" % " ".join(sorted(stale_scc))
             if stale_deps:
                 fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
         else:
