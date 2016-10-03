@@ -132,11 +132,15 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-# These are placeholders for a future refactoring; see #1783.
-# For now they serve as (unchecked) documentation of what various
-# fields of Node subtypes are expected to contain.
-Statement = Node
-Expression = Node
+class Statement(Node):
+    """A statement node."""
+
+
+class Expression(Node):
+    """An expression node."""
+
+
+# TODO: Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']; see #1783.
 Lvalue = Expression
 
 
@@ -776,14 +780,14 @@ class AssignmentStmt(Statement):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
     """
 
-    lvalues = None  # type: List[Expression]
+    lvalues = None  # type: List[Lvalue]
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax = False  # type: bool
 
-    def __init__(self, lvalues: List[Expression], rvalue: Expression,
+    def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'mypy.types.Type' = None, new_syntax: bool = False) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
