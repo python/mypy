@@ -60,7 +60,7 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromExpr, NamedTupleExpr, NonlocalDecl,
+    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
@@ -1300,7 +1300,7 @@ class SemanticAnalyzer(NodeVisitor):
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
 
-    def check_lvalue_validity(self, node: Expression, ctx: Context) -> None:
+    def check_lvalue_validity(self, node: Union[Expression, SymbolNode], ctx: Context) -> None:
         if isinstance(node, (TypeInfo, TypeVarExpr)):
             self.fail('Invalid assignment target', ctx)
 

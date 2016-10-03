@@ -1,8 +1,8 @@
-from typing import (Any, Dict, List, Set, Iterator)
+from typing import (Any, Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Expression, Var, RefExpr, SymbolTableNode)
+from mypy.nodes import (Node, Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -96,16 +96,16 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Expression, typ: Type) -> None:
-        if not expr.literal:
+    def push(self, node: Node, typ: Type) -> None:
+        if not node.literal:
             return
-        key = expr.literal_hash
+        key = node.literal_hash
         if key not in self.declarations:
-            self.declarations[key] = self.get_declaration(expr)
+            self.declarations[key] = self.get_declaration(node)
             self._add_dependencies(key)
         self._push(key, typ)
 
-    def get(self, expr: Expression) -> Type:
+    def get(self, expr: Union[Expression, Var]) -> Type:
         return self._get(expr.literal_hash)
 
     def cleanse(self, expr: Expression) -> None:
@@ -165,9 +165,9 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, expr: Expression) -> Type:
-        if isinstance(expr, (RefExpr, SymbolTableNode)) and isinstance(expr.node, Var):
-            type = expr.node.type
+    def get_declaration(self, node: Node) -> Type:
+        if isinstance(node, (RefExpr, SymbolTableNode)) and isinstance(node.node, Var):
+            type = node.node.type
             if isinstance(type, PartialType):
                 return None
             return type

@@ -67,7 +67,7 @@ def test_transform(testcase):
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
                 t = TestTransformVisitor()
-                f = t.node(f)
+                f = t.mypyfile(f)
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages
