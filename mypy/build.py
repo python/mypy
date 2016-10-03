@@ -766,7 +766,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     return m
 
 
-def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) -> bool:
+def is_meta_fresh(meta: Optional[CacheMeta], id: str, path: str, manager: BuildManager) -> bool:
     if meta is None:
         return False
 
