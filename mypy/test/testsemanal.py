@@ -36,6 +36,7 @@ def get_semanal_options():
     options = Options()
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
+    options.show_traceback = True
     return options
 
 

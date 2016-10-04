@@ -20,7 +20,7 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     testcase_pyversion, update_testcase_output,
 )
-from mypy.errors import CompileError, set_show_tb
+from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypy import experiments
@@ -118,7 +118,7 @@ class TypeCheckSuite(DataSuite):
 
         options = self.parse_options(original_program_text, testcase)
         options.use_builtins_fixtures = True
-        set_show_tb(True)  # Show traceback on crash.
+        options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
 
