@@ -151,7 +151,7 @@ class ExpressionChecker:
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if not var.type:
-            if not var.is_ready and self.chk.typing_mode_full():
+            if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
@@ -171,7 +171,7 @@ class ExpressionChecker:
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
         if (self.chk.options.disallow_untyped_calls and
-                self.chk.typing_mode_full() and
+                self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
@@ -309,7 +309,7 @@ class ExpressionChecker:
                                                messages=arg_messages)
             return self.check_call(target, args, arg_kinds, context, arg_names,
                                    arg_messages=arg_messages)
-        elif isinstance(callee, AnyType) or self.chk.typing_mode_none():
+        elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
             self.infer_arg_types_in_context(None, args)
             return AnyType(), AnyType()
         elif isinstance(callee, UnionType):
@@ -481,7 +481,7 @@ class ExpressionChecker:
 
         Return a derived callable type that has the arguments applied.
         """
-        if not self.chk.typing_mode_none():
+        if self.chk.in_checked_function():
             # Disable type errors during type inference. There may be errors
             # due to partial available context information at this time, but
             # these errors can be safely ignored as the arguments will be
@@ -505,7 +505,7 @@ class ExpressionChecker:
 
             inferred_args = infer_function_type_arguments(
                 callee_type, pass1_args, arg_kinds, formal_to_actual,
-                strict=self.chk.typing_mode_full())  # type: List[Type]
+                strict=self.chk.in_checked_function())  # type: List[Type]
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
@@ -667,7 +667,7 @@ class ExpressionChecker:
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED] and is_duplicate_mapping(
                     formal_to_actual[i], actual_kinds):
-                if (self.chk.typing_mode_full() or
+                if (self.chk.in_checked_function() or
                         isinstance(actual_types[formal_to_actual[i][0]], TupleType)):
                     if messages:
                         messages.duplicate_argument_value(callee, i, context)
@@ -1099,10 +1099,7 @@ class ExpressionChecker:
                     # If the right operand has type Any, we can't make any
                     # conjectures about the type of the result, since the
                     # operand could have a __r method that returns anything.
-
-                    # However, in weak mode, we do make conjectures.
-                    if not self.chk.typing_mode_weak():
-                        result = AnyType(), result[1]
+                    result = AnyType(), result[1]
             success = not local_errors.is_errors()
         else:
             result = AnyType(), AnyType()
@@ -1185,14 +1182,12 @@ class ExpressionChecker:
 
         if e.op == 'and':
             right_map, left_map = \
-                mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
-                                                   self.chk.typing_mode_weak())
+                mypy.checker.find_isinstance_check(e.left, self.chk.type_map)
             restricted_left_type = false_only(left_type)
             result_is_left = not left_type.can_be_true
         elif e.op == 'or':
             left_map, right_map = \
-                mypy.checker.find_isinstance_check(e.left, self.chk.type_map,
-                                                   self.chk.typing_mode_weak())
+                mypy.checker.find_isinstance_check(e.left, self.chk.type_map)
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
@@ -1278,9 +1273,9 @@ class ExpressionChecker:
             # It's actually a type application.
             return self.accept(e.analyzed)
         left_type = self.accept(e.base)
-        if isinstance(left_type, TupleType) and self.chk.typing_mode_full():
+        if isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They support indexing only by integer
-            # literals.  (Except in weak type checking mode.)
+            # literals.
             index = e.index
             if isinstance(index, SliceExpr):
                 return self.visit_tuple_slice_helper(left_type, index)
@@ -1606,7 +1601,7 @@ class ExpressionChecker:
                         # There's an undefined base class, and we're
                         # at the end of the chain.  That's not an error.
                         return AnyType()
-                    if not self.chk.typing_mode_full():
+                    if not self.chk.in_checked_function():
                         return AnyType()
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True, False,
@@ -1694,10 +1689,7 @@ class ExpressionChecker:
                 self.accept(condition)
 
                 # values are only part of the comprehension when all conditions are true
-                true_map, _ = mypy.checker.find_isinstance_check(
-                    condition, self.chk.type_map,
-                    self.chk.typing_mode_weak()
-                )
+                true_map, _ = mypy.checker.find_isinstance_check(condition, self.chk.type_map)
 
                 if true_map:
                     for var, type in true_map.items():
@@ -1710,10 +1702,7 @@ class ExpressionChecker:
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
-        if_map, else_map = mypy.checker.find_isinstance_check(
-            e.cond,
-            self.chk.type_map,
-            self.chk.typing_mode_weak())
+        if_map, else_map = mypy.checker.find_isinstance_check(e.cond, self.chk.type_map)
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 

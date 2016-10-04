@@ -191,20 +191,16 @@ class MypyFile(SymbolNode, Statement):
     ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
-    # Do weak typing globally in the file?
-    weak_opts = None  # type: Set[str]
 
     def __init__(self,
                  defs: List[Statement],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
-                 ignored_lines: Set[int] = None,
-                 weak_opts: Set[str] = None) -> None:
+                 ignored_lines: Set[int] = None) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
-        self.weak_opts = weak_opts
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:

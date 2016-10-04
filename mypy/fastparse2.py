@@ -91,11 +91,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
         else:
             raise
 
-    return MypyFile([],
-                    [],
-                    False,
-                    set(),
-                    weak_opts=set())
+    return MypyFile([], [], False, set())
 
 
 def parse_type_comment(type_comment: str, line: int) -> Type:
@@ -260,7 +256,7 @@ class ASTConverter(ast27.NodeTransformer):
                         self.imports,
                         False,
                         {ti.lineno for ti in mod.type_ignores},
-                        weak_opts=set())
+                        )
 
     # --- stmt ---
     # FunctionDef(identifier name, arguments args,

@@ -197,7 +197,6 @@ class ConditionalTypeBinder:
 
         # If x is Any and y is int, after x = y we do not infer that x is int.
         # This could be changed.
-        # Eric: I'm changing it in weak typing mode, since Any is so common.
 
         if (isinstance(self.most_recent_enclosing_type(expr, type), AnyType)
                 and not restrict_any):
