@@ -219,7 +219,7 @@ class TypeChecker(NodeVisitor[Type]):
         try:
             typ = node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line, self.errors)
+            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
         self.type_context.pop()
         self.store_type(node, typ)
         if self.typing_mode_none():

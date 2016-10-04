@@ -44,7 +44,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
         for s in testcase.input:
             file.write('{}\n'.format(s))
     args = parse_args(testcase.input[0])
-    args.append('--tb')  # Show traceback on crash.
+    args.append('--show-traceback')
     # Type check the program.
     fixed = [python3_path,
              os.path.join(testcase.old_cwd, 'scripts', 'mypy')]

@@ -45,6 +45,7 @@ def test_transform(testcase):
         options = Options()
         options.use_builtins_fixtures = True
         options.semantic_analysis_only = True
+        options.show_traceback = True
         options.python_version = testfile_pyversion(testcase.file)
         result = build.build(sources=[BuildSource('main', None, src)],
                              options=options,

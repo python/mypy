@@ -77,7 +77,7 @@ class Driver:
         if not self.allow(full_name):
             return
         args = [sys.executable, self.mypy] + mypy_args
-        args.append('--tb')  # Show traceback on crash.
+        args.append('--show-traceback')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:

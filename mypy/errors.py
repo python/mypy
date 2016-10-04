@@ -6,6 +6,8 @@ from collections import OrderedDict, defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional
 
+from mypy.options import Options
+
 
 T = TypeVar('T')
 
@@ -420,24 +422,8 @@ def remove_path_prefix(path: str, prefix: str) -> str:
         return path
 
 
-# Corresponds to command-line flag --pdb.
-drop_into_pdb = False
-
-# Corresponds to command-line flag --show-traceback.
-show_tb = False
-
-
-def set_drop_into_pdb(flag: bool) -> None:
-    global drop_into_pdb
-    drop_into_pdb = flag
-
-
-def set_show_tb(flag: bool) -> None:
-    global show_tb
-    show_tb = flag
-
-
-def report_internal_error(err: Exception, file: str, line: int, errors: Errors) -> None:
+def report_internal_error(err: Exception, file: str, line: int,
+                          errors: Errors, options: Options) -> None:
     """Report internal error and exit.
 
     This optionally starts pdb or shows a traceback.
@@ -462,14 +448,14 @@ def report_internal_error(err: Exception, file: str, line: int, errors: Errors) 
           file=sys.stderr)
 
     # If requested, drop into pdb. This overrides show_tb.
-    if drop_into_pdb:
+    if options.pdb:
         print('Dropping into pdb', file=sys.stderr)
         import pdb
         pdb.post_mortem(sys.exc_info()[2])
 
     # If requested, print traceback, else print note explaining how to get one.
-    if not show_tb:
-        if not drop_into_pdb:
+    if not options.show_traceback:
+        if not options.pdb:
             print('{}: note: please use --show-traceback to print a traceback '
                   'when reporting a bug'.format(prefix),
                   file=sys.stderr)

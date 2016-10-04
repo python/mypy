@@ -2559,7 +2559,7 @@ class SemanticAnalyzer(NodeVisitor):
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line, self.errors)
+            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
 
 class FirstPass(NodeVisitor):
@@ -2768,15 +2768,16 @@ class ThirdPass(TraverserVisitor):
         self.modules = modules
         self.errors = errors
 
-    def visit_file(self, file_node: MypyFile, fnam: str) -> None:
+    def visit_file(self, file_node: MypyFile, fnam: str, options: Options) -> None:
         self.errors.set_file(fnam)
+        self.options = options
         self.accept(file_node)
 
     def accept(self, node: Node) -> None:
         try:
             node.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line, self.errors)
+            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
