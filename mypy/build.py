@@ -22,18 +22,14 @@ import time
 from os.path import dirname, basename
 
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
-                    NamedTuple, Optional, Set, Tuple, Union, Mapping)
+                    NamedTuple, Optional, Set, Tuple, Union)
 
-from mypy.types import Type
-from mypy.nodes import (MypyFile, Node, Import, ImportFrom, ImportAll,
-                        SymbolTableNode, MODULE_REF)
+from mypy.nodes import (MypyFile, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
-from mypy import fixup
 from mypy.report import Reports
-from mypy import defaults
 from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
@@ -770,7 +766,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     return m
 
 
-def is_meta_fresh(meta: CacheMeta, id: str, path: str, manager: BuildManager) -> bool:
+def is_meta_fresh(meta: Optional[CacheMeta], id: str, path: str, manager: BuildManager) -> bool:
     if meta is None:
         return False
 
@@ -1140,10 +1136,8 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    suppress_message = ((self.options.silent_imports and
-                                        not self.options.almost_silent) or
-                                        (caller_state.tree is not None and
-                                         'import' in caller_state.tree.weak_opts))
+                    suppress_message = (self.options.silent_imports
+                                        and not self.options.almost_silent)
                     if not suppress_message:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
@@ -1266,7 +1260,7 @@ class State:
         except CompileError:
             raise
         except Exception as err:
-            report_internal_error(err, self.path, 0, self.manager.errors)
+            report_internal_error(err, self.path, 0, self.manager.errors, self.options)
         self.manager.errors.set_import_context(save_import_context)
         self.check_blockers()
 
@@ -1409,7 +1403,7 @@ class State:
 
     def semantic_analysis_pass_three(self) -> None:
         with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath)
+            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath, self.options)
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
 
@@ -1621,7 +1615,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         elif undeps:
             fresh_msg = "stale due to changed suppression (%s)" % " ".join(sorted(undeps))
         elif stale_scc:
-            fresh_msg = "inherently stale (%s)" % " ".join(sorted(stale_scc))
+            fresh_msg = "inherently stale"
+            if stale_scc != ascc:
+                fresh_msg += " (%s)" % " ".join(sorted(stale_scc))
             if stale_deps:
                 fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
         else:

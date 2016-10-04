@@ -45,6 +45,7 @@ def test_transform(testcase):
         options = Options()
         options.use_builtins_fixtures = True
         options.semantic_analysis_only = True
+        options.show_traceback = True
         options.python_version = testfile_pyversion(testcase.file)
         result = build.build(sources=[BuildSource('main', None, src)],
                              options=options,
@@ -67,7 +68,7 @@ def test_transform(testcase):
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
                 t = TestTransformVisitor()
-                f = t.node(f)
+                f = t.mypyfile(f)
                 a += str(f).split('\n')
     except CompileError as e:
         a = e.messages

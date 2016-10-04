@@ -8,7 +8,7 @@ import time
 import typed_ast
 import typed_ast.ast35
 
-from typing import Tuple, List, Dict, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
 from mypy.main import parse_version, process_options
@@ -20,7 +20,7 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     testcase_pyversion, update_testcase_output,
 )
-from mypy.errors import CompileError, set_show_tb
+from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypy import experiments
@@ -34,7 +34,6 @@ files = [
     'check-generics.test',
     'check-tuples.test',
     'check-dynamic-typing.test',
-    'check-weak-typing.test',
     'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',
@@ -118,7 +117,7 @@ class TypeCheckSuite(DataSuite):
 
         options = self.parse_options(original_program_text, testcase)
         options.use_builtins_fixtures = True
-        set_show_tb(True)  # Show traceback on crash.
+        options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
 
@@ -149,15 +148,15 @@ class TypeCheckSuite(DataSuite):
         sources = []
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode
-            program_text = None if incremental else program_text
-            sources.append(BuildSource(program_path, module_name, program_text))
+            sources.append(BuildSource(program_path, module_name,
+                                       None if incremental else program_text))
+        res = None
         try:
             res = build.build(sources=sources,
                               options=options,
                               alt_lib_path=test_temp_dir)
             a = res.errors
         except CompileError as e:
-            res = None
             a = e.messages
         a = normalize_error_messages(a)
 
@@ -191,7 +190,8 @@ class TypeCheckSuite(DataSuite):
                     testcase.expected_stale_modules,
                     res.manager.stale_modules)
 
-    def check_module_equivalence(self, name: str, expected: Set[str], actual: Set[str]) -> None:
+    def check_module_equivalence(self, name: str,
+                                 expected: Optional[Set[str]], actual: Set[str]) -> None:
         if expected is not None:
             assert_string_arrays_equal(
                 list(sorted(expected)),

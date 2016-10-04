@@ -8,23 +8,24 @@ summary of command line flags can always be printed using the ``-h``
 flag (or its long form ``--help``)::
 
   $ mypy -h
-  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM]
-              [-2] [-s] [--almost-silent] [--disallow-untyped-calls]
+  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
+              [-s] [--almost-silent] [--disallow-untyped-calls]
               [--disallow-untyped-defs] [--check-untyped-defs]
               [--disallow-subclassing-any] [--warn-incomplete-stub]
               [--warn-redundant-casts] [--warn-unused-ignores]
-              [--hide-error-context] [--fast-parser] [-i]
-              [--cache-dir DIR] [--strict-optional]
+              [--hide-error-context] [--fast-parser] [-i] [--cache-dir DIR]
+              [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]] [--pdb]
               [--show-traceback] [--stats] [--inferstats]
               [--custom-typing MODULE] [--scripts-are-modules]
-              [--config-file CONFIG_FILE] [--linecount-report DIR]
-              [--linecoverage-report DIR] [--old-html-report DIR]
-              [--memory-xml-report DIR] [--xml-report DIR]
-              [--xslt-html-report DIR] [--xslt-txt-report DIR]
-              [--html-report DIR] [--txt-report DIR] [-m MODULE]
-              [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--config-file CONFIG_FILE] [--show-column-numbers]
+              [--linecount-report DIR] [--linecoverage-report DIR]
+              [--old-html-report DIR] [--memory-xml-report DIR]
+              [--xml-report DIR] [--xslt-html-report DIR]
+              [--xslt-txt-report DIR] [--html-report DIR] [--txt-report DIR]
+              [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
+
   (etc., too long to show everything here)
 
 Specifying files and directories to be checked
@@ -305,6 +306,23 @@ Here are some more useful flags:
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+- ``--show-column-numbers`` will add column offsets to error messages,
+  for example, the following indicates an error in line 12, column 9
+  (note that column offsets are 0-based):
+
+  .. code-block:: python
+
+     main.py:12:9: error: Unsupported operand types for / ("int" and "str")
+
+- ``--scripts-are-modules`` will give command line arguments that
+  appear to be scripts (i.e. files whose name does not end in ``.py``)
+  a module name derived from the script name rather than the fixed
+  name ``__main__``.  This allows checking more than one script in a
+  single mypy invocation.  (The default ``__main__`` is technically
+  more correct, but if you have many scripts that import a large
+  package, the behavior enabled by this flag is often more
+  convenient.)
 
 .. _config-file-flag:
 

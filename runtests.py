@@ -77,7 +77,7 @@ class Driver:
         if not self.allow(full_name):
             return
         args = [sys.executable, self.mypy] + mypy_args
-        args.append('--tb')  # Show traceback on crash.
+        args.append('--show-traceback')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -88,8 +88,8 @@ class Driver:
         args = list(itertools.chain(*(['-m', mod] for mod in modules)))
         self.add_mypy_cmd(name, args, cwd=cwd)
 
-    def add_mypy_package(self, name: str, packagename: str) -> None:
-        self.add_mypy_cmd(name, ['-p', packagename])
+    def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
+        self.add_mypy_cmd(name, ['-p', packagename] + list(flags))
 
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
@@ -168,6 +168,7 @@ def add_basic(driver: Driver) -> None:
 
 def add_selftypecheck(driver: Driver) -> None:
     driver.add_mypy_package('package mypy', 'mypy')
+    driver.add_mypy_package('package mypy', 'mypy', '--strict-optional')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:

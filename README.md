@@ -2,13 +2,16 @@ Mypy: Optional Static Typing for Python
 =======================================
 
 [![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
+[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 
 
 Got a question? File an issue!
 ------------------------------
 
-We don't have a mailing list; but we are always happy to answer questions
-filed as issues in our trackers:
+We don't have a mailing list; but we are always happy to answer
+questions on [gitter chat](https://gitter.im/python/mypy) or filed as
+issues in our trackers:
+
 - [mypy tracker](https://github.com/python/mypy/issues)
   for mypy isues
 - [typeshed tracker](https://github.com/python/typeshed/issues)
@@ -16,8 +19,6 @@ filed as issues in our trackers:
 - [typing tracker](https://github.com/python/typing/issues)
   for discussion of new type system features (PEP 484 changes) and
   runtime bugs in the typing module
-
-**NEW:** We have an experimental [gitter chat community](https://gitter.im/python-mypy/Lobby).
 
 What is mypy?
 -------------

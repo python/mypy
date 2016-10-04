@@ -564,7 +564,7 @@ class CallableType(FunctionLike):
     def __init__(self,
                  arg_types: List[Type],
                  arg_kinds: List[int],
-                 arg_names: List[str],
+                 arg_names: List[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
                  name: str = None,

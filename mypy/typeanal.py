@@ -9,7 +9,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
-    TypeInfo, Context, SymbolTableNode, Var, Node,
+    TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr
 )
 from mypy.sametypes import is_same_type
@@ -28,7 +28,7 @@ type_constructors = {
 }
 
 
-def analyze_type_alias(node: Node,
+def analyze_type_alias(node: Expression,
                        lookup_func: Callable[[str, Context], SymbolTableNode],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
                        fail_func: Callable[[str, Context], None]) -> Type:

@@ -13,7 +13,7 @@ from mypy import defaults
 from mypy import git
 from mypy import experiments
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
-from mypy.errors import CompileError, set_drop_into_pdb, set_show_tb
+from mypy.errors import CompileError
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
 
@@ -33,10 +33,6 @@ def main(script_path: str) -> None:
     else:
         bin_dir = None
     sources, options = process_options(sys.argv[1:])
-    if options.pdb:
-        set_drop_into_pdb(True)
-    if options.show_traceback:
-        set_show_tb(True)
     f = sys.stdout
     try:
         res = type_check_only(sources, bin_dir, options)

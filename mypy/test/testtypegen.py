@@ -39,6 +39,7 @@ class TypeExportSuite(Suite):
             src = '\n'.join(testcase.input)
             options = Options()
             options.use_builtins_fixtures = True
+            options.show_traceback = True
             result = build.build(sources=[BuildSource('main', None, src)],
                                  options=options,
                                  alt_lib_path=config.test_temp_dir)

@@ -131,11 +131,16 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
-# These are placeholders for a future refactoring; see #1783.
-# For now they serve as (unchecked) documentation of what various
-# fields of Node subtypes are expected to contain.
-Statement = Node
-Expression = Node
+class Statement(Node):
+    """A statement node."""
+
+
+class Expression(Node):
+    """An expression node."""
+
+
+# TODO: Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']; see #1783.
+Lvalue = Expression
 
 
 class SymbolNode(Node):
@@ -185,20 +190,16 @@ class MypyFile(SymbolNode, Statement):
     ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
-    # Do weak typing globally in the file?
-    weak_opts = None  # type: Set[str]
 
     def __init__(self,
                  defs: List[Statement],
                  imports: List['ImportBase'],
                  is_bom: bool = False,
-                 ignored_lines: Set[int] = None,
-                 weak_opts: Set[str] = None) -> None:
+                 ignored_lines: Set[int] = None) -> None:
         self.defs = defs
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
-        self.weak_opts = weak_opts
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -774,14 +775,14 @@ class AssignmentStmt(Statement):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr.
     """
 
-    lvalues = None  # type: List[Expression]
+    lvalues = None  # type: List[Lvalue]
     rvalue = None  # type: Expression
     # Declared type in a comment, may be None.
     type = None  # type: mypy.types.Type
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax = False  # type: bool
 
-    def __init__(self, lvalues: List[Expression], rvalue: Expression,
+    def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'mypy.types.Type' = None, new_syntax: bool = False) -> None:
         self.lvalues = lvalues
         self.rvalue = rvalue
@@ -1760,12 +1761,12 @@ class NewTypeExpr(Expression):
         return visitor.visit_newtype_expr(self)
 
 
-class AwaitExpr(Node):
+class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
-    expr = None  # type: Node
+    expr = None  # type: Expression
 
-    def __init__(self, expr: Node) -> None:
+    def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
