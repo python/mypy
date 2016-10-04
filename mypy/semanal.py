@@ -167,8 +167,6 @@ class SemanticAnalyzer(NodeVisitor):
     bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type variables that were bound by outer classess
     tvar_stack = None  # type: List[List[SymbolTableNode]]
-    # Do weak type checking in this file
-    weak_opts = set()        # type: Set[str]
     # Per-file options
     options = None  # type: Options
 
@@ -222,7 +220,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.globals = file_node.names
-        self.weak_opts = file_node.weak_opts
 
         if 'builtins' in self.modules:
             self.globals['__builtins__'] = SymbolTableNode(
@@ -1137,9 +1134,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
-        if self.weak_opts or self.options.semantic_analysis_only or self.function_stack:
-            # Skip this if any weak options are set.
-            # Also skip if we're only doing the semantic analysis pass.
+        if self.options.semantic_analysis_only or self.function_stack:
+            # Skip this if we're only doing the semantic analysis pass.
             # This is mostly to avoid breaking unit tests.
             # Also skip inside a function; this is to avoid confusing
             # the code that handles dead code due to isinstance()

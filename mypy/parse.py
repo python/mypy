@@ -159,33 +159,12 @@ class Parser:
             self.errors.raise_error()
         return file
 
-    def weak_opts(self) -> Set[str]:
-        """Do weak typing if any of the first ten tokens is a comment saying so.
-
-        The comment can be one of:
-        # mypy: weak=global
-        # mypy: weak=local
-        # mypy: weak      <- defaults to local
-        """
-        regexp = re.compile(r'^[\s]*# *mypy: *weak(=?)([^\s]*)', re.M)
-        for t in self.tok[:10]:
-            for s in [t.string, t.pre]:
-                m = regexp.search(s)
-                if m:
-                    opts = set(x for x in m.group(2).split(',') if x)
-                    if not opts:
-                        opts.add('local')
-                    return opts
-        return set()
-
     def parse_file(self) -> MypyFile:
         """Parse a mypy source file."""
         is_bom = self.parse_bom()
         defs = self.parse_defs()
-        weak_opts = self.weak_opts()
         self.expect_type(Eof)
-        node = MypyFile(defs, self.imports, is_bom, self.ignored_lines,
-                        weak_opts=weak_opts)
+        node = MypyFile(defs, self.imports, is_bom, self.ignored_lines)
         return node
 
     # Parse the initial part

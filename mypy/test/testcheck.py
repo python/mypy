@@ -34,7 +34,6 @@ files = [
     'check-generics.test',
     'check-tuples.test',
     'check-dynamic-typing.test',
-    'check-weak-typing.test',
     'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',

@@ -1136,10 +1136,8 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    suppress_message = ((self.options.silent_imports and
-                                        not self.options.almost_silent) or
-                                        (caller_state.tree is not None and
-                                         'import' in caller_state.tree.weak_opts))
+                    suppress_message = (self.options.silent_imports
+                                        and not self.options.almost_silent)
                     if not suppress_message:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
