@@ -5,7 +5,7 @@ from typing import cast, Callable, List, Optional, TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType, function_type
+    DeletedType, NoneTyp, TypeType, function_type, bind_self
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2
@@ -69,7 +69,7 @@ def analyze_member_access(name: str,
                 # the first argument.
                 pass
             else:
-                signature = signature.bind_self(typ)
+                signature = bind_self(signature, typ)
             typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(signature, typ)
         else:
@@ -196,7 +196,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             method = info.get_method('__getattr__')
             if method:
                 function = function_type(method, builtin_type('builtins.function'))
-                bound_method = function.bind_self(itype)
+                bound_method = bind_self(function, itype)
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(bound_method, typ)
                 if isinstance(getattr_type, CallableType):
@@ -246,7 +246,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = functype.bind_self()
+                signature = bind_self(functype)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
@@ -371,7 +371,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            t = t.bind_self(itype)
+            t = bind_self(t, itype)
         return t.copy_modified(variables=vars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, itype, is_classmethod,
@@ -419,7 +419,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
                                    fallback: Instance) -> FunctionLike:
-    signature = function_type(init_or_new, fallback).bind_self()
+    signature = bind_self(function_type(init_or_new, fallback))
 
     # The __init__ method might come from a generic superclass
     # (init_or_new.info) with type variables that do not map

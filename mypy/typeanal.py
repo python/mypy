@@ -100,7 +100,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 assert sym.tvar_def is not None
                 ret = TypeVarType(sym.tvar_def, t.line)
                 if t.enclosing_type:
-                    # TODO: ret.variance = nodes.SELF_VARIANCE
+                    # SelfType
                     ret.variance = nodes.INVARIANT
                     ret.upper_bound = t.enclosing_type
                 return ret
@@ -144,6 +144,10 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Type[...] must have exactly one type argument', t)
                 items = self.anal_array(t.args)
                 item = items[0]
+                if t.enclosing_type and isinstance(item, TypeVarType):
+                    # SelfType
+                    item.variance = nodes.INVARIANT
+                    item.upper_bound = t.enclosing_type
                 return TypeType(item, line=t.line)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.

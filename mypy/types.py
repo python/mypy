@@ -533,9 +533,6 @@ class FunctionLike(Type):
     def deserialize(cls, data: JsonDict) -> 'FunctionLike':
         return cast(FunctionLike, super().deserialize(data))
 
-    @abstractmethod
-    def bind_self(self, self_type=None) -> 'FunctionLike': pass
-
 
 _dummy = object()  # type: Any
 
@@ -705,31 +702,6 @@ class CallableType(FunctionLike):
                             is_classmethod_class=data['is_classmethod_class'],
                             )
 
-    def bind_self(self, actual_self: Type = None) -> 'CallableType':
-        if self.arg_kinds and self.arg_kinds[0] == mypy.nodes.ARG_STAR:
-            # The signature is of the form 'def foo(*args, ...)'.
-            # In this case we shouldn't drop the first arg,
-            # since self will be absorbed by the *args.
-            return self
-        ret_type = self.ret_type
-        variables = list(self.variables)
-        arg_types = self.arg_types[1:]
-        if self.arg_types and actual_self is not None:
-            self_arg = self.arg_types[0]
-            if isinstance(self_arg, TypeType):
-                self_arg = self_arg.item
-            if isinstance(self_arg, TypeVarType):
-                instantiator = TypeVarInstantiator(self_arg.id, actual_self)
-                arg_types = [t.accept(instantiator) for t in arg_types]
-                ret_type = ret_type.accept(instantiator)
-                variables = variables[1:]
-
-        return self.copy_modified(arg_types=arg_types,
-                                  arg_kinds=self.arg_kinds[1:],
-                                  arg_names=self.arg_names[1:],
-                                  variables=variables,
-                                  ret_type=ret_type)
-
 
 class Overloaded(FunctionLike):
     """Overloaded function type T1, ... Tn, where each Ti is CallableType.
@@ -781,9 +753,6 @@ class Overloaded(FunctionLike):
     def deserialize(cls, data: JsonDict) -> 'Overloaded':
         assert data['.class'] == 'Overloaded'
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
-
-    def bind_self(self, self_type: Type = None) -> 'FunctionLike':
-        return Overloaded([c.bind_self(self_type) for c in self.items()])
 
 
 class TupleType(Type):
@@ -1558,6 +1527,42 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
             name,
             implicit=True,
         )
+
+
+F = TypeVar('F', bound=FunctionLike)
+
+
+def bind_self(t: F, actual_self: Type = None) -> F:
+    if isinstance(t, Overloaded):
+        return cast(F, Overloaded([bind_self(c, t) for c in t.items()]))
+    assert isinstance(t, CallableType)
+    if t.arg_kinds and t.arg_kinds[0] == mypy.nodes.ARG_STAR:
+        # The signature is of the form 'def foo(*args, ...)'.
+        # In this case we shouldn't drop the first arg,
+        # since t will be absorbed by the *args.
+        return cast(F, t)
+    ret_type = t.ret_type
+    variables = list(t.variables)
+    arg_types = t.arg_types[1:]
+    if t.arg_types and actual_self is not None:
+        self_arg = t.arg_types[0]
+        if isinstance(self_arg, TypeType):
+            self_arg = self_arg.item
+        if isinstance(self_arg, TypeVarType):
+            instantiator = TypeVarInstantiator(self_arg.id, actual_self)
+            arg_types = [t.accept(instantiator) for t in arg_types]
+            # from mypy.expandtype import expand_type
+            # arg_types = [expand_type(t, {self_arg.id: actual_self})
+            #             for t in arg_types]
+            ret_type = ret_type.accept(instantiator)
+            variables = variables[1:]
+
+    res = t.copy_modified(arg_types=arg_types,
+                          arg_kinds=t.arg_kinds[1:],
+                          arg_names=t.arg_names[1:],
+                          variables=variables,
+                          ret_type=ret_type)
+    return cast(F, res)
 
 
 class TypeVarInstantiator(TypeTranslator):

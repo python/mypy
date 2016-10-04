@@ -1647,10 +1647,9 @@ class TypeApplication(Expression):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-CONTRAVARIANT = -1  # type: int
 INVARIANT = 0  # type: int
 COVARIANT = 1  # type: int
-# TODO: SELF_VARIANCE = 2  # type: int
+CONTRAVARIANT = 2  # type: int
 
 
 class TypeVarExpr(SymbolNode, Expression):

@@ -2087,6 +2087,7 @@ reveal_type(B().copy())  # E: Revealed type is '__main__.B'
 
 
 [case testSelfTypeReturn]
+# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T')
@@ -2096,20 +2097,27 @@ def _type(self: T) -> Type[T]: ...
 class A:
     def copy(self: T) -> T:
         if B():
-            return A()
+            return A()  # E: Incompatible return value type (got "A", expected "T")
         elif A():
-            return B()
+            return B()  # E: Incompatible return value type (got "B", expected "T")
         return _type(self)()
 
 class B(A):
     pass
 
-[out]
-main: note: In member "copy" of class "A":
-main:10: error: Incompatible return value type (got "A", expected "T")
-main:12: error: Incompatible return value type (got "B", expected "T")
+class C:
+    def __init__(self, a: int) -> None: pass
+
+    def copy(self: T) -> T:
+        if self:
+            return _type(self)(1)
+        else:
+            return _type(self)()  # E: Too few arguments for "C"
+
+
 
 [case testSelfTypeClass]
+# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T')
@@ -2121,6 +2129,17 @@ class A:
 
 class B(A):
     pass
+
+class C:
+    def __init__(self, a: int) -> None: pass
+
+    @classmethod
+    def new(cls: Type[T]) -> T:
+        if cls:
+            return cls(1)
+        else:
+            return cls()  # E: Too few arguments for "C"
+
 
 reveal_type(A.new)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B.new)  # E: Revealed type is 'def () -> __main__.B'
@@ -2149,6 +2168,7 @@ reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A' 
 
 [case testSelfTypeSuper]
+# flags: --hide-error-context
 from typing import TypeVar, cast
  
 T = TypeVar('T')
@@ -2165,10 +2185,8 @@ class B(A):
         # return super().copy()
         return cast(T, super().copy())
 
-[out]
-main: note: In member "copy" of class "B":
-
 [case testSelfTypeRecursiveBinding]
+# flags: --hide-error-context
 from typing import TypeVar, Callable, Type
  
 T = TypeVar('T')
@@ -2178,6 +2196,9 @@ class A:
 
     @classmethod
     def new(cls: Type[T], factory: Callable[[T], T]) -> T:
+        reveal_type(cls)   # E: Revealed type is 'Type[T`-1]'
+        reveal_type(cls())   # E: Revealed type is 'T`-1'
+        cls(2)  # E: Too many arguments for "A"
         return cls()
 
 class B(A):
@@ -2191,6 +2212,7 @@ reveal_type(B.new) # E: Revealed type is 'def (factory: def (__main__.B) -> __ma
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeBound]
+# flags: --hide-error-context
 from typing import TypeVar, Callable, cast
  
 T = TypeVar('T')
@@ -2200,15 +2222,15 @@ class A:
         ...
 
 class C(A):    
-    def copy(self: C) -> C:
+    def copy(self: C) -> C:  # E: Return type of "copy" incompatible with supertype "A"
         ...
 
 class D(A):    
-    def copy(self: A) -> A:
+    def copy(self: A) -> A:  # E: Return type of "copy" incompatible with supertype "A"
         ...
 
 class E(A):    
-    def copy(self: A) -> E:
+    def copy(self: A) -> E:  # E: Return type of "copy" incompatible with supertype "A"
         ...
 
 class B(A):
@@ -2216,16 +2238,8 @@ class B(A):
     def copy(self: T) -> T:
         reveal_type(self.x)  # E: Revealed type is 'builtins.int'
         return cast(T, None)
-[out]
-main: note: In class "C":
-main:10: error: Return type of "copy" incompatible with supertype "A"
-main: note: In class "D":
-main:14: error: Return type of "copy" incompatible with supertype "A"
-main: note: In class "E":
-main:18: error: Return type of "copy" incompatible with supertype "A"
-main: note: In member "copy" of class "B":
 
--- TODO: fail for this
+-- # TODO: fail for this
 -- [case testSelfTypeBare]
 -- class E:
 --     def copy(self: T, other: T) -> T: ...
