@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance
+    true_only, false_only, is_named_instance, TypeMap
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -1727,7 +1727,7 @@ class ExpressionChecker:
 
         return res
 
-    def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
+    def analyze_cond_branch(self, map: TypeMap,
                             node: Node, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context():
             if map:

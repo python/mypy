@@ -1008,6 +1008,17 @@ class TypeType(Type):
         return TypeType(Type.deserialize(data['item']))
 
 
+
+# NB: The keys of this dict are nodes in the original source program,
+# which are compared by reference equality--effectively, being *the
+# same* expression of the program, not just two identical expressions
+# (such as two references to the same variable). TODO: it would
+# probably be better to have the dict keyed by the nodes' literal_hash
+# field instead.
+
+TypeMap = Optional[Dict[mypy.nodes.Node, Type]]
+
+
 #
 # Visitor-related classes
 #

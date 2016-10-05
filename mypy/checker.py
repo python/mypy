@@ -32,7 +32,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
-    true_only, false_only
+    true_only, false_only, TypeMap
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -82,9 +82,9 @@ class TypeChecker(NodeVisitor[Type]):
     # Utility for generating messages
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
-    type_map = None  # type: Dict[Node, Type]
+    type_map = None  # type: TypeMap
     # Types of type checked nodes within this specific module
-    module_type_map = None  # type: Dict[Node, Type]
+    module_type_map = None  # type: TypeMap
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -2331,15 +2331,6 @@ class TypeChecker(NodeVisitor[Type]):
 # particular truth value. A value of None means that the condition can
 # never have that truth value.
 
-# NB: The keys of this dict are nodes in the original source program,
-# which are compared by reference equality--effectively, being *the
-# same* expression of the program, not just two identical expressions
-# (such as two references to the same variable). TODO: it would
-# probably be better to have the dict keyed by the nodes' literal_hash
-# field instead.
-
-TypeMap = Optional[Dict[Node, Type]]
-
 
 def conditional_type_map(expr: Expression,
                          current_type: Optional[Type],
@@ -2417,7 +2408,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
 
 
 def find_isinstance_check(node: Expression,
-                          type_map: Dict[Node, Type],
+                          type_map: TypeMap,
                           ) -> Tuple[TypeMap, TypeMap]:
     """Find any isinstance checks (within a chain of ands).  Includes
     implicit and explicit checks for None.
@@ -2442,8 +2433,8 @@ def find_isinstance_check(node: Expression,
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
         if is_not or node.operators == ['is']:
-            if_vars = {}  # type: Dict[Node, Type]
-            else_vars = {}  # type: Dict[Node, Type]
+            if_vars = {}  # type: TypeMap
+            else_vars = {}  # type: TypeMap
             for expr in node.operands:
                 if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
                     # This should only be true at most once: there should be
@@ -2490,7 +2481,7 @@ def find_isinstance_check(node: Expression,
     return {}, {}
 
 
-def get_isinstance_type(expr: Expression, type_map: Dict[Node, Type]) -> Type:
+def get_isinstance_type(expr: Expression, type_map: TypeMap) -> Type:
     type = type_map[expr]
 
     if isinstance(type, TupleType):
