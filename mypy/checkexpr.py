@@ -973,7 +973,7 @@ class ExpressionChecker:
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
                 if isinstance(e.left, StrExpr):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
-            elif pyverion[0] <= 2: 
+            elif pyversion[0] <= 2:
                 if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
