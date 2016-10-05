@@ -1,3 +1,4 @@
+from builtins import type as realtype
 from typing import (Any, Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
@@ -8,12 +9,17 @@ from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
 
+from mypy.nodes import IndexExpr, MemberExpr, NameExpr, SuperExpr
 
-class Frame(Dict[Any, Type]):
-    pass
+
+BLval = Union[IndexExpr, MemberExpr, NameExpr]
 
 
 class Key(AnyType):
+    pass
+
+
+class Frame(Dict[Key, Type]):
     pass
 
 
@@ -97,6 +103,7 @@ class ConditionalTypeBinder:
         return None
 
     def push(self, expr: Expression, typ: Type) -> None:
+        assert isinstance(expr, (IndexExpr, MemberExpr, NameExpr))
         if not expr.literal:
             return
         key = expr.literal_hash
@@ -105,11 +112,16 @@ class ConditionalTypeBinder:
             self._add_dependencies(key)
         self._push(key, typ)
 
-    def get(self, expr: Union[Expression, Var]) -> Type:
+    def get(self, expr: Union[BLval, Var]) -> Type:
+        assert isinstance(expr, BLval.__union_params__ + (Var,))
+        if isinstance(expr, Var):
+            # where is this literal hash initialized?
+            return self._get(expr.literal_hash)
         return self._get(expr.literal_hash)
 
-    def cleanse(self, expr: Expression) -> None:
+    def cleanse(self, expr: BLval) -> None:
         """Remove all references to an Expression from the binder."""
+        assert isinstance(expr, BLval.__union_params__)
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -165,7 +177,8 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, expr: Expression) -> Type:
+    def get_declaration(self, expr: BLval) -> Type:
+        assert isinstance(expr, BLval.__union_params__)
         if isinstance(expr, (RefExpr, SymbolTableNode)) and isinstance(expr.node, Var):
             type = expr.node.type
             if isinstance(type, PartialType):
@@ -174,11 +187,12 @@ class ConditionalTypeBinder:
         else:
             return None
 
-    def assign_type(self, expr: Expression,
+    def assign_type(self, expr: Union[BLval, SuperExpr],
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        if not expr.literal:
+        assert isinstance(expr, BLval.__union_params__ + (SuperExpr,))
+        if isinstance(expr, SuperExpr) or not expr.literal:
             return
         self.invalidate_dependencies(expr)
 
@@ -211,7 +225,8 @@ class ConditionalTypeBinder:
             # just copy this variable into a single stored frame.
             self.allow_jump(i)
 
-    def invalidate_dependencies(self, expr: Expression) -> None:
+    def invalidate_dependencies(self, expr: BLval) -> None:
+        assert isinstance(expr, BLval.__union_params__)
         """Invalidate knowledge of types that include expr, but not expr itself.
 
         For example, when expr is foo.bar, invalidate foo.bar.baz.
@@ -222,7 +237,8 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: Expression, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: BLval, type: Type) -> Type:
+        assert isinstance(expr, BLval.__union_params__)
         if isinstance(type, AnyType):
             return self.get_declaration(expr)
         key = expr.literal_hash

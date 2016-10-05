@@ -1081,6 +1081,7 @@ class TypeChecker(NodeVisitor[Type]):
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
+                    assert isinstance(lvalue, (IndexExpr, MemberExpr, NameExpr, SuperExpr))
                     self.binder.assign_type(lvalue,
                                             rvalue_type,
                                             lvalue_type,
@@ -1378,7 +1379,8 @@ class TypeChecker(NodeVisitor[Type]):
         if context.get_line() in self.errors.ignored_lines[self.errors.file]:
             self.set_inferred_type(var, lvalue, AnyType())
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
+    def narrow_type_from_binder(self, expr: Union[IndexExpr, MemberExpr, NameExpr],
+                                known_type: Type) -> Type:
         if expr.literal >= LITERAL_TYPE:
             restriction = self.binder.get(expr)
             if restriction:
