@@ -143,7 +143,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.module_type_map = {}
         self.binder = ConditionalTypeBinder()
         self.pyversion = pyversion
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.pyversion)
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []

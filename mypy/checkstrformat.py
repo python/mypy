@@ -39,7 +39,6 @@ class StringFormatterChecker:
     This class works closely together with checker.ExpressionChecker.
     """
 
-    pyversion = None  # type: Tuple[int, int]
     # Some services are provided by a TypeChecker instance.
     chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
@@ -50,13 +49,11 @@ class StringFormatterChecker:
     def __init__(self,
                  exprchk: 'mypy.checkexpr.ExpressionChecker',
                  chk: 'mypy.checker.TypeChecker',
-                 msg: MessageBuilder,
-                 pyversion: Tuple[int, int]) -> None:
+                 msg: MessageBuilder) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.exprchk = exprchk
         self.msg = msg
-        self.pyversion = pyversion
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
@@ -66,8 +63,6 @@ class StringFormatterChecker:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
-        if isinstance(str, BytesExpr) and self.pyversion[0] == 3 and self.pyversion[1] < 5:
-            assert False
         specifiers = self.parse_conversion_specifiers(str.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, str)
         if has_mapping_keys is None:

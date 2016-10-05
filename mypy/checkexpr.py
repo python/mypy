@@ -88,7 +88,6 @@ class ExpressionChecker:
     This class works closely together with checker.TypeChecker.
     """
 
-    pyversion = None  # type: Tuple[int, int]
     # Some services are provided by a TypeChecker instance.
     chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
@@ -98,13 +97,11 @@ class ExpressionChecker:
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
-                 msg: MessageBuilder,
-                 pyversion: Tuple[int, int]) -> None:
+                 msg: MessageBuilder) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
-        self.pyversion = pyversion
-        self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg, self.pyversion)
+        self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -969,8 +966,18 @@ class ExpressionChecker:
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         if e.op == '%':
-            if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
-                return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+            pyversion = self.chk.options.python_version
+            print('pyversion: %s' % (pyversion,))
+            if pyversion[0] == 3:
+                if pyversion[1] >= 5:
+                    if isinstance(e.left, (StrExpr, BytesExpr)):
+                        return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+                else:
+                    if isinstance(e.left, StrExpr):
+                        return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+            elif pyverion[0] <= 2: 
+                if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
+                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:
