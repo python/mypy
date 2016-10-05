@@ -79,7 +79,7 @@ class TypeChecker(NodeVisitor[Type]):
     Type check mypy source files that have been semantically analyzed.
     """
 
-    pyversion = None
+    pyversion = None  # type: Tuple[int, int]
     # Are we type checking a stub?
     is_stub = False
     # Error message reporter
