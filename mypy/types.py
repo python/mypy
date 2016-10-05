@@ -1551,10 +1551,11 @@ def bind_self(t: F, actual_self: Type = None) -> F:
         if isinstance(self_arg, TypeVarType):
             instantiator = TypeVarInstantiator(self_arg.id, actual_self)
             arg_types = [t.accept(instantiator) for t in arg_types]
-            # from mypy.expandtype import expand_type
-            # arg_types = [expand_type(t, {self_arg.id: actual_self})
-            #             for t in arg_types]
             ret_type = ret_type.accept(instantiator)
+            #from mypy.expandtype import expand_type
+            #arg_types = [expand_type(t, {self_arg.id: actual_self})
+            #             for t in arg_types]
+            #ret_type = expand_type(ret_type, {self_arg.id: actual_self})
             variables = variables[1:]
 
     res = t.copy_modified(arg_types=arg_types,

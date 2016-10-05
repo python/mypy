@@ -2243,3 +2243,17 @@ class B(A):
 -- [case testSelfTypeBare]
 -- class E:
 --     def copy(self: T, other: T) -> T: ...
+
+[case testSelfTypeClone]
+from typing import TypeVar
+
+T = TypeVar('T', bound='C')
+
+class C:
+    def copy(self: T) -> T:
+        return self
+
+def clone(arg: T) -> T:
+    reveal_type(arg)
+    reveal_type(arg.copy)  # E: Revealed type is 'def () -> __main__.C'
+    return arg.copy()
