@@ -1081,11 +1081,12 @@ class TypeChecker(NodeVisitor[Type]):
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    assert isinstance(lvalue, (IndexExpr, MemberExpr, NameExpr, SuperExpr))
-                    self.binder.assign_type(lvalue,
-                                            rvalue_type,
-                                            lvalue_type,
-                                            False)
+                    if lvalue.literal:
+                        assert isinstance(lvalue, (IndexExpr, MemberExpr, NameExpr))
+                        self.binder.assign_type(lvalue,
+                                                rvalue_type,
+                                                lvalue_type,
+                                                False)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
 

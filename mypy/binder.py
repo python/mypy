@@ -1,15 +1,14 @@
-from builtins import type as realtype
-from typing import (Any, Dict, List, Set, Iterator, Union)
+from typing import (Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Node, Expression, Var, RefExpr, SymbolTableNode)
+from mypy.nodes import (Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
 
-from mypy.nodes import IndexExpr, MemberExpr, NameExpr, SuperExpr
+from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
 BLval = Union[IndexExpr, MemberExpr, NameExpr]
@@ -113,7 +112,6 @@ class ConditionalTypeBinder:
         self._push(key, typ)
 
     def get(self, expr: Union[BLval, Var]) -> Type:
-        assert isinstance(expr, BLval.__union_params__ + (Var,))
         if isinstance(expr, Var):
             # where is this literal hash initialized?
             return self._get(expr.literal_hash)
@@ -178,7 +176,6 @@ class ConditionalTypeBinder:
         return result
 
     def get_declaration(self, expr: BLval) -> Type:
-        assert isinstance(expr, BLval.__union_params__)
         if isinstance(expr, (RefExpr, SymbolTableNode)) and isinstance(expr.node, Var):
             type = expr.node.type
             if isinstance(type, PartialType):
@@ -187,13 +184,11 @@ class ConditionalTypeBinder:
         else:
             return None
 
-    def assign_type(self, expr: Union[BLval, SuperExpr],
+    def assign_type(self, expr: BLval,
                     type: Type,
                     declared_type: Type,
                     restrict_any: bool = False) -> None:
-        assert isinstance(expr, BLval.__union_params__ + (SuperExpr,))
-        if isinstance(expr, SuperExpr) or not expr.literal:
-            return
+        assert expr.literal
         self.invalidate_dependencies(expr)
 
         if declared_type is None:
@@ -226,7 +221,6 @@ class ConditionalTypeBinder:
             self.allow_jump(i)
 
     def invalidate_dependencies(self, expr: BLval) -> None:
-        assert isinstance(expr, BLval.__union_params__)
         """Invalidate knowledge of types that include expr, but not expr itself.
 
         For example, when expr is foo.bar, invalidate foo.bar.baz.
@@ -238,7 +232,6 @@ class ConditionalTypeBinder:
             self._cleanse_key(dep)
 
     def most_recent_enclosing_type(self, expr: BLval, type: Type) -> Type:
-        assert isinstance(expr, BLval.__union_params__)
         if isinstance(type, AnyType):
             return self.get_declaration(expr)
         key = expr.literal_hash
