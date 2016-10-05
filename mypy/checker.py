@@ -1182,7 +1182,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.binder.assign_type(expr,
                                     join_type_list(types),
                                     join_type_list(declared_types),
-                                    self.typing_mode_weak())
+                                    False)
         for union, lv in zip(union_types, lvalues):
             _1, _2, inferred = self.check_lvalue(lv)
             if inferred:
