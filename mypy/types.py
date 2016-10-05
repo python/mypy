@@ -1015,7 +1015,7 @@ class TypeType(Type):
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
-TypeMap = Optional[Dict[mypy.nodes.Node, Type]]
+TypeMap = Optional[Dict[mypy.nodes.Expression, Type]]
 
 
 #

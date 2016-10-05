@@ -217,7 +217,9 @@ class TypeChecker(NodeVisitor[Type]):
         except Exception as err:
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
         self.type_context.pop()
-        self.store_type(node, typ)
+        if typ is not None:
+            assert isinstance(node, Expression)
+            self.store_type(node, typ)
         if not self.in_checked_function():
             return AnyType()
         else:
@@ -1788,7 +1790,8 @@ class TypeChecker(NodeVisitor[Type]):
             m.line = s.line
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
-            return c.accept(self)
+            c.accept(self)
+            return None
         else:
             def flatten(t: Expression) -> List[Expression]:
                 """Flatten a nested sequence of tuples/lists into one list of nodes."""
@@ -1812,7 +1815,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if d.fullname == 'typing.no_type_check':
                     e.var.type = AnyType()
                     e.var.is_ready = True
-                    return NoneTyp()
+                    return None
 
         e.func.accept(self)
         sig = self.function_type(e.func)  # type: Type
@@ -2203,11 +2206,11 @@ class TypeChecker(NodeVisitor[Type]):
         if not is_equivalent(t1, t2):
             self.fail(msg, node)
 
-    def store_type(self, node: Node, typ: Type) -> None:
+    def store_type(self, expr: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
-        self.type_map[node] = typ
+        self.type_map[expr] = typ
         if typ is not None:
-            self.module_type_map[node] = typ
+            self.module_type_map[expr] = typ
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?
@@ -2453,7 +2456,7 @@ def find_isinstance_check(node: Expression,
         vartype = type_map[node]
         if_type = true_only(vartype)
         else_type = false_only(vartype)
-        ref = node  # type: Node
+        ref = node  # type: Expression
         if_map = {ref: if_type} if not isinstance(if_type, UninhabitedType) else None
         else_map = {ref: else_type} if not isinstance(else_type, UninhabitedType) else None
         return if_map, else_map
