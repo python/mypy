@@ -969,12 +969,10 @@ class ExpressionChecker:
             pyversion = self.chk.options.python_version
             print('pyversion: %s' % (pyversion,))
             if pyversion[0] == 3:
-                if pyversion[1] >= 5:
-                    if isinstance(e.left, (StrExpr, BytesExpr)):
-                        return self.strfrm_checker.check_str_interpolation(e.left, e.right)
-                else:
-                    if isinstance(e.left, StrExpr):
-                        return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+                if isinstance(e.left, BytesExpr) and pyversion[1] >= 5:
+                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+                if isinstance(e.left, StrExpr):
+                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
             elif pyverion[0] <= 2: 
                 if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
