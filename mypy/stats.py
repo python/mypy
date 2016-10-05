@@ -14,7 +14,7 @@ from mypy import nodes
 from mypy.nodes import (
     Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
-) 
+)
 
 
 TYPE_EMPTY = 0
