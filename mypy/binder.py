@@ -96,12 +96,12 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, node: Node, typ: Type) -> None:
-        if not node.literal:
+    def push(self, expr: Expression, typ: Type) -> None:
+        if not expr.literal:
             return
-        key = node.literal_hash
+        key = expr.literal_hash
         if key not in self.declarations:
-            self.declarations[key] = self.get_declaration(node)
+            self.declarations[key] = self.get_declaration(expr)
             self._add_dependencies(key)
         self._push(key, typ)
 
@@ -109,7 +109,7 @@ class ConditionalTypeBinder:
         return self._get(expr.literal_hash)
 
     def cleanse(self, expr: Expression) -> None:
-        """Remove all references to a Node from the binder."""
+        """Remove all references to an Expression from the binder."""
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -165,9 +165,9 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, node: Node) -> Type:
-        if isinstance(node, (RefExpr, SymbolTableNode)) and isinstance(node.node, Var):
-            type = node.node.type
+    def get_declaration(self, expr: Expression) -> Type:
+        if isinstance(expr, (RefExpr, SymbolTableNode)) and isinstance(expr.node, Var):
+            type = expr.node.type
             if isinstance(type, PartialType):
                 return None
             return type
