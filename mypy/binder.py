@@ -110,7 +110,7 @@ class ConditionalTypeBinder:
     def get(self, expr: Union[Expression, Var]) -> Type:
         return self._get(expr.literal_hash)
 
-    def cleanse(self, expr: Expression) -> None:
+    def cleanse(self, expr: Node) -> None:
         """Remove all references to a Node from the binder."""
         self._cleanse_key(expr.literal_hash)
 
