@@ -57,7 +57,6 @@ class StringFormatterChecker:
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
-    # TODO: Bytes formatting in Python 3 is only supported in 3.5 and up.
     def check_str_interpolation(self,
                                 str: Union[StrExpr, BytesExpr, UnicodeExpr],
                                 replacements: Node) -> Type:
