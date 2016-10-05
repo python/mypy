@@ -3023,8 +3023,6 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
         elif name == 'MYPY' or name == 'TYPE_CHECKING':
             result = ALWAYS_TRUE
-        elif name == 'TYPE_CHECKING':
-            result = ALWAYS_TRUE
     if negated:
         if result == ALWAYS_TRUE:
             result = ALWAYS_FALSE
