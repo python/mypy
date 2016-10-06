@@ -10,7 +10,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
-    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
+    MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
@@ -1734,8 +1734,8 @@ class ExpressionChecker:
 
         return res
 
-    def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
-                            node: Node, context: Optional[Type]) -> Type:
+    def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
+                            node: Expression, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context():
             if map:
                 for var, type in map.items():
@@ -1750,7 +1750,7 @@ class ExpressionChecker:
     # Helpers
     #
 
-    def accept(self, node: Node, context: Type = None) -> Type:
+    def accept(self, node: Expression, context: Type = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
 
