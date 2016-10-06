@@ -12,9 +12,12 @@ from mypy.types import (
 )
 from mypy import nodes
 from mypy.nodes import (
-    Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
+    Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
 )
+
+
+TypeMap = Dict[Expression, Type]
 
 
 TYPE_EMPTY = 0
@@ -31,7 +34,7 @@ precision_names = [
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, typemap: Dict[Node, Type] = None,
+    def __init__(self, inferred: bool, typemap: TypeMap = None,
                  all_nodes: bool = False) -> None:
         self.inferred = inferred
         self.typemap = typemap
@@ -112,7 +115,7 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_assignment_stmt(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         super().visit_name_expr(o)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
@@ -120,7 +123,7 @@ class StatisticsVisitor(TraverserVisitor):
             o.expr.accept(self)
 
     def visit_call_expr(self, o: CallExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         if o.analyzed:
             o.analyzed.accept(self)
         else:
@@ -129,30 +132,30 @@ class StatisticsVisitor(TraverserVisitor):
                 a.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         super().visit_member_expr(o)
 
     def visit_op_expr(self, o: OpExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         super().visit_op_expr(o)
 
     def visit_comparison_expr(self, o: ComparisonExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         super().visit_comparison_expr(o)
 
     def visit_index_expr(self, o: IndexExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         super().visit_index_expr(o)
 
     def visit_unary_expr(self, o: UnaryExpr) -> None:
-        self.process_node(o)
+        self.process_expr(o)
         super().visit_unary_expr(o)
 
-    def process_node(self, node: Node) -> None:
+    def process_expr(self, expr: Expression) -> None:
         if self.all_nodes:
-            typ = self.typemap.get(node)
+            typ = self.typemap.get(expr)
             if typ:
-                self.line = node.line
+                self.line = expr.line
                 self.type(typ)
 
     def type(self, t: Type) -> None:
@@ -198,7 +201,7 @@ class StatisticsVisitor(TraverserVisitor):
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
-                    typemap: Dict[Node, Type] = None) -> None:
+                    typemap: TypeMap = None) -> None:
     if is_special_module(path):
         return
     print(path)
@@ -265,7 +268,7 @@ def is_complex(t: Type) -> bool:
 html_files = []  # type: List[Tuple[str, str, int, int]]
 
 
-def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Node, Type],
+def generate_html_report(tree: MypyFile, path: str, type_map: TypeMap,
                          output_dir: str) -> None:
     if is_special_module(path):
         return

@@ -395,48 +395,6 @@ yield
 main:1: error: 'yield' outside function
 main:2: error: 'yield' outside function
 
-[case testInvalidLvalues]
-1 = 1
-(1) = 1
-(1, 1) = 1
-[1, 1] = 1
-() = 1
-[out]
-main:1: error: Invalid assignment target
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Can't assign to ()
---' (hack to fix syntax highlighting)
-
-[case testInvalidLvalues2]
-x = y = z = 1
-x, (y, 1) = 1
-x, [y, 1] = 1
-x, [y, [z, 1]] = 1
-x, (y, (z, 1)) = 1
-x, (y) = 1 # ok
-x, (y, (z, z)) = 1 # ok
-[out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
-
-[case testInvalidLvalues3]
-x = 1
-x + x = 1
--x = 1
-1.1 = 1
-'x' = 1
-x() = 1
-[out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
-main:6: error: Invalid assignment target
-
 [case testInvalidStarType]
 a = 1  # type: *int
 [out]
@@ -457,20 +415,14 @@ main:1: error: Two starred expressions in assignment
 main:3: error: Two starred expressions in assignment
 main:4: error: Two starred expressions in assignment
 
-[case testTwoStarExpressionsInForStmt]
+[case testTwoStarExpressionsInForStmtParse]
 z = 1
 for a, *b, *c in z:
     pass
 for *a, (*b, c) in z:
     pass
-for a, (*b, *c) in z:
-    pass
-for [*a, *b] in z:
-    pass
 [out]
 main:2: error: Two starred expressions in assignment
-main:6: error: Two starred expressions in assignment
-main:8: error: Two starred expressions in assignment
 
 [case testTwoStarExpressionsInGeneratorExpr]
 (a for a, *b, *c in [])
@@ -496,10 +448,6 @@ a = 1
 main:2: error: Can use starred expression only as assignment target
 
 [case testInvalidDel]
-import typing
-x = 1
-del x(1)  # E: Invalid delete target
-del x + 1 # E: Invalid delete target
 del z     # E: Name 'z' is not defined
 [out]
 
@@ -868,13 +816,6 @@ def g() -> None:
 main: note: In function "g":
 main:4: error: 'abstractmethod' used with a non-method
 
-[case testInvalidTypeDeclaration]
-import typing
-def f(): pass
-f() = 1 # type: int
-[out]
-main:3: error: Invalid assignment target
-
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
 None[1] = 1 # type: int
@@ -943,7 +884,6 @@ a = 1
 a[1] = None # type: int # E: Unexpected type declaration
 a.x = None # type: int \
     # E: Type cannot be declared in assignment to non-self attribute
-a() = None # type: int  # E: Invalid assignment target
 [out]
 
 [case testInvalidLvalueWithExplicitType3]
@@ -1264,11 +1204,6 @@ x = None # type: Function[[], None]
 main:1: error: Name 'Function' is not defined
 main:1: note: (Did you mean 'typing.Callable'?)
 
-[case testInvalidWithTarget]
-def f(): pass
-with f() as 1: pass  # E: Invalid assignment target
-[out]
-
 [case testUseObsoleteNameForTypeVar]
 from typing import typevar
 t = typevar('t')
@@ -1296,14 +1231,6 @@ def f() -> None:
 [out]
 main: note: In function "f":
 main:3: error: Unexpected type declaration
-
-[case testInvalidTypeAnnotation2]
-import typing
-def f() -> None:
-    f() = 1  # type: int
-[out]
-main: note: In function "f":
-main:3: error: Invalid assignment target
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:

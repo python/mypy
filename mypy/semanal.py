@@ -48,7 +48,7 @@ from typing import (
 )
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    MypyFile, TypeInfo, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
@@ -63,7 +63,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, Statement,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -181,7 +181,7 @@ class SemanticAnalyzer(NodeVisitor):
     postpone_nested_functions_stack = None  # type: List[int]
     # Postponed functions collected if
     # postpone_nested_functions_stack[-1] == FUNCTION_FIRST_PHASE_POSTPONE_SECOND.
-    postponed_functions_stack = None  # type: List[List[Node]]
+    postponed_functions_stack = None  # type: List[List[FuncDef]]
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
@@ -331,7 +331,7 @@ class SemanticAnalyzer(NodeVisitor):
                     leading_type = self_type(self.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
-    def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
+    def is_conditional_func(self, previous: SymbolNode, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?
 
         We reject straight redefinitions of functions, as they are usually
@@ -625,13 +625,13 @@ class SemanticAnalyzer(NodeVisitor):
         abstract = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
-                node = symnode.node
+                node = symnode.node  # type: SymbolNode
                 if isinstance(node, OverloadedFuncDef):
                     # Unwrap an overloaded function definition. We can just
                     # check arbitrarily the first overload item. If the
                     # different items have a different abstract status, there
                     # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Node
+                    func = node.items[0]  # type: SymbolNode
                 else:
                     func = node
                 if isinstance(func, Decorator):
@@ -999,7 +999,7 @@ class SemanticAnalyzer(NodeVisitor):
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
         if node.fullname in type_aliases:
-            # Node refers to an aliased type such as typing.List; normalize.
+            # node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
         if node.fullname == 'typing.DefaultDict':
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
@@ -1251,7 +1251,7 @@ class SemanticAnalyzer(NodeVisitor):
                                               add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
-                self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
+                self.analyze_lvalue(cast(Lvalue, lval.expr), nested, add_global, explicit_type)
             else:
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
@@ -1261,7 +1261,7 @@ class SemanticAnalyzer(NodeVisitor):
                                      add_global: bool = False,
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
-        items = lval.items
+        items = cast(List[Lvalue], lval.items)
         star_exprs = [cast(StarExpr, item)
                       for item in items
                       if isinstance(item, StarExpr)]
@@ -1315,14 +1315,14 @@ class SemanticAnalyzer(NodeVisitor):
                 if len(lvalue.items) != len(typ.items):
                     self.fail('Incompatible number of tuple items', lvalue)
                     return
-                for item, itemtype in zip(lvalue.items, typ.items):
+                for item, itemtype in zip(cast(List[Lvalue], lvalue.items), typ.items):
                     self.store_declared_types(item, itemtype)
             else:
                 self.fail('Tuple type expected for multiple variables',
                           lvalue)
         elif isinstance(lvalue, StarExpr):
             if isinstance(typ, StarType):
-                self.store_declared_types(lvalue.expr, typ.type)
+                self.store_declared_types(cast(Lvalue, lvalue.expr), typ.type)
             else:
                 self.fail('Star type expected for starred expression', lvalue)
         else:
@@ -2551,7 +2551,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return None
 
-    def accept(self, node: Node) -> None:
+    def accept(self, node: Union[Statement, MypyFile]) -> None:
         try:
             node.accept(self)
         except Exception as err:
@@ -2769,7 +2769,7 @@ class ThirdPass(TraverserVisitor):
         self.options = options
         self.accept(file_node)
 
-    def accept(self, node: Node) -> None:
+    def accept(self, node: Union[Statement, MypyFile]) -> None:
         try:
             node.accept(self)
         except Exception as err:

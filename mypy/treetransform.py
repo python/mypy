@@ -3,10 +3,10 @@
 Subclass TransformVisitor to perform non-trivial transformations.
 """
 
-from typing import List, Dict, cast
+from typing import List, Dict, cast, Union
 
 from mypy.nodes import (
-    MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
+    MypyFile, Import, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
@@ -19,14 +19,14 @@ from mypy.nodes import (
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
+    YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, Lvalue
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
 from mypy.visitor import NodeVisitor
 
 
-class TransformVisitor(NodeVisitor[Node]):
+class TransformVisitor(NodeVisitor[Union[Expression, Statement, MypyFile, Var]]):
     """Transform a semantically analyzed AST (or subtree) to an identical copy.
 
     Use the node() method to transform an AST node.
@@ -236,7 +236,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return self.duplicate_assignment(node)
 
     def duplicate_assignment(self, node: AssignmentStmt) -> AssignmentStmt:
-        new = AssignmentStmt(self.expressions(node.lvalues),
+        new = AssignmentStmt(self.lvalues(node.lvalues),
                              self.expr(node.rvalue),
                              self.optional_type(node.type))
         new.line = node.line
@@ -245,7 +245,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_operator_assignment_stmt(self,
                                        node: OperatorAssignmentStmt) -> OperatorAssignmentStmt:
         return OperatorAssignmentStmt(node.op,
-                                      self.expr(node.lvalue),
+                                      self.lval(node.lvalue),
                                       self.expr(node.rvalue))
 
     def visit_while_stmt(self, node: WhileStmt) -> WhileStmt:
@@ -254,7 +254,7 @@ class TransformVisitor(NodeVisitor[Node]):
                          self.optional_block(node.else_body))
 
     def visit_for_stmt(self, node: ForStmt) -> ForStmt:
-        return ForStmt(self.expr(node.index),
+        return ForStmt(self.lval(node.index),
                        self.expr(node.expr),
                        self.block(node.body),
                        self.optional_block(node.else_body))
@@ -266,7 +266,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return AssertStmt(self.expr(node.expr))
 
     def visit_del_stmt(self, node: DelStmt) -> DelStmt:
-        return DelStmt(self.expr(node.expr))
+        return DelStmt(self.lval(node.expr))
 
     def visit_if_stmt(self, node: IfStmt) -> IfStmt:
         return IfStmt(self.expressions(node.expr),
@@ -296,7 +296,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_with_stmt(self, node: WithStmt) -> WithStmt:
         return WithStmt(self.expressions(node.expr),
-                        self.optional_expressions(node.target),
+                        self.optional_lvalues(node.target),
                         self.block(node.body))
 
     def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
@@ -448,7 +448,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_dictionary_comprehension(self, node: DictionaryComprehension
                                        ) -> DictionaryComprehension:
         return DictionaryComprehension(self.expr(node.key), self.expr(node.value),
-                             [self.expr(index) for index in node.indices],
+                             [self.lval(index) for index in node.indices],
                              [self.expr(s) for s in node.sequences],
                              [[self.expr(cond) for cond in conditions]
                               for conditions in node.condlists])
@@ -458,7 +458,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def duplicate_generator(self, node: GeneratorExpr) -> GeneratorExpr:
         return GeneratorExpr(self.expr(node.left_expr),
-                             [self.expr(index) for index in node.indices],
+                             [self.lval(index) for index in node.indices],
                              [self.expr(s) for s in node.sequences],
                              [[self.expr(cond) for cond in conditions]
                               for conditions in node.condlists])
@@ -498,11 +498,6 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_temp_node(self, node: TempNode) -> TempNode:
         return TempNode(self.type(node.type))
 
-    def node(self, node: Node) -> Node:
-        new = node.accept(self)
-        new.set_line(node.line)
-        return new
-
     def mypyfile(self, node: MypyFile) -> MypyFile:
         new = node.accept(self)
         assert isinstance(new, MypyFile)
@@ -513,6 +508,12 @@ class TransformVisitor(NodeVisitor[Node]):
         new = expr.accept(self)
         assert isinstance(new, Expression)
         new.set_line(expr.line)
+        return new
+
+    def lval(self, lval: Expression) -> Lvalue:
+        new = lval.accept(self)
+        assert isinstance(new, (NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr))
+        new.set_line(lval.line)
         return new
 
     def stmt(self, stmt: Statement) -> Statement:
@@ -528,6 +529,12 @@ class TransformVisitor(NodeVisitor[Node]):
     def optional_expr(self, expr: Expression) -> Expression:
         if expr:
             return self.expr(expr)
+        else:
+            return None
+
+    def optional_lval(self, lval: Lvalue) -> Lvalue:
+        if lval:
+            return self.lval(lval)
         else:
             return None
 
@@ -548,8 +555,14 @@ class TransformVisitor(NodeVisitor[Node]):
     def expressions(self, expressions: List[Expression]) -> List[Expression]:
         return [self.expr(expr) for expr in expressions]
 
+    def lvalues(self, lvals: List[Lvalue]) -> List[Lvalue]:
+        return [self.lval(lval) for lval in lvals]
+
     def optional_expressions(self, expressions: List[Expression]) -> List[Expression]:
         return [self.optional_expr(expr) for expr in expressions]
+
+    def optional_lvalues(self, lvals: List[Lvalue]) -> List[Lvalue]:
+        return [self.optional_lval(lval) for lval in lvals]
 
     def blocks(self, blocks: List[Block]) -> List[Block]:
         return [self.block(block) for block in blocks]

@@ -10,7 +10,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
-    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
+    MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
@@ -150,18 +150,13 @@ class ExpressionChecker:
         return result
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
-        if not var.type:
+        if var.type:
+            return var.type
+        else:
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
-        else:
-            # Look up local type of variable with type (inferred or explicit).
-            val = self.chk.binder.get(var)
-            if val is None:
-                return var.type
-            else:
-                return val
 
     def visit_call_expr(self, e: CallExpr) -> Type:
         """Type check a call expression."""
@@ -294,7 +289,8 @@ class ExpressionChecker:
 
             if callable_node:
                 # Store the inferred callable type.
-                self.chk.store_type(callable_node, callee)
+                if isinstance(callable_node, (NameExpr, MemberExpr, IndexExpr, SuperExpr)):
+                    self.chk.store_type(callable_node, callee)
             return callee.ret_type, callee
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again
@@ -1201,7 +1197,7 @@ class ExpressionChecker:
         with self.chk.binder.frame_context():
             if right_map:
                 for var, type in right_map.items():
-                    self.chk.binder.push(var, type)
+                    self.chk.binder.put_if_bindable(var, type)
 
             right_type = self.accept(e.right, left_type)
 
@@ -1700,7 +1696,7 @@ class ExpressionChecker:
 
                 if true_map:
                     for var, type in true_map.items():
-                        self.chk.binder.push(var, type)
+                        self.chk.binder.put_if_bindable(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
@@ -1734,12 +1730,12 @@ class ExpressionChecker:
 
         return res
 
-    def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
-                            node: Node, context: Optional[Type]) -> Type:
+    def analyze_cond_branch(self, map: Dict[Expression, Type],
+                            node: Expression, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context():
             if map:
                 for var, type in map.items():
-                    self.chk.binder.push(var, type)
+                    self.chk.binder.put_if_bindable(var, type)
             return self.accept(node, context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
@@ -1750,7 +1746,7 @@ class ExpressionChecker:
     # Helpers
     #
 
-    def accept(self, node: Node, context: Type = None) -> Type:
+    def accept(self, node: Expression, context: Type = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
 

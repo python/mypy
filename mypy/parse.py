@@ -26,7 +26,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
-    BackquoteExpr
+    BackquoteExpr, Lvalue
 )
 from mypy import defaults
 from mypy import nodes
@@ -717,11 +717,14 @@ class Parser:
             # This isn't a tuple. Revert to a normal argument.
             arg_name = paren_arg.name
             decompose = None
-        else:
+        elif isinstance(paren_arg, TupleExpr):
             rvalue = NameExpr(arg_name)
             rvalue.set_line(line)
             decompose = AssignmentStmt([paren_arg], rvalue)
             decompose.set_line(line, column)
+        else:
+            self.fail('Bad argument construct', line, column)
+            raise ParseError()
         kind = nodes.ARG_POS
         initializer = None
         if self.current_str() == '=':
@@ -731,6 +734,15 @@ class Parser:
         var = Var(arg_name)
         arg_names = self.find_tuple_arg_argument_names(paren_arg)
         return Argument(var, None, initializer, kind), decompose, arg_names
+
+    def verify_tuple_lval(self, paren_arg: Expression) -> None:
+        if isinstance(paren_arg, (TupleExpr, ListExpr)):
+            if not paren_arg.items:
+                self.fail('Empty tuple not a valid lvalue', paren_arg.line, paren_arg.column)
+            for item in paren_arg.items:
+                self.verify_tuple_arg(item)
+        elif not isinstance(paren_arg, (NameExpr, MemberExpr, IndexExpr, SuperExpr)):
+            self.fail('Invalid assignment target', paren_arg.line, paren_arg.column)
 
     def verify_tuple_arg(self, paren_arg: Expression) -> None:
         if isinstance(paren_arg, TupleExpr):
@@ -951,18 +963,23 @@ class Parser:
                                                       ExpressionStmt]:
         expr = self.parse_expression(star_expr_allowed=True)
         if self.current_str() == '=':
-            return self.parse_assignment(expr)
+            if isinstance(expr, (NameExpr, TupleExpr, ListExpr, MemberExpr,
+                                 IndexExpr, SuperExpr, StarExpr)):
+                return self.parse_assignment(expr)
         elif self.current_str() in op_assign:
-            # Operator assignment statement.
-            op = self.current_str()[:-1]
-            self.skip()
-            rvalue = self.parse_expression()
-            return OperatorAssignmentStmt(op, expr, rvalue)
+            if isinstance(expr, (NameExpr, MemberExpr, IndexExpr, SuperExpr, StarExpr)):
+                # Operator assignment statement.
+                op = self.current_str()[:-1]
+                self.skip()
+                rvalue = self.parse_expression()
+                return OperatorAssignmentStmt(op, expr, rvalue)
         else:
             # Expression statement.
             return ExpressionStmt(expr)
+        self.fail('Invalid assignment target', expr.line, expr.column)
+        raise ParseError()
 
-    def parse_assignment(self, lvalue: Expression) -> AssignmentStmt:
+    def parse_assignment(self, lvalue: Lvalue) -> AssignmentStmt:
         """Parse an assignment statement.
 
         Assume that lvalue has been parsed already, and the current token is '='.
@@ -973,6 +990,9 @@ class Parser:
         expr = self.parse_expression(star_expr_allowed=True)
         while self.current_str() == '=':
             self.skip()
+            self.verify_tuple_lval(expr)
+            assert isinstance(expr, (NameExpr, TupleExpr, ListExpr,
+                                     MemberExpr, IndexExpr, SuperExpr))
             lvalues.append(expr)
             expr = self.parse_expression(star_expr_allowed=True)
         cur = self.current()
@@ -1036,6 +1056,9 @@ class Parser:
     def parse_del_stmt(self) -> DelStmt:
         self.expect('del')
         expr = self.parse_expression()
+        if not isinstance(expr, (NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr)):
+            self.fail('Invalid delete target', expr.line, expr.column)
+            raise ParseError()
         node = DelStmt(expr)
         return node
 
@@ -1112,14 +1135,18 @@ class Parser:
         node = ForStmt(index, expr, body, else_body)
         return node
 
-    def parse_for_index_variables(self) -> Expression:
+    def parse_for_index_variables(self) -> Lvalue:
         # Parse index variables of a 'for' statement.
-        index_items = []
+        index_items = []  # type: List[Lvalue]
         force_tuple = False
 
         while True:
             v = self.parse_expression(precedence['in'],
                                       star_expr_allowed=True)  # Prevent parsing of for stmt 'in'
+            if not isinstance(v, (NameExpr, TupleExpr, ListExpr,
+                                  MemberExpr, IndexExpr, SuperExpr, StarExpr)):
+                self.fail('Invalid index', v.line, v.column)
+                raise ParseError()
             index_items.append(v)
             if self.current_str() != ',':
                 break
@@ -1131,7 +1158,7 @@ class Parser:
         if len(index_items) == 1 and not force_tuple:
             index = index_items[0]
         else:
-            index = TupleExpr(index_items)
+            index = TupleExpr(cast(List[Expression], index_items))
             index.set_line(index_items[0])
 
         return index
@@ -1222,7 +1249,12 @@ class Parser:
             expr = self.parse_expression(precedence[','])
             if self.current_str() == 'as':
                 self.expect('as')
-                target = self.parse_expression(precedence[','])
+                t = self.parse_expression(precedence[','])
+                if not isinstance(t, (NameExpr, TupleExpr, ListExpr,
+                                      MemberExpr, IndexExpr, SuperExpr)):
+                    self.fail('Invalid with target', t.line, t.column)
+                    raise ParseError()
+                target = t
             else:
                 target = None
             exprs.append(expr)
@@ -1231,7 +1263,7 @@ class Parser:
                 break
             self.expect(',')
         body, _ = self.parse_block()
-        return WithStmt(exprs, targets, body)
+        return WithStmt(exprs, list(targets), body)
 
     def parse_print_stmt(self) -> PrintStmt:
         self.expect('print')
@@ -1445,8 +1477,8 @@ class Parser:
         gen.set_line(tok)
         return gen
 
-    def parse_comp_for(self) -> Tuple[List[Expression], List[Expression], List[List[Expression]]]:
-        indices = []
+    def parse_comp_for(self) -> Tuple[List[Lvalue], List[Expression], List[List[Expression]]]:
+        indices = []  # type: List[Lvalue]
         sequences = []
         condlists = []  # type: List[List[Expression]]
         while self.current_str() == 'for':

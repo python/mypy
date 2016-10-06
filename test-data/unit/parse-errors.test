@@ -531,3 +531,95 @@ except KeyError, IndexError:
 file:3: error: Parse error before ,
 file:3: error: Parse error before :
 file:4: error: Inconsistent indentation
+
+[case testInvalidLvalues]
+1 = 1
+(1) = 1
+(1, 1) = 1
+[1, 1] = 1
+() = 1
+[out]
+file:1: error: Invalid assignment target
+file:1: error: Parse error before =
+file:2: error: Invalid assignment target
+file:2: error: Parse error before =
+-- FIX: these should be reported too
+-- file:3: error: Invalid assignment target
+-- file:3: error: Parse error before =
+-- file:4: error: Invalid assignment target
+-- file:4: error: Parse error before =
+-- file:5: error: Invalid assignment target
+-- file:5: error: Parse error before =
+
+-- FIX: should be reported too
+-- [case testInvalidLvalues2]
+-- x = y = z = 1
+-- x, (y, 1) = 1
+-- x, [y, 1] = 1
+-- x, [y, [z, 1]] = 1
+-- x, (y, (z, 1)) = 1
+-- x, (y) = 1 # ok
+-- x, (y, (z, z)) = 1 # ok
+-- [out]
+-- file:2: error: Invalid assignment target
+-- file:2: error: Parse error before =
+-- file:3: error: Invalid assignment target
+-- file:3: error: Parse error before =
+-- file:4: error: Invalid assignment target
+-- file:4: error: Parse error before =
+-- file:5: error: Invalid assignment target
+-- file:5: error: Parse error before =
+
+[case testInvalidLvalues3]
+x = 1
+x + x = 1
+-x = 1
+1.1 = 1
+'x' = 1
+x() = 1
+[out]
+file:2: error: Invalid assignment target
+file:2: error: Parse error before =
+file:3: error: Invalid assignment target
+file:3: error: Parse error before =
+file:4: error: Invalid assignment target
+file:4: error: Parse error before =
+file:5: error: Invalid assignment target
+file:5: error: Parse error before =
+file:6: error: Invalid assignment target
+file:6: error: Parse error before =
+
+[case testInvalidDelParse]
+import typing
+x = 1
+del x(1)
+del x + 1
+[out]
+file:3: error: Invalid delete target
+file:3: error: Parse error before end of line
+file:4: error: Invalid delete target
+file:4: error: Parse error before end of line
+
+[case testInvalidTypeAnnotation2]
+import typing
+def f() -> None:
+    f() = 1  # type: int
+[out]
+file: note: In function "f":
+file:3: error: Invalid assignment target
+file:3: error: Parse error before =
+
+[case testInvalidWithTarget]
+def f(): pass
+with f() as 1: pass
+[out]
+file:2: error: Invalid with target
+file:2: error: Parse error before :
+
+[case testInvalidTypeDeclaration]
+import typing
+def f(): pass
+f() = 1 # type: int
+[out]
+file:3: error: Invalid assignment target
+file:3: error: Parse error before =

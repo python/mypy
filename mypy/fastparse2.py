@@ -19,7 +19,7 @@ import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.nodes import (
-    MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
+    MypyFile, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
@@ -29,7 +29,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    Expression, Statement,
+    Expression, Statement, Lvalue,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -55,7 +55,7 @@ except ImportError:
     sys.exit(1)
 
 T = TypeVar('T', bound=Union[ast27.expr, ast27.stmt])
-U = TypeVar('U', bound=Node)
+U = TypeVar('U', bound=Union[Expression, Statement])
 V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
@@ -135,14 +135,19 @@ class ASTConverter(ast27.NodeTransformer):
     def generic_visit(self, node: ast27.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
 
-    def visit_NoneType(self, n: Any) -> Optional[Node]:
-        return None
-
     def translate_expr_list(self, l: Sequence[ast27.AST]) -> List[Expression]:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
             assert isinstance(exp, Expression)
+            res.append(exp)
+        return res
+
+    def translate_lval_list(self, l: Sequence[ast27.AST]) -> List[Lvalue]:
+        res = []  # type: List[Lvalue]
+        for e in l:
+            exp = self.visit(e)
+            assert isinstance(exp, (NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr))
             res.append(exp)
         return res
 
@@ -434,7 +439,7 @@ class ASTConverter(ast27.NodeTransformer):
         if n.type_comment:
             typ = parse_type_comment(n.type_comment, n.lineno)
 
-        return AssignmentStmt(self.translate_expr_list(n.targets),
+        return AssignmentStmt(self.translate_lval_list(n.targets),
                               self.visit(n.value),
                               type=typ)
 
