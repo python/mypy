@@ -90,7 +90,7 @@ class ConditionalTypeBinder:
         self.options_on_return.append([])
         return f
 
-    def _push(self, key: Key, type: Type, index: int=-1) -> None:
+    def _put(self, key: Key, type: Type, index: int=-1) -> None:
         self.frames[index][key] = type
 
     def _get(self, key: Key, index: int=-1) -> Type:
@@ -101,22 +101,22 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, expr: Expression, typ: Type) -> None:
-        assert isinstance(expr, (IndexExpr, MemberExpr, NameExpr))
+    def put_if_bindable(self, expr: Expression, typ: Type) -> None:
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+            return
         if not expr.literal:
             return
         key = expr.literal_hash
         if key not in self.declarations:
             self.declarations[key] = self.get_declaration(expr)
             self._add_dependencies(key)
-        self._push(key, typ)
+        self._put(key, typ)
 
     def get(self, expr: BLval) -> Type:
         return self._get(expr.literal_hash)
 
     def cleanse(self, expr: BLval) -> None:
         """Remove all references to an Expression from the binder."""
-        assert isinstance(expr, BLval.__union_params__)
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -151,7 +151,7 @@ class ConditionalTypeBinder:
                 for other in resulting_values[1:]:
                     type = join_simple(self.declarations[key], type, other)
             if not is_same_type(type, current_value):
-                self._push(key, type)
+                self._put(key, type)
                 changed = True
 
         return changed
@@ -208,9 +208,9 @@ class ConditionalTypeBinder:
                 and not restrict_any):
             pass
         elif isinstance(type, AnyType):
-            self.push(expr, declared_type)
+            self.put_if_bindable(expr, declared_type)
         else:
-            self.push(expr, type)
+            self.put_if_bindable(expr, type)
 
         for i in self.try_frames:
             # XXX This should probably not copy the entire frame, but

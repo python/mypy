@@ -8,13 +8,16 @@ from typing import Any, Dict, List, cast, Tuple
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVarType,
-    TypeQuery, ANY_TYPE_STRATEGY, CallableType, TypeMap
+    TypeQuery, ANY_TYPE_STRATEGY, CallableType
 )
 from mypy import nodes
 from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
 )
+
+
+TypeMap = Dict[Expression, Type]
 
 
 TYPE_EMPTY = 0

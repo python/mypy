@@ -9,10 +9,10 @@ import tokenize
 
 from typing import Callable, Dict, List, Optional, Tuple, cast
 
-from mypy.nodes import MypyFile, FuncDef
+from mypy.nodes import MypyFile, FuncDef, Expression
 from mypy import stats
 from mypy.traverser import TraverserVisitor
-from mypy.types import TypeMap
+from mypy.stats import TypeMap
 
 
 reporter_classes = {}  # type: Dict[str, Callable[[Reports, str], AbstractReporter]]

@@ -32,7 +32,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
-    true_only, false_only, TypeMap
+    true_only, false_only
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
@@ -69,6 +69,16 @@ DeferredNode = NamedTuple(
     ])
 
 
+# NB: The keys of this dict are nodes in the original source program,
+# which are compared by reference equality--effectively, being *the
+# same* expression of the program, not just two identical expressions
+# (such as two references to the same variable). TODO: it would
+# probably be better to have the dict keyed by the nodes' literal_hash
+# field instead.
+
+TypeMap = Optional[Dict[Expression, Type]]
+
+
 class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
@@ -82,9 +92,9 @@ class TypeChecker(NodeVisitor[Type]):
     # Utility for generating messages
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
-    type_map = None  # type: TypeMap
+    type_map = None  # type: Dict[Expression, Type]
     # Types of type checked nodes within this specific module
-    module_type_map = None  # type: TypeMap
+    module_type_map = None  # type: Dict[Expression, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -1543,14 +1553,14 @@ class TypeChecker(NodeVisitor[Type]):
                     with self.binder.frame_context(2):
                         if if_map:
                             for var, type in if_map.items():
-                                self.binder.push(var, type)
+                                self.binder.put_if_bindable(var, type)
 
                         self.accept(b)
                     breaking_out = breaking_out and self.binder.last_pop_breaking_out
 
                     if else_map:
                         for var, type in else_map.items():
-                            self.binder.push(var, type)
+                            self.binder.put_if_bindable(var, type)
                 if else_map is None:
                     # The condition is always true => remaining elif/else blocks
                     # can never be reached.
@@ -1593,7 +1603,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         if true_map:
             for var, type in true_map.items():
-                self.binder.push(var, type)
+                self.binder.put_if_bindable(var, type)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Type:
         """Type check a raise statement."""

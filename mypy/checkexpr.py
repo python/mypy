@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance, TypeMap
+    true_only, false_only, is_named_instance
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -289,7 +289,8 @@ class ExpressionChecker:
 
             if callable_node:
                 # Store the inferred callable type.
-                self.chk.store_type(callable_node, callee)
+                if isinstance(callable_node, (NameExpr, MemberExpr, IndexExpr, SuperExpr)):
+                    self.chk.store_type(callable_node, callee)
             return callee.ret_type, callee
         elif isinstance(callee, Overloaded):
             # Type check arguments in empty context. They will be checked again
@@ -1189,7 +1190,7 @@ class ExpressionChecker:
         with self.chk.binder.frame_context():
             if right_map:
                 for var, type in right_map.items():
-                    self.chk.binder.push(var, type)
+                    self.chk.binder.put_if_bindable(var, type)
 
             right_type = self.accept(e.right, left_type)
 
@@ -1688,7 +1689,7 @@ class ExpressionChecker:
 
                 if true_map:
                     for var, type in true_map.items():
-                        self.chk.binder.push(var, type)
+                        self.chk.binder.put_if_bindable(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
@@ -1722,12 +1723,12 @@ class ExpressionChecker:
 
         return res
 
-    def analyze_cond_branch(self, map: TypeMap,
+    def analyze_cond_branch(self, map: Dict[Expression, Type],
                             node: Expression, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context():
             if map:
                 for var, type in map.items():
-                    self.chk.binder.push(var, type)
+                    self.chk.binder.put_if_bindable(var, type)
             return self.accept(node, context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
