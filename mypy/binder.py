@@ -1,19 +1,24 @@
-from typing import (Any, Dict, List, Set, Iterator, Union)
+from typing import (Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Node, Expression, Var, RefExpr, SymbolTableNode)
+from mypy.nodes import (Node as Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
 
-
-class Frame(Dict[Any, Type]):
-    pass
+from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
-class Key(AnyType):
+BindableTypes = (IndexExpr, MemberExpr, NameExpr)
+BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
+
+
+Key = object
+
+
+class Frame(Dict[object, Type]):
     pass
 
 
@@ -85,7 +90,7 @@ class ConditionalTypeBinder:
         self.options_on_return.append([])
         return f
 
-    def _push(self, key: Key, type: Type, index: int=-1) -> None:
+    def _put(self, key: Key, type: Type, index: int=-1) -> None:
         self.frames[index][key] = type
 
     def _get(self, key: Key, index: int=-1) -> Type:
@@ -96,20 +101,24 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def push(self, node: Node, typ: Type) -> None:
-        if not node.literal:
+    def put_if_bindable(self, expr: Expression, typ: Type) -> None:
+        if not isinstance(expr, BindableTypes):
             return
-        key = node.literal_hash
+        if not expr.literal:
+            return
+        key = expr.literal_hash
         if key not in self.declarations:
-            self.declarations[key] = self.get_declaration(node)
+            self.declarations[key] = self.get_declaration(expr)
             self._add_dependencies(key)
-        self._push(key, typ)
+        self._put(key, typ)
 
-    def get(self, expr: Union[Expression, Var]) -> Type:
+    def get(self, expr: Expression) -> Type:
+        if not isinstance(expr, BindableTypes):
+            return None
         return self._get(expr.literal_hash)
 
-    def cleanse(self, expr: Expression) -> None:
-        """Remove all references to a Node from the binder."""
+    def cleanse(self, expr: BindableExpression) -> None:
+        """Remove all references to an Expression from the binder."""
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -144,7 +153,7 @@ class ConditionalTypeBinder:
                 for other in resulting_values[1:]:
                     type = join_simple(self.declarations[key], type, other)
             if not is_same_type(type, current_value):
-                self._push(key, type)
+                self._put(key, type)
                 changed = True
 
         return changed
@@ -165,19 +174,20 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, node: Node) -> Type:
-        if isinstance(node, (RefExpr, SymbolTableNode)) and isinstance(node.node, Var):
-            type = node.node.type
-            if isinstance(type, PartialType):
-                return None
-            return type
-        else:
-            return None
+    def get_declaration(self, expr: BindableExpression) -> Type:
+        assert not isinstance(expr, SymbolTableNode)
+        if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
+            type = expr.node.type
+            if not isinstance(type, PartialType):
+                return type
+        return None
 
-    def assign_type(self, expr: Expression,
-                    type: Type,
-                    declared_type: Type,
-                    restrict_any: bool = False) -> None:
+    def assign_type_if_bindable(self, expr: Expression,
+                                type: Type,
+                                declared_type: Type,
+                                restrict_any: bool = False) -> None:
+        if not isinstance(expr, BindableTypes):
+            return None
         if not expr.literal:
             return
         self.invalidate_dependencies(expr)
@@ -202,16 +212,16 @@ class ConditionalTypeBinder:
                 and not restrict_any):
             pass
         elif isinstance(type, AnyType):
-            self.push(expr, declared_type)
+            self.put_if_bindable(expr, declared_type)
         else:
-            self.push(expr, type)
+            self.put_if_bindable(expr, type)
 
         for i in self.try_frames:
             # XXX This should probably not copy the entire frame, but
             # just copy this variable into a single stored frame.
             self.allow_jump(i)
 
-    def invalidate_dependencies(self, expr: Expression) -> None:
+    def invalidate_dependencies(self, expr: BindableExpression) -> None:
         """Invalidate knowledge of types that include expr, but not expr itself.
 
         For example, when expr is foo.bar, invalidate foo.bar.baz.
@@ -222,7 +232,7 @@ class ConditionalTypeBinder:
         for dep in self.dependencies.get(expr.literal_hash, set()):
             self._cleanse_key(dep)
 
-    def most_recent_enclosing_type(self, expr: Expression, type: Type) -> Type:
+    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type:
         if isinstance(type, AnyType):
             return self.get_declaration(expr)
         key = expr.literal_hash

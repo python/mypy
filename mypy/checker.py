@@ -1079,10 +1079,10 @@ class TypeChecker(NodeVisitor[Type]):
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue,
-                                            rvalue_type,
-                                            lvalue_type,
-                                            False)
+                    self.binder.assign_type_if_bindable(lvalue,
+                                                        rvalue_type,
+                                                        lvalue_type,
+                                                        False)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
 
@@ -1535,14 +1535,14 @@ class TypeChecker(NodeVisitor[Type]):
                     with self.binder.frame_context(2):
                         if if_map:
                             for var, type in if_map.items():
-                                self.binder.push(var, type)
+                                self.binder.put_if_bindable(var, type)
 
                         self.accept(b)
                     breaking_out = breaking_out and self.binder.last_pop_breaking_out
 
                     if else_map:
                         for var, type in else_map.items():
-                            self.binder.push(var, type)
+                            self.binder.put_if_bindable(var, type)
                 if else_map is None:
                     # The condition is always true => remaining elif/else blocks
                     # can never be reached.
@@ -1585,7 +1585,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         if true_map:
             for var, type in true_map.items():
-                self.binder.push(var, type)
+                self.binder.put_if_bindable(var, type)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Type:
         """Type check a raise statement."""
@@ -1800,10 +1800,10 @@ class TypeChecker(NodeVisitor[Type]):
             s.expr.accept(self)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type(elt,
-                                            DeletedType(source=elt.name),
-                                            self.binder.get_declaration(elt),
-                                            False)
+                    self.binder.assign_type_if_bindable(elt,
+                                                        DeletedType(source=elt.name),
+                                                        self.binder.get_declaration(elt),
+                                                        False)
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:
