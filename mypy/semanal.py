@@ -1251,7 +1251,7 @@ class SemanticAnalyzer(NodeVisitor):
                                               add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
-                self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
+                self.analyze_lvalue(cast(Lvalue, lval.expr), nested, add_global, explicit_type)
             else:
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
@@ -1261,7 +1261,7 @@ class SemanticAnalyzer(NodeVisitor):
                                      add_global: bool = False,
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
-        items = lval.items
+        items = cast(List[Lvalue], lval.items)
         star_exprs = [cast(StarExpr, item)
                       for item in items
                       if isinstance(item, StarExpr)]
@@ -1315,14 +1315,14 @@ class SemanticAnalyzer(NodeVisitor):
                 if len(lvalue.items) != len(typ.items):
                     self.fail('Incompatible number of tuple items', lvalue)
                     return
-                for item, itemtype in zip(lvalue.items, typ.items):
+                for item, itemtype in zip(cast(List[Lvalue], lvalue.items), typ.items):
                     self.store_declared_types(item, itemtype)
             else:
                 self.fail('Tuple type expected for multiple variables',
                           lvalue)
         elif isinstance(lvalue, StarExpr):
             if isinstance(typ, StarType):
-                self.store_declared_types(lvalue.expr, typ.type)
+                self.store_declared_types(cast(Lvalue, lvalue.expr), typ.type)
             else:
                 self.fail('Star type expected for starred expression', lvalue)
         else:

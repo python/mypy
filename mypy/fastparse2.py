@@ -29,7 +29,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    Expression, Statement,
+    Expression, Statement, Lvalue,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -143,6 +143,14 @@ class ASTConverter(ast27.NodeTransformer):
         for e in l:
             exp = self.visit(e)
             assert isinstance(exp, Expression)
+            res.append(exp)
+        return res
+
+    def translate_lval_list(self, l: Sequence[ast27.AST]) -> List[Lvalue]:
+        res = []  # type: List[Lvalue]
+        for e in l:
+            exp = self.visit(e)
+            assert isinstance(exp, (NameExpr, TupleExpr, ListExpr, MemberExpr, IndexExpr))
             res.append(exp)
         return res
 
@@ -434,7 +442,7 @@ class ASTConverter(ast27.NodeTransformer):
         if n.type_comment:
             typ = parse_type_comment(n.type_comment, n.lineno)
 
-        return AssignmentStmt(self.translate_expr_list(n.targets),
+        return AssignmentStmt(self.translate_lval_list(n.targets),
                               self.visit(n.value),
                               type=typ)
 

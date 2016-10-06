@@ -1039,7 +1039,8 @@ class TypeChecker(NodeVisitor[Type]):
                          new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, lvalue,
+            lvalues = cast(List[Lvalue], lvalue.items)
+            self.check_assignment_to_multiple_lvalues(lvalues, rvalue, lvalue,
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
@@ -1121,7 +1122,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if star_lv:
                     rv_list = ListExpr(star_rvs)
                     rv_list.set_line(rvalue.get_line())
-                    lr_pairs.append((star_lv.expr, rv_list))
+                    lr_pairs.append((cast(Lvalue, star_lv.expr), rv_list))
                 lr_pairs.extend(zip(right_lvs, right_rvs))
 
                 for lv, rv in lr_pairs:
@@ -1156,7 +1157,7 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
-                    lv = lv.expr
+                    lv = cast(Lvalue, lv.expr)
                 self.check_assignment(lv, self.temp_node(AnyType(), context), infer_lvalue_type)
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
@@ -1191,7 +1192,7 @@ class TypeChecker(NodeVisitor[Type]):
                 list_expr = ListExpr([self.temp_node(rv_type, context)
                                       for rv_type in star_rv_types])
                 list_expr.set_line(context.get_line())
-                self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
+                self.check_assignment(cast(Lvalue, star_lv.expr), list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
 
@@ -1206,7 +1207,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         type_parameters = []  # type: List[Type]
 
-        def append_types_for_inference(lvs: List[Expression], rv_types: List[Type]) -> None:
+        def append_types_for_inference(lvs: List[Lvalue], rv_types: List[Type]) -> None:
             for lv, rv_type in zip(lvs, rv_types):
                 sub_lvalue_type, index_expr, inferred = self.check_lvalue(lv)
                 if sub_lvalue_type:
@@ -1219,7 +1220,7 @@ class TypeChecker(NodeVisitor[Type]):
         append_types_for_inference(left_lvs, left_rv_types)
 
         if star_lv:
-            sub_lvalue_type, index_expr, inferred = self.check_lvalue(star_lv.expr)
+            sub_lvalue_type, index_expr, inferred = self.check_lvalue(cast(Lvalue, star_lv.expr))
             if sub_lvalue_type:
                 type_parameters.extend([sub_lvalue_type] * len(star_rv_types))
             else:  # index lvalue
@@ -1258,7 +1259,8 @@ class TypeChecker(NodeVisitor[Type]):
             item_type = self.iterable_item_type(cast(Instance, rvalue_type))
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
-                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
+                    self.check_assignment(cast(Lvalue, lv.expr),
+                                          self.temp_node(rvalue_type, context),
                                           infer_lvalue_type)
                 else:
                     self.check_assignment(lv, self.temp_node(item_type, context),
@@ -1289,7 +1291,7 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
-            types = [self.check_lvalue(sub_expr)[0] for sub_expr in lvalue.items]
+            types = [self.check_lvalue(cast(Lvalue, sub_expr))[0] for sub_expr in lvalue.items]
             lvalue_type = TupleType(types, self.named_type('builtins.tuple'))
         else:
             lvalue_type = self.accept(lvalue)
@@ -1781,7 +1783,7 @@ class TypeChecker(NodeVisitor[Type]):
                                                          expr)
             return echk.check_call(method, [], [], expr)[0]
 
-    def analyze_index_variables(self, index: Expression, item_type: Type,
+    def analyze_index_variables(self, index: Lvalue, item_type: Type,
                                 context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
         self.check_assignment(index, self.temp_node(item_type, context))
@@ -1860,7 +1862,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.check_with_item(expr, target)
         self.accept(s.body)
 
-    def check_async_with_item(self, expr: Expression, target: Expression) -> None:
+    def check_async_with_item(self, expr: Expression, target: Lvalue) -> None:
         echk = self.expr_checker
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
@@ -1875,7 +1877,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
-    def check_with_item(self, expr: Expression, target: Expression) -> None:
+    def check_with_item(self, expr: Expression, target: Lvalue) -> None:
         echk = self.expr_checker
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__enter__', ctx, expr)

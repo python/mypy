@@ -15,7 +15,7 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, Lvalue
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
@@ -126,6 +126,15 @@ class ASTConverter(ast35.NodeTransformer):
         for e in l:
             exp = self.visit(e)
             assert exp is None or isinstance(exp, Expression)
+            res.append(exp)
+        return res
+
+    def translate_lval_list(self, l: Sequence[ast35.AST]) -> List[Lvalue]:
+        res = []  # type: List[Lvalue]
+        for e in l:
+            exp = self.visit(e)
+            assert exp is None or isinstance(exp, (NameExpr, TupleExpr, ListExpr,
+                                                   MemberExpr, IndexExpr))
             res.append(exp)
         return res
 
@@ -435,7 +444,7 @@ class ASTConverter(ast35.NodeTransformer):
             rvalue = TempNode(AnyType())  # type: Expression
         else:
             rvalue = self.visit(n.value)
-        lvalues = self.translate_expr_list(n.targets)
+        lvalues = self.translate_lval_list(n.targets)
         return AssignmentStmt(lvalues,
                               rvalue,
                               type=typ, new_syntax=new_syntax)
