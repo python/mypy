@@ -3,10 +3,10 @@
 Subclass TransformVisitor to perform non-trivial transformations.
 """
 
-from typing import List, Dict, cast
+from typing import List, Dict, cast, Union
 
 from mypy.nodes import (
-    MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
+    MypyFile, Import, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
@@ -26,7 +26,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.visitor import NodeVisitor
 
 
-class TransformVisitor(NodeVisitor[Node]):
+class TransformVisitor(NodeVisitor[Union[Expression, Statement, MypyFile, Var]]):
     """Transform a semantically analyzed AST (or subtree) to an identical copy.
 
     Use the node() method to transform an AST node.
@@ -497,11 +497,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_temp_node(self, node: TempNode) -> TempNode:
         return TempNode(self.type(node.type))
-
-    def node(self, node: Node) -> Node:
-        new = node.accept(self)
-        new.set_line(node.line)
-        return new
 
     def mypyfile(self, node: MypyFile) -> MypyFile:
         new = node.accept(self)

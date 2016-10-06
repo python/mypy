@@ -9,7 +9,7 @@ from typing import (
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, Var, Expression, Lvalue,
+    SymbolTable, MypyFile, Var, Expression, Lvalue, Statement,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -64,7 +64,7 @@ T = TypeVar('T')
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
-        ('node', Node),
+        ('node', Union[Expression, Statement, FuncItem]),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
     ])
 
@@ -209,7 +209,8 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.msg.cannot_determine_type(name, context)
 
-    def accept(self, node: Node, type_context: Type = None) -> Type:
+    def accept(self, node: Union[Expression, Statement, FuncItem],
+               type_context: Type = None) -> Type:
         """Type check a node in the given type context."""
         self.type_context.append(type_context)
         try:
@@ -2516,13 +2517,11 @@ def get_isinstance_type(expr: Expression, type_map: TypeMap) -> Type:
         return UnionType(types)
 
 
-def expand_node(defn: FuncItem, map: Dict[TypeVarId, Type]) -> Node:
-    visitor = TypeTransformVisitor(map)
-    return defn.accept(visitor)
-
-
 def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
-    return cast(FuncItem, expand_node(defn, map))
+    visitor = TypeTransformVisitor(map)
+    ret = defn.accept(visitor)
+    assert isinstance(ret, FuncItem)
+    return cast(FuncItem, ret)
 
 
 class TypeTransformVisitor(TransformVisitor):

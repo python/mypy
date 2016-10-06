@@ -9,7 +9,7 @@ import tokenize
 
 from typing import Callable, Dict, List, Optional, Tuple, cast
 
-from mypy.nodes import MypyFile, Node, FuncDef
+from mypy.nodes import MypyFile, FuncDef
 from mypy import stats
 from mypy.traverser import TraverserVisitor
 from mypy.types import TypeMap

@@ -3,7 +3,7 @@ import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.nodes import (
-    MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
+    MypyFile, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
@@ -38,7 +38,7 @@ except ImportError:
     sys.exit(1)
 
 T = TypeVar('T', bound=Union[ast35.expr, ast35.stmt])
-U = TypeVar('U', bound=Node)
+U = TypeVar('U', bound=Union[Expression, Statement])
 V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
@@ -118,7 +118,7 @@ class ASTConverter(ast35.NodeTransformer):
     def generic_visit(self, node: ast35.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
 
-    def visit_NoneType(self, n: Any) -> Optional[Node]:
+    def visit_NoneType(self, n: Any) -> Optional[Expression]:
         return None
 
     def translate_expr_list(self, l: Sequence[ast35.AST]) -> List[Expression]:
@@ -836,8 +836,10 @@ class ASTConverter(ast35.NodeTransformer):
         return TupleExpr(self.translate_expr_list(n.dims))
 
     # Index(expr value)
-    def visit_Index(self, n: ast35.Index) -> Node:
-        return self.visit(n.value)
+    def visit_Index(self, n: ast35.Index) -> Expression:
+        ret = self.visit(n.value)
+        assert isinstance(ret, Expression)
+        return ret
 
 
 class TypeConverter(ast35.NodeTransformer):

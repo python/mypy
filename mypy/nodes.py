@@ -160,7 +160,7 @@ class SymbolNode(Node):
 
     # NOTE: Can't use @abstractmethod, since many subclasses of Node
     # don't implement serialize().
-    def serialize(self) -> Any:
+    def serialize(self) -> JsonDict:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
     @classmethod
@@ -2029,7 +2029,7 @@ class TypeInfo(SymbolNode):
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
-    def serialize(self) -> Union[str, JsonDict]:
+    def serialize(self) -> JsonDict:
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,

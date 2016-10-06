@@ -48,7 +48,7 @@ from typing import (
 )
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    MypyFile, TypeInfo, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
@@ -63,7 +63,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, Statement,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -181,7 +181,7 @@ class SemanticAnalyzer(NodeVisitor):
     postpone_nested_functions_stack = None  # type: List[int]
     # Postponed functions collected if
     # postpone_nested_functions_stack[-1] == FUNCTION_FIRST_PHASE_POSTPONE_SECOND.
-    postponed_functions_stack = None  # type: List[List[Node]]
+    postponed_functions_stack = None  # type: List[List[FuncDef]]
 
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
@@ -331,7 +331,7 @@ class SemanticAnalyzer(NodeVisitor):
                     leading_type = self_type(self.type)
                 func.type = replace_implicit_first_type(sig, leading_type)
 
-    def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
+    def is_conditional_func(self, previous: SymbolNode, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?
 
         We reject straight redefinitions of functions, as they are usually
@@ -625,13 +625,13 @@ class SemanticAnalyzer(NodeVisitor):
         abstract = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
-                node = symnode.node
+                node = symnode.node  # type: SymbolNode
                 if isinstance(node, OverloadedFuncDef):
                     # Unwrap an overloaded function definition. We can just
                     # check arbitrarily the first overload item. If the
                     # different items have a different abstract status, there
                     # should be an error reported elsewhere.
-                    func = node.items[0]  # type: Node
+                    func = node.items[0]  # type: SymbolNode
                 else:
                     func = node
                 if isinstance(func, Decorator):
@@ -999,7 +999,7 @@ class SemanticAnalyzer(NodeVisitor):
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> SymbolTableNode:
         if node.fullname in type_aliases:
-            # Node refers to an aliased type such as typing.List; normalize.
+            # node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
         if node.fullname == 'typing.DefaultDict':
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
@@ -2551,7 +2551,7 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             return None
 
-    def accept(self, node: Node) -> None:
+    def accept(self, node: Union[Statement, MypyFile]) -> None:
         try:
             node.accept(self)
         except Exception as err:
@@ -2769,7 +2769,7 @@ class ThirdPass(TraverserVisitor):
         self.options = options
         self.accept(file_node)
 
-    def accept(self, node: Node) -> None:
+    def accept(self, node: Union[Statement, MypyFile]) -> None:
         try:
             node.accept(self)
         except Exception as err:
