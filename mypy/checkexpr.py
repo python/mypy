@@ -150,18 +150,13 @@ class ExpressionChecker:
         return result
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
-        if not var.type:
+        if var.type:
+            return var.type
+        else:
             if not var.is_ready and self.chk.in_checked_function():
                 self.chk.handle_cannot_determine_type(var.name(), context)
             # Implicit 'Any' type.
             return AnyType()
-        else:
-            # Look up local type of variable with type (inferred or explicit).
-            val = self.chk.binder.get(var)
-            if val is None:
-                return var.type
-            else:
-                return val
 
     def visit_call_expr(self, e: CallExpr) -> Type:
         """Type check a call expression."""

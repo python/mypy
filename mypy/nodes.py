@@ -137,7 +137,7 @@ class Expression(Node):
     """An expression node."""
 
     literal = LITERAL_NO
-    literal_hash = None  # type: Any # Union[int, str, float, complex, Tuple[str, Any]]
+    literal_hash = None  # type: Any
 
 
 # TODO: Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']; see #1783.
@@ -174,7 +174,7 @@ class SymbolNode(Node):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
-class MypyFile(SymbolNode, Statement):
+class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
     # Module name ('__main__' for initial file)
