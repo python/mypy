@@ -140,10 +140,9 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
 
-# TODO: Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']; see #1783.
-# SingleLval = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr']
-# MultiLval = Union['TupleExpr', 'ListExpr']  # should be LvalTupleExpr
-# Lvalue = Union[SingleLval, MultiLval]
+# TODO:
+# Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
+#                'TupleExpr', 'ListExpr']; see #1783.
 Lvalue = Expression
 
 
