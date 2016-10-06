@@ -114,8 +114,11 @@ class ConditionalTypeBinder:
     def get(self, expr: Union[BLval, Var]) -> Type:
         if isinstance(expr, Var):
             # where is this literal hash initialized?
-            return self._get(expr.literal_hash)
-        return self._get(expr.literal_hash)
+            # return self._get(expr.literal_hash)
+            new_expr = NameExpr(expr.name())
+        else:
+            new_expr = expr
+        return self._get(new_expr.literal_hash)
 
     def cleanse(self, expr: BLval) -> None:
         """Remove all references to an Expression from the binder."""

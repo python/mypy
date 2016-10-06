@@ -97,9 +97,6 @@ class Node(Context):
     line = -1
     column = -1
 
-    literal = LITERAL_NO
-    literal_hash = None  # type: Any
-
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
         if ans is None:
@@ -138,6 +135,9 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
+
+    literal = LITERAL_NO
+    literal_hash = None  # type: Any # Union[int, str, float, complex, Tuple[str, Any]]
 
 
 # TODO: Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']; see #1783.
@@ -594,7 +594,7 @@ class Decorator(SymbolNode, Statement):
         return dec
 
 
-class Var(SymbolNode, Statement):
+class Var(SymbolNode):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
