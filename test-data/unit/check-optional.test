@@ -428,3 +428,11 @@ x + 1
 [out]
 main:2: note: In module imported here:
 tmp/a.py:3: error: Unsupported left operand type for + (some union)
+
+[case testNoneContextInference]
+from typing import Dict, List
+def f() -> List[None]:
+    return []
+def g() -> Dict[None, None]:
+    return {}
+[builtins fixtures/dict.pyi]
