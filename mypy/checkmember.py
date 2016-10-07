@@ -123,7 +123,8 @@ def analyze_member_access(name: str,
                 # the corresponding method in the current instance to avoid this edge case.
                 # See https://github.com/python/mypy/pull/1787 for more info.
                 result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
-                                                        builtin_type, not_ready_callback, msg)
+                                                        builtin_type, not_ready_callback, msg,
+                                                        report_type=report_type)
                 if result:
                     return result
             # Look up from the 'type' type.
@@ -155,7 +156,8 @@ def analyze_member_access(name: str,
         if item and not is_operator:
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
-                                                    builtin_type, not_ready_callback, msg)
+                                                    builtin_type, not_ready_callback, msg,
+                                                    report_type=report_type)
             if result:
                 return result
         fallback = builtin_type('builtins.type')
@@ -321,7 +323,8 @@ def analyze_class_attribute_access(itype: Instance,
                                    is_lvalue: bool,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
-                                   msg: MessageBuilder) -> Type:
+                                   msg: MessageBuilder,
+                                   report_type: Type = None) -> Type:
     node = itype.type.get(name)
     if not node:
         if itype.type.fallback_to_any:
@@ -344,7 +347,7 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(t, PartialType):
             return handle_partial_attribute_type(t, is_lvalue, msg, node.node)
         is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
-        return add_class_tvars(t, itype, is_classmethod, builtin_type)
+        return add_class_tvars(t, itype, is_classmethod, builtin_type, report_type)
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
         return AnyType()
@@ -364,18 +367,19 @@ def analyze_class_attribute_access(itype: Instance,
 
 
 def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
-                    builtin_type: Callable[[str], Instance]) -> Type:
+                    builtin_type: Callable[[str], Instance],
+                    report_type: Type = None) -> Type:
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            t = bind_self(t, itype)
+            t = bind_self(t, report_type.item if isinstance(report_type, TypeType) else itype)
         return t.copy_modified(variables=vars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, itype, is_classmethod,
-                                                              builtin_type))
+                                                              builtin_type, report_type))
                            for i in t.items()])
     return t
 
