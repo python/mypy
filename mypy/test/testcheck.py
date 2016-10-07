@@ -67,6 +67,7 @@ files = [
     'check-async-await.test',
     'check-newtype.test',
     'check-columns.test',
+    'check-selftype.test',
 ]
 
 if 'annotation' in typed_ast.ast35.Assign._fields:
