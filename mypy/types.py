@@ -1552,6 +1552,7 @@ def bind_self(t: F, actual_self: Type = None) -> F:
             instantiator = TypeVarInstantiator(self_arg.id, actual_self)
             arg_types = [t.accept(instantiator) for t in arg_types]
             ret_type = ret_type.accept(instantiator)
+            #FIX: why is this partial?
             #from mypy.expandtype import expand_type
             #arg_types = [expand_type(t, {self_arg.id: actual_self})
             #             for t in arg_types]

@@ -906,6 +906,7 @@ class ExpressionChecker:
             return self.analyze_ref_expr(e)
         else:
             # This is a reference to a non-module attribute.
+            import pdb; pdb.set_trace()
             return analyze_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False, False,
                                          self.named_type, self.not_ready_callback, self.msg,
