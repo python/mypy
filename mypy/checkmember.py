@@ -69,8 +69,7 @@ def analyze_member_access(name: str,
                 # the first argument.
                 pass
             else:
-                assert not typ
-                signature = bind_self(signature, typ)
+                signature = bind_self(signature, report_type)
             typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(signature, typ)
         else:
