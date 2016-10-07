@@ -69,7 +69,7 @@ def analyze_member_access(name: str,
                 # the first argument.
                 pass
             else:
-                signature = bind_self(signature, report_type)
+                signature = bind_self(signature, report_type or typ)
             typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(signature, typ)
         else:
@@ -198,7 +198,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             method = info.get_method('__getattr__')
             if method:
                 function = function_type(method, builtin_type('builtins.function'))
-                bound_method = bind_self(function, itype)
+                bound_method = bind_self(function, report_type or itype)
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(bound_method, typ)
                 if isinstance(getattr_type, CallableType):
@@ -219,7 +219,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
                is_lvalue: bool, msg: MessageBuilder,
-               not_ready_callback: Callable[[str, Context], None]) -> Type:
+               not_ready_callback: Callable[[str, Context], None],
+               report_type: Type = None) -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
@@ -248,7 +249,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = bind_self(functype)
+                signature = bind_self(functype, report_type or itype)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
