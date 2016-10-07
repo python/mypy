@@ -250,6 +250,8 @@ understand how mypy handles a particlar piece of code. Example:
    any ``reveal_type`` calls before you can run your code.
    ``reveal_type`` is always available and you don't need to import it.
 
+.. _import-cycles:
+
 Import cycles
 -------------
 
