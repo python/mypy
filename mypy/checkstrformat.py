@@ -176,7 +176,7 @@ class StringFormatterChecker:
                                        'placeholder with key \'%s\' has type' % specifier.key)
         else:
             rep_type = self.accept(replacements)
-            dict_type = self.chk.named_generic_type('builtins.dict',
+            dict_type = self.chk.named_generic_type('typing.Mapping',
                                             [AnyType(), AnyType()])
             self.chk.check_subtype(rep_type, dict_type, replacements,
                                    messages.FORMAT_REQUIRES_MAPPING,
