@@ -220,7 +220,7 @@ def process_options(args: List[str],
     report_group = parser.add_argument_group(
         title='report generation',
         description='Generate a report in the specified format.')
-    for report_type in reporter_classes:
+    for report_type in sorted(reporter_classes):
         report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
                                   metavar='DIR',
                                   dest='special-opts:%s_report' % report_type)
