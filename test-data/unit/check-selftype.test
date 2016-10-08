@@ -111,11 +111,8 @@ class A:
 class B(A):
     def copy(self: T) -> T:
         reveal_type(self)  # E: Revealed type is 'T`-1'
-        ## TODO:
-        ## super() dispatch is A.copy, but the type binding should be T=B
-        # reveal_type(super().copy())  # Revealed type is 'T`-1'
-        # return super().copy()
-        return cast(T, super().copy())
+        reveal_type(super().copy)  # E: Revealed type is 'def () -> T`-1'
+        return super().copy()
 
 [case testSelfTypeRecursiveBinding]
 # flags: --hide-error-context

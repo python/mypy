@@ -1609,10 +1609,13 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    return analyze_member_access(e.name, fill_typevars(e.info), e,
-                                                 is_lvalue, True, False,
-                                                 self.named_type, self.not_ready_callback,
-                                                 self.msg, base, chk=self.chk)
+                    selftype = self.chk.binder.get(NameExpr('__SelfType'))
+                    return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
+                                                 is_lvalue=False, is_super=True, is_operator=False,
+                                                 builtin_type=self.named_type,
+                                                 not_ready_callback=self.not_ready_callback,
+                                                 msg=self.msg, override_info=base, chk=self.chk,
+                                                 report_type=selftype)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
