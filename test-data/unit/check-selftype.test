@@ -13,10 +13,30 @@ reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A'
 reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B'
 reveal_type(A().copy())  # E: Revealed type is '__main__.A'
 reveal_type(B().copy())  # E: Revealed type is '__main__.B'
-# FIX: Why partial type?
-#reveal_type(A.copy(A()))  E: Revealed type is '__main__.A'
-#reveal_type(B.copy(B()))  E: Revealed type is '__main__.B'
 
+[case testSelfTypeStaticAccess]
+from typing import TypeVar
+
+T = TypeVar('T')
+class A:
+    def copy(self: T) -> T: ...
+
+class B(A):
+    pass
+
+# Partial types appear on reveal_type; unrelated to self type
+def f(a: A) -> None: ...
+f(A.copy(A()))
+f(A.copy(B()))
+f(B.copy(B()))
+
+# TODO: make it an error
+# f(B.copy(A()))
+
+def g(a: B) -> None: ...
+g(A.copy(A()))  # E: Argument 1 to "g" has incompatible type "A"; expected "B"
+g(A.copy(B()))
+g(B.copy(B()))
 
 [case testSelfTypeReturn]
 # flags: --hide-error-context
