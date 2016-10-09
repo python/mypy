@@ -582,9 +582,6 @@ class TypeChecker(NodeVisitor[Type]):
                         if arg_type.variance == COVARIANT:
                             self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
                                       arg_type)
-                        # TODO:
-                        # if arg_type.variance == SELF_VARIANCE and i > 0:
-                        #     self.fail("Cannot use bare self type in method arguments", arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',
