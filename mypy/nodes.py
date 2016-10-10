@@ -135,9 +135,8 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
-    # TODO: Move to Expression
     literal = LITERAL_NO
-    literal_hash = None  # type: Any
+    literal_hash = None  # type: object
 
 
 # TODO:
@@ -1391,7 +1390,7 @@ class ComparisonExpr(Expression):
         self.method_types = []
         self.literal = min(o.literal for o in self.operands)
         self.literal_hash = (('Comparison',) + tuple(operators) +
-                             tuple(o.literal_hash for o in operands))
+                             tuple(o.literal_hash for o in operands))  # type: ignore
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
@@ -1481,7 +1480,7 @@ class ListExpr(Expression):
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('List',) + tuple(x.literal_hash for x in items)
+            self.literal_hash = ('List',) + tuple(x.literal_hash for x in items)  # type: ignore
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
@@ -1515,7 +1514,7 @@ class TupleExpr(Expression):
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('Tuple',) + tuple(x.literal_hash for x in items)
+            self.literal_hash = ('Tuple',) + tuple(x.literal_hash for x in items)  # type: ignore
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
@@ -1530,7 +1529,7 @@ class SetExpr(Expression):
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('Set',) + tuple(x.literal_hash for x in items)
+            self.literal_hash = ('Set',) + tuple(x.literal_hash for x in items)  # type: ignore
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
