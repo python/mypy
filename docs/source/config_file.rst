@@ -127,6 +127,25 @@ overridden by the pattern sections matching the file.
   to strict ``None`` checking, if the global ``strict_optional`` flag
   is enabled.
 
+
+Example
+*******
+
+You might put this in your ``mypy.ini`` file at the root of your repo:
+
+.. code-block:: text
+
+    [mypy]
+    python_version = 2.7
+    [mypy-foo/*]
+    disallow_untyped_defs = True
+
+This automatically sets ``--python-version 2.7`` (a.k.a. ``--py2``)
+for all mypy runs in this tree, and also selectively turns on the
+``--disallow-untyped-defs`` flag for all files under the ``foo/``
+subdirectory.  This issues an error for function definitions without
+type annotations in that subdirectory only.
+
 .. note::
 
    Configuration flags are liable to change between releases.
