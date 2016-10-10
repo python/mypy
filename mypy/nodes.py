@@ -97,10 +97,6 @@ class Node(Context):
     line = -1
     column = -1
 
-    # TODO: Move to Expression
-    literal = LITERAL_NO
-    literal_hash = None  # type: Any
-
     def __str__(self) -> str:
         ans = self.accept(mypy.strconv.StrConv())
         if ans is None:
@@ -139,6 +135,10 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
+    # TODO: Move to Expression
+    literal = LITERAL_NO
+    literal_hash = None  # type: Any
+
 
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
