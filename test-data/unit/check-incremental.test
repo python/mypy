@@ -1615,3 +1615,22 @@ from funcs import callee
 from classes import Outer
 def caller(a: Outer.Inner) -> int:
     callee(a)
+
+[case testIncrementalLoadsParentAfterChild]
+# cmd: mypy -m r.s
+
+[file r/__init__.py]
+from . import s
+
+[file r/m.py]
+class R: pass
+
+[file r/s.py]
+from . import m
+R = m.R
+a = None  # type: R
+
+[file r/s.py.next]
+from . import m
+R = m.R
+a = None  # type: R
