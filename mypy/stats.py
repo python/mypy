@@ -12,8 +12,8 @@ from mypy.types import (
 )
 from mypy import nodes
 from mypy.nodes import (
-    Node, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
-    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr
+    Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
+    MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr
 )
 
 
@@ -31,7 +31,7 @@ precision_names = [
 
 
 class StatisticsVisitor(TraverserVisitor):
-    def __init__(self, inferred: bool, typemap: Dict[Node, Type] = None,
+    def __init__(self, inferred: bool, typemap: Dict[Expression, Type] = None,
                  all_nodes: bool = False) -> None:
         self.inferred = inferred
         self.typemap = typemap
@@ -101,7 +101,7 @@ class StatisticsVisitor(TraverserVisitor):
                 else:
                     items = [lvalue]
                 for item in items:
-                    if hasattr(item, 'is_def') and cast(Any, item).is_def:
+                    if isinstance(item, RefExpr) and item.is_def:
                         t = self.typemap.get(item)
                         if t:
                             self.type(t)
@@ -148,7 +148,7 @@ class StatisticsVisitor(TraverserVisitor):
         self.process_node(o)
         super().visit_unary_expr(o)
 
-    def process_node(self, node: Node) -> None:
+    def process_node(self, node: Expression) -> None:
         if self.all_nodes:
             typ = self.typemap.get(node)
             if typ:
@@ -198,7 +198,7 @@ class StatisticsVisitor(TraverserVisitor):
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
-                    typemap: Dict[Node, Type] = None) -> None:
+                    typemap: Dict[Expression, Type] = None) -> None:
     if is_special_module(path):
         return
     print(path)
@@ -265,7 +265,7 @@ def is_complex(t: Type) -> bool:
 html_files = []  # type: List[Tuple[str, str, int, int]]
 
 
-def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Node, Type],
+def generate_html_report(tree: MypyFile, path: str, type_map: Dict[Expression, Type],
                          output_dir: str) -> None:
     if is_special_module(path):
         return

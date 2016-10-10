@@ -9,7 +9,7 @@ import tokenize
 
 from typing import Callable, Dict, List, Optional, Tuple, cast
 
-from mypy.nodes import MypyFile, Node, FuncDef
+from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type
@@ -38,7 +38,7 @@ class Reports:
         self.named_reporters[report_type] = reporter
         return reporter
 
-    def file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         for reporter in self.reporters:
             reporter.on_file(tree, type_map)
 
@@ -52,7 +52,7 @@ class AbstractReporter(metaclass=ABCMeta):
         self.output_dir = output_dir
 
     @abstractmethod
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         pass
 
     @abstractmethod
@@ -76,7 +76,7 @@ class LineCountReporter(AbstractReporter):
 
         stats.ensure_dir_exists(output_dir)
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
         physical_lines = len(open(tree.path, 'rb').readlines())
@@ -195,7 +195,7 @@ class LineCoverageReporter(AbstractReporter):
 
         stats.ensure_dir_exists(output_dir)
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         tree_source = open(tree.path).readlines()
 
         coverage_visitor = LineCoverageVisitor(tree_source)
@@ -222,7 +222,7 @@ class OldHtmlReporter(AbstractReporter):
     variables to preserve state for the index.
     """
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         stats.generate_html_report(tree, tree.path, type_map, self.output_dir)
 
     def on_finish(self) -> None:
@@ -262,7 +262,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = None  # type: etree._ElementTree
         self.files = []  # type: List[FileInfo]
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         import lxml.etree as etree
 
         self.last_xml = None
@@ -347,7 +347,7 @@ class XmlReporter(AbstractXmlReporter):
     that makes it fail from file:// URLs but work on http:// URLs.
     """
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         last_xml = self.memory_xml.last_xml
         if last_xml is None:
             return
@@ -386,7 +386,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
         self.xslt_html = etree.XSLT(etree.parse(self.memory_xml.xslt_html_path))
         self.param_html = etree.XSLT.strparam('html')
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         last_xml = self.memory_xml.last_xml
         if last_xml is None:
             return
@@ -425,7 +425,7 @@ class XsltTxtReporter(AbstractXmlReporter):
 
         self.xslt_txt = etree.XSLT(etree.parse(self.memory_xml.xslt_txt_path))
 
-    def on_file(self, tree: MypyFile, type_map: Dict[Node, Type]) -> None:
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         pass
 
     def on_finish(self) -> None:

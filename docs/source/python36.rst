@@ -1,4 +1,4 @@
-.. python36:
+.. _python-36:
 
 New features in Python 3.6
 ==========================

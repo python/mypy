@@ -8,7 +8,7 @@ from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType
 )
 from mypy.nodes import (
-    Node, StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context
+    StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression
 )
 if False:
     # break import cycle only needed for mypy
@@ -57,9 +57,10 @@ class StringFormatterChecker:
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
     # compared to string formatting.
+    # TODO: Bytes formatting in Python 3 is only supported in 3.5 and up.
     def check_str_interpolation(self,
                                 str: Union[StrExpr, BytesExpr, UnicodeExpr],
-                                replacements: Node) -> Type:
+                                replacements: Expression) -> Type:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
@@ -114,7 +115,7 @@ class StringFormatterChecker:
         return has_key
 
     def check_simple_str_interpolation(self, specifiers: List[ConversionSpecifier],
-                                       replacements: Node) -> None:
+                                       replacements: Expression) -> None:
         checkers = self.build_replacement_checkers(specifiers, replacements)
         if checkers is None:
             return
@@ -149,7 +150,7 @@ class StringFormatterChecker:
                     check_type(rep_type)
 
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
-                                       replacements: Node) -> None:
+                                       replacements: Expression) -> None:
         dict_with_only_str_literal_keys = (isinstance(replacements, DictExpr) and
                                           all(isinstance(k, (StrExpr, BytesExpr))
                                               for k, v in replacements.items))
@@ -183,9 +184,9 @@ class StringFormatterChecker:
                                    'expression has type', 'expected type for mapping is')
 
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
-                                   context: Context) -> List[Tuple[Callable[[Node], None],
+                                   context: Context) -> List[Tuple[Callable[[Expression], None],
                                                                    Callable[[Type], None]]]:
-        checkers = []  # type: List[Tuple[Callable[[Node], None], Callable[[Type], None]]]
+        checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context)
             if checker is None:
@@ -194,13 +195,13 @@ class StringFormatterChecker:
         return checkers
 
     def replacement_checkers(self, specifier: ConversionSpecifier,
-                             context: Context) -> List[Tuple[Callable[[Node], None],
+                             context: Context) -> List[Tuple[Callable[[Expression], None],
                                                              Callable[[Type], None]]]:
         """Returns a list of tuples of two functions that check whether a replacement is
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers = []  # type: List[ Tuple[ Callable[[Node], None], Callable[[Type], None] ] ]
+        checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
 
         if specifier.width == '*':
             checkers.append(self.checkers_for_star(context))
@@ -218,7 +219,7 @@ class StringFormatterChecker:
             checkers.append(c)
         return checkers
 
-    def checkers_for_star(self, context: Context) -> Tuple[Callable[[Node], None],
+    def checkers_for_star(self, context: Context) -> Tuple[Callable[[Expression], None],
                                                            Callable[[Type], None]]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with a star in a conversion specifier
@@ -229,14 +230,14 @@ class StringFormatterChecker:
             expected = self.named_type('builtins.int')
             self.chk.check_subtype(type, expected, context, '* wants int')
 
-        def check_node(node: Node) -> None:
-            type = self.accept(node, expected)
+        def check_expr(expr: Expression) -> None:
+            type = self.accept(expr, expected)
             check_type(type)
 
-        return check_node, check_type
+        return check_expr, check_type
 
     def checkers_for_regular_type(self, type: str,
-                                  context: Context) -> Tuple[Callable[[Node], None],
+                                  context: Context) -> Tuple[Callable[[Expression], None],
                                                              Callable[[Type], None]]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type'. Return None in case of an
@@ -250,14 +251,15 @@ class StringFormatterChecker:
                               messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                               'expression has type', 'placeholder has type')
 
-        def check_node(node: Node) -> None:
-            type = self.accept(node, expected_type)
+        def check_expr(expr: Expression) -> None:
+            type = self.accept(expr, expected_type)
             check_type(type)
 
-        return check_node, check_type
+        return check_expr, check_type
 
-    def checkers_for_c_type(self, type: str, context: Context) -> Tuple[Callable[[Node], None],
-                                                                        Callable[[Type], None]]:
+    def checkers_for_c_type(self, type: str,
+                            context: Context) -> Tuple[Callable[[Expression], None],
+                                                       Callable[[Type], None]]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type
         """
@@ -270,14 +272,14 @@ class StringFormatterChecker:
                               messages.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                               'expression has type', 'placeholder has type')
 
-        def check_node(node: Node) -> None:
+        def check_expr(expr: Expression) -> None:
             """int, or str with length 1"""
-            type = self.accept(node, expected_type)
-            if isinstance(node, (StrExpr, BytesExpr)) and len(cast(StrExpr, node).value) != 1:
+            type = self.accept(expr, expected_type)
+            if isinstance(expr, (StrExpr, BytesExpr)) and len(cast(StrExpr, expr).value) != 1:
                 self.msg.requires_int_or_char(context)
             check_type(type)
 
-        return check_node, check_type
+        return check_expr, check_type
 
     def conversion_type(self, p: str, context: Context) -> Type:
         """Return the type that is accepted for a string interpolation
@@ -310,6 +312,6 @@ class StringFormatterChecker:
         """
         return self.chk.named_type(name)
 
-    def accept(self, node: Node, context: Type = None) -> Type:
+    def accept(self, expr: Expression, context: Type = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
-        return self.chk.accept(node, context)
+        return self.chk.accept(expr, context)
