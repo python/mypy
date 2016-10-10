@@ -2,7 +2,7 @@ from typing import (Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Node as Expression, Var, RefExpr, SymbolTableNode)
+from mypy.nodes import (Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -18,7 +18,7 @@ BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 Key = object
 
 
-class Frame(Dict[object, Type]):
+class Frame(Dict[Key, Type]):
     pass
 
 
