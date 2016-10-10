@@ -913,11 +913,13 @@ class SemanticAnalyzer(NodeVisitor):
         """
         while '.' in id:
             parent, child = id.rsplit('.', 1)
-            modules_loaded = parent in self.modules and id in self.modules
-            if modules_loaded and child not in self.modules[parent].names:
-                sym = SymbolTableNode(MODULE_REF, self.modules[id], parent,
-                        module_public=module_public)
-                self.modules[parent].names[child] = sym
+            parent_mod = self.modules.get(parent)
+            if parent_mod and child not in parent_mod.names:
+                child_mod = self.modules.get(id)
+                if child_mod:
+                    sym = SymbolTableNode(MODULE_REF, child_mod, parent,
+                                          module_public=module_public)
+                    parent_mod.names[child] = sym
             id = parent
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
@@ -931,48 +933,47 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         import_id = self.correct_relative_import(imp)
-        if import_id in self.modules:
-            module = self.modules[import_id]
-            self.add_submodules_to_parent_modules(import_id, True)
-            for id, as_id in imp.names:
-                node = module.names.get(id)
+        self.add_submodules_to_parent_modules(import_id, True)
+        module = self.modules.get(import_id)
+        for id, as_id in imp.names:
+            node = module.names.get(id) if module else None
 
-                # If the module does not contain a symbol with the name 'id',
-                # try checking if it's a module instead.
-                if id not in module.names or node.kind == UNBOUND_IMPORTED:
-                    possible_module_id = import_id + '.' + id
-                    mod = self.modules.get(possible_module_id)
-                    if mod is not None:
-                        node = SymbolTableNode(MODULE_REF, mod, import_id)
-                        self.add_submodules_to_parent_modules(possible_module_id, True)
+            # If the module does not contain a symbol with the name 'id',
+            # try checking if it's a module instead.
+            if not node or node.kind == UNBOUND_IMPORTED:
+                possible_module_id = import_id + '.' + id
+                mod = self.modules.get(possible_module_id)
+                if mod is not None:
+                    node = SymbolTableNode(MODULE_REF, mod, import_id)
+                    self.add_submodules_to_parent_modules(possible_module_id, True)
 
-                if node and node.kind != UNBOUND_IMPORTED:
-                    node = self.normalize_type_alias(node, imp)
-                    if not node:
-                        return
-                    imported_id = as_id or id
-                    existing_symbol = self.globals.get(imported_id)
-                    if existing_symbol:
-                        # Import can redefine a variable. They get special treatment.
-                        if self.process_import_over_existing_name(
-                                imported_id, existing_symbol, node, imp):
-                            continue
-                    # 'from m import x as x' exports x in a stub file.
-                    module_public = not self.is_stub_file or as_id is not None
-                    symbol = SymbolTableNode(node.kind, node.node,
-                                             self.cur_mod_id,
-                                             node.type_override,
-                                             module_public=module_public)
-                    self.add_symbol(imported_id, symbol, imp)
-                else:
-                    message = "Module '{}' has no attribute '{}'".format(import_id, id)
-                    extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
-                    if extra:
-                        message += " {}".format(extra)
-                    self.fail(message, imp)
-        else:
-            # Missing module.
-            for id, as_id in imp.names:
+            if node and node.kind != UNBOUND_IMPORTED:
+                node = self.normalize_type_alias(node, imp)
+                if not node:
+                    return
+                imported_id = as_id or id
+                existing_symbol = self.globals.get(imported_id)
+                if existing_symbol:
+                    # Import can redefine a variable. They get special treatment.
+                    if self.process_import_over_existing_name(
+                            imported_id, existing_symbol, node, imp):
+                        continue
+                # 'from m import x as x' exports x in a stub file.
+                module_public = not self.is_stub_file or as_id is not None
+                symbol = SymbolTableNode(node.kind, node.node,
+                                         self.cur_mod_id,
+                                         node.type_override,
+                                         module_public=module_public)
+                self.add_symbol(imported_id, symbol, imp)
+            elif module:
+                # Missing attribute.
+                message = "Module '{}' has no attribute '{}'".format(import_id, id)
+                extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
+                if extra:
+                    message += " {}".format(extra)
+                self.fail(message, imp)
+            else:
+                # Missing module.
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
 
     def process_import_over_existing_name(self,
