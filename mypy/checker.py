@@ -64,7 +64,7 @@ T = TypeVar('T')
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
-        ('node', Union[Expression, Statement, FuncItem]),
+        ('node', FuncItem),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
     ])
 
