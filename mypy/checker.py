@@ -2525,7 +2525,7 @@ def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
     visitor = TypeTransformVisitor(map)
     ret = defn.accept(visitor)
     assert isinstance(ret, FuncItem)
-    return cast(FuncItem, ret)
+    return ret
 
 
 class TypeTransformVisitor(TransformVisitor):

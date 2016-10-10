@@ -11,7 +11,7 @@ from mypy.visitor import NodeVisitor
 
 
 class StrConv(NodeVisitor[str]):
-    """Visitor for converting nodes to a human-readable string.
+    """Visitor for converting a node to a human-readable string.
 
     For example, an MypyFile node from program '1' is converted into
     something like this:

@@ -201,8 +201,7 @@ class StringFormatterChecker:
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers = [
-        ]  # type: List[ Tuple[ Callable[[Expression], None], Callable[[Type], None] ] ]
+        checkers = []  # type: List[Tuple[Callable[[Expression], None], Callable[[Type], None]]]
 
         if specifier.width == '*':
             checkers.append(self.checkers_for_star(context))
