@@ -16,6 +16,7 @@ from mypy.expandtype import expand_type_by_instance
 from mypy.nodes import method_type, method_type_with_fallback
 from mypy.semanal import self_type
 from mypy import messages
+from mypy.options import Options
 from mypy import subtypes
 if False:  # import for forward declaration only
     import mypy.checker
@@ -30,6 +31,7 @@ def analyze_member_access(name: str,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
                           msg: MessageBuilder,
+                          options: Options,
                           override_info: TypeInfo = None,
                           report_type: Type = None,
                           chk: 'mypy.checker.TypeChecker' = None) -> Type:
@@ -68,15 +70,17 @@ def analyze_member_access(name: str,
             if name == '__new__':
                 # __new__ is special and behaves like a static method -- don't strip
                 # the first argument.
-                signature = function_type(method, builtin_type('builtins.function'))
+                signature = function_type(method, builtin_type('builtins.function'), options)
             else:
-                signature = method_type_with_fallback(method, builtin_type('builtins.function'))
+                signature = method_type_with_fallback(method,
+                                                      builtin_type('builtins.function'),
+                                                      options)
             return expand_type_by_instance(signature, typ)
         else:
             # Not a method.
             return analyze_member_var_access(name, typ, info, node,
                                              is_lvalue, is_super, builtin_type,
-                                             not_ready_callback, msg,
+                                             not_ready_callback, msg, options,
                                              report_type=report_type, chk=chk)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
@@ -87,20 +91,21 @@ def analyze_member_access(name: str,
         # The only attribute NoneType has are those it inherits from object
         return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
                                      is_super, is_operator, builtin_type, not_ready_callback, msg,
-                                     report_type=report_type, chk=chk)
+                                     options, report_type=report_type, chk=chk)
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
-                                         chk=chk)
+                                         options, chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg, chk=chk)
+                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     options, chk=chk)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -123,23 +128,27 @@ def analyze_member_access(name: str,
                 # the corresponding method in the current instance to avoid this edge case.
                 # See https://github.com/python/mypy/pull/1787 for more info.
                 result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
-                                                        builtin_type, not_ready_callback, msg)
+                                                        builtin_type, not_ready_callback,
+                                                        msg, options)
                 if result:
                     return result
             # Look up from the 'type' type.
             return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                         is_operator, builtin_type, not_ready_callback, msg,
+                                         is_operator, builtin_type, not_ready_callback,
+                                         msg, options,
                                          report_type=report_type, chk=chk)
         else:
             assert False, 'Unexpected type {}'.format(repr(ret_type))
     elif isinstance(typ, FunctionLike):
         # Look up from the 'function' type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback,
+                                     msg, options,
                                      report_type=report_type, chk=chk)
     elif isinstance(typ, TypeVarType):
         return analyze_member_access(name, typ.upper_bound, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback,
+                                     msg, options,
                                      report_type=report_type, chk=chk)
     elif isinstance(typ, DeletedType):
         msg.deleted_as_rvalue(typ, node)
@@ -155,12 +164,14 @@ def analyze_member_access(name: str,
         if item and not is_operator:
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
-                                                    builtin_type, not_ready_callback, msg)
+                                                    builtin_type, not_ready_callback,
+                                                    msg, options)
             if result:
                 return result
         fallback = builtin_type('builtins.type')
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     is_operator, builtin_type, not_ready_callback,
+                                     msg, options,
                                      report_type=report_type, chk=chk)
 
     if chk and chk.should_suppress_optional_error([typ]):
@@ -173,6 +184,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               builtin_type: Callable[[str], Instance],
                               not_ready_callback: Callable[[str, Context], None],
                               msg: MessageBuilder,
+                              options: Options,
                               report_type: Type = None,
                               chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Analyse attribute access that does not target a method.
@@ -197,7 +209,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             if method:
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(
-                    method_type_with_fallback(method, builtin_type('builtins.function')), typ)
+                    method_type_with_fallback(
+                        method, builtin_type('builtins.function'), options), typ)
                 if isinstance(getattr_type, CallableType):
                     return getattr_type.ret_type
 
@@ -320,7 +333,8 @@ def analyze_class_attribute_access(itype: Instance,
                                    is_lvalue: bool,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
-                                   msg: MessageBuilder) -> Type:
+                                   msg: MessageBuilder,
+                                   options: Options) -> Type:
     node = itype.type.get(name)
     if not node:
         if itype.type.fallback_to_any:
@@ -349,7 +363,7 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeInfo):
-        return type_object_type(node.node, builtin_type)
+        return type_object_type(node.node, builtin_type, options)
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
@@ -359,7 +373,10 @@ def analyze_class_attribute_access(itype: Instance,
         # TODO: Return type of decorated function. This is quick hack to work around #998.
         return AnyType()
     else:
-        return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
+        return function_type(
+            cast(FuncBase, node.node),
+            builtin_type('builtins.function'),
+            options)
 
 
 def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
@@ -384,7 +401,8 @@ def add_class_tvars(t: Type, info: TypeInfo, is_classmethod: bool,
     return t
 
 
-def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) -> Type:
+def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance],
+                     options: Options) -> Type:
     """Return the type of a type object.
 
     For a generic type G with type variables T and S the type is generally of form
@@ -405,7 +423,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
             new_method = info.get_method('__new__')
             if new_method and new_method.info.fullname() != 'builtins.object':
                 # Found one! Get signature from __new__.
-                return type_object_type_from_function(new_method, info, fallback)
+                return type_object_type_from_function(new_method, info, fallback, options)
             # Both are defined by object.  But if we've got a bogus
             # base class, we can't know for sure, so check for that.
             if info.fallback_to_any:
@@ -418,12 +436,13 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
                 return class_callable(sig, info, fallback, None)
         # Construct callable type based on signature of __init__. Adjust
         # return type and insert type arguments.
-        return type_object_type_from_function(init_method, info, fallback)
+        return type_object_type_from_function(init_method, info, fallback, options)
 
 
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
-                                   fallback: Instance) -> FunctionLike:
-    signature = method_type_with_fallback(init_or_new, fallback)
+                                   fallback: Instance,
+                                   options: Options) -> FunctionLike:
+    signature = method_type_with_fallback(init_or_new, fallback, options)
 
     # The __init__ method might come from a generic superclass
     # (init_or_new.info) with type variables that do not map

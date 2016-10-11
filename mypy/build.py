@@ -346,10 +346,10 @@ class BuildManager:
         self.reports = reports
         self.options = options
         self.version_id = version_id
-        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
+        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors, options)
         self.modules = self.semantic_analyzer.modules
-        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
-        self.type_checker = TypeChecker(self.errors, self.modules)
+        self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors, options)
+        self.type_checker = TypeChecker(self.errors, self.modules, options)
         self.indirection_detector = TypeIndirectionVisitor()
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]

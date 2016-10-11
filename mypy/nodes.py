@@ -12,6 +12,7 @@ from mypy.lex import Token
 import mypy.strconv
 from mypy.visitor import NodeVisitor
 from mypy.util import dump_tagged, short_type
+from mypy.options import Options
 
 
 class Context:
@@ -2232,7 +2233,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return st
 
 
-def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
+def function_type(func: FuncBase, fallback: 'mypy.types.Instance',
+                  options: Options) -> 'mypy.types.FunctionLike':
     if func.type:
         assert isinstance(func.type, mypy.types.FunctionLike)
         return func.type
@@ -2244,8 +2246,16 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
         if name:
             name = '"{}"'.format(name)
 
+        if options.check_untyped_defs and len(fdef.arguments) > 0 and\
+           fdef.arguments[0].variable.name() == 'self' and\
+           fdef.is_method() and not fdef.is_static and not fdef.is_class:
+            self_arg = [mypy.types.Instance(func.info, [])]  # type: List[mypy.types.Type]
+            arg_types = self_arg + ([mypy.types.AnyType()] * (len(fdef.arguments) - 1))
+        else:
+            arg_types = [mypy.types.AnyType()] * len(fdef.arguments)
+
         return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arg_names),
+            arg_types,
             fdef.arg_kinds,
             fdef.arg_names,
             mypy.types.AnyType(),
@@ -2256,9 +2266,10 @@ def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.type
 
 
 def method_type_with_fallback(func: FuncBase,
-                              fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
+                              fallback: 'mypy.types.Instance',
+                              options: Options) -> 'mypy.types.FunctionLike':
     """Return the signature of a method (omit self)."""
-    return method_type(function_type(func, fallback))
+    return method_type(function_type(func, fallback, options))
 
 
 def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':

@@ -37,7 +37,7 @@ from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
 from mypy.util import split_module_names
-
+from mypy.options import Options
 from mypy import experiments
 
 # Type of callback user for checking individual function arguments. See
@@ -97,10 +97,12 @@ class ExpressionChecker:
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
-                 msg: MessageBuilder) -> None:
+                 msg: MessageBuilder,
+                 options: Options) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
+        self.options = options
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
@@ -132,12 +134,12 @@ class ExpressionChecker:
                     result = AnyType()
         elif isinstance(node, FuncDef):
             # Reference to a global function.
-            result = function_type(node, self.named_type('builtins.function'))
+            result = function_type(node, self.named_type('builtins.function'), self.options)
         elif isinstance(node, OverloadedFuncDef):
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
-            result = type_object_type(node, self.named_type)
+            result = type_object_type(node, self.named_type, self.options)
         elif isinstance(node, MypyFile):
             # Reference to a module object.
             result = self.named_type('builtins.module')
@@ -323,7 +325,8 @@ class ExpressionChecker:
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
                                          False, False, False, self.named_type,
-                                         self.not_ready_callback, self.msg, chk=self.chk)
+                                         self.not_ready_callback, self.msg,
+                                                  self.options, chk=self.chk)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -345,7 +348,7 @@ class ExpressionChecker:
         if isinstance(item, AnyType):
             return AnyType()
         if isinstance(item, Instance):
-            return type_object_type(item.type, self.named_type)
+            return type_object_type(item.type, self.named_type, self.options)
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
                               for item in item.items], item.line)
@@ -910,7 +913,7 @@ class ExpressionChecker:
             return analyze_member_access(e.name, self.accept(e.expr), e,
                                          is_lvalue, False, False,
                                          self.named_type, self.not_ready_callback, self.msg,
-                                         chk=self.chk)
+                                         self.options, chk=self.chk)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -920,7 +923,7 @@ class ExpressionChecker:
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
                                      self.named_type, self.not_ready_callback, self.msg,
-                                     chk=self.chk)
+                                     self.options, chk=self.chk)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -1081,7 +1084,7 @@ class ExpressionChecker:
         """
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
-                                            chk=self.chk)
+                                            self.options, chk=self.chk)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -1613,7 +1616,7 @@ class ExpressionChecker:
                     return analyze_member_access(e.name, self_type(e.info), e,
                                                  is_lvalue, True, False,
                                                  self.named_type, self.not_ready_callback,
-                                                 self.msg, base, chk=self.chk)
+                                                 self.msg, self.options, base, chk=self.chk)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
