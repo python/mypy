@@ -1,4 +1,5 @@
 from functools import wraps
+from inspect import cleandoc
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
@@ -22,6 +23,7 @@ from mypy.types import (
 )
 from mypy import defaults
 from mypy import experiments
+from mypy import docstrings
 from mypy.errors import Errors
 
 try:
@@ -287,7 +289,15 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
-
+            # docstrings
+            if not any(arg_types) and return_type is None:
+                doc = ast35.get_docstring(n, clean=False)
+                if doc:
+                    doc = cleandoc(doc.decode('unicode_escape'))
+                    type_map, rtype = docstrings.parse_docstring(doc, n.lineno)
+                    if type_map is not None:
+                        arg_types = [type_map.get(name) for name in arg_names]
+                        return_type = rtype
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
 
