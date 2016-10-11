@@ -10,7 +10,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
-    Node, MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
+    MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
@@ -966,8 +966,15 @@ class ExpressionChecker:
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         if e.op == '%':
-            if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
-                return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+            pyversion = self.chk.options.python_version
+            if pyversion[0] == 3:
+                if isinstance(e.left, BytesExpr) and pyversion[1] >= 5:
+                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+                if isinstance(e.left, StrExpr):
+                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
+            elif pyversion[0] <= 2:
+                if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
+                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
 
         if e.op in nodes.op_methods:
@@ -1727,8 +1734,8 @@ class ExpressionChecker:
 
         return res
 
-    def analyze_cond_branch(self, map: Optional[Dict[Node, Type]],
-                            node: Node, context: Optional[Type]) -> Type:
+    def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
+                            node: Expression, context: Optional[Type]) -> Type:
         with self.chk.binder.frame_context():
             if map:
                 for var, type in map.items():
@@ -1743,7 +1750,7 @@ class ExpressionChecker:
     # Helpers
     #
 
-    def accept(self, node: Node, context: Type = None) -> Type:
+    def accept(self, node: Expression, context: Type = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
         return self.chk.accept(node, context)
 

@@ -3,7 +3,7 @@
 import re
 import os
 
-from typing import Any, List, Tuple, Optional, Union
+from typing import Any, List, Tuple, Optional, Union, Sequence
 
 from mypy.util import dump_tagged, short_type
 import mypy.nodes
@@ -11,7 +11,7 @@ from mypy.visitor import NodeVisitor
 
 
 class StrConv(NodeVisitor[str]):
-    """Visitor for converting a Node to a human-readable string.
+    """Visitor for converting a node to a human-readable string.
 
     For example, an MypyFile node from program '1' is converted into
     something like this:
@@ -21,16 +21,16 @@ class StrConv(NodeVisitor[str]):
         ExpressionStmt:1(
           IntExpr(1)))
     """
-    def dump(self, nodes: List[Any], obj: 'mypy.nodes.Node') -> str:
+    def dump(self, nodes: Sequence[object], obj: 'mypy.nodes.Context') -> str:
         """Convert a list of items to a multiline pretty-printed string.
 
         The tag is produced from the type name of obj and its line
         number. See mypy.util.dump_tagged for a description of the nodes
         argument.
         """
-        return dump_tagged(nodes, short_type(obj) + ':' + str(obj.line))
+        return dump_tagged(nodes, short_type(obj) + ':' + str(obj.get_line()))
 
-    def func_helper(self, o: 'mypy.nodes.FuncItem') -> List[Any]:
+    def func_helper(self, o: 'mypy.nodes.FuncItem') -> List[object]:
         """Return a list in a format suitable for dump() that represents the
         arguments and the body of a function. The caller can then decorate the
         array with information specific to methods, global functions or
@@ -347,7 +347,7 @@ class StrConv(NodeVisitor[str]):
     def visit_call_expr(self, o: 'mypy.nodes.CallExpr') -> str:
         if o.analyzed:
             return o.analyzed.accept(self)
-        args = []  # type: List[mypy.nodes.Node]
+        args = []  # type: List[mypy.nodes.Expression]
         extra = []  # type: List[Union[str, Tuple[str, List[Any]]]]
         for i, kind in enumerate(o.arg_kinds):
             if kind in [mypy.nodes.ARG_POS, mypy.nodes.ARG_STAR]:

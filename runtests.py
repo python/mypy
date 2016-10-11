@@ -209,11 +209,7 @@ def add_pytest(driver: Driver) -> None:
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
         mod = file_to_module(f)
-        if '.codec.test.' in mod:
-            # myunit is Python3 only.
-            driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
-            driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
-        elif mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
+        if mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
             # Run Python evaluation integration tests and command-line
             # parsing tests separately since they are much slower than
             # proper unit tests.
@@ -269,14 +265,7 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        if 'codec' in f:
-            cwd, bf = os.path.dirname(f), os.path.basename(f)
-            bf = bf[:-len('.py')]
-            driver.add_mypy_string('codec file %s' % f,
-                    'import mypy.codec.register, %s' % bf,
-                    cwd=cwd)
-        else:
-            driver.add_mypy('file %s' % f, f, '--fast-parser')
+        driver.add_mypy('file %s' % f, f, '--fast-parser')
 
 
 def usage(status: int) -> None:

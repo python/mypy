@@ -774,7 +774,7 @@ def is_meta_fresh(meta: Optional[CacheMeta], id: str, path: str, manager: BuildM
     st = manager.get_stat(path)  # TODO: Errors
     if st.st_mtime != meta.mtime or st.st_size != meta.size:
         manager.log('Metadata abandoned for {}: file {} is modified'.format(id, path))
-        return None
+        return False
 
     # It's a match on (id, path, mtime, size).
     # Check data_json; assume if its mtime matches it's good.
@@ -1650,7 +1650,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_stale_scc(graph, scc)
 
     sccs_left = len(fresh_scc_queue)
-    manager.log("{} fresh SCCs left in queue (and will remain unprocessed)".format(sccs_left))
+    if sccs_left:
+        manager.log("{} fresh SCCs left in queue (and will remain unprocessed)".format(sccs_left))
+        manager.trace(str(fresh_scc_queue))
+    else:
+        manager.log("No fresh SCCs left in queue")
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:

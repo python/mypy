@@ -9,7 +9,7 @@ from typing import (
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Node, MypyFile, Var, Expression, Lvalue,
+    SymbolTable, Statement, MypyFile, Var, Expression, Lvalue,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
@@ -64,7 +64,7 @@ T = TypeVar('T')
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
-        ('node', Node),
+        ('node', FuncItem),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
     ])
 
@@ -82,9 +82,9 @@ class TypeChecker(NodeVisitor[Type]):
     # Utility for generating messages
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
-    type_map = None  # type: Dict[Node, Type]
+    type_map = None  # type: Dict[Expression, Type]
     # Types of type checked nodes within this specific module
-    module_type_map = None  # type: Dict[Node, Type]
+    module_type_map = None  # type: Dict[Expression, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -209,7 +209,8 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             self.msg.cannot_determine_type(name, context)
 
-    def accept(self, node: Node, type_context: Type = None) -> Type:
+    def accept(self, node: Union[Expression, Statement, FuncItem],
+               type_context: Type = None) -> Type:
         """Type check a node in the given type context."""
         self.type_context.append(type_context)
         try:
@@ -217,7 +218,9 @@ class TypeChecker(NodeVisitor[Type]):
         except Exception as err:
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
         self.type_context.pop()
-        self.store_type(node, typ)
+        if typ is not None:
+            assert isinstance(node, Expression)
+            self.store_type(node, typ)
         if not self.in_checked_function():
             return AnyType()
         else:
@@ -1814,7 +1817,8 @@ class TypeChecker(NodeVisitor[Type]):
             m.line = s.line
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
-            return c.accept(self)
+            c.accept(self)
+            return None
         else:
             def flatten(t: Expression) -> List[Expression]:
                 """Flatten a nested sequence of tuples/lists into one list of nodes."""
@@ -1838,7 +1842,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if d.fullname == 'typing.no_type_check':
                     e.var.type = AnyType()
                     e.var.is_ready = True
-                    return NoneTyp()
+                    return None
 
         e.func.accept(self)
         sig = self.function_type(e.func)  # type: Type
@@ -2229,7 +2233,7 @@ class TypeChecker(NodeVisitor[Type]):
         if not is_equivalent(t1, t2):
             self.fail(msg, node)
 
-    def store_type(self, node: Node, typ: Type) -> None:
+    def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
         if typ is not None:
@@ -2364,7 +2368,7 @@ class TypeChecker(NodeVisitor[Type]):
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
-TypeMap = Optional[Dict[Node, Type]]
+TypeMap = Optional[Dict[Expression, Type]]
 
 
 def conditional_type_map(expr: Expression,
@@ -2443,7 +2447,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
 
 
 def find_isinstance_check(node: Expression,
-                          type_map: Dict[Node, Type],
+                          type_map: Dict[Expression, Type],
                           ) -> Tuple[TypeMap, TypeMap]:
     """Find any isinstance checks (within a chain of ands).  Includes
     implicit and explicit checks for None.
@@ -2468,8 +2472,8 @@ def find_isinstance_check(node: Expression,
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
         if is_not or node.operators == ['is']:
-            if_vars = {}  # type: Dict[Node, Type]
-            else_vars = {}  # type: Dict[Node, Type]
+            if_vars = {}  # type: Dict[Expression, Type]
+            else_vars = {}  # type: Dict[Expression, Type]
             for expr in node.operands:
                 if expr.literal == LITERAL_TYPE and not is_literal_none(expr) and expr in type_map:
                     # This should only be true at most once: there should be
@@ -2488,7 +2492,7 @@ def find_isinstance_check(node: Expression,
         vartype = type_map[node]
         if_type = true_only(vartype)
         else_type = false_only(vartype)
-        ref = node  # type: Node
+        ref = node  # type: Expression
         if_map = {ref: if_type} if not isinstance(if_type, UninhabitedType) else None
         else_map = {ref: else_type} if not isinstance(else_type, UninhabitedType) else None
         return if_map, else_map
@@ -2516,7 +2520,7 @@ def find_isinstance_check(node: Expression,
     return {}, {}
 
 
-def get_isinstance_type(expr: Expression, type_map: Dict[Node, Type]) -> Type:
+def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> Type:
     type = type_map[expr]
 
     if isinstance(type, TupleType):
@@ -2543,13 +2547,11 @@ def get_isinstance_type(expr: Expression, type_map: Dict[Node, Type]) -> Type:
         return UnionType(types)
 
 
-def expand_node(defn: FuncItem, map: Dict[TypeVarId, Type]) -> Node:
-    visitor = TypeTransformVisitor(map)
-    return defn.accept(visitor)
-
-
 def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
-    return cast(FuncItem, expand_node(defn, map))
+    visitor = TypeTransformVisitor(map)
+    ret = defn.accept(visitor)
+    assert isinstance(ret, FuncItem)
+    return ret
 
 
 class TypeTransformVisitor(TransformVisitor):

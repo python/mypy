@@ -97,6 +97,7 @@ class Node(Context):
     line = -1
     column = -1
 
+    # TODO: Move to Expression
     literal = LITERAL_NO
     literal_hash = None  # type: Any
 
@@ -139,8 +140,9 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
 
-
-# TODO: Union['NameExpr', 'TupleExpr', 'ListExpr', 'MemberExpr', 'IndexExpr']; see #1783.
+# TODO:
+# Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
+#                'TupleExpr', 'ListExpr']; see #1783.
 Lvalue = Expression
 
 
@@ -157,7 +159,7 @@ class SymbolNode(Node):
 
     # NOTE: Can't use @abstractmethod, since many subclasses of Node
     # don't implement serialize().
-    def serialize(self) -> Any:
+    def serialize(self) -> JsonDict:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
     @classmethod
@@ -171,7 +173,7 @@ class SymbolNode(Node):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
-class MypyFile(SymbolNode, Statement):
+class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
     # Module name ('__main__' for initial file)
@@ -591,7 +593,7 @@ class Decorator(SymbolNode, Statement):
         return dec
 
 
-class Var(SymbolNode, Statement):
+class Var(SymbolNode):
     """A variable.
 
     It can refer to global/local variable or a data attribute.
@@ -798,10 +800,10 @@ class OperatorAssignmentStmt(Statement):
     """Operator assignment statement such as x += 1"""
 
     op = ''
-    lvalue = None  # type: Expression
+    lvalue = None  # type: Lvalue
     rvalue = None  # type: Expression
 
-    def __init__(self, op: str, lvalue: Expression, rvalue: Expression) -> None:
+    def __init__(self, op: str, lvalue: Lvalue, rvalue: Expression) -> None:
         self.op = op
         self.lvalue = lvalue
         self.rvalue = rvalue
@@ -826,14 +828,14 @@ class WhileStmt(Statement):
 
 class ForStmt(Statement):
     # Index variables
-    index = None  # type: Expression
+    index = None  # type: Lvalue
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
     else_body = None  # type: Block
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
-    def __init__(self, index: Expression, expr: Expression, body: Block,
+    def __init__(self, index: Lvalue, expr: Expression, body: Block,
                  else_body: Block) -> None:
         self.index = index
         self.expr = expr
@@ -865,9 +867,9 @@ class AssertStmt(Statement):
 
 
 class DelStmt(Statement):
-    expr = None  # type: Expression
+    expr = None  # type: Lvalue
 
-    def __init__(self, expr: Expression) -> None:
+    def __init__(self, expr: Lvalue) -> None:
         self.expr = expr
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -940,11 +942,11 @@ class TryStmt(Statement):
 
 class WithStmt(Statement):
     expr = None  # type: List[Expression]
-    target = None  # type: List[Expression]
+    target = None  # type: List[Lvalue]
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
-    def __init__(self, expr: List[Expression], target: List[Expression],
+    def __init__(self, expr: List[Expression], target: List[Lvalue],
                  body: Block) -> None:
         self.expr = expr
         self.target = target
@@ -1540,9 +1542,9 @@ class GeneratorExpr(Expression):
     left_expr = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
-    indices = None  # type: List[Expression]
+    indices = None  # type: List[Lvalue]
 
-    def __init__(self, left_expr: Expression, indices: List[Expression],
+    def __init__(self, left_expr: Expression, indices: List[Lvalue],
                  sequences: List[Expression], condlists: List[List[Expression]]) -> None:
         self.left_expr = left_expr
         self.sequences = sequences
@@ -1584,9 +1586,9 @@ class DictionaryComprehension(Expression):
     value = None  # type: Expression
     sequences = None  # type: List[Expression]
     condlists = None  # type: List[List[Expression]]
-    indices = None  # type: List[Expression]
+    indices = None  # type: List[Lvalue]
 
-    def __init__(self, key: Expression, value: Expression, indices: List[Expression],
+    def __init__(self, key: Expression, value: Expression, indices: List[Lvalue],
                  sequences: List[Expression], condlists: List[List[Expression]]) -> None:
         self.key = key
         self.value = value
@@ -2026,7 +2028,7 @@ class TypeInfo(SymbolNode):
                             ('Names', sorted(self.names.keys()))],
                            'TypeInfo')
 
-    def serialize(self) -> Union[str, JsonDict]:
+    def serialize(self) -> JsonDict:
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
