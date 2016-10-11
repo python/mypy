@@ -858,9 +858,6 @@ class UnionType(Type):
                     all_items.append(typ)
             items = all_items
 
-        if any(isinstance(typ, AnyType) for typ in items):
-            return AnyType()
-
         from mypy.subtypes import is_subtype
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
@@ -868,7 +865,11 @@ class UnionType(Type):
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if i != j and is_subtype(tj, ti):
+                # Attempt to only combine true subtypes by avoiding types containing Any.
+                # TODO: Properly exclude generics and functions.
+                tj_is_anylike = (isinstance(tj, AnyType) or
+                                 (isinstance(tj, Instance) and tj.type.fallback_to_any))
+                if i != j and is_subtype(tj, ti) and not tj_is_anylike:
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false
