@@ -2,7 +2,7 @@
 
 import re
 import subprocess
-from typing import TypeVar, List, Any, Tuple, Optional
+from typing import TypeVar, List, Tuple, Optional, Sequence
 
 
 T = TypeVar('T')
@@ -51,7 +51,7 @@ def array_repr(a: List[T]) -> List[str]:
     return aa
 
 
-def dump_tagged(nodes: List[Any], tag: str) -> str:
+def dump_tagged(nodes: Sequence[object], tag: str) -> str:
     """Convert an array into a pretty-printed multiline string representation.
 
     The format is
