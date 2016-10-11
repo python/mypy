@@ -460,10 +460,13 @@ class ExpressionChecker:
                 # See also github issues #462 and #360.
                 ret_type = NoneTyp()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
-        # Only substitute non-None and non-erased types.
+        # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
-            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
+            if isinstance(arg, UninhabitedType) or has_erased_component(arg):
+                new_args.append(None)
+            elif not experiments.STRICT_OPTIONAL and isinstance(arg, NoneTyp):
+                # Don't substitute None types in non-strict-Optional mode.
                 new_args.append(None)
             else:
                 new_args.append(arg)
