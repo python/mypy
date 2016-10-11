@@ -2,13 +2,8 @@
 "typing" module that is supported by the mypy typechecker.
 """
 
-from typing import cast, Dict, Type, TypeVar
 
-
-_T = TypeVar('_T')
-
-
-def TypedDict(typename: str, fields: Dict[str, Type[_T]]) -> Type[dict]:
+def TypedDict(typename, fields):
     """TypedDict creates a dictionary type that expects all of its
     instances to have a certain common set of keys, with each key
     associated with a value of a consistent type. This expectation
@@ -17,6 +12,6 @@ def TypedDict(typename: str, fields: Dict[str, Type[_T]]) -> Type[dict]:
     def new_dict(*args, **kwargs):
         return dict(*args, **kwargs)
 
-    new_dict.__name__ = typename  # type: ignore  # https://github.com/python/mypy/issues/708
-    new_dict.__supertype__ = dict  # type: ignore  # https://github.com/python/mypy/issues/708
-    return cast(Type[dict], new_dict)
+    new_dict.__name__ = typename
+    new_dict.__supertype__ = dict
+    return new_dict
