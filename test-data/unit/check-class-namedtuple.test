@@ -2,18 +2,17 @@
 # flags: --fast-parser --python-version 3.5
 from typing import NamedTuple
 
-class E(NamedTuple):  # E: NamedTuple class syntax is only supported in Python 3.6+
-    x: int
-    y: str
+class E(NamedTuple):  # E: NamedTuple class syntax is only supported in Python 3.6
+    pass
 
 [case testNewNamedTupleNoUnderscoreFields]
 # flags: --fast-parser --python-version 3.6
 from typing import NamedTuple
 
-class X(NamedTuple):  # E: NamedTuple field names cannot start with an underscore: _y, _z
+class X(NamedTuple):
     x: int
-    _y: int
-    _z: int
+    _y: int  # E: NamedTuple field name cannot start with an underscore: _y
+    _z: int  # E: NamedTuple field name cannot start with an underscore: _z
 
 [case testNewNamedTupleAccessingAttributes]
 # flags: --fast-parser --python-version 3.6
@@ -34,18 +33,14 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y: str
 
 x: X
 x.x = 5 # E: Property "x" defined in "X" is read-only
-x.y = 5 # E: Property "y" defined in "X" is read-only
-x.z = 5 # E: "X" has no attribute "z"
+x.y = 5 # E: "X" has no attribute "y"
 
 class A(X): pass
 a: A
 a.x = 5 # E: Property "x" defined in "A" is read-only
-a.y = 5 # E: Property "y" defined in "A" is read-only
--- a.z = 5 # not supported yet
 
 [case testNewNamedTupleCreateWithPositionalArguments]
 # flags: --fast-parser --python-version 3.6
@@ -55,11 +50,11 @@ class X(NamedTuple):
     x: int
     y: str
 
-x = X(1, 'x')
+x = X(1, '2')
 x.x
 x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Too few arguments for "X"
-x = X(1, 2, 3)  # E: Too many arguments for "X"
+x = X(1, '2', 3)  # E: Too many arguments for "X"
 
 [case testCreateNewNamedTupleWithKeywordArguments]
 # flags: --fast-parser --python-version 3.6
@@ -72,7 +67,7 @@ class X(NamedTuple):
 x = X(x=1, y='x')
 x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
-x = X(y=1) # E: Missing positional argument "x" in call to "X"
+x = X(y='x') # E: Missing positional argument "x" in call to "X"
 
 [case testNewNamedTupleCreateAndUseAsTuple]
 # flags: --fast-parser --python-version 3.6
@@ -227,7 +222,7 @@ MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
 from typing import NamedTuple
 
 class A(NamedTuple):
-    ...
+    pass
 
 [case testNewNamedTupleProperty]
 # flags: --fast-parser --python-version 3.6
@@ -235,7 +230,6 @@ from typing import NamedTuple
 
 class A(NamedTuple):
     a: int
-    b: str
 
 class B(A):
     @property
@@ -288,7 +282,7 @@ reveal_type(X._fields)  # E: Revealed type is 'Tuple[builtins.str, builtins.str]
 from typing import NamedTuple
 
 class X(NamedTuple):
-    ...
+    pass
 
 x: X = X()
 x._replace()
@@ -329,7 +323,7 @@ from typing import NamedTuple
 class X(NamedTuple):
     x: int
     y: str
-    def f(self): pass  # E: NamedTuple only allows names as fields
+    def f(self): pass  # E: Invalid definition in NamedTuple
 
 [case testNewNamedTupleWithInvalidItems2]
 # flags: --fast-parser --python-version 3.6
@@ -338,13 +332,13 @@ from typing import NamedTuple
 class X(NamedTuple):
     x: int
     y: str
-    [0][0]: int  # E: NamedTuple only allows names as fields
+    x[0]: int  # E: NamedTuple supports only simple fields
 
 [builtins fixtures/list.pyi]
 
 [case testTypeUsingTypeCNamedTuple]
 # flags: --fast-parser --python-version 3.6
-from typing import NamedTuple
+from typing import NamedTuple, Type
 
 class N(NamedTuple):
     x: int
@@ -355,4 +349,4 @@ def f(a: Type[N]):
 [builtins fixtures/list.pyi]
 [out]
 main: note: In function "f":
-main:3: error: Unsupported type Type["N"]
+main:8: error: Unsupported type Type["N"]

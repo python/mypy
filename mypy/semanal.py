@@ -53,7 +53,7 @@ from mypy.nodes import (
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
@@ -63,7 +63,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -545,7 +545,54 @@ class SemanticAnalyzer(NodeVisitor):
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
+    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        if self.options.python_version < (3, 6):
+            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
+            return [], []
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+            return [], []
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if isinstance(stmt, AssignmentStmt):
+                if len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                    self.fail('NamedTuple supports only simple fields', stmt)
+                    return [], []
+                name = stmt.lvalues[0].name
+                if not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('NamedTuple does not support initial values', stmt)
+                if stmt.type is None:
+                    self.fail('NamedTuple field type must be specified', stmt)
+                    types.append(AnyType())
+                else:
+                    types.append(self.anal_type(stmt.type))
+                if name.startswith('_'):
+                    self.fail('NamedTuple field name cannot start with an underscore: {}'
+                              .format(name), stmt)
+                items.append(name)
+            else:
+                if not isinstance(stmt, PassStmt):
+                    self.fail('Invalid definition in NamedTuple', stmt)
+        return items, types
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> None:
+        node = self.lookup(defn.name, defn)
+        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+        items, types = self.check_namedtuple_classdef(defn)
+        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+
     def visit_class_def(self, defn: ClassDef) -> None:
+        # special case for NamedTuple
+        for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, NameExpr):
+                sym = self.lookup_qualified(base_expr.name, base_expr)
+                if sym is None or sym.node is None:
+                    continue
+                if sym.node.fullname() == 'typing.NamedTuple':
+                    self.analyze_namedtuple_classdef(defn)
+                    return
         self.clean_up_bases_and_infer_type_variables(defn)
         self.setup_class_def_analysis(defn)
 
