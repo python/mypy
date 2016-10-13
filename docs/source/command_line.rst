@@ -279,6 +279,8 @@ Here are some more useful flags:
 - ``--disallow-untyped-calls`` reports an error whenever a function
   with type annotations calls a function defined without annotations.
 
+.. _disallow-subclassing-any:
+
 - ``--disallow-subclassing-any`` reports an error whenever a class
   inherits a value of type ``Any``. This often occurs when inheriting
   a class that was imported from a module not typechecked by mypy while
