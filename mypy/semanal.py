@@ -546,19 +546,20 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        NAMEDTUP_CLASS_ERROR = 'Invalid statement in NamedTuple definition; ' \
+                               'expected "field_name: field_type"'
         if self.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
             return [], []
         if len(defn.base_type_exprs) > 1:
             self.fail('NamedTuple should be a single base', defn)
-            return [], []
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for stmt in defn.defs.body:
             if isinstance(stmt, AssignmentStmt):
                 if len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
-                    self.fail('NamedTuple supports only simple fields', stmt)
-                    return [], []
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                    continue
                 name = stmt.lvalues[0].name
                 if not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
@@ -573,8 +574,10 @@ class SemanticAnalyzer(NodeVisitor):
                               .format(name), stmt)
                 items.append(name)
             else:
-                if not isinstance(stmt, PassStmt):
-                    self.fail('Invalid definition in NamedTuple', stmt)
+                if (not isinstance(stmt, PassStmt) and
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
         return items, types
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> None:

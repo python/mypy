@@ -56,6 +56,14 @@ x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Too few arguments for "X"
 x = X(1, '2', 3)  # E: Too many arguments for "X"
 
+[case testNewNamedTupleShouldBeSingleBase]
+# flags: --fast-parser --python-version 3.6
+from typing import NamedTuple
+
+class A: ...
+class X(NamedTuple, A):  # E: NamedTuple should be a single base
+    pass
+
 [case testCreateNewNamedTupleWithKeywordArguments]
 # flags: --fast-parser --python-version 3.6
 from typing import NamedTuple
@@ -222,7 +230,19 @@ MyNamedTuple.x # E: "MyNamedTuple" has no attribute "x"
 from typing import NamedTuple
 
 class A(NamedTuple):
-    pass
+    ...
+
+[case testNewNamedTupleForwardRef]
+# flags: --fast-parser --python-version 3.6
+from typing import NamedTuple
+
+class A(NamedTuple):
+    b: 'B'
+
+class B: ...
+
+a = A(B())
+a = A(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "B"
 
 [case testNewNamedTupleProperty]
 # flags: --fast-parser --python-version 3.6
@@ -322,8 +342,8 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y: str
-    def f(self): pass  # E: Invalid definition in NamedTuple
+    y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    def f(self): pass  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
 
 [case testNewNamedTupleWithInvalidItems2]
 # flags: --fast-parser --python-version 3.6
@@ -331,10 +351,22 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    y: str
-    x[0]: int  # E: NamedTuple supports only simple fields
+    y: str = 'y'  # E: NamedTuple does not support initial values
+    x[0]: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
 
 [builtins fixtures/list.pyi]
+
+[case testNewNamedTupleWithoutTypesSpecified]
+# flags: --fast-parser --python-version 3.6
+from typing import NamedTuple
+
+class X(NamedTuple):
+    x: int
+    y = 2
+
+[out]
+main:6: error: NamedTuple does not support initial values
+main:6: error: NamedTuple field type must be specified
 
 [case testTypeUsingTypeCNamedTuple]
 # flags: --fast-parser --python-version 3.6
