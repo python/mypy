@@ -580,12 +580,12 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = typ.arg_types[i]
 
                     # Refuse covariant parameter type variables
-                    if isinstance(arg_type, TypeVarType): 
+                    if isinstance(arg_type, TypeVarType):
                         if i > 0:
                             if arg_type.variance == COVARIANT:
                                 self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
                                           arg_type)
-                        #FIX: if i == 0 and this is not a method then same as above
+                        # FIX: if i == 0 and this is not a method then same as above
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',

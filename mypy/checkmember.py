@@ -515,19 +515,23 @@ def bind_self(f: F, actual_self: Type = None) -> F:
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
         # since t will be absorbed by the *args.
-        
+
         # TODO: infer bounds on the type of *args?
         return cast(F, t)
     self_param_type = t.arg_types[0]
-    if (isinstance(self_param_type, TypeVarType)
-        or isinstance(self_param_type, TypeType) and isinstance(self_param_type.item, TypeVarType)):
+    if t.variables and (isinstance(self_param_type, TypeVarType) or
+            (isinstance(self_param_type, TypeType) and
+             isinstance(self_param_type.item, TypeVarType))):
         if actual_self is None:
-            #TODO: value restriction as union?
+            # XXX value restriction as union?
             actual_self = erase_to_bound(self_param_type)
 
-        typearg = infer_type_arguments([x.id for x in t.variables], t.arg_types[0], actual_self)[0]
+        typearg = infer_type_arguments([x.id for x in t.variables],
+                                       self_param_type, actual_self)[0]
+
         def expand(target: Type) -> Type:
-            return expand_type(target, {t.variables[0].id : typearg}, False)
+            return expand_type(target, {t.variables[0].id: typearg}, False)
+
         arg_types = [expand(x) for x in t.arg_types[1:]]
         ret_type = expand(t.ret_type)
         variables = t.variables[1:]
