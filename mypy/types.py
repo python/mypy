@@ -1532,47 +1532,46 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
 F = TypeVar('F', bound=FunctionLike)
 
 
-def bind_self(t: F, actual_self: Type = None) -> F:
-    if isinstance(t, Overloaded):
-        return cast(F, Overloaded([bind_self(c, t) for c in t.items()]))
-    assert isinstance(t, CallableType)
+def bind_self(f: F, actual_self: Type = None) -> F:
+    from mypy.infer import infer_type_arguments
+    from mypy.applytype import apply_generic_arguments
+    from mypy.messages import MessageBuilder
+
+    if isinstance(f, Overloaded):
+        return cast(F, Overloaded([bind_self(c, f) for c in f.items()]))
+    assert isinstance(f, CallableType)
+    t = f
     if t.arg_kinds and t.arg_kinds[0] == mypy.nodes.ARG_STAR:
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
         # since t will be absorbed by the *args.
         return cast(F, t)
-    ret_type = t.ret_type
-    variables = list(t.variables)
-    arg_types = t.arg_types[1:]
-    if t.arg_types and actual_self is not None:
-        self_arg = t.arg_types[0]
-        if isinstance(self_arg, TypeType):
-            self_arg = self_arg.item
-        if isinstance(self_arg, TypeVarType):
-            instantiator = TypeVarInstantiator(self_arg.id, actual_self)
-            arg_types = [t.accept(instantiator) for t in arg_types]
-            ret_type = ret_type.accept(instantiator)
-            # FIX: why is this partial?
-            # from mypy.expandtype import expand_type
-            # arg_types = [expand_type(t, {self_arg.id: actual_self})
-            #              for t in arg_types]
-            # ret_type = expand_type(ret_type, {self_arg.id: actual_self})
-            variables = variables[1:]
+    assert t.arg_types
+    self_param_type = t.arg_types[0]
+    
+    if (isinstance(self_param_type, TypeVarType)
+        or isinstance(self_param_type, TypeType) and isinstance(self_param_type.item, TypeVarType)):
 
-    res = t.copy_modified(arg_types=arg_types,
+        if actual_self is None:
+            #TODO: type value restriction as union?
+            actual_self = erase_to_bound(self_param_type)
+
+        typearg = infer_type_arguments([x.id for x in t.variables], t.arg_types[0], actual_self)[0]
+        t = cast(CallableType, apply_generic_arguments(t, [typearg] + [None for _ in t.variables[1:]],
+                                                       None, t))
+    
+    res = t.copy_modified(arg_types=t.arg_types[1:],
                           arg_kinds=t.arg_kinds[1:],
                           arg_names=t.arg_names[1:],
-                          variables=variables,
-                          ret_type=ret_type)
+                          variables=t.variables,
+                          ret_type=t.ret_type)
     return cast(F, res)
 
 
-class TypeVarInstantiator(TypeTranslator):
-    def __init__(self, formal: TypeVarId, actual: Type) -> None:
-        self.formal = formal
-        self.actual = actual
-
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        if t.id == self.formal:
-            return self.actual
-        return t
+def erase_to_bound(t: Type):
+    if isinstance(t, TypeVarType):
+        return t.upper_bound
+    if isinstance(t, TypeType):
+        if isinstance(t.item, TypeVarType):
+            return TypeType(t.item.upper_bound)
+    assert not t
