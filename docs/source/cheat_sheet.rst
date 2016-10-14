@@ -89,6 +89,17 @@ Functions
            yield i
            i += 1
 
+   # There's alternative syntax for functions with many arguments.
+   def send_email(address,     # type: Union[str, List[str]]
+                  sender,      # type: str
+                  cc,          # type: Optional[List[str]]
+                  bcc,         # type: Optional[List[str]]
+                  subject='',
+                  body=None    # type: List[str]
+                  ):
+       # type: (...) -> bool
+        <code>
+
 
 When you're puzzled or when things are complicated
 **************************************************
