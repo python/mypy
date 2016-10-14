@@ -1,18 +1,19 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional, TYPE_CHECKING
+from typing import cast, Callable, List, Optional, TypeVar, TYPE_CHECKING
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType, function_type, bind_self
+    DeletedType, NoneTyp, TypeType, function_type
 )
 from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2
 from mypy.nodes import Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
-from mypy.expandtype import expand_type_by_instance
+from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.infer import infer_type_arguments
 from mypy.semanal import fill_typevars
 from mypy import messages
 from mypy import subtypes
@@ -497,3 +498,55 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo,
     # in inst_type they are interpreted in subtype context. This works even if
     # the names of type variables in supertype and subtype overlap.
     return expand_type_by_instance(typ, inst_type)
+
+
+F = TypeVar('F', bound=FunctionLike)
+
+
+def bind_self(f: F, actual_self: Type = None) -> F:
+    if isinstance(f, Overloaded):
+        return cast(F, Overloaded([bind_self(c, f) for c in f.items()]))
+    assert isinstance(f, CallableType)
+    t = f
+    if not t.arg_types:
+        # invalid method. return something
+        return cast(F, t)
+    if t.arg_kinds[0] == ARG_STAR:
+        # The signature is of the form 'def foo(*args, ...)'.
+        # In this case we shouldn't drop the first arg,
+        # since t will be absorbed by the *args.
+        
+        # TODO: infer bounds on the type of *args?
+        return cast(F, t)
+    self_param_type = t.arg_types[0]
+    if (isinstance(self_param_type, TypeVarType)
+        or isinstance(self_param_type, TypeType) and isinstance(self_param_type.item, TypeVarType)):
+        if actual_self is None:
+            #TODO: value restriction as union?
+            actual_self = erase_to_bound(self_param_type)
+
+        typearg = infer_type_arguments([x.id for x in t.variables], t.arg_types[0], actual_self)[0]
+        def expand(target: Type) -> Type:
+            return expand_type(target, {t.variables[0].id : typearg}, False)
+        arg_types = [expand(x) for x in t.arg_types[1:]]
+        ret_type = expand(t.ret_type)
+        variables = t.variables[1:]
+    else:
+        arg_types = t.arg_types[1:]
+        ret_type = t.ret_type
+        variables = t.variables
+    res = t.copy_modified(arg_types=arg_types,
+                          arg_kinds=t.arg_kinds[1:],
+                          arg_names=t.arg_names[1:],
+                          variables=variables,
+                          ret_type=ret_type)
+    return cast(F, res)
+
+
+def erase_to_bound(t: Type):
+    if isinstance(t, TypeVarType):
+        return t.upper_bound
+    if isinstance(t, TypeType):
+        if isinstance(t.item, TypeVarType):
+            return TypeType(t.item.upper_bound)
+    assert not t
