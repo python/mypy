@@ -271,8 +271,8 @@ import typing
 x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(2) : Tuple[]
-TupleExpr(2) : Tuple[]
+NameExpr(2) : Tuple[()]
+TupleExpr(2) : Tuple[()]
 
 [case testInferTwoTypes]
 ## NameExpr
@@ -290,8 +290,8 @@ def f() -> None:
     x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(3) : Tuple[]
-TupleExpr(3) : Tuple[]
+NameExpr(3) : Tuple[()]
+TupleExpr(3) : Tuple[()]
 
 
 -- Basic generics

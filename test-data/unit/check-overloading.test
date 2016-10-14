@@ -489,7 +489,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument types [Tuple[]]
+f(()) # E: No overload variant of "f" matches argument types [Tuple[()]]
 [builtins fixtures/primitives.pyi]
 [out]
 

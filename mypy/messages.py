@@ -247,6 +247,8 @@ class MessageBuilder:
             # Prefer the name of the fallback class (if not tuple), as it's more informative.
             if typ.fallback.type.fullname() != 'builtins.tuple':
                 return self.format_simple(typ.fallback)
+            if not typ.items:
+                return '"Tuple[()]"'  # Avoid "Tuple[]"
             items = []
             for t in typ.items:
                 items.append(strip_quotes(self.format(t)))

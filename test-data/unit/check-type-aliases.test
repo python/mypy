@@ -11,7 +11,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -50,7 +50,7 @@ from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [file _m.py]
 from typing import Union
 U = Union[int, str]

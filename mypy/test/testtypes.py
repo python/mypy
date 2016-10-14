@@ -73,7 +73,7 @@ class TypesSuite(Suite):
         assert_equal(str(c3), 'def (X? =, *Y?) -> Any')
 
     def test_tuple_type(self):
-        assert_equal(str(TupleType([], None)), 'Tuple[]')
+        assert_equal(str(TupleType([], None)), 'Tuple[()]')
         assert_equal(str(TupleType([self.x], None)), 'Tuple[X?]')
         assert_equal(str(TupleType([self.x, AnyType()], None)), 'Tuple[X?, Any]')
 

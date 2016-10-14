@@ -117,7 +117,7 @@ t3 = None # type: Tuple[A, B]
 
 a, b, c = None, None, None # type: (A, B, C)
 
-t2 = ()        # E: Incompatible types in assignment (expression has type "Tuple[]", variable has type "Tuple[A]")
+t2 = ()        # E: Incompatible types in assignment (expression has type "Tuple[()]", variable has type "Tuple[A]")
 t2 = (a, a)    # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A]")
 t3 = (a, a)    # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A, B]")
 t3 = (b, b)    # E: Incompatible types in assignment (expression has type "Tuple[B, B]", variable has type "Tuple[A, B]")
@@ -835,7 +835,7 @@ f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ..
 from typing import Tuple
 def f(a: Tuple[()]) -> None: pass
 f(())
-f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[]"
-f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[]"
-f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[]"
+f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[()]"
+f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[()]"
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[()]"
 [builtins fixtures/tuple.pyi]

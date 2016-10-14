@@ -1277,7 +1277,10 @@ class TypeStrVisitor(TypeVisitor[str]):
         return 'Overload({})'.format(', '.join(a))
 
     def visit_tuple_type(self, t: TupleType) -> str:
-        s = self.list_str(t.items)
+        if not t.items:
+            s = '()'
+        else:
+            s = self.list_str(t.items)
         if t.fallback and t.fallback.type:
             fallback_name = t.fallback.type.fullname()
             if fallback_name != 'builtins.tuple':
