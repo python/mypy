@@ -24,6 +24,7 @@ Built-in types
    # For simple built-in types, just use the name of the type.
    x = 1 # type: int
    x = 1.0 # type: float
+   x = True # type: bool
    x = "test" # type: str
    x = u"test" # type: unicode
 
@@ -60,6 +61,11 @@ Functions
        # type: (int) -> str
        """Your function docstring goes here after the type definition."""
        return str(num)
+
+   # This function has no parameters and also returns nothing. Annotations
+   # can also be placed on the same line as their function headers.
+   def greet_world(): # type: () -> None
+       print "Hello, world!"
 
    # And here's how you specify multiple arguments.
    def plus(num1, num2):
