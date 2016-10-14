@@ -842,8 +842,11 @@ class MessageBuilder:
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
 
-    def reveal_type(self, typ: Type, context: Context) -> None:
-        self.fail('Revealed type is \'{}\''.format(typ), context)
+    def reveal_type(self, typ: Type, context: Context, note: bool) -> None:
+        if note:
+            self.note('Revealed type is \'{}\''.format(typ), context)
+        else:
+            self.fail('Revealed type is \'{}\''.format(typ), context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)

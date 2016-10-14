@@ -1374,7 +1374,7 @@ class ExpressionChecker:
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
         revealed_type = self.accept(expr.expr)
-        self.msg.reveal_type(revealed_type, expr)
+        self.msg.reveal_type(revealed_type, expr, bool(self.chk.options.shadow_file))
         return revealed_type
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
