@@ -5,7 +5,6 @@ representing a source file. Performs only minimal semantic checks.
 """
 
 import re
-from inspect import cleandoc
 
 from typing import List, Tuple, Set, cast, Union, Optional
 
@@ -39,7 +38,6 @@ from mypy.parsetype import (
 from mypy.options import Options
 
 from mypy import experiments
-from mypy import docstrings
 
 
 class ParseError(Exception): pass
@@ -419,7 +417,7 @@ class Parser:
             arg_kinds = [arg.kind for arg in args]
             arg_names = [arg.variable.name() for arg in args]
 
-            body, comment_type = self.parse_block(args=args)
+            body, comment_type = self.parse_block(allow_type=True)
             # Potentially insert extra assignment statements to the beginning of the
             # body, used to decompose Python 2 tuple arguments.
             body.body[:0] = extra_stmts
@@ -833,7 +831,7 @@ class Parser:
 
     # Parsing statements
 
-    def parse_block(self, args: List[Argument]=None) -> Tuple[Block, Type]:
+    def parse_block(self, allow_type: bool = False) -> Tuple[Block, Type]:
         colon = self.expect(':')
         if not isinstance(self.current(), Break):
             # Block immediately after ':'.
@@ -856,13 +854,6 @@ class Parser:
             brk = self.expect_break()
             type = self.parse_type_comment(brk, signature=True)
             self.expect_indent()
-            if args is not None:
-                cur = self.current()
-                if type is None and isinstance(cur, StrLit):
-                    type_map, ret_type = docstrings.parse_docstring(
-                        cleandoc(cur.parsed()), cur.line)
-                    type = docstrings.make_callable(args, type_map, ret_type)
-
             stmt_list = []  # type: List[Statement]
             while (not isinstance(self.current(), Dedent) and
                    not isinstance(self.current(), Eof)):
