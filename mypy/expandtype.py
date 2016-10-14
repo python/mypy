@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, List, cast
+from typing import Dict, List, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
@@ -7,12 +7,12 @@ from mypy.types import (
 )
 
 
-def expand_type(typ: Type, env: Dict[TypeVarId, Type]) -> Type:
+def expand_type(typ: Type, env: Dict[TypeVarId, Type], erase_instances: bool = True) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
 
-    return typ.accept(ExpandTypeVisitor(env))
+    return typ.accept(ExpandTypeVisitor(env, erase_instances=erase_instances))
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
@@ -32,9 +32,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
     variables = None  # type: Dict[TypeVarId, Type]  # TypeVar id -> TypeVar value
+    erase_instances = True  # type: bool
 
-    def __init__(self, variables: Dict[TypeVarId, Type]) -> None:
+    def __init__(self, variables: Dict[TypeVarId, Type], erase_instances=True) -> None:
         self.variables = variables
+        self.erase_instances = erase_instances
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -74,7 +76,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             inst = repl
             # Return copy of instance with type erasure flag on.
             return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+                            column=inst.column, erased=self.erase_instances)
         else:
             return repl
 
