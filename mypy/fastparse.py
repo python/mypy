@@ -1,6 +1,6 @@
 from functools import wraps
-from inspect import cleandoc
 import sys
+import inspect
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.nodes import (
@@ -23,7 +23,8 @@ from mypy.types import (
 )
 from mypy import defaults
 from mypy import experiments
-from mypy import docstrings
+from mypy import hooks
+from mypy.parsetype import parse_str_as_type
 from mypy.errors import Errors
 
 try:
@@ -87,6 +88,35 @@ def parse_type_comment(type_comment: str, line: int) -> Type:
     else:
         assert isinstance(typ, ast35.Expression)
         return TypeConverter(line=line).visit(typ.body)
+
+
+def parse_docstring(docstring: str, arg_names: List[str],
+                    line: int) -> Optional[Tuple[List[Type], Type]]:
+    """Parse a docstring and return type representations.
+
+    Returns a 2-tuple: (list of arguments Types, and return Type).
+    """
+    def pop_and_convert(name):
+        t = type_map.pop(name, None)
+        if t is None:
+            return AnyType()
+        elif isinstance(t, Type):
+            return t
+        else:
+            return parse_str_as_type(t, line)
+
+    docstring_parser = hooks.get_docstring_parser()
+    if docstring_parser is not None:
+        type_map = docstring_parser(inspect.cleandoc(docstring), line)
+        if type_map:
+            arg_types = [pop_and_convert(name) for name in arg_names]
+            return_type = pop_and_convert('return')
+            if type_map:
+                raise TypeCommentParseError(
+                    'Arguments parsed from docstring are not present in '
+                    'function signature: {}'.format(', '.join(type_map)),
+                    line, 0)
+            return arg_types, return_type
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
@@ -289,15 +319,16 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
-            # docstrings
-            if not any(arg_types) and return_type is None:
+            # hooks
+            if (not any(arg_types) and return_type is None and
+                    hooks.get_docstring_parser()):
                 doc = ast35.get_docstring(n, clean=False)
                 if doc:
-                    doc = cleandoc(doc.decode('unicode_escape'))
-                    type_map, rtype = docstrings.parse_docstring(doc, n.lineno)
-                    if type_map is not None:
-                        arg_types = [type_map.get(name) for name in arg_names]
-                        return_type = rtype
+                    doc = doc.decode('unicode_escape')
+                    types = parse_docstring(doc, arg_names, n.lineno)
+                    if types is not None:
+                        arg_types, return_type = types
+
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
 

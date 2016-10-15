@@ -39,8 +39,9 @@ from mypy.types import (
 from mypy import defaults
 from mypy import experiments
 from mypy.errors import Errors
-from mypy.fastparse import TypeConverter, TypeCommentParseError
-from mypy import docstrings
+from mypy.fastparse import (TypeConverter, TypeCommentParseError,
+                            parse_docstring)
+from mypy import hooks
 
 try:
     from typed_ast import ast27
@@ -295,15 +296,16 @@ class ASTConverter(ast27.NodeTransformer):
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = converter.visit(None)
-            # docstrings
-            if not any(arg_types) and return_type is None:
+            # hooks
+            if (not any(arg_types) and return_type is None and
+                    hooks.get_docstring_parser()):
                 doc = ast27.get_docstring(n, clean=False)
                 if doc:
-                    doc = cleandoc(doc.decode('unicode_escape'))
-                    type_map, rtype = docstrings.parse_docstring(doc, n.lineno)
-                    if type_map is not None:
-                        arg_types = [type_map.get(name) for name in arg_names]
-                        return_type = rtype
+                    doc = doc.decode('unicode_escape')
+                    types = parse_docstring(doc, arg_names, n.lineno)
+                    if types is not None:
+                        arg_types, return_type = types
+
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
 
