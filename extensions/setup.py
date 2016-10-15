@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# NOTE: This package must support Python 2.7 in addition to Python 3.x
+
 from distutils.core import setup
 
 version = '0.1-dev'
@@ -12,24 +14,19 @@ The "mypy_extensions" module defines experimental extensions to the
 standard "typing" module that are supported by the mypy typechecker.
 '''.lstrip()
 
-# MyPy classifiers are copied from ../setup.py
-_mypy_classifiers = [
+classifiers = [
     'Development Status :: 2 - Pre-Alpha',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Operating System :: POSIX',
+    'Programming Language :: Python :: 2',
+    'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Topic :: Software Development',
-]
-
-classifiers = _mypy_classifiers + [
-    # Support Python 2.7 in addition to Python 3.x
-    'Programming Language :: Python :: 2',
-    'Programming Language :: Python :: 2.7',
 ]
 
 setup(
