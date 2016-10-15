@@ -88,6 +88,9 @@ class TypeChecker(NodeVisitor[Type]):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
+    # Class context for selftyoe overriding
+    class_context = []  # type: List[Type]
+
     # Stack of function return types
     return_types = None  # type: List[Type]
     # Type context for type inference
@@ -824,7 +827,7 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = bind_self(self.function_type(defn))
+            typ = bind_self(self.function_type(defn), self.class_context[-1])
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
@@ -837,7 +840,7 @@ class TypeChecker(NodeVisitor[Type]):
                     assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
-                    bind_self(original_type),
+                    bind_self(original_type, self.class_context[-1]),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
@@ -921,7 +924,9 @@ class TypeChecker(NodeVisitor[Type]):
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         with self.binder.frame_context():
+            self.class_context.append(fill_typevars(defn.info))
             self.accept(defn.defs)
+            self.class_context.pop()
         self.binder = old_binder
         if not defn.has_incompatible_baseclass:
             # Otherwise we've already found errors; more errors are not useful

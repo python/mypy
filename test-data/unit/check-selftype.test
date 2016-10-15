@@ -187,14 +187,9 @@ class C(A):
     def copy(self: C) -> C:
         pass
 
--- # TODO:
--- class D(A):
---    def copy(self: A) -> A:  # E: Return type of "copy" incompatible with supertype "A"
---        pass
---
--- class E(A):    
---    def copy(self: A) -> E:  # E: Return type of "copy" incompatible with supertype "A"
---        pass
+class D(A):
+   def copy(self: A) -> A:  # E: Return type of "copy" incompatible with supertype "A"
+       pass
 
 TB = TypeVar('TB', bound='B', covariant=True)
 class B(A):
