@@ -83,8 +83,6 @@ class TypeChecker(NodeVisitor[Type]):
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
     type_map = None  # type: Dict[Expression, Type]
-    # Types of type checked nodes within this specific module
-    module_type_map = None  # type: Dict[Expression, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -130,7 +128,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
         self.type_map = {}
-        self.module_type_map = {}
         self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
         self.return_types = []
@@ -152,7 +149,6 @@ class TypeChecker(NodeVisitor[Type]):
         self.globals = file_node.names
         self.enter_partial_types()
         self.is_typeshed_stub = self.errors.is_typeshed_file(path)
-        self.module_type_map = {}
         self.module_refs = set()
         if self.options.strict_optional_whitelist is None:
             self.suppress_none_errors = not self.options.show_none_errors
@@ -2232,8 +2228,6 @@ class TypeChecker(NodeVisitor[Type]):
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
-        if typ is not None:
-            self.module_type_map[node] = typ
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?

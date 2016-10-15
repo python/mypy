@@ -33,9 +33,11 @@ from mypy.report import Reports
 from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
+from mypy.types import Type
 from mypy.version import __version__
 
 
@@ -62,7 +64,7 @@ class BuildResult:
     def __init__(self, manager: 'BuildManager') -> None:
         self.manager = manager
         self.files = manager.modules
-        self.types = manager.type_checker.type_map
+        self.types = manager.all_types
         self.errors = manager.errors.messages()
 
 
@@ -184,7 +186,7 @@ def build(sources: List[BuildSource],
         manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
                     (time.time() - manager.start_time,
                      len(manager.modules),
-                     len(manager.type_checker.type_map),
+                     len(manager.all_types),
                      manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
         reports.finish()
@@ -322,7 +324,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      type_checker:    Type checker
+      all_types:       Map {Expression: Type} collected from all modules
       errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
@@ -349,7 +351,7 @@ class BuildManager:
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
-        self.type_checker = TypeChecker(self.errors, self.modules)
+        self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
@@ -461,9 +463,9 @@ class BuildManager:
                                'or using the "--silent-imports" flag would help)',
                                severity='note', only_once=True)
 
-    def report_file(self, file: MypyFile) -> None:
+    def report_file(self, file: MypyFile, type_map: Dict[Expression, Type]) -> None:
         if self.source_set.is_source(file):
-            self.reports.file(file, type_map=self.type_checker.type_map)
+            self.reports.file(file, type_map)
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
@@ -1412,18 +1414,24 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            manager.type_checker.visit_file(self.tree, self.xpath, self.options)
+            type_checker = TypeChecker(manager.errors, manager.modules)
+            type_checker.visit_file(self.tree, self.xpath, self.options)
+            manager.all_types.update(type_checker.type_map)
 
             if self.options.incremental:
-                self._patch_indirect_dependencies(manager.type_checker.module_refs)
+                self._patch_indirect_dependencies(type_checker.module_refs,
+                                                  type_checker.type_map)
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
-                                typemap=manager.type_checker.type_map)
-            manager.report_file(self.tree)
+                                typemap=type_checker.type_map)
+            manager.report_file(self.tree, type_checker.type_map)
 
-    def _patch_indirect_dependencies(self, module_refs: Set[str]) -> None:
-        types = self.manager.type_checker.module_type_map.values()
+    def _patch_indirect_dependencies(self,
+                                     module_refs: Set[str],
+                                     type_map: Dict[Expression, Type]) -> None:
+        types = set(type_map.values())
+        types.discard(None)
         valid = self.valid_references()
 
         encountered = self.manager.indirection_detector.find_modules(types) | module_refs
