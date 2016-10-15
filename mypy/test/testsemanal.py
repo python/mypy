@@ -79,7 +79,7 @@ def test_semanal(testcase):
             # TODO the test is not reliable
             if (not f.path.endswith((os.sep + 'builtins.pyi',
                                      'typing.pyi',
-                                     'typing.py',
+                                     'mypy_extensions.pyi',
                                      'abc.pyi',
                                      'collections.pyi'))
                     and not os.path.basename(f.path).startswith('_')

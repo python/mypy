@@ -1809,7 +1809,7 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         callee = call.callee
         fullname = callee.fullname
-        if fullname != 'mypy.typing.TypedDict':
+        if fullname != 'mypy_extensions.TypedDict':
             return None
         items, types, ok = self.parse_typeddict_args(call, fullname)
         if not ok:
