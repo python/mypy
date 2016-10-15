@@ -70,7 +70,7 @@ def analyze_member_access(name: str,
                 # the first argument.
                 pass
             else:
-                signature = bind_self(signature, report_type or typ)
+                signature = bind_self(signature, report_type)
             typ = map_instance_to_supertype(typ, method.info)
             return expand_type_by_instance(signature, typ)
         else:
@@ -183,6 +183,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     This is logically part of analyze_member_access and the arguments are
     similar.
     """
+    report_type = report_type or itype
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
 
@@ -199,7 +200,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             method = info.get_method('__getattr__')
             if method:
                 function = function_type(method, builtin_type('builtins.function'))
-                bound_method = bind_self(function, report_type or itype)
+                bound_method = bind_self(function, report_type)
                 typ = map_instance_to_supertype(itype, method.info)
                 getattr_type = expand_type_by_instance(bound_method, typ)
                 if isinstance(getattr_type, CallableType):
@@ -215,7 +216,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     else:
         if chk and chk.should_suppress_optional_error([itype]):
             return AnyType()
-        return msg.has_no_attr(report_type or itype, name, node)
+        return msg.has_no_attr(report_type, name, node)
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
@@ -226,6 +227,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
 
     This is conceptually part of analyze_member_access and the arguments are similar.
     """
+    report_type = report_type or itype
     # Found a member variable.
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
@@ -250,7 +252,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 # class.
                 functype = t
                 check_method_type(functype, itype, var.is_classmethod, node, msg)
-                signature = bind_self(functype, report_type or itype)
+                signature = bind_self(functype, report_type)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
@@ -507,41 +509,41 @@ def bind_self(f: F, actual_self: Type = None) -> F:
     if isinstance(f, Overloaded):
         return cast(F, Overloaded([bind_self(c, f) for c in f.items()]))
     assert isinstance(f, CallableType)
-    t = f
-    if not t.arg_types:
+    func = f
+    if not func.arg_types:
         # invalid method. return something
-        return cast(F, t)
-    if t.arg_kinds[0] == ARG_STAR:
+        return cast(F, func)
+    if func.arg_kinds[0] == ARG_STAR:
         # The signature is of the form 'def foo(*args, ...)'.
-        # In this case we shouldn't drop the first arg,
-        # since t will be absorbed by the *args.
+        # In this case we shouldn'func drop the first arg,
+        # since func will be absorbed by the *args.
 
         # TODO: infer bounds on the type of *args?
-        return cast(F, t)
-    self_param_type = t.arg_types[0]
-    if t.variables and (isinstance(self_param_type, TypeVarType) or
+        return cast(F, func)
+    self_param_type = func.arg_types[0]
+    if func.variables and (isinstance(self_param_type, TypeVarType) or
             (isinstance(self_param_type, TypeType) and
              isinstance(self_param_type.item, TypeVarType))):
         if actual_self is None:
             # XXX value restriction as union?
             actual_self = erase_to_bound(self_param_type)
 
-        typearg = infer_type_arguments([x.id for x in t.variables],
+        typearg = infer_type_arguments([x.id for x in func.variables],
                                        self_param_type, actual_self)[0]
 
         def expand(target: Type) -> Type:
-            return expand_type(target, {t.variables[0].id: typearg}, False)
+            return expand_type(target, {func.variables[0].id: typearg}, False)
 
-        arg_types = [expand(x) for x in t.arg_types[1:]]
-        ret_type = expand(t.ret_type)
-        variables = t.variables[1:]
+        arg_types = [expand(x) for x in func.arg_types[1:]]
+        ret_type = expand(func.ret_type)
+        variables = func.variables[1:]
     else:
-        arg_types = t.arg_types[1:]
-        ret_type = t.ret_type
-        variables = t.variables
-    res = t.copy_modified(arg_types=arg_types,
-                          arg_kinds=t.arg_kinds[1:],
-                          arg_names=t.arg_names[1:],
+        arg_types = func.arg_types[1:]
+        ret_type = func.ret_type
+        variables = func.variables
+    res = func.copy_modified(arg_types=arg_types,
+                          arg_kinds=func.arg_kinds[1:],
+                          arg_names=func.arg_names[1:],
                           variables=variables,
                           ret_type=ret_type)
     return cast(F, res)

@@ -333,8 +333,6 @@ class SemanticAnalyzer(NodeVisitor):
                         leading_type = fill_typevars(self.type)
                     sig = cast(FunctionLike, func.type)
                     func.type = replace_implicit_first_type(sig, leading_type)
-                elif isinstance(self_type, UnboundType):
-                    self_type.enclosing_type = fill_typevars(self.type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?

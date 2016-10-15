@@ -183,7 +183,7 @@ class A:
     def copy(self: TA) -> TA:
         pass
 
-class C(A):    
+class C(A):
     def copy(self: C) -> C:
         pass
 
