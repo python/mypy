@@ -1414,8 +1414,10 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            type_checker = TypeChecker(manager.errors, manager.modules)
-            type_checker.visit_file(self.tree, self.xpath, self.options)
+            type_checker = TypeChecker(manager.errors, manager.modules, self.options,
+                                       self.tree, self.xpath)
+            type_checker.check_first_pass()
+            type_checker.check_second_pass()
             manager.all_types.update(type_checker.type_map)
 
             if self.options.incremental:
