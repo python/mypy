@@ -545,51 +545,10 @@ class SemanticAnalyzer(NodeVisitor):
         elif len(sig.arg_types) > len(fdef.arguments):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
-    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
-        NAMEDTUP_CLASS_ERROR = 'Invalid statement in NamedTuple definition; ' \
-                               'expected "field_name: field_type"'
-        if self.options.python_version < (3, 6):
-            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
-            return [], []
-        if len(defn.base_type_exprs) > 1:
-            self.fail('NamedTuple should be a single base', defn)
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        for stmt in defn.defs.body:
-            if isinstance(stmt, AssignmentStmt):
-                if len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
-                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
-                    continue
-                name = stmt.lvalues[0].name
-                if not isinstance(stmt.rvalue, TempNode):
-                    # x: int assigns rvalue to TempNode(AnyType())
-                    self.fail('NamedTuple does not support initial values', stmt)
-                if stmt.type is None:
-                    self.fail('NamedTuple field type must be specified', stmt)
-                    types.append(AnyType())
-                else:
-                    types.append(self.anal_type(stmt.type))
-                if name.startswith('_'):
-                    self.fail('NamedTuple field name cannot start with an underscore: {}'
-                              .format(name), stmt)
-                items.append(name)
-            else:
-                if (not isinstance(stmt, PassStmt) and
-                    not (isinstance(stmt, ExpressionStmt) and
-                         isinstance(stmt.expr, EllipsisExpr))):
-                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
-        return items, types
-
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> None:
-        node = self.lookup(defn.name, defn)
-        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-        items, types = self.check_namedtuple_classdef(defn)
-        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
-
     def visit_class_def(self, defn: ClassDef) -> None:
         # special case for NamedTuple
         for base_expr in defn.base_type_exprs:
-            if isinstance(base_expr, NameExpr):
+            if isinstance(base_expr, RefExpr):
                 sym = self.lookup_qualified(base_expr.name, base_expr)
                 if sym is None or sym.node is None:
                     continue
@@ -773,6 +732,45 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is not None and sym.kind == UNBOUND_TVAR:
             return unbound.name, cast(TypeVarExpr, sym.node)
         return None
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> None:
+        node = self.lookup(defn.name, defn)
+        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+        items, types = self.check_namedtuple_classdef(defn)
+        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+
+    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                               'expected "field_name: field_type"')
+        if self.options.python_version < (3, 6):
+            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
+            return [], []
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if not isinstance(stmt, AssignmentStmt):
+                # Still allow pass or ... (for empty namedtuples).
+                if (not isinstance(stmt, PassStmt) and
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                # An assignment, but an invalid one.
+                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            else:
+                # Always append name and type in this case...
+                name = stmt.lvalues[0].name
+                items.append(name)
+                types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
+                # ...despite possible minor failures that allow further analyzis.
+                if name.startswith('_'):
+                    self.fail('NamedTuple field name cannot start with an underscore: {}'
+                              .format(name), stmt)
+                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+        return items, types
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
