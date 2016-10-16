@@ -1,5 +1,16 @@
 -- Type checker test cases dealing with modules and imports.
 
+[case testAccessPackageWithoutInitFile]
+import typing
+import m.n
+from m.o.p import s
+m.n.x
+m.o.p.s("test")
+[file m/n.py]
+x = 1
+[file m/o/p.py]
+def s(a: str) -> None: pass
+
 [case testAccessImportedDefinitions]
 import m
 import typing
