@@ -351,7 +351,7 @@ import typing
 
 class X(typing.NamedTuple):
     x: int
-    y: str = 'y'
+    y: str = 'y'  # E: Right hand side values are not supported in NamedTuple
     z = None  # type: int # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
     x[0]: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
 

@@ -546,16 +546,9 @@ class SemanticAnalyzer(NodeVisitor):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
-        # special case for NamedTuple
-        for base_expr in defn.base_type_exprs:
-            if isinstance(base_expr, RefExpr):
-                sym = self.lookup_qualified(base_expr.name, base_expr)
-                if sym is None or sym.node is None:
-                    continue
-                if sym.node.fullname() == 'typing.NamedTuple':
-                    self.analyze_namedtuple_classdef(defn)
-                    return
         self.clean_up_bases_and_infer_type_variables(defn)
+        if self.analyze_namedtuple_classdef(defn):
+            return
         self.setup_class_def_analysis(defn)
 
         self.bind_class_type_vars(defn)
@@ -733,11 +726,19 @@ class SemanticAnalyzer(NodeVisitor):
             return unbound.name, cast(TypeVarExpr, sym.node)
         return None
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> None:
-        node = self.lookup(defn.name, defn)
-        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-        items, types = self.check_namedtuple_classdef(defn)
-        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        # special case for NamedTuple
+        for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, RefExpr):
+                base_expr.accept(self)
+                if base_expr.fullname == 'typing.NamedTuple':
+                    node = self.lookup(defn.name, defn)
+                    if node is not None:
+                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                        items, types = self.check_namedtuple_classdef(defn)
+                        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+                        return True
+        return False
 
     def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
         NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
@@ -760,7 +761,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # An assignment, but an invalid one.
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             else:
-                # Always append name and type in this case...
+                # Append name and type in this case...
                 name = stmt.lvalues[0].name
                 items.append(name)
                 types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
@@ -770,6 +771,9 @@ class SemanticAnalyzer(NodeVisitor):
                               .format(name), stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                elif not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('Right hand side values are not supported in NamedTuple', stmt)
         return items, types
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
