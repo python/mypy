@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance, function_type,
+    true_only, false_only, is_named_instance, function_type, FunctionLike,
     get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
@@ -30,13 +30,14 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
+from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
-from mypy.checkmember import analyze_member_access, type_object_type
+from mypy.checkmember import analyze_member_access, type_object_type, bind_self
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.util import split_module_names
 from mypy.semanal import fill_typevars
 
@@ -983,10 +984,68 @@ class ExpressionChecker:
         else:
             # This is a reference to a non-module attribute.
             original_type = self.accept(e.expr)
-            return analyze_member_access(e.name, original_type, e,
-                                         is_lvalue, False, False,
-                                         self.named_type, self.not_ready_callback, self.msg,
-                                         original_type=original_type, chk=self.chk)
+            member_type = analyze_member_access(
+                e.name, original_type, e, is_lvalue, False, False,
+                self.named_type, self.not_ready_callback, self.msg,
+                original_type=original_type, chk=self.chk)
+            if is_lvalue:
+                return member_type
+            else:
+                return self.analyze_descriptor_access(original_type, member_type, e)
+
+    def analyze_descriptor_access(self, instance_type: Type, descriptor_type: Type,
+                                  context: Context) -> Type:
+        """Type check descriptor access.
+
+        Arguments:
+            instance_type: The type of the instance on which the descriptor
+                attribute is being accessed (the type of ``a`` in ``a.f`` when
+                ``f`` is a descriptor).
+            descriptor_type: The type of the descriptor attribute being accessed
+                (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
+            contetx: The node defining the context of this inference.
+        Return:
+            The return type of the appropriate ``__get__`` overload for the descriptor.
+        """
+        if not isinstance(descriptor_type, Instance):
+            return descriptor_type
+
+        if not descriptor_type.type.has_readable_member('__get__'):
+            return descriptor_type
+
+        dunder_get = descriptor_type.type.get_method('__get__')
+
+        if dunder_get is None:
+            self.msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
+            return AnyType()
+
+        function = function_type(dunder_get, self.named_type('builtins.function'))
+        bound_method = bind_self(function, descriptor_type)
+        typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
+        dunder_get_type = expand_type_by_instance(bound_method, typ)
+
+        if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
+            instance_type = instance_type.items()[0].ret_type
+            owner_type = NoneTyp()
+        elif isinstance(instance_type, TypeType):
+            instance_type = instance_type.item
+            owner_type = NoneTyp()
+        else:
+            owner_type = instance_type
+
+        _, inferred_dunder_get_type = self.check_call(
+            dunder_get_type, [TempNode(owner_type), TempNode(TypeType(instance_type))],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
+
+        if isinstance(inferred_dunder_get_type, AnyType):
+            # check_call failed, and will have reported an error
+            return inferred_dunder_get_type
+
+        if not isinstance(inferred_dunder_get_type, CallableType):
+            self.msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
+            return AnyType()
+
+        return inferred_dunder_get_type.ret_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
