@@ -137,7 +137,7 @@ N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first
 
 [case testNamedTupleWithInvalidItems]
 from collections import namedtuple
-N = namedtuple('N', 1) # E: List or Tuple literal expected as the second argument to namedtuple()
+N = namedtuple('N', 1) # E: List or tuple literal expected as the second argument to namedtuple()
 
 [case testNamedTupleWithInvalidItems2]
 from collections import namedtuple
