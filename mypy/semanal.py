@@ -1634,14 +1634,14 @@ class SemanticAnalyzer(NodeVisitor):
                 "namedtuple() expects a string literal as the first argument", call)
         types = []  # type: List[Type]
         ok = True
-        if not isinstance(args[1], ListExpr):
+        if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
                 str_expr = cast(StrExpr, args[1])
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 return self.fail_namedtuple_arg(
-                    "List literal expected as the second argument to namedtuple()", call)
+                    "List or tuple literal expected as the second argument to namedtuple()", call)
         else:
             listexpr = args[1]
             if fullname == 'collections.namedtuple':
