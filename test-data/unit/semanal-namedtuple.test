@@ -75,6 +75,17 @@ MypyFile:1(
     NameExpr(N* [__main__.N])
     NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
 
+[case testNamedTupleWithTupleFieldNamesWithItemTypes]
+from typing import NamedTuple
+N = NamedTuple('N', (('a', int),
+                     ('b', str)))
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
+
 [case testNamedTupleBaseClass]
 from collections import namedtuple
 N = namedtuple('N', ['x'])
