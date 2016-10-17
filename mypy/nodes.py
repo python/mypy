@@ -157,10 +157,8 @@ class SymbolNode(Node):
     @abstractmethod
     def fullname(self) -> str: pass
 
-    # NOTE: Can't use @abstractmethod, since many subclasses of Node
-    # don't implement serialize().
-    def serialize(self) -> JsonDict:
-        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+    @abstractmethod
+    def serialize(self) -> JsonDict: pass
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
@@ -302,7 +300,7 @@ class ImportAll(ImportBase):
         return visitor.visit_import_all(self)
 
 
-class FuncBase(SymbolNode):
+class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 
     # Type signature. This is usually CallableType or Overloaded, but it can be something else for
@@ -323,7 +321,7 @@ class FuncBase(SymbolNode):
         return bool(self.info)
 
 
-class OverloadedFuncDef(FuncBase, Statement):
+class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """A logical node representing all the variants of an overloaded function.
 
     This node has no explicit representation in the source program.
@@ -478,7 +476,7 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-class FuncDef(FuncItem, Statement):
+class FuncDef(FuncItem, SymbolNode, Statement):
     """Function definition.
 
     This is a non-lambda function defined using 'def'.

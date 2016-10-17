@@ -2492,7 +2492,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
             v._fullname = self.qualified_name(v.name())
 
-    def add_local(self, node: Union[Var, FuncBase], ctx: Context) -> None:
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         name = node.name()
         if name in self.locals[-1]:
             self.name_already_defined(name, ctx)
