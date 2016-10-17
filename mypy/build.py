@@ -51,6 +51,7 @@ PYTHON_EXTENSIONS = ['.pyi', '.py']
 Graph = Dict[str, 'State']
 
 
+# TODO: Get rid of BuildResult.  We might as well return a BuildManager.
 class BuildResult:
     """The result of a successful build.
 
@@ -309,6 +310,8 @@ PRI_INDIRECT = 30  # an indirect dependency
 PRI_ALL = 99  # include all priorities
 
 
+# TODO: Get rid of all_types.  It's not used except for one log message.
+#       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
