@@ -1420,6 +1420,8 @@ class State:
 
     def type_check_second_pass(self) -> None:
         manager = self.manager
+        if self.options.semantic_analysis_only:
+            return
         with self.wrap_context():
             self.type_checker.check_second_pass()
             manager.all_types.update(self.type_checker.type_map)
