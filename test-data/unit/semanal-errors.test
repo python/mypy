@@ -351,17 +351,6 @@ tmp/m/n.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/k.py:2: error: Name 'y' is not defined
 
-[case testPackageWithoutInitFile]
-import typing
-import m.n
-m.n.x
-[file m/n.py]
-x = 1
-[out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
-main:2: error: Cannot find module named 'm.n'
-
 [case testBreakOutsideLoop]
 break
 def f():

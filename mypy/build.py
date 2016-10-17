@@ -589,6 +589,7 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> str:
         sepinit = os.sep + '__init__'
         for base_dir in candidate_base_dirs:
             base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
@@ -599,6 +600,9 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> str:
                 path = base_path + extension
                 if is_file(path) and verify_module(id, path):
                     return path
+
+            if os.path.isdir(base_path):
+                return base_path
         return None
 
     key = (id, lib_path)
@@ -640,7 +644,17 @@ def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource
 
 
 def verify_module(id: str, path: str) -> bool:
-    """Check that all packages containing id have a __init__ file."""
+    """
+    Verify that the module at `id` is in `path`.
+
+    If `id` is referenced by the file at `path`,
+    or if the path directory contains an __init__
+    file, return True.
+    """
+    explicit_module_filename = "{}.py".format("/".join(id.split('.')))
+
+    if path.endswith(explicit_module_filename):
+        return True
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)
     for i in range(id.count('.')):
@@ -1132,6 +1146,7 @@ class State:
                         manager.missing_modules.add(id)
                         raise ModuleNotFound
             else:
+
                 # Could not find a module.  Typically the reason is a
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
@@ -1328,17 +1343,19 @@ class State:
             source = self.source
             self.source = None  # We won't need it again.
             if self.path and source is None:
-                try:
-                    path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = read_with_python_encoding(path, self.options.python_version)
-                except IOError as ioerr:
-                    raise CompileError([
-                        "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
-                except (UnicodeDecodeError, DecodeError) as decodeerr:
-                    raise CompileError([
-                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
+                if os.path.isdir(self.path):
+                    source = ""
+                else:
+                    try:
+                        path = manager.maybe_swap_for_shadow_path(self.path)
+                        source = read_with_python_encoding(path, self.options.python_version)
+                    except IOError as ioerr:
+                        raise CompileError([
+                            "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
+                    except (UnicodeDecodeError, DecodeError) as decodeerr:
+                        raise CompileError([
+                            "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
             self.tree = manager.parse_file(self.id, self.xpath, source)
-
         modules[self.id] = self.tree
 
         # Do the first pass of semantic analysis: add top-level
