@@ -1186,6 +1186,33 @@ reveal_type(x)
 main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:2: error: Revealed type is 'builtins.str'
 
+[case testSymmetricImportCycle1]
+import a
+[file a.py]
+import b
+def f() -> int:
+    return b.x
+y = 0 + 0
+[file b.py]
+import a
+def g() -> int:
+    return a.y
+x = 1 + 1
+
+[case testSymmetricImportCycle2]
+import b
+[file a.py]
+import b
+def f() -> int:
+    return b.x
+y = 0 + 0
+[file b.py]
+import a
+def g() -> int:
+    return a.y
+x = 1 + 1
+
+
 -- Scripts and __main__
 
 [case testScriptsAreModules]
@@ -1202,3 +1229,4 @@ pass
 [file b]
 pass
 [out]
+
