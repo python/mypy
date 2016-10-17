@@ -31,7 +31,7 @@ Global flags
 ************
 
 The following global flags may only be set in the global section
-(``[mypy]``). 
+(``[mypy]``).
 
 - ``python_version`` (string) specifies the Python version used to
   parse and check the target program.  The format is ``DIGIT.DIGIT``
@@ -89,6 +89,9 @@ The following global flags may only be set in the global section
 
 - ``hide_error_context`` (Boolean, default False) hides
   context notes before errors.
+
+- ``show_column_numbers`` (Boolean, default False) show column numbers in
+  error messages.
 
 
 Per-file flags
