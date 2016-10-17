@@ -1409,25 +1409,29 @@ class State:
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
 
-    def type_check(self) -> None:
+    def type_check_first_pass(self) -> None:
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                       self.tree, self.xpath)
-            type_checker.check_first_pass()
-            type_checker.check_second_pass()
-            manager.all_types.update(type_checker.type_map)
+            self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
+                                            self.tree, self.xpath)
+            self.type_checker.check_first_pass()
+
+    def type_check_second_pass(self) -> None:
+        manager = self.manager
+        with self.wrap_context():
+            self.type_checker.check_second_pass()
+            manager.all_types.update(self.type_checker.type_map)
 
             if self.options.incremental:
-                self._patch_indirect_dependencies(type_checker.module_refs,
-                                                  type_checker.type_map)
+                self._patch_indirect_dependencies(self.type_checker.module_refs,
+                                                  self.type_checker.type_map)
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
-                                typemap=type_checker.type_map)
-            manager.report_file(self.tree, type_checker.type_map)
+                                typemap=self.type_checker.type_map)
+            manager.report_file(self.tree, self.type_checker.type_map)
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
@@ -1736,7 +1740,10 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     for id in scc:
         graph[id].semantic_analysis_pass_three()
     for id in scc:
-        graph[id].type_check()
+        graph[id].type_check_first_pass()
+    for id in scc:
+        graph[id].type_check_second_pass()
+    for id in scc:
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
