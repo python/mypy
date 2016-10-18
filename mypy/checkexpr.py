@@ -460,10 +460,13 @@ class ExpressionChecker:
                 # See also github issues #462 and #360.
                 ret_type = NoneTyp()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
-        # Only substitute non-None and non-erased types.
+        # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Type]
         for arg in args:
-            if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
+            if isinstance(arg, UninhabitedType) or has_erased_component(arg):
+                new_args.append(None)
+            elif not experiments.STRICT_OPTIONAL and isinstance(arg, NoneTyp):
+                # Don't substitute None types in non-strict-Optional mode.
                 new_args.append(None)
             else:
                 new_args.append(arg)
@@ -1188,22 +1191,15 @@ class ExpressionChecker:
         assert e.op in ('and', 'or')  # Checked by visit_op_expr
 
         if e.op == 'and':
-            right_map, left_map = \
-                mypy.checker.find_isinstance_check(e.left, self.chk.type_map)
+            right_map, left_map = self.chk.find_isinstance_check(e.left)
             restricted_left_type = false_only(left_type)
             result_is_left = not left_type.can_be_true
         elif e.op == 'or':
-            left_map, right_map = \
-                mypy.checker.find_isinstance_check(e.left, self.chk.type_map)
+            left_map, right_map = self.chk.find_isinstance_check(e.left)
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
-        with self.chk.binder.frame_context():
-            if right_map:
-                for var, type in right_map.items():
-                    self.chk.binder.push(var, type)
-
-            right_type = self.accept(e.right, left_type)
+        right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
         self.check_usable_type(left_type, context)
         self.check_usable_type(right_type, context)
@@ -1642,7 +1638,7 @@ class ExpressionChecker:
                                          type_name: str,
                                          id_for_messages: str) -> Type:
         """Type check a generator expression or a list comprehension."""
-        with self.chk.binder.frame_context():
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(gen)
 
             # Infer the type of the list comprehension by using a synthetic generic
@@ -1662,7 +1658,7 @@ class ExpressionChecker:
 
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
-        with self.chk.binder.frame_context():
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(e)
 
             # Infer the type of the list comprehension by using a synthetic generic
@@ -1709,7 +1705,7 @@ class ExpressionChecker:
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
-        if_map, else_map = mypy.checker.find_isinstance_check(e.cond, self.chk.type_map)
+        if_map, else_map = self.chk.find_isinstance_check(e.cond)
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
@@ -1736,10 +1732,13 @@ class ExpressionChecker:
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type]) -> Type:
-        with self.chk.binder.frame_context():
-            if map:
-                for var, type in map.items():
-                    self.chk.binder.push(var, type)
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+            if map is None:
+                # We still need to type check node, in case we want to
+                # process it for isinstance checks later
+                self.accept(node, context=context)
+                return UninhabitedType()
+            self.chk.push_type_map(map)
             return self.accept(node, context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:

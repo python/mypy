@@ -9,6 +9,17 @@ a = x[1]
 a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 
+[case testNamedTupleWithTupleFieldNamesUsedAsTuple]
+from collections import namedtuple
+
+X = namedtuple('X', ('x', 'y'))
+x = None  # type: X
+a, b = x
+b = x[0]
+a = x[1]
+a, b, c = x # E: Need more than 2 values to unpack (3 expected)
+x[2] # E: Tuple index out of range
+
 [case testNamedTupleNoUnderscoreFields]
 from collections import namedtuple
 
@@ -73,6 +84,19 @@ a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
 from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
+n = N(1, 'x')
+s = n.a # type: str  # E: Incompatible types in assignment (expression has type "int", \
+                          variable has type "str")
+i = n.b # type: int  # E: Incompatible types in assignment (expression has type "str", \
+                          variable has type "int")
+x, y = n
+x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
+[case testNamedTupleWithTupleFieldNamesWithItemTypes]
+from typing import NamedTuple
+N = NamedTuple('N', (('a', int),
+                     ('b', str)))
 n = N(1, 'x')
 s = n.a # type: str  # E: Incompatible types in assignment (expression has type "int", \
                           variable has type "str")

@@ -397,6 +397,11 @@ string-literal types with non-string-literal types freely:
 
 String literal types are never needed in ``# type:`` comments.
 
+String literal types must be defined (or imported) later *in the same
+module*.  They cannot be used to leave cross-module references
+unresolved.  (For dealing with import cycles, see
+:ref:`import-cycles`.)
+
 .. _type-aliases:
 
 Type aliases
