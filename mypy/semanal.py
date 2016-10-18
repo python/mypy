@@ -1634,14 +1634,14 @@ class SemanticAnalyzer(NodeVisitor):
                 "namedtuple() expects a string literal as the first argument", call)
         types = []  # type: List[Type]
         ok = True
-        if not isinstance(args[1], ListExpr):
+        if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
                 str_expr = cast(StrExpr, args[1])
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 return self.fail_namedtuple_arg(
-                    "List literal expected as the second argument to namedtuple()", call)
+                    "List or tuple literal expected as the second argument to namedtuple()", call)
         else:
             listexpr = args[1]
             if fullname == 'collections.namedtuple':
@@ -2497,7 +2497,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
             v._fullname = self.qualified_name(v.name())
 
-    def add_local(self, node: Union[Var, FuncBase], ctx: Context) -> None:
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         name = node.name()
         if name in self.locals[-1]:
             self.name_already_defined(name, ctx)
