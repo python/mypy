@@ -2360,7 +2360,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
-                self.binder.push(expr, type)
+                self.binder.put_if_bindable(expr, type)
 
 
 # Data structure returned by find_isinstance_check representing
