@@ -365,7 +365,7 @@ class Argument(Node):
 
     variable = None  # type: Var
     type_annotation = None  # type: Optional[mypy.types.Type]
-    initializater = None  # type: Optional[Expression]
+    initializer = None  # type: Optional[Expression]
     kind = None  # type: int
     initialization_statement = None  # type: Optional[AssignmentStmt]
 
@@ -405,24 +405,6 @@ class Argument(Node):
         if self.initialization_statement:
             self.initialization_statement.set_line(self.line, self.column)
             self.initialization_statement.lvalues[0].set_line(self.line, self.column)
-
-    def serialize(self) -> JsonDict:
-        # Note: we are deliberately not saving the type annotation since
-        # it is not used by later stages of mypy.
-        data = {'.class': 'Argument',
-                'kind': self.kind,
-                'variable': self.variable.serialize(),
-                }  # type: JsonDict
-        # TODO: initializer?
-        return data
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Argument':
-        assert data['.class'] == 'Argument'
-        return Argument(Var.deserialize(data['variable']),
-                        None,
-                        None,  # TODO: initializer?
-                        kind=data['kind'])
 
 
 class FuncItem(FuncBase):
