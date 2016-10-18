@@ -343,7 +343,8 @@ class SemanticAnalyzer(NodeVisitor):
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-        if isinstance(defn.type, CallableType):
+        if defn.type:
+            assert isinstance(defn.type, CallableType)
             typevars = self.infer_type_variables(defn.type)
             # Do not define a new type variable if already defined in scope.
             typevars = [(name, tvar) for name, tvar in typevars
@@ -355,8 +356,6 @@ class SemanticAnalyzer(NodeVisitor):
                                    tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
                 defn.type.variables = defs
-        else:
-            assert not isinstance(defn.type, Overloaded)
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
@@ -370,8 +369,7 @@ class SemanticAnalyzer(NodeVisitor):
                     tvars.append(tvar_expr)
         return list(zip(names, tvars))
 
-    def find_type_variables_in_type(
-            self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
+    def find_type_variables_in_type(self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
         """Return a list of all unique type variable references in type.
 
         This effectively does partial name binding, results of which are mostly thrown away.
@@ -382,7 +380,7 @@ class SemanticAnalyzer(NodeVisitor):
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
                 assert isinstance(node.node, TypeVarExpr)
-                result.append((name, cast(TypeVarExpr, node.node)))
+                result.append((name, node.node))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
@@ -2353,7 +2351,7 @@ class SemanticAnalyzer(NodeVisitor):
         b = self.globals.get('__builtins__', None)
         if b:
             assert isinstance(b.node, MypyFile)
-            table = cast(MypyFile, b.node).names
+            table = b.node.names
             if name in table:
                 if name[0] == "_" and name[1] != "_":
                     self.name_not_defined(name, ctx)

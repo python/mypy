@@ -250,7 +250,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                     # A property cannot have an overloaded type => the cast
                     # is fine.
                     assert isinstance(signature, CallableType)
-                    return cast(CallableType, signature).ret_type
+                    return signature.ret_type
                 else:
                     return signature
         return t
