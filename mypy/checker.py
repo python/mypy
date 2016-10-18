@@ -610,6 +610,10 @@ class TypeChecker(NodeVisitor[Type]):
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
+                # To be used for super in visit_super in checkexpr
+                # (We don't care when it's not a method)
+                if item.arguments:
+                    self.binder.push(NameExpr('__SelfType'), item.arguments[0].variable.type)
                 self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
@@ -950,6 +954,7 @@ class TypeChecker(NodeVisitor[Type]):
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         with self.binder.top_frame_context():
+            self.class_context.append(fill_typevars(defn.info))
             self.accept(defn.defs)
             self.class_context.pop()
         self.binder = old_binder
