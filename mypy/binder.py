@@ -123,7 +123,7 @@ class ConditionalTypeBinder:
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
-    def get(self, expr: Union[Expression, Var]) -> Type:
+    def get(self, expr: Expression) -> Type:
         return self._get(expr.literal_hash)
 
     def is_unreachable(self) -> bool:

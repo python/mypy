@@ -140,7 +140,7 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
     literal = LITERAL_NO
-    literal_hash = None  # type: object
+    literal_hash = None  # type: Key
 
 
 # TODO:
