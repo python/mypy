@@ -2070,3 +2070,8 @@ class A: pass
 class B(object, A): # E: Cannot determine consistent method resolution order (MRO) for "B"
     def readlines(self): pass
     __iter__ = readlines
+
+[case testDynamicMetaclass]
+# flags: --fast-parser
+class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+    pass
