@@ -3,24 +3,25 @@ from typing import List, Dict
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
-from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, Void
+from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, Optional
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
 
 def apply_generic_arguments(callable: CallableType, types: List[Type],
-                            msg: MessageBuilder, context: Context) -> Type:
+                            msg: MessageBuilder, context: Context) -> Optional[CallableType]:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
     'def (int) -> int'.
 
     Note that each type can be None; in this case, it will not be applied.
+    Can only be None when len(tvars) != len(types)
     """
     tvars = callable.variables
     if len(tvars) != len(types):
         msg.incompatible_type_application(len(tvars), len(types), context)
-        return AnyType()
+        return None
 
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.

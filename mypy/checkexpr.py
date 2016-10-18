@@ -470,9 +470,7 @@ class ExpressionChecker:
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        res = self.apply_generic_arguments(callable, new_args, error_context)
-        assert isinstance(res, CallableType)
-        return cast(CallableType, res)
+        return self.apply_generic_arguments(callable, new_args, error_context)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -562,10 +560,7 @@ class ExpressionChecker:
         for i, arg in enumerate(inferred_args):
             if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
-
-        t = self.apply_generic_arguments(callee_type, inferred_args, context)
-        assert isinstance(t, CallableType)
-        callee_type = t
+        callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
         arg_types = self.infer_arg_types_in_context2(
             callee_type, args, arg_kinds, formal_to_actual)
@@ -612,9 +607,7 @@ class ExpressionChecker:
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
         # arguments.
-        res = self.apply_generic_arguments(callee_type, inferred_args, context)
-        assert isinstance(res, CallableType)
-        return cast(CallableType, res)
+        return self.apply_generic_arguments(callee_type, inferred_args, context)
 
     def check_argument_count(self, callee: CallableType, actual_types: List[Type],
                              actual_kinds: List[int], actual_names: List[str],
@@ -884,21 +877,13 @@ class ExpressionChecker:
         return ok
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],
-                                context: Context) -> Type:
-        """Simple wrapper around mypy.applytype.apply_generic_arguments."""
-        return applytype.apply_generic_arguments(callable, types, self.msg, context)
-
-    def apply_generic_arguments2(self, overload: Overloaded, types: List[Type],
-                                 context: Context) -> Type:
-        items = []  # type: List[CallableType]
-        for item in overload.items():
-            applied = self.apply_generic_arguments(item, types, context)
-            if isinstance(applied, CallableType):
-                items.append(applied)
-            else:
-                # There was an error.
-                return AnyType()
-        return Overloaded(items)
+                                context: Context) -> CallableType:
+        """Simple wrapper around mypy.applytype.apply_generic_arguments,
+        with the assumption that things cannot go wrong, since the arguments are inferred."""
+        assert len(callable.variables) == len(types)
+        res = applytype.apply_generic_arguments(callable, types, self.msg, context)
+        assert res is not None
+        return res
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""

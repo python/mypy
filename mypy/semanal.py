@@ -407,8 +407,9 @@ class SemanticAnalyzer(NodeVisitor):
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
-            t.append(cast(CallableType, function_type(item.func,
-                                                  self.builtin_type('builtins.function'))))
+            callable = function_type(item.func, self.builtin_type('builtins.function'))
+            assert isinstance(callable, CallableType)
+            t.append(callable)
             if item.func.is_property and i == 0:
                 # This defines a property, probably with a setter and/or deleter.
                 self.analyze_property_with_multi_part_definition(defn)
@@ -506,9 +507,9 @@ class SemanticAnalyzer(NodeVisitor):
         nodes = []  # type: List[SymbolTableNode]
         if defn.type:
             tt = defn.type
-            names = self.type_var_names()
             assert isinstance(tt, CallableType)
-            items = cast(CallableType, tt).variables
+            items = tt.variables
+            names = self.type_var_names()
             for item in items:
                 name = item.name
                 if name in names:
@@ -532,8 +533,8 @@ class SemanticAnalyzer(NodeVisitor):
         return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
-        assert isinstance(fdef.type, CallableType)
-        sig = cast(CallableType, fdef.type)
+        sig = fdef.type
+        assert isinstance(sig, CallableType)
         if len(sig.arg_types) < len(fdef.arguments):
             self.fail('Type signature has too few arguments', fdef)
             # Add dummy Any arguments to prevent crashes later.
@@ -719,7 +720,7 @@ class SemanticAnalyzer(NodeVisitor):
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
             assert isinstance(sym.node, TypeVarExpr)
-            return unbound.name, cast(TypeVarExpr, sym.node)
+            return unbound.name, sym.node
         return None
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
@@ -864,14 +865,14 @@ class SemanticAnalyzer(NodeVisitor):
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
         assert isinstance(sym.node, TypeInfo)
-        return Instance(cast(TypeInfo, sym.node), args or [])
+        return Instance(sym.node, args or [])
 
     def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
         assert isinstance(sym.node, TypeInfo)
-        return Instance(cast(TypeInfo, sym.node), args or [])
+        return Instance(sym.node, args or [])
 
     def is_instance_type(self, t: Type) -> bool:
         return isinstance(t, Instance)
@@ -1439,8 +1440,8 @@ class SemanticAnalyzer(NodeVisitor):
         if not call:
             return
 
-        assert isinstance(s.lvalues[0], NameExpr)
-        lvalue = cast(NameExpr, s.lvalues[0])
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
         name = lvalue.name
         if not lvalue.is_def:
             if s.type:
@@ -2144,8 +2145,8 @@ class SemanticAnalyzer(NodeVisitor):
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
-            assert isinstance(base.node, MypyFile)
-            file = cast(MypyFile, base.node)
+            file = base.node
+            assert isinstance(file, MypyFile)
             n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
@@ -2407,8 +2408,7 @@ class SemanticAnalyzer(NodeVisitor):
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         node = self.lookup_fully_qualified(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
-        info = cast(TypeInfo, node.node)
-        return Instance(info, [])
+        return Instance(node.node, [])
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -2416,15 +2416,11 @@ class SemanticAnalyzer(NodeVisitor):
         Assume that the name is defined. This happens in the global namespace -- the local
         module namespace is ignored.
         """
-        assert '.' in name
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            assert isinstance(n.names[parts[i]].node, MypyFile)
-            n = cast(MypyFile, n.names[parts[i]].node)
-        return n.names[parts[-1]]
+        res = self.lookup_fully_qualified_or_none(name)
+        assert res is not None
+        return res
 
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name.
 
         Assume that the name is defined. This happens in the global namespace -- the local
@@ -2438,7 +2434,7 @@ class SemanticAnalyzer(NodeVisitor):
             if not next_sym:
                 return None
             assert isinstance(next_sym.node, MypyFile)
-            n = cast(MypyFile, next_sym.node)
+            n = next_sym.node
         return n.names.get(parts[-1])
 
     def qualified_name(self, n: str) -> str:
