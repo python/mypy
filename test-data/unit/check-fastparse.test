@@ -36,7 +36,7 @@ class C:
 [case testFastParseConditionalProperty]
 # flags: --fast-parser
 class C:
-  if 1:
+  if bool():
     @property
     def x(self) -> str: pass
     @x.setter
