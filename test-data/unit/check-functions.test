@@ -1481,12 +1481,13 @@ g()
 [builtins fixtures/list.pyi]
 
 [case testFunctionDefinitionWithWhileStatement]
-while 1:
+while bool():
     def f(): pass
 else:
     def g(): pass
 f()
 g()
+[builtins fixtures/bool.pyi]
 
 [case testBareCallable]
 from typing import Callable, Any

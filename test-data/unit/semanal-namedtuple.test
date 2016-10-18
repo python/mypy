@@ -32,6 +32,22 @@ MypyFile:1(
     Block:3(
       PassStmt:3())))
 
+[case testTwoItemNamedtupleWithTupleFieldNames]
+from collections import namedtuple
+N = namedtuple('N', ('a', 'xyz'))
+def f() -> N: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any]))
+  FuncDef:3(
+    f
+    def () -> Tuple[Any, Any, fallback=__main__.N]
+    Block:3(
+      PassStmt:3())))
+
 [case testTwoItemNamedtupleWithShorthandSyntax]
 from collections import namedtuple
 N = namedtuple('N', ' a  xyz ')
@@ -52,6 +68,17 @@ MypyFile:1(
 from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
+
+[case testNamedTupleWithTupleFieldNamesWithItemTypes]
+from typing import NamedTuple
+N = NamedTuple('N', (('a', int),
+                     ('b', str)))
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
@@ -121,7 +148,7 @@ N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first
 
 [case testNamedTupleWithInvalidItems]
 from collections import namedtuple
-N = namedtuple('N', 1) # E: List literal expected as the second argument to namedtuple()
+N = namedtuple('N', 1) # E: List or tuple literal expected as the second argument to namedtuple()
 
 [case testNamedTupleWithInvalidItems2]
 from collections import namedtuple

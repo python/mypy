@@ -57,6 +57,9 @@ class Options:
         # Warn about casting an expression to its inferred type
         self.warn_redundant_casts = False
 
+        # Warn about falling off the end of a function returning non-None
+        self.warn_no_return = False
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
