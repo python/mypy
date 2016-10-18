@@ -44,7 +44,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
 
 from mypy.nodes import (
@@ -270,9 +270,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.type.names:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
-                        if self.is_conditional_func(n, defn):
-                            defn.original_def = cast(FuncDef, n)
-                        else:
+                        if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn)
@@ -282,9 +280,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.locals[-1]:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
-                        if self.is_conditional_func(n, defn):
-                            defn.original_def = cast(FuncDef, n)
-                        else:
+                        if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
                     else:
                         self.add_local(defn, defn)
@@ -294,11 +290,7 @@ class SemanticAnalyzer(NodeVisitor):
                     symbol = self.globals.get(defn.name())
                     if isinstance(symbol.node, FuncDef) and symbol.node != defn:
                         # This is redefinition. Conditional redefinition is okay.
-                        original_def = symbol.node
-                        if self.is_conditional_func(original_def, defn):
-                            # Conditional function definition -- multiple defs are ok.
-                            defn.original_def = original_def
-                        else:
+                        if not self.set_original_def(symbol.node, defn):
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
@@ -323,16 +315,15 @@ class SemanticAnalyzer(NodeVisitor):
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif func.type:
-                sig = cast(FunctionLike, func.type)
+            elif isinstance(func.type, FunctionLike):
                 if func.is_class:
                     leading_type = self.class_type(self.type)
                 else:
                     leading_type = self_type(self.type)
-                func.type = replace_implicit_first_type(sig, leading_type)
+                func.type = replace_implicit_first_type(func.type, leading_type)
 
-    def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
-        """Does 'new' conditionally redefine 'previous'?
+    def set_original_def(self, previous: Node, new: FuncDef) -> bool:
+        """If 'new' conditionally redefine 'previous', set 'previous' as original
 
         We reject straight redefinitions of functions, as they are usually
         a programming error. For example:
@@ -340,7 +331,11 @@ class SemanticAnalyzer(NodeVisitor):
         . def f(): ...
         . def f(): ...  # Error: 'f' redefined
         """
-        return isinstance(previous, (FuncDef, Var)) and new.is_conditional
+        if isinstance(previous, (FuncDef, Var)) and new.is_conditional:
+            new.original_def = previous
+            return True
+        else:
+            return False
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
@@ -348,9 +343,8 @@ class SemanticAnalyzer(NodeVisitor):
         Update the signature of defn to contain type variable definitions
         if defn is generic.
         """
-        if defn.type:
-            functype = cast(CallableType, defn.type)
-            typevars = self.infer_type_variables(functype)
+        if isinstance(defn.type, CallableType):
+            typevars = self.infer_type_variables(defn.type)
             # Do not define a new type variable if already defined in scope.
             typevars = [(name, tvar) for name, tvar in typevars
                         if not self.is_defined_type_var(name, defn)]
@@ -360,7 +354,9 @@ class SemanticAnalyzer(NodeVisitor):
                                    tvar[1].values, tvar[1].upper_bound,
                                    tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
-                functype.variables = defs
+                defn.type.variables = defs
+        else:
+            assert not isinstance(defn.type, Overloaded)
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
@@ -385,6 +381,7 @@ class SemanticAnalyzer(NodeVisitor):
             name = type.name
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
+                assert isinstance(node.node, TypeVarExpr)
                 result.append((name, cast(TypeVarExpr, node.node)))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
@@ -512,6 +509,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.type:
             tt = defn.type
             names = self.type_var_names()
+            assert isinstance(tt, CallableType)
             items = cast(CallableType, tt).variables
             for item in items:
                 name = item.name
@@ -536,6 +534,7 @@ class SemanticAnalyzer(NodeVisitor):
         return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
+        assert isinstance(fdef.type, CallableType)
         sig = cast(CallableType, fdef.type)
         if len(sig.arg_types) < len(fdef.arguments):
             self.fail('Type signature has too few arguments', fdef)
@@ -721,6 +720,7 @@ class SemanticAnalyzer(NodeVisitor):
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
+            assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, cast(TypeVarExpr, sym.node)
         return None
 
@@ -865,12 +865,14 @@ class SemanticAnalyzer(NodeVisitor):
 
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
+        assert isinstance(sym.node, TypeInfo)
         return Instance(cast(TypeInfo, sym.node), args or [])
 
     def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
+        assert isinstance(sym.node, TypeInfo)
         return Instance(cast(TypeInfo, sym.node), args or [])
 
     def is_instance_type(self, t: Type) -> bool:
@@ -1245,11 +1247,10 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.accept(self)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)):
-            items = cast(Any, lval).items
+            items = lval.items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("Can't assign to ()", lval)
-            self.analyze_tuple_or_list_lvalue(cast(Union[ListExpr, TupleExpr], lval),
-                                              add_global, explicit_type)
+            self.analyze_tuple_or_list_lvalue(lval, add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
                 self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
@@ -1263,9 +1264,7 @@ class SemanticAnalyzer(NodeVisitor):
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
-        star_exprs = [cast(StarExpr, item)
-                      for item in items
-                      if isinstance(item, StarExpr)]
+        star_exprs = [item for item in items if isinstance(item, StarExpr)]
 
         if len(star_exprs) > 1:
             self.fail('Two starred expressions in assignment', lval)
@@ -1397,14 +1396,14 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
-        elif cast(StrExpr, call.args[0]).value != name:
+        elif args[0].value != name:
             msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
-            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
+            self.fail(msg.format(args[0].value, name), context)
             has_failed = True
 
         # Check second argument
         try:
-            unanalyzed_type = expr_to_unanalyzed_type(call.args[1])
+            unanalyzed_type = expr_to_unanalyzed_type(args[1])
         except TypeTranslationError:
             self.fail("Argument 2 to NewType(...) must be a valid type", context)
             return None
@@ -1442,6 +1441,7 @@ class SemanticAnalyzer(NodeVisitor):
         if not call:
             return
 
+        assert isinstance(s.lvalues[0], NameExpr)
         lvalue = cast(NameExpr, s.lvalues[0])
         name = lvalue.name
         if not lvalue.is_def:
@@ -1483,9 +1483,9 @@ class SemanticAnalyzer(NodeVisitor):
                 or not call.arg_kinds[0] == ARG_POS):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
-        if cast(StrExpr, call.args[0]).value != name:
+        elif call.args[0].value != name:
             msg = "String argument 1 '{}' to TypeVar(...) does not match variable name '{}'"
-            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
+            self.fail(msg.format(call.args[0].value, name), context)
             return False
         return True
 
@@ -2146,6 +2146,7 @@ class SemanticAnalyzer(NodeVisitor):
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
+            assert isinstance(base.node, MypyFile)
             file = cast(MypyFile, base.node)
             n = file.names.get(expr.name, None) if file is not None else None
             if n:
@@ -2351,6 +2352,7 @@ class SemanticAnalyzer(NodeVisitor):
         # 5. Builtins
         b = self.globals.get('__builtins__', None)
         if b:
+            assert isinstance(b.node, MypyFile)
             table = cast(MypyFile, b.node).names
             if name in table:
                 if name[0] == "_" and name[1] != "_":
@@ -2406,6 +2408,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         node = self.lookup_fully_qualified(fully_qualified_name)
+        assert isinstance(node.node, TypeInfo)
         info = cast(TypeInfo, node.node)
         return Instance(info, [])
 
@@ -2419,6 +2422,7 @@ class SemanticAnalyzer(NodeVisitor):
         parts = name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):
+            assert isinstance(n.names[parts[i]].node, MypyFile)
             n = cast(MypyFile, n.names[parts[i]].node)
         return n.names[parts[-1]]
 
@@ -2435,6 +2439,7 @@ class SemanticAnalyzer(NodeVisitor):
             next_sym = n.names.get(parts[i])
             if not next_sym:
                 return None
+            assert isinstance(next_sym.node, MypyFile)
             n = cast(MypyFile, next_sym.node)
         return n.names.get(parts[-1])
 
@@ -2656,11 +2661,7 @@ class FirstPass(NodeVisitor):
                 # Ah this is an imported name. We can't resolve them now, so we'll postpone
                 # this until the main phase of semantic analysis.
                 return
-            original_def = original_sym.node
-            if sem.is_conditional_func(original_def, func):
-                # Conditional function definition -- multiple defs are ok.
-                func.original_def = cast(FuncDef, original_def)
-            else:
+            if not sem.set_original_def(original_sym.node, func):
                 # Report error.
                 sem.check_no_global(func.name(), func)
         else:
@@ -2900,10 +2901,11 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
         return replace_leading_arg_type(sig, new)
-    else:
-        sig = cast(Overloaded, sig)
+    elif isinstance(sig, Overloaded):
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))
                            for i in sig.items()])
+    else:
+        assert False
 
 
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
