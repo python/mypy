@@ -1,6 +1,6 @@
 """Type parser"""
 
-from typing import List, Tuple, Union, cast, Optional
+from typing import List, Tuple, Union, Optional
 
 from mypy.types import (
     Type, UnboundType, TupleType, TypeList, CallableType, StarType,

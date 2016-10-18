@@ -1,6 +1,6 @@
 """Fix up various things after deserialization."""
 
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional
 
 from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,

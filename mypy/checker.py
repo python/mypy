@@ -1276,6 +1276,7 @@ class TypeChecker(NodeVisitor[Type]):
                 assert isinstance(inferred, Var)
             else:
                 m = cast(MemberExpr, lvalue)
+                assert isinstance(m, MemberExpr)
                 self.accept(m.expr)
                 inferred = m.def_var
         elif isinstance(lvalue, IndexExpr):

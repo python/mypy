@@ -1,4 +1,4 @@
-from typing import cast, List
+from typing import List
 
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (

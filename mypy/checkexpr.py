@@ -470,8 +470,9 @@ class ExpressionChecker:
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        return cast(CallableType, self.apply_generic_arguments(callable, new_args,
-                                                           error_context))
+        res = self.apply_generic_arguments(callable, new_args, error_context)
+        assert isinstance(res, CallableType)
+        return cast(CallableType, res)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -562,8 +563,10 @@ class ExpressionChecker:
             if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
 
-        callee_type = cast(CallableType, self.apply_generic_arguments(
-            callee_type, inferred_args, context))
+        t = self.apply_generic_arguments(callee_type, inferred_args, context)
+        assert isinstance(t, CallableType)
+        callee_type = t
+
         arg_types = self.infer_arg_types_in_context2(
             callee_type, args, arg_kinds, formal_to_actual)
 
@@ -609,8 +612,9 @@ class ExpressionChecker:
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
         # arguments.
-        return cast(CallableType, self.apply_generic_arguments(callee_type,
-                                                           inferred_args, context))
+        res = self.apply_generic_arguments(callee_type, inferred_args, context)
+        assert isinstance(res, CallableType)
+        return cast(CallableType, res)
 
     def check_argument_count(self, callee: CallableType, actual_types: List[Type],
                              actual_kinds: List[int], actual_names: List[str],
@@ -724,10 +728,10 @@ class ExpressionChecker:
 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
+                tuplet = arg_types[actual]
                 if (callee.arg_kinds[i] == nodes.ARG_STAR and
                         arg_kinds[actual] == nodes.ARG_STAR and
-                        isinstance(arg_types[actual], TupleType)):
-                    tuplet = cast(TupleType, arg_types[actual])
+                        isinstance(tuplet, TupleType)):
                     while tuple_counter[0] < len(tuplet.items):
                         actual_type = get_actual_type(arg_type,
                                                       arg_kinds[actual],
@@ -1571,9 +1575,8 @@ class ExpressionChecker:
         # they must be considered as indeterminate. We use ErasedType since it
         # does not affect type inference results (it is for purposes like this
         # only).
-        ctx = replace_meta_vars(ctx, ErasedType())
-
-        callable_ctx = cast(CallableType, ctx)
+        callable_ctx = replace_meta_vars(ctx, ErasedType())
+        assert isinstance(callable_ctx, CallableType)
 
         arg_kinds = [arg.kind for arg in e.arguments]
 
