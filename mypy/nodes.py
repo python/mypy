@@ -91,6 +91,10 @@ reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
                             for alias, name in type_aliases.items())  # type: Dict[str, str]
 
 
+# See [Note Literals and literal_hash] below
+Key = tuple
+
+
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
 
@@ -145,6 +149,44 @@ class Expression(Node):
 Lvalue = Expression
 
 
+# [Note Literals and literal_hash]
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Mypy uses the term "literal" to refer to any expression built out of
+# the following:
+#
+# * Plain literal expressions, like `1` (integer, float, string, etc.)
+#
+# * Compound literal expressions, like `(lit1, lit2)` (list, dict,
+#   set, or tuple)
+#
+# * Operator expressions, like `lit1 + lit2`
+#
+# * Variable references, like `x`
+#
+# * Member references, like `lit.m`
+#
+# * Index expressions, like `lit[0]`
+#
+# A typical "literal" looks like `x[(i,j+1)].m`.
+#
+# An expression that is a literal has a `literal_hash`, with the
+# following properties.
+#
+# * `literal_hash` is a Key: a tuple containing basic data types and
+#   possibly other Keys. So it can be used as a key in a dictionary
+#   that will be compared by value (as opposed to the Node itself,
+#   which is compared by identity).
+#
+# * Two expressions have equal `literal_hash`es if and only if they
+#   are syntactically equal expressions. (NB: Actually, we also
+#   identify as equal expressions like `3` and `3.0`; is this a good
+#   idea?)
+#
+# * The elements of `literal_hash` that are tuples are exactly the
+#   subexpressions of the original expression (e.g. the base and index
+#   of an index expression, or the operands of an operator expression).
+
 class SymbolNode(Node):
     # Nodes that can be stored in a symbol table.
 
@@ -156,10 +198,8 @@ class SymbolNode(Node):
     @abstractmethod
     def fullname(self) -> str: pass
 
-    # NOTE: Can't use @abstractmethod, since many subclasses of Node
-    # don't implement serialize().
-    def serialize(self) -> JsonDict:
-        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+    @abstractmethod
+    def serialize(self) -> JsonDict: pass
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolNode':
@@ -301,7 +341,7 @@ class ImportAll(ImportBase):
         return visitor.visit_import_all(self)
 
 
-class FuncBase(SymbolNode):
+class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 
     # Type signature. This is usually CallableType or Overloaded, but it can be something else for
@@ -322,7 +362,7 @@ class FuncBase(SymbolNode):
         return bool(self.info)
 
 
-class OverloadedFuncDef(FuncBase, Statement):
+class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """A logical node representing all the variants of an overloaded function.
 
     This node has no explicit representation in the source program.
@@ -366,7 +406,7 @@ class Argument(Node):
 
     variable = None  # type: Var
     type_annotation = None  # type: Optional[mypy.types.Type]
-    initializater = None  # type: Optional[Expression]
+    initializer = None  # type: Optional[Expression]
     kind = None  # type: int
     initialization_statement = None  # type: Optional[AssignmentStmt]
 
@@ -406,24 +446,6 @@ class Argument(Node):
         if self.initialization_statement:
             self.initialization_statement.set_line(self.line, self.column)
             self.initialization_statement.lvalues[0].set_line(self.line, self.column)
-
-    def serialize(self) -> JsonDict:
-        # Note: we are deliberately not saving the type annotation since
-        # it is not used by later stages of mypy.
-        data = {'.class': 'Argument',
-                'kind': self.kind,
-                'variable': self.variable.serialize(),
-                }  # type: JsonDict
-        # TODO: initializer?
-        return data
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Argument':
-        assert data['.class'] == 'Argument'
-        return Argument(Var.deserialize(data['variable']),
-                        None,
-                        None,  # TODO: initializer?
-                        kind=data['kind'])
 
 
 class FuncItem(FuncBase):
@@ -477,7 +499,7 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-class FuncDef(FuncItem, Statement):
+class FuncDef(FuncItem, SymbolNode, Statement):
     """Function definition.
 
     This is a non-lambda function defined using 'def'.
@@ -1001,7 +1023,7 @@ class IntExpr(Expression):
 
     def __init__(self, value: int) -> None:
         self.value = value
-        self.literal_hash = value
+        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
@@ -1026,7 +1048,7 @@ class StrExpr(Expression):
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = value
+        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1040,7 +1062,7 @@ class BytesExpr(Expression):
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = value
+        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
@@ -1054,7 +1076,7 @@ class UnicodeExpr(Expression):
 
     def __init__(self, value: str) -> None:
         self.value = value
-        self.literal_hash = value
+        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
@@ -1068,7 +1090,7 @@ class FloatExpr(Expression):
 
     def __init__(self, value: float) -> None:
         self.value = value
-        self.literal_hash = value
+        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
@@ -1082,7 +1104,7 @@ class ComplexExpr(Expression):
 
     def __init__(self, value: complex) -> None:
         self.value = value
-        self.literal_hash = value
+        self.literal_hash = ('Literal', value)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
@@ -1270,7 +1292,7 @@ class IndexExpr(Expression):
         self.analyzed = None
         if self.index.literal == LITERAL_YES:
             self.literal = self.base.literal
-            self.literal_hash = ('Member', base.literal_hash,
+            self.literal_hash = ('Index', base.literal_hash,
                                  index.literal_hash)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -1498,8 +1520,8 @@ class DictExpr(Expression):
         if all(x[0] and x[0].literal == LITERAL_YES and x[1].literal == LITERAL_YES
                for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('Dict',) + tuple(
-                (x[0].literal_hash, x[1].literal_hash) for x in items)  # type: ignore
+            self.literal_hash = (cast(Any, 'Dict'),) + tuple(
+                (x[0].literal_hash, x[1].literal_hash) for x in items)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)

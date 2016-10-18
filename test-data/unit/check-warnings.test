@@ -56,3 +56,80 @@ pass
 [out]
 main:3: note: unused 'type: ignore' comment
 main:4: note: unused 'type: ignore' comment
+
+
+-- No return
+-- ---------
+
+[case testNoReturn]
+# flags: --warn-no-return
+def f() -> int:
+    pass
+
+def g() -> int:
+    if bool():
+        return 1
+[builtins fixtures/list.pyi]
+[out]
+main: note: In function "g":
+main:5: note: Missing return statement
+
+[case testNoReturnWhile]
+# flags: --warn-no-return
+def h() -> int:
+    while True:
+        if bool():
+            return 1
+
+def i() -> int:
+    while 1:
+        if bool():
+            return 1
+        if bool():
+            break
+
+def j() -> int:
+    while 1:
+        if bool():
+            return 1
+        if bool():
+            continue
+[builtins fixtures/list.pyi]
+[out]
+main: note: In function "i":
+main:7: note: Missing return statement
+
+[case testNoReturnExcept]
+# flags: --warn-no-return
+def f() -> int:
+    try:
+        return 1
+    except:
+        pass
+def g() -> int:
+    try:
+        pass
+    except:
+        return 1
+    else:
+        return 1
+def h() -> int:
+    try:
+        pass
+    except:
+        pass
+    else:
+        pass
+    finally:
+        return 1
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:2: note: Missing return statement
+
+[case testNoReturnEmptyBodyWithDocstring]
+def f() -> int:
+    """Return the number of peppers."""
+    # This might be an @abstractmethod, for example
+    pass
+[out]

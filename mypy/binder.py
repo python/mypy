@@ -2,7 +2,7 @@ from typing import (Dict, List, Set, Iterator, Union)
 from contextlib import contextmanager
 
 from mypy.types import Type, AnyType, PartialType
-from mypy.nodes import (Expression, Var, RefExpr, SymbolTableNode)
+from mypy.nodes import (Key, Node, Expression, Var, RefExpr, SymbolTableNode)
 
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -15,11 +15,20 @@ BindableTypes = (IndexExpr, MemberExpr, NameExpr)
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 
-Key = object
-
-
 class Frame(Dict[Key, Type]):
-    pass
+    """A Frame represents a specific point in the execution of a program.
+    It carries information about the current types of expressions at
+    that point, arising either from assignments to those expressions
+    or the result of isinstance checks. It also records whether it is
+    possible to reach that point at all.
+
+    This information is not copied into a new Frame when it is pushed
+    onto the stack, so a given Frame only has information about types
+    that were assigned in that frame.
+    """
+
+    def __init__(self) -> None:
+        self.unreachable = False
 
 
 class ConditionalTypeBinder:
@@ -44,13 +53,19 @@ class ConditionalTypeBinder:
     """
 
     def __init__(self) -> None:
-        # The set of frames currently used.  These map
+        # The stack of frames currently used.  These map
         # expr.literal_hash -- literals like 'foo.bar' --
-        # to types.
+        # to types. The last element of this list is the
+        # top-most, current frame. Each earlier element
+        # records the state as of when that frame was last
+        # on top of the stack.
         self.frames = [Frame()]
 
         # For frames higher in the stack, we record the set of
-        # Frames that can escape there
+        # Frames that can escape there, either by falling off
+        # the end of the frame or by a loop control construct
+        # or raised exception. The last element of self.frames
+        # has no corresponding element in this list.
         self.options_on_return = []  # type: List[List[Frame]]
 
         # Maps expr.literal_hash] to get_declaration(expr)
@@ -60,27 +75,20 @@ class ConditionalTypeBinder:
         # Whenever a new key (e.g. x.a.b) is added, we update this
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
 
-        # breaking_out is set to True on return/break/continue/raise
-        # It is cleared on pop_frame() and placed in last_pop_breaking_out
-        # Lines of code after breaking_out = True are unreachable and not
-        # typechecked.
-        self.breaking_out = False
-
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
-        # Whether the last pop was necessarily breaking out, and couldn't fall through
-        self.last_pop_breaking_out = False
 
         self.try_frames = set()  # type: Set[int]
-        self.loop_frames = []  # type: List[int]
+        self.break_frames = []  # type: List[int]
+        self.continue_frames = []  # type: List[int]
 
     def _add_dependencies(self, key: Key, value: Key = None) -> None:
         if value is None:
             value = key
         else:
             self.dependencies.setdefault(key, set()).add(value)
-        if isinstance(key, tuple):
-            for elt in key:
+        for elt in key:
+            if isinstance(elt, Key):
                 self._add_dependencies(elt, value)
 
     def push_frame(self) -> Frame:
@@ -112,13 +120,19 @@ class ConditionalTypeBinder:
             self._add_dependencies(key)
         self._put(key, typ)
 
-    def get(self, expr: Expression) -> Type:
-        if not isinstance(expr, BindableTypes):
-            return None
+    def unreachable(self) -> None:
+        self.frames[-1].unreachable = True
+
+    def get(self, expr: Union[Expression, Var]) -> Type:
         return self._get(expr.literal_hash)
 
-    def cleanse(self, expr: BindableExpression) -> None:
-        """Remove all references to an Expression from the binder."""
+    def is_unreachable(self) -> bool:
+        # TODO: Copy the value of unreachable into new frames to avoid
+        # this traversal on every statement?
+        return any(f.unreachable for f in self.frames)
+
+    def cleanse(self, expr: Expression) -> None:
+        """Remove all references to a Node from the binder."""
         self._cleanse_key(expr.literal_hash)
 
     def _cleanse_key(self, key: Key) -> None:
@@ -135,6 +149,7 @@ class ConditionalTypeBinder:
         options are the same.
         """
 
+        frames = [f for f in frames if not f.unreachable]
         changed = False
         keys = set(key for f in frames for key in f)
 
@@ -142,6 +157,9 @@ class ConditionalTypeBinder:
             current_value = self._get(key)
             resulting_values = [f.get(key, current_value) for f in frames]
             if any(x is None for x in resulting_values):
+                # We didn't know anything about key before
+                # (current_value must be None), and we still don't
+                # know anything about key in at least one possible frame.
                 continue
 
             if isinstance(self.declarations.get(key), AnyType):
@@ -156,21 +174,26 @@ class ConditionalTypeBinder:
                 self._put(key, type)
                 changed = True
 
+        self.frames[-1].unreachable = not frames
+
         return changed
 
-    def pop_frame(self, fall_through: int = 0) -> Frame:
+    def pop_frame(self, can_skip: bool, fall_through: int) -> Frame:
         """Pop a frame and return it.
 
         See frame_context() for documentation of fall_through.
         """
-        if fall_through and not self.breaking_out:
+
+        if fall_through > 0:
             self.allow_jump(-fall_through)
 
         result = self.frames.pop()
         options = self.options_on_return.pop()
 
+        if can_skip:
+            options.insert(0, self.frames[-1])
+
         self.last_pop_changed = self.update_from_options(options)
-        self.last_pop_breaking_out = self.breaking_out
 
         return result
 
@@ -249,25 +272,74 @@ class ConditionalTypeBinder:
         frame = Frame()
         for f in self.frames[index + 1:]:
             frame.update(f)
+            if f.unreachable:
+                frame.unreachable = True
         self.options_on_return[index].append(frame)
 
-    def push_loop_frame(self) -> None:
-        self.loop_frames.append(len(self.frames) - 1)
+    def handle_break(self) -> None:
+        self.allow_jump(self.break_frames[-1])
+        self.unreachable()
 
-    def pop_loop_frame(self) -> None:
-        self.loop_frames.pop()
+    def handle_continue(self) -> None:
+        self.allow_jump(self.continue_frames[-1])
+        self.unreachable()
 
     @contextmanager
-    def frame_context(self, fall_through: int = 0) -> Iterator[Frame]:
+    def frame_context(self, *, can_skip: bool, fall_through: int = 1,
+                      break_frame: int = 0, continue_frame: int = 0,
+                      try_frame: bool = False) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
-        If fall_through > 0, then it will allow the frame to escape to
-        its ancestor `fall_through` levels higher.
+        If can_skip is True, control flow is allowed to bypass the
+        newly-created frame.
 
-        A simple 'with binder.frame_context(): pass' will change the
-        last_pop_* flags but nothing else.
+        If fall_through > 0, then it will allow control flow that
+        falls off the end of the frame to escape to its ancestor
+        `fall_through` levels higher. Otherwise control flow ends
+        at the end of the frame.
+
+        If break_frame > 0, then 'break' statements within this frame
+        will jump out to the frame break_frame levels higher than the
+        frame created by this call to frame_context. Similarly for
+        continue_frame and 'continue' statements.
+
+        If try_frame is true, then execution is allowed to jump at any
+        point within the newly created frame (or its descendents) to
+        its parent (i.e., to the frame that was on top before this
+        call to frame_context).
+
+        After the context manager exits, self.last_pop_changed indicates
+        whether any types changed in the newly-topmost frame as a result
+        of popping this frame.
         """
-        was_breaking_out = self.breaking_out
+        assert len(self.frames) > 1
+
+        if break_frame:
+            self.break_frames.append(len(self.frames) - break_frame)
+        if continue_frame:
+            self.continue_frames.append(len(self.frames) - continue_frame)
+        if try_frame:
+            self.try_frames.add(len(self.frames) - 1)
+
+        new_frame = self.push_frame()
+        if try_frame:
+            # An exception may occur immediately
+            self.allow_jump(-1)
+        yield new_frame
+        self.pop_frame(can_skip, fall_through)
+
+        if break_frame:
+            self.break_frames.pop()
+        if continue_frame:
+            self.continue_frames.pop()
+        if try_frame:
+            self.try_frames.remove(len(self.frames) - 1)
+
+    @contextmanager
+    def top_frame_context(self) -> Iterator[Frame]:
+        """A variant of frame_context for use at the top level of
+        a namespace (module, function, or class).
+        """
+        assert len(self.frames) == 1
         yield self.push_frame()
-        self.pop_frame(fall_through)
-        self.breaking_out = was_breaking_out
+        self.pop_frame(True, 0)

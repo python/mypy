@@ -12,7 +12,7 @@ x = None # type: List[Any]
 def foo() -> List[int]: pass
 def bar() -> List[str]: pass
 
-if 1:
+if bool():
     x = foo()
 else:
     x = bar()
@@ -143,11 +143,11 @@ def bar() -> None:
     x = foo()
     if isinstance(x, int):
         return
-    while 1:
+    while bool():
         x + 'a'
-        while 1:
+        while bool():
             x = foo()
-            if 1:
+            if bool():
                 return
             x = 'a'
     x + 'a'
@@ -163,11 +163,11 @@ def bar() -> None:
     x = foo()
     if isinstance(x, int):
         return
-    while 1:
+    while bool():
         x + 'a'
-        while 1:
+        while bool():
             x = foo()
-            if 1:
+            if bool():
                 return
             x = 'a'
     x + 'a'
@@ -175,12 +175,12 @@ def bar() -> None:
     x = foo()
     if isinstance(x, int):
         return
-    while 1:
+    while bool():
         x + 'a'
-        while 1:
+        while bool():
             x + 'a'         # E: Unsupported operand types for + (likely involving Union)
             x = foo()
-            if 1:
+            if bool():
                 continue
             x = 'a'
         x = 'a'
@@ -269,7 +269,7 @@ class A: pass
 class B(A): z = 1
 
 x = A()
-while 1:
+while bool():
     try:
         x.z # E: "A" has no attribute "z"
         x = A()
@@ -352,6 +352,22 @@ while 2:
         break
         x.b
     x.b
+[case testUnionTryFinally6]
+class A: pass
+class B(A): b = 1
+
+def f() -> int:
+    x = B()  # type: A
+    try:
+        x = B()
+    except:
+        x = A()
+        # An exception could occur here
+        x = B()
+    finally:
+        return x.b # E: "A" has no attribute "b"
+[out]
+main: note: In function "f":
 [case testUnionListIsinstance]
 
 from typing import Union, List
@@ -473,7 +489,7 @@ class House:
 h = House()
 h.pet = Dog()
 
-while 1:
+while bool():
     if isinstance(h.pet, Dog):
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
@@ -560,7 +576,7 @@ if isinstance(h.pet, Dog):
     if isinstance(h.pet.paws, str):
         for i in [1]:
             h.pet.paws + 'a'
-            if 1:
+            if bool():
                 break
             h.pet.paws = 1
             h.pet.paws + 1
@@ -612,7 +628,7 @@ from typing import Union, List
 
 x = None # type: Union[int, str, List[int]]
 
-while 1:
+while bool():
     if isinstance(x, int):
         x + 1
     elif isinstance(x, str):
@@ -628,7 +644,7 @@ from typing import Union, List
 
 x = None # type: Union[int, str, List[int]]
 
-while 1:
+while bool():
     if isinstance(x, int):
         x + 1
         break
@@ -644,7 +660,7 @@ x + [1]               # E: Unsupported operand types for + (likely involving Uni
 [case testIsInstanceThreeUnion3]
 from typing import Union, List
 
-while 1:
+while bool():
     x = None # type: Union[int, str, List[int]]
     x = 1
     if isinstance(x, int):
@@ -724,7 +740,7 @@ x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
 x + 1
 
-while 1:
+while bool():
       x + 1    # E: Unsupported operand types for + (likely involving Union)
       x = 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -757,7 +773,7 @@ def foo() -> Union[int, str]: pass
 x = foo()
 x = 1
 
-while 1:
+while bool():
     x + 1
     x = 'a'
     break
@@ -782,9 +798,9 @@ def foo() -> Union[int, str]: pass
 x = foo()
 x = 1
 
-while 1:
+while bool():
     x + 1
-    if 1:
+    if bool():
         x = 'a'
         break
 else:
@@ -792,9 +808,9 @@ else:
     x = 'a'
 x + 'a'
 x = 1
-while 1:
+while bool():
     x + 1 # E: Unsupported operand types for + (likely involving Union)
-    if 1:
+    if bool():
         x = 'a'
         continue
 else:
@@ -812,7 +828,7 @@ x = 1
 
 for y in [1]:
     x + 1
-    if 1:
+    if bool():
         x = 'a'
         break
 else:
@@ -822,7 +838,7 @@ x + 'a'
 x = 1
 for y in [1]:
     x + 1 # E: Unsupported operand types for + (likely involving Union)
-    if 1:
+    if bool():
         x = 'a'
         continue
 else:
@@ -848,8 +864,8 @@ else:
     x + 1
 x + 1 # E: Unsupported operand types for + (likely involving Union)
 x = 1
-while 1:
-    while 1:
+while bool():
+    while bool():
         break
     else:
         x = 'a'
@@ -883,13 +899,13 @@ def bar() -> None:
     if isinstance(x, str):
        x + 'a'
     else:
-       while 1:
+       while bool():
           if isinstance(x, int):
              x + 1
           else:
              x.a
           break
-       while 1:
+       while bool():
           if isinstance(x, int):
              x + 1
           else:
@@ -897,7 +913,7 @@ def bar() -> None:
           continue
 
        #for i in [1]:
-       while 1:
+       while bool():
           if isinstance(x, int):
              x + 1
           else:
@@ -907,6 +923,42 @@ def bar() -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 main: note: In function "bar":
+
+[case testWhileExitCondition1]
+from typing import Union
+x = 1  # type: Union[int, str]
+while isinstance(x, int):
+    if bool():
+        continue
+    x = 'a'
+else:
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+reveal_type(x)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstance.pyi]
+
+[case testWhileExitCondition2]
+from typing import Union
+x = 1  # type: Union[int, str]
+while isinstance(x, int):
+    if bool():
+        break
+    x = 'a'
+else:
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/isinstance.pyi]
+
+[case testWhileLinkedList]
+from typing import Union
+LinkedList = Union['Cons', 'Nil']
+class Nil: pass
+class Cons:
+    tail = None  # type: LinkedList
+def last(x: LinkedList) -> Nil:
+    while isinstance(x, Cons):
+        x = x.tail
+    return x
+[builtins fixtures/isinstance.pyi]
 
 [case testReturnAndFlow]
 def foo() -> int:
@@ -931,7 +983,7 @@ x + 'a'   # E: Unsupported operand types for + ("int" and "str")
 [case testUnreachableCode]
 x = 1 # type: int
 
-while 1:
+while bool():
     x = 'a'           # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     break
     x = 'a'           # Note: no error because unreachable code
@@ -939,7 +991,7 @@ while 1:
 
 [case testUnreachableCode2]
 x = 1
-while 1:
+while bool():
     try:
         pass
     except:
@@ -948,6 +1000,89 @@ while 1:
         continue
     x + 'a'
 [builtins fixtures/isinstance.pyi]
+
+[case testUnreachableWhileTrue]
+def f(x: int) -> None:
+    while True:
+        if x:
+            return
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableAssertFalse]
+def f() -> None:
+    assert False
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableAssertFalse2]
+# flags: --fast-parser
+def f() -> None:
+    # The old parser doesn't understand the syntax below
+    assert False, "hi"
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableReturnOrAssertFalse]
+def f(x: int) -> int:
+    if x:
+        return x
+    else:
+        assert False
+    1()
+[builtins fixtures/bool.pyi]
+
+[case testUnreachableTryExcept]
+def f() -> None:
+    try:
+        f()
+        return
+    except BaseException:
+        return
+    1()
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableTryExceptElse]
+def f() -> None:
+    try:
+        f()
+    except BaseException:
+        return
+    else:
+        return
+    1()
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableTryReturnFinally1]
+def f() -> None:
+    try:
+        return
+    finally:
+        pass
+    1()
+
+[case testUnreachableTryReturnFinally2]
+def f() -> None:
+    try:
+        pass
+    finally:
+        return
+    1()
+
+[case testUnreachableTryReturnExceptRaise]
+def f() -> None:
+    try:
+        return
+    except:
+        raise
+    1()
+
+[case testUnreachableReturnLambda]
+from typing import Callable
+def g(t: Callable[[int], int]) -> int: pass
+def f() -> int:
+    return g(lambda x: x)
+    1()
 
 [case testIsinstanceAnd]
 class A:

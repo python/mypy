@@ -82,6 +82,9 @@ def join_types(s: Type, t: Type) -> Type:
     if isinstance(s, NoneTyp) and not isinstance(t, NoneTyp):
         s, t = t, s
 
+    if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
+        s, t = t, s
+
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s))
 

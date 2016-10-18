@@ -24,6 +24,7 @@ Built-in types
    # For simple built-in types, just use the name of the type.
    x = 1 # type: int
    x = 1.0 # type: float
+   x = True # type: bool
    x = "test" # type: str
    x = u"test" # type: unicode
 
@@ -61,6 +62,11 @@ Functions
        """Your function docstring goes here after the type definition."""
        return str(num)
 
+   # This function has no parameters and also returns nothing. Annotations
+   # can also be placed on the same line as their function headers.
+   def greet_world(): # type: () -> None
+       print "Hello, world!"
+
    # And here's how you specify multiple arguments.
    def plus(num1, num2):
        # type: (int, int) -> int
@@ -82,6 +88,17 @@ Functions
        while i < n:
            yield i
            i += 1
+
+   # There's alternative syntax for functions with many arguments.
+   def send_email(address,     # type: Union[str, List[str]]
+                  sender,      # type: str
+                  cc,          # type: Optional[List[str]]
+                  bcc,         # type: Optional[List[str]]
+                  subject='',
+                  body=None    # type: List[str]
+                  ):
+       # type: (...) -> bool
+        <code>
 
 
 When you're puzzled or when things are complicated

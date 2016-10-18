@@ -9,6 +9,68 @@ section has examples of cases when you need to update your code
 to use static typing, and ideas for working
 around issues if the type checker gets confused about your code.
 
+.. _annotations_needed:
+
+No errors reported for obviously wrong code
+-------------------------------------------
+
+There are several common reasons why obviously wrong code is not
+flagged as an error.
+
+- **No annotations on function containing the errors.** Functions that
+  do not have any annotations (neither for any argument nor for the
+  return type) are not type-checked, and even the most blatant type
+  errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
+  annotations.
+
+  Example:
+
+  .. code-block:: python
+
+      def foo(a):
+          return '(' + a.split() + ')'  # No error!
+
+  This gives no error even though ``a.split()`` is "obviously" a list
+  (the author probably meant ``a.strip()``).  The error is reported
+  once you add annotations:
+
+  .. code-block:: python
+
+      def foo(a: str) -> str:
+          return '(' + a.split() + ')'
+      # error: Unsupported operand types for + ("str" and List[str])
+
+  If you don't know what types to add, you can use ``Any``, but beware:
+
+- **One of the values involved has type ``Any``.** Extending the above
+  example, if we were to leave out the annotation for ``a``, we'd get
+  no error:
+
+  .. code-block:: python
+
+      def foo(a) -> str:
+          return '(' + a.split() + ')'  # No error!
+
+  The reason is that if the type of ``a`` is unknown, the type of
+  ``a.split()`` is also unknown, so it is inferred as having type
+  ``Any``, and it is no error to add a string to an ``Any``.
+
+  If you're having trouble debugging such situations,
+  :ref:`reveal_type() <reveal-type>` might come in handy.
+
+  Note that sometimes library stubs have imprecise type information,
+  e.g. the ``pow()`` builtin returns ``Any`` (see `typeshed issue 285
+  <https://github.com/python/typeshed/issues/285>`_ for the reason).
+
+  Another source of unexpected ``Any`` values is the
+  :ref:`"silent-imports" <silent-imports>` flag, which causes
+  everything imported from a module that cannot be located to have the
+  type ``Any`` (including classes inheriting from such).  Sometimes
+  the :ref:`"disallow-subclassing-any" <disallow-subclassing-any>`
+  flag is helpful in diagnosing this.  (Read up about these and other
+  useful flags like :ref:`"almost-silent" <almost-silent>` in
+  :ref:`command-line`.)
+
 .. _silencing_checker:
 
 Spurious errors and locally silencing the checker

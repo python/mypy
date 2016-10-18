@@ -29,6 +29,13 @@ Mypy fully supports this syntax, interpreting them as equivalent to
    foo = None  # type: Optional[int]
    bar = []  # type: List[str]
 
+.. note::
+
+   This requires the ``--fast-parser`` flag and it requires that the
+   `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
+   installed and has at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
+
+
 Literal string formatting (`PEP 498 <https://www.python.org/dev/peps/pep-0498>`_)
 ---------------------------------------------------------------------------------
 

@@ -1419,6 +1419,11 @@ C(0)
 C(arg=0)
 [out]
 
+[case testErrorMapToSupertype]
+import typing
+class X(Nope): pass  # E: Name 'Nope' is not defined
+a, b = X()  # Used to crash here (#2244)
+
 
 -- Type[C]
 -- -------

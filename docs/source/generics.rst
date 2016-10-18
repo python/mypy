@@ -112,7 +112,7 @@ example we use the same type variable in two generic functions:
 
 .. code-block:: python
 
-   from typing TypeVar, Sequence
+   from typing import TypeVar, Sequence
 
    T = TypeVar('T')      # Declare type variable
 
