@@ -298,7 +298,7 @@ class ASTConverter(ast27.NodeTransformer):
             # hooks
             if (not any(arg_types) and return_type is None and
                     hooks.docstring_parser):
-                doc = cast(bytes, ast27.get_docstring(n, clean=False))
+                doc = ast27.get_docstring(n, clean=False)
                 if doc:
                     doc = doc.decode('unicode_escape')
                     types = parse_docstring(doc, arg_names, n.lineno)
