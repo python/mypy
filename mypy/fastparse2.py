@@ -15,7 +15,6 @@ different class heirarchies, which made it difficult to write a shared visitor b
 two in a typesafe way.
 """
 from functools import wraps
-from inspect import cleandoc
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
