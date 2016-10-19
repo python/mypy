@@ -2399,9 +2399,11 @@ def conditional_type_map(expr: Expression,
     if proposed_type:
         if current_type:
             if is_proper_subtype(current_type, proposed_type):
-                return {expr: proposed_type}, None
+                # Expression is always of type proposed_type
+                return {}, None
             elif not is_overlapping_types(current_type, proposed_type):
-                return None, {expr: current_type}
+                # Expression is never of type proposed_type
+                return None, {}
             else:
                 remaining_type = restrict_subtype_away(current_type, proposed_type)
                 return {expr: proposed_type}, {expr: remaining_type}
