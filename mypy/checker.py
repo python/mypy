@@ -20,7 +20,7 @@ from mypy.nodes import (
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
     LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, NamedTupleExpr, SetComprehension,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
     AwaitExpr,
@@ -2079,6 +2079,10 @@ class TypeChecker(NodeVisitor[Type]):
         return AnyType()
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        # TODO: Perhaps return a type object type?
+        return AnyType()
+
+    def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
         # TODO: Perhaps return a type object type?
         return AnyType()
 

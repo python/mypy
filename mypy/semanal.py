@@ -60,7 +60,7 @@ from mypy.nodes import (
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
@@ -1127,6 +1127,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
+        self.process_typeddict_definition(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -1498,9 +1499,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(s.rvalue, CallExpr):
             return None
         call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         if callee.fullname != 'typing.TypeVar':
             return None
         return call
@@ -1579,10 +1580,9 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = GDEF   # TODO locally defined namedtuple
-        # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Expression, var_name: str = None) -> TypeInfo:
+    def check_namedtuple(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
@@ -1596,9 +1596,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(node, CallExpr):
             return None
         call = node
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
@@ -1607,9 +1607,9 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
-            # Give it a unique name derived from the line number.
             name = cast(StrExpr, call.args[0]).value
             if name != var_name:
+                # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
@@ -1620,7 +1620,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def parse_namedtuple_args(self, call: CallExpr,
                               fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO Share code with check_argument_count in checkexpr.py?
+        # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
@@ -1776,6 +1776,114 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Type expected', node)
                 result.append(AnyType())
         return result
+
+    def process_typeddict_definition(self, s: AssignmentStmt) -> None:
+        """Check if s defines a TypedDict; if yes, store the definition in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        typed_dict = self.check_typeddict(s.rvalue, name)
+        if typed_dict is None:
+            return
+        # Yes, it's a valid TypedDict definition. Add it to the symbol table.
+        node = self.lookup(name, s)
+        node.kind = GDEF   # TODO locally defined TypedDict
+        node.node = typed_dict
+
+    def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+        """Check if a call defines a TypedDict.
+
+        The optional var_name argument is the name of the variable to
+        which this is assigned, if any.
+
+        If it does, return the corresponding TypeInfo. Return None otherwise.
+
+        If the definition is invalid but looks like a TypedDict,
+        report errors but return (some) TypeInfo.
+        """
+        if not isinstance(node, CallExpr):
+            return None
+        call = node
+        callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
+        fullname = callee.fullname
+        if fullname != 'mypy_extensions.TypedDict':
+            return None
+        items, types, ok = self.parse_typeddict_args(call, fullname)
+        if not ok:
+            # Error. Construct dummy return value.
+            return self.build_typeddict_typeinfo('TypedDict', [], [])
+        else:
+            name = cast(StrExpr, call.args[0]).value
+            if name != var_name:
+                # Give it a unique name derived from the line number.
+                name += '@' + str(call.line)
+            info = self.build_typeddict_typeinfo(name, items, types)
+            # Store it as a global just in case it would remain anonymous.
+            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        call.analyzed = TypedDictExpr(info)
+        call.analyzed.set_line(call.line, call.column)
+        return info
+
+    def parse_typeddict_args(self, call: CallExpr,
+                             fullname: str) -> Tuple[List[str], List[Type], bool]:
+        # TODO: Share code with check_argument_count in checkexpr.py?
+        args = call.args
+        if len(args) < 2:
+            return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
+        if len(args) > 2:
+            return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
+        # TODO: Support keyword arguments
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+            return self.fail_typeddict_arg(
+                "TypedDict() expects a string literal as the first argument", call)
+        if not isinstance(args[1], DictExpr):
+            return self.fail_typeddict_arg(
+                "TypedDict() expects a dictionary literal as the second argument", call)
+        dictexpr = args[1]
+        items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        return items, types, ok
+
+    def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
+                                          context: Context) -> Tuple[List[str], List[Type], bool]:
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for (field_name_expr, field_type_expr) in dict_items:
+            if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
+                items.append(field_name_expr.value)
+            else:
+                return self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+            try:
+                type = expr_to_unanalyzed_type(field_type_expr)
+            except TypeTranslationError:
+                return self.fail_typeddict_arg('Invalid field type', field_type_expr)
+            types.append(self.anal_type(type))
+        return items, types, True
+
+    def fail_typeddict_arg(self, message: str,
+                           context: Context) -> Tuple[List[str], List[Type], bool]:
+        self.fail(message, context)
+        return [], [], False
+
+    def build_typeddict_typeinfo(self, name: str, items: List[str],
+                                 types: List[Type]) -> TypeInfo:
+        strtype = self.named_type('__builtins__.str')  # type: Type
+        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                   or self.object_type())
+        fallback = dictype
+
+        info = self.basic_new_typeinfo(name, fallback)
+        info.is_typed_dict = True
+
+        # (TODO: Store {items, types} inside "info" somewhere for use later.
+        #        Probably inside a new "info.keys" field which
+        #        would be analogous to "info.names".)
+
+        return info
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
