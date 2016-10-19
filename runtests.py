@@ -98,7 +98,7 @@ class Driver:
         full_name = 'pytest %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, '-m', 'pytest'] + pytest_args
+        args = [sys.executable, '-m', 'pytest', '--cov-append'] + pytest_args
         self.waiter.add(LazySubprocess(full_name, args, env=self.env))
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
