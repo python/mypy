@@ -433,3 +433,7 @@ def f() -> List[None]:
 def g() -> Dict[None, None]:
     return {}
 [builtins fixtures/dict.pyi]
+
+[case testRaiseFromNone]
+raise BaseException from None
+[builtins fixtures/exception.pyi]

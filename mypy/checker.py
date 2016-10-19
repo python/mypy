@@ -1608,10 +1608,11 @@ class TypeChecker(NodeVisitor[Type]):
         if s.expr:
             self.type_check_raise(s.expr, s)
         if s.from_expr:
-            self.type_check_raise(s.from_expr, s)
+            self.type_check_raise(s.from_expr, s, True)
         self.binder.unreachable()
 
-    def type_check_raise(self, e: Expression, s: RaiseStmt) -> None:
+    def type_check_raise(self, e: Expression, s: RaiseStmt,
+                         optional: bool = False) -> None:
         typ = self.accept(e)
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
@@ -1631,9 +1632,10 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(typ, Instance) and typ.type.fallback_to_any:
             # OK!
             return
-        self.check_subtype(typ,
-                           self.named_type('builtins.BaseException'), s,
-                           messages.INVALID_EXCEPTION)
+        expected_type = self.named_type('builtins.BaseException')  # type: Type
+        if optional:
+            expected_type = UnionType([expected_type, NoneTyp()])
+        self.check_subtype(typ, expected_type, s, messages.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
