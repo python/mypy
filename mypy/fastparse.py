@@ -1,6 +1,5 @@
 from functools import wraps
 import sys
-import inspect
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.nodes import (
@@ -100,14 +99,11 @@ def parse_docstring(docstring: str, arg_names: List[str],
         t = type_map.pop(name, None)
         if t is None:
             return AnyType()
-        elif isinstance(t, Type):
-            return t
         else:
             return parse_str_as_type(t, line)
 
-    docstring_parser = hooks.get_docstring_parser()
-    if docstring_parser is not None:
-        type_map = docstring_parser(inspect.cleandoc(docstring), line)
+    if hooks.docstring_parser is not None:
+        type_map = hooks.docstring_parser(docstring)
         if type_map:
             arg_types = [pop_and_convert(name) for name in arg_names]
             return_type = pop_and_convert('return')
@@ -321,10 +317,9 @@ class ASTConverter(ast35.NodeTransformer):
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
             # hooks
             if (not any(arg_types) and return_type is None and
-                    hooks.get_docstring_parser()):
+                    hooks.docstring_parser):
                 doc = ast35.get_docstring(n, clean=False)
                 if doc:
-                    doc = doc.decode('unicode_escape')
                     types = parse_docstring(doc, arg_names, n.lineno)
                     if types is not None:
                         arg_types, return_type = types
