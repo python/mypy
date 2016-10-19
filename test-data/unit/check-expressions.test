@@ -182,6 +182,22 @@ main:3: error: Unsupported operand types for * ("A" and "C")
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:5: error: Unsupported left operand type for * ("B")
 
+[case testMatMul]
+
+a, b, c = None, None, None # type: (A, B, C)
+c = a @ c  # E: Unsupported operand types for @ ("A" and "C")
+a = a @ b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+c = b @ a  # E: Unsupported left operand type for @ ("B")
+c = a @ b
+
+class A:
+    def __matmul__(self, x: 'B') -> 'C':
+        pass
+class B:
+    pass
+class C:
+    pass
+
 [case testDiv]
 
 a, b, c = None, None, None # type: (A, B, C)
