@@ -89,7 +89,7 @@ class TypeChecker(NodeVisitor[Type]):
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
     # Class context for selftyoe overriding
-    class_context = []  # type: List[Type]
+    class_context = None  # type: List[Type]
 
     # Stack of function return types
     return_types = None  # type: List[Type]
@@ -133,6 +133,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.module_type_map = {}
         self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.class_context = []
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
