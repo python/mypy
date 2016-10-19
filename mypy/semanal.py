@@ -1499,9 +1499,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(s.rvalue, CallExpr):
             return None
         call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         if callee.fullname != 'typing.TypeVar':
             return None
         return call
@@ -1596,9 +1596,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(node, CallExpr):
             return None
         call = node
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
@@ -1805,9 +1805,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(node, CallExpr):
             return None
         call = node
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         fullname = callee.fullname
         if fullname != 'mypy_extensions.TypedDict':
             return None
