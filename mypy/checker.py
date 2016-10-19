@@ -156,7 +156,15 @@ class TypeChecker(NodeVisitor[Type]):
                                                 in options.strict_optional_whitelist)
 
     def check_first_pass(self) -> None:
-        """Type check the entire file, but defer functions with forward references."""
+        """Type check the entire file, but defer functions with unresolved references.
+
+        Unresolved references are forward references to variables
+        whose types haven't been inferred yet.  They may occur later
+        in the same file or in a different file that's being processed
+        later (usually due to an import cycle).
+
+        Deferred functions will be processed by check_second_pass().
+        """
         self.errors.set_file(self.path)
         self.enter_partial_types()
 
