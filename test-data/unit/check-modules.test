@@ -1187,6 +1187,7 @@ main:1: error: Incompatible types in assignment (expression has type "int", vari
 main:2: error: Revealed type is 'builtins.str'
 
 [case testSymmetricImportCycle1]
+# flags: --hide-error-context
 import a
 [file a.py]
 import b
@@ -1196,14 +1197,19 @@ y = 0 + 0
 [file b.py]
 import a
 def g() -> int:
+    reveal_type(a.y)
     return a.y
 x = 1 + 1
+[out]
+tmp/b.py:3: error: Revealed type is 'builtins.int'
 
 [case testSymmetricImportCycle2]
+# flags: --hide-error-context
 import b
 [file a.py]
 import b
 def f() -> int:
+    reveal_type(b.x)
     return b.x
 y = 0 + 0
 [file b.py]
@@ -1211,6 +1217,8 @@ import a
 def g() -> int:
     return a.y
 x = 1 + 1
+[out]
+tmp/a.py:3: error: Revealed type is 'builtins.int'
 
 
 -- Scripts and __main__
