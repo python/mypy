@@ -2698,7 +2698,11 @@ def infer_operator_assignment_method(type: Type, operator: str) -> Tuple[bool, s
 def is_valid_inferred_type(typ: Type) -> bool:
     """Is an inferred type valid?
 
-    Examples of invalid types include the None type or a type with a None component.
+    Examples of invalid types include the None type or List[<uninhabited>].
+
+    When not doing strict Optional checking, all types containing None are
+    invalid.  When doing strict Optional checking, only None and types that are
+    incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
     if is_same_type(typ, NoneTyp()):
         # With strict Optional checking, we *may* eventually infer NoneTyp, but
@@ -2706,14 +2710,26 @@ def is_valid_inferred_type(typ: Type) -> bool:
         # resolution happens in leave_partial_types when we pop a partial types
         # scope.
         return False
+    return is_valid_inferred_type_component(typ)
+
+
+def is_valid_inferred_type_component(typ: Type) -> bool:
+    """Is this part of a type a valid inferred type?
+
+    In strict Optional mode this excludes bare None types, as otherwise every
+    type containing None would be invalid.
+    """
+    if not experiments.STRICT_OPTIONAL:
+        if is_same_type(typ, NoneTyp()):
+            return False
     if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):
         for arg in typ.args:
-            if not is_valid_inferred_type(arg):
+            if not is_valid_inferred_type_component(arg):
                 return False
     elif isinstance(typ, TupleType):
         for item in typ.items:
-            if not is_valid_inferred_type(item):
+            if not is_valid_inferred_type_component(item):
                 return False
     return True
