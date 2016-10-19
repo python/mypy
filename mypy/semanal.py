@@ -1620,7 +1620,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def parse_namedtuple_args(self, call: CallExpr,
                               fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO Share code with check_argument_count in checkexpr.py?
+        # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
@@ -1829,12 +1829,13 @@ class SemanticAnalyzer(NodeVisitor):
 
     def parse_typeddict_args(self, call: CallExpr,
                              fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO Share code with check_argument_count in checkexpr.py?
+        # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
         if len(args) > 2:
             return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
+        # TODO: Support keyword arguments
         if call.arg_kinds != [ARG_POS, ARG_POS]:
             return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
