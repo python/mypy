@@ -694,8 +694,6 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''
     decorators = None  # type: List[Expression]
-    # Built-in/extension class? (single implementation inheritance only)
-    is_builtinclass = False
     has_incompatible_baseclass = False
 
     def __init__(self,
@@ -724,7 +722,6 @@ class ClassDef(Statement):
                 'fullname': self.fullname,
                 'type_vars': [v.serialize() for v in self.type_vars],
                 'metaclass': self.metaclass,
-                'is_builtinclass': self.is_builtinclass,
                 }
 
     @classmethod
@@ -736,7 +733,6 @@ class ClassDef(Statement):
                        metaclass=data['metaclass'],
                        )
         res.fullname = data['fullname']
-        res.is_builtinclass = data['is_builtinclass']
         return res
 
 

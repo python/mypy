@@ -411,10 +411,10 @@ A() + B()
 A() + '' # E: No overload variant of "__add__" of "A" matches argument types [builtins.str]
 
 [case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
-from typing import overload, builtinclass
-@builtinclass
+from typing import overload
+
 class IntSub(int): pass
-@builtinclass
+
 class StrSub(str): pass
 class A:
     @overload
@@ -429,10 +429,10 @@ class B(A):
 [out]
 
 [case testOverrideOverloadedMethodWithMoreSpecificArgumentTypes]
-from typing import overload, builtinclass
-@builtinclass
+from typing import overload
+
 class IntSub(int): pass
-@builtinclass
+
 class StrSub(str): pass
 class A:
     @overload
@@ -461,12 +461,10 @@ main: note: In class "C":
 main:17: error: Signature of "f" incompatible with supertype "A"
 
 [case testOverloadingAndDucktypeCompatibility]
-from typing import overload, _promote, builtinclass
+from typing import overload, _promote
 
-@builtinclass
 class A: pass
 
-@builtinclass
 @_promote(A)
 class B: pass
 

@@ -50,7 +50,7 @@ from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, is_overlapping_types
 from mypy.binder import ConditionalTypeBinder
 from mypy.options import Options
 
@@ -2717,3 +2717,11 @@ def is_valid_inferred_type(typ: Type) -> bool:
             if not is_valid_inferred_type(item):
                 return False
     return True
+
+
+def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
+    for base in type.mro:
+        if base.defn.fullname == 'builtins.object':
+            return base
+    else:
+        return None
