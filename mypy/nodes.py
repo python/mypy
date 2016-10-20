@@ -1328,6 +1328,7 @@ op_methods = {
     '%': '__mod__',
     '//': '__floordiv__',
     '**': '__pow__',
+    '@': '__matmul__',
     '&': '__and__',
     '|': '__or__',
     '^': '__xor__',
@@ -1349,7 +1350,7 @@ ops_falling_back_to_cmp = {'__ne__', '__eq__',
 
 
 ops_with_inplace_method = {
-    '+', '-', '*', '/', '%', '//', '**', '&', '|', '^', '<<', '>>'}
+    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}
 
 inplace_operator_methods = set(
     '__i' + op_methods[op][2:] for op in ops_with_inplace_method)
@@ -1362,6 +1363,7 @@ reverse_op_methods = {
     '__mod__': '__rmod__',
     '__floordiv__': '__rfloordiv__',
     '__pow__': '__rpow__',
+    '__matmul__': '__rmatmul__',
     '__and__': '__rand__',
     '__or__': '__ror__',
     '__xor__': '__rxor__',
