@@ -189,7 +189,12 @@ class TypeChecker(NodeVisitor[Type]):
         """Run second pass of type checking which goes through deferred nodes."""
         self.errors.set_file(self.path)
         self.pass_num = 1
+        done = set()  # type: Set[FuncItem]
         for node, type_name in self.deferred_nodes:
+            if node in done:
+                continue
+            print(type_name, '.', node.fullname() or node.name())
+            done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
             self.accept(node)
