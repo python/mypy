@@ -434,6 +434,7 @@ config_types = {
     'python_version': lambda s: tuple(map(int, s.split('.'))),
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
+    'custom_typeshed_dir': str,
 }
 
 
