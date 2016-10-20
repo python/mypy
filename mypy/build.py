@@ -127,20 +127,14 @@ def build(sources: List[BuildSource],
         directories; if omitted, use '.' as the data directory
     """
 
-    if options.custom_typeshed_dir:
-        custom_data_dir, custom_typeshed_name = os.path.split(
-            options.custom_typeshed_dir.rstrip(os.sep))
-        data_dir = custom_data_dir
-    else:
-        custom_typeshed_name = None
-        data_dir = default_data_dir(bin_dir)
+    data_dir = default_data_dir(bin_dir)
 
     find_module_clear_caches()
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
                                 options.python_version,
-                                custom_typeshed_name=custom_typeshed_name)
+                                custom_typeshed_dir=options.custom_typeshed_dir)
 
     if options.use_builtins_fixtures:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -259,16 +253,18 @@ def mypy_path() -> List[str]:
 
 def default_lib_path(data_dir: str,
                      pyversion: Tuple[int, int],
-                     custom_typeshed_name: str = None) -> List[str]:
+                     custom_typeshed_dir: Optional[str]) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = []  # type: List[str]
-    typeshed_name = custom_typeshed_name or 'typeshed'
 
-    auto = os.path.join(data_dir, 'stubs-auto')
-    if os.path.isdir(auto):
-        data_dir = auto
-
+    if custom_typeshed_dir:
+        typeshed_dir = custom_typeshed_dir
+    else:
+        auto = os.path.join(data_dir, 'stubs-auto')
+        if os.path.isdir(auto):
+            data_dir = auto
+        typeshed_dir = os.path.join(data_dir, "typeshed")
     # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
     # is that a module added with 3.4 will still be present in Python 3.5.
     versions = ["%d.%d" % (pyversion[0], minor)
@@ -277,7 +273,7 @@ def default_lib_path(data_dir: str,
     # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
         for lib_type in ['stdlib', 'third_party']:
-            stubdir = os.path.join(data_dir, typeshed_name, lib_type, v)
+            stubdir = os.path.join(typeshed_dir, lib_type, v)
             if os.path.isdir(stubdir):
                 path.append(stubdir)
 
