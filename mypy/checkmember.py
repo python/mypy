@@ -539,10 +539,9 @@ def bind_self(method: F, actual_self: Type = None) -> F:
 
     This way we can express "the type of self". For example:
 
-    T = TypeVar('T', covariant=True)
+    T = TypeVar('T', bound='A')
     class A:
-        def copy(self: T) -> T:
-            ...
+        def copy(self: T) -> T: ...
 
     class B(A): pass
 
