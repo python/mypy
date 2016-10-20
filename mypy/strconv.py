@@ -422,6 +422,10 @@ class StrConv(NodeVisitor[str]):
                                                   o.info.name(),
                                                   o.info.tuple_type)
 
+    def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
+        return 'TypedDictExpr:{}({})'.format(o.line,
+                                             o.info.name())
+
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
         return 'PromoteExpr:{}({})'.format(o.line, o.type)
 

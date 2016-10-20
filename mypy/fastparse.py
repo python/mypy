@@ -157,8 +157,6 @@ class ASTConverter(ast35.NodeTransformer):
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
-        elif op_name == '@':
-            raise RuntimeError('mypy does not support the MatMult operator')
         else:
             return op_name
 

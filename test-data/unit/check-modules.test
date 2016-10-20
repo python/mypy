@@ -1026,6 +1026,17 @@ bar = 0
 [builtins fixtures/module.pyi]
 [out]
 
+[case testIfFalseImport]
+if False:
+    import a
+def f(x: 'a.A') -> int:
+    return x.f()
+[file a.py]
+class A:
+    def f(self) -> int:
+        return 0
+[builtins fixtures/bool.pyi]
+
 
 -- Test stability under import cycles
 -- ----------------------------------

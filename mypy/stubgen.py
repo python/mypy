@@ -70,6 +70,7 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('modules', List[str]),
                                  ('ignore_errors', bool),
                                  ('recursive', bool),
+                                 ('fast_parser', bool),
                                  ])
 
 
@@ -77,6 +78,7 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
                              pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                             fast_parser: bool = False,
                              no_import: bool = False,
                              search_path: List[str] = [],
                              interpreter: str = sys.executable) -> None:
@@ -103,7 +105,8 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
             target += '.pyi'
         target = os.path.join(output_dir, target)
         generate_stub(module_path, output_dir, module_all,
-                      target=target, add_header=add_header, module=module, pyversion=pyversion)
+                      target=target, add_header=add_header, module=module,
+                      pyversion=pyversion, fast_parser=fast_parser)
     if not quiet:
         print('Created %s' % target)
 
@@ -168,10 +171,12 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
 
 def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
-                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                  fast_parser: bool = False) -> None:
     source = open(path, 'rb').read()
     options = MypyOptions()
     options.python_version = pyversion
+    options.fast_parser = fast_parser
     try:
         ast = mypy.parse.parse(source, fnam=path, errors=None, options=options)
     except mypy.errors.CompileError as e:
@@ -612,6 +617,7 @@ def main() -> None:
                                      sigs=sigs,
                                      class_sigs=class_sigs,
                                      pyversion=options.pyversion,
+                                     fast_parser=options.fast_parser,
                                      no_import=options.no_import,
                                      search_path=options.search_path,
                                      interpreter=options.interpreter)
@@ -631,6 +637,7 @@ def parse_options() -> Options:
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
+    fast_parser = False
     while args and args[0].startswith('-'):
         if args[0] == '--doc-dir':
             doc_dir = args[1]
@@ -645,6 +652,8 @@ def parse_options() -> Options:
             args = args[1:]
         elif args[0] == '--recursive':
             recursive = True
+        elif args[0] == '--fast-parser':
+            fast_parser = True
         elif args[0] == '--ignore-errors':
             ignore_errors = True
         elif args[0] == '--py2':
@@ -667,7 +676,8 @@ def parse_options() -> Options:
                    interpreter=interpreter,
                    modules=args,
                    ignore_errors=ignore_errors,
-                   recursive=recursive)
+                   recursive=recursive,
+                   fast_parser=fast_parser)
 
 
 def default_python2_interpreter() -> str:
@@ -695,6 +705,7 @@ def usage() -> None:
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
           --recursive     traverse listed modules to generate inner package modules as well
+          --fast-parser   enable experimental fast parser
           --ignore-errors ignore errors when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
