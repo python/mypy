@@ -1605,7 +1605,7 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    selftype = self.chk.binder.get(NameExpr('__SelfType'))
+                    selftype = self.chk.function_stack[-1].arguments[0].variable.type
                     return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
