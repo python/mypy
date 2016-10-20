@@ -26,4 +26,4 @@ docs/build/
 
 # Coverage Files
 htmlcov
-.coverage
+.coverage*

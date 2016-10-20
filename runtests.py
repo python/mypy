@@ -98,7 +98,7 @@ class Driver:
         full_name = 'pytest %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, '-m', 'pytest', '--cov-append'] + pytest_args
+        args = [sys.executable, '-m', 'pytest'] + pytest_args
         self.waiter.add(LazySubprocess(full_name, args, env=self.env))
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -110,12 +110,16 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+    def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None,
+                       coverage: bool = False) -> None:
         name = 'run %s' % name
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, '-m']
+        if coverage:
+            largs[0:0] = ['coverage', 'run', '-m']
+        else:
+            largs[0:0] = [sys.executable, '-m']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -218,17 +222,20 @@ def add_myunit(driver: Driver) -> None:
             # This module has been converted to pytest; don't try to use myunit.
             pass
         else:
-            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod,
+                                  *driver.arglist, coverage=True)
 
 
 def add_pythoneval(driver: Driver) -> None:
     driver.add_python_mod('eval-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testpythoneval', *driver.arglist)
+                          '-m', 'mypy.test.testpythoneval', *driver.arglist,
+                         coverage=True)
 
 
 def add_cmdline(driver: Driver) -> None:
     driver.add_python_mod('cmdline-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testcmdline', *driver.arglist)
+                          '-m', 'mypy.test.testcmdline', *driver.arglist,
+                         coverage=True)
 
 
 def add_stubs(driver: Driver) -> None:

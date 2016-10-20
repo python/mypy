@@ -13,7 +13,9 @@ install:
   - python setup.py install
 
 script:
+  - coverage erase
   - python runtests.py
+  - coverage combine
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
