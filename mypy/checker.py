@@ -1720,7 +1720,8 @@ class TypeChecker(NodeVisitor[Type]):
                                           'accept outside except: blocks even in '
                                           'python 2)'.format(s.vars[i].name))
                             var = cast(Var, s.vars[i].node)
-                            var.type = DeletedType(source=source)
+                            if not self.current_node_deferred:
+                                var.type = DeletedType(source=source)
                             self.binder.cleanse(s.vars[i])
             if s.else_body:
                 self.accept(s.else_body)

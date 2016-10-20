@@ -687,6 +687,17 @@ e = 1 # E: Assignment to variable 'e' outside except: block
 e = E1() # E: Assignment to variable 'e' outside except: block
 [builtins fixtures/exception.pyi]
 
+[case testExceptionVariableReuseInDeferredNode]
+def f(*a: BaseException) -> int:
+    x
+    try: pass
+    except BaseException as err: pass
+    try: pass
+    except BaseException as err: f(err)
+x = f()
+[builtins fixtures/exception.pyi]
+
+
 [case testArbitraryExpressionAsExceptionType]
 import typing
 a = BaseException
