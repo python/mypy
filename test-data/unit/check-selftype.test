@@ -56,7 +56,8 @@ class A:
             return A()  # E: Incompatible return value type (got "A", expected "T")
         elif A():
             return B()  # E: Incompatible return value type (got "B", expected "T")
-        return _type(self)()
+        reveal_type(_type(self))  # E: Revealed type is 'Type[T`-1]'
+        return reveal_type(_type(self)())  # E: Revealed type is 'T`-1'
 
 class B(A):
     pass
@@ -67,7 +68,7 @@ class C:
 
     def copy(self: Q) -> Q:
         if self:
-            return _type(self)(1)
+            return reveal_type(_type(self)(1))  # E: Revealed type is 'Q`-1'
         else:
             return _type(self)()  # E: Too few arguments for "C"
 
@@ -83,7 +84,7 @@ T = TypeVar('T', bound='A')
 class A:
     @classmethod
     def new(cls: Type[T]) -> T:
-        return cls()
+        return reveal_type(cls())  # E: Revealed type is 'T`-1'
 
 class B(A):
     pass

@@ -88,7 +88,9 @@ class TypeChecker(NodeVisitor[Type]):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
-    # Class context for selftyoe overriding
+    # Class context for checking overriding of a method of the form
+    #     def foo(self: T) -> T
+    # We need to pass the current class definition for instantiation of T
     class_context = None  # type: List[Type]
 
     # Stack of function return types
@@ -587,6 +589,7 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = typ.arg_types[i]
 
                     # Refuse covariant parameter type variables
+                    # TODO: check recuresively for inner type variables
                     if isinstance(arg_type, TypeVarType):
                         if i > 0:
                             if arg_type.variance == COVARIANT:

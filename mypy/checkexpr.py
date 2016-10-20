@@ -1611,7 +1611,7 @@ class ExpressionChecker:
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,
                                                  msg=self.msg, override_info=base, chk=self.chk,
-                                                 report_type=selftype)
+                                                 actual_self=selftype)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
