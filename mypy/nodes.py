@@ -1411,8 +1411,8 @@ class ComparisonExpr(Expression):
         self.operands = operands
         self.method_types = []
         self.literal = min(o.literal for o in self.operands)
-        self.literal_hash = (('Comparison',) + tuple(operators) +
-                             tuple(o.literal_hash for o in operands))  # type: ignore
+        self.literal_hash = ((cast(Any, 'Comparison'),) + tuple(operators) +
+                             tuple(o.literal_hash for o in operands))
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
@@ -1502,7 +1502,7 @@ class ListExpr(Expression):
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('List',) + tuple(x.literal_hash for x in items)  # type: ignore
+            self.literal_hash = (cast(Any, 'List'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
@@ -1536,7 +1536,7 @@ class TupleExpr(Expression):
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('Tuple',) + tuple(x.literal_hash for x in items)  # type: ignore
+            self.literal_hash = (cast(Any, 'Tuple'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
@@ -1551,7 +1551,7 @@ class SetExpr(Expression):
         self.items = items
         if all(x.literal == LITERAL_YES for x in items):
             self.literal = LITERAL_YES
-            self.literal_hash = ('Set',) + tuple(x.literal_hash for x in items)  # type: ignore
+            self.literal_hash = (cast(Any, 'Set'),) + tuple(x.literal_hash for x in items)
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
