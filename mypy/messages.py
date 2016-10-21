@@ -351,7 +351,12 @@ class MessageBuilder:
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
         elif member == '__call__':
-            self.fail('{} not callable'.format(self.format(typ)), context)
+            if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.function'):
+                # "'function' not callable" is a confusing error message.
+                # Explain that the problem is that the type of the function is not known.
+                self.fail('Cannot call function of unknown type', context)
+            else:
+                self.fail('{} not callable'.format(self.format(typ)), context)
         else:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
