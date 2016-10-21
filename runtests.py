@@ -40,7 +40,7 @@ class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
             arglist: List[str], verbosity: int, parallel_limit: int,
-            xfail: List[str]) -> None:
+            xfail: List[str], coverage: bool) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.arglist = arglist
@@ -50,6 +50,7 @@ class Driver:
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
+        self.coverage = coverage
 
     def prepend_path(self, name: str, paths: List[str]) -> None:
         old_val = self.env.get(name)
@@ -94,11 +95,15 @@ class Driver:
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
-    def add_pytest(self, name: str, pytest_args: List[str]) -> None:
+    def add_pytest(self, name: str, pytest_args: List[str], coverage: bool = False) -> None:
         full_name = 'pytest %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, '-m', 'pytest'] + pytest_args
+        if coverage and self.coverage:
+            args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + pytest_args
+        else:
+            args = [sys.executable, '-m', 'pytest'] + pytest_args
+
         self.waiter.add(LazySubprocess(full_name, args, env=self.env))
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -116,7 +121,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        if coverage:
+        if coverage and self.coverage:
             largs[0:0] = ['coverage', 'run', '-m']
         else:
             largs[0:0] = [sys.executable, '-m']
@@ -207,7 +212,7 @@ PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
 
 def add_pytest(driver: Driver) -> None:
     for f in PYTEST_FILES:
-        driver.add_pytest(f, [f] + driver.arglist)
+        driver.add_pytest(f, [f] + driver.arglist, True)
 
 
 def add_myunit(driver: Driver) -> None:
@@ -295,6 +300,7 @@ def usage(status: int) -> None:
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
     print('  -x, --exclude FILTER   exclude tasks matching FILTER')
+    print('  -c, --coverage         calculate code coverage while running tests')
     print('  --                     treat all remaining arguments as positional')
     sys.exit(status)
 
@@ -323,6 +329,7 @@ def main() -> None:
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
     list_only = False
+    coverage = False
 
     allow_opts = True
     curlist = whitelist
@@ -347,6 +354,8 @@ def main() -> None:
                 curlist = arglist
             elif a == '-l' or a == '--list':
                 list_only = True
+            elif a == '-c' or a == '--coverage':
+                coverage = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -363,7 +372,7 @@ def main() -> None:
         whitelist.append('')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[])
+            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[], coverage=coverage)
 
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])

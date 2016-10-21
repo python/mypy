@@ -14,7 +14,7 @@ install:
 
 script:
   - coverage erase
-  - python runtests.py
+  - python runtests.py --coverage
   - coverage combine
 
 after_success:
