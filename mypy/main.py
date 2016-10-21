@@ -198,6 +198,9 @@ def process_options(args: List[str],
     parser.add_argument('--show-column-numbers', action='store_true',
                         dest='show_column_numbers',
                         help="Show column numbers in error messages")
+    parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
+                        dest='special-opts:find_occurrences',
+                        help="print out all usages of a class member (experimental)")
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -292,6 +295,12 @@ def process_options(args: List[str],
         options.strict_optional = True
     if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
+    if special_opts.find_occurrences:
+        experiments.find_occurrences = special_opts.find_occurrences.split('.')
+        if len(experiments.find_occurrences) < 2:
+            parser.error("Can only find occurrences of class members.")
+        if len(experiments.find_occurrences) != 2:
+            parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.
     for flag, val in vars(special_opts).items():
