@@ -466,6 +466,7 @@ class Dummy(Generic[T]):
 
 Dummy[int]().meth(1)
 Dummy[int]().meth('a')  # E: Argument 1 to "meth" of "Dummy" has incompatible type "str"; expected "int"
+reveal_type(Dummy[int]())  # E: Revealed type is '__main__.Dummy[builtins.int*]'
 reveal_type(Dummy[int]().methout())  # E: Revealed type is 'builtins.int*'
 [out]
 
@@ -477,8 +478,14 @@ class C(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         ...
 
-class D(C[int, str]): ...
-D(1, 1)  # E: Argument 2 to "D" has incompatible type "int"; expected "str"
+class D(C[int, T], Generic[T]): ...
+
+D[str](1, 'a')
+D[str](1, 1)  # E: Argument 2 to "D" has incompatible type "int"; expected "str"
+
+class E(D[str]): ...
+E(1, 'a')
+E(1, 1)  # E: Argument 2 to "E" has incompatible type "int"; expected "str"
 [out]
 
 [case testTypeApplicationAlias]
