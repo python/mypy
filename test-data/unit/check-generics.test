@@ -422,33 +422,76 @@ main: note: In member "f" of class "A":
 -- ----------------------------
 
 
-[case testInvalidTypeApplicationTarget]
+[case testTypeApplicationArgs]
 from typing import TypeVar, Generic
 T = TypeVar('T')
-class A(Generic[T]): pass
-A[A]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
-A[int, str]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+Node[int]()  # E: Too few arguments for "Node"
+Node[int](1, 1, 1)  # E: Too many arguments for "Node"
 [out]
 
-[case testInvalidTypeApplicationTarget2]
+[case testTypeApplicationTvars]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 S = TypeVar('S')
 class A(Generic[T, S]): pass
-A[int, str]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
-A[int]() # E: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
+A[int]()  # E: Type application has too few types (2 expected)
+A[int, str, int]() # E: Type application has too many types (2 expected)
 [out]
 
-[case testInvalidTypeApplicationTarget3]
-
+[case testInvalidTypeApplicationType]
 a = None # type: A
 class A: pass
-a[A]() # Fail
-A[A]() # Fail
+a[A]()  # E: Value of type "A" is not indexable
+A[A]()  # E: Type application targets a non-generic function or class
 [out]
-main:4: error: Value of type "A" is not indexable
-main:5: error: Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)
 
+[case testTypeApplicationArgTypes]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+Node[int](1)
+Node[int]('a')  # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
+
+class Dummy(Generic[T]):
+    def meth(self, x: T) -> None:
+        ...
+    def methout(self) -> T:
+        ...
+
+Dummy[int]().meth(1)
+Dummy[int]().meth('a')  # E: Argument 1 to "meth" of "Dummy" has incompatible type "str"; expected "int"
+reveal_type(Dummy[int]().methout())  # E: Revealed type is 'builtins.int*'
+[out]
+
+[case testTypeApplicationArgTypesSubclasses]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class C(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        ...
+
+class D(C[int, str]): ...
+D(1, 1)  # E: Argument 2 to "D" has incompatible type "int"; expected "str"
+[out]
+
+[case testTypeApplicationAlias]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+Alias = Node
+Alias[int](1)
+Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
+[out]
 
 -- Multiple assignment with lists
 -- ------------------------------
