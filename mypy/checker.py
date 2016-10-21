@@ -948,12 +948,12 @@ class TypeChecker(NodeVisitor[Type]):
         self.enter_partial_types()
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
-        with self.binder.top_frame_context():
-            self.accept(defn.defs)
-        self.binder = old_binder
         if not defn.has_incompatible_baseclass:
             # Otherwise we've already found errors; more errors are not useful
             self.check_multiple_inheritance(typ)
+        with self.binder.top_frame_context():
+            self.accept(defn.defs)
+        self.binder = old_binder
         self.leave_partial_types()
         self.errors.pop_type()
 
@@ -2719,9 +2719,19 @@ def is_valid_inferred_type(typ: Type) -> bool:
     return True
 
 
+def is_builtin_class(fullname: str):
+    exceptions = []  # type: List[str]
+    # TODO: add exceptions to builtins.* ?
+    *path, name = fullname.split('.')
+    if path[0] == 'builtins' and name.islower() and name not in exceptions:
+        return True
+    # TODO: add builtin classes outside builtins
+    return False
+
+
 def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
     for base in type.mro:
-        if base.defn.fullname == 'builtins.object':
+        if is_builtin_class(base.defn.fullname):
             return base
-    else:
-        return None
+    # type.mro must contain builtins.object
+    assert False

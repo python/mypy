@@ -899,17 +899,17 @@ a.f.x # E: "int" has no attribute "x"
 -- -------------------------------------------------------
 
 
-[case testInvalidMultipleInheritanceFromBuiltins-skip]
+[case testInvalidMultipleInheritanceFromBuiltins]
 import typing
-class A(int, str): pass # E: Instance layout conflict in multiple inheritance
+class A(int, function): pass # E: Instance layout conflict in multiple inheritance
 [out]
 main: note: In class "A":
 
-[case testInvalidMultipleInheritanceFromBuiltins-skip]
+[case testInvalidMultipleInheritanceFromBuiltins]
 import typing
 class S(str): pass
 class A(S, str): pass
-class B(S, int): pass # E: Instance layout conflict in multiple inheritance
+class B(S, function): pass # E: Instance layout conflict in multiple inheritance
 [out]
 main: note: In class "B":
 
