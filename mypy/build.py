@@ -1421,12 +1421,18 @@ class State:
                                             self.tree, self.xpath)
             self.type_checker.check_first_pass()
 
-    def type_check_second_pass(self) -> None:
+    def type_check_second_pass(self) -> bool:
+        manager = self.manager
+        if self.options.semantic_analysis_only:
+            return False
+        with self.wrap_context():
+            return self.type_checker.check_second_pass()
+
+    def finish_passes(self) -> None:
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            self.type_checker.check_second_pass()
             manager.all_types.update(self.type_checker.type_map)
 
             if self.options.incremental:
@@ -1746,9 +1752,14 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
         graph[id].semantic_analysis_pass_three()
     for id in scc:
         graph[id].type_check_first_pass()
+    more = True
+    while more:
+        more = False
+        for id in scc:
+            if graph[id].type_check_second_pass():
+                more = True
     for id in scc:
-        graph[id].type_check_second_pass()
-    for id in scc:
+        graph[id].finish_passes()
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

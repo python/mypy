@@ -59,6 +59,8 @@ from mypy import experiments
 
 T = TypeVar('T')
 
+LAST_PASS = 1  # Pass numbers start at 0
+
 
 # A node which is postponed to be type checked during the next pass.
 DeferredNode = NamedTuple(
@@ -185,12 +187,20 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-    def check_second_pass(self) -> None:
-        """Run second pass of type checking which goes through deferred nodes."""
+    def check_second_pass(self) -> bool:
+        """Run second or following pass of type checking.
+
+        This goes through deferred nodes, returning True if there were any.
+        """
+        if not self.deferred_nodes:
+            return False
         self.errors.set_file(self.path)
-        self.pass_num = 1
+        self.pass_num += 1
+        print('---', self.path, 'pass', self.pass_num + 1, '---')
+        todo = self.deferred_nodes
+        self.deferred_nodes = []
         done = set()  # type: Set[FuncItem]
-        for node, type_name in self.deferred_nodes:
+        for node, type_name in todo:
             if node in done:
                 continue
             print(type_name, '.', node.fullname() or node.name())
@@ -200,10 +210,10 @@ class TypeChecker(NodeVisitor[Type]):
             self.accept(node)
             if type_name:
                 self.errors.pop_type()
-        self.deferred_nodes = []
+        return True
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        if self.pass_num == 0 and self.function_stack:
+        if self.pass_num < LAST_PASS and self.function_stack:
             # Don't report an error yet. Just defer.
             node = self.function_stack[-1]
             if self.errors.type_name:
