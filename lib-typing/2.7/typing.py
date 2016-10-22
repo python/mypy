@@ -1004,7 +1004,7 @@ def _replace_arg(arg, tvars, args):
         return arg._subs_repr(tvars, args)
     if isinstance(arg, TypeVar):
         for i, tvar in enumerate(tvars):
-            if arg.__name__ == tvar.__name__:
+            if arg == tvar:
                 return args[i]
     return _type_repr(arg)
 
