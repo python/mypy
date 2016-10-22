@@ -190,7 +190,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.info = node.info
         new.decorators = [self.expr(decorator)
                           for decorator in node.decorators]
-        new.is_builtinclass = node.is_builtinclass
         return new
 
     def visit_global_decl(self, node: GlobalDecl) -> GlobalDecl:

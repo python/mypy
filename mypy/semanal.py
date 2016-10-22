@@ -559,8 +559,6 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.enter_class(defn)
 
-        self.setup_is_builtinclass(defn)
-
         # Analyze class body.
         defn.defs.accept(self)
 
@@ -605,15 +603,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-
-    def setup_is_builtinclass(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            if refers_to_fullname(decorator, 'typing.builtinclass'):
-                defn.is_builtinclass = True
-        if defn.fullname == 'builtins.object':
-            # Only 'object' is marked as a built-in class, as otherwise things elsewhere
-            # would break. We need a better way of dealing with built-in classes.
-            defn.is_builtinclass = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.

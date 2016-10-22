@@ -518,20 +518,6 @@ MypyFile:1(
       NameExpr(object [builtins.object]))
     PassStmt:3()))
 
-[case testBuiltinclassDecorator]
-from typing import builtinclass
-@builtinclass
-class A: pass
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [builtinclass])
-  ClassDef:2(
-    A
-    Builtinclass
-    Decorators(
-      NameExpr(builtinclass [typing.builtinclass]))
-    PassStmt:3()))
-
 [case testClassAttributeAsMethodDefaultArgumentValue]
 import typing
 class A:

@@ -50,7 +50,7 @@ from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, is_overlapping_types
 from mypy.binder import ConditionalTypeBinder
 from mypy.options import Options
 
@@ -959,7 +959,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
-
         if len(typ.bases) <= 1:
             # No multiple inheritance.
             return
@@ -973,13 +972,6 @@ class TypeChecker(NodeVisitor[Type]):
                     # checks suffice (these are implemented elsewhere).
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
-        # Verify that base class layouts are compatible.
-        builtin_bases = [nearest_builtin_ancestor(base.type)
-                         for base in typ.bases]
-        for base1 in builtin_bases:
-            for base2 in builtin_bases:
-                if not (base1 in base2.mro or base2 in base1.mro):
-                    self.fail(messages.INSTANCE_LAYOUT_CONFLICT, typ)
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:

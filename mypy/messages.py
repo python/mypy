@@ -76,7 +76,6 @@ INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
     'Read-only property cannot override read-write property'
-INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
 GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
     "Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)"
