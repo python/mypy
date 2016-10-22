@@ -1422,7 +1422,6 @@ class State:
             self.type_checker.check_first_pass()
 
     def type_check_second_pass(self) -> bool:
-        manager = self.manager
         if self.options.semantic_analysis_only:
             return False
         with self.wrap_context():
