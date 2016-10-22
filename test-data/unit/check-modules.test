@@ -1220,6 +1220,22 @@ x = 1 + 1
 [out]
 tmp/a.py:3: error: Revealed type is 'builtins.int'
 
+[case testThreePassesRequired]
+# flags: --hide-error-context
+import b
+[file a.py]
+import b
+class C:
+    def f1(self) -> None:
+        self.x2
+    def f2(self) -> None:
+        self.x2 = b.b
+[file b.py]
+import a
+b = 1 + 1
+[out]
+tmp/a.py:4: error: Cannot determine type of 'x2'
+
 
 -- Scripts and __main__
 
