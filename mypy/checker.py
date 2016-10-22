@@ -959,7 +959,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
-
         if len(typ.bases) <= 1:
             # No multiple inheritance.
             return
@@ -973,13 +972,6 @@ class TypeChecker(NodeVisitor[Type]):
                     # checks suffice (these are implemented elsewhere).
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
-        # Verify that base class layouts are compatible.
-        builtin_bases = [nearest_builtin_ancestor(base.type)
-                         for base in typ.bases]
-        for base1 in builtin_bases:
-            for base2 in builtin_bases:
-                if not (base1 in base2.mro or base2 in base1.mro):
-                    self.fail(messages.INSTANCE_LAYOUT_CONFLICT, typ)
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
@@ -2717,21 +2709,3 @@ def is_valid_inferred_type(typ: Type) -> bool:
             if not is_valid_inferred_type(item):
                 return False
     return True
-
-
-def is_builtin_class(fullname: str):
-    exceptions = []  # type: List[str]
-    # TODO: add exceptions to builtins.* ?
-    *path, name = fullname.split('.')
-    if path[0] == 'builtins' and name.islower() and name not in exceptions:
-        return True
-    # TODO: add builtin classes outside builtins
-    return False
-
-
-def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
-    for base in type.mro:
-        if is_builtin_class(base.defn.fullname):
-            return base
-    # type.mro must contain builtins.object
-    assert False

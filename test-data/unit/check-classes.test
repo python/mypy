@@ -894,26 +894,6 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
-
--- Multiple inheritance, non-object built-in class as base
--- -------------------------------------------------------
-
-
-[case testInvalidMultipleInheritanceFromBuiltins]
-import typing
-class A(int, function): pass # E: Instance layout conflict in multiple inheritance
-[out]
-main: note: In class "A":
-
-[case testInvalidMultipleInheritanceFromBuiltins]
-import typing
-class S(str): pass
-class A(S, str): pass
-class B(S, function): pass # E: Instance layout conflict in multiple inheritance
-[out]
-main: note: In class "B":
-
-
 -- _promote decorators
 -- -------------------
 
