@@ -121,7 +121,7 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -132,7 +132,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.type_map = {}
         self.module_type_map = {}
         self.binder = ConditionalTypeBinder()
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, options)
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
@@ -142,6 +142,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.pass_num = 0
         self.current_node_deferred = False
         self.module_refs = set()
+        self.options = options
 
     def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
         """Type check a mypy file with the given path."""
@@ -2352,10 +2353,10 @@ class TypeChecker(NodeVisitor[Type]):
         return iterable.args[0]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
-        return function_type(func, self.named_type('builtins.function'))
+        return function_type(func, self.named_type('builtins.function'), self.options)
 
     def method_type(self, func: FuncBase) -> FunctionLike:
-        return method_type_with_fallback(func, self.named_type('builtins.function'))
+        return method_type_with_fallback(func, self.named_type('builtins.function'), self.options)
 
     # TODO: These next two functions should refer to TypeMap below
     def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
