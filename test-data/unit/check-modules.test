@@ -1236,6 +1236,20 @@ b = 1 + 1
 [out]
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
+[case testErrorInPassTwo]
+# flags: --hide-error-context
+import b
+[file a.py]
+import b
+def f() -> None:
+    a = b.x + 1
+    a + ''
+[file b.py]
+import a
+x = 1 + 1
+[out]
+tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
+
 
 -- Scripts and __main__
 
