@@ -2418,14 +2418,16 @@ class SemanticAnalyzer(NodeVisitor):
     # Helpers
     #
 
-    def lookup(self, name: str, ctx: Context) -> SymbolTableNode:
+    def lookup(self, name: str, ctx: Context, include_globals: bool = True,
+               report: bool = True) -> SymbolTableNode:
         """Look up an unqualified name in all active namespaces."""
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
             else:
-                self.name_not_defined(name, ctx)
+                if report:
+                    self.name_not_defined(name, ctx)
                 return None
         # 1b. Name declared using 'nonlocal x' takes precedence
         if name in self.nonlocal_decls[-1]:
@@ -2433,7 +2435,8 @@ class SemanticAnalyzer(NodeVisitor):
                 if table is not None and name in table:
                     return table[name]
             else:
-                self.name_not_defined(name, ctx)
+                if report:
+                    self.name_not_defined(name, ctx)
                 return None
         # 2. Class attributes (if within class definition)
         if self.is_class_scope() and name in self.type.names:
@@ -2442,22 +2445,25 @@ class SemanticAnalyzer(NodeVisitor):
         for table in reversed(self.locals):
             if table is not None and name in table:
                 return table[name]
-        # 4. Current file global scope
-        if name in self.globals:
-            return self.globals[name]
-        # 5. Builtins
-        b = self.globals.get('__builtins__', None)
-        if b:
-            table = cast(MypyFile, b.node).names
-            if name in table:
-                if name[0] == "_" and name[1] != "_":
-                    self.name_not_defined(name, ctx)
-                    return None
-                node = table[name]
-                return node
+        if include_globals:
+            # 4. Current file global scope
+            if name in self.globals:
+                return self.globals[name]
+            # 5. Builtins
+            b = self.globals.get('__builtins__', None)
+            if b:
+                table = cast(MypyFile, b.node).names
+                if name in table:
+                    if name[0] == "_" and name[1] != "_":
+                        if report:
+                            self.name_not_defined(name, ctx)
+                        return None
+                    node = table[name]
+                    return node
         # Give up.
-        self.name_not_defined(name, ctx)
-        self.check_for_obsolete_short_name(name, ctx)
+        if report:
+            self.name_not_defined(name, ctx)
+            self.check_for_obsolete_short_name(name, ctx)
         return None
 
     def check_for_obsolete_short_name(self, name: str, ctx: Context) -> None:
@@ -2556,6 +2562,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def is_class_scope(self) -> bool:
         return self.type is not None and not self.is_func_scope()
+
+    def is_module_scope(self) -> bool:
+        return not (self.is_class_scope() or self.is_func_scope())
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
@@ -2739,14 +2748,16 @@ class FirstPass(NodeVisitor):
         self.sem.block_depth[-1] -= 1
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None)
+        if self.sem.is_module_scope():
+            for lval in s.lvalues:
+                self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
     def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
-        if func.name() in sem.globals:
+        at_module = sem.is_module_scope()
+        if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
             if original_sym.kind == UNBOUND_IMPORTED:
@@ -2761,25 +2772,50 @@ class FirstPass(NodeVisitor):
                 # Report error.
                 sem.check_no_global(func.name(), func)
         else:
-            sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
+            kind = self.kind_by_scope()
+            if kind == GDEF:
+                sem.globals[func.name()] = SymbolTableNode(kind, func, sem.cur_mod_id)
+            else:
+                ctx = sem.type_stack[-1] if kind == MDEF else sem.function_stack[-1]
+                if not sem.lookup(func.name(), ctx, include_globals=False, report=False):
+                    sem.add_symbol(func.name(), SymbolTableNode(kind, func), ctx)
+            sem.function_stack.append(func)
+            sem.enter()
+            func.body.accept(self)
+            sem.leave()
+            sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        self.sem.check_no_global(func.name(), func, True)
+        kind = self.kind_by_scope()
+        if kind == GDEF:
+            self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
-        self.sem.globals[func.name()] = SymbolTableNode(GDEF, func,
-                                                        self.sem.cur_mod_id)
+        if kind == GDEF:
+            self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
+        else:
+            ctx = self.sem.type_stack[-1] if kind == MDEF else self.sem.function_stack[-1]
+            self.sem.add_symbol(func.name(), SymbolTableNode(kind, func), ctx)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
-        self.sem.check_no_global(cdef.name, cdef)
+        kind = self.kind_by_scope()
+        if kind == LDEF:
+            return
+        elif kind == GDEF:
+            self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
         info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
         info.set_line(cdef.line, cdef.column)
         cdef.info = info
-        self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info,
-                                                      self.sem.cur_mod_id)
+        if kind == GDEF:
+            self.sem.globals[cdef.name] = SymbolTableNode(kind, info, self.sem.cur_mod_id)
+        else:  # MDEF
+            ctx = self.sem.type_stack[-1]
+            if not self.sem.lookup(cdef.name, ctx, include_globals=False, report=False):
+                self.sem.add_symbol(cdef.name, SymbolTableNode(kind, info), ctx)
         self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
+        self.sem.enter_class(outer_def)
         for node in outer_def.defs.body:
             if isinstance(node, ClassDef):
                 node.info = TypeInfo(SymbolTable(), node, self.sem.cur_mod_id)
@@ -2791,51 +2827,70 @@ class FirstPass(NodeVisitor):
                 symbol = SymbolTableNode(MDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
+            elif isinstance(node, (ImportFrom, Import, ImportAll, IfStmt)):
+                node.accept(self)
+        self.sem.leave_class()
 
     def visit_import_from(self, node: ImportFrom) -> None:
         # We can't bind module names during the first pass, as the target module might be
         # unprocessed. However, we add dummy unbound imported names to the symbol table so
         # that we at least know that the name refers to a module.
-        node.is_top_level = True
+        node.is_top_level = self.sem.is_module_scope()
+        kind = self.kind_by_scope()
         for name, as_name in node.names:
             imported_name = as_name or name
-            if imported_name not in self.sem.globals:
-                self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+            if kind == GDEF:
+                if imported_name not in self.sem.globals:
+                    self.sem.globals[imported_name] = SymbolTableNode(UNBOUND_IMPORTED, None)
+            else:
+                ctx = self.sem.type_stack[-1] if kind == MDEF else self.sem.function_stack[-1]
+                if not self.sem.lookup(imported_name, ctx, include_globals=False, report=False):
+                    self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None),
+                                        node)
 
     def visit_import(self, node: Import) -> None:
-        node.is_top_level = True
+        node.is_top_level = self.sem.is_module_scope()
         # This is similar to visit_import_from -- see the comment there.
+        kind = self.kind_by_scope()
         for id, as_id in node.ids:
             imported_id = as_id or id
-            if imported_id not in self.sem.globals:
-                self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+            if kind == GDEF:
+                if imported_id not in self.sem.globals:
+                    self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+                else:
+                    # If the previous symbol is a variable, this should take precedence.
+                    self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
             else:
-                # If the previous symbol is a variable, this should take precedence.
-                self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
+                ctx = self.sem.type_stack[-1] if kind == MDEF else self.sem.function_stack[-1]
+                if not self.sem.lookup(imported_id, ctx, include_globals=False, report=False):
+                    self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_import_all(self, node: ImportAll) -> None:
-        node.is_top_level = True
+        node.is_top_level = self.sem.is_module_scope()
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
-        s.body.accept(self)
-        if s.else_body:
-            s.else_body.accept(self)
+        if self.sem.is_module_scope():
+            s.body.accept(self)
+            if s.else_body:
+                s.else_body.accept(self)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
-        self.analyze_lvalue(s.index)
-        s.body.accept(self)
-        if s.else_body:
-            s.else_body.accept(self)
+        if self.sem.is_module_scope():
+            self.analyze_lvalue(s.index)
+            s.body.accept(self)
+            if s.else_body:
+                s.else_body.accept(self)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
-        for n in s.target:
-            if n:
-                self.analyze_lvalue(n)
-        s.body.accept(self)
+        if self.sem.is_module_scope():
+            for n in s.target:
+                if n:
+                    self.analyze_lvalue(n)
+            s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
-        self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
+        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
@@ -2845,10 +2900,22 @@ class FirstPass(NodeVisitor):
             s.else_body.accept(self)
 
     def visit_try_stmt(self, s: TryStmt) -> None:
-        self.sem.analyze_try_stmt(s, self, add_global=True)
+        if self.sem.is_module_scope():
+            self.sem.analyze_try_stmt(s, self, add_global=self.sem.is_module_scope())
 
     def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False) -> None:
-        self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)
+        self.sem.analyze_lvalue(lvalue, add_global=self.sem.is_module_scope(),
+                                explicit_type=explicit_type)
+
+    def kind_by_scope(self) -> int:
+        if self.sem.is_module_scope():
+            return GDEF
+        elif self.sem.is_class_scope():
+            return MDEF
+        elif self.sem.is_func_scope():
+            return LDEF
+        else:
+            assert False, "Couldn't determine scope"
 
 
 class ThirdPass(TraverserVisitor):
