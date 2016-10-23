@@ -1186,6 +1186,8 @@ reveal_type(x)
 main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:2: error: Revealed type is 'builtins.str'
 
+-- Tests for cross-module second_pass checking.
+
 [case testSymmetricImportCycle1]
 # flags: --hide-error-context
 import a
@@ -1249,6 +1251,22 @@ import a
 x = 1 + 1
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testDeferredDecorator]
+# flags: --hide-error-context
+import a
+[file a.py]
+import b
+def g() -> None:
+    f()
+@b.deco
+def f() -> int: pass
+x = 1 + 1
+[file b.py]
+from typing import Any
+import a
+def deco(f: Any) -> Any:
+    a.x
 
 
 -- Scripts and __main__
