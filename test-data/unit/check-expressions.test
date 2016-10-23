@@ -1605,6 +1605,14 @@ reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str";
 reveal_type = 1
 1 + "foo" # E: Unsupported operand types for + ("int" and "str")
 
+[case testRevealForward]
+def f() -> None:
+    reveal_type(x)
+x = 1 + 1
+[out]
+main: note: In function "f":
+main:2: error: Revealed type is 'builtins.int'
+
 [case testEqNone]
 None == None
 [builtins fixtures/ops.pyi]
