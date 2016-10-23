@@ -1,9 +1,9 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, UnionType, CallableType,
-    TypeVarType, Instance, TypeVisitor, ErasedType, TypeList, Overloaded, PartialType,
-    DeletedType, UninhabitedType, TypeType
+    Type, UnboundType, ErrorType, AnyType, NoneTyp, Void, TupleType, TypedDictType,
+    UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
+    TypeList, Overloaded, PartialType, DeletedType, UninhabitedType, TypeType
 )
 
 
@@ -108,6 +108,17 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
             return is_same_types(left.items, self.right.items)
+        else:
+            return False
+
+    def visit_typeddict_type(self, left: TypedDictType) -> bool:
+        if isinstance(self.right, TypedDictType):
+            if left.items.keys() != self.right.items.keys():
+                return False
+            for (_, left_item_type, right_item_type) in left.zip(self.right):
+                if not is_same_type(left_item_type, right_item_type):
+                    return False
+            return True
         else:
             return False
 

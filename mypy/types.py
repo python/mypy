@@ -2,8 +2,9 @@
 
 from abc import abstractmethod
 import copy
+from collections import OrderedDict
 from typing import (
-    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union
+    Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union, Iterable,
 )
 
 import mypy.nodes
@@ -451,6 +452,9 @@ class Instance(Type):
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
         return inst
 
+    def copy_modified(self, *, args: List[Type]) -> 'Instance':
+        return Instance(self.type, args, self.line, self.column, self.erased)
+
 
 class TypeVarType(Type):
     """A type variable type.
@@ -799,7 +803,7 @@ class TupleType(Type):
                          implicit=data['implicit'])
 
     def copy_modified(self, *, fallback: Instance = None,
-                  items: List[Type] = None) -> 'TupleType':
+                      items: List[Type] = None) -> 'TupleType':
         if fallback is None:
             fallback = self.fallback
         if items is None:
@@ -809,6 +813,86 @@ class TupleType(Type):
     def slice(self, begin: int, stride: int, end: int) -> 'TupleType':
         return TupleType(self.items[begin:end:stride], self.fallback,
                          self.line, self.column, self.implicit)
+
+
+class TypedDictType(Type):
+    """The type of a TypedDict instance. TypedDict(K1=VT1, ..., Kn=VTn)
+
+    A TypedDictType can be either named or anonymous.
+    If it is anonymous then its fallback will be an Instance of Mapping[str, V].
+    If it is named then its fallback will be an Instance of the named type (ex: "Point")
+    whose TypeInfo has a typeddict_type that is anonymous.
+    """
+
+    items = None  # type: OrderedDict[str, Type]  # (item_name, item_type)
+    fallback = None  # type: Instance
+
+    def __init__(self, items: 'OrderedDict[str, Type]', fallback: Instance,
+                 line: int = -1, column: int = -1) -> None:
+        self.items = items
+        self.fallback = fallback
+        self.can_be_true = len(self.items) > 0
+        self.can_be_false = len(self.items) == 0
+        super().__init__(line, column)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_typeddict_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'TypedDictType',
+                'items': [[n, t.serialize()] for (n, t) in self.items.items()],
+                'fallback': self.fallback.serialize(),
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypedDictType':
+        assert data['.class'] == 'TypedDictType'
+        return TypedDictType(OrderedDict([(n, Type.deserialize(t)) for (n, t) in data['items']]),
+                             Instance.deserialize(data['fallback']))
+
+    def as_anonymous(self):
+        if self.fallback.type.fullname() == 'typing.Mapping':
+            return self
+        assert self.fallback.type.typeddict_type is not None
+        return self.fallback.type.typeddict_type.as_anonymous()
+
+    def copy_modified(self, *, fallback: Instance = None,
+                      item_types: List[Type] = None) -> 'TypedDictType':
+        if fallback is None:
+            fallback = self.fallback
+        if item_types is None:
+            items = self.items
+        else:
+            items = OrderedDict(zip(self.items, item_types))
+        return TypedDictType(items, fallback, self.line, self.column)
+
+    def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
+        anonymous = self.as_anonymous()
+        return anonymous.fallback.copy_modified(args=[  # i.e. Mapping
+            anonymous.fallback.args[0],                 # i.e. str
+            value_type
+        ])
+
+    def names_are_wider_than(self, other: 'TypedDictType'):
+        return len(other.items.keys() - self.items.keys()) == 0
+
+    def zip(self, right: 'TypedDictType') -> Iterable[Tuple[str, Type, Type]]:
+        left = self
+        for (item_name, left_item_type) in left.items.items():
+            right_item_type = right.items.get(item_name)
+            if right_item_type is not None:
+                yield (item_name, left_item_type, right_item_type)
+
+    def zipall(self, right: 'TypedDictType') \
+            -> Iterable[Tuple[str, Optional[Type], Optional[Type]]]:
+        left = self
+        for (item_name, left_item_type) in left.items.items():
+            right_item_type = right.items.get(item_name)
+            yield (item_name, left_item_type, right_item_type)
+        for (item_name, right_item_type) in right.items.items():
+            if item_name in left.items:
+                continue
+            yield (item_name, None, right_item_type)
 
 
 class StarType(Type):
@@ -1080,6 +1164,10 @@ class TypeVisitor(Generic[T]):
     def visit_tuple_type(self, t: TupleType) -> T:
         pass
 
+    @abstractmethod
+    def visit_typeddict_type(self, t: TypedDictType) -> T:
+        pass
+
     def visit_star_type(self, t: StarType) -> T:
         raise self._notimplemented_helper('star_type')
 
@@ -1149,8 +1237,19 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
+                         # TODO: This appears to be unsafe.
                          cast(Any, t.fallback.accept(self)),
                          t.line, t.column)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        items = OrderedDict([
+            (item_name, item_type.accept(self))
+            for (item_name, item_type) in t.items.items()
+        ])
+        return TypedDictType(items,
+                             # TODO: This appears to be unsafe.
+                             cast(Any, t.fallback.accept(self)),
+                             t.line, t.column)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line, t.column)
@@ -1287,6 +1386,15 @@ class TypeStrVisitor(TypeVisitor[str]):
                 return 'Tuple[{}, fallback={}]'.format(s, t.fallback.accept(self))
         return 'Tuple[{}]'.format(s)
 
+    def visit_typeddict_type(self, t: TypedDictType) -> str:
+        s = self.keywords_str(t.items.items())
+        if t.fallback and t.fallback.type:
+            if s == '':
+                return 'TypedDict(_fallback={})'.format(t.fallback.accept(self))
+            else:
+                return 'TypedDict({}, _fallback={})'.format(s, t.fallback.accept(self))
+        return 'TypedDict({})'.format(s)
+
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)
         return '*{}'.format(s)
@@ -1319,6 +1427,15 @@ class TypeStrVisitor(TypeVisitor[str]):
             else:
                 res.append(str(t))
         return ', '.join(res)
+
+    def keywords_str(self, a: Iterable[Tuple[str, Type]]) -> str:
+        """Convert keywords to strings (pretty-print types)
+        and join the results with commas.
+        """
+        return ', '.join([
+            '{}={}'.format(name, t.accept(self))
+            for (name, t) in a
+        ])
 
 
 # These constants define the method used by TypeQuery to combine multiple
@@ -1391,6 +1508,9 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_tuple_type(self, t: TupleType) -> bool:
         return self.query_types(t.items)
 
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        return self.query_types(t.items.values())
+
     def visit_star_type(self, t: StarType) -> bool:
         return t.type.accept(self)
 
@@ -1403,7 +1523,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_type_type(self, t: TypeType) -> bool:
         return t.item.accept(self)
 
-    def query_types(self, types: Sequence[Type]) -> bool:
+    def query_types(self, types: Iterable[Type]) -> bool:
         """Perform a query for a list of types.
 
         Use the strategy constant to combine the results.

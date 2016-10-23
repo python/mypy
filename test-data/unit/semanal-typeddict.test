@@ -1,6 +1,30 @@
--- Semantic analysis of typed dicts
+-- Create Type
 
-[case testCanDefineTypedDictType]
+-- TODO: Implement support for this syntax.
+--[case testCanCreateTypedDictTypeWithKeywordArguments]
+--from mypy_extensions import TypedDict
+--Point = TypedDict('Point', x=int, y=int)
+--[builtins fixtures/dict.pyi]
+--[out]
+--MypyFile:1(
+--  ImportFrom:1(mypy_extensions, [TypedDict])
+--  AssignmentStmt:2(
+--    NameExpr(Point* [__main__.Point])
+--    TypedDictExpr:2(Point)))
+
+-- TODO: Implement support for this syntax.
+--[case testCanCreateTypedDictTypeWithDictCall]
+--from mypy_extensions import TypedDict
+--Point = TypedDict('Point', dict(x=int, y=int))
+--[builtins fixtures/dict.pyi]
+--[out]
+--MypyFile:1(
+--  ImportFrom:1(mypy_extensions, [TypedDict])
+--  AssignmentStmt:2(
+--    NameExpr(Point* [__main__.Point])
+--    TypedDictExpr:2(Point)))
+
+[case testCanCreateTypedDictTypeWithDictLiteral]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
@@ -11,41 +35,47 @@ MypyFile:1(
     NameExpr(Point* [__main__.Point])
     TypedDictExpr:2(Point)))
 
--- Errors
 
-[case testTypedDictWithTooFewArguments]
+-- Create Type (Errors)
+
+[case testCannotCreateTypedDictTypeWithTooFewArguments]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point')  # E: Too few arguments for TypedDict()
 [builtins fixtures/dict.pyi]
 
-[case testTypedDictWithTooManyArguments]
+[case testCannotCreateTypedDictTypeWithTooManyArguments]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int}, dict)  # E: Too many arguments for TypedDict()
 [builtins fixtures/dict.pyi]
 
-[case testTypedDictWithInvalidName]
+[case testCannotCreateTypedDictTypeWithInvalidName]
 from mypy_extensions import TypedDict
 Point = TypedDict(dict, {'x': int, 'y': int})  # E: TypedDict() expects a string literal as the first argument
 [builtins fixtures/dict.pyi]
 
-[case testTypedDictWithInvalidItems]
+[case testCannotCreateTypedDictTypeWithInvalidItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x'})  # E: TypedDict() expects a dictionary literal as the second argument
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictTypeWithUnderscoreItemName]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})  # E: TypedDict() item names cannot start with an underscore: _fallback
+[builtins fixtures/dict.pyi]
+
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
-[case testTypedDictWithNonpositionalArgs]
+[case testCannotCreateTypedDictTypeWithNonpositionalArgs]
 from mypy_extensions import TypedDict
 Point = TypedDict(typename='Point', fields={'x': int, 'y': int})  # E: Unexpected arguments to TypedDict()
 [builtins fixtures/dict.pyi]
 
-[case testTypedDictWithInvalidItemName]
+[case testCannotCreateTypedDictTypeWithInvalidItemName]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field name
 [builtins fixtures/dict.pyi]
 
-[case testTypedDictWithInvalidItemType]
+[case testCannotCreateTypedDictTypeWithInvalidItemType]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid field type
 [builtins fixtures/dict.pyi]

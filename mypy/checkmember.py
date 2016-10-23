@@ -3,7 +3,7 @@
 from typing import cast, Callable, List, Optional, TypeVar
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
+    Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
     DeletedType, NoneTyp, TypeType, function_type
 )
@@ -112,6 +112,11 @@ def analyze_member_access(name: str,
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
+        # Actually look up from the fallback instance type.
+        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     original_type=original_type, chk=chk)
+    elif isinstance(typ, TypedDictType):
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,

@@ -1,9 +1,10 @@
 """Semantic analysis of types"""
 
+from collections import OrderedDict
 from typing import Callable, cast, List, Optional
 
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
+    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
 )
@@ -191,9 +192,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
                 tup = info.tuple_type
-                if tup is None:
-                    return instance
-                else:
+                if tup is not None:
                     # The class has a Tuple[...] base class so it will be
                     # represented as a tuple type.
                     if t.args:
@@ -201,6 +200,17 @@ class TypeAnalyser(TypeVisitor[Type]):
                         return AnyType()
                     return tup.copy_modified(items=self.anal_array(tup.items),
                                              fallback=instance)
+                td = info.typeddict_type
+                if td is not None:
+                    # The class has a TypedDict[...] base class so it will be
+                    # represented as a typeddict type.
+                    if t.args:
+                        self.fail('Generic TypedDict types not supported', t)
+                        return AnyType()
+                    # Create a named TypedDictType
+                    return td.copy_modified(item_types=self.anal_array(list(td.items.values())),
+                                            fallback=instance)
+                return instance
         else:
             return AnyType()
 
@@ -293,6 +303,13 @@ class TypeAnalyser(TypeVisitor[Type]):
             return AnyType()
         fallback = t.fallback if t.fallback else self.builtin_type('builtins.tuple', [AnyType()])
         return TupleType(self.anal_array(t.items), fallback, t.line)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        items = OrderedDict([
+            (item_name, item_type.accept(self))
+            for (item_name, item_type) in t.items.items()
+        ])
+        return TypedDictType(items, t.fallback)
 
     def visit_star_type(self, t: StarType) -> Type:
         return StarType(t.type.accept(self), t.line)
@@ -459,6 +476,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     def visit_tuple_type(self, t: TupleType) -> None:
         for item in t.items:
             item.accept(self)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> None:
+        for item_type in t.items.values():
+            item_type.accept(self)
 
     def visit_union_type(self, t: UnionType) -> None:
         for item in t.items:

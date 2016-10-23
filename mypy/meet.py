@@ -1,12 +1,13 @@
-from typing import List
+from collections import OrderedDict
+from typing import List, Optional
 
-from mypy.join import is_similar_callables, combine_similar_callables
+from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, ErasedType, TypeList, UnionType, PartialType,
+    Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
     DeletedType, UninhabitedType, TypeType
 )
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_equivalent, is_subtype
 
 from mypy import experiments
 
@@ -243,6 +244,21 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
+        else:
+            return self.default(self.s)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if isinstance(self.s, TypedDictType):
+            for (_, l, r) in self.s.zip(t):
+                if not is_equivalent(l, r):
+                    return self.default(self.s)
+            items = OrderedDict([
+                (item_name, s_item_type or t_item_type)
+                for (item_name, s_item_type, t_item_type) in self.s.zipall(t)
+            ])
+            mapping_value_type = join_type_list(list(items.values()))
+            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            return TypedDictType(items, fallback)
         else:
             return self.default(self.s)
 

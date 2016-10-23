@@ -43,6 +43,7 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
+from collections import OrderedDict
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
@@ -72,13 +73,15 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
-    TupleType, UnionType, StarType, EllipsisType, function_type)
+    TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
+)
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy.options import Options
+from mypy import join
 
 
 T = TypeVar('T')
@@ -905,6 +908,9 @@ class SemanticAnalyzer(NodeVisitor):
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
 
+    def str_type(self) -> Instance:
+        return self.named_type('__builtins__.str')
+
     def class_type(self, info: TypeInfo) -> Type:
         # Construct a function type whose fallback is cls.
         from mypy import checkmember  # To avoid import cycle.
@@ -1724,7 +1730,7 @@ class SemanticAnalyzer(NodeVisitor):
             types = [AnyType() for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail("namedtuple() Field names cannot start with an underscore: "
+            self.fail("namedtuple() field names cannot start with an underscore: "
                       + ', '.join(underscore), call)
         return items, types, ok
 
@@ -1767,7 +1773,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
-        strtype = self.named_type('__builtins__.str')  # type: Type
+        strtype = self.str_type()
         basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
         dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
                    or self.object_type())
@@ -1922,6 +1928,10 @@ class SemanticAnalyzer(NodeVisitor):
                 "TypedDict() expects a dictionary literal as the second argument", call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        underscore = [item for item in items if item.startswith('_')]
+        if underscore:
+            self.fail("TypedDict() item names cannot start with an underscore: "
+                      + ', '.join(underscore), call)
         return items, types, ok
 
     def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
@@ -1947,17 +1957,13 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        strtype = self.named_type('__builtins__.str')  # type: Type
-        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
-                   or self.object_type())
-        fallback = dictype
+        mapping_value_type = join.join_type_list(types)
+        fallback = (self.named_type_or_none('typing.Mapping',
+                                            [self.str_type(), mapping_value_type])
+                    or self.object_type())
 
         info = self.basic_new_typeinfo(name, fallback)
-        info.is_typed_dict = True
-
-        # (TODO: Store {items, types} inside "info" somewhere for use later.
-        #        Probably inside a new "info.keys" field which
-        #        would be analogous to "info.names".)
+        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
 
         return info
 

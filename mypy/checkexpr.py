@@ -1,10 +1,11 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
+from collections import OrderedDict
 from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
+    TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type,
     get_typ_args, set_typ_args,
@@ -169,6 +170,10 @@ class ExpressionChecker:
         if e.analyzed:
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.chk.type_context[-1])
+        if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
+                e.callee.node.typeddict_type is not None:
+            return self.check_typeddict_call(e.callee.node.typeddict_type,
+                                             e.arg_kinds, e.arg_names, e.args, e)
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
         if (self.chk.options.disallow_untyped_calls and
@@ -177,6 +182,80 @@ class ExpressionChecker:
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
         return self.check_call_expr_with_callee_type(callee_type, e)
+
+    def check_typeddict_call(self, callee: TypedDictType,
+                             arg_kinds: List[int],
+                             arg_names: List[str],
+                             args: List[Expression],
+                             context: Context) -> Type:
+        if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
+            # ex: Point(x=42, y=1337)
+            item_names = arg_names
+            item_args = args
+            return self.check_typeddict_call_with_kwargs(
+                callee, OrderedDict(zip(item_names, item_args)), context)
+
+        if len(args) == 1 and arg_kinds[0] == ARG_POS:
+            unique_arg = args[0]
+            if isinstance(unique_arg, DictExpr):
+                # ex: Point({'x': 42, 'y': 1337})
+                return self.check_typeddict_call_with_dict(callee, unique_arg, context)
+            if isinstance(unique_arg, CallExpr) and isinstance(unique_arg.analyzed, DictExpr):
+                # ex: Point(dict(x=42, y=1337))
+                return self.check_typeddict_call_with_dict(callee, unique_arg.analyzed, context)
+
+        if len(args) == 0:
+            # ex: EmptyDict()
+            return self.check_typeddict_call_with_kwargs(
+                callee, OrderedDict(), context)
+
+        self.chk.fail(messages.INVALID_TYPEDDICT_ARGS, context)
+        return AnyType()
+
+    def check_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> Type:
+        item_name_exprs = [item[0] for item in kwargs.items]
+        item_args = [item[1] for item in kwargs.items]
+
+        item_names = []  # List[str]
+        for item_name_expr in item_name_exprs:
+            if not isinstance(item_name_expr, StrExpr):
+                self.chk.fail(messages.TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL, item_name_expr)
+                return AnyType()
+            item_names.append(item_name_expr.value)
+
+        return self.check_typeddict_call_with_kwargs(
+            callee, OrderedDict(zip(item_names, item_args)), context)
+
+    def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
+                                         kwargs: 'OrderedDict[str, Expression]',
+                                         context: Context) -> Type:
+        if callee.items.keys() != kwargs.keys():
+            callee_item_names = callee.items.keys()
+            kwargs_item_names = kwargs.keys()
+
+            self.msg.typeddict_instantiated_with_unexpected_items(
+                expected_item_names=list(callee_item_names),
+                actual_item_names=list(kwargs_item_names),
+                context=context)
+            return AnyType()
+
+        items = OrderedDict()  # type: OrderedDict[str, Type]
+        for (item_name, item_expected_type) in callee.items.items():
+            item_value = kwargs[item_name]
+
+            item_actual_type = self.chk.check_simple_assignment(
+                lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
+                msg=messages.INCOMPATIBLE_TYPES,
+                lvalue_name='TypedDict item "{}"'.format(item_name),
+                rvalue_name='expression')
+            items[item_name] = item_actual_type
+
+        mapping_value_type = join.join_type_list(list(items.values()))
+        fallback = self.chk.named_generic_type('typing.Mapping',
+                                               [self.chk.str_type(), mapping_value_type])
+        return TypedDictType(items, fallback)
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
