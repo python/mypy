@@ -202,8 +202,6 @@ class TypeChecker(NodeVisitor[Type]):
         for node, type_name in todo:
             if node in done:
                 continue
-            ## print('REDO %d %s.%s' %
-            ##       (self.pass_num, type_name or '', node.fullname() or node.name()))
             done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
