@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import os.path
+import site
 import sys
 import time
 from os.path import dirname, basename
@@ -249,6 +250,16 @@ def mypy_path() -> List[str]:
     return path_env.split(os.pathsep)
 
 
+def get_pkg_locations():
+    # The paths are based on https://docs.python.org/3/install
+    yield site.USER_BASE  # default user pkg dir
+    yield sys.prefix  # default system pkg dir
+
+    if sys.platform != 'win32':
+        yield '/usr'
+        yield '/usr/local'
+
+
 def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
@@ -265,6 +276,16 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     # E.g. for Python 3.2, try 3.2/, 3.1/, 3.0/, 3/, 2and3/.
     # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
+        # Add package installed annotations.
+        # The idea is to implement the example in PEP 484, where the annotations
+        # are installed under shared/typehints/python.
+        # TODO it would be nicer to find typehints directly via pkg_resources
+        pkgsubdir = os.path.join('shared', 'typehints', 'python' + v)
+        for pkginstalldir in get_pkg_locations():
+            pkgstubdir = os.path.join(pkginstalldir, pkgsubdir)
+            if os.path.isdir(pkgstubdir):
+                path.append(pkgstubdir)
+
         for lib_type in ['stdlib', 'third_party']:
             stubdir = os.path.join(data_dir, 'typeshed', lib_type, v)
             if os.path.isdir(stubdir):
