@@ -717,6 +717,79 @@ def f(*a: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 
+[case testExceptionVariableReuseInDeferredNode4]
+class EA(BaseException):
+    a = None  # type: int
+class EB(BaseException):
+    b = None  # type: str
+def f(*arg: BaseException) -> int:
+    x
+    try: pass
+    except EA as err:
+        f(err)
+        a = err.a
+        reveal_type(a)
+    try: pass
+    except EB as err:
+        f(err)
+        b = err.b
+        reveal_type(b)
+x = f()
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:11: error: Revealed type is 'builtins.int'
+main:16: error: Revealed type is 'builtins.str'
+
+[case testExceptionVariableReuseInDeferredNode5]
+class EA(BaseException):
+    a = None  # type: int
+class EB(BaseException):
+    b = None  # type: str
+def f(*arg: BaseException) -> int:
+    try: pass
+    except EA as err:
+        f(err)
+        a = err.a
+        reveal_type(a)
+    x
+    try: pass
+    except EB as err:
+        f(err)
+        b = err.b
+        reveal_type(b)
+x = f()
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:10: error: Revealed type is 'builtins.int'
+main:16: error: Revealed type is 'builtins.str'
+
+[case testExceptionVariableReuseInDeferredNode6]
+class EA(BaseException):
+    a = None  # type: int
+class EB(BaseException):
+    b = None  # type: str
+def f(*arg: BaseException) -> int:
+    try: pass
+    except EA as err:
+        f(err)
+        a = err.a
+        reveal_type(a)
+    try: pass
+    except EB as err:
+        f(err)
+        b = err.b
+        reveal_type(b)
+    x
+x = f()
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:10: error: Revealed type is 'builtins.int'
+main:15: error: Revealed type is 'builtins.str'
+
+
 
 [case testArbitraryExpressionAsExceptionType]
 import typing

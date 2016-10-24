@@ -202,6 +202,8 @@ class TypeChecker(NodeVisitor[Type]):
         for node, type_name in todo:
             if node in done:
                 continue
+            ## print('REDO %d %s.%s' %
+            ##       (self.pass_num, type_name or '', node.fullname() or node.name()))
             done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
@@ -1704,7 +1706,12 @@ class TypeChecker(NodeVisitor[Type]):
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
                                 s.vars[i].is_def = True
+                                # We also temporarily set current_node_deferred to False to
+                                # make sure the inference happens.
+                                am_deferring = self.current_node_deferred
+                                self.current_node_deferred = False
                                 self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
+                                self.current_node_deferred = am_deferring
                         self.accept(s.handlers[i])
                         if s.vars[i]:
                             # Exception variables are deleted in python 3 but not python 2.
@@ -1720,8 +1727,7 @@ class TypeChecker(NodeVisitor[Type]):
                                           'accept outside except: blocks even in '
                                           'python 2)'.format(s.vars[i].name))
                             var = cast(Var, s.vars[i].node)
-                            if not self.current_node_deferred:
-                                var.type = DeletedType(source=source)
+                            var.type = DeletedType(source=source)
                             self.binder.cleanse(s.vars[i])
             if s.else_body:
                 self.accept(s.else_body)
