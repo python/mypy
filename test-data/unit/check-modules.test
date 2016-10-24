@@ -1189,7 +1189,6 @@ main:2: error: Revealed type is 'builtins.str'
 -- Tests for cross-module second_pass checking.
 
 [case testSymmetricImportCycle1]
-# flags: --hide-error-context
 import a
 [file a.py]
 import b
@@ -1203,10 +1202,12 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
+tmp/a.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/b.py: note: In function "g":
 tmp/b.py:3: error: Revealed type is 'builtins.int'
 
 [case testSymmetricImportCycle2]
-# flags: --hide-error-context
 import b
 [file a.py]
 import b
@@ -1220,10 +1221,12 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
+tmp/b.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/a.py: note: In function "f":
 tmp/a.py:3: error: Revealed type is 'builtins.int'
 
 [case testThreePassesRequired]
-# flags: --hide-error-context
 import b
 [file a.py]
 import b
@@ -1236,10 +1239,12 @@ class C:
 import a
 b = 1 + 1
 [out]
+tmp/b.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/a.py: note: In member "f1" of class "C":
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
 [case testErrorInPassTwo]
-# flags: --hide-error-context
 import b
 [file a.py]
 import b
@@ -1250,10 +1255,12 @@ def f() -> None:
 import a
 x = 1 + 1
 [out]
+tmp/b.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/a.py: note: In function "f":
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testDeferredDecorator]
-# flags: --hide-error-context
 import a
 [file a.py]
 import b
@@ -1285,4 +1292,3 @@ pass
 [file b]
 pass
 [out]
-
