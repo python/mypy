@@ -24,7 +24,6 @@ from os.path import dirname, basename
 from typing import (AbstractSet, Dict, Iterable, Iterator, List,
                     NamedTuple, Optional, Set, Tuple, Union)
 
-from mypy.types import Type
 from mypy.nodes import (MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal import FirstPass, SemanticAnalyzer, ThirdPass
 from mypy.checker import TypeChecker
