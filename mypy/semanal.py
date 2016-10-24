@@ -2419,14 +2419,19 @@ class SemanticAnalyzer(NodeVisitor):
     #
 
     def lookup(self, name: str, ctx: Context, include_globals: bool = True,
-               report: bool = True) -> SymbolTableNode:
-        """Look up an unqualified name in all active namespaces."""
+               report_errors: bool = True) -> SymbolTableNode:
+        """Look up an unqualified name via standard scoping rules.
+
+        If include_globals is explicitly False, the file-global scope will not
+        be searched.  If report_errors is explicitly False, None will be
+        returned instead of reporting an error message on lookup failure.
+        """
         # 1a. Name declared using 'global x' takes precedence
         if name in self.global_decls[-1]:
             if name in self.globals:
                 return self.globals[name]
             else:
-                if report:
+                if report_errors:
                     self.name_not_defined(name, ctx)
                 return None
         # 1b. Name declared using 'nonlocal x' takes precedence
@@ -2435,7 +2440,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if table is not None and name in table:
                     return table[name]
             else:
-                if report:
+                if report_errors:
                     self.name_not_defined(name, ctx)
                 return None
         # 2. Class attributes (if within class definition)
@@ -2455,13 +2460,13 @@ class SemanticAnalyzer(NodeVisitor):
                 table = cast(MypyFile, b.node).names
                 if name in table:
                     if name[0] == "_" and name[1] != "_":
-                        if report:
+                        if report_errors:
                             self.name_not_defined(name, ctx)
                         return None
                     node = table[name]
                     return node
         # Give up.
-        if report:
+        if report_errors:
             self.name_not_defined(name, ctx)
             self.check_for_obsolete_short_name(name, ctx)
         return None
@@ -2756,8 +2761,7 @@ class FirstPass(NodeVisitor):
         sem = self.sem
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
-        at_module = sem.is_module_scope()
-        if at_module and func.name() in sem.globals:
+        if sem.is_module_scope() and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
             if original_sym.kind == UNBOUND_IMPORTED:
@@ -2777,7 +2781,7 @@ class FirstPass(NodeVisitor):
                 sem.globals[func.name()] = SymbolTableNode(kind, func, sem.cur_mod_id)
             else:
                 ctx = sem.type_stack[-1] if kind == MDEF else sem.function_stack[-1]
-                if not sem.lookup(func.name(), ctx, include_globals=False, report=False):
+                if not sem.lookup(func.name(), ctx, include_globals=False, report_errors=False):
                     sem.add_symbol(func.name(), SymbolTableNode(kind, func), ctx)
             sem.function_stack.append(func)
             sem.enter()
@@ -2810,7 +2814,7 @@ class FirstPass(NodeVisitor):
             self.sem.globals[cdef.name] = SymbolTableNode(kind, info, self.sem.cur_mod_id)
         else:  # MDEF
             ctx = self.sem.type_stack[-1]
-            if not self.sem.lookup(cdef.name, ctx, include_globals=False, report=False):
+            if not self.sem.lookup(cdef.name, ctx, include_globals=False, report_errors=False):
                 self.sem.add_symbol(cdef.name, SymbolTableNode(kind, info), ctx)
         self.process_nested_classes(cdef)
 
@@ -2844,7 +2848,8 @@ class FirstPass(NodeVisitor):
                     self.sem.globals[imported_name] = SymbolTableNode(UNBOUND_IMPORTED, None)
             else:
                 ctx = self.sem.type_stack[-1] if kind == MDEF else self.sem.function_stack[-1]
-                if not self.sem.lookup(imported_name, ctx, include_globals=False, report=False):
+                if not self.sem.lookup(imported_name, ctx, include_globals=False,
+                                       report_errors=False):
                     self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None),
                                         node)
 
@@ -2862,7 +2867,8 @@ class FirstPass(NodeVisitor):
                     self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
             else:
                 ctx = self.sem.type_stack[-1] if kind == MDEF else self.sem.function_stack[-1]
-                if not self.sem.lookup(imported_id, ctx, include_globals=False, report=False):
+                if not self.sem.lookup(imported_id, ctx, include_globals=False,
+                                       report_errors=False):
                     self.sem.add_symbol(imported_id, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_import_all(self, node: ImportAll) -> None:
