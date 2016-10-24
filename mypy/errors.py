@@ -290,7 +290,9 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if e.import_ctx != prev_import_context:
+            if self.hide_error_context:
+                pass
+            elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
                 i = last
                 while i >= 0:

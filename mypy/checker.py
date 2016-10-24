@@ -59,6 +59,8 @@ from mypy import experiments
 
 T = TypeVar('T')
 
+LAST_PASS = 1  # Pass numbers start at 0
+
 
 # A node which is postponed to be type checked during the next pass.
 DeferredNode = NamedTuple(
@@ -73,6 +75,8 @@ class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
+
+    You must create a separate instance for each source file.
     """
 
     # Are we type checking a stub?
@@ -83,8 +87,6 @@ class TypeChecker(NodeVisitor[Type]):
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
     type_map = None  # type: Dict[Expression, Type]
-    # Types of type checked nodes within this specific module
-    module_type_map = None  # type: Dict[Expression, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -121,56 +123,60 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
+                 tree: MypyFile, path: str) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
+        self.options = options
+        self.tree = tree
+        self.path = path
         self.msg = MessageBuilder(errors, modules)
-        self.type_map = {}
-        self.module_type_map = {}
-        self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.binder = ConditionalTypeBinder()
+        self.globals = tree.names
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
         self.function_stack = []
         self.partial_types = []
         self.deferred_nodes = []
+        self.type_map = {}
+        self.module_refs = set()
         self.pass_num = 0
         self.current_node_deferred = False
-        self.module_refs = set()
-
-    def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
-        """Type check a mypy file with the given path."""
-        self.options = options
-        self.pass_num = 0
-        self.is_stub = file_node.is_stub
-        self.errors.set_file(path)
-        self.globals = file_node.names
-        self.enter_partial_types()
-        self.is_typeshed_stub = self.errors.is_typeshed_file(path)
-        self.module_type_map = {}
-        self.module_refs = set()
-        if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = not self.options.show_none_errors
+        self.is_stub = tree.is_stub
+        self.is_typeshed_stub = errors.is_typeshed_file(path)
+        if options.strict_optional_whitelist is None:
+            self.suppress_none_errors = not options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
-                                                in self.options.strict_optional_whitelist)
+                                                in options.strict_optional_whitelist)
+
+    def check_first_pass(self) -> None:
+        """Type check the entire file, but defer functions with unresolved references.
+
+        Unresolved references are forward references to variables
+        whose types haven't been inferred yet.  They may occur later
+        in the same file or in a different file that's being processed
+        later (usually due to an import cycle).
+
+        Deferred functions will be processed by check_second_pass().
+        """
+        self.errors.set_file(self.path)
+        self.enter_partial_types()
 
         with self.binder.top_frame_context():
-            for d in file_node.defs:
+            for d in self.tree.defs:
                 self.accept(d)
 
         self.leave_partial_types()
 
-        if self.deferred_nodes:
-            self.check_second_pass()
-
-        self.current_node_deferred = False
+        assert not self.current_node_deferred
 
         all_ = self.globals.get('__all__')
         if all_ is not None and all_.type is not None:
@@ -181,21 +187,31 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-        del self.options
+    def check_second_pass(self) -> bool:
+        """Run second or following pass of type checking.
 
-    def check_second_pass(self) -> None:
-        """Run second pass of type checking which goes through deferred nodes."""
-        self.pass_num = 1
-        for node, type_name in self.deferred_nodes:
+        This goes through deferred nodes, returning True if there were any.
+        """
+        if not self.deferred_nodes:
+            return False
+        self.errors.set_file(self.path)
+        self.pass_num += 1
+        todo = self.deferred_nodes
+        self.deferred_nodes = []
+        done = set()  # type: Set[FuncItem]
+        for node, type_name in todo:
+            if node in done:
+                continue
+            done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
             self.accept(node)
             if type_name:
                 self.errors.pop_type()
-        self.deferred_nodes = []
+        return True
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        if self.pass_num == 0 and self.function_stack:
+        if self.pass_num < LAST_PASS and self.function_stack:
             # Don't report an error yet. Just defer.
             node = self.function_stack[-1]
             if self.errors.type_name:
@@ -2232,8 +2248,6 @@ class TypeChecker(NodeVisitor[Type]):
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
-        if typ is not None:
-            self.module_type_map[node] = typ
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?
