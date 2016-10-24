@@ -1244,7 +1244,7 @@ main:1: note: ... from here:
 tmp/a.py: note: In member "f1" of class "C":
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
-[case testErrorInPassTwo]
+[case testErrorInPassTwo1]
 import b
 [file a.py]
 import b
@@ -1257,6 +1257,21 @@ x = 1 + 1
 [out]
 tmp/b.py:1: note: In module imported here,
 main:1: note: ... from here:
+tmp/a.py: note: In function "f":
+tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testErrorInPassTwo2]
+import a
+[file a.py]
+import b
+def f() -> None:
+    a = b.x + 1
+    a + ''
+[file b.py]
+import a
+x = 1 + 1
+[out]
+main:1: note: In module imported here:
 tmp/a.py: note: In function "f":
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
