@@ -9,10 +9,13 @@ import tokenize
 
 from typing import Callable, Dict, List, Optional, Tuple, cast
 
+import time
+
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type
+from mypy.version import __version__
 
 
 reporter_classes = {}  # type: Dict[str, Callable[[Reports, str], AbstractReporter]]
@@ -324,6 +327,131 @@ class MemoryXmlReporter(AbstractReporter):
         self.last_xml = doc
 
 reporter_classes['memory-xml'] = MemoryXmlReporter
+
+
+def get_line_rate(covered_lines: int, total_lines: int) -> str:
+    if total_lines == 0:
+        return str(1.0)
+    else:
+        return '{:.4f}'.format(covered_lines / total_lines)
+
+
+class CoberturaPackage(object):
+    """Container for XML and statistics mapping python modules to Cobertura packages
+    """
+    def __init__(self, name: str) -> None:
+        import lxml.etree as etree
+
+        self.name = name
+        self.classes = []  # type: etree._ElementTree
+        self.packages = {}  # type: Dict[str, CoberturaPackage]
+        self.total_lines = 0
+        self.covered_lines = 0
+
+    def as_xml(self):
+        import lxml.etree as etree
+
+        package_element = etree.Element('package',
+                                        name=self.name,
+                                        complexity='1.0')
+        package_element.attrib['branch-rate'] = '0'
+        package_element.attrib['line-rate'] = get_line_rate(self.covered_lines, self.total_lines)
+        classes_element = etree.SubElement(package_element, 'classes')
+        for class_element in self.classes:
+            classes_element.append(class_element)
+        self.add_packages(package_element)
+        return package_element
+
+    def add_packages(self, parent_element):
+        import lxml.etree as etree
+
+        if self.packages:
+            packages_element = etree.SubElement(parent_element, 'packages')
+            for package in self.packages.values():
+                packages_element.append(package.as_xml())
+
+
+class CoberturaXmlReporter(AbstractReporter):
+    """Reporter for generating Cobertura compliant XML.
+    """
+
+    def __init__(self, reports: Reports, output_dir: str) -> None:
+        import lxml.etree as etree
+
+        super().__init__(reports, output_dir)
+
+        self.root = etree.Element('coverage',
+                                  timestamp=str(int(time.time())),
+                                  version=__version__)
+        self.doc = etree.ElementTree(self.root)
+        self.packages = CoberturaPackage('.')
+
+    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
+        import lxml.etree as etree
+
+        path = os.path.relpath(tree.path)
+        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+        tree.accept(visitor)
+
+        file_info = FileInfo(path, tree._fullname)
+        class_element = etree.Element('class',
+                                      filename=path,
+                                      complexity='1.0',
+                                      name=os.path.basename(path))
+        etree.SubElement(class_element, 'methods')
+        lines_element = etree.SubElement(class_element, 'lines')
+
+        with tokenize.open(path) as input_file:
+            class_lines_covered = 0
+            class_total_lines = 0
+            for lineno, _ in enumerate(input_file, 1):
+                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+                hits = 0
+                branch = False
+                if status == stats.TYPE_EMPTY:
+                    continue
+                class_total_lines += 1
+                if status != stats.TYPE_ANY:
+                    class_lines_covered += 1
+                    hits = 1
+                if status == stats.TYPE_IMPRECISE:
+                    branch = True
+                file_info.counts[status] += 1
+                line_element = etree.SubElement(lines_element, 'line',
+                                                number=str(lineno),
+                                                precision=stats.precision_names[status],
+                                                hits=str(hits),
+                                                branch=str(branch).lower())
+                if branch:
+                    line_element.attrib['condition-coverage'] = '50% (1/2)'
+            class_element.attrib['branch-rate'] = '0'
+            class_element.attrib['line-rate'] = get_line_rate(class_lines_covered,
+                                                              class_total_lines)
+
+            current_package = self.packages
+            for module_part in file_info.module.rsplit('.', 1)[:-1]:
+                current_package.total_lines += class_total_lines
+                current_package.covered_lines += class_lines_covered
+                if module_part not in current_package.packages:
+                    current_package.packages[module_part] = CoberturaPackage(module_part)
+                current_package = current_package.packages[module_part]
+            current_package.classes.append(class_element)
+
+    def on_finish(self) -> None:
+        import lxml.etree as etree
+
+        self.root.attrib['line-rate'] = get_line_rate(self.packages.covered_lines,
+                                                      self.packages.total_lines)
+        self.root.attrib['branch-rate'] = '0'
+        sources = etree.SubElement(self.root, 'sources')
+        source_element = etree.SubElement(sources, 'source')
+        source_element.text = os.getcwd()
+        self.packages.add_packages(self.root)
+        out_path = os.path.join(self.output_dir, 'cobertura.xml')
+        self.doc.write(out_path, encoding='utf-8')
+        print('Generated Cobertura report:', os.path.abspath(out_path))
+
+reporter_classes['cobertura-xml'] = CoberturaXmlReporter
 
 
 class AbstractXmlReporter(AbstractReporter):
