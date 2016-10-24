@@ -1373,8 +1373,8 @@ class ExpressionChecker:
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
-        self.chk.fail(messages.GENERIC_TYPE_NOT_VALID_AS_EXPRESSION, tapp)
-        return AnyType()
+        tp = cast(CallableType, self.accept(tapp.expr))
+        return self.apply_generic_arguments(tp, tapp.types, tapp)
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         return AnyType()

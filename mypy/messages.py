@@ -77,8 +77,6 @@ INCONSISTENT_ABSTRACT_OVERLOAD = \
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
     'Read-only property cannot override read-write property'
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
-GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
-    "Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)"
 RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
 INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
@@ -681,7 +679,7 @@ class MessageBuilder:
                                       actual_arg_count: int,
                                       context: Context) -> None:
         if expected_arg_count == 0:
-            self.fail('Type application targets a non-generic function',
+            self.fail('Type application targets a non-generic function or class',
                       context)
         elif actual_arg_count > expected_arg_count:
             self.fail('Type application has too many types ({} expected)'
