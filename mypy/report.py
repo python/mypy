@@ -7,7 +7,7 @@ import os
 import shutil
 import tokenize
 
-from typing import Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 import time
 
@@ -343,12 +343,12 @@ class CoberturaPackage(object):
         import lxml.etree as etree
 
         self.name = name
-        self.classes = []  # type: etree._ElementTree
+        self.classes = []  # type: List[etree._Element]
         self.packages = {}  # type: Dict[str, CoberturaPackage]
         self.total_lines = 0
         self.covered_lines = 0
 
-    def as_xml(self):
+    def as_xml(self) -> Any:
         import lxml.etree as etree
 
         package_element = etree.Element('package',
@@ -358,17 +358,17 @@ class CoberturaPackage(object):
         package_element.attrib['line-rate'] = get_line_rate(self.covered_lines, self.total_lines)
         classes_element = etree.SubElement(package_element, 'classes')
         for class_element in self.classes:
-            classes_element.append(class_element)
+            classes_element.append(class_element)  # type: ignore
         self.add_packages(package_element)
         return package_element
 
-    def add_packages(self, parent_element):
+    def add_packages(self, parent_element: Any) -> None:
         import lxml.etree as etree
 
         if self.packages:
             packages_element = etree.SubElement(parent_element, 'packages')
             for package in self.packages.values():
-                packages_element.append(package.as_xml())
+                packages_element.append(package.as_xml())  # type: ignore
 
 
 class CoberturaXmlReporter(AbstractReporter):
@@ -445,7 +445,7 @@ class CoberturaXmlReporter(AbstractReporter):
         self.root.attrib['branch-rate'] = '0'
         sources = etree.SubElement(self.root, 'sources')
         source_element = etree.SubElement(sources, 'source')
-        source_element.text = os.getcwd()
+        source_element.text = os.getcwd()  # type: ignore
         self.packages.add_packages(self.root)
         out_path = os.path.join(self.output_dir, 'cobertura.xml')
         self.doc.write(out_path, encoding='utf-8')
