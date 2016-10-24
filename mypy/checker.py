@@ -196,14 +196,12 @@ class TypeChecker(NodeVisitor[Type]):
             return False
         self.errors.set_file(self.path)
         self.pass_num += 1
-        print('---', self.path, 'pass', self.pass_num + 1, '---')
         todo = self.deferred_nodes
         self.deferred_nodes = []
         done = set()  # type: Set[FuncItem]
         for node, type_name in todo:
             if node in done:
                 continue
-            print(type_name, '.', node.fullname() or node.name())
             done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
