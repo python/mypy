@@ -2436,6 +2436,17 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
+def is_optional(t: Type) -> bool:
+    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+
+
+def remove_optional(typ: Type) -> Type:
+    if isinstance(typ, UnionType):
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+    else:
+        return typ
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
@@ -2505,11 +2516,10 @@ def find_isinstance_check(node: Expression,
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 return conditional_type_map(expr, vartype, type)
-    elif (isinstance(node, ComparisonExpr) and any(is_literal_none(n) for n in node.operands) and
-          experiments.STRICT_OPTIONAL):
+    elif (isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
-        if is_not or node.operators == ['is']:
+        if any(is_literal_none(n) for n in node.operands) and (is_not or node.operators == ['is']):
             if_vars = {}  # type: Dict[Expression, Type]
             else_vars = {}  # type: Dict[Expression, Type]
             for expr in node.operands:
@@ -2524,6 +2534,20 @@ def find_isinstance_check(node: Expression,
             if is_not:
                 if_vars, else_vars = else_vars, if_vars
             return if_vars, else_vars
+        # Check for `x == y` where x is of type Optional[T] and y is of type T
+        # or a type that overlaps with T (or vice versa).
+        elif node.operators == ['==']:
+            first_type = type_map[node.operands[0]]
+            second_type = type_map[node.operands[1]]
+            if is_optional(first_type) != is_optional(second_type):
+                if is_optional(first_type):
+                    optional_type, comp_type = first_type, second_type
+                    optional_expr = node.operands[0]
+                else:
+                    optional_type, comp_type = second_type, first_type
+                    optional_expr = node.operands[1]
+                if is_overlapping_types(optional_type, comp_type):
+                    return {optional_expr: remove_optional(optional_type)}, {}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
