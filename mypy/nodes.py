@@ -1896,15 +1896,12 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
-    # Is this a dummy from deserialization?
-    is_dummy = False
-
     # Alternative to fullname() for 'anonymous' classes.
     alt_fullname = None  # type: Optional[str]
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_typed_dict', 'is_newtype', 'is_dummy'
+        'is_typed_dict', 'is_newtype'
     ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
