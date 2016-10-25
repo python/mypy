@@ -39,6 +39,8 @@ from mypy.options import Options
 
 from mypy import experiments
 
+ThrowsException = Exception
+
 
 precedence = {
     '**': 16,
@@ -402,8 +404,7 @@ class Parser:
         elif isinstance(expr, MemberExpr):
             if isinstance(expr.expr, NameExpr):
                 return expr.expr.name == 'typing' and expr.name == 'no_type_check'
-        else:
-            return False
+        return False
 
     def parse_function(self, no_type_checks: bool = False) -> FuncDef:
         def_tok = self.expect('def')
@@ -790,6 +791,8 @@ class Parser:
         if self.current_str() == ':':
             self.skip()
             return self.parse_expression(precedence[','])
+        else:
+            return None
 
     def parse_arg_type(self, allow_signature: bool) -> Type:
         if self.current_str() == ':' and allow_signature:
@@ -1818,7 +1821,7 @@ class Parser:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def expect_indent(self) -> Token:
         if isinstance(self.current(), Indent):
@@ -1836,7 +1839,7 @@ class Parser:
             self.ind += 1
             return current
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def expect_break(self) -> Token:
         return self.expect_type(Break)
@@ -1850,7 +1853,7 @@ class Parser:
     def peek(self) -> Token:
         return self.tok[self.ind + 1]
 
-    def parse_error(self) -> None:
+    def parse_error(self) -> ThrowsException:
         self.parse_error_at(self.current())
         raise ParseError()
 

@@ -2094,6 +2094,8 @@ class SemanticAnalyzer(NodeVisitor):
             return True
         elif isinstance(s, TupleExpr):
             return all(self.is_valid_del_target(item) for item in s.items)
+        else:
+            return False
 
     def visit_global_decl(self, g: GlobalDecl) -> None:
         for name in g.names:

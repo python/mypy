@@ -259,7 +259,7 @@ class TypeChecker(NodeVisitor[Type]):
             return typ
 
     def accept_loop(self, body: Statement, else_body: Statement = None, *,
-                    exit_condition: Expression = None) -> Type:
+                    exit_condition: Expression = None) -> None:
         """Repeatedly type check a loop body until the frame doesn't change.
         If exit_condition is set, assume it must be False on exit from the loop.
 

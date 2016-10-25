@@ -9,6 +9,8 @@ from mypy.types import (
 from mypy.lex import Token, Name, StrLit, lex
 from mypy import nodes
 
+ThrowsException = Exception
+
 
 none = Token('')  # Empty token
 
@@ -73,7 +75,7 @@ class TypeParser:
                 raise TypeParseError(e.token, self.ind)
             return result
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def parse_parens(self) -> Type:
         self.expect('(')
@@ -166,14 +168,14 @@ class TypeParser:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def expect_type(self, typ: type) -> Token:
         if isinstance(self.current_token(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def current_token(self) -> Token:
         return self.tok[self.ind]
@@ -181,7 +183,7 @@ class TypeParser:
     def current_token_str(self) -> str:
         return self.current_token().string
 
-    def parse_error(self) -> None:
+    def parse_error(self) -> ThrowsException:
         raise TypeParseError(self.tok[self.ind], self.ind)
 
 

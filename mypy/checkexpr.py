@@ -1616,6 +1616,7 @@ class ExpressionChecker:
                                                  not_ready_callback=self.not_ready_callback,
                                                  msg=self.msg, override_info=base, chk=self.chk,
                                                  original_type=declared_self)
+            assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
