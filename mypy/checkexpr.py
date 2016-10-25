@@ -884,18 +884,6 @@ class ExpressionChecker:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(callable, types, self.msg, context)
 
-    def apply_generic_arguments2(self, overload: Overloaded, types: List[Type],
-                                 context: Context) -> Type:
-        items = []  # type: List[CallableType]
-        for item in overload.items():
-            applied = self.apply_generic_arguments(item, types, context)
-            if isinstance(applied, CallableType):
-                items.append(applied)
-            else:
-                # There was an error.
-                return AnyType()
-        return Overloaded(items)
-
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
@@ -1758,10 +1746,6 @@ class ExpressionChecker:
         """Generate an error if type is Void."""
         self.chk.check_usable_type(typ, context)
 
-    def is_boolean(self, typ: Type) -> bool:
-        """Is type compatible with bool?"""
-        return is_subtype(typ, self.chk.bool_type())
-
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
         arguments. Alias for TypeChecker.named_type.
@@ -1792,14 +1776,6 @@ class ExpressionChecker:
                     'builtins.dict',
                     [self.named_type('builtins.unicode'),
                      AnyType()])))
-
-    def has_non_method(self, typ: Type, member: str) -> bool:
-        """Does type have a member variable / property with the given name?"""
-        if isinstance(typ, Instance):
-            return (not typ.type.has_method(member) and
-                    typ.type.has_readable_member(member))
-        else:
-            return False
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
