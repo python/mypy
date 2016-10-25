@@ -1,10 +1,9 @@
-import os
 import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional
+from typing import Tuple, List, TypeVar, Set, Dict
 
 from mypy.options import Options
 
@@ -146,10 +145,6 @@ class Errors:
     def set_file_ignored_lines(self, file: str, ignored_lines: Set[int] = None) -> None:
         self.ignored_lines[file] = ignored_lines
 
-    def mark_file_ignored_lines_used(self, file: str, used_ignored_lines: Set[int] = None
-                                     ) -> None:
-        self.used_ignored_lines[file] |= used_ignored_lines
-
     def push_function(self, name: str) -> None:
         """Set the current function or member short name (it can be None)."""
         self.function_or_member.append(name)
@@ -163,14 +158,6 @@ class Errors:
 
     def pop_type(self) -> None:
         self.type_name.pop()
-
-    def push_import_context(self, path: str, line: int) -> None:
-        """Add a (file, line) tuple to the import context."""
-        self.import_ctx.append((os.path.normpath(path), line))
-
-    def pop_import_context(self) -> None:
-        """Remove the topmost item from the import context."""
-        self.import_ctx.pop()
 
     def import_context(self) -> List[Tuple[str, int]]:
         """Return a copy of the import context."""
