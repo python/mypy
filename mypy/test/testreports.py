@@ -20,7 +20,7 @@ class CoberturaReportSuite(Suite):
         child_package = CoberturaPackage('raz')
         child_package.covered_lines = 10
         child_package.total_lines = 10
-        child_package.classes.append(etree.Element('class'))
+        child_package.classes['class'] = etree.Element('class')
 
         cobertura_package.packages['raz'] = child_package
 
