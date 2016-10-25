@@ -865,9 +865,6 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         return Instance(cast(TypeInfo, sym.node), args or [])
 
-    def is_instance_type(self, t: Type) -> bool:
-        return isinstance(t, Instance)
-
     def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
         nodes = []  # type: List[SymbolTableNode]
@@ -2584,13 +2581,6 @@ class SemanticAnalyzer(NodeVisitor):
                 if not ok:
                     self.name_already_defined(name, context)
             self.globals[name] = node
-
-    def add_var(self, v: Var, ctx: Context) -> None:
-        if self.is_func_scope():
-            self.add_local(v, ctx)
-        else:
-            self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            v._fullname = self.qualified_name(v.name())
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         name = node.name()
