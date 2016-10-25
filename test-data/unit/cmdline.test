@@ -265,6 +265,10 @@ def untyped_function():
   <packages>
     <package complexity="1.0" name="pkg" branch-rate="0" line-rate="1.0000">
       <classes>
+        <class complexity="1.0" filename="pkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
         <class complexity="1.0" filename="pkg/a.py" name="a.py" branch-rate="0" line-rate="1.0000">
           <methods/>
           <lines>
@@ -273,24 +277,20 @@ def untyped_function():
             <line branch="false" hits="1" number="5" precision="precise"/>
           </lines>
         </class>
-        <class complexity="1.0" filename="pkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
-          <methods/>
-          <lines/>
-        </class>
       </classes>
     </package>
     <package complexity="1.0" name="pkg.subpkg" branch-rate="0" line-rate="0.5000">
       <classes>
+        <class complexity="1.0" filename="pkg/subpkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
         <class complexity="1.0" filename="pkg/subpkg/a.py" name="a.py" branch-rate="0" line-rate="0.5000">
           <methods/>
           <lines>
             <line branch="false" hits="1" number="1" precision="precise"/>
             <line branch="false" hits="0" number="3" precision="any"/>
           </lines>
-        </class>
-        <class complexity="1.0" filename="pkg/subpkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
-          <methods/>
-          <lines/>
         </class>
       </classes>
     </package>

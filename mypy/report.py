@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import tokenize
+from operator import attrgetter
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
@@ -343,7 +344,7 @@ class CoberturaPackage(object):
         import lxml.etree as etree
 
         self.name = name
-        self.classes = []  # type: List[etree._Element]
+        self.classes = {}  # type: List[str, etree._Element]
         self.packages = {}  # type: Dict[str, CoberturaPackage]
         self.total_lines = 0
         self.covered_lines = 0
@@ -357,8 +358,8 @@ class CoberturaPackage(object):
         package_element.attrib['branch-rate'] = '0'
         package_element.attrib['line-rate'] = get_line_rate(self.covered_lines, self.total_lines)
         classes_element = etree.SubElement(package_element, 'classes')
-        for class_element in self.classes:
-            classes_element.append(class_element)  # type: ignore
+        for class_name in sorted(self.classes):
+            classes_element.append(self.classes[class_name])
         self.add_packages(package_element)
         return package_element
 
@@ -367,8 +368,8 @@ class CoberturaPackage(object):
 
         if self.packages:
             packages_element = etree.SubElement(parent_element, 'packages')
-            for package in self.packages.values():
-                packages_element.append(package.as_xml())  # type: ignore
+            for package in sorted(self.packages.values(), key=attrgetter('name')):
+                packages_element.append(package.as_xml())
 
 
 class CoberturaXmlReporter(AbstractReporter):
@@ -393,11 +394,12 @@ class CoberturaXmlReporter(AbstractReporter):
         visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
         tree.accept(visitor)
 
+        class_name = os.path.basename(path)
         file_info = FileInfo(path, tree._fullname)
         class_element = etree.Element('class',
                                       filename=path,
                                       complexity='1.0',
-                                      name=os.path.basename(path))
+                                      name=class_name)
         etree.SubElement(class_element, 'methods')
         lines_element = etree.SubElement(class_element, 'lines')
 
@@ -441,7 +443,7 @@ class CoberturaXmlReporter(AbstractReporter):
             for package in packages_to_update:
                 package.total_lines += class_total_lines
                 package.covered_lines += class_lines_covered
-            current_package.classes.append(class_element)
+            current_package.classes[class_name] = class_element
 
     def on_finish(self) -> None:
         import lxml.etree as etree
@@ -451,7 +453,7 @@ class CoberturaXmlReporter(AbstractReporter):
         self.root.attrib['branch-rate'] = '0'
         sources = etree.SubElement(self.root, 'sources')
         source_element = etree.SubElement(sources, 'source')
-        source_element.text = os.getcwd()  # type: ignore
+        source_element.text = os.getcwd()
         self.root_package.add_packages(self.root)
         out_path = os.path.join(self.output_dir, 'cobertura.xml')
         self.doc.write(out_path, encoding='utf-8', pretty_print=True)
