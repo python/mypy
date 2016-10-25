@@ -47,6 +47,10 @@ The following global flags may only be set in the global section
   alternative module which is to be considered equivalent to the
   ``typing`` module.
 
+- ``custom_typeshed_dir`` (string) specifies the name of an
+  alternative directory which is used to look for stubs instead of the
+  default ``typeshed`` directory.
+
 - ``warn_incomplete_stub`` (Boolean, default False) warns for missing
   type annotation in typeshed.  This is only relevant in combination
   with ``check_untyped_defs``.

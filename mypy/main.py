@@ -198,6 +198,8 @@ def process_options(args: List[str],
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    parser.add_argument('--custom-typeshed-dir', metavar='DIR',
+                        help="use the custom typeshed in DIR")
     parser.add_argument('--scripts-are-modules', action='store_true',
                         help="Script x becomes module x instead of __main__")
     parser.add_argument('--config-file',
@@ -451,6 +453,7 @@ config_types = {
     'python_version': lambda s: tuple(map(int, s.split('.'))),
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
+    'custom_typeshed_dir': str,
     'junit_xml': str,
 }
 
