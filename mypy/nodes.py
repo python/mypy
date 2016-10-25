@@ -1,8 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-import re
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
@@ -360,9 +359,6 @@ class FuncBase(Node):
     def fullname(self) -> str:
         return self._fullname
 
-    def is_method(self) -> bool:
-        return bool(self.info)
-
 
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """A logical node representing all the variants of an overloaded function.
@@ -530,9 +526,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_def(self)
-
-    def is_constructor(self) -> bool:
-        return self.info is not None and self._name == '__init__'
 
     def serialize(self) -> JsonDict:
         # We're deliberating omitting arguments and storing only arg_names and
@@ -1965,32 +1958,8 @@ class TypeInfo(SymbolNode):
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 
-    def has_writable_member(self, name: str) -> bool:
-        return self.has_var(name)
-
-    def has_var(self, name: str) -> bool:
-        return self.get_var(name) is not None
-
     def has_method(self, name: str) -> bool:
         return self.get_method(name) is not None
-
-    def get_var(self, name: str) -> Var:
-        for cls in self.mro:
-            if name in cls.names:
-                node = cls.names[name].node
-                if isinstance(node, Var):
-                    return node
-                else:
-                    return None
-        return None
-
-    def get_var_or_getter(self, name: str) -> SymbolNode:
-        # TODO getter
-        return self.get_var(name)
-
-    def get_var_or_setter(self, name: str) -> SymbolNode:
-        # TODO setter
-        return self.get_var(name)
 
     def get_method(self, name: str) -> FuncBase:
         if self.mro is None:  # Might be because of a previous error.
@@ -2035,18 +2004,6 @@ class TypeInfo(SymbolNode):
                 if cls.fullname() == fullname:
                     return True
         return False
-
-    def all_subtypes(self) -> 'Set[TypeInfo]':
-        """Return TypeInfos of all subtypes, including this type, as a set."""
-        subtypes = set([self])
-        for subt in self.subtypes:
-            for t in subt.all_subtypes():
-                subtypes.add(t)
-        return subtypes
-
-    def all_base_classes(self) -> 'List[TypeInfo]':
-        """Return a list of base classes, including indirect bases."""
-        assert False
 
     def direct_base_classes(self) -> 'List[TypeInfo]':
         """Return a direct base classes.
