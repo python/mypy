@@ -73,6 +73,9 @@ files = [
 if 'annotation' in typed_ast.ast35.Assign._fields:
     files.append('check-newsyntax.test')
 
+if 'underscores' in typed_ast.ast35.Num._fields:
+    files.append('check-underscores.test')
+
 
 class TypeCheckSuite(DataSuite):
     def __init__(self, *, update_data=False):
