@@ -1537,30 +1537,6 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.in_checked_function():
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
-                          str, context: Context) -> Type:
-        n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ,
-                                                                                     check_type)
-        if n_diff == 1:
-            return self.named_generic_type(check_type, [typ])
-        elif n_diff == 0 or n_diff > 1:
-            self.fail(messages.INCOMPATIBLE_RETURN_VALUE_TYPE
-                + ": expected {}, got {}".format(rtyp, typ), context)
-            return typ
-        return typ
-
-    def count_nested_types(self, typ: Instance, check_type: str) -> int:
-        c = 0
-        while is_subtype(typ, self.named_type(check_type)):
-            c += 1
-            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args),
-                                            self.lookup_typeinfo(check_type))
-            if typ.args:
-                typ = cast(Instance, typ.args[0])
-            else:
-                return c
-        return c
-
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
@@ -2236,14 +2212,6 @@ class TypeChecker(NodeVisitor[Type]):
     def str_type(self) -> Instance:
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
-
-    def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
-                               msg: str = messages.INCOMPATIBLE_TYPES) -> None:
-        """Generate an error if the types are not equivalent. The
-        dynamic type is equivalent with all types.
-        """
-        if not is_equivalent(t1, t2):
-            self.fail(msg, node)
 
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
