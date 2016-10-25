@@ -1706,6 +1706,8 @@ class TypeChecker(NodeVisitor[Type]):
                                 s.vars[i].is_def = True
                                 # We also temporarily set current_node_deferred to False to
                                 # make sure the inference happens.
+                                # TODO: Use a better solution, e.g. a
+                                # separate Var for each except block.
                                 am_deferring = self.current_node_deferred
                                 self.current_node_deferred = False
                                 self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
