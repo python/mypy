@@ -5,6 +5,7 @@ import configparser
 import os
 import re
 import sys
+import time
 
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
@@ -12,6 +13,7 @@ from mypy import build
 from mypy import defaults
 from mypy import git
 from mypy import experiments
+from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
@@ -28,20 +30,25 @@ def main(script_path: str) -> None:
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
     """
+    t0 = time.time()
     if script_path:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
     sources, options = process_options(sys.argv[1:])
-    f = sys.stdout
+    serious = False
     try:
         res = type_check_only(sources, bin_dir, options)
         a = res.errors
     except CompileError as e:
         a = e.messages
         if not e.use_stdout:
-            f = sys.stderr
+            serious = True
+    if options.junit_xml:
+        t1 = time.time()
+        util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
+        f = sys.stderr if serious else sys.stdout
         for m in a:
             f.write(m + '\n')
         sys.exit(1)
@@ -182,6 +189,7 @@ def process_options(args: List[str],
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
                         help="show traceback on fatal error")
@@ -446,6 +454,7 @@ config_types = {
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
+    'junit_xml': str,
 }
 
 

@@ -1537,30 +1537,6 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.in_checked_function():
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
-                          str, context: Context) -> Type:
-        n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ,
-                                                                                     check_type)
-        if n_diff == 1:
-            return self.named_generic_type(check_type, [typ])
-        elif n_diff == 0 or n_diff > 1:
-            self.fail(messages.INCOMPATIBLE_RETURN_VALUE_TYPE
-                + ": expected {}, got {}".format(rtyp, typ), context)
-            return typ
-        return typ
-
-    def count_nested_types(self, typ: Instance, check_type: str) -> int:
-        c = 0
-        while is_subtype(typ, self.named_type(check_type)):
-            c += 1
-            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args),
-                                            self.lookup_typeinfo(check_type))
-            if typ.args:
-                typ = cast(Instance, typ.args[0])
-            else:
-                return c
-        return c
-
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
@@ -1704,7 +1680,14 @@ class TypeChecker(NodeVisitor[Type]):
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
                                 s.vars[i].is_def = True
+                                # We also temporarily set current_node_deferred to False to
+                                # make sure the inference happens.
+                                # TODO: Use a better solution, e.g. a
+                                # separate Var for each except block.
+                                am_deferring = self.current_node_deferred
+                                self.current_node_deferred = False
                                 self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
+                                self.current_node_deferred = am_deferring
                         self.accept(s.handlers[i])
                         if s.vars[i]:
                             # Exception variables are deleted in python 3 but not python 2.
@@ -2237,14 +2220,6 @@ class TypeChecker(NodeVisitor[Type]):
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
 
-    def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
-                               msg: str = messages.INCOMPATIBLE_TYPES) -> None:
-        """Generate an error if the types are not equivalent. The
-        dynamic type is equivalent with all types.
-        """
-        if not is_equivalent(t1, t2):
-            self.fail(msg, node)
-
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
@@ -2436,6 +2411,17 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
+def is_optional(t: Type) -> bool:
+    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+
+
+def remove_optional(typ: Type) -> Type:
+    if isinstance(typ, UnionType):
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+    else:
+        return typ
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
@@ -2505,11 +2491,10 @@ def find_isinstance_check(node: Expression,
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 return conditional_type_map(expr, vartype, type)
-    elif (isinstance(node, ComparisonExpr) and any(is_literal_none(n) for n in node.operands) and
-          experiments.STRICT_OPTIONAL):
+    elif (isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
-        if is_not or node.operators == ['is']:
+        if any(is_literal_none(n) for n in node.operands) and (is_not or node.operators == ['is']):
             if_vars = {}  # type: Dict[Expression, Type]
             else_vars = {}  # type: Dict[Expression, Type]
             for expr in node.operands:
@@ -2524,6 +2509,20 @@ def find_isinstance_check(node: Expression,
             if is_not:
                 if_vars, else_vars = else_vars, if_vars
             return if_vars, else_vars
+        # Check for `x == y` where x is of type Optional[T] and y is of type T
+        # or a type that overlaps with T (or vice versa).
+        elif node.operators == ['==']:
+            first_type = type_map[node.operands[0]]
+            second_type = type_map[node.operands[1]]
+            if is_optional(first_type) != is_optional(second_type):
+                if is_optional(first_type):
+                    optional_type, comp_type = first_type, second_type
+                    optional_expr = node.operands[0]
+                else:
+                    optional_type, comp_type = second_type, first_type
+                    optional_expr = node.operands[1]
+                if is_overlapping_types(optional_type, comp_type):
+                    return {optional_expr: remove_optional(optional_type)}, {}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
