@@ -1537,18 +1537,6 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.in_checked_function():
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def count_nested_types(self, typ: Instance, check_type: str) -> int:
-        c = 0
-        while is_subtype(typ, self.named_type(check_type)):
-            c += 1
-            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args),
-                                            self.lookup_typeinfo(check_type))
-            if typ.args:
-                typ = cast(Instance, typ.args[0])
-            else:
-                return c
-        return c
-
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
