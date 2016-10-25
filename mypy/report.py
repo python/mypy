@@ -337,7 +337,7 @@ def get_line_rate(covered_lines: int, total_lines: int) -> str:
 
 
 class CoberturaPackage(object):
-    """Container for XML and statistics mapping python modules to Cobertura packages
+    """Container for XML and statistics mapping python modules to Cobertura package
     """
     def __init__(self, name: str) -> None:
         import lxml.etree as etree
@@ -384,7 +384,7 @@ class CoberturaXmlReporter(AbstractReporter):
                                   timestamp=str(int(time.time())),
                                   version=__version__)
         self.doc = etree.ElementTree(self.root)
-        self.packages = CoberturaPackage('.')
+        self.root_package = CoberturaPackage('.')
 
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         import lxml.etree as etree
@@ -427,26 +427,32 @@ class CoberturaXmlReporter(AbstractReporter):
             class_element.attrib['branch-rate'] = '0'
             class_element.attrib['line-rate'] = get_line_rate(class_lines_covered,
                                                               class_total_lines)
+            # parent_module is set to whichever module contains this file.  For most files, we want
+            # to simply strip the last element off of the module.  But for __init__.py files,
+            # the module == the parent module.
+            parent_module = file_info.module.rsplit('.', 1)[0]
+            if file_info.name.endswith('__init__.py'):
+                parent_module = file_info.module
 
-            current_package = self.packages
-            for module_part in file_info.module.rsplit('.', 1)[:-1]:
-                current_package.total_lines += class_total_lines
-                current_package.covered_lines += class_lines_covered
-                if module_part not in current_package.packages:
-                    current_package.packages[module_part] = CoberturaPackage(module_part)
-                current_package = current_package.packages[module_part]
+            if parent_module not in self.root_package.packages:
+                self.root_package.packages[parent_module] = CoberturaPackage(parent_module)
+            current_package = self.root_package.packages[parent_module]
+            packages_to_update = [self.root_package, current_package]
+            for package in packages_to_update:
+                package.total_lines += class_total_lines
+                package.covered_lines += class_lines_covered
             current_package.classes.append(class_element)
 
     def on_finish(self) -> None:
         import lxml.etree as etree
 
-        self.root.attrib['line-rate'] = get_line_rate(self.packages.covered_lines,
-                                                      self.packages.total_lines)
+        self.root.attrib['line-rate'] = get_line_rate(self.root_package.covered_lines,
+                                                      self.root_package.total_lines)
         self.root.attrib['branch-rate'] = '0'
         sources = etree.SubElement(self.root, 'sources')
         source_element = etree.SubElement(sources, 'source')
         source_element.text = os.getcwd()  # type: ignore
-        self.packages.add_packages(self.root)
+        self.root_package.add_packages(self.root)
         out_path = os.path.join(self.output_dir, 'cobertura.xml')
         self.doc.write(out_path, encoding='utf-8', pretty_print=True)
         print('Generated Cobertura report:', os.path.abspath(out_path))
