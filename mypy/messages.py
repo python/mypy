@@ -26,11 +26,6 @@ NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
 RETURN_VALUE_EXPECTED = 'Return value expected'
-BOOLEAN_VALUE_EXPECTED = 'Boolean value expected'
-BOOLEAN_EXPECTED_FOR_IF = 'Boolean value expected for if condition'
-BOOLEAN_EXPECTED_FOR_WHILE = 'Boolean value expected for while condition'
-BOOLEAN_EXPECTED_FOR_UNTIL = 'Boolean value expected for until condition'
-BOOLEAN_EXPECTED_FOR_NOT = 'Boolean value expected for not operand'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
@@ -50,22 +45,12 @@ INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
 INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
-GETTER_TYPE_INCOMPATIBLE_WITH_SETTER = \
-    'Type of getter incompatible with setter'
 TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
 TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-TYPE_CONSTANT_EXPECTED = 'Type "Constant" or initializer expected'
-INCOMPATIBLE_PAIR_ITEM_TYPE = 'Incompatible Pair item type'
-INVALID_TYPE_APPLICATION_TARGET_TYPE = 'Invalid type application target type'
-INCOMPATIBLE_TUPLE_ITEM_TYPE = 'Incompatible tuple item type'
-INCOMPATIBLE_KEY_TYPE = 'Incompatible dictionary key type'
-INCOMPATIBLE_VALUE_TYPE = 'Incompatible dictionary value type'
 NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
 ITERABLE_EXPECTED = 'Iterable expected'
 ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
-INCOMPATIBLE_TYPES_IN_FOR = 'Incompatible types in for statement'
-INCOMPATIBLE_ARRAY_VAR_ARGS = 'Incompatible variable arguments in call'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
 CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
@@ -412,9 +397,6 @@ class MessageBuilder:
                     op, self.format(typ))
             self.fail(msg, context)
 
-    def type_expected_as_right_operand_of_is(self, context: Context) -> None:
-        self.fail('Type expected as right operand of "is"', context)
-
     def not_callable(self, typ: Type, context: Context) -> Type:
         self.fail('{} not callable'.format(self.format(typ)), context)
         return AnyType()
@@ -597,11 +579,6 @@ class MessageBuilder:
         else:
             self.fail('No overload variant matches argument types {}'.format(arg_types), context)
 
-    def function_variants_overlap(self, n1: int, n2: int,
-                                  context: Context) -> None:
-        self.fail('Function signature variants {} and {} overlap'.format(
-            n1 + 1, n2 + 1), context)
-
     def invalid_cast(self, target_type: Type, source_type: Type,
                      context: Context) -> None:
         if not self.check_unusable_type(source_type, context):
@@ -628,19 +605,6 @@ class MessageBuilder:
                                          context: Context) -> None:
         self.fail('Result type of {} incompatible in assignment'.format(op),
                   context)
-
-    def incompatible_value_count_in_assignment(self, lvalue_count: int,
-                                               rvalue_count: int,
-                                               context: Context) -> None:
-        if rvalue_count < lvalue_count:
-            self.fail('Need {} values to assign'.format(lvalue_count), context)
-        elif rvalue_count > lvalue_count:
-            self.fail('Too many values to assign', context)
-
-    def type_incompatible_with_supertype(self, name: str, supertype: TypeInfo,
-                                         context: Context) -> None:
-        self.fail('Type of "{}" incompatible with supertype "{}"'.format(
-            name, supertype.name), context)
 
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
@@ -670,11 +634,6 @@ class MessageBuilder:
             target = '"{}" of {}'.format(name_in_super, target)
         return target
 
-    def boolean_return_value_expected(self, method: str,
-                                      context: Context) -> None:
-        self.fail('Boolean return value expected for method "{}"'.format(
-            method), context)
-
     def incompatible_type_application(self, expected_arg_count: int,
                                       actual_arg_count: int,
                                       context: Context) -> None:
@@ -687,11 +646,6 @@ class MessageBuilder:
         else:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
-
-    def incompatible_array_item_type(self, typ: Type, index: int,
-                                     context: Context) -> None:
-        self.fail('Array item {} has incompatible type {}'.format(
-            index, self.format(typ)), context)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
@@ -710,14 +664,6 @@ class MessageBuilder:
         else:
             self.fail('Argument after ** must be a dictionary',
                       context)
-
-    def incomplete_type_var_match(self, member: str, context: Context) -> None:
-        self.fail('"{}" has incomplete match to supertype type variable'
-                  .format(member), context)
-
-    def not_implemented(self, msg: str, context: Context) -> Type:
-        self.fail('Feature not implemented yet ({})'.format(msg), context)
-        return AnyType()
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -739,9 +685,6 @@ class MessageBuilder:
 
     def too_many_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not all arguments converted during string formatting', context)
-
-    def incomplete_conversion_specifier_format(self, context: Context) -> None:
-        self.fail('Incomplete format', context)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
         self.fail('Unsupported format character \'%s\'' % placeholder, context)
@@ -807,16 +750,6 @@ class MessageBuilder:
                                       context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
-
-    def invalid_reverse_operator_signature(self, reverse: str, other: str,
-                                           context: Context) -> None:
-        self.fail('"Any" return type expected since argument to {} '
-                  'does not support {}'.format(reverse, other), context)
-
-    def reverse_operator_method_with_any_arg_must_return_any(
-            self, method: str, context: Context) -> None:
-        self.fail('"Any" return type expected since argument to {} '
-                  'has type "Any"'.format(method), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: str, reverse_method: str, forward_class: str,
