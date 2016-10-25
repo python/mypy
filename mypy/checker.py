@@ -1680,7 +1680,14 @@ class TypeChecker(NodeVisitor[Type]):
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
                                 s.vars[i].is_def = True
+                                # We also temporarily set current_node_deferred to False to
+                                # make sure the inference happens.
+                                # TODO: Use a better solution, e.g. a
+                                # separate Var for each except block.
+                                am_deferring = self.current_node_deferred
+                                self.current_node_deferred = False
                                 self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
+                                self.current_node_deferred = am_deferring
                         self.accept(s.handlers[i])
                         if s.vars[i]:
                             # Exception variables are deleted in python 3 but not python 2.
