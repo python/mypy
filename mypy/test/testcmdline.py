@@ -11,10 +11,11 @@ import sys
 
 from typing import Tuple, List, Dict, Set
 
-from mypy.myunit import Suite, SkipTestCaseException
+from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.version import __version__
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -58,9 +59,22 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
-    assert_string_arrays_equal(testcase.output, out,
-                               'Invalid output ({}, line {})'.format(
-                                   testcase.file, testcase.line))
+    if testcase.output_files:
+        for path, expected_content in testcase.output_files:
+            if not os.path.exists(path):
+                raise AssertionFailure(
+                    'Expected file {} was not produced by test case'.format(path))
+            with open(path, 'r') as output_file:
+                actual_output_content = output_file.read().splitlines()
+            noramlized_output = normalize_file_output(actual_output_content,
+                                                      os.path.abspath(test_temp_dir))
+            assert_string_arrays_equal(expected_content.splitlines(), noramlized_output,
+                                       'Output file {} did not match its expected output'.format(
+                                           path))
+    else:
+        assert_string_arrays_equal(testcase.output, out,
+                                   'Invalid output ({}, line {})'.format(
+                                       testcase.file, testcase.line))
 
 
 def parse_args(line: str) -> List[str]:
@@ -78,3 +92,13 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
+
+
+def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
+    """Normalize file output for comparison
+    """
+    timestamp_regex = re.compile('\d{10}')
+    result = [x.replace(current_abs_path, '$PWD') for x in content]
+    result = [x.replace(__version__, '$VERSION') for x in result]
+    result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
+    return result

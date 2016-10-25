@@ -448,7 +448,7 @@ class CoberturaXmlReporter(AbstractReporter):
         source_element.text = os.getcwd()  # type: ignore
         self.packages.add_packages(self.root)
         out_path = os.path.join(self.output_dir, 'cobertura.xml')
-        self.doc.write(out_path, encoding='utf-8')
+        self.doc.write(out_path, encoding='utf-8', pretty_print=True)
         print('Generated Cobertura report:', os.path.abspath(out_path))
 
 reporter_classes['cobertura-xml'] = CoberturaXmlReporter
