@@ -225,6 +225,9 @@ class NodeVisitor(Generic[T]):
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> T:
         pass
 
+    def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> T:
+        pass
+
     def visit_newtype_expr(self, o: 'mypy.nodes.NewTypeExpr') -> T:
         pass
 

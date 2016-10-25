@@ -86,7 +86,7 @@ y2 = x or 1
 reveal_type(y2)  # E: Revealed type is 'Union[builtins.str, builtins.int]'
 z1 = 'a' or x
 reveal_type(z1)  # E: Revealed type is 'Union[builtins.str, builtins.None]'
-z2 = 1 or x
+z2 = int() or x
 reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
 
 [case testAndCases]
@@ -98,7 +98,7 @@ y2 = x and 1  # x could be '', so...
 reveal_type(y2)  # E: Revealed type is 'Union[builtins.str, builtins.None, builtins.int]'
 z1 = 'b' and x
 reveal_type(z1)  # E: Revealed type is 'Union[builtins.str, builtins.None]'
-z2 = 1 and x
+z2 = int() and x
 reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builtins.None]'
 
 [case testLambdaReturningNone]
@@ -167,8 +167,7 @@ reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
 
 [case testInferOptionalListType]
 x = [None]
-x.append(1)
-reveal_type(x)  # E: Revealed type is 'builtins.list[Union[builtins.int, builtins.None]]'
+x.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected None
 [builtins fixtures/list.pyi]
 
 [case testInferNonOptionalListType]
@@ -180,8 +179,10 @@ x()  # E: List[int] not callable
 [case testInferOptionalDictKeyValueTypes]
 x = {None: None}
 x["bar"] = 1
-reveal_type(x)  # E: Revealed type is 'builtins.dict[Union[builtins.str, builtins.None], Union[builtins.int, builtins.None]]'
 [builtins fixtures/dict.pyi]
+[out]
+main:2: error: Invalid index type "str" for "dict"
+main:2: error: Incompatible types in assignment (expression has type "int", target has type None)
 
 [case testInferNonOptionalDictType]
 x = {}
@@ -368,9 +369,6 @@ def lookup_field(name, obj):
         attr = f()
     else:
         attr = None
-[out]
-main: note: In function "lookup_field":
-main:10: error: Need type annotation for variable
 
 [case testTernaryWithNone]
 reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
@@ -436,3 +434,20 @@ def f() -> List[None]:
 def g() -> Dict[None, None]:
     return {}
 [builtins fixtures/dict.pyi]
+
+[case testRaiseFromNone]
+raise BaseException from None
+[builtins fixtures/exception.pyi]
+
+[case testOptionalNonPartialTypeWithNone]
+from typing import Generator
+def f() -> Generator[str, None, None]: pass
+x = f()
+reveal_type(x)  # E: Revealed type is 'typing.Generator[builtins.str, builtins.None, builtins.None]'
+l = [f()]
+reveal_type(l)  # E: Revealed type is 'builtins.list[typing.Generator*[builtins.str, builtins.None, builtins.None]]'
+[builtins fixtures/list.pyi]
+
+[case testNoneListTernary]
+x = [None] if "" else [1]  # E: List item 0 has incompatible type "int"
+[builtins fixtures/list.pyi]

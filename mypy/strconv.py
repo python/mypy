@@ -141,8 +141,6 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, 'Metaclass({})'.format(o.metaclass))
         if o.decorators:
             a.insert(1, ('Decorators', o.decorators))
-        if o.is_builtinclass:
-            a.insert(1, 'Builtinclass')
         if o.info and o.info._promote:
             a.insert(1, 'Promote({})'.format(o.info._promote))
         if o.info and o.info.tuple_type:
@@ -421,6 +419,10 @@ class StrConv(NodeVisitor[str]):
         return 'NamedTupleExpr:{}({}, {})'.format(o.line,
                                                   o.info.name(),
                                                   o.info.tuple_type)
+
+    def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
+        return 'TypedDictExpr:{}({})'.format(o.line,
+                                             o.info.name())
 
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
         return 'PromoteExpr:{}({})'.format(o.line, o.type)

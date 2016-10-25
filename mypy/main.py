@@ -160,6 +160,8 @@ def process_options(args: List[str],
                         " --check-untyped-defs enabled")
     parser.add_argument('--warn-redundant-casts', action='store_true',
                         help="warn about casting an expression to its inferred type")
+    parser.add_argument('--warn-no-return', action='store_true',
+                        help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
     parser.add_argument('--hide-error-context', action='store_true',
@@ -198,6 +200,9 @@ def process_options(args: List[str],
     parser.add_argument('--show-column-numbers', action='store_true',
                         dest='show_column_numbers',
                         help="Show column numbers in error messages")
+    parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
+                        dest='special-opts:find_occurrences',
+                        help="print out all usages of a class member (experimental)")
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -292,6 +297,12 @@ def process_options(args: List[str],
         options.strict_optional = True
     if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
+    if special_opts.find_occurrences:
+        experiments.find_occurrences = special_opts.find_occurrences.split('.')
+        if len(experiments.find_occurrences) < 2:
+            parser.error("Can only find occurrences of class members.")
+        if len(experiments.find_occurrences) != 2:
+            parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.
     for flag, val in vars(special_opts).items():

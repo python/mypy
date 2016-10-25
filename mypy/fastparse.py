@@ -157,8 +157,6 @@ class ASTConverter(ast35.NodeTransformer):
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
-        elif op_name == '@':
-            raise RuntimeError('mypy does not support the MatMult operator')
         else:
             return op_name
 
@@ -373,9 +371,10 @@ class ASTConverter(ast35.NodeTransformer):
         if isinstance(n, ast35.Name):
             return n.id
         elif isinstance(n, ast35.Attribute):
-            return "{}.{}".format(self.stringify_name(n.value), n.attr)
-        else:
-            assert False, "can't stringify " + str(type(n))
+            sv = self.stringify_name(n.value)
+            if sv is not None:
+                return "{}.{}".format(sv, n.attr)
+        return None  # Can't do it.
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -389,6 +388,8 @@ class ASTConverter(ast35.NodeTransformer):
         metaclass = None
         if metaclass_arg:
             metaclass = self.stringify_name(metaclass_arg.value)
+            if metaclass is None:
+                metaclass = '<error>'  # To be reported later
 
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),

@@ -23,3 +23,7 @@ docs/build/
 
 # Operating Systems
 .DS_store
+
+# Coverage Files
+htmlcov
+.coverage*

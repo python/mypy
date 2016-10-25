@@ -23,6 +23,7 @@ from mypy.nodes import (
 # that do not have any parameters.
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'
+MISSING_RETURN_STATEMENT = 'Missing return statement'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
 RETURN_VALUE_EXPECTED = 'Return value expected'
 BOOLEAN_VALUE_EXPECTED = 'Boolean value expected'
@@ -75,10 +76,7 @@ INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
     'Read-only property cannot override read-write property'
-INSTANCE_LAYOUT_CONFLICT = 'Instance layout conflict in multiple inheritance'
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
-GENERIC_TYPE_NOT_VALID_AS_EXPRESSION = \
-    "Generic type is prohibited as a runtime expression (use a type alias or '# type:' comment)"
 RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
 INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
@@ -350,7 +348,12 @@ class MessageBuilder:
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
         elif member == '__call__':
-            self.fail('{} not callable'.format(self.format(typ)), context)
+            if isinstance(typ, Instance) and (typ.type.fullname() == 'builtins.function'):
+                # "'function' not callable" is a confusing error message.
+                # Explain that the problem is that the type of the function is not known.
+                self.fail('Cannot call function of unknown type', context)
+            else:
+                self.fail('{} not callable'.format(self.format(typ)), context)
         else:
             # The non-special case: a missing ordinary attribute.
             if not self.disable_type_names:
@@ -676,7 +679,7 @@ class MessageBuilder:
                                       actual_arg_count: int,
                                       context: Context) -> None:
         if expected_arg_count == 0:
-            self.fail('Type application targets a non-generic function',
+            self.fail('Type application targets a non-generic function or class',
                       context)
         elif actual_arg_count > expected_arg_count:
             self.fail('Type application has too many types ({} expected)'

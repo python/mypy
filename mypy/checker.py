@@ -19,8 +19,8 @@ from mypy.nodes import (
     TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, ListComprehension, ConditionalExpr, GeneratorExpr,
     Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, NamedTupleExpr, SetComprehension,
+    LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
     AwaitExpr,
@@ -50,7 +50,7 @@ from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, is_overlapping_types
 from mypy.binder import ConditionalTypeBinder
 from mypy.options import Options
 
@@ -58,6 +58,8 @@ from mypy import experiments
 
 
 T = TypeVar('T')
+
+LAST_PASS = 1  # Pass numbers start at 0
 
 
 # A node which is postponed to be type checked during the next pass.
@@ -73,6 +75,8 @@ class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
+
+    You must create a separate instance for each source file.
     """
 
     # Are we type checking a stub?
@@ -83,8 +87,6 @@ class TypeChecker(NodeVisitor[Type]):
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
     type_map = None  # type: Dict[Expression, Type]
-    # Types of type checked nodes within this specific module
-    module_type_map = None  # type: Dict[Expression, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -121,55 +123,60 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
+                 tree: MypyFile, path: str) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
+        self.options = options
+        self.tree = tree
+        self.path = path
         self.msg = MessageBuilder(errors, modules)
-        self.type_map = {}
-        self.module_type_map = {}
-        self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.binder = ConditionalTypeBinder()
+        self.globals = tree.names
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
         self.function_stack = []
         self.partial_types = []
         self.deferred_nodes = []
+        self.type_map = {}
+        self.module_refs = set()
         self.pass_num = 0
         self.current_node_deferred = False
-        self.module_refs = set()
-
-    def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
-        """Type check a mypy file with the given path."""
-        self.options = options
-        self.pass_num = 0
-        self.is_stub = file_node.is_stub
-        self.errors.set_file(path)
-        self.globals = file_node.names
-        self.enter_partial_types()
-        self.is_typeshed_stub = self.errors.is_typeshed_file(path)
-        self.module_type_map = {}
-        self.module_refs = set()
-        if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = not self.options.show_none_errors
+        self.is_stub = tree.is_stub
+        self.is_typeshed_stub = errors.is_typeshed_file(path)
+        if options.strict_optional_whitelist is None:
+            self.suppress_none_errors = not options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
-                                                in self.options.strict_optional_whitelist)
+                                                in options.strict_optional_whitelist)
 
-        for d in file_node.defs:
-            self.accept(d)
+    def check_first_pass(self) -> None:
+        """Type check the entire file, but defer functions with unresolved references.
+
+        Unresolved references are forward references to variables
+        whose types haven't been inferred yet.  They may occur later
+        in the same file or in a different file that's being processed
+        later (usually due to an import cycle).
+
+        Deferred functions will be processed by check_second_pass().
+        """
+        self.errors.set_file(self.path)
+        self.enter_partial_types()
+
+        with self.binder.top_frame_context():
+            for d in self.tree.defs:
+                self.accept(d)
 
         self.leave_partial_types()
 
-        if self.deferred_nodes:
-            self.check_second_pass()
-
-        self.current_node_deferred = False
+        assert not self.current_node_deferred
 
         all_ = self.globals.get('__all__')
         if all_ is not None and all_.type is not None:
@@ -180,21 +187,31 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-        del self.options
+    def check_second_pass(self) -> bool:
+        """Run second or following pass of type checking.
 
-    def check_second_pass(self) -> None:
-        """Run second pass of type checking which goes through deferred nodes."""
-        self.pass_num = 1
-        for node, type_name in self.deferred_nodes:
+        This goes through deferred nodes, returning True if there were any.
+        """
+        if not self.deferred_nodes:
+            return False
+        self.errors.set_file(self.path)
+        self.pass_num += 1
+        todo = self.deferred_nodes
+        self.deferred_nodes = []
+        done = set()  # type: Set[FuncItem]
+        for node, type_name in todo:
+            if node in done:
+                continue
+            done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
             self.accept(node)
             if type_name:
                 self.errors.pop_type()
-        self.deferred_nodes = []
+        return True
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        if self.pass_num == 0 and self.function_stack:
+        if self.pass_num < LAST_PASS and self.function_stack:
             # Don't report an error yet. Just defer.
             node = self.function_stack[-1]
             if self.errors.type_name:
@@ -226,22 +243,24 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             return typ
 
-    def accept_loop(self, body: Union[IfStmt, Block], else_body: Block = None) -> Type:
+    def accept_loop(self, body: Statement, else_body: Statement = None, *,
+                    exit_condition: Expression = None) -> Type:
         """Repeatedly type check a loop body until the frame doesn't change.
+        If exit_condition is set, assume it must be False on exit from the loop.
 
         Then check the else_body.
         """
         # The outer frame accumulates the results of all iterations
-        with self.binder.frame_context(1) as outer_frame:
-            self.binder.push_loop_frame()
+        with self.binder.frame_context(can_skip=False):
             while True:
-                with self.binder.frame_context(1):
-                    # We may skip each iteration
-                    self.binder.options_on_return[-1].append(outer_frame)
+                with self.binder.frame_context(can_skip=True,
+                                               break_frame=2, continue_frame=1):
                     self.accept(body)
                 if not self.binder.last_pop_changed:
                     break
-            self.binder.pop_loop_frame()
+            if exit_condition:
+                _, else_map = self.find_isinstance_check(exit_condition)
+                self.push_type_map(else_map)
             if else_body:
                 self.accept(else_body)
 
@@ -505,7 +524,7 @@ class TypeChecker(NodeVisitor[Type]):
         for item, typ in self.expand_typevars(defn, typ):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
-            with self.binder.frame_context():
+            with self.binder.top_frame_context():
                 defn.expanded.append(item)
 
                 # We may be checking a function definition or an anonymous
@@ -605,12 +624,39 @@ class TypeChecker(NodeVisitor[Type]):
                         self.accept(init)
 
             # Type check body in a new scope.
-            with self.binder.frame_context():
+            with self.binder.top_frame_context():
                 self.accept(item.body)
+                unreachable = self.binder.is_unreachable()
+
+            if (self.options.warn_no_return and not unreachable
+                    and not isinstance(self.return_types[-1], (Void, AnyType))
+                    and not defn.is_generator):
+                # Control flow fell off the end of a function that was
+                # declared to return a non-None type.
+                # Allow functions that are entirely pass/Ellipsis.
+                if self.is_trivial_body(defn.body):
+                    pass
+                else:
+                    self.msg.note(messages.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def is_trivial_body(self, block: Block) -> bool:
+        body = block.body
+
+        # Skip a docstring
+        if (isinstance(body[0], ExpressionStmt) and
+                isinstance(body[0].expr, StrExpr)):
+            body = block.body[1:]
+
+        if len(body) != 1:
+            return False
+        stmt = body[0]
+        return (isinstance(stmt, PassStmt) or
+                (isinstance(stmt, ExpressionStmt) and
+                 isinstance(stmt.expr, EllipsisExpr)))
 
     def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
                                 method: str) -> None:
@@ -918,7 +964,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.enter_partial_types()
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
-        with self.binder.frame_context():
+        with self.binder.top_frame_context():
             self.accept(defn.defs)
         self.binder = old_binder
         if not defn.has_incompatible_baseclass:
@@ -929,7 +975,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
-
         if len(typ.bases) <= 1:
             # No multiple inheritance.
             return
@@ -943,13 +988,6 @@ class TypeChecker(NodeVisitor[Type]):
                     # checks suffice (these are implemented elsewhere).
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
-        # Verify that base class layouts are compatible.
-        builtin_bases = [nearest_builtin_ancestor(base.type)
-                         for base in typ.bases]
-        for base1 in builtin_bases:
-            for base2 in builtin_bases:
-                if not (base1 in base2.mro or base2 in base1.mro):
-                    self.fail(messages.INSTANCE_LAYOUT_CONFLICT, typ)
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
@@ -1016,9 +1054,9 @@ class TypeChecker(NodeVisitor[Type]):
         if b.is_unreachable:
             return None
         for s in b.body:
-            self.accept(s)
-            if self.binder.breaking_out:
+            if self.binder.is_unreachable():
                 break
+            self.accept(s)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> Type:
         """Type check an assignment statement.
@@ -1455,7 +1493,10 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_return_stmt(self, s: ReturnStmt) -> Type:
         """Type check a return statement."""
-        self.binder.breaking_out = True
+        self.check_return_stmt(s)
+        self.binder.unreachable()
+
+    def check_return_stmt(self, s: ReturnStmt) -> None:
         if self.is_within_function():
             defn = self.function_stack[-1]
             if defn.is_generator:
@@ -1469,13 +1510,13 @@ class TypeChecker(NodeVisitor[Type]):
                 typ = self.accept(s.expr, return_type)
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
-                    return None
+                    return
 
                 if self.is_unusable_type(return_type):
                     # Lambdas are allowed to have a unusable returns.
                     # Functions returning a value of type None are allowed to have a Void return.
                     if isinstance(self.function_stack[-1], FuncExpr) or isinstance(typ, NoneTyp):
-                        return None
+                        return
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
                     self.check_subtype(
@@ -1488,10 +1529,10 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 # Empty returns are valid in Generators with Any typed returns.
                 if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
-                    return None
+                    return
 
                 if isinstance(return_type, (Void, NoneTyp, AnyType)):
-                    return None
+                    return
 
                 if self.in_checked_function():
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
@@ -1522,49 +1563,31 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
-        breaking_out = True
         # This frame records the knowledge from previous if/elif clauses not being taken.
-        with self.binder.frame_context():
+        # Fall-through to the original frame is handled explicitly in each block.
+        with self.binder.frame_context(can_skip=False, fall_through=0):
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
                 self.check_usable_type(t, e)
-                if_map, else_map = find_isinstance_check(e, self.type_map)
-                if if_map is None:
-                    # The condition is always false
-                    # XXX should issue a warning?
-                    pass
-                else:
-                    # Only type check body if the if condition can be true.
-                    with self.binder.frame_context(2):
-                        if if_map:
-                            for var, type in if_map.items():
-                                self.binder.push(var, type)
+                if_map, else_map = self.find_isinstance_check(e)
 
-                        self.accept(b)
-                    breaking_out = breaking_out and self.binder.last_pop_breaking_out
+                # XXX Issue a warning if condition is always False?
+                with self.binder.frame_context(can_skip=True, fall_through=2):
+                    self.push_type_map(if_map)
+                    self.accept(b)
 
-                    if else_map:
-                        for var, type in else_map.items():
-                            self.binder.push(var, type)
-                if else_map is None:
-                    # The condition is always true => remaining elif/else blocks
-                    # can never be reached.
+                # XXX Issue a warning if condition is always True?
+                self.push_type_map(else_map)
 
-                    # Might also want to issue a warning
-                    # print("Warning: isinstance always true")
-                    break
-            else:  # Didn't break => can't prove one of the conditions is always true
-                with self.binder.frame_context(2):
-                    if s.else_body:
-                        self.accept(s.else_body)
-                breaking_out = breaking_out and self.binder.last_pop_breaking_out
-        if breaking_out:
-            self.binder.breaking_out = True
+            with self.binder.frame_context(can_skip=False, fall_through=2):
+                if s.else_body:
+                    self.accept(s.else_body)
         return None
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
-        self.accept_loop(IfStmt([s.expr], [s.body], None), s.else_body)
+        self.accept_loop(IfStmt([s.expr], [s.body], None), s.else_body,
+                         exit_condition=s.expr)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> Type:
@@ -1584,21 +1607,20 @@ class TypeChecker(NodeVisitor[Type]):
         self.accept(s.expr)
 
         # If this is asserting some isinstance check, bind that type in the following code
-        true_map, _ = find_isinstance_check(s.expr, self.type_map)
+        true_map, _ = self.find_isinstance_check(s.expr)
 
-        if true_map:
-            for var, type in true_map.items():
-                self.binder.push(var, type)
+        self.push_type_map(true_map)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Type:
         """Type check a raise statement."""
-        self.binder.breaking_out = True
         if s.expr:
             self.type_check_raise(s.expr, s)
         if s.from_expr:
-            self.type_check_raise(s.from_expr, s)
+            self.type_check_raise(s.from_expr, s, True)
+        self.binder.unreachable()
 
-    def type_check_raise(self, e: Expression, s: RaiseStmt) -> None:
+    def type_check_raise(self, e: Expression, s: RaiseStmt,
+                         optional: bool = False) -> None:
         typ = self.accept(e)
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
@@ -1618,76 +1640,90 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(typ, Instance) and typ.type.fallback_to_any:
             # OK!
             return
-        self.check_subtype(typ,
-                           self.named_type('builtins.BaseException'), s,
-                           messages.INVALID_EXCEPTION)
+        expected_type = self.named_type('builtins.BaseException')  # type: Type
+        if optional:
+            expected_type = UnionType([expected_type, NoneTyp()])
+        self.check_subtype(typ, expected_type, s, messages.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> Type:
         """Type check a try statement."""
         # Our enclosing frame will get the result if the try/except falls through.
-        # This one gets all possible intermediate states
-        with self.binder.frame_context():
+        # This one gets all possible states after the try block exited abnormally
+        # (by exception, return, break, etc.)
+        with self.binder.frame_context(can_skip=False, fall_through=0):
+            # Not only might the body of the try statement exit
+            # abnormally, but so might an exception handler or else
+            # clause. The finally clause runs in *all* cases, so we
+            # need an outer try frame to catch all intermediate states
+            # in case an exception is raised during an except or else
+            # clause. As an optimization, only create the outer try
+            # frame when there actually is a finally clause.
+            self.visit_try_without_finally(s, try_frame=bool(s.finally_body))
             if s.finally_body:
-                self.binder.try_frames.add(len(self.binder.frames) - 1)
-                breaking_out = self.visit_try_without_finally(s)
-                self.binder.try_frames.remove(len(self.binder.frames) - 1)
-                # First we check finally_body is type safe for all intermediate frames
+                # First we check finally_body is type safe on all abnormal exit paths
                 self.accept(s.finally_body)
-                breaking_out = breaking_out or self.binder.breaking_out
-            else:
-                breaking_out = self.visit_try_without_finally(s)
 
-        if not breaking_out and s.finally_body:
-            # Then we try again for the more restricted set of options that can fall through
+        if s.finally_body:
+            # Then we try again for the more restricted set of options
+            # that can fall through. (Why do we need to check the
+            # finally clause twice? Depending on whether the finally
+            # clause was reached by the try clause falling off the end
+            # or exiting abnormally, after completing the finally clause
+            # either flow will continue to after the entire try statement
+            # or the exception/return/etc. will be processed and control
+            # flow will escape. We need to check that the finally clause
+            # type checks in both contexts, but only the resulting types
+            # from the latter context affect the type state in the code
+            # that follows the try statement.)
             self.accept(s.finally_body)
-        self.binder.breaking_out = breaking_out
+
         return None
 
-    def visit_try_without_finally(self, s: TryStmt) -> bool:
+    def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
 
-        Return whether we are guaranteed to be breaking out.
-        Otherwise, it will place the results possible frames of
-        that don't break out into self.binder.frames[-2].
+        On entry, the top frame should receive all flow that exits the
+        try block abnormally (i.e., such that the else block does not
+        execute), and its parent should receive all flow that exits
+        the try block normally.
         """
-        breaking_out = True
-        # This frame records the possible states that exceptions can leave variables in
-        # during the try: block
-        with self.binder.frame_context():
-            with self.binder.frame_context(3):
-                self.binder.try_frames.add(len(self.binder.frames) - 2)
-                self.accept(s.body)
-                self.binder.try_frames.remove(len(self.binder.frames) - 2)
-                if s.else_body:
-                    self.accept(s.else_body)
-            breaking_out = breaking_out and self.binder.last_pop_breaking_out
-            for i in range(len(s.handlers)):
-                with self.binder.frame_context(3):
-                    if s.types[i]:
-                        t = self.visit_except_handler_test(s.types[i])
+        # This frame will run the else block if the try fell through.
+        # In that case, control flow continues to the parent of what
+        # was the top frame on entry.
+        with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=try_frame):
+            # This frame receives exit via exception, and runs exception handlers
+            with self.binder.frame_context(can_skip=False, fall_through=2):
+                # Finally, the body of the try statement
+                with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=True):
+                    self.accept(s.body)
+                for i in range(len(s.handlers)):
+                    with self.binder.frame_context(can_skip=True, fall_through=4):
+                        if s.types[i]:
+                            t = self.visit_except_handler_test(s.types[i])
+                            if s.vars[i]:
+                                # To support local variables, we make this a definition line,
+                                # causing assignment to set the variable's type.
+                                s.vars[i].is_def = True
+                                self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
+                        self.accept(s.handlers[i])
                         if s.vars[i]:
-                            # To support local variables, we make this a definition line,
-                            # causing assignment to set the variable's type.
-                            s.vars[i].is_def = True
-                            self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
-                    self.accept(s.handlers[i])
-                    if s.vars[i]:
-                        # Exception variables are deleted in python 3 but not python 2.
-                        # But, since it's bad form in python 2 and the type checking
-                        # wouldn't work very well, we delete it anyway.
+                            # Exception variables are deleted in python 3 but not python 2.
+                            # But, since it's bad form in python 2 and the type checking
+                            # wouldn't work very well, we delete it anyway.
 
-                        # Unfortunately, this doesn't let us detect usage before the
-                        # try/except block.
-                        if self.options.python_version[0] >= 3:
-                            source = s.vars[i].name
-                        else:
-                            source = ('(exception variable "{}", which we do not accept outside'
-                                      'except: blocks even in python 2)'.format(s.vars[i].name))
-                        var = cast(Var, s.vars[i].node)
-                        var.type = DeletedType(source=source)
-                        self.binder.cleanse(s.vars[i])
-                breaking_out = breaking_out and self.binder.last_pop_breaking_out
-        return breaking_out
+                            # Unfortunately, this doesn't let us detect usage before the
+                            # try/except block.
+                            if self.options.python_version[0] >= 3:
+                                source = s.vars[i].name
+                            else:
+                                source = ('(exception variable "{}", which we do not '
+                                          'accept outside except: blocks even in '
+                                          'python 2)'.format(s.vars[i].name))
+                            var = cast(Var, s.vars[i].node)
+                            var.type = DeletedType(source=source)
+                            self.binder.cleanse(s.vars[i])
+            if s.else_body:
+                self.accept(s.else_body)
 
     def visit_except_handler_test(self, n: Expression) -> Type:
         """Type check an exception handler test clause."""
@@ -1990,13 +2026,11 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_member_expr(e)
 
     def visit_break_stmt(self, s: BreakStmt) -> Type:
-        self.binder.breaking_out = True
-        self.binder.allow_jump(self.binder.loop_frames[-1] - 1)
+        self.binder.handle_break()
         return None
 
     def visit_continue_stmt(self, s: ContinueStmt) -> Type:
-        self.binder.breaking_out = True
-        self.binder.allow_jump(self.binder.loop_frames[-1])
+        self.binder.handle_continue()
         return None
 
     def visit_int_expr(self, e: IntExpr) -> Type:
@@ -2055,6 +2089,10 @@ class TypeChecker(NodeVisitor[Type]):
         return AnyType()
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        # TODO: Perhaps return a type object type?
+        return AnyType()
+
+    def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
         # TODO: Perhaps return a type object type?
         return AnyType()
 
@@ -2210,8 +2248,6 @@ class TypeChecker(NodeVisitor[Type]):
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
-        if typ is not None:
-            self.module_type_map[node] = typ
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?
@@ -2327,6 +2363,18 @@ class TypeChecker(NodeVisitor[Type]):
     def method_type(self, func: FuncBase) -> FunctionLike:
         return method_type_with_fallback(func, self.named_type('builtins.function'))
 
+    # TODO: These next two functions should refer to TypeMap below
+    def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
+                                                            Optional[Dict[Expression, Type]]]:
+        return find_isinstance_check(n, self.type_map)
+
+    def push_type_map(self, type_map: Optional[Dict[Expression, Type]]) -> None:
+        if type_map is None:
+            self.binder.unreachable()
+        else:
+            for expr, type in type_map.items():
+                self.binder.push(expr, type)
+
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The
@@ -2359,9 +2407,11 @@ def conditional_type_map(expr: Expression,
     if proposed_type:
         if current_type:
             if is_proper_subtype(current_type, proposed_type):
-                return {expr: proposed_type}, None
+                # Expression is always of type proposed_type
+                return {}, None
             elif not is_overlapping_types(current_type, proposed_type):
-                return None, {expr: current_type}
+                # Expression is never of type proposed_type
+                return None, {}
             else:
                 remaining_type = restrict_subtype_away(current_type, proposed_type)
                 return {expr: proposed_type}, {expr: remaining_type}
@@ -2370,6 +2420,16 @@ def conditional_type_map(expr: Expression,
     else:
         # An isinstance check, but we don't understand the type
         return {}, {}
+
+
+def is_true_literal(n: Expression) -> bool:
+    return (refers_to_fullname(n, 'builtins.True')
+            or isinstance(n, IntExpr) and n.value == 1)
+
+
+def is_false_literal(n: Expression) -> bool:
+    return (refers_to_fullname(n, 'builtins.False')
+            or isinstance(n, IntExpr) and n.value == 0)
 
 
 def is_literal_none(n: Expression) -> bool:
@@ -2434,7 +2494,11 @@ def find_isinstance_check(node: Expression,
 
     Guaranteed to not return None, None. (But may return {}, {})
     """
-    if isinstance(node, CallExpr):
+    if is_true_literal(node):
+        return {}, None
+    elif is_false_literal(node):
+        return None, {}
+    elif isinstance(node, CallExpr):
         if refers_to_fullname(node.callee, 'builtins.isinstance'):
             expr = node.args[0]
             if expr.literal == LITERAL_TYPE:
@@ -2640,7 +2704,11 @@ def infer_operator_assignment_method(type: Type, operator: str) -> Tuple[bool, s
 def is_valid_inferred_type(typ: Type) -> bool:
     """Is an inferred type valid?
 
-    Examples of invalid types include the None type or a type with a None component.
+    Examples of invalid types include the None type or List[<uninhabited>].
+
+    When not doing strict Optional checking, all types containing None are
+    invalid.  When doing strict Optional checking, only None and types that are
+    incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
     if is_same_type(typ, NoneTyp()):
         # With strict Optional checking, we *may* eventually infer NoneTyp, but
@@ -2648,14 +2716,26 @@ def is_valid_inferred_type(typ: Type) -> bool:
         # resolution happens in leave_partial_types when we pop a partial types
         # scope.
         return False
+    return is_valid_inferred_type_component(typ)
+
+
+def is_valid_inferred_type_component(typ: Type) -> bool:
+    """Is this part of a type a valid inferred type?
+
+    In strict Optional mode this excludes bare None types, as otherwise every
+    type containing None would be invalid.
+    """
+    if not experiments.STRICT_OPTIONAL:
+        if is_same_type(typ, NoneTyp()):
+            return False
     if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):
         for arg in typ.args:
-            if not is_valid_inferred_type(arg):
+            if not is_valid_inferred_type_component(arg):
                 return False
     elif isinstance(typ, TupleType):
         for item in typ.items:
-            if not is_valid_inferred_type(item):
+            if not is_valid_inferred_type_component(item):
                 return False
     return True

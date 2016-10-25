@@ -1,4 +1,4 @@
-from typing import cast, List
+from typing import List
 
 from mypy.join import is_similar_callables, combine_similar_callables
 from mypy.types import (
@@ -7,7 +7,6 @@ from mypy.types import (
     DeletedType, UninhabitedType, TypeType
 )
 from mypy.subtypes import is_subtype
-from mypy.nodes import TypeInfo
 
 from mypy import experiments
 
@@ -112,14 +111,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     # We conservatively assume that non-instance, non-union, and non-TypeType types can overlap
     # any other types.
     return True
-
-
-def nearest_builtin_ancestor(type: TypeInfo) -> TypeInfo:
-    for base in type.mro:
-        if base.defn.is_builtinclass:
-            return base
-    else:
-        return None
 
 
 class TypeMeetVisitor(TypeVisitor[Type]):
