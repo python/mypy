@@ -159,16 +159,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_generator = original.is_generator
         new.line = original.line
 
-    def duplicate_inits(self,
-                        inits: List[AssignmentStmt]) -> List[AssignmentStmt]:
-        result = []  # type: List[AssignmentStmt]
-        for init in inits:
-            if init:
-                result.append(self.duplicate_assignment(init))
-            else:
-                result.append(None)
-        return result
-
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> OverloadedFuncDef:
         items = [self.visit_decorator(decorator)
                  for decorator in node.items]
@@ -580,9 +570,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def types(self, types: List[Type]) -> List[Type]:
         return [self.type(type) for type in types]
-
-    def optional_types(self, types: List[Type]) -> List[Type]:
-        return [self.optional_type(type) for type in types]
 
 
 class FuncMapInitializer(TraverserVisitor):

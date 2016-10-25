@@ -1838,9 +1838,6 @@ class Parser:
         else:
             self.parse_error()
 
-    def expect_colon_and_break(self) -> Tuple[Token, Token]:
-        return self.expect_type(Colon), self.expect_type(Break)
-
     def expect_break(self) -> Token:
         return self.expect_type(Break)
 
