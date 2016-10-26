@@ -180,7 +180,7 @@ class DataDrivenTestCase(TestCase):
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
         for path, _ in self.output_files:
-            # Create directories for expecetd output and mark them to be cleaned up at the end
+            # Create directories for expected output and mark them to be cleaned up at the end
             # of the test case.
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
