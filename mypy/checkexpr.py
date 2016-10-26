@@ -895,7 +895,7 @@ class ExpressionChecker:
                 # There was an error.
                 return AnyType()
         return Overloaded(items)
- 
+
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
