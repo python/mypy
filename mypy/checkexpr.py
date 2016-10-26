@@ -1608,13 +1608,17 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    selftype = self.chk.function_stack[-1].arguments[0].variable.type
-                    return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
+                    # fill_typevars(e.info) erases type variables
+                    erased_self = fill_typevars(e.info)
+                    args = self.chk.function_stack[-1].arguments
+                    # An empty args with super() is an error, but we need something in declared_self
+                    declared_self = args[0].variable.type if args else erased_self
+                    return analyze_member_access(name=e.name, typ=erased_self, node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,
                                                  msg=self.msg, override_info=base, chk=self.chk,
-                                                 actual_self=selftype)
+                                                 actual_self=declared_self)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
