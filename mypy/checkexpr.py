@@ -1608,12 +1608,19 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    # fill_typevars(e.info) erases type variables
-                    erased_self = fill_typevars(e.info)
+                    # If the class A is not generic, and we declare `self: T` in the signature:
+                    # * declared_self will be T
+                    # * fill_typevars(e.info) will be A
+                    # If the class has a type arguments Q, and we declare `self: A[T]`:
+                    # * declared_self will be A[T]
+                    # * fill_typevars(e.info) will be A[Q]
+                    # If the we declare `self: T` in a generic class, declared_self is still T.
+                    # TODO: generic classes are not actually supported yet
+                    filled_self = fill_typevars(e.info)
                     args = self.chk.function_stack[-1].arguments
                     # An empty args with super() is an error; we need something in declared_self
-                    declared_self = args[0].variable.type if args else erased_self
-                    return analyze_member_access(name=e.name, typ=erased_self, node=e,
+                    declared_self = args[0].variable.type if args else filled_self
+                    return analyze_member_access(name=e.name, typ=filled_self, node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,
