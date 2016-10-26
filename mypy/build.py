@@ -306,7 +306,7 @@ CacheMeta = NamedTuple('CacheMeta',
 PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
-PRI_MYPY = 25 # inside "if MYPY" or "if TYPE_CHECKING"
+PRI_MYPY = 25  # inside "if MYPY" or "if TYPE_CHECKING"
 PRI_INDIRECT = 30  # an indirect dependency
 PRI_ALL = 99  # include all priorities
 
