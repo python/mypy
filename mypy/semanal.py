@@ -53,17 +53,17 @@ from mypy.nodes import (
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -550,6 +550,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
+        if self.analyze_namedtuple_classdef(defn):
+            return
         self.setup_class_def_analysis(defn)
 
         self.bind_class_type_vars(defn)
@@ -561,8 +563,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_class_decorator(defn, decorator)
 
         self.enter_class(defn)
-
-        self.setup_is_builtinclass(defn)
 
         # Analyze class body.
         defn.defs.accept(self)
@@ -608,15 +608,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-
-    def setup_is_builtinclass(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            if refers_to_fullname(decorator, 'typing.builtinclass'):
-                defn.is_builtinclass = True
-        if defn.fullname == 'builtins.object':
-            # Only 'object' is marked as a built-in class, as otherwise things elsewhere
-            # would break. We need a better way of dealing with built-in classes.
-            defn.is_builtinclass = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -726,6 +717,56 @@ class SemanticAnalyzer(NodeVisitor):
         if sym is not None and sym.kind == UNBOUND_TVAR:
             return unbound.name, cast(TypeVarExpr, sym.node)
         return None
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        # special case for NamedTuple
+        for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, RefExpr):
+                base_expr.accept(self)
+                if base_expr.fullname == 'typing.NamedTuple':
+                    node = self.lookup(defn.name, defn)
+                    if node is not None:
+                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                        items, types = self.check_namedtuple_classdef(defn)
+                        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+                        return True
+        return False
+
+    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                               'expected "field_name: field_type"')
+        if self.options.python_version < (3, 6):
+            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
+            return [], []
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if not isinstance(stmt, AssignmentStmt):
+                # Still allow pass or ... (for empty namedtuples).
+                if (not isinstance(stmt, PassStmt) and
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                # An assignment, but an invalid one.
+                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            else:
+                # Append name and type in this case...
+                name = stmt.lvalues[0].name
+                items.append(name)
+                types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
+                # ...despite possible minor failures that allow further analyzis.
+                if name.startswith('_'):
+                    self.fail('NamedTuple field name cannot start with an underscore: {}'
+                              .format(name), stmt)
+                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                elif not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('Right hand side values are not supported in NamedTuple', stmt)
+        return items, types
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
@@ -849,6 +890,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
+            if defn.metaclass == '<error>':
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                return
             sym = self.lookup_qualified(defn.metaclass, defn)
             if sym is not None and not isinstance(sym.node, TypeInfo):
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
@@ -1130,6 +1174,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
+        self.process_typeddict_definition(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -1501,9 +1546,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(s.rvalue, CallExpr):
             return None
         call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         if callee.fullname != 'typing.TypeVar':
             return None
         return call
@@ -1582,10 +1627,9 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = GDEF   # TODO locally defined namedtuple
-        # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Expression, var_name: str = None) -> TypeInfo:
+    def check_namedtuple(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
@@ -1599,9 +1643,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(node, CallExpr):
             return None
         call = node
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
@@ -1610,9 +1654,9 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
-            # Give it a unique name derived from the line number.
             name = cast(StrExpr, call.args[0]).value
             if name != var_name:
+                # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
@@ -1623,7 +1667,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def parse_namedtuple_args(self, call: CallExpr,
                               fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO Share code with check_argument_count in checkexpr.py?
+        # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
@@ -1779,6 +1823,114 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Type expected', node)
                 result.append(AnyType())
         return result
+
+    def process_typeddict_definition(self, s: AssignmentStmt) -> None:
+        """Check if s defines a TypedDict; if yes, store the definition in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        typed_dict = self.check_typeddict(s.rvalue, name)
+        if typed_dict is None:
+            return
+        # Yes, it's a valid TypedDict definition. Add it to the symbol table.
+        node = self.lookup(name, s)
+        node.kind = GDEF   # TODO locally defined TypedDict
+        node.node = typed_dict
+
+    def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+        """Check if a call defines a TypedDict.
+
+        The optional var_name argument is the name of the variable to
+        which this is assigned, if any.
+
+        If it does, return the corresponding TypeInfo. Return None otherwise.
+
+        If the definition is invalid but looks like a TypedDict,
+        report errors but return (some) TypeInfo.
+        """
+        if not isinstance(node, CallExpr):
+            return None
+        call = node
+        callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
+        fullname = callee.fullname
+        if fullname != 'mypy_extensions.TypedDict':
+            return None
+        items, types, ok = self.parse_typeddict_args(call, fullname)
+        if not ok:
+            # Error. Construct dummy return value.
+            return self.build_typeddict_typeinfo('TypedDict', [], [])
+        else:
+            name = cast(StrExpr, call.args[0]).value
+            if name != var_name:
+                # Give it a unique name derived from the line number.
+                name += '@' + str(call.line)
+            info = self.build_typeddict_typeinfo(name, items, types)
+            # Store it as a global just in case it would remain anonymous.
+            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        call.analyzed = TypedDictExpr(info)
+        call.analyzed.set_line(call.line, call.column)
+        return info
+
+    def parse_typeddict_args(self, call: CallExpr,
+                             fullname: str) -> Tuple[List[str], List[Type], bool]:
+        # TODO: Share code with check_argument_count in checkexpr.py?
+        args = call.args
+        if len(args) < 2:
+            return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
+        if len(args) > 2:
+            return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
+        # TODO: Support keyword arguments
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+            return self.fail_typeddict_arg(
+                "TypedDict() expects a string literal as the first argument", call)
+        if not isinstance(args[1], DictExpr):
+            return self.fail_typeddict_arg(
+                "TypedDict() expects a dictionary literal as the second argument", call)
+        dictexpr = args[1]
+        items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        return items, types, ok
+
+    def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
+                                          context: Context) -> Tuple[List[str], List[Type], bool]:
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for (field_name_expr, field_type_expr) in dict_items:
+            if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
+                items.append(field_name_expr.value)
+            else:
+                return self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+            try:
+                type = expr_to_unanalyzed_type(field_type_expr)
+            except TypeTranslationError:
+                return self.fail_typeddict_arg('Invalid field type', field_type_expr)
+            types.append(self.anal_type(type))
+        return items, types, True
+
+    def fail_typeddict_arg(self, message: str,
+                           context: Context) -> Tuple[List[str], List[Type], bool]:
+        self.fail(message, context)
+        return [], [], False
+
+    def build_typeddict_typeinfo(self, name: str, items: List[str],
+                                 types: List[Type]) -> TypeInfo:
+        strtype = self.named_type('__builtins__.str')  # type: Type
+        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                   or self.object_type())
+        fallback = dictype
+
+        info = self.basic_new_typeinfo(name, fallback)
+        info.is_typed_dict = True
+
+        # (TODO: Store {items, types} inside "info" somewhere for use later.
+        #        Probably inside a new "info.keys" field which
+        #        would be analogous to "info.names".)
+
+        return info
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:

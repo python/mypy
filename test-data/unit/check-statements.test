@@ -228,6 +228,17 @@ class C: pass
 main:3: error: Unsupported operand types for * ("A" and "A")
 main:4: error: Unsupported left operand type for * ("C")
 
+[case testMatMulAssign]
+a, c = None, None # type: (A, C)
+a @= a   # E: Unsupported operand types for @ ("A" and "A")
+c @= a   # E: Unsupported left operand type for @ ("C")
+a @= c
+
+class A:
+    def __matmul__(self, x: 'C') -> 'A': pass
+
+class C: pass
+
 [case testDivAssign]
 
 a, c = None, None # type: (A, C)
@@ -295,11 +306,14 @@ import typing
 class A:
     def __iadd__(self, x: int) -> 'A': pass
     def __imul__(self, x: str) -> 'A': pass
+    def __imatmul__(self, x: str) -> 'A': pass
 a = A()
 a += 1
 a *= ''
+a @= ''
 a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"; expected "int"
 a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"; expected "str"
+a @= 1  # E: Argument 1 to "__imatmul__" of "A" has incompatible type "int"; expected "str"
 
 [case testInplaceSetitem]
 class A(object):
@@ -672,6 +686,110 @@ except E1 as e: pass
 e = 1 # E: Assignment to variable 'e' outside except: block
 e = E1() # E: Assignment to variable 'e' outside except: block
 [builtins fixtures/exception.pyi]
+
+[case testExceptionVariableReuseInDeferredNode1]
+def f(*a: BaseException) -> int:
+    x
+    try: pass
+    except BaseException as err: pass
+    try: pass
+    except BaseException as err: f(err)
+x = f()
+[builtins fixtures/exception.pyi]
+
+[case testExceptionVariableReuseInDeferredNode2]
+def f(*a: BaseException) -> int:
+    try: pass
+    except BaseException as err: pass
+    x
+    try: pass
+    except BaseException as err: f(err)
+x = f()
+[builtins fixtures/exception.pyi]
+
+[case testExceptionVariableReuseInDeferredNode3]
+def f(*a: BaseException) -> int:
+    try: pass
+    except BaseException as err: pass
+    try: pass
+    except BaseException as err: f(err)
+    x
+x = f()
+[builtins fixtures/exception.pyi]
+
+[case testExceptionVariableReuseInDeferredNode4]
+class EA(BaseException):
+    a = None  # type: int
+class EB(BaseException):
+    b = None  # type: str
+def f(*arg: BaseException) -> int:
+    x
+    try: pass
+    except EA as err:
+        f(err)
+        a = err.a
+        reveal_type(a)
+    try: pass
+    except EB as err:
+        f(err)
+        b = err.b
+        reveal_type(b)
+x = f()
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:11: error: Revealed type is 'builtins.int'
+main:16: error: Revealed type is 'builtins.str'
+
+[case testExceptionVariableReuseInDeferredNode5]
+class EA(BaseException):
+    a = None  # type: int
+class EB(BaseException):
+    b = None  # type: str
+def f(*arg: BaseException) -> int:
+    try: pass
+    except EA as err:
+        f(err)
+        a = err.a
+        reveal_type(a)
+    x
+    try: pass
+    except EB as err:
+        f(err)
+        b = err.b
+        reveal_type(b)
+x = f()
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:10: error: Revealed type is 'builtins.int'
+main:16: error: Revealed type is 'builtins.str'
+
+[case testExceptionVariableReuseInDeferredNode6]
+class EA(BaseException):
+    a = None  # type: int
+class EB(BaseException):
+    b = None  # type: str
+def f(*arg: BaseException) -> int:
+    try: pass
+    except EA as err:
+        f(err)
+        a = err.a
+        reveal_type(a)
+    try: pass
+    except EB as err:
+        f(err)
+        b = err.b
+        reveal_type(b)
+    x
+x = f()
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "f":
+main:10: error: Revealed type is 'builtins.int'
+main:15: error: Revealed type is 'builtins.str'
+
+
 
 [case testArbitraryExpressionAsExceptionType]
 import typing

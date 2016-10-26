@@ -20,6 +20,8 @@ from mypy import subtypes
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
 
+from mypy import experiments
+
 
 def analyze_member_access(name: str,
                           typ: Type,
@@ -56,6 +58,11 @@ def analyze_member_access(name: str,
         info = typ.type
         if override_info:
             info = override_info
+
+        if (experiments.find_occurrences and
+                info.name() == experiments.find_occurrences[0] and
+                name == experiments.find_occurrences[1]):
+            msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), node)
 
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)
@@ -334,7 +341,7 @@ def analyze_class_attribute_access(itype: Instance,
                                    not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder,
                                    actual_self: Type = None) -> Type:
-    '''actual_self is the type of E in the expression E.var'''
+    """actual_self is the type of E in the expression E.var"""
     node = itype.type.get(name)
     if not node:
         if itype.type.fallback_to_any:
@@ -379,7 +386,7 @@ def analyze_class_attribute_access(itype: Instance,
 def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
                     builtin_type: Callable[[str], Instance],
                     actual_self: Type = None) -> Type:
-    '''Instantiate type variables during analyze_class_attribute_access,
+    """Instantiate type variables during analyze_class_attribute_access,
     e.g T and Q in the following:
 
     def A(Generic(T)):
@@ -391,7 +398,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     B.foo()
 
     actual_self is the value of the type B in the expression B.foo()
-    '''
+    """
     # TODO: verify consistency betweem Q and T
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
@@ -526,7 +533,7 @@ F = TypeVar('F', bound=FunctionLike)
 
 
 def bind_self(method: F, actual_self: Type = None) -> F:
-    '''Return a copy of `method`, with the type of its first parameter (usually
+    """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to actual_self.
 
     If the type of `self` is a generic type (T, or Type[T] for classmethods),
@@ -547,7 +554,7 @@ def bind_self(method: F, actual_self: Type = None) -> F:
 
     b = B().copy()  # type: B
 
-    '''
+    """
     if isinstance(method, Overloaded):
         return cast(F, Overloaded([bind_self(c, method) for c in method.items()]))
     assert isinstance(method, CallableType)

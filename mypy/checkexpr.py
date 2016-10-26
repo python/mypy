@@ -1366,13 +1366,16 @@ class ExpressionChecker:
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
         revealed_type = self.accept(expr.expr)
-        self.msg.reveal_type(revealed_type, expr)
+        if not self.chk.current_node_deferred:
+            self.msg.reveal_type(revealed_type, expr)
         return revealed_type
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
-        self.chk.fail(messages.GENERIC_TYPE_NOT_VALID_AS_EXPRESSION, tapp)
-        return AnyType()
+        tp = self.accept(tapp.expr)
+        if not isinstance(tp, CallableType):
+            return AnyType()
+        return self.apply_generic_arguments(tp, tapp.types, tapp)
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         return AnyType()

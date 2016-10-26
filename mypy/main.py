@@ -5,6 +5,7 @@ import configparser
 import os
 import re
 import sys
+import time
 
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
@@ -12,6 +13,7 @@ from mypy import build
 from mypy import defaults
 from mypy import git
 from mypy import experiments
+from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
@@ -28,20 +30,25 @@ def main(script_path: str) -> None:
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
     """
+    t0 = time.time()
     if script_path:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
     sources, options = process_options(sys.argv[1:])
-    f = sys.stdout
+    serious = False
     try:
         res = type_check_only(sources, bin_dir, options)
         a = res.errors
     except CompileError as e:
         a = e.messages
         if not e.use_stdout:
-            f = sys.stderr
+            serious = True
+    if options.junit_xml:
+        t1 = time.time()
+        util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
+        f = sys.stderr if serious else sys.stdout
         for m in a:
             f.write(m + '\n')
         sys.exit(1)
@@ -182,6 +189,7 @@ def process_options(args: List[str],
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
                         help="show traceback on fatal error")
@@ -190,6 +198,8 @@ def process_options(args: List[str],
                         help="dump type inference stats")
     parser.add_argument('--custom-typing', metavar='MODULE', dest='custom_typing_module',
                         help="use a custom typing module")
+    parser.add_argument('--custom-typeshed-dir', metavar='DIR',
+                        help="use the custom typeshed in DIR")
     parser.add_argument('--scripts-are-modules', action='store_true',
                         help="Script x becomes module x instead of __main__")
     parser.add_argument('--config-file',
@@ -198,6 +208,9 @@ def process_options(args: List[str],
     parser.add_argument('--show-column-numbers', action='store_true',
                         dest='show_column_numbers',
                         help="Show column numbers in error messages")
+    parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
+                        dest='special-opts:find_occurrences',
+                        help="print out all usages of a class member (experimental)")
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -292,6 +305,12 @@ def process_options(args: List[str],
         options.strict_optional = True
     if options.strict_optional:
         experiments.STRICT_OPTIONAL = True
+    if special_opts.find_occurrences:
+        experiments.find_occurrences = special_opts.find_occurrences.split('.')
+        if len(experiments.find_occurrences) < 2:
+            parser.error("Can only find occurrences of class members.")
+        if len(experiments.find_occurrences) != 2:
+            parser.error("Can only find occurrences of non-nested class members.")
 
     # Set reports.
     for flag, val in vars(special_opts).items():
@@ -434,6 +453,8 @@ config_types = {
     'python_version': lambda s: tuple(map(int, s.split('.'))),
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
+    'custom_typeshed_dir': str,
+    'junit_xml': str,
 }
 
 

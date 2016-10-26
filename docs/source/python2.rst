@@ -84,7 +84,7 @@ Here is an example (from PEP 484):
                    body=None    # type: List[str]
                    ):
         # type: (...) -> bool
-        """Send an email message.  Return True iff successful."""
+        """Send an email message.  Return True if successful."""
         <code>
 
 You write a separate annotation for each function argument on the same

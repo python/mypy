@@ -33,9 +33,11 @@ from mypy.report import Reports
 from mypy import moduleinfo
 from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
+from mypy.types import Type
 from mypy.version import __version__
 
 
@@ -49,6 +51,7 @@ PYTHON_EXTENSIONS = ['.pyi', '.py']
 Graph = Dict[str, 'State']
 
 
+# TODO: Get rid of BuildResult.  We might as well return a BuildManager.
 class BuildResult:
     """The result of a successful build.
 
@@ -62,7 +65,7 @@ class BuildResult:
     def __init__(self, manager: 'BuildManager') -> None:
         self.manager = manager
         self.files = manager.modules
-        self.types = manager.type_checker.type_map
+        self.types = manager.all_types
         self.errors = manager.errors.messages()
 
 
@@ -132,7 +135,9 @@ def build(sources: List[BuildSource],
     find_module_clear_caches()
 
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, options.python_version)
+    lib_path = default_lib_path(data_dir,
+                                options.python_version,
+                                custom_typeshed_dir=options.custom_typeshed_dir)
 
     if options.use_builtins_fixtures:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -184,7 +189,7 @@ def build(sources: List[BuildSource],
         manager.log("Build finished in %.3f seconds with %d modules, %d types, and %d errors" %
                     (time.time() - manager.start_time,
                      len(manager.modules),
-                     len(manager.type_checker.type_map),
+                     len(manager.all_types),
                      manager.errors.num_messages()))
         # Finish the HTML or XML reports even if CompileError was raised.
         reports.finish()
@@ -249,15 +254,20 @@ def mypy_path() -> List[str]:
     return path_env.split(os.pathsep)
 
 
-def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
+def default_lib_path(data_dir: str,
+                     pyversion: Tuple[int, int],
+                     custom_typeshed_dir: Optional[str]) -> List[str]:
     """Return default standard library search paths."""
     # IDEA: Make this more portable.
     path = []  # type: List[str]
 
-    auto = os.path.join(data_dir, 'stubs-auto')
-    if os.path.isdir(auto):
-        data_dir = auto
-
+    if custom_typeshed_dir:
+        typeshed_dir = custom_typeshed_dir
+    else:
+        auto = os.path.join(data_dir, 'stubs-auto')
+        if os.path.isdir(auto):
+            data_dir = auto
+        typeshed_dir = os.path.join(data_dir, "typeshed")
     # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
     # is that a module added with 3.4 will still be present in Python 3.5.
     versions = ["%d.%d" % (pyversion[0], minor)
@@ -266,7 +276,7 @@ def default_lib_path(data_dir: str, pyversion: Tuple[int, int]) -> List[str]:
     # (Note that 3.1 and 3.0 aren't really supported, but we don't care.)
     for v in versions + [str(pyversion[0]), '2and3']:
         for lib_type in ['stdlib', 'third_party']:
-            stubdir = os.path.join(data_dir, 'typeshed', lib_type, v)
+            stubdir = os.path.join(typeshed_dir, lib_type, v)
             if os.path.isdir(stubdir):
                 path.append(stubdir)
 
@@ -307,6 +317,8 @@ PRI_INDIRECT = 30  # an indirect dependency
 PRI_ALL = 99  # include all priorities
 
 
+# TODO: Get rid of all_types.  It's not used except for one log message.
+#       Maybe we could instead publish a map from module ID to its type_map.
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
@@ -322,7 +334,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      type_checker:    Type checker
+      all_types:       Map {Expression: Type} collected from all modules
       errors:          Used for reporting all errors
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
@@ -349,7 +361,7 @@ class BuildManager:
         self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
-        self.type_checker = TypeChecker(self.errors, self.modules)
+        self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
         self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
@@ -461,9 +473,9 @@ class BuildManager:
                                'or using the "--silent-imports" flag would help)',
                                severity='note', only_once=True)
 
-    def report_file(self, file: MypyFile) -> None:
+    def report_file(self, file: MypyFile, type_map: Dict[Expression, Type]) -> None:
         if self.source_set.is_source(file):
-            self.reports.file(file, type_map=self.type_checker.type_map)
+            self.reports.file(file, type_map)
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
@@ -1407,23 +1419,42 @@ class State:
             if self.options.dump_type_stats:
                 dump_type_stats(self.tree, self.xpath)
 
-    def type_check(self) -> None:
+    def type_check_first_pass(self) -> None:
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            manager.type_checker.visit_file(self.tree, self.xpath, self.options)
+            self.type_checker = TypeChecker(manager.errors, manager.modules, self.options,
+                                            self.tree, self.xpath)
+            self.type_checker.check_first_pass()
+
+    def type_check_second_pass(self) -> bool:
+        if self.options.semantic_analysis_only:
+            return False
+        with self.wrap_context():
+            return self.type_checker.check_second_pass()
+
+    def finish_passes(self) -> None:
+        manager = self.manager
+        if self.options.semantic_analysis_only:
+            return
+        with self.wrap_context():
+            manager.all_types.update(self.type_checker.type_map)
 
             if self.options.incremental:
-                self._patch_indirect_dependencies(manager.type_checker.module_refs)
+                self._patch_indirect_dependencies(self.type_checker.module_refs,
+                                                  self.type_checker.type_map)
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
-                                typemap=manager.type_checker.type_map)
-            manager.report_file(self.tree)
+                                typemap=self.type_checker.type_map)
+            manager.report_file(self.tree, self.type_checker.type_map)
 
-    def _patch_indirect_dependencies(self, module_refs: Set[str]) -> None:
-        types = self.manager.type_checker.module_type_map.values()
+    def _patch_indirect_dependencies(self,
+                                     module_refs: Set[str],
+                                     type_map: Dict[Expression, Type]) -> None:
+        types = set(type_map.values())
+        types.discard(None)
         valid = self.valid_references()
 
         encountered = self.manager.indirection_detector.find_modules(types) | module_refs
@@ -1726,7 +1757,15 @@ def process_stale_scc(graph: Graph, scc: List[str]) -> None:
     for id in scc:
         graph[id].semantic_analysis_pass_three()
     for id in scc:
-        graph[id].type_check()
+        graph[id].type_check_first_pass()
+    more = True
+    while more:
+        more = False
+        for id in scc:
+            if graph[id].type_check_second_pass():
+                more = True
+    for id in scc:
+        graph[id].finish_passes()
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

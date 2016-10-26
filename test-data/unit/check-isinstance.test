@@ -1234,6 +1234,28 @@ def f(x: Union[A, B]) -> None:
         f(x)
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceOfSuperclass]
+class A: pass
+class B(A): pass
+x = B()
+if isinstance(x, A):
+    reveal_type(x)  # E: Revealed type is '__main__.B'
+if not isinstance(x, A):
+    reveal_type(x)  # unreachable
+    x = A()
+reveal_type(x)  # E: Revealed type is '__main__.B'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceOfNonoverlapping]
+class A: pass
+class B: pass
+x = B()
+if isinstance(x, A):
+    reveal_type(x)  # unreachable
+else:
+    reveal_type(x)  # E: Revealed type is '__main__.B'
+[builtins fixtures/isinstance.pyi]
+
 [case testAssertIsinstance]
 def f(x: object):
     assert isinstance(x, int)
