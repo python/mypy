@@ -1374,9 +1374,11 @@ class ExpressionChecker:
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
         tp = self.accept(tapp.expr)
-        if not isinstance(tp, CallableType):
-            return AnyType()
-        return self.apply_generic_arguments(tp, tapp.types, tapp)
+        if isinstance(tp, CallableType):
+            return self.apply_generic_arguments(tp, tapp.types, tapp)
+        if isinstance(tp, Overloaded):
+            return self.apply_generic_arguments2(tp, tapp.types, tapp)
+        return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         return AnyType()
