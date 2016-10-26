@@ -43,7 +43,16 @@ def analyze_member_access(name: str,
       2. supertype access (when using super(); is_super == True and
          override_info should refer to the supertype)
 
-    actual_self is the type of E in the expression E.foo
+    actual_self is the type of E in the expression E.foo - the most precise
+    information available for mypy at the point of accessing E.foo
+    For example,
+
+    class D(str): pass
+    a = D()
+    reveal_type(a.replace)
+
+    during checking `a.replace`, typ will be str, whereas actual_self will be D.
+    This helps for error reporting and for implementing methods where self is generic.
     """
     actual_self = actual_self or typ
     if isinstance(typ, Instance):
