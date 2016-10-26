@@ -15,7 +15,6 @@ import collections
 import contextlib
 import hashlib
 import json
-import os
 import os.path
 import sys
 import time
@@ -75,11 +74,6 @@ class BuildSource:
         self.path = path
         self.module = module or '__main__'
         self.text = text
-
-    @property
-    def effective_path(self) -> str:
-        """Return the effective path (ie, <string> if its from in memory)"""
-        return self.path or '<string>'
 
 
 class BuildSourceSet:
