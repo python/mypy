@@ -306,6 +306,7 @@ CacheMeta = NamedTuple('CacheMeta',
 PRI_HIGH = 5  # top-level "from X import blah"
 PRI_MED = 10  # top-level "import X"
 PRI_LOW = 20  # either form inside a function
+PRI_MYPY = 25 # inside "if MYPY" or "if TYPE_CHECKING"
 PRI_INDIRECT = 30  # an indirect dependency
 PRI_ALL = 99  # include all priorities
 
@@ -317,7 +318,7 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
         return PRI_LOW
     if imp.is_mypy_only:
         # Inside "if MYPY" or "if typing.TYPE_CHECKING"
-        return max(PRI_MED, toplevel_priority)
+        return max(PRI_MYPY, toplevel_priority)
     # A regular import; priority determined by argument.
     return toplevel_priority
 
