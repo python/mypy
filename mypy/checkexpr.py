@@ -885,16 +885,16 @@ class ExpressionChecker:
         return applytype.apply_generic_arguments(callable, types, self.msg, context)
 
     def apply_generic_arguments2(self, overload: Overloaded, types: List[Type],
-                                  context: Context) -> Type:
-         items = []  # type: List[CallableType]
-         for item in overload.items():
-             applied = self.apply_generic_arguments(item, types, context)
-             if isinstance(applied, CallableType):
-                 items.append(applied)
-             else:
-                 # There was an error.
-                 return AnyType()
-         return Overloaded(items)
+                                 context: Context) -> Type:
+        items = []  # type: List[CallableType]
+        for item in overload.items():
+            applied = self.apply_generic_arguments(item, types, context)
+            if isinstance(applied, CallableType):
+                items.append(applied)
+            else:
+                # There was an error.
+                return AnyType()
+        return Overloaded(items)
  
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
