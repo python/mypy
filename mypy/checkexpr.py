@@ -1611,7 +1611,7 @@ class ExpressionChecker:
                     # fill_typevars(e.info) erases type variables
                     erased_self = fill_typevars(e.info)
                     args = self.chk.function_stack[-1].arguments
-                    # An empty args with super() is an error, but we need something in declared_self
+                    # An empty args with super() is an error; we need something in declared_self
                     declared_self = args[0].variable.type if args else erased_self
                     return analyze_member_access(name=e.name, typ=erased_self, node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
