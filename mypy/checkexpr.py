@@ -1608,24 +1608,18 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    # If the class A is not generic, and we declare `self: T` in the signature:
-                    # * declared_self will be T
-                    # * fill_typevars(e.info) will be A
-                    # If the class has a type arguments Q, and we declare `self: A[T]`:
-                    # * declared_self will be A[T]
-                    # * fill_typevars(e.info) will be A[Q]
-                    # If the we declare `self: T` in a generic class, declared_self is still T.
-                    # TODO: selftype does not support generic classes yet
-                    filled_self = fill_typevars(e.info)
                     args = self.chk.function_stack[-1].arguments
                     # An empty args with super() is an error; we need something in declared_self
-                    declared_self = args[0].variable.type if args else filled_self
-                    return analyze_member_access(name=e.name, typ=filled_self, node=e,
+                    if not args:
+                        self.chk.fail('super() requires at least on positional argument', e)
+                        return AnyType()
+                    declared_self = args[0].variable.type
+                    return analyze_member_access(name=e.name, typ=declared_self, node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,
                                                  msg=self.msg, override_info=base, chk=self.chk,
-                                                 actual_self=declared_self)
+                                                 original_type=declared_self)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
