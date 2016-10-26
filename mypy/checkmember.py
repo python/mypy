@@ -404,8 +404,9 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            t = bind_self(t, original_type if isinstance(original_type, TypeType)
-                             else TypeType(itype))
+            if not isinstance(original_type, TypeType):
+                original_type = TypeType(itype)
+            t = bind_self(t, original_type)
         return t.copy_modified(variables=vars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, itype, is_classmethod,
