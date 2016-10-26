@@ -9,10 +9,10 @@ class A:
 class B(A):
     pass
 
-reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A'
-reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B'
-reveal_type(A().copy())  # E: Revealed type is '__main__.A'
-reveal_type(B().copy())  # E: Revealed type is '__main__.B'
+reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A*'
+reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B*'
+reveal_type(A().copy())  # E: Revealed type is '__main__.A*'
+reveal_type(B().copy())  # E: Revealed type is '__main__.B*'
 
 [builtins fixtures/bool.pyi]
 
@@ -101,10 +101,10 @@ class C:
             return cls()  # E: Too few arguments for "C"
 
 
-reveal_type(A.new)  # E: Revealed type is 'def () -> __main__.A'
-reveal_type(B.new)  # E: Revealed type is 'def () -> __main__.B'
-reveal_type(A.new())  # E: Revealed type is '__main__.A'
-reveal_type(B.new())  # E: Revealed type is '__main__.B'
+reveal_type(A.new)  # E: Revealed type is 'def () -> __main__.A*'
+reveal_type(B.new)  # E: Revealed type is 'def () -> __main__.B*'
+reveal_type(A.new())  # E: Revealed type is '__main__.A*'
+reveal_type(B.new())  # E: Revealed type is '__main__.B*'
 
 [builtins fixtures/classmethod.pyi]
 
@@ -123,10 +123,10 @@ Q = TypeVar('Q', bound='C', covariant=True)
 class C(A):
     def copy(self: Q) -> Q: pass
 
-reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C'
-reveal_type(C().copy())  # E: Revealed type is '__main__.C'
-reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A'
-reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A' 
+reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C*'
+reveal_type(C().copy())  # E: Revealed type is '__main__.C*'
+reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A*'
+reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*' 
 
 [builtins fixtures/bool.pyi]
 
@@ -167,10 +167,10 @@ class A:
 class B(A):
     pass
 
-reveal_type(A().copy)  # E: Revealed type is 'def (factory: def (__main__.A) -> __main__.A) -> __main__.A'
-reveal_type(B().copy)  # E: Revealed type is 'def (factory: def (__main__.B) -> __main__.B) -> __main__.B'
-reveal_type(A.new)  # E: Revealed type is 'def (factory: def (__main__.A) -> __main__.A) -> __main__.A'
-reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B) -> __main__.B) -> __main__.B'
+reveal_type(A().copy)  # E: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
+reveal_type(B().copy)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
+reveal_type(A.new)  # E: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
+reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
 
 [builtins fixtures/classmethod.pyi]
 

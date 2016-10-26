@@ -31,7 +31,6 @@ from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.semanal import fill_typevars
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type

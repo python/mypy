@@ -37,9 +37,9 @@ def analyze_member_access(name: str,
                           chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Return the type of attribute `name` of typ.
 
-    original_type is the most precise inferred or declared type of the base object 
+    original_type is the most precise inferred or declared type of the base object
     that we have available. typ is generally a supertype of original_type.
-    When looking for an attribute of typ, we may perform recursive calls targeting 
+    When looking for an attribute of typ, we may perform recursive calls targeting
     the fallback type, for example.
     original_type is always the type used in the initial call.
     """
@@ -404,7 +404,8 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            t = bind_self(t, original_type if isinstance(original_type, TypeType) else TypeType(itype))
+            t = bind_self(t, original_type if isinstance(original_type, TypeType)
+                             else TypeType(itype))
         return t.copy_modified(variables=vars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(i, itype, is_classmethod,
@@ -580,7 +581,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
                                        self_param_type, original_type)[0]
 
         def expand(target: Type) -> Type:
-            return expand_type(target, {func.variables[0].id: typearg}, False)
+            return expand_type(target, {func.variables[0].id: typearg})
 
         arg_types = [expand(x) for x in func.arg_types[1:]]
         ret_type = expand(func.ret_type)
