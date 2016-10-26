@@ -9,8 +9,8 @@ if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
     exit(1)
 
-from distutils.core import setup
-from distutils.command.build_py import build_py
+from setuptools import setup
+from setuptools.command.build_py import build_py
 from mypy.version import base_version
 from mypy import git
 
@@ -81,17 +81,22 @@ classifiers = [
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
     'Topic :: Software Development',
 ]
 
 
 package_dir = {'mypy': 'mypy'}
-if sys.version_info < (3, 5, 0):
-    package_dir[''] = 'lib-typing/3.2'
 
 scripts = ['scripts/mypy', 'scripts/stubgen']
 if os.name == 'nt':
     scripts.append('scripts/mypy.bat')
+
+install_requires = []
+if sys.platform != 'win32':
+    install_requires.append('typed-ast >= 0.6.1')
+if sys.version_info < (3, 5):
+    install_requires.append('typing >= 3.5.2')
 
 setup(name='mypy-lang',
       version=version,
@@ -103,10 +108,11 @@ setup(name='mypy-lang',
       license='MIT License',
       platforms=['POSIX'],
       package_dir=package_dir,
-      py_modules=['typing'] if sys.version_info < (3, 5, 0) else [],
+      py_modules=[],
       packages=['mypy'],
       scripts=scripts,
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
+      install_requires=install_requires,
       )
