@@ -500,6 +500,11 @@ Alias[int](1)
 Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
 [out]
 
+[case testTypeApplicationCrash]
+type[int] # this was crashing, see #2302 (comment)  # E: Type application targets a non-generic function or class
+[out]
+
+
 -- Multiple assignment with lists
 -- ------------------------------
 
