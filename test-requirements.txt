@@ -1,4 +1,5 @@
 flake8
+lxml
 typed-ast
 pytest>=2.8
 pytest-xdist>=1.13
