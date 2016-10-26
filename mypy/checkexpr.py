@@ -1615,7 +1615,7 @@ class ExpressionChecker:
                     # * declared_self will be A[T]
                     # * fill_typevars(e.info) will be A[Q]
                     # If the we declare `self: T` in a generic class, declared_self is still T.
-                    # TODO: generic classes are not actually supported yet
+                    # TODO: selftype does not support generic classes yet
                     filled_self = fill_typevars(e.info)
                     args = self.chk.function_stack[-1].arguments
                     # An empty args with super() is an error; we need something in declared_self
