@@ -1,6 +1,6 @@
 """Type inference constraint solving"""
 
-from typing import List, Dict, DefaultDict
+from typing import List, Dict
 from collections import defaultdict
 
 from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
@@ -24,7 +24,7 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
     pick AnyType.
     """
     # Collect a list of constraints for each type variable.
-    cmap = defaultdict(list)  # type: DefaultDict[TypeVarId, List[Constraint]]
+    cmap = defaultdict(list)  # type: Dict[TypeVarId, List[Constraint]]
     for con in constraints:
         cmap[con.type_var].append(con)
 
