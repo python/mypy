@@ -51,6 +51,10 @@ class TraverserVisitor(NodeVisitor[None]):
             item.accept(self)
 
     def visit_class_def(self, o: ClassDef) -> None:
+        for d in o.decorators:
+            d.accept(self)
+        for base in o.base_type_exprs:
+            base.accept(self)
         o.defs.accept(self)
 
     def visit_decorator(self, o: Decorator) -> None:
