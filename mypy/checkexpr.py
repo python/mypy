@@ -6,7 +6,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance
+    true_only, false_only, is_named_instance, function_type
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -18,7 +18,6 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
 )
-from mypy.nodes import function_type
 from mypy import nodes
 import mypy.checker
 from mypy import types
@@ -32,7 +31,6 @@ from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
@@ -1605,10 +1603,18 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    return analyze_member_access(e.name, self_type(e.info), e,
-                                                 is_lvalue, True, False,
-                                                 self.named_type, self.not_ready_callback,
-                                                 self.msg, base, chk=self.chk)
+                    args = self.chk.function_stack[-1].arguments
+                    # An empty args with super() is an error; we need something in declared_self
+                    if not args:
+                        self.chk.fail('super() requires at least on positional argument', e)
+                        return AnyType()
+                    declared_self = args[0].variable.type
+                    return analyze_member_access(name=e.name, typ=declared_self, node=e,
+                                                 is_lvalue=False, is_super=True, is_operator=False,
+                                                 builtin_type=self.named_type,
+                                                 not_ready_callback=self.not_ready_callback,
+                                                 msg=self.msg, override_info=base, chk=self.chk,
+                                                 original_type=declared_self)
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()

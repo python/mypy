@@ -72,8 +72,8 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType)
-from mypy.nodes import function_type, implicit_module_attrs
+    TupleType, UnionType, StarType, EllipsisType, function_type)
+from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -330,16 +330,19 @@ class SemanticAnalyzer(NodeVisitor):
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
+        functype = func.type
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif func.type:
-                sig = cast(FunctionLike, func.type)
-                if func.is_class:
-                    leading_type = self.class_type(self.type)
-                else:
-                    leading_type = self_type(self.type)
-                func.type = replace_implicit_first_type(sig, leading_type)
+            elif isinstance(functype, CallableType):
+                self_type = functype.arg_types[0]
+                if isinstance(self_type, AnyType):
+                    if func.is_class:
+                        leading_type = self.class_type(self.type)
+                    else:
+                        leading_type = fill_typevars(self.type)
+                    sig = cast(FunctionLike, func.type)
+                    func.type = replace_implicit_first_type(sig, leading_type)
 
     def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
         """Does 'new' conditionally redefine 'previous'?
@@ -1786,7 +1789,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
         # TODO: SelfType should be bind to actual 'self'
-        this_type = self_type(info)
+        this_type = fill_typevars(info)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
@@ -3036,7 +3039,7 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
-def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
+def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
@@ -3051,7 +3054,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
-        return replace_leading_arg_type(sig, new)
+        return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
     else:
         sig = cast(Overloaded, sig)
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))

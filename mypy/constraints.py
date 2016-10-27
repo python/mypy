@@ -1,6 +1,6 @@
 """Type inference constraints."""
 
-from typing import List, Optional, cast
+from typing import List, Optional
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,

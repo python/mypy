@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, List, cast
+from typing import Dict, List, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,

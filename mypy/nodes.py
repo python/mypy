@@ -2226,57 +2226,6 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         return st
 
 
-def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
-    if func.type:
-        assert isinstance(func.type, mypy.types.FunctionLike)
-        return func.type
-    else:
-        # Implicit type signature with dynamic types.
-        # Overloaded functions always have a signature, so func must be an ordinary function.
-        fdef = cast(FuncDef, func)
-        name = func.name()
-        if name:
-            name = '"{}"'.format(name)
-
-        return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arg_names),
-            fdef.arg_kinds,
-            fdef.arg_names,
-            mypy.types.AnyType(),
-            fallback,
-            name,
-            implicit=True,
-        )
-
-
-def method_type_with_fallback(func: FuncBase,
-                              fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
-    """Return the signature of a method (omit self)."""
-    return method_type(function_type(func, fallback))
-
-
-def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
-    if isinstance(sig, mypy.types.CallableType):
-        return method_callable(sig)
-    else:
-        sig = cast(mypy.types.Overloaded, sig)
-        items = []  # type: List[mypy.types.CallableType]
-        for c in sig.items():
-            items.append(method_callable(c))
-        return mypy.types.Overloaded(items)
-
-
-def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.CallableType':
-    if c.arg_kinds and c.arg_kinds[0] == ARG_STAR:
-        # The signature is of the form 'def foo(*args, ...)'.
-        # In this case we shouldn't drop the first arg,
-        # since self will be absorbed by the *args.
-        return c
-    return c.copy_modified(arg_types=c.arg_types[1:],
-                           arg_kinds=c.arg_kinds[1:],
-                           arg_names=c.arg_names[1:])
-
-
 class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 

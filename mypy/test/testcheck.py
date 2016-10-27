@@ -68,6 +68,7 @@ files = [
     'check-newtype.test',
     'check-class-namedtuple.test',
     'check-columns.test',
+    'check-selftype.test',
 ]
 
 if 'annotation' in typed_ast.ast35.Assign._fields:

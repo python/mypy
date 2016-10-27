@@ -140,10 +140,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
-        if isinstance(right, TypeVarType):
-            return left.id == right.id
-        else:
-            return is_subtype(left.upper_bound, self.right)
+        if isinstance(right, TypeVarType) and left.id == right.id:
+            return True
+        return is_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
