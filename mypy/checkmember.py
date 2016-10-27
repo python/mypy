@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional, TypeVar, TYPE_CHECKING
+from typing import cast, Callable, List, Optional, TypeVar
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
@@ -17,7 +17,8 @@ from mypy.infer import infer_type_arguments
 from mypy.semanal import fill_typevars
 from mypy import messages
 from mypy import subtypes
-if TYPE_CHECKING:  # import for forward declaration only
+MYPY = False
+if MYPY:  # import for forward declaration only
     import mypy.checker
 
 from mypy import experiments
