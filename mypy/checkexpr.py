@@ -878,12 +878,8 @@ class ExpressionChecker:
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],
                                 context: Context) -> CallableType:
-        """Simple wrapper around mypy.applytype.apply_generic_arguments,
-        with the assumption that things cannot go wrong, since the arguments are inferred."""
-        assert len(callable.variables) == len(types)
-        res = applytype.apply_generic_arguments(callable, types, self.msg, context)
-        assert res is not None
-        return res
+        """Simple wrapper around mypy.applytype.apply_generic_arguments."""
+        return applytype.apply_generic_arguments(callable, types, self.msg, context)
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
@@ -1364,9 +1360,19 @@ class ExpressionChecker:
         """Type check a type application (expr[type, ...])."""
         tp = self.accept(tapp.expr)
         if isinstance(tp, CallableType):
+            if len(tp.variables) != len(tapp.types):
+                self.msg.incompatible_type_application(len(tp.variables),
+                                                       len(tapp.types), tapp)
+                return AnyType()
             return self.apply_generic_arguments(tp, tapp.types, tapp)
-        if isinstance(tp, Overloaded):
-            return self.apply_generic_arguments2(tp, tapp.types, tapp)
+        elif isinstance(tp, Overloaded):
+            for item in tp.items():
+                if len(item.variables) != len(tapp.types):
+                    self.msg.incompatible_type_application(len(item.variables),
+                                                           len(tapp.types), tapp)
+                    return AnyType()
+            return Overloaded([self.apply_generic_arguments(item, tapp.types, tapp)
+                               for item in tp.items()])
         return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:

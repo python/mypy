@@ -9,7 +9,7 @@ from mypy.nodes import Context
 
 
 def apply_generic_arguments(callable: CallableType, types: List[Type],
-                            msg: MessageBuilder, context: Context) -> Optional[CallableType]:
+                            msg: MessageBuilder, context: Context) -> CallableType:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
@@ -18,11 +18,8 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     Note that each type can be None; in this case, it will not be applied.
     Can only be None when len(tvars) != len(types)
     """
+    assert len(callable.variables) == len(types)
     tvars = callable.variables
-    if len(tvars) != len(types):
-        msg.incompatible_type_application(len(tvars), len(types), context)
-        return None
-
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     types = types[:]
