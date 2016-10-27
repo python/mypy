@@ -8,7 +8,7 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType
 )
 from mypy.nodes import (
-    BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
+    BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr
 )
@@ -79,6 +79,56 @@ class TypeAnalyser(TypeVisitor[Type]):
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
 
+
+    def get_unbound_tvar_name(self, t: Type) -> str:
+        if not isinstance(t, UnboundType):
+            return None
+        unbound = t
+        sym = self.lookup(unbound.name, unbound)
+        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+            return unbound.name
+        return None
+
+
+    def unique_vars(self, tvars):
+        # Get unbound type variables in order of appearance
+        all_tvars = set(tvars)
+        new_tvars = []
+        for t in tvars:
+            if t in all_tvars:
+                new_tvars.append(t)
+                all_tvars.remove(t)
+        return new_tvars
+
+
+    def get_type_var_names(self, tp: Instance) -> List[str]:
+        tvars = []  # type: List[str]
+        if not isinstance(tp, Instance):
+            return tvars
+        for arg in tp.args:
+            tvar = self.get_unbound_tvar_name(arg)
+            if tvar:
+                tvars.append(tvar)
+            elif isinstance(arg, Instance):
+                subvars = self.get_type_var_names(arg)
+                if subvars:
+                    tvars.extend(subvars)
+        return tvars
+
+
+    def replace_alias_tvars(self, tp: Instance, vars: List[str], subs: List[Type]) -> None:
+        if not isinstance(tp, Instance) or not subs:
+            return AnyType()
+        new_args = tp.args[:]
+        for i, arg in enumerate(tp.args):
+            tvar = self.get_unbound_tvar_name(arg)
+            if tvar and tvar in vars:
+                new_args[i] = subs[vars.index(tvar)]
+            elif isinstance(arg, Instance):
+                new_args[i] = self.replace_alias_tvars(arg, vars, subs)
+        return Instance(tp.type, new_args, tp.line)
+
+
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
             t.optional = False
@@ -141,8 +191,22 @@ class TypeAnalyser(TypeVisitor[Type]):
                 item = items[0]
                 return TypeType(item, line=t.line)
             elif sym.kind == TYPE_ALIAS:
-                # TODO: Generic type aliases.
-                return sym.type_override
+                override = sym.type_override
+                an_args = self.anal_array(t.args)
+                found_vars = self.get_type_var_names(override)
+                all_vars = self.unique_vars(found_vars)
+                print(all_vars, an_args)
+                exp_len = len(all_vars)
+                act_len = len(an_args)
+                if exp_len > 0 and act_len == 0:
+                    return self.replace_alias_tvars(override, all_vars, [AnyType()] * exp_len)
+                if exp_len == 0 and act_len == 0:
+                    return override
+                if act_len != exp_len:
+                    self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
+                              % (exp_len, act_len), t)
+                    return AnyType()
+                return self.replace_alias_tvars(override, all_vars, an_args)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
