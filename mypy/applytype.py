@@ -16,10 +16,9 @@ def apply_generic_arguments(callable: CallableType, types: List[Type],
     'def (int) -> int'.
 
     Note that each type can be None; in this case, it will not be applied.
-    Can only be None when len(tvars) != len(types)
     """
-    assert len(callable.variables) == len(types)
     tvars = callable.variables
+    assert len(tvars) == len(types)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     types = types[:]
