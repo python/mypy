@@ -154,6 +154,7 @@ from typing import TypeVar, Callable, Type
  
 T = TypeVar('T', bound='A', covariant=True)
 class A:
+    # TODO: This is potentially unsafe, as we use T in an argument type
     def copy(self: T, factory: Callable[[T], T]) -> T:
         return factory(self)
 
