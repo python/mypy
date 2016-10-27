@@ -79,3 +79,18 @@ class BaseClass: pass
 
 [out]
 tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
+
+[case testWarnNoReturnIgnoresTrivialFunctions]
+# flags: --warn-no-return
+def f() -> int:
+  pass
+def g() -> int:
+  ...
+def h() -> int:
+  """with docstring"""
+  pass
+def i() -> int:
+  """with docstring"""
+  ...
+def j() -> int:
+  """docstring only"""

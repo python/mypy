@@ -656,7 +656,10 @@ class TypeChecker(NodeVisitor[Type]):
                 isinstance(body[0].expr, StrExpr)):
             body = block.body[1:]
 
-        if len(body) != 1:
+        if len(body) == 0:
+            # There's only a docstring.
+            return True
+        elif len(body) > 1:
             return False
         stmt = body[0]
         return (isinstance(stmt, PassStmt) or
