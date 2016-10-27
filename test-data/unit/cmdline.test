@@ -240,7 +240,7 @@ mypy.ini: [mypy]: silent_imports: Not a boolean: nah
 [[mypy-*]
 strict_optional = True
 [out]
-mypy.ini: [mypy-*]: Per-file sections should only specify per-file flags (strict_optional)
+mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
 
 [case testCoberturaParser]
 # cmd: mypy --cobertura-xml-report build pkg
