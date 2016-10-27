@@ -2055,3 +2055,61 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
 # flags: --fast-parser
 class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
     pass
+
+[case testVariableSubclass]
+class A:
+    a = 1 # type: int
+class B(A):
+    a = None
+[out]
+
+[case testVariableSubclassAssignMismatch]
+class A:
+    a = 1  # type: int
+class B(A):
+    a = "a"
+[out]
+main: note: In class "B":
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSubclassAssignment]
+class A:
+    a = None  # type: int
+class B(A):
+    def __init__(self) -> None:
+        self.a = "a"
+[out]
+main: note: In member "__init__" of class "B":
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSubclassTypeOverwrite]
+class A:
+    a = None  # type: int
+class B(A):
+    a = None  # type: str
+class C(B):
+    a = "a"
+[out]
+
+[case testVariableSuperUsage]
+class A:
+    a = []  # type: list
+class B(A):
+    a = [1, 2]
+class C(B):
+    a = B.a + [3]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testVariableRvalue]
+class A:
+    a = None
+class B(A):
+    a = 1
+class C(B):
+    a = "a"
+[out]
+main: note: In class "A":
+main:2: error: Need type annotation for variable
+main: note: In class "C":
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")

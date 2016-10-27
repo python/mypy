@@ -1161,7 +1161,20 @@ class SemanticAnalyzer(NodeVisitor):
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
                 if s.lvalues[0].is_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    if (isinstance(s.lvalues[0].node, Var) and
+                            s.lvalues[0].kind == MDEF):
+                        # Try if any base class already defines a
+                        # type for this class variable.
+                        var_node = s.lvalues[0].node
+                        for base in var_node.info.mro[1:]:
+                            base_var = base.names.get(var_node.name())
+                            if base_var and base_var.type:
+                                s.type = base_var.type
+                                break
+
+                    if s.type is None:
+                        s.type = self.analyze_simple_literal_type(s.rvalue)
+
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
