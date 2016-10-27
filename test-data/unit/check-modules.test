@@ -1313,3 +1313,27 @@ pass
 [file b]
 pass
 [out]
+
+[case testTypeCheckPrio]
+# cmd: mypy -m part1 part2 part3 part4
+
+[file part1.py]
+from part3 import Thing
+class FirstThing: pass
+
+[file part2.py]
+from part4 import part4_thing as Thing
+
+[file part3.py]
+from part2 import Thing
+reveal_type(Thing)
+
+[file part4.py]
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from part1 import FirstThing
+def part4_thing(a: int) -> str: pass
+
+[builtins fixtures/bool.pyi]
+[out]
+tmp/part3.py:2: error: Revealed type is 'def (a: builtins.int) -> builtins.str'

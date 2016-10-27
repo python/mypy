@@ -484,19 +484,22 @@ def parse_config_file(options: Options, filename: str) -> None:
         if name.startswith('mypy-'):
             prefix = '%s: [%s]' % (filename, name)
             updates, report_dirs = parse_section(prefix, options, section)
-            # TODO: Limit updates to flags that can be per-file.
             if report_dirs:
-                print("%s: Per-file sections should not specify reports (%s)" %
+                print("%s: Per-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
                       file=sys.stderr)
-            if set(updates) - Options.PER_FILE_OPTIONS:
-                print("%s: Per-file sections should only specify per-file flags (%s)" %
-                      (prefix, ', '.join(sorted(set(updates) - Options.PER_FILE_OPTIONS))),
+            if set(updates) - Options.PER_MODULE_OPTIONS:
+                print("%s: Per-module sections should only specify per-module flags (%s)" %
+                      (prefix, ', '.join(sorted(set(updates) - Options.PER_MODULE_OPTIONS))),
                       file=sys.stderr)
-                updates = {k: v for k, v in updates.items() if k in Options.PER_FILE_OPTIONS}
+                updates = {k: v for k, v in updates.items() if k in Options.PER_MODULE_OPTIONS}
             globs = name[5:]
             for glob in globs.split(','):
-                options.per_file_options[glob] = updates
+                # For backwards compatibility, replace (back)slashes with dots.
+                glob = glob.replace(os.sep, '.')
+                if os.altsep:
+                    glob = glob.replace(os.altsep, '.')
+                options.per_module_options[glob] = updates
 
 
 def parse_section(prefix: str, template: Options,

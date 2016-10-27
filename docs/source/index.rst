@@ -13,6 +13,7 @@ Mypy is a static type checker for Python.
 
    introduction
    basics
+   getting_started
    builtin_types
    python2
    type_inference_and_annotations

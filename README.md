@@ -290,8 +290,9 @@ Help wanted
 Any help in testing, development, documentation and other tasks is
 highly appreciated and useful to the project. There are tasks for
 contributors of all experience levels. If you're just getting started,
-check out the [difficulty/newcomer](https://github.com/python/mypy/labels/difficulty%2Fnewcomer)
-and [difficulty/easy](https://github.com/python/mypy/labels/difficulty%2Feasy) labels.
+check out the
+[difficulty/easy](https://github.com/python/mypy/labels/difficulty%2Feasy)
+label.
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 
