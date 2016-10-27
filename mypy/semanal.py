@@ -177,7 +177,7 @@ class SemanticAnalyzer(NodeVisitor):
     bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type variables that were bound by outer classess
     tvar_stack = None  # type: List[List[SymbolTableNode]]
-    # Per-file options
+    # Per-module options
     options = None  # type: Options
 
     # Stack of functions being analyzed

@@ -162,9 +162,9 @@ x.py:1: error: Function is missing a type annotation
 [file mypy.ini]
 [[mypy]
 hide_error_context = True
-[[mypy-*x*.py]
+[[mypy-*x*]
 disallow_untyped_defs = True
-[[mypy-*y*.py]
+[[mypy-*y*]
 disallow_untyped_calls = True
 [file xx.py]
 def f(a): pass
@@ -191,7 +191,7 @@ xx.py:1: error: Function is missing a type annotation
 [file mypy.ini]
 [[mypy]
 hide_error_context = True
-[[mypy-x*py,z*py]
+[[mypy-x*,z*]
 disallow_untyped_defs = True
 [file x.py]
 def f(a): pass

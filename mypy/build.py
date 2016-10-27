@@ -879,7 +879,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     st = manager.get_stat(path)  # TODO: Handle errors
     mtime = st.st_mtime
     size = st.st_size
-    options = manager.options.clone_for_file(path)
+    options = manager.options.clone_for_module(id)
     meta = {'id': id,
             'path': path,
             'mtime': mtime,
@@ -1119,7 +1119,7 @@ class State:
         else:
             self.import_context = []
         self.id = id or '__main__'
-        self.options = manager.options.clone_for_file(path or '')
+        self.options = manager.options.clone_for_module(self.id)
         if not path and source is None:
             file_id = id
             if id == 'builtins' and self.options.python_version[0] == 2:
@@ -1508,7 +1508,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     manager.log("Loaded graph with %d nodes" % len(graph))
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
-        # TODO: This could also be a per-file option.
+        # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
 
 
