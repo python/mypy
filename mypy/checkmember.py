@@ -37,6 +37,12 @@ def analyze_member_access(name: str,
                           chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Return the type of attribute `name` of typ.
 
+    This is a general operation that supports various different variations:
+
+      1. lvalue or non-lvalue access (i.e. setter or getter access)
+      2. supertype access (when using super(); is_super == True and
+         override_info should refer to the supertype)
+
     original_type is the most precise inferred or declared type of the base object
     that we have available. typ is generally a supertype of original_type.
     When looking for an attribute of typ, we may perform recursive calls targeting
