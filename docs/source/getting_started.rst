@@ -6,39 +6,21 @@ Getting Started
 Installation
 ************
 
-You can get mypy a number of ways; the two major ones are to install
-it from source or to install an existing package for your platform.
-The latter is recommended.
+Mypy requires Python 3.3 or later.  Once you've `installed Python 3 <https://www.python.org/downloads/>`_, you can install mypy with:
 
-You need Python 3.3 or later to run mypy.  You can have multiple
-Python versions (2.x and 3.x) installed on the same system without problems.
+.. code-block:: text
 
-For Linux flavors, OS X and Windows, Python packages available at https://www.python.org/getit.
+    $ python3 -m pip install mypy-lang
+
+Note that the package name is ``mypy-lang`` and not just ``mypy``, as unfortunately the ``mypy`` PyPI name is not available.
 
 Installing from Source
 **********************
 
-To install mypy, download the package, cd to the mypy directory
-and run the install command:
+To install mypy from source, clone the github repository and then run pip install locally:
 
 .. code-block:: text
 
     $ git clone https://github.com/python/mypy.git
     $ cd mypy
-    $ sudo python3 setup.py install
-
-Installing from Package
-***********************
-
-A universal installation method (that works on Windows, Mac OS X, Linux, ...,
-and provides the latest version) is to use pip3:
-
-.. code-block:: text
-
-    $ pip3 install mypy-lang
-
-On Mac OS X, mypy may also be installed via homebrew:
-
-.. code-block:: text
-
-    $ brew install mypy
+    $ sudo python3 -m pip install --upgrade .
