@@ -333,7 +333,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         return None
     msg = messages.temp_message_builder()
     applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
-    if applied is None or msg.is_errors():
+    if msg.is_errors():
         return None
     return applied
 

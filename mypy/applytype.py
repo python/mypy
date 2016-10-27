@@ -3,7 +3,7 @@ from typing import List, Dict
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.expandtype import expand_type
-from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType, Optional
+from mypy.types import Type, TypeVarId, TypeVarType, CallableType, AnyType
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context
 
