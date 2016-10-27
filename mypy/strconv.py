@@ -141,8 +141,6 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, 'Metaclass({})'.format(o.metaclass))
         if o.decorators:
             a.insert(1, ('Decorators', o.decorators))
-        if o.is_builtinclass:
-            a.insert(1, 'Builtinclass')
         if o.info and o.info._promote:
             a.insert(1, 'Promote({})'.format(o.info._promote))
         if o.info and o.info.tuple_type:

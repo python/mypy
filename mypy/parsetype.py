@@ -199,20 +199,6 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
     return result
 
 
-def parse_str_as_signature(typestr: str, line: int) -> CallableType:
-    """Parse a signature represented as a string.
-
-    Raise TypeParseError on parse error.
-    """
-
-    typestr = typestr.strip()
-    tokens = lex(typestr, line)[0]
-    result, i = parse_signature(tokens)
-    if i < len(tokens) - 2:
-        raise TypeParseError(tokens[i], i)
-    return result
-
-
 def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
     """Parse signature of form (argtype, ...) -> ...
 

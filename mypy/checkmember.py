@@ -20,6 +20,8 @@ from mypy import subtypes
 if False:  # import for forward declaration only
     import mypy.checker
 
+from mypy import experiments
+
 
 def analyze_member_access(name: str,
                           typ: Type,
@@ -54,6 +56,11 @@ def analyze_member_access(name: str,
         info = typ.type
         if override_info:
             info = override_info
+
+        if (experiments.find_occurrences and
+                info.name() == experiments.find_occurrences[0] and
+                name == experiments.find_occurrences[1]):
+            msg.note("Occurrence of '{}.{}'".format(*experiments.find_occurrences), node)
 
         # Look up the member. First look up the method dictionary.
         method = info.get_method(name)

@@ -894,26 +894,6 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
-
--- Multiple inheritance, non-object built-in class as base
--- -------------------------------------------------------
-
-
-[case testInvalidMultipleInheritanceFromBuiltins-skip]
-import typing
-class A(int, str): pass # E: Instance layout conflict in multiple inheritance
-[out]
-main: note: In class "A":
-
-[case testInvalidMultipleInheritanceFromBuiltins-skip]
-import typing
-class S(str): pass
-class A(S, str): pass
-class B(S, int): pass # E: Instance layout conflict in multiple inheritance
-[out]
-main: note: In class "B":
-
-
 -- _promote decorators
 -- -------------------
 
@@ -2070,3 +2050,8 @@ class A: pass
 class B(object, A): # E: Cannot determine consistent method resolution order (MRO) for "B"
     def readlines(self): pass
     __iter__ = readlines
+
+[case testDynamicMetaclass]
+# flags: --fast-parser
+class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+    pass

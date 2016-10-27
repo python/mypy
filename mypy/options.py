@@ -34,7 +34,8 @@ class Options:
         self.build_type = BuildType.STANDARD
         self.python_version = defaults.PYTHON3_VERSION
         self.platform = sys.platform
-        self.custom_typing_module = None  # type: str
+        self.custom_typing_module = None  # type: Optional[str]
+        self.custom_typeshed_dir = None  # type: Optional[str]
         self.report_dirs = {}  # type: Dict[str, str]
         self.silent_imports = False
         self.almost_silent = False
@@ -78,6 +79,9 @@ class Options:
 
         # Config file name
         self.config_file = None  # type: Optional[str]
+
+        # Write junit.xml to given file
+        self.junit_xml = None  # type: Optional[str]
 
         # Per-file options (raw)
         self.per_file_options = {}  # type: Dict[str, Dict[str, object]]

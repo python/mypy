@@ -50,7 +50,7 @@ from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, nearest_builtin_ancestor, is_overlapping_types
+from mypy.meet import meet_simple, is_overlapping_types
 from mypy.binder import ConditionalTypeBinder
 from mypy.options import Options
 
@@ -58,6 +58,8 @@ from mypy import experiments
 
 
 T = TypeVar('T')
+
+LAST_PASS = 1  # Pass numbers start at 0
 
 
 # A node which is postponed to be type checked during the next pass.
@@ -73,6 +75,8 @@ class TypeChecker(NodeVisitor[Type]):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
+
+    You must create a separate instance for each source file.
     """
 
     # Are we type checking a stub?
@@ -83,8 +87,6 @@ class TypeChecker(NodeVisitor[Type]):
     msg = None  # type: MessageBuilder
     # Types of type checked nodes
     type_map = None  # type: Dict[Expression, Type]
-    # Types of type checked nodes within this specific module
-    module_type_map = None  # type: Dict[Expression, Type]
 
     # Helper for managing conditional types
     binder = None  # type: ConditionalTypeBinder
@@ -121,56 +123,60 @@ class TypeChecker(NodeVisitor[Type]):
     # directly or indirectly.
     module_refs = None  # type: Set[str]
 
-    def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
+    def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
+                 tree: MypyFile, path: str) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
         """
         self.errors = errors
         self.modules = modules
+        self.options = options
+        self.tree = tree
+        self.path = path
         self.msg = MessageBuilder(errors, modules)
-        self.type_map = {}
-        self.module_type_map = {}
-        self.binder = ConditionalTypeBinder()
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.binder = ConditionalTypeBinder()
+        self.globals = tree.names
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
         self.function_stack = []
         self.partial_types = []
         self.deferred_nodes = []
+        self.type_map = {}
+        self.module_refs = set()
         self.pass_num = 0
         self.current_node_deferred = False
-        self.module_refs = set()
-
-    def visit_file(self, file_node: MypyFile, path: str, options: Options) -> None:
-        """Type check a mypy file with the given path."""
-        self.options = options
-        self.pass_num = 0
-        self.is_stub = file_node.is_stub
-        self.errors.set_file(path)
-        self.globals = file_node.names
-        self.enter_partial_types()
-        self.is_typeshed_stub = self.errors.is_typeshed_file(path)
-        self.module_type_map = {}
-        self.module_refs = set()
-        if self.options.strict_optional_whitelist is None:
-            self.suppress_none_errors = not self.options.show_none_errors
+        self.is_stub = tree.is_stub
+        self.is_typeshed_stub = errors.is_typeshed_file(path)
+        if options.strict_optional_whitelist is None:
+            self.suppress_none_errors = not options.show_none_errors
         else:
             self.suppress_none_errors = not any(fnmatch.fnmatch(path, pattern)
                                                 for pattern
-                                                in self.options.strict_optional_whitelist)
+                                                in options.strict_optional_whitelist)
+
+    def check_first_pass(self) -> None:
+        """Type check the entire file, but defer functions with unresolved references.
+
+        Unresolved references are forward references to variables
+        whose types haven't been inferred yet.  They may occur later
+        in the same file or in a different file that's being processed
+        later (usually due to an import cycle).
+
+        Deferred functions will be processed by check_second_pass().
+        """
+        self.errors.set_file(self.path)
+        self.enter_partial_types()
 
         with self.binder.top_frame_context():
-            for d in file_node.defs:
+            for d in self.tree.defs:
                 self.accept(d)
 
         self.leave_partial_types()
 
-        if self.deferred_nodes:
-            self.check_second_pass()
-
-        self.current_node_deferred = False
+        assert not self.current_node_deferred
 
         all_ = self.globals.get('__all__')
         if all_ is not None and all_.type is not None:
@@ -181,21 +187,31 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                           all_.node)
 
-        del self.options
+    def check_second_pass(self) -> bool:
+        """Run second or following pass of type checking.
 
-    def check_second_pass(self) -> None:
-        """Run second pass of type checking which goes through deferred nodes."""
-        self.pass_num = 1
-        for node, type_name in self.deferred_nodes:
+        This goes through deferred nodes, returning True if there were any.
+        """
+        if not self.deferred_nodes:
+            return False
+        self.errors.set_file(self.path)
+        self.pass_num += 1
+        todo = self.deferred_nodes
+        self.deferred_nodes = []
+        done = set()  # type: Set[FuncItem]
+        for node, type_name in todo:
+            if node in done:
+                continue
+            done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
             self.accept(node)
             if type_name:
                 self.errors.pop_type()
-        self.deferred_nodes = []
+        return True
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        if self.pass_num == 0 and self.function_stack:
+        if self.pass_num < LAST_PASS and self.function_stack:
             # Don't report an error yet. Just defer.
             node = self.function_stack[-1]
             if self.errors.type_name:
@@ -959,7 +975,6 @@ class TypeChecker(NodeVisitor[Type]):
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
-
         if len(typ.bases) <= 1:
             # No multiple inheritance.
             return
@@ -973,13 +988,6 @@ class TypeChecker(NodeVisitor[Type]):
                     # checks suffice (these are implemented elsewhere).
                     if name in base2.names and base2 not in base.mro:
                         self.check_compatibility(name, base, base2, typ)
-        # Verify that base class layouts are compatible.
-        builtin_bases = [nearest_builtin_ancestor(base.type)
-                         for base in typ.bases]
-        for base1 in builtin_bases:
-            for base2 in builtin_bases:
-                if not (base1 in base2.mro or base2 in base1.mro):
-                    self.fail(messages.INSTANCE_LAYOUT_CONFLICT, typ)
 
     def check_compatibility(self, name: str, base1: TypeInfo,
                             base2: TypeInfo, ctx: Context) -> None:
@@ -1530,30 +1538,6 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.in_checked_function():
                     self.fail(messages.RETURN_VALUE_EXPECTED, s)
 
-    def wrap_generic_type(self, typ: Instance, rtyp: Instance, check_type:
-                          str, context: Context) -> Type:
-        n_diff = self.count_nested_types(rtyp, check_type) - self.count_nested_types(typ,
-                                                                                     check_type)
-        if n_diff == 1:
-            return self.named_generic_type(check_type, [typ])
-        elif n_diff == 0 or n_diff > 1:
-            self.fail(messages.INCOMPATIBLE_RETURN_VALUE_TYPE
-                + ": expected {}, got {}".format(rtyp, typ), context)
-            return typ
-        return typ
-
-    def count_nested_types(self, typ: Instance, check_type: str) -> int:
-        c = 0
-        while is_subtype(typ, self.named_type(check_type)):
-            c += 1
-            typ = map_instance_to_supertype(self.named_generic_type(check_type, typ.args),
-                                            self.lookup_typeinfo(check_type))
-            if typ.args:
-                typ = cast(Instance, typ.args[0])
-            else:
-                return c
-        return c
-
     def visit_if_stmt(self, s: IfStmt) -> Type:
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
@@ -1697,7 +1681,14 @@ class TypeChecker(NodeVisitor[Type]):
                                 # To support local variables, we make this a definition line,
                                 # causing assignment to set the variable's type.
                                 s.vars[i].is_def = True
+                                # We also temporarily set current_node_deferred to False to
+                                # make sure the inference happens.
+                                # TODO: Use a better solution, e.g. a
+                                # separate Var for each except block.
+                                am_deferring = self.current_node_deferred
+                                self.current_node_deferred = False
                                 self.check_assignment(s.vars[i], self.temp_node(t, s.vars[i]))
+                                self.current_node_deferred = am_deferring
                         self.accept(s.handlers[i])
                         if s.vars[i]:
                             # Exception variables are deleted in python 3 but not python 2.
@@ -2230,19 +2221,9 @@ class TypeChecker(NodeVisitor[Type]):
         """Return instance type 'str'."""
         return self.named_type('builtins.str')
 
-    def check_type_equivalency(self, t1: Type, t2: Type, node: Context,
-                               msg: str = messages.INCOMPATIBLE_TYPES) -> None:
-        """Generate an error if the types are not equivalent. The
-        dynamic type is equivalent with all types.
-        """
-        if not is_equivalent(t1, t2):
-            self.fail(msg, node)
-
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
         self.type_map[node] = typ
-        if typ is not None:
-            self.module_type_map[node] = typ
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?
@@ -2431,6 +2412,17 @@ def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
+def is_optional(t: Type) -> bool:
+    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+
+
+def remove_optional(typ: Type) -> Type:
+    if isinstance(typ, UnionType):
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+    else:
+        return typ
+
+
 def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
@@ -2500,11 +2492,10 @@ def find_isinstance_check(node: Expression,
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 return conditional_type_map(expr, vartype, type)
-    elif (isinstance(node, ComparisonExpr) and any(is_literal_none(n) for n in node.operands) and
-          experiments.STRICT_OPTIONAL):
+    elif (isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
-        if is_not or node.operators == ['is']:
+        if any(is_literal_none(n) for n in node.operands) and (is_not or node.operators == ['is']):
             if_vars = {}  # type: Dict[Expression, Type]
             else_vars = {}  # type: Dict[Expression, Type]
             for expr in node.operands:
@@ -2519,6 +2510,20 @@ def find_isinstance_check(node: Expression,
             if is_not:
                 if_vars, else_vars = else_vars, if_vars
             return if_vars, else_vars
+        # Check for `x == y` where x is of type Optional[T] and y is of type T
+        # or a type that overlaps with T (or vice versa).
+        elif node.operators == ['==']:
+            first_type = type_map[node.operands[0]]
+            second_type = type_map[node.operands[1]]
+            if is_optional(first_type) != is_optional(second_type):
+                if is_optional(first_type):
+                    optional_type, comp_type = first_type, second_type
+                    optional_expr = node.operands[0]
+                else:
+                    optional_type, comp_type = second_type, first_type
+                    optional_expr = node.operands[1]
+                if is_overlapping_types(optional_type, comp_type):
+                    return {optional_expr: remove_optional(optional_type)}, {}
     elif isinstance(node, RefExpr):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
@@ -2699,7 +2704,11 @@ def infer_operator_assignment_method(type: Type, operator: str) -> Tuple[bool, s
 def is_valid_inferred_type(typ: Type) -> bool:
     """Is an inferred type valid?
 
-    Examples of invalid types include the None type or a type with a None component.
+    Examples of invalid types include the None type or List[<uninhabited>].
+
+    When not doing strict Optional checking, all types containing None are
+    invalid.  When doing strict Optional checking, only None and types that are
+    incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
     if is_same_type(typ, NoneTyp()):
         # With strict Optional checking, we *may* eventually infer NoneTyp, but
@@ -2707,14 +2716,26 @@ def is_valid_inferred_type(typ: Type) -> bool:
         # resolution happens in leave_partial_types when we pop a partial types
         # scope.
         return False
+    return is_valid_inferred_type_component(typ)
+
+
+def is_valid_inferred_type_component(typ: Type) -> bool:
+    """Is this part of a type a valid inferred type?
+
+    In strict Optional mode this excludes bare None types, as otherwise every
+    type containing None would be invalid.
+    """
+    if not experiments.STRICT_OPTIONAL:
+        if is_same_type(typ, NoneTyp()):
+            return False
     if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):
         for arg in typ.args:
-            if not is_valid_inferred_type(arg):
+            if not is_valid_inferred_type_component(arg):
                 return False
     elif isinstance(typ, TupleType):
         for item in typ.items:
-            if not is_valid_inferred_type(item):
+            if not is_valid_inferred_type_component(item):
                 return False
     return True

@@ -53,7 +53,7 @@ from mypy.nodes import (
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
@@ -63,7 +63,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -545,6 +545,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
+        if self.analyze_namedtuple_classdef(defn):
+            return
         self.setup_class_def_analysis(defn)
 
         self.bind_class_type_vars(defn)
@@ -556,8 +558,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_class_decorator(defn, decorator)
 
         self.enter_class(defn)
-
-        self.setup_is_builtinclass(defn)
 
         # Analyze class body.
         defn.defs.accept(self)
@@ -603,15 +603,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-
-    def setup_is_builtinclass(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            if refers_to_fullname(decorator, 'typing.builtinclass'):
-                defn.is_builtinclass = True
-        if defn.fullname == 'builtins.object':
-            # Only 'object' is marked as a built-in class, as otherwise things elsewhere
-            # would break. We need a better way of dealing with built-in classes.
-            defn.is_builtinclass = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -722,6 +713,56 @@ class SemanticAnalyzer(NodeVisitor):
             assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, sym.node
         return None
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        # special case for NamedTuple
+        for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, RefExpr):
+                base_expr.accept(self)
+                if base_expr.fullname == 'typing.NamedTuple':
+                    node = self.lookup(defn.name, defn)
+                    if node is not None:
+                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                        items, types = self.check_namedtuple_classdef(defn)
+                        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+                        return True
+        return False
+
+    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                               'expected "field_name: field_type"')
+        if self.options.python_version < (3, 6):
+            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
+            return [], []
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if not isinstance(stmt, AssignmentStmt):
+                # Still allow pass or ... (for empty namedtuples).
+                if (not isinstance(stmt, PassStmt) and
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                # An assignment, but an invalid one.
+                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            else:
+                # Append name and type in this case...
+                name = stmt.lvalues[0].name
+                items.append(name)
+                types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
+                # ...despite possible minor failures that allow further analyzis.
+                if name.startswith('_'):
+                    self.fail('NamedTuple field name cannot start with an underscore: {}'
+                              .format(name), stmt)
+                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                elif not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('Right hand side values are not supported in NamedTuple', stmt)
+        return items, types
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
@@ -845,6 +886,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
+            if defn.metaclass == '<error>':
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                return
             sym = self.lookup_qualified(defn.metaclass, defn)
             if sym is not None and not isinstance(sym.node, TypeInfo):
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
@@ -873,9 +917,6 @@ class SemanticAnalyzer(NodeVisitor):
             return None
         assert isinstance(sym.node, TypeInfo)
         return Instance(sym.node, args or [])
-
-    def is_instance_type(self, t: Type) -> bool:
-        return isinstance(t, Instance)
 
     def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
@@ -2596,13 +2637,6 @@ class SemanticAnalyzer(NodeVisitor):
                 if not ok:
                     self.name_already_defined(name, context)
             self.globals[name] = node
-
-    def add_var(self, v: Var, ctx: Context) -> None:
-        if self.is_func_scope():
-            self.add_local(v, ctx)
-        else:
-            self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            v._fullname = self.qualified_name(v.name())
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         name = node.name()

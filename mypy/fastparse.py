@@ -371,9 +371,10 @@ class ASTConverter(ast35.NodeTransformer):
         if isinstance(n, ast35.Name):
             return n.id
         elif isinstance(n, ast35.Attribute):
-            return "{}.{}".format(self.stringify_name(n.value), n.attr)
-        else:
-            assert False, "can't stringify " + str(type(n))
+            sv = self.stringify_name(n.value)
+            if sv is not None:
+                return "{}.{}".format(sv, n.attr)
+        return None  # Can't do it.
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -387,6 +388,8 @@ class ASTConverter(ast35.NodeTransformer):
         metaclass = None
         if metaclass_arg:
             metaclass = self.stringify_name(metaclass_arg.value)
+            if metaclass is None:
+                metaclass = '<error>'  # To be reported later
 
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
@@ -733,6 +736,9 @@ class ASTConverter(ast35.NodeTransformer):
     # Num(object n) -- a number as a PyObject.
     @with_line
     def visit_Num(self, n: ast35.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
+        if getattr(n, 'underscores', None) and self.pyversion < (3, 6):
+            raise FastParserError('Underscores in numeric literals are only '
+                                  'supported in Python 3.6', n.lineno, n.col_offset)
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):
@@ -904,3 +910,7 @@ class TypeCommentParseError(Exception):
         self.msg = msg
         self.lineno = lineno
         self.offset = offset
+
+
+class FastParserError(TypeCommentParseError):
+    pass

@@ -46,17 +46,21 @@ def parse_test_cases(
             i += 1
 
             files = []  # type: List[Tuple[str, str]] # path and contents
+            output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
             tcout = []  # type: List[str]  # Regular output errors
             tcout2 = []  # type: List[str]  # Output errors for incremental, second run
             stale_modules = None  # type: Optional[Set[str]]  # module names
             rechecked_modules = None  # type: Optional[Set[str]]  # module names
             while i < len(p) and p[i].id != 'case':
-                if p[i].id == 'file':
+                if p[i].id == 'file' or p[i].id == 'outfile':
                     # Record an extra file needed for the test case.
                     arg = p[i].arg
                     assert arg is not None
-                    files.append((os.path.join(base_path, arg),
-                                  '\n'.join(p[i].data)))
+                    file_entry = (os.path.join(base_path, arg), '\n'.join(p[i].data))
+                    if p[i].id == 'file':
+                        files.append(file_entry)
+                    elif p[i].id == 'outfile':
+                        output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
                     # Use a custom source file for the std module.
                     arg = p[i].arg
@@ -116,7 +120,8 @@ def parse_test_cases(
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
-                                        files, stale_modules, rechecked_modules)
+                                        files, output_files, stale_modules,
+                                        rechecked_modules)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -142,7 +147,7 @@ class DataDrivenTestCase(TestCase):
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self, name, input, output, output2, file, line, lastline,
-                 perform, files, expected_stale_modules, expected_rechecked_modules):
+                 perform, files, output_files, expected_stale_modules, expected_rechecked_modules):
         super().__init__(name)
         self.input = input
         self.output = output
@@ -152,6 +157,7 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
+        self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
 
@@ -173,6 +179,13 @@ class DataDrivenTestCase(TestCase):
                 if renamed_path not in encountered_files:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
+        for path, _ in self.output_files:
+            # Create directories for expected output and mark them to be cleaned up at the end
+            # of the test case.
+            dir = os.path.dirname(path)
+            for d in self.add_dirs(dir):
+                self.clean_up.append((True, d))
+            self.clean_up.append((False, path))
 
     def add_dirs(self, dir: str) -> List[str]:
         """Add all subdirectories required to create dir.

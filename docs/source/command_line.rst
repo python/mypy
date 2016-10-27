@@ -17,13 +17,13 @@ flag (or its long form ``--help``)::
               [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]] [--pdb]
               [--show-traceback] [--stats] [--inferstats]
-              [--custom-typing MODULE] [--scripts-are-modules]
-              [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--html-report DIR] [--linecount-report DIR]
-              [--linecoverage-report DIR] [--memory-xml-report DIR]
-              [--old-html-report DIR] [--txt-report DIR] [--xml-report DIR]
-              [--xslt-html-report DIR] [--xslt-txt-report DIR]
-              [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--custom-typing MODULE] [--custom-typeshed-dir DIR]
+              [--scripts-are-modules] [--config-file CONFIG_FILE]
+              [--show-column-numbers] [--html-report DIR]
+              [--linecount-report DIR] [--linecoverage-report DIR]
+              [--memory-xml-report DIR] [--old-html-report DIR]
+              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
+              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -325,6 +325,12 @@ Here are some more useful flags:
   more correct, but if you have many scripts that import a large
   package, the behavior enabled by this flag is often more
   convenient.)
+
+- ``--custom-typeshed-dir DIR`` specifies the directory where mypy looks for
+  typeshed stubs, instead of the typeshed that ships with mypy.  This is
+  primarily intended to make it easier to test typeshed changes before
+  submitting them upstream, but also allows you to use a forked version of
+  typeshed.
 
 .. _config-file-flag:
 

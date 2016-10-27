@@ -5,10 +5,10 @@ from typing import Any, Dict, Optional
 from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
                         TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
                         TypeVarExpr, ClassDef,
-                        LDEF, MDEF, GDEF, MODULE_REF)
+                        LDEF, MDEF, GDEF)
 from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
                         TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-                        UninhabitedType, TypeType)
+                        TypeType)
 from mypy.visitor import NodeVisitor
 
 
@@ -246,33 +246,5 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str) -> SymbolTa
         if not rest:
             return stnode
         node = stnode.node
-        assert isinstance(node, TypeInfo)
-        names = node.names
-
-
-def store_qualified(modules: Dict[str, MypyFile], name: str, info: SymbolNode) -> None:
-    head = name
-    rest = []
-    while True:
-        head, tail = head.rsplit('.', 1)
-        mod = modules.get(head)
-        if mod is not None:
-            rest.append(tail)
-            break
-    names = mod.names
-    while True:
-        assert rest, "Cannot find %s" % (name,)
-        key = rest.pop()
-        if key not in names:
-            assert not rest, "Cannot find %s for %s" % (key, name)
-            # Store it.
-            # TODO: kind might be something else?
-            names[key] = SymbolTableNode(GDEF, info)
-            return
-        stnode = names[key]
-        node = stnode.node
-        if not rest:
-            stnode.node = info
-            return
         assert isinstance(node, TypeInfo)
         names = node.names
