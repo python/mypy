@@ -11,7 +11,8 @@ print('hello, world')
 [out]
 hello, world
 
-[case testAbstractBaseClasses]
+-- Skipped because different typing package versions have different repr()s. 
+[case testAbstractBaseClasses-skip]
 import re
 from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
