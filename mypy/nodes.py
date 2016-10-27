@@ -284,8 +284,11 @@ class MypyFile(SymbolNode):
 
 class ImportBase(Statement):
     """Base class for all import statements."""
-    is_unreachable = False
-    is_top_level = False  # Set by semanal.FirstPass
+
+    is_unreachable = False  # Set by semanal.FirstPass if inside `if False` etc.
+    is_top_level = False  # Ditto if outside any class or def
+    is_mypy_only = False  # Ditto if inside `if TYPE_CHECKING` or `if MYPY`
+
     # If an import replaces existing definitions, we construct dummy assignment
     # statements that assign the imported names to the names in the current scope,
     # for type checking purposes. Example:
