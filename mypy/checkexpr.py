@@ -470,7 +470,8 @@ class ExpressionChecker:
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        return self.apply_generic_arguments(callable, new_args, error_context)
+        return cast(CallableType, self.apply_generic_arguments(callable, new_args,
+                                                           error_context))
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -560,8 +561,9 @@ class ExpressionChecker:
         for i, arg in enumerate(inferred_args):
             if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
-        callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
+        callee_type = cast(CallableType, self.apply_generic_arguments(
+            callee_type, inferred_args, context))
         arg_types = self.infer_arg_types_in_context2(
             callee_type, args, arg_kinds, formal_to_actual)
 
@@ -607,7 +609,8 @@ class ExpressionChecker:
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
         # arguments.
-        return self.apply_generic_arguments(callee_type, inferred_args, context)
+        return cast(CallableType, self.apply_generic_arguments(callee_type,
+                                                           inferred_args, context))
 
     def check_argument_count(self, callee: CallableType, actual_types: List[Type],
                              actual_kinds: List[int], actual_names: List[str],
@@ -721,10 +724,10 @@ class ExpressionChecker:
 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
-                tuplet = arg_types[actual]
                 if (callee.arg_kinds[i] == nodes.ARG_STAR and
                         arg_kinds[actual] == nodes.ARG_STAR and
-                        isinstance(tuplet, TupleType)):
+                        isinstance(arg_types[actual], TupleType)):
+                    tuplet = cast(TupleType, arg_types[actual])
                     while tuple_counter[0] < len(tuplet.items):
                         actual_type = get_actual_type(arg_type,
                                                       arg_kinds[actual],
@@ -877,9 +880,21 @@ class ExpressionChecker:
         return ok
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],
-                                context: Context) -> CallableType:
+                                context: Context) -> Type:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(callable, types, self.msg, context)
+
+    def apply_generic_arguments2(self, overload: Overloaded, types: List[Type],
+                                 context: Context) -> Type:
+        items = []  # type: List[CallableType]
+        for item in overload.items():
+            applied = self.apply_generic_arguments(item, types, context)
+            if isinstance(applied, CallableType):
+                items.append(applied)
+            else:
+                # There was an error.
+                return AnyType()
+        return Overloaded(items)
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
@@ -1360,19 +1375,9 @@ class ExpressionChecker:
         """Type check a type application (expr[type, ...])."""
         tp = self.accept(tapp.expr)
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(tapp.types):
-                self.msg.incompatible_type_application(len(tp.variables),
-                                                       len(tapp.types), tapp)
-                return AnyType()
             return self.apply_generic_arguments(tp, tapp.types, tapp)
-        elif isinstance(tp, Overloaded):
-            for item in tp.items():
-                if len(item.variables) != len(tapp.types):
-                    self.msg.incompatible_type_application(len(item.variables),
-                                                           len(tapp.types), tapp)
-                    return AnyType()
-            return Overloaded([self.apply_generic_arguments(item, tapp.types, tapp)
-                               for item in tp.items()])
+        if isinstance(tp, Overloaded):
+            return self.apply_generic_arguments2(tp, tapp.types, tapp)
         return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
@@ -1564,8 +1569,9 @@ class ExpressionChecker:
         # they must be considered as indeterminate. We use ErasedType since it
         # does not affect type inference results (it is for purposes like this
         # only).
-        callable_ctx = replace_meta_vars(ctx, ErasedType())
-        assert isinstance(callable_ctx, CallableType)
+        ctx = replace_meta_vars(ctx, ErasedType())
+
+        callable_ctx = cast(CallableType, ctx)
 
         arg_kinds = [arg.kind for arg in e.arguments]
 
