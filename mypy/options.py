@@ -121,7 +121,7 @@ class Options:
     def clone_for_module(self, module: str) -> 'Options':
         updates = {}
         for pattern in self.per_module_options:
-            if self.module_matches_pattern(pattern):
+            if self.module_matches_pattern(module, pattern):
                 updates.update(self.per_module_options[pattern])
         if not updates:
             return self
