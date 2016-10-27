@@ -1,4 +1,4 @@
-from typing import cast, List, Dict, Callable
+from typing import List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
@@ -333,7 +333,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         return None
     msg = messages.temp_message_builder()
     applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
-    if msg.is_errors() or not isinstance(applied, CallableType):
+    if msg.is_errors():
         return None
     return applied
 
