@@ -19,3 +19,4 @@ class int:
 
 class str: pass
 class bytes: pass
+class bool: pass

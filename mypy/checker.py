@@ -24,27 +24,24 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
     AwaitExpr,
-    CONTRAVARIANT, COVARIANT
-)
-from mypy.nodes import function_type, method_type, method_type_with_fallback
+    CONTRAVARIANT, COVARIANT)
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
-    true_only, false_only
+    true_only, false_only, function_type
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype
+from mypy.checkmember import map_type_from_supertype, bind_self
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_proper_subtype,
-    is_more_precise, restrict_subtype_away
+    is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.semanal import self_type, set_callable_name, refers_to_fullname
+from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
@@ -93,6 +90,11 @@ class TypeChecker(NodeVisitor[Type]):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
+    # Class context for checking overriding of a method of the form
+    #     def foo(self: T) -> T
+    # We need to pass the current class definition for instantiation of T
+    class_context = None  # type: List[Type]
+
     # Stack of function return types
     return_types = None  # type: List[Type]
     # Type context for type inference
@@ -136,6 +138,7 @@ class TypeChecker(NodeVisitor[Type]):
         self.path = path
         self.msg = MessageBuilder(errors, modules)
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
+        self.class_context = []
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
         self.return_types = []
@@ -602,11 +605,13 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = typ.arg_types[i]
 
                     # Refuse covariant parameter type variables
+                    # TODO: check recuresively for inner type variables
                     if isinstance(arg_type, TypeVarType):
-                        if arg_type.variance == COVARIANT:
-                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
-                                      arg_type)
-
+                        if i > 0:
+                            if arg_type.variance == COVARIANT:
+                                self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
+                                          arg_type)
+                        # FIX: if i == 0 and this is not a method then same as above
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',
@@ -788,11 +793,11 @@ class TypeChecker(NodeVisitor[Type]):
         method = defn.name()
         if method not in nodes.inplace_operator_methods:
             return
-        typ = self.method_type(defn)
+        typ = bind_self(self.function_type(defn))
         cls = defn.info
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
-            instance = self_type(cls)
+            instance = fill_typevars(cls)
             typ2 = self.expr_checker.analyze_external_member_access(
                 other_method, instance, defn)
             fail = False
@@ -868,7 +873,7 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = self.method_type(defn)
+            typ = bind_self(self.function_type(defn), self.class_context[-1])
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
@@ -881,7 +886,7 @@ class TypeChecker(NodeVisitor[Type]):
                     assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
-                    method_type(original_type),
+                    bind_self(original_type, self.class_context[-1]),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
@@ -965,7 +970,9 @@ class TypeChecker(NodeVisitor[Type]):
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         with self.binder.top_frame_context():
+            self.class_context.append(fill_typevars(defn.info))
             self.accept(defn.defs)
+            self.class_context.pop()
         self.binder = old_binder
         if not defn.has_incompatible_baseclass:
             # Otherwise we've already found errors; more errors are not useful
@@ -1012,8 +1019,8 @@ class TypeChecker(NodeVisitor[Type]):
         if (isinstance(first_type, FunctionLike) and
                 isinstance(second_type, FunctionLike)):
             # Method override
-            first_sig = method_type(first_type)
-            second_sig = method_type(second_type)
+            first_sig = bind_self(first_type)
+            second_sig = bind_self(second_type)
             ok = is_subtype(first_sig, second_sig)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
@@ -2335,9 +2342,6 @@ class TypeChecker(NodeVisitor[Type]):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
 
-    def method_type(self, func: FuncBase) -> FunctionLike:
-        return method_type_with_fallback(func, self.named_type('builtins.function'))
-
     # TODO: These next two functions should refer to TypeMap below
     def find_isinstance_check(self, n: Expression) -> Tuple[Optional[Dict[Expression, Type]],
                                                             Optional[Dict[Expression, Type]]]:
@@ -2349,7 +2353,6 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             for expr, type in type_map.items():
                 self.binder.push(expr, type)
-
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The

@@ -1,4 +1,4 @@
-from typing import cast, List, Dict, Callable
+from typing import List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
@@ -140,10 +140,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
-        if isinstance(right, TypeVarType):
-            return left.id == right.id
-        else:
-            return is_subtype(left.upper_bound, self.right)
+        if isinstance(right, TypeVarType) and left.id == right.id:
+            return True
+        return is_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
@@ -333,7 +332,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         return None
     msg = messages.temp_message_builder()
     applied = mypy.applytype.apply_generic_arguments(type, inferred_vars, msg, context=target)
-    if msg.is_errors() or not isinstance(applied, CallableType):
+    if msg.is_errors():
         return None
     return applied
 

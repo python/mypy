@@ -72,8 +72,8 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType)
-from mypy.nodes import function_type, implicit_module_attrs
+    TupleType, UnionType, StarType, EllipsisType, function_type)
+from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -84,10 +84,20 @@ from mypy.options import Options
 T = TypeVar('T')
 
 
-# Inferred value of an expression.
-ALWAYS_TRUE = 0
-ALWAYS_FALSE = 1
-TRUTH_VALUE_UNKNOWN = 2
+# Inferred truth value of an expression.
+ALWAYS_TRUE = 1
+MYPY_TRUE = 2  # True in mypy, False at runtime
+ALWAYS_FALSE = 3
+MYPY_FALSE = 4  # False in mypy, True at runtime
+TRUTH_VALUE_UNKNOWN = 5
+
+inverted_truth_mapping = {
+    ALWAYS_TRUE: ALWAYS_FALSE,
+    ALWAYS_FALSE: ALWAYS_TRUE,
+    TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
+    MYPY_TRUE: MYPY_FALSE,
+    MYPY_FALSE: MYPY_TRUE,
+}
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -312,15 +322,18 @@ class SemanticAnalyzer(NodeVisitor):
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
+        functype = func.type
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif isinstance(func.type, FunctionLike):
-                if func.is_class:
-                    leading_type = self.class_type(self.type)
-                else:
-                    leading_type = self_type(self.type)
-                func.type = replace_implicit_first_type(func.type, leading_type)
+            elif isinstance(functype, CallableType):
+                self_type = functype.arg_types[0]
+                if isinstance(self_type, AnyType):
+                    if func.is_class:
+                        leading_type = self.class_type(self.type)
+                    else:
+                        leading_type = fill_typevars(self.type)
+                    func.type = replace_implicit_first_type(functype, leading_type)
 
     def set_original_def(self, previous: Node, new: FuncDef) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
@@ -1775,7 +1788,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
         # TODO: SelfType should be bind to actual 'self'
-        this_type = self_type(info)
+        this_type = fill_typevars(info)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
@@ -3026,7 +3039,7 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
-def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
+def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
@@ -3041,7 +3054,7 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
-        return replace_leading_arg_type(sig, new)
+        return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
     elif isinstance(sig, Overloaded):
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))
                            for i in sig.items()])
@@ -3125,12 +3138,16 @@ def infer_reachability_of_if_statement(s: IfStmt,
                                        platform: str) -> None:
     for i in range(len(s.expr)):
         result = infer_if_condition_value(s.expr[i], pyversion, platform)
-        if result == ALWAYS_FALSE:
-            # The condition is always false, so we skip the if/elif body.
+        if result in (ALWAYS_FALSE, MYPY_FALSE):
+            # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
-        elif result == ALWAYS_TRUE:
-            # This condition is always true, so all of the remaining
-            # elif/else bodies will never be executed.
+        elif result in (ALWAYS_TRUE, MYPY_TRUE):
+            # This condition is considered always true, so all of the remaining
+            # elif/else bodies should not be checked.
+            if result == MYPY_TRUE:
+                # This condition is false at runtime; this will affect
+                # import priorities.
+                mark_block_mypy_only(s.body[i])
             for body in s.body[i + 1:]:
                 mark_block_unreachable(body)
             if s.else_body:
@@ -3142,7 +3159,8 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
-    and TRUTH_VALUE_UNKNOWN otherwise.
+    MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
+    false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
     name = ''
     negated = False
@@ -3166,12 +3184,9 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
         elif name == 'PY3':
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
         elif name == 'MYPY' or name == 'TYPE_CHECKING':
-            result = ALWAYS_TRUE
+            result = MYPY_TRUE
     if negated:
-        if result == ALWAYS_TRUE:
-            result = ALWAYS_FALSE
-        elif result == ALWAYS_FALSE:
-            result = ALWAYS_TRUE
+        result = inverted_truth_mapping[result]
     return result
 
 
@@ -3344,6 +3359,23 @@ class MarkImportsUnreachableVisitor(TraverserVisitor):
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_unreachable = True
+
+
+def mark_block_mypy_only(block: Block) -> None:
+    block.accept(MarkImportsMypyOnlyVisitor())
+
+
+class MarkImportsMypyOnlyVisitor(TraverserVisitor):
+    """Visitor that sets is_mypy_only (which affects priority)."""
+
+    def visit_import(self, node: Import) -> None:
+        node.is_mypy_only = True
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        node.is_mypy_only = True
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        node.is_mypy_only = True
 
 
 def is_identity_signature(sig: Type) -> bool:
