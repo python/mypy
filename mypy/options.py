@@ -16,7 +16,7 @@ class BuildType:
 class Options:
     """Options collected from flags."""
 
-    PER_FILE_OPTIONS = {
+    PER_MODULE_OPTIONS = {
         "silent_imports",
         "almost_silent",
         "disallow_untyped_calls",
@@ -27,7 +27,7 @@ class Options:
         "show_none_errors",
     }
 
-    OPTIONS_AFFECTING_CACHE = PER_FILE_OPTIONS | {"strict_optional"}
+    OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
 
     def __init__(self) -> None:
         # -- build options --
@@ -83,8 +83,8 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
 
-        # Per-file options (raw)
-        self.per_file_options = {}  # type: Dict[str, Dict[str, object]]
+        # Per-module options (raw)
+        self.per_module_options = {}  # type: Dict[str, Dict[str, object]]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -118,17 +118,23 @@ class Options:
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.__dict__))
 
-    def clone_for_file(self, filename: str) -> 'Options':
+    def clone_for_module(self, module: str) -> 'Options':
         updates = {}
-        for glob in self.per_file_options:
-            if fnmatch.fnmatch(filename, glob):
-                updates.update(self.per_file_options[glob])
+        for pattern in self.per_module_options:
+            if self.module_matches_pattern(module, pattern):
+                updates.update(self.per_module_options[pattern])
         if not updates:
             return self
         new_options = Options()
         new_options.__dict__.update(self.__dict__)
         new_options.__dict__.update(updates)
         return new_options
+
+    def module_matches_pattern(self, module: str, pattern: str) -> bool:
+        # If the pattern is 'mod.*', we want 'mod' to match that too.
+        # (That's so that a pattern specifying a package also matches
+        # that package's __init__.)
+        return fnmatch.fnmatch(module, pattern) or fnmatch.fnmatch(module + '.', pattern)
 
     def select_options_affecting_cache(self) -> Mapping[str, bool]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}

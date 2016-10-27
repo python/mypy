@@ -10,7 +10,7 @@ file instead (see :ref:`--config-file <config-file-flag>`).
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
-flags may take a different value based on the file being processed.
+flags may take a different value based on the module being processed.
 
 The configuration file format is the usual
 `ini file <https://docs.python.org/3.6/library/configparser.html>`_
@@ -22,10 +22,10 @@ characters.
   the global flags.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
-  present, where ``PATTERN1``, ``PATTERN2`` etc. are `filename
-  patterns <https://docs.python.org/3.6/library/fnmatch.html>`_
+  present, where ``PATTERN1``, ``PATTERN2`` etc. are `fnmatch patterns
+  <https://docs.python.org/3.6/library/fnmatch.html>`_
   separated by commas.  These sections specify additional flags that
-  only apply to files whose name matches at least one of the patterns.
+  only apply to *modules* whose name matches at least one of the patterns.
 
 Global flags
 ************
@@ -98,16 +98,16 @@ The following global flags may only be set in the global section
   error messages.
 
 
-Per-file flags
-**************
+Per-module flags
+****************
 
-The following flags may vary per file.  They may also be specified in
+The following flags may vary per module.  They may also be specified in
 the global section; the global section provides defaults which are
-overridden by the pattern sections matching the file.
+overridden by the pattern sections matching the module name.
 
 .. note::
 
-   If multiple pattern sections match a file they are processed in
+   If multiple pattern sections match a module they are processed in
    unspecified order.
 
 - ``silent_imports`` (Boolean, default False) silences complaints
@@ -144,13 +144,13 @@ You might put this in your ``mypy.ini`` file at the root of your repo:
 
     [mypy]
     python_version = 2.7
-    [mypy-foo/*]
+    [mypy-foo.*]
     disallow_untyped_defs = True
 
 This automatically sets ``--python-version 2.7`` (a.k.a. ``--py2``)
 for all mypy runs in this tree, and also selectively turns on the
-``--disallow-untyped-defs`` flag for all files under the ``foo/``
-subdirectory.  This issues an error for function definitions without
+``--disallow-untyped-defs`` flag for all modules in the ``foo``
+package.  This issues an error for function definitions without
 type annotations in that subdirectory only.
 
 .. note::
