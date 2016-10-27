@@ -292,8 +292,7 @@ class TypeAnalyser(TypeVisitor[Type]):
     def builtin_type(self, fully_qualified_name: str, args: List[Type] = None) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
         assert isinstance(node.node, TypeInfo)
-        info = cast(TypeInfo, node.node)
-        return Instance(info, args or [])
+        return Instance(node.node, args or [])
 
     def tuple_type(self, items: List[Type]) -> TupleType:
         return TupleType(items, fallback=self.builtin_type('builtins.tuple', [AnyType()]))
