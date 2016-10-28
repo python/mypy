@@ -505,6 +505,127 @@ type[int] # this was crashing, see #2302 (comment)  # E: Type application target
 [out]
 
 
+-- Generic type aliases
+-- --------------------
+
+[case testGenericTypeAliasesBasic1]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesBasic2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesBadAliases]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesForAliases]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesAny]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesSubclassing]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesUnion]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesTuple]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesCallable]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesCompex1]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesCompex2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesImporting]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+[case testGenericTypeAliasesRuntimeExpressions]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+[out]
+
+
 -- Multiple assignment with lists
 -- ------------------------------
 

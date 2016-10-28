@@ -17,6 +17,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
+    UNBOUND_TVAR, BOUND_TVAR,
 )
 from mypy import nodes
 import mypy.checker
@@ -1375,7 +1376,44 @@ class ExpressionChecker:
         return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
+        item = alias.type
+        if isinstance(item, Instance):
+            item = self.replace_tvars_any(item)
+            tp = type_object_type(item.type, self.named_type)
+        else:
+            return item
+        if isinstance(tp, CallableType):
+            return self.apply_generic_arguments(tp, item.args, item)
+        if isinstance(tp, Overloaded):
+            return self.apply_generic_arguments2(tp, item.args, item)
         return AnyType()
+
+    def replace_tvars_any(self, tp: Type) -> Type:
+        if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
+            return tp
+        typ_args = (tp.args if isinstance(tp, Instance) else
+                    tp.items if not isinstance(tp, CallableType) else
+                    tp.arg_types + [tp.ret_type])
+        new_args = typ_args[:]
+        for i, arg in enumerate(typ_args):
+            if isinstance(arg, UnboundType):
+                sym = None
+                try:
+                    sym = self.chk.lookup_qualified(arg.name)
+                except KeyError:
+                    pass
+                if sym and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+                    new_args[i] = AnyType()
+            else:
+                new_args[i] = self.replace_tvars_any(arg)
+        if isinstance(tp, Instance):
+            return Instance(tp.type, new_args, tp.line)
+        if isinstance(tp, TupleType):
+            return tp.copy_modified(items=new_args)
+        if isinstance(tp, UnionType):
+            return UnionType.make_union(new_args, tp.line)
+        if isinstance(tp, CallableType):
+            return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1])
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""

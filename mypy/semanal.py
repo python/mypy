@@ -2363,7 +2363,13 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
         expr.base.accept(self)
-        if refers_to_class_or_function(expr.base):
+        if isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
+            res = analyze_type_alias(expr,
+                                     self.lookup_qualified,
+                                     self.lookup_fully_qualified,
+                                     self.fail)
+            expr.analyzed = TypeAliasExpr(res)
+        elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
