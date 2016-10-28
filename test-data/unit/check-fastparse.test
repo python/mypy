@@ -186,3 +186,10 @@ from typing import Any
 x = None  # type: Any
 x @ 1
 x @= 1
+
+[case test]
+# flags: --fast-parser
+from typing import Dict
+x = None # type: Dict[x: y]
+[out]
+main:3: error: syntax error in type comment
