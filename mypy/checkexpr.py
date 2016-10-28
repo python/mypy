@@ -1376,12 +1376,15 @@ class ExpressionChecker:
         return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
+        """ Get type of a type alias (could be generic) in a runtime expression."""
         item = alias.type
         if isinstance(item, (Instance, TupleType, UnionType, CallableType)):
             item = self.replace_tvars_any(item)
         if isinstance(item, Instance):
             tp = type_object_type(item.type, self.named_type)
         else:
+            # TODO: Better error reporting, need to find line for
+            # unsubscribed generic aliases
             if alias.line > 0:
                 self.chk.fail('Invalid type alias in runtime expression: {}'
                               .format(item), alias)
@@ -1393,6 +1396,10 @@ class ExpressionChecker:
         return AnyType()
 
     def replace_tvars_any(self, tp: Type) -> Type:
+        """ Replace all unbound type variables with Any if an alias is used in
+        a runtime expression. Basically, this function finishes what could not be done
+        in similar funtion from typeanal.py.
+        """
         if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
             return tp
         typ_args = (tp.args if isinstance(tp, Instance) else

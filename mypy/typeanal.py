@@ -158,6 +158,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if exp_len == 0 and act_len == 0:
                     return override
                 if act_len != exp_len:
+                    # TODO: Detect wrong type variable numer for unused aliases
+                    # (although it could be difficult at this stage, see comment below)
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
                     return t
@@ -203,6 +205,9 @@ class TypeAnalyser(TypeVisitor[Type]):
             return AnyType()
 
     def get_type_var_names(self, tp: Type) -> List[str]:
+        """ Get all type variable names that are present in a generic type alias
+        in order of textual appearance (recursively, if needed).
+        """
         tvars = []  # type: List[str]
         if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
             return tvars
@@ -235,6 +240,9 @@ class TypeAnalyser(TypeVisitor[Type]):
         return None
 
     def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type]) -> Type:
+        """ Replace type variables in a generic type alias tp with substitutions subs.
+        Length of subs should be already checked.
+        """
         if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)) or not subs:
             return tp
         typ_args = (tp.args if isinstance(tp, Instance) else
@@ -244,9 +252,12 @@ class TypeAnalyser(TypeVisitor[Type]):
         for i, arg in enumerate(typ_args):
             tvar = self.get_tvar_name(arg)
             if tvar and tvar in vars:
+                # Perform actual substitution...
                 new_args[i] = subs[vars.index(tvar)]
             else:
+                # ...recursively, if needed.
                 new_args[i] = self.replace_alias_tvars(arg, vars, subs)
+        # Create a copy with type vars replaced.
         if isinstance(tp, Instance):
             return Instance(tp.type, new_args, tp.line)
         if isinstance(tp, TupleType):

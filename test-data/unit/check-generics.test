@@ -794,13 +794,34 @@ fun2([('x', 'x')], 'x') # E: Type argument 1 of "fun2" has incompatible value "s
 [builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesImporting]
-from typing import TypeVar, Generic
+from typing import TypeVar
+from a import Node, TupledNode
 T = TypeVar('T')
-class Node(Generic[T]):
-    def __init__(self, x: T) -> None:
-        ...
 
-[out]
+n = None # type: TupledNode[int]
+n.x = 1
+n.y = (1, 1)
+n.y = 'x' # E: Bad type
+
+def f(x: Node[T, T]) -> TupledNode[T]:
+    return Node(x.x, (x.x, x.x))
+
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected Node[None, None]
+f(Node(1, 'x')) # E: Cannot infer type argument 1 of "f"
+reveal_type(Node('x', 'x')) # E: Revealed type is 'a.Node[builtins.str*, builtins.str*]'
+
+[file a.py]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+TupledNode = Node[T, Tuple[T, T]]
+
+[builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesRuntimeExpressionsInstance]
 from typing import TypeVar, Generic
