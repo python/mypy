@@ -497,3 +497,15 @@ if x == y:
 else:
     reveal_type(x)  # E: Revealed type is 'Union[builtins.str, builtins.int, builtins.None]'
 [builtins fixtures/ops.pyi]
+
+
+[case testWarnNoReturnWorksWithStrictOptional]
+# flags: --warn-no-return
+def f() -> None:
+  1 + 1  # no error
+
+def g() -> int:
+  1 + 1  #
+[out]
+main: note: In function "g":
+main:5: note: Missing return statement
