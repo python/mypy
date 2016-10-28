@@ -1902,15 +1902,18 @@ class TypeInfo(SymbolNode):
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_typed_dict', 'is_newtype'
     ]
-    
+
     _metaclass_type = None  # type: Optional[mypy.types.Instance]
-    
+
     @property
     def metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         if self._metaclass_type:
             return self._metaclass_type
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
+        if self.mro is None:
+            # XXX why does this happen?
+            return None
         if len(self.mro) > 1:
             return self.mro[1].metaclass_type
         # FIX: assert False

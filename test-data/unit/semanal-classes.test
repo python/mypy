@@ -394,11 +394,11 @@ MypyFile:1(
               NameExpr(x [l]))))))))
 
 [case testQualifiedMetaclass]
-import abc
-class A(metaclass=abc.ABCMeta): pass
+from abc import ABCMeta
+class A(metaclass=ABCMeta): pass
 [out]
 MypyFile:1(
-  Import:1(abc)
+  ImportFrom:1(abc, [ABCMeta])
   ClassDef:2(
     A
     Metaclass(abc.ABCMeta)

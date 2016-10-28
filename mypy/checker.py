@@ -1793,6 +1793,9 @@ class TypeChecker(NodeVisitor[Type]):
             # Non-tuple iterable.
             if isinstance(iterable, CallableType) and iterable.is_type_obj():
                 print(iterable.fallback)
+                self.check_subtype(iterable.fallback,
+                                   self.named_generic_type('typing.Iterable', [AnyType()]),
+                                   expr, messages.ITERABLE_EXPECTED)
             else:
                 self.check_subtype(iterable,
                                    self.named_generic_type('typing.Iterable', [AnyType()]),

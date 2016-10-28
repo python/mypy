@@ -128,6 +128,7 @@ class Medal(Enum):
     bronze = 3
 
 for x in Medal:
-    reveal_type(x)
+    reveal_type(x)  # E: Revealed type is '_program.Medal*'
 
-x = list(Medal)  # type: List[Medal]
+-- TODO:
+-- reveal_type(list(Medal))  # type: List[Medal]
