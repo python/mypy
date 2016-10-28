@@ -187,7 +187,7 @@ x = None  # type: Any
 x @ 1
 x @= 1
 
-[case test]
+[case testIncorrectTypeCommentIndex]
 # flags: --fast-parser
 from typing import Dict
 x = None # type: Dict[x: y]
