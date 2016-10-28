@@ -454,7 +454,9 @@ config_types = {
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
     'custom_typeshed_dir': str,
-    'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'mypy_path': lambda s: [
+        p.strip() for p in re.split('[,{}]'.format(os.pathsep), s)
+    ],
     'junit_xml': str,
 }
 
