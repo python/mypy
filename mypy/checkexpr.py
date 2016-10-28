@@ -35,6 +35,7 @@ from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
 from mypy.util import split_module_names
+from mypy.semanal import fill_typevars
 
 from mypy import experiments
 
@@ -1609,7 +1610,7 @@ class ExpressionChecker:
                         self.chk.fail('super() requires at least on positional argument', e)
                         return AnyType()
                     declared_self = args[0].variable.type
-                    return analyze_member_access(name=e.name, typ=declared_self, node=e,
+                    return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,

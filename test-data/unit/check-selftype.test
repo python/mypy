@@ -236,3 +236,15 @@ def make(cls: Type[T]) -> T:
     return cls.new()
 
 [builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeGeneric]
+from typing import TypeVar
+
+T = TypeVar('T', int, str)
+
+class A:
+    pass
+
+class B(A):
+    def __init__(self, arg: T) -> None:
+        super(B, self).__init__()
