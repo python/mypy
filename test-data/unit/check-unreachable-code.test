@@ -372,7 +372,7 @@ def foo() -> None:
 [out]
 main: note: In function "foo":
 
-[case testSysVersionInfoInMethod]
+[case testSysPlatformInMethod]
 import sys
 class C:
     def foo(self) -> None:
@@ -384,6 +384,19 @@ class C:
 [builtins fixtures/ops.pyi]
 [out]
 main: note: In member "foo" of class "C":
+
+[case testSysPlatformInFunctionImport]
+import sys
+def foo() -> None:
+    if sys.platform != 'fictional':
+        import a
+    else:
+        import b as a
+    a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
 
 [case testCustomSysVersionInfo]
 # flags: --python-version 3.2
