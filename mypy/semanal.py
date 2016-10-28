@@ -2768,10 +2768,13 @@ class FirstPass(NodeVisitor):
         else:
             if at_module:
                 sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
+            # Also analyze the function body (in case there are conditional imports).
             sem.function_stack.append(func)
+            sem.errors.push_function(defn.name())
             sem.enter()
             func.body.accept(self)
             sem.leave()
+            sem.errors.pop_function()
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
