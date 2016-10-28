@@ -665,34 +665,76 @@ reveal_type(z) # E: Revealed type is '__main__.Node[Any, Any]'
 [out]
 
 [case testGenericTypeAliasesAcessingMethods]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, List
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
-        ...
+        self.x = x
+    def meth(self) -> T:
+        return self.x
 
-[out]
+ListedNode = Node[List[T]]
+l = None # type: ListedNode[int]
+l.x.append(1)
+l.meth().append(1)
+reveal_type(l.meth()) # E: Revealed type is 'builtins.list*[builtins.int]'
+l.meth().append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+
+ListedNode[str]([]).x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type List[str])
+
+[builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesSubclassing]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Tuple, List
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
 
+TupledNode = Node[Tuple[T, T]]
+
+class D(Generic[T], TupledNode[T]):
+    ...
+class L(Generic[T], List[TupledNode[T]]):
+    ...
+
+def f_bad(x: T) -> D[T]:
+    return D(1)  # Error, see out
+
+L[int]().append(Node((1, 1)))
+L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected Node[Tuple[int, int]]
+
+x = D((1, 1)) # type: D[int]
+y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "int"; expected "Tuple[int, int]"
+
+def f(x: T) -> D[T]:
+    return D((x, x))
+reveal_type(f('a'))  # E: Revealed type is '__main__.D[builtins.str*]'
+
+[builtins fixtures/list.pyi]
 [out]
+main: note: In function "f_bad":
+main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
+main: note: At top level:
 
 [case testGenericTypeAliasesSubclassingBad]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Tuple, Union
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
 
-[out]
+TupledNode = Node[Tuple[T, T]]
+UNode = Union[int, Node[T]]
+
+class C(TupledNode): ... # Same as TupledNode[Any]
+class D(TupledNode[T]): ... # E: Invalid type "__main__.T"
+class E(Generic[T], UNode[T]): ... # E: Invalid base class
+
+[builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesUnion]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Union
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
@@ -710,7 +752,7 @@ class Node(Generic[T]):
 [out]
 
 [case testGenericTypeAliasesTuple]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
@@ -719,7 +761,7 @@ class Node(Generic[T]):
 [out]
 
 [case testGenericTypeAliasesCallable]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
@@ -727,25 +769,31 @@ class Node(Generic[T]):
 
 [out]
 
-[case testGenericTypeAliasesCompex]
-from typing import TypeVar, Generic
-T = TypeVar('T')
-class Node(Generic[T]):
-    def __init__(self, x: T) -> None:
-        ...
+[case testGenericTypeAliasesPEPBasedExample]
+from typing import TypeVar, List, Tuple
+T = TypeVar('T', int, bool)
 
-[out]
+Vec = List[Tuple[T, T]]
+
+vec = []  # type: Vec[bool]
+vec.append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "Tuple[bool, bool]"
+reveal_type(vec[0]) # E: Revealed type is 'Tuple[builtins.bool, builtins.bool]'
+
+def fun1(v: Vec[T]) -> T:
+    return v[0][0]
+def fun2(v: Vec[T], scale: T) -> Vec[T]:
+    return v
+
+reveal_type(fun1([(1, 1)])) # E: Revealed type is 'builtins.int*'
+fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected List[Tuple[int, int]]
+fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
+
+reveal_type(fun2([(1, 1)], 1)) # E: Revealed type is 'builtins.list[Tuple[builtins.int*, builtins.int*]]'
+fun2([('x', 'x')], 'x') # E: Type argument 1 of "fun2" has incompatible value "str"
+
+[builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesImporting]
-from typing import TypeVar, Generic
-T = TypeVar('T')
-class Node(Generic[T]):
-    def __init__(self, x: T) -> None:
-        ...
-
-[out]
-
-[case testGenericTypeAliasesImporting2]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class Node(Generic[T]):
@@ -762,9 +810,9 @@ class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         ...
 
-IntIntNode = Node[int, int]
-IntIntNode(1, 1)
-IntIntNode(1, 'a')  # E: Argument 2 has incompatible type "str"; expected "int"
+IntNode = Node[int, T]
+IntNode[int](1, 1)
+IntNode[int](1, 'a')  # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
 
 SameNode = Node[T, T]
 a = SameNode(1, 'x')
@@ -776,12 +824,21 @@ SameNode[int](1, 'x') # E: Argument 2 to "Node" has incompatible type "str"; exp
 [out]
 
 [case testGenericTypeAliasesRuntimeExpressionsOther]
-from typing import TypeVar, Generic
+from typing import TypeVar, Union, Tuple, Callable, Any
 T = TypeVar('T')
-S = TypeVar('S')
-class Node(Generic[T, S]):
-    def __init__(self, x: T, y: S) -> None:
-        ...
+
+CA = Callable[[T], int]
+TA = Tuple[T, int]
+UA = Union[T, int]
+
+cs = CA[str]() # E: Invalid type alias in runtime expression: def (builtins.str) -> builtins.int
+reveal_type(cs) # E: Revealed type is 'Any'
+
+ts = TA[str]() # E: Invalid type alias in runtime expression: Tuple[builtins.str, builtins.int]
+reveal_type(ts) # E: Revealed type is 'Any'
+
+us = UA[str]() # E: Invalid type alias in runtime expression: Union[builtins.str, builtins.int]
+reveal_type(us) # E: Revealed type is 'Any'
 
 [out]
 
