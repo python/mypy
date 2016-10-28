@@ -1594,6 +1594,9 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # part of a small cycle involving at least {builtins, abc,
         # typing}.  Of these, builtins must be processed last or else
         # some builtin objects will be incompletely processed.)
+        if 'abc' in ascc:
+            scc.remove('abc')
+            scc.append('abc')
         if 'builtins' in ascc:
             scc.remove('builtins')
             scc.append('builtins')
