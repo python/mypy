@@ -3,7 +3,7 @@ language: python
 python:
   - "3.3"
   - "3.4"
-  - "3.5"
+  - "3.5.1"
   # Pypy build is disabled because it doubles the travis build time, and it rarely fails
   # unless one one of the other builds fails.
   # - "pypy3"
