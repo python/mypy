@@ -2770,7 +2770,7 @@ class FirstPass(NodeVisitor):
                 sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
             # Also analyze the function body (in case there are conditional imports).
             sem.function_stack.append(func)
-            sem.errors.push_function(defn.name())
+            sem.errors.push_function(func.name())
             sem.enter()
             func.body.accept(self)
             sem.leave()
