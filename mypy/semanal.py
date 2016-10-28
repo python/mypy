@@ -1126,7 +1126,8 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             self.visit_block(b)
 
-    def anal_type(self, t: Type, allow_tuple_literal: bool = False) -> Type:
+    def anal_type(self, t: Type, allow_tuple_literal: bool = False,
+                  aliasing: bool = False) -> Type:
         if t:
             if allow_tuple_literal:
                 # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
@@ -1143,7 +1144,8 @@ class SemanticAnalyzer(NodeVisitor):
                     return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
-                             self.fail)
+                             self.fail,
+                             aliasing=aliasing)
             return t.accept(a)
         else:
             return None
@@ -2375,7 +2377,7 @@ class SemanticAnalyzer(NodeVisitor):
                 except TypeTranslationError:
                     self.fail('Type expected within [...]', expr)
                     return
-                typearg = self.anal_type(typearg)
+                typearg = self.anal_type(typearg, aliasing=True)
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line

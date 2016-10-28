@@ -39,7 +39,11 @@ def analyze_type_alias(node: Expression,
     # Quickly return None if the expression doesn't look like a type. Note
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
+
     if isinstance(node, RefExpr):
+        if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
+            fail_func('Invalid type "{}" for aliasing'.format(node.fullname), node)
+            return None
         if not (isinstance(node.node, TypeInfo) or
                 node.fullname == 'typing.Any' or
                 node.kind == TYPE_ALIAS):
@@ -48,7 +52,8 @@ def analyze_type_alias(node: Expression,
         base = node.base
         if isinstance(base, RefExpr):
             if not (isinstance(base.node, TypeInfo) or
-                    base.fullname in type_constructors):
+                    base.fullname in type_constructors or
+                    base.kind == TYPE_ALIAS):
                 return None
         else:
             return None
@@ -61,7 +66,7 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True)
     return type.accept(analyzer)
 
 
@@ -74,60 +79,12 @@ class TypeAnalyser(TypeVisitor[Type]):
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
-                 fail_func: Callable[[str, Context], None]) -> None:
+                 fail_func: Callable[[str, Context], None], *,
+                 aliasing = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
-
-
-    def get_unbound_tvar_name(self, t: Type) -> str:
-        if not isinstance(t, UnboundType):
-            return None
-        unbound = t
-        sym = self.lookup(unbound.name, unbound)
-        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
-            return unbound.name
-        return None
-
-
-    def unique_vars(self, tvars):
-        # Get unbound type variables in order of appearance
-        all_tvars = set(tvars)
-        new_tvars = []
-        for t in tvars:
-            if t in all_tvars:
-                new_tvars.append(t)
-                all_tvars.remove(t)
-        return new_tvars
-
-
-    def get_type_var_names(self, tp: Instance) -> List[str]:
-        tvars = []  # type: List[str]
-        if not isinstance(tp, Instance):
-            return tvars
-        for arg in tp.args:
-            tvar = self.get_unbound_tvar_name(arg)
-            if tvar:
-                tvars.append(tvar)
-            elif isinstance(arg, Instance):
-                subvars = self.get_type_var_names(arg)
-                if subvars:
-                    tvars.extend(subvars)
-        return tvars
-
-
-    def replace_alias_tvars(self, tp: Instance, vars: List[str], subs: List[Type]) -> None:
-        if not isinstance(tp, Instance) or not subs:
-            return AnyType()
-        new_args = tp.args[:]
-        for i, arg in enumerate(tp.args):
-            tvar = self.get_unbound_tvar_name(arg)
-            if tvar and tvar in vars:
-                new_args[i] = subs[vars.index(tvar)]
-            elif isinstance(arg, Instance):
-                new_args[i] = self.replace_alias_tvars(arg, vars, subs)
-        return Instance(tp.type, new_args, tp.line)
-
+        self.aliasing = aliasing
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -193,19 +150,18 @@ class TypeAnalyser(TypeVisitor[Type]):
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
                 an_args = self.anal_array(t.args)
-                found_vars = self.get_type_var_names(override)
-                all_vars = self.unique_vars(found_vars)
-                print(all_vars, an_args)
+                all_vars = self.get_type_var_names(override)
                 exp_len = len(all_vars)
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
+                    # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
                     return self.replace_alias_tvars(override, all_vars, [AnyType()] * exp_len)
                 if exp_len == 0 and act_len == 0:
                     return override
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
-                    return AnyType()
+                    return t
                 return self.replace_alias_tvars(override, all_vars, an_args)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
@@ -217,7 +173,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
                     return AnyType()
-                self.fail('Invalid type "{}"'.format(name), t)
+                # Allow unbount type variables when defining an alias
+                if not (self.aliasing and sym.kind == UNBOUND_TVAR):
+                    self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
@@ -244,6 +202,60 @@ class TypeAnalyser(TypeVisitor[Type]):
                                              fallback=instance)
         else:
             return AnyType()
+
+    def get_tvar_name(self, t: Type) -> str:
+        if not isinstance(t, UnboundType):
+            return None
+        sym = self.lookup(t.name, t)
+        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+            return t.name
+        return None
+
+    def get_type_var_names(self, tp: Type) -> List[str]:
+        tvars = []  # type: List[str]
+        if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
+            return tvars
+        typ_args = (tp.args if isinstance(tp, Instance) else
+                    tp.items if not isinstance(tp, CallableType) else
+                    tp.arg_types + [tp.ret_type])
+        for arg in typ_args:
+            tvar = self.get_tvar_name(arg)
+            if tvar:
+                tvars.append(tvar)
+            else:
+                subvars = self.get_type_var_names(arg)
+                if subvars:
+                    tvars.extend(subvars)
+        # Get unique type variables in order of appearance
+        all_tvars = set(tvars)
+        new_tvars = []
+        for t in tvars:
+            if t in all_tvars:
+                new_tvars.append(t)
+                all_tvars.remove(t)
+        return new_tvars
+
+    def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type]) -> Type:
+        if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)) or not subs:
+            return tp
+        typ_args = (tp.args if isinstance(tp, Instance) else
+                    tp.items if not isinstance(tp, CallableType) else
+                    tp.arg_types + [tp.ret_type])
+        new_args = typ_args[:]
+        for i, arg in enumerate(typ_args):
+            tvar = self.get_tvar_name(arg)
+            if tvar and tvar in vars:
+                new_args[i] = subs[vars.index(tvar)]
+            else:
+                new_args[i] = self.replace_alias_tvars(arg, vars, subs)
+        if isinstance(tp, Instance):
+            return Instance(tp.type, new_args, tp.line)
+        if isinstance(tp, TupleType):
+            return tp.copy_modified(items=new_args)
+        if isinstance(tp, UnionType):
+            return UnionType.make_union(new_args, tp.line)
+        if isinstance(tp, CallableType):
+            return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1])
 
     def visit_any(self, t: AnyType) -> Type:
         return t
