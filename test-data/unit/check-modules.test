@@ -1296,6 +1296,14 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
 main:1: note: In module imported here:
 tmp/a.py:6: error: Revealed type is 'def (builtins.str*) -> builtins.int'
 
+[case testDeferredClassContext]
+class A:
+    def f(self) -> str: return 'foo'
+class B(A):
+    def f(self) -> str: return self.x
+    def initialize(self): self.x = 'bar'
+[out]
+
 
 -- Scripts and __main__
 
