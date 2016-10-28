@@ -1378,7 +1378,7 @@ class ExpressionChecker:
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         item = alias.type
         if isinstance(item, Instance):
-            item = self.replace_tvars_any(item)
+            item = cast(Instance, self.replace_tvars_any(item))
             tp = type_object_type(item.type, self.named_type)
         else:
             return item

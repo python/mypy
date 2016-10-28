@@ -1,6 +1,6 @@
 """Semantic analysis of types"""
 
-from typing import Callable, cast, List
+from typing import Callable, cast, List, Optional
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
@@ -39,7 +39,6 @@ def analyze_type_alias(node: Expression,
     # Quickly return None if the expression doesn't look like a type. Note
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
-
     if isinstance(node, RefExpr):
         if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
             fail_func('Invalid type "{}" for aliasing'.format(node.fullname), node)
@@ -203,14 +202,6 @@ class TypeAnalyser(TypeVisitor[Type]):
         else:
             return AnyType()
 
-    def get_tvar_name(self, t: Type) -> str:
-        if not isinstance(t, UnboundType):
-            return None
-        sym = self.lookup(t.name, t)
-        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
-            return t.name
-        return None
-
     def get_type_var_names(self, tp: Type) -> List[str]:
         tvars = []  # type: List[str]
         if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
@@ -234,6 +225,14 @@ class TypeAnalyser(TypeVisitor[Type]):
                 new_tvars.append(t)
                 all_tvars.remove(t)
         return new_tvars
+
+    def get_tvar_name(self, t: Type) -> Optional[str]:
+        if not isinstance(t, UnboundType):
+            return None
+        sym = self.lookup(t.name, t)
+        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+            return t.name
+        return None
 
     def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type]) -> Type:
         if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)) or not subs:
