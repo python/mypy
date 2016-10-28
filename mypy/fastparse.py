@@ -867,7 +867,9 @@ class TypeConverter(ast35.NodeTransformer):
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast35.Subscript) -> Type:
-        assert isinstance(n.slice, ast35.Index)
+        if not isinstance(n.slice, ast35.Index):
+            raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, self.line,
+                                        getattr(n, 'col_offset', -1))
 
         value = self.visit(n.value)
 
