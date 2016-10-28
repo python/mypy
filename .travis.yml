@@ -3,7 +3,10 @@ language: python
 python:
   - "3.3"
   - "3.4"
+  # Specifically request 3.5.1 because we need to be compatible with that.
   - "3.5.1"
+  - "3.6"
+  - "nightly"
   # Pypy build is disabled because it doubles the travis build time, and it rarely fails
   # unless one one of the other builds fails.
   # - "pypy3"
