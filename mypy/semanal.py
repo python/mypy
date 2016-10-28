@@ -905,7 +905,9 @@ class SemanticAnalyzer(NodeVisitor):
             sym = self.lookup(defn.metaclass, defn)
             if sym is not None:
                 assert isinstance(sym.node, TypeInfo)
-                defn.info.metaclass_type = fill_typevars(sym.node)
+                inst = fill_typevars(sym.node)
+                assert isinstance(inst, Instance)
+                defn.info.metaclass_type = inst
                 return
             else:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)

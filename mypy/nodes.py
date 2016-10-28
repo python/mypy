@@ -1903,13 +1903,18 @@ class TypeInfo(SymbolNode):
         'is_typed_dict', 'is_newtype'
     ]
     
-    _metaclass_type = None  # type: Optional[Instance]
+    _metaclass_type = None  # type: Optional[mypy.types.Instance]
     
     @property
-    def metaclass_type(self) -> 'mypy.types.Instance':
+    def metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         if self._metaclass_type:
             return self._metaclass_type
-        return self.mro[1].metaclass_type
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        if len(self.mro) > 1:
+            return self.mro[1].metaclass_type
+        # FIX: assert False
+        return None
 
     @metaclass_type.setter
     def metaclass_type(self, value: 'mypy.types.Instance'):
@@ -1942,6 +1947,9 @@ class TypeInfo(SymbolNode):
     def is_generic(self) -> bool:
         """Is the type generic (i.e. does it have type variables)?"""
         return len(self.type_vars) > 0
+
+    def is_metaclass(self) -> bool:
+        return self.has_base('builtins.type')
 
     def get(self, name: str) -> 'SymbolTableNode':
         for cls in self.mro:
