@@ -273,7 +273,8 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast
                     # is fine.
-                    return cast(CallableType, signature).ret_type
+                    assert isinstance(signature, CallableType)
+                    return signature.ret_type
                 else:
                     return signature
         return t
@@ -485,8 +486,9 @@ def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,
         return class_callable(signature, info, fallback, special_sig)
     else:
         # Overloaded __init__/__new__.
+        assert isinstance(signature, Overloaded)
         items = []  # type: List[CallableType]
-        for item in cast(Overloaded, signature).items():
+        for item in signature.items():
             items.append(class_callable(item, info, fallback, special_sig))
         return Overloaded(items)
 

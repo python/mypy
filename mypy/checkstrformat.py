@@ -151,12 +151,11 @@ class StringFormatterChecker:
 
     def check_mapping_str_interpolation(self, specifiers: List[ConversionSpecifier],
                                        replacements: Expression) -> None:
-        dict_with_only_str_literal_keys = (isinstance(replacements, DictExpr) and
-                                          all(isinstance(k, (StrExpr, BytesExpr))
-                                              for k, v in replacements.items))
-        if dict_with_only_str_literal_keys:
+        if (isinstance(replacements, DictExpr) and
+                all(isinstance(k, (StrExpr, BytesExpr))
+                    for k, v in replacements.items)):
             mapping = {}  # type: Dict[str, Type]
-            for k, v in cast(DictExpr, replacements).items:
+            for k, v in replacements.items:
                 key_str = cast(StrExpr, k).value
                 mapping[key_str] = self.accept(v)
 

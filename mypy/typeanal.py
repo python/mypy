@@ -112,9 +112,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return self.builtin_type('builtins.tuple')
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
-                    node = self.lookup_fqn_func('builtins.tuple')
-                    tuple_info = cast(TypeInfo, node.node)
-                    return Instance(tuple_info, [t.args[0].accept(self)], t.line)
+                    instance = self.builtin_type('builtins.tuple', [t.args[0].accept(self)])
+                    instance.line = t.line
+                    return instance
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
@@ -291,8 +291,8 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def builtin_type(self, fully_qualified_name: str, args: List[Type] = None) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
-        info = cast(TypeInfo, node.node)
-        return Instance(info, args or [])
+        assert isinstance(node.node, TypeInfo)
+        return Instance(node.node, args or [])
 
     def tuple_type(self, items: List[Type]) -> TupleType:
         return TupleType(items, fallback=self.builtin_type('builtins.tuple', [AnyType()]))

@@ -1,4 +1,4 @@
-from typing import Dict, List, cast
+from typing import Dict, List
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
@@ -85,7 +85,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]
         for item in t.items():
-            items.append(cast(CallableType, item.accept(self)))
+            new_item = item.accept(self)
+            assert isinstance(new_item, CallableType)
+            items.append(new_item)
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
