@@ -51,6 +51,10 @@ The following global flags may only be set in the global section
   alternative directory which is used to look for stubs instead of the
   default ``typeshed`` directory.
 
+- ``mypy_path`` (string) specifies the paths to use, after trying the paths
+  from ``MYPYPATH`` environment variable.  Useful if you'd like to keep stubs
+  in your repo, along with the config file.
+
 - ``warn_incomplete_stub`` (Boolean, default False) warns for missing
   type annotation in typeshed.  This is only relevant in combination
   with ``check_untyped_defs``.

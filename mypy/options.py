@@ -36,6 +36,7 @@ class Options:
         self.platform = sys.platform
         self.custom_typing_module = None  # type: Optional[str]
         self.custom_typeshed_dir = None  # type: Optional[str]
+        self.mypy_path = []  # type: List[str]
         self.report_dirs = {}  # type: Dict[str, str]
         self.silent_imports = False
         self.almost_silent = False

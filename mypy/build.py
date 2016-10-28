@@ -153,6 +153,9 @@ def build(sources: List[BuildSource],
         # to the lib_path
         lib_path.insert(0, os.getcwd())
 
+    # Prepend a config-defined mypy path.
+    lib_path[:0] = options.mypy_path
+
     # Add MYPYPATH environment variable to front of library path, if defined.
     lib_path[:0] = mypy_path()
 
