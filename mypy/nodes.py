@@ -1902,6 +1902,18 @@ class TypeInfo(SymbolNode):
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_typed_dict', 'is_newtype'
     ]
+    
+    _metaclass_type = None  # type: Optional[Instance]
+    
+    @property
+    def metaclass_type(self) -> 'mypy.types.Instance':
+        if self._metaclass_type:
+            return self._metaclass_type
+        return self.mro[1].metaclass_type
+
+    @metaclass_type.setter
+    def metaclass_type(self, value: 'mypy.types.Instance'):
+        self._metaclass_type = value
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""

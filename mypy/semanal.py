@@ -902,8 +902,12 @@ class SemanticAnalyzer(NodeVisitor):
             if defn.metaclass == '<error>':
                 self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
                 return
-            sym = self.lookup_qualified(defn.metaclass, defn)
-            if sym is not None and not isinstance(sym.node, TypeInfo):
+            sym = self.lookup(defn.metaclass, defn)
+            if sym is not None:
+                assert isinstance(sym.node, TypeInfo)
+                defn.info.metaclass_type = fill_typevars(sym.node)
+                return
+            else:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
 
     def object_type(self) -> Instance:

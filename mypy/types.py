@@ -508,6 +508,9 @@ class FunctionLike(Type):
 
     can_be_false = False
 
+    # Corresponding instance type (e.g. builtins.type)
+    fallback = None  # type: Instance
+
     @abstractmethod
     def is_type_obj(self) -> bool: pass
 
@@ -522,9 +525,6 @@ class FunctionLike(Type):
 
     @abstractmethod
     def with_name(self, name: str) -> 'FunctionLike': pass
-
-    # Corresponding instance type (e.g. builtins.type)
-    fallback = None  # type: Instance
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'FunctionLike':
@@ -624,7 +624,7 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type is not None and self.fallback.type.fullname() == 'builtins.type'
+        return self.fallback.type is not None  # and self.fallback.type.fullname() == 'builtins.type'
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class

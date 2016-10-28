@@ -175,7 +175,7 @@ def analyze_member_access(name: str,
                                                     original_type=original_type)
             if result:
                 return result
-        fallback = builtin_type('builtins.type')
+        fallback = item.type.metaclass_type
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
                                      original_type=original_type, chk=chk)
@@ -437,7 +437,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         # Must be an invalid class definition.
         return AnyType()
     else:
-        fallback = builtin_type('builtins.type')
+        fallback = info.metaclass_type
         if init_method.info.fullname() == 'builtins.object':
             # No non-default __init__ -> look at __new__ instead.
             new_method = info.get_method('__new__')

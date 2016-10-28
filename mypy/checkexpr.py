@@ -1607,7 +1607,7 @@ class ExpressionChecker:
                     args = self.chk.function_stack[-1].arguments
                     # An empty args with super() is an error; we need something in declared_self
                     if not args:
-                        self.chk.fail('super() requires at least on positional argument', e)
+                        self.chk.fail('super() requires at least one positional argument', e)
                         return AnyType()
                     declared_self = args[0].variable.type
                     return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
