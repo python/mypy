@@ -118,17 +118,3 @@ takes_int(SomeExtIntEnum.x)
 def takes_some_ext_int_enum(s: SomeExtIntEnum):
     pass
 takes_some_ext_int_enum(SomeExtIntEnum.x)
-
-[case testEnumIter]
-from typing import List
-from enum import Enum
-class Medal(Enum):
-    gold = 1
-    silver = 2
-    bronze = 3
-
-for x in Medal:
-    reveal_type(x)  # E: Revealed type is '_program.Medal*'
-
--- TODO:
--- reveal_type(list(Medal))  # type: List[Medal]
