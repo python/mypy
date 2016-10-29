@@ -734,22 +734,42 @@ class E(Generic[T], UNode[T]): ... # E: Invalid base class
 [builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesUnion]
-from typing import TypeVar, Generic, Union
+from typing import TypeVar, Generic, Union, Any
 T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
-        ...
+        self.x = x
 
-[out]
+UNode = Union[int, Node[T]]
+x = 1 # type: UNode[int]
 
-[case testGenericTypeAliasesOptional]
-from typing import TypeVar, Generic, Optional
-T = TypeVar('T')
-class Node(Generic[T]):
-    def __init__(self, x: T) -> None:
-        ...
+x + 1 # E: Unsupported left operand type for + (some union)
+if not isinstance(x, Node):
+    x + 1
 
-[out]
+if not isinstance(x, int):
+   x.x = 1
+   x.x = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+def f(x: T) -> UNode[T]:
+    if 1:
+        return Node(x)
+    else:
+        return 1
+
+reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int, __main__.Node[builtins.int*]]'
+
+TNode = Union[T, Node[int]]
+s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, Node[int]]")
+
+if not isinstance(s, str):
+    s.x = 1
+
+z = None # type: TNode # Same as TNode[Any]
+z.x
+z.foo() # E: Some element of union has no attribute "foo"
+
+[builtins fixtures/isinstance.pyi]
 
 [case testGenericTypeAliasesTuple]
 from typing import TypeVar, Generic, Tuple
@@ -801,7 +821,7 @@ T = TypeVar('T')
 n = None # type: TupledNode[int]
 n.x = 1
 n.y = (1, 1)
-n.y = 'x' # E: Bad type
+n.y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "Tuple[int, int]")
 
 def f(x: Node[T, T]) -> TupledNode[T]:
     return Node(x.x, (x.x, x.x))

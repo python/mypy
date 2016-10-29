@@ -426,9 +426,58 @@ assigning the type to a variable:
    def f() -> AliasType:
        ...
 
-A type alias does not create a new type. It's just a shorthand notation
-for another type -- it's equivalent to the target type. Type aliases
-can be imported from modules like any names.
+Type aliases can be generic, in this case they could be used in two variants:
+Subscribed aliases are equivalent to original types with substituted type variables,
+number of type arguments must match the number of free type variables
+in generic type alias. Unsubscribed aliases are treated as original types with free
+vaiables replacec with ``Any``. Examples (following `PEP 484
+<https://www.python.org/dev/peps/pep-0484/#type-aliases>`_):
+
+.. code-block:: python
+
+    from typing import TypeVar, Iterable, Tuple
+    T = TypeVar('T', int, float, complex)
+
+    Vec = Iterable[Tuple[T, T]]
+
+    def inproduct(v: Vec[T]) -> T:
+        return sum(x*y for x, y in v)
+
+    def dilate(v: Vec[T], scale: T) -> Vec[T]:
+        return ((x * scale, y * scale) for x, y in v)
+
+    v1: Vec[int] = []      # Same as Iterable[Tuple[int, int]]
+    v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
+    v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
+
+Type aliases can be imported from modules like any names. Following previous examples:
+
+.. code-block:: python
+
+    from typing import TypeVar, Generic
+    from first_example import AliasType
+    from secon_example import Vec
+
+    T = TypeVar('T')
+    class NewVec(Generic[T], Vec[T]):
+        ...
+
+    for i, j in NewVec[int]():
+        ...
+
+    def fun() -> AliasType:
+        ...
+
+.. note::
+
+    A type alias does not create a new type. It's just a shorthand notation for
+    another type -- it's equivalent to the target type. For generic type aliases
+    this means that variance of type variables used for alias definition does not
+    allpy to aliases. Parameterized generic alias is treated simply as an original
+    type with corresponding type variables substituted. Accordingly, type checking
+    happens when a type alias is used. Invalid aliases (like e.g.
+    ``Callable[..., List[T, T]]``) might not always be flagged by mypy if they are
+    left unused.
 
 .. _newtypes:
 

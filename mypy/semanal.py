@@ -2364,6 +2364,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_index_expr(self, expr: IndexExpr) -> None:
         expr.base.accept(self)
         if isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
+            # Special form -- subcribing a generic type alias.
+            # Perform the type substitution and create a new alias.
             res = analyze_type_alias(expr,
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
