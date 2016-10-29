@@ -1172,7 +1172,7 @@ class SemanticAnalyzer(NodeVisitor):
                                 # TODO -- Can we resolve/support TypeVars at this stage?
                                 if not isinstance(base_var.type, TypeVarType):
                                     s.type = base_var.type
-                                    break
+                                break
 
                     if s.type is None:
                         s.type = self.analyze_simple_literal_type(s.rvalue)
