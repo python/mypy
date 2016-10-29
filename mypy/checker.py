@@ -609,17 +609,14 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = typ.arg_types[i]
 
                     ref_type = self.scope.active_class()
-                    if not defn.is_static and i == 0 and ref_type is not None:
-                        # This check is a temporary hack
-                        # Otherwise we fail to typecheck type.__subclasses__
-                        if (isinstance(ref_type, Instance)
-                                and ref_type.type.fullname() != 'builtins.type'):
-                            if defn.is_class:
-                                ref_type = mypy.types.TypeType(ref_type)
-                            erased = erase_to_bound(arg_type)
-                            if not is_subtype_ignoring_tvars(ref_type, erased):
-                                self.fail("The type of self '{}' is not a supertype its class '{}'"
-                                          .format(erased, ref_type), defn)
+                    if (not defn.is_static and i == 0 and ref_type is not None
+                            and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
+                        if defn.is_class:
+                            ref_type = mypy.types.TypeType(ref_type)
+                        erased = erase_to_bound(arg_type)
+                        if not is_subtype_ignoring_tvars(ref_type, erased):
+                            self.fail("The type of self '{}' is not a supertype its class '{}'"
+                                      .format(erased, ref_type), defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recuresively for inner type variables
