@@ -79,6 +79,8 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy.options import Options
+from mypy.expandtype import expand_type_by_instance
+from mypy.maptype import map_instance_to_supertype
 
 
 T = TypeVar('T')
@@ -1169,8 +1171,10 @@ class SemanticAnalyzer(NodeVisitor):
                         for base in var_node.info.mro[1:]:
                             base_var = base.names.get(var_node.name())
                             if base_var and base_var.type:
-                                # TODO -- Can we resolve/support TypeVars at this stage?
-                                if not isinstance(base_var.type, TypeVarType):
+                                if isinstance(base_var.type, TypeVarType):
+                                    itype = map_instance_to_supertype(var_node.info.bases[0], base)
+                                    s.type = expand_type_by_instance(base_var.type, itype)
+                                else:
                                     s.type = base_var.type
                                 break
 

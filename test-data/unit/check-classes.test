@@ -2113,3 +2113,22 @@ main: note: In class "A":
 main:2: error: Need type annotation for variable
 main: note: In class "C":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableTypeVar]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: T
+class B(A[int]):
+    a = 1
+
+[case testVariableTypeVarInvalid]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: T
+class B(A[int]):
+    a = "abc"
+[out]
+main: note: In class "B":
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
