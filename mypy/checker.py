@@ -65,6 +65,7 @@ DeferredNode = NamedTuple(
     [
         ('node', FuncItem),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
+        ('class_type', Optional[Type]),  # And its type (from class_context)
     ])
 
 
@@ -202,13 +203,20 @@ class TypeChecker(NodeVisitor[Type]):
         todo = self.deferred_nodes
         self.deferred_nodes = []
         done = set()  # type: Set[FuncItem]
-        for node, type_name in todo:
+        for node, type_name, class_type in todo:
             if node in done:
                 continue
+            # This is useful for debugging:
+            # print("XXX in pass %d, class %s, function %s" %
+            #       (self.pass_num, type_name, node.fullname() or node.name()))
             done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
+            if class_type:
+                self.class_context.append(class_type)
             self.accept(node)
+            if class_type:
+                self.class_context.pop()
             if type_name:
                 self.errors.pop_type()
         return True
@@ -221,7 +229,11 @@ class TypeChecker(NodeVisitor[Type]):
                 type_name = self.errors.type_name[-1]
             else:
                 type_name = None
-            self.deferred_nodes.append(DeferredNode(node, type_name))
+            if self.class_context:
+                class_context_top = self.class_context[-1]
+            else:
+                class_context_top = None
+            self.deferred_nodes.append(DeferredNode(node, type_name, class_context_top))
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
             # least one type that we don't know.
