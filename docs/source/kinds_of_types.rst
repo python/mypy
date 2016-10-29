@@ -435,9 +435,12 @@ vaiables replacec with ``Any``. Examples (following `PEP 484
 
 .. code-block:: python
 
-    from typing import TypeVar, Iterable, Tuple
+    from typing import TypeVar, Iterable, Tuple, Union, Callable
     T = TypeVar('T', int, float, complex)
 
+    TInt = Tuple[T, int]
+    UInt = Union[T, int]
+    CBack = Callable[..., T]
     Vec = Iterable[Tuple[T, T]]
 
     def inproduct(v: Vec[T]) -> T:
