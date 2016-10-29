@@ -251,26 +251,43 @@ class B(A):
 
 [case testSelfTypeNonsensical]
 # flags: --hide-error-context
-from typing import TypeVar
+from typing import TypeVar, Type
 
 T = TypeVar('T', bound=str)
 class A:
     def foo(self: T) -> T:   # E: The type of self 'builtins.str' is not a supertype its class '__main__.A'
         return self
 
+    @classmethod
+    def cfoo(cls: Type[T]) -> T:  # E: The type of self 'Type[builtins.str]' is not a supertype its class 'Type[__main__.A]'
+        return cls()
 
 Q = TypeVar('Q', bound='B')
 class B:
     def foo(self: Q) -> Q:
         return self
 
+    @classmethod
+    def cfoo(cls: Type[Q]) -> Q:
+        return cls()
+    
 class C:
     def foo(self: C) -> C: return self
+
+    @classmethod
+    def cfoo(cls: Type[C]) -> C:
+        return cls()
 
 class D:
     def foo(self: str) -> str:  # E: The type of self 'builtins.str' is not a supertype its class '__main__.D'
         return self    
 
     @staticmethod
-    def bad(self: str) -> str:
+    def bar(self: str) -> str:
         return self
+
+    @classmethod
+    def cfoo(cls: Type[str]) -> str:  # E: The type of self 'Type[builtins.str]' is not a supertype its class 'Type[__main__.D]'
+        return cls()
+
+[builtins fixtures/classmethod.pyi]
