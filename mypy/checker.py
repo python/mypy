@@ -35,10 +35,11 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away
+    is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away,
+    is_subtype_ignoring_tvars
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
@@ -616,14 +617,21 @@ class TypeChecker(NodeVisitor[Type]):
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
 
-                    # Refuse covariant parameter type variables
-                    # TODO: check recuresively for inner type variables
-                    if isinstance(arg_type, TypeVarType):
-                        if i > 0:
-                            if arg_type.variance == COVARIANT:
-                                self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
-                                          arg_type)
-                        # FIX: if i == 0 and this is not a method then same as above
+                    if not defn.is_static and i == 0 and self.class_context:
+                        ref_type = self.class_context[-1]
+                        if defn.is_class:
+                            ref_type = mypy.types.TypeType(ref_type)
+                        erased = erase_to_bound(arg_type)
+                        if not is_subtype_ignoring_tvars(ref_type, erased):
+                            print(self.class_context[-1], arg_type)
+                            self.fail("The type of self '{}' is not a supertype its class '{}'"
+                                      .format(erased, ref_type),
+                                      defn)
+                    elif isinstance(arg_type, TypeVarType):
+                        # Refuse covariant parameter type variables
+                        # TODO: check recuresively for inner type variables
+                        if arg_type.variance == COVARIANT:
+                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',

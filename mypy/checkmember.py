@@ -614,4 +614,4 @@ def erase_to_bound(t: Type):
     if isinstance(t, TypeType):
         if isinstance(t.item, TypeVarType):
             return TypeType(t.item.upper_bound)
-    assert not t
+    return t
