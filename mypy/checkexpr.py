@@ -1383,16 +1383,26 @@ class ExpressionChecker:
         if isinstance(item, Instance):
             tp = type_object_type(item.type, self.named_type)
         else:
-            # TODO: Better error reporting, need to find line for
-            # unsubscribed generic aliases
+            # TODO: Better error reporting: need to find line for
+            # unsubscribed generic aliases, that are invalid at runtime.
             if alias.line > 0:
                 self.chk.fail('Invalid type alias in runtime expression: {}'
                               .format(item), alias)
             return AnyType()
         if isinstance(tp, CallableType):
+            if len(tp.variables) != len(item.args):
+                self.msg.incompatible_type_application(len(tp.variables),
+                                                       len(item.args), item)
+                return AnyType()
             return self.apply_generic_arguments(tp, item.args, item)
-        if isinstance(tp, Overloaded):
-            return self.apply_generic_arguments2(tp, item.args, item)
+        elif isinstance(tp, Overloaded):
+            for it in tp.items():
+                if len(it.variables) != len(item.args):
+                    self.msg.incompatible_type_application(len(it.variables),
+                                                           len(item.args), item)
+                    return AnyType()
+            return Overloaded([self.apply_generic_arguments(it, item.args, item)
+                               for it in tp.items()])
         return AnyType()
 
     def replace_tvars_any(self, tp: Type) -> Type:

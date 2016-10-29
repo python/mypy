@@ -159,7 +159,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return override
                 if act_len != exp_len:
                     # TODO: Detect wrong type variable numer for unused aliases
-                    # (although it could be difficult at this stage, see comment below)
+                    # (it is difficult at this stage, see comment below, line 187 atm)
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
                     return t
