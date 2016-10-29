@@ -74,7 +74,7 @@ files = [
 if 'annotation' in typed_ast.ast35.Assign._fields:
     files.append('check-newsyntax.test')
 
-if 'underscores' in typed_ast.ast35.Num._fields:
+if 'contains_underscores' in typed_ast.ast35.Num._fields:
     files.append('check-underscores.test')
 
 

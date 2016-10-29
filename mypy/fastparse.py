@@ -736,7 +736,7 @@ class ASTConverter(ast35.NodeTransformer):
     # Num(object n) -- a number as a PyObject.
     @with_line
     def visit_Num(self, n: ast35.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        if getattr(n, 'underscores', None) and self.pyversion < (3, 6):
+        if getattr(n, 'contains_underscores', None) and self.pyversion < (3, 6):
             raise FastParserError('Underscores in numeric literals are only '
                                   'supported in Python 3.6', n.lineno, n.col_offset)
         if isinstance(n.n, int):
