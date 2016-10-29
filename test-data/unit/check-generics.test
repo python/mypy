@@ -772,13 +772,26 @@ z.foo() # E: Some element of union has no attribute "foo"
 [builtins fixtures/isinstance.pyi]
 
 [case testGenericTypeAliasesTuple]
-from typing import TypeVar, Generic, Tuple
+from typing import TypeVar, Tuple
 T = TypeVar('T')
-class Node(Generic[T]):
-    def __init__(self, x: T) -> None:
-        ...
 
-[out]
+SameTP = Tuple[T, T]
+IntTP = Tuple[int, T]
+
+def f1(x: T) -> SameTP[T]:
+    return x, x
+
+a, b, c = f1(1) # E: Need more than 2 values to unpack (3 expected)
+x, y = f1(1)
+reveal_type(x) # E: Revealed type is 'builtins.int'
+
+def f2(x: IntTP[T]) -> IntTP[T]:
+    return x
+
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, None]"
+reveal_type(f2((1, 'x'))) # E: Revealed type is 'Tuple[builtins.int, builtins.str*]'
+
+[builtins fixtures/for.pyi]
 
 [case testGenericTypeAliasesCallable]
 from typing import TypeVar, Generic, Callable
@@ -786,6 +799,24 @@ T = TypeVar('T')
 class Node(Generic[T]):
     def __init__(self, x: T) -> None:
         ...
+
+BadC = Callable[T] # E: Invalid function type
+
+C = Callable[..., T]
+C2 = Callable[[T, T], Node[T]]
+
+def make_cb(x: T) -> C[T]:
+    return lambda *args: x
+
+reveal_type(make_cb(1)) # E: Revealed type is 'def (*Any, **Any) -> builtins.int*'
+
+def use_cb(arg: T, cb: C2[T]) -> Node[T]:
+    return cb(arg, arg)
+
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected Callable[[int, int], Node[int]]
+my_cb = None # type: C2[int]
+use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type Callable[[int, int], Node[int]]; expected Callable[[str, str], Node[str]]
+reveal_type(use_cb(1, my_cb)) # E: Revealed type is '__main__.Node[builtins.int]'
 
 [out]
 

@@ -450,23 +450,27 @@ vaiables replacec with ``Any``. Examples (following `PEP 484
     v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
     v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
 
-Type aliases can be imported from modules like any names. Following previous examples:
+Type aliases can be imported from modules like any names. Aliases can target another
+aliases (although building complex chains of aliases is not recommended, this
+impedes code readability, thus defeating the purpose of using aliases).
+Following previous examples:
 
 .. code-block:: python
 
-    from typing import TypeVar, Generic
+    from typing import TypeVar, Generic, Optional
     from first_example import AliasType
-    from secon_example import Vec
+    from second_example import Vec
+
+    def fun() -> AliasType:
+        ...
 
     T = TypeVar('T')
     class NewVec(Generic[T], Vec[T]):
         ...
-
     for i, j in NewVec[int]():
         ...
 
-    def fun() -> AliasType:
-        ...
+    OIntVec = Optional[Vec[int]]
 
 .. note::
 
