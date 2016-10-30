@@ -1733,10 +1733,13 @@ class TypeAliasExpr(Expression):
 
     type = None  # type: mypy.types.Type
     line = None  # type: int
+    runtime = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type', line: int = -1) -> None:
+    def __init__(self, type: 'mypy.types.Type', line: int = -1,
+                 runtime: bool = False) -> None:
         self.type = type
         self.line = line
+        self.runtime = runtime
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)

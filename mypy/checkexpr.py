@@ -1378,7 +1378,8 @@ class ExpressionChecker:
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         """ Get type of a type alias (could be generic) in a runtime expression."""
         item = alias.type
-        if isinstance(item, (Instance, TupleType, UnionType, CallableType)):
+        if (isinstance(item, (Instance, TupleType, UnionType, CallableType))
+           and not alias.runtime):
             item = self.replace_tvars_any(item)
         if isinstance(item, Instance):
             tp = type_object_type(item.type, self.named_type)

@@ -2370,7 +2370,7 @@ class SemanticAnalyzer(NodeVisitor):
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
                                      self.fail)
-            expr.analyzed = TypeAliasExpr(res, line=expr.line)
+            expr.analyzed = TypeAliasExpr(res, line=expr.line, runtime=True)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
