@@ -2132,3 +2132,16 @@ class B(A[int]):
 [out]
 main: note: In class "B":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableTypeVarIndirectly]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: T
+class B(A[int]):
+    pass
+class C(B):
+    a = "a"
+[out]
+main: note: In class "C":
+main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
