@@ -102,6 +102,7 @@ class TypeFixture:
         # Instance types
         self.std_tuple = Instance(self.std_tuplei, [])        # tuple
         self.type_type = Instance(self.type_typei, [])        # type
+        self.oi.metaclass_type = self.type_type
         self.function = Instance(self.functioni, [])  # function TODO
         self.a = Instance(self.ai, [])          # A
         self.b = Instance(self.bi, [])          # B
