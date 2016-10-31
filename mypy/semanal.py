@@ -1171,11 +1171,11 @@ class SemanticAnalyzer(NodeVisitor):
                         for base in var_node.info.mro[1:]:
                             base_var = base.names.get(var_node.name())
                             if base_var and base_var.type:
-                                if isinstance(base_var.type, TypeVarType):
+                                if has_no_typevars(base_var.type):
+                                    s.type = base_var.type
+                                else:
                                     itype = map_instance_to_supertype(var_node.info.bases[0], base)
                                     s.type = expand_type_by_instance(base_var.type, itype)
-                                else:
-                                    s.type = base_var.type
                                 break
 
                     if s.type is None:
