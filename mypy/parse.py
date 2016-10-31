@@ -239,7 +239,7 @@ class Parser:
         node = None  # type: ImportBase
         if self.current_str() == '*':
             if name == '__future__':
-                self.parse_error()
+                raise self.parse_error()
             # An import all from a module node:
             self.skip()
             node = ImportAll(name, relative)
@@ -630,7 +630,7 @@ class Parser:
                 elif self.current_str() in ['*', '**']:
                     if bare_asterisk_before == len(args):
                         # named arguments must follow bare *
-                        self.parse_error()
+                        raise self.parse_error()
 
                     arg = self.parse_asterisk_arg(
                         allow_signature,
@@ -991,7 +991,7 @@ class Parser:
         expr = None
         current = self.current()
         if current.string == 'yield':
-            self.parse_error()
+            raise self.parse_error()
         if not isinstance(current, Break):
             expr = self.parse_expression()
         node = ReturnStmt(expr)
@@ -1247,10 +1247,10 @@ class Parser:
             if self.current_str() == ',':
                 self.skip()
                 if isinstance(self.current(), Break):
-                    self.parse_error()
+                    raise self.parse_error()
             else:
                 if not isinstance(self.current(), Break):
-                    self.parse_error()
+                    raise self.parse_error()
         comma = False
         while not isinstance(self.current(), Break):
             args.append(self.parse_expression(precedence[',']))
@@ -1325,7 +1325,7 @@ class Parser:
                 expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
-                self.parse_error()
+                raise self.parse_error()
 
         # Set the line of the expression node, if not specified. This
         # simplifies recording the line number as not every node type needs to
@@ -1500,7 +1500,7 @@ class Parser:
             elif self.current_str() == 'for' and items == []:
                 return self.parse_set_comprehension(key)
             elif self.current_str() != ':':
-                self.parse_error()
+                raise self.parse_error()
             colon = self.expect(':')
             value = self.parse_expression(precedence['<for>'])
             if self.current_str() == 'for' and items == []:
@@ -1670,7 +1670,7 @@ class Parser:
                 kinds.append(nodes.ARG_POS)
                 names.append(None)
             else:
-                self.parse_error()
+                raise self.parse_error()
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() != ',':
                 break
@@ -1738,7 +1738,7 @@ class Parser:
         op_str = op.string
         if op_str == '~':
             self.ind -= 1
-            self.parse_error()
+            raise self.parse_error()
         right = self.parse_expression(prec)
         node = OpExpr(op_str, left, right)
         return node
@@ -1755,7 +1755,7 @@ class Parser:
                     op_str = 'not in'
                     self.skip()
                 else:
-                    self.parse_error()
+                    raise self.parse_error()
             elif op_str == 'is' and self.current_str() == 'not':
                 op_str = 'is not'
                 self.skip()
