@@ -9,8 +9,6 @@ from mypy.types import (
 from mypy.lex import Token, Name, StrLit, lex
 from mypy import nodes
 
-ThrowsException = Exception
-
 
 none = Token('')  # Empty token
 
@@ -183,8 +181,8 @@ class TypeParser:
     def current_token_str(self) -> str:
         return self.current_token().string
 
-    def parse_error(self) -> ThrowsException:
-        raise TypeParseError(self.tok[self.ind], self.ind)
+    def parse_error(self) -> TypeParseError:
+        return TypeParseError(self.tok[self.ind], self.ind)
 
 
 def parse_str_as_type(typestr: str, line: int) -> Type:

@@ -39,7 +39,8 @@ from mypy.options import Options
 
 from mypy import experiments
 
-ThrowsException = Exception
+
+class ParseError(Exception): pass
 
 
 precedence = {
@@ -1853,9 +1854,9 @@ class Parser:
     def peek(self) -> Token:
         return self.tok[self.ind + 1]
 
-    def parse_error(self) -> ThrowsException:
+    def parse_error(self) -> ParseError:
         self.parse_error_at(self.current())
-        raise ParseError()
+        return ParseError()
 
     def parse_error_at(self, tok: Token, skip: bool = True, reason: Optional[str] = None) -> None:
         msg = ''
@@ -1937,9 +1938,6 @@ class Parser:
             return type
         else:
             return None
-
-
-class ParseError(Exception): pass
 
 
 def token_repr(tok: Token) -> str:
