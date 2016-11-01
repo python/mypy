@@ -429,25 +429,26 @@ assigning the type to a variable:
 Type aliases can be generic, in this case they could be used in two variants:
 Subscripted aliases are equivalent to original types with substituted type variables,
 number of type arguments must match the number of free type variables
-in generic type alias. Unsubscribed aliases are treated as original types with free
+in generic type alias. Unsubscripted aliases are treated as original types with free
 variables replaced with ``Any``. Examples (following `PEP 484
 <https://www.python.org/dev/peps/pep-0484/#type-aliases>`_):
 
 .. code-block:: python
 
     from typing import TypeVar, Iterable, Tuple, Union, Callable
-    T = TypeVar('T', int, float, complex)
-
-    TInt = Tuple[int, T]
-    UInt = Union[T, int]
-    CBack = Callable[..., T]
-    Vec = Iterable[Tuple[T, T]]
+    S = TypeVar('S')
+    TInt = Tuple[int, S]
+    UInt = Union[S, int]
+    CBack = Callable[..., S]
 
     def response(query: str) -> UInt[str]:  # Same as Union[str, int]
         ...
     def activate(cb: CBack[T]) -> T:        # Same as Callable[..., T]
         ...
     table_entry: TInt  # Same as Tuple[int, Any]
+
+    T = TypeVar('T', int, float, complex)
+    Vec = Iterable[Tuple[T, T]]
 
     def inproduct(v: Vec[T]) -> T:
         return sum(x*y for x, y in v)
