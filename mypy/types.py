@@ -1525,6 +1525,7 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
             implicit=True,
         )
 
+
 def get_typ_args(tp: Type) -> List[Type]:
     if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
         return []
@@ -1533,7 +1534,8 @@ def get_typ_args(tp: Type) -> List[Type]:
                 tp.arg_types + [tp.ret_type])
     return typ_args
 
-def set_typ_args(tp: Type, args: List[Type]) -> Type:
+
+def set_typ_args(tp: Type, new_args: List[Type]) -> Type:
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, tp.line)
     if isinstance(tp, TupleType):

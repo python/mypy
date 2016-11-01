@@ -592,17 +592,14 @@ class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         ...
 
-A = Node[T] # E: Type application has too few types (2 expected)
+A = Node[T] # E: "Node" expects 2 type arguments, but 1 given
 B = Node[T, T]
-C = Node[T, T, T] # E: Type application has too many types (2 expected)
+C = Node[T, T, T] # E: "Node" expects 2 type arguments, but 3 given
 D = Node[T, S]
 E = Node[Node[T, T], List[T]]
 
-# Errors for F, G, H are not reported if those aliases left used
 F = Node[List[T, T], S] # E: "list" expects 1 type argument, but 2 given
-f = None # type: F
 G = Callable[..., List[T, T]] # E: "list" expects 1 type argument, but 2 given
-g = None # type: G[int]
 H = Union[int, Tuple[T, Node[T]]] # E: "Node" expects 2 type arguments, but 1 given
 h = None # type: H
 h1 = None # type: H[int, str] # E: Bad number of arguments for type alias, expected: 1, given: 2
@@ -611,6 +608,8 @@ x = None # type: D[int, str]
 reveal_type(x) # E: Revealed type is '__main__.Node[builtins.int, builtins.str]'
 y = None # type: E[int]
 reveal_type(y) # E: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+
+X = T # E: Invalid type "__main__.T" for aliasing
 
 [builtins fixtures/list.pyi]
 
@@ -904,13 +903,13 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA[str]() # E: Invalid type alias in runtime expression: def (builtins.str) -> builtins.int
+cs = CA[str] + 1 # E: Unsupported left operand type for + ("Type alias to Callable")
 reveal_type(cs) # E: Revealed type is 'Any'
 
-ts = TA[str]() # E: Invalid type alias in runtime expression: Tuple[builtins.str, builtins.int]
+ts = TA[str]() # E: "Type alias to Tuple" not callable
 reveal_type(ts) # E: Revealed type is 'Any'
 
-us = UA[str]() # E: Invalid type alias in runtime expression: Union[builtins.str, builtins.int]
+us = UA[str].x # E: "Type alias to Union" has no attribute "x"
 reveal_type(us) # E: Revealed type is 'Any'
 
 [out]
