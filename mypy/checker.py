@@ -616,7 +616,8 @@ class TypeChecker(NodeVisitor[Type]):
                             ref_type = mypy.types.TypeType(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
-                            self.fail("The erased type of self '{}' is not a supertype of its class '{}'"
+                            self.fail("The erased type of self '{}' "
+                                      "is not a supertype of its class '{}'"
                                       .format(erased, ref_type), defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
