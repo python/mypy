@@ -5,7 +5,7 @@ from typing import Callable, cast, List, Optional
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -209,11 +209,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         in order of textual appearance (recursively, if needed).
         """
         tvars = []  # type: List[str]
-        if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
-            return tvars
-        typ_args = (tp.args if isinstance(tp, Instance) else
-                    tp.items if not isinstance(tp, CallableType) else
-                    tp.arg_types + [tp.ret_type])
+        typ_args = get_typ_args(tp)
         for arg in typ_args:
             tvar = self.get_tvar_name(arg)
             if tvar:
@@ -243,11 +239,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         """ Replace type variables in a generic type alias tp with substitutions subs.
         Length of subs should be already checked.
         """
-        if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)) or not subs:
-            return tp
-        typ_args = (tp.args if isinstance(tp, Instance) else
-                    tp.items if not isinstance(tp, CallableType) else
-                    tp.arg_types + [tp.ret_type])
+        typ_args = get_typ_args(tp)
         new_args = typ_args[:]
         for i, arg in enumerate(typ_args):
             tvar = self.get_tvar_name(arg)
@@ -257,15 +249,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             else:
                 # ...recursively, if needed.
                 new_args[i] = self.replace_alias_tvars(arg, vars, subs)
-        # Create a copy with type vars replaced.
-        if isinstance(tp, Instance):
-            return Instance(tp.type, new_args, tp.line)
-        if isinstance(tp, TupleType):
-            return tp.copy_modified(items=new_args)
-        if isinstance(tp, UnionType):
-            return UnionType.make_union(new_args, tp.line)
-        if isinstance(tp, CallableType):
-            return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1])
+        return set_typ_args(tp, new_args)
 
     def visit_any(self, t: AnyType) -> Type:
         return t

@@ -1732,13 +1732,13 @@ class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
     type = None  # type: mypy.types.Type
-    line = None  # type: int
+    fback = None  # type: mypy.types.Type
     runtime = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type', line: int = -1,
+    def __init__(self, type: 'mypy.types.Type', fback: 'mypy.types.Type' = None,
                  runtime: bool = False) -> None:
         self.type = type
-        self.line = line
+        self.fback = fback
         self.runtime = runtime
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

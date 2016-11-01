@@ -6,7 +6,9 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance, function_type
+    true_only, false_only, is_named_instance, function_type,
+    get_typ_args, set_typ_args
+
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -1378,18 +1380,12 @@ class ExpressionChecker:
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         """ Get type of a type alias (could be generic) in a runtime expression."""
         item = alias.type
-        if (isinstance(item, (Instance, TupleType, UnionType, CallableType))
-           and not alias.runtime):
+        if not alias.runtime:
             item = self.replace_tvars_any(item)
         if isinstance(item, Instance):
             tp = type_object_type(item.type, self.named_type)
         else:
-            # TODO: Better error reporting: need to find line for
-            # unsubscribed generic aliases, that are invalid at runtime.
-            if alias.line > 0:
-                self.chk.fail('Invalid type alias in runtime expression: {}'
-                              .format(item), alias)
-            return AnyType()
+            return alias.fback
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(item.args):
                 self.msg.incompatible_type_application(len(tp.variables),
@@ -1411,11 +1407,7 @@ class ExpressionChecker:
         a runtime expression. Basically, this function finishes what could not be done
         in similar funtion from typeanal.py.
         """
-        if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
-            return tp
-        typ_args = (tp.args if isinstance(tp, Instance) else
-                    tp.items if not isinstance(tp, CallableType) else
-                    tp.arg_types + [tp.ret_type])
+        typ_args = get_typ_args(tp)
         new_args = typ_args[:]
         for i, arg in enumerate(typ_args):
             if isinstance(arg, UnboundType):
@@ -1428,14 +1420,7 @@ class ExpressionChecker:
                     new_args[i] = AnyType()
             else:
                 new_args[i] = self.replace_tvars_any(arg)
-        if isinstance(tp, Instance):
-            return Instance(tp.type, new_args, tp.line)
-        if isinstance(tp, TupleType):
-            return tp.copy_modified(items=new_args)
-        if isinstance(tp, UnionType):
-            return UnionType.make_union(new_args, tp.line)
-        if isinstance(tp, CallableType):
-            return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1])
+        return set_typ_args(tp, new_args)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
