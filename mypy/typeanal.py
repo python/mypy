@@ -154,14 +154,15 @@ class TypeAnalyser(TypeVisitor[Type]):
                 act_len = len(an_args)
                 if exp_len > 0 and act_len == 0:
                     # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
-                    return self.replace_alias_tvars(override, all_vars, [AnyType()] * exp_len)
+                    return self.replace_alias_tvars(override, all_vars, [AnyType()] * exp_len,
+                                                    t.line, t.column)
                 if exp_len == 0 and act_len == 0:
                     return override
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
                     return t
-                return self.replace_alias_tvars(override, all_vars, an_args)
+                return self.replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
@@ -233,9 +234,10 @@ class TypeAnalyser(TypeVisitor[Type]):
             return t.name
         return None
 
-    def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type]) -> Type:
-        """Replace type variables in a generic type alias tp with substitutions subs.
-        Length of subs should be already checked.
+    def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type],
+                            newline: int, newcolumn: int) -> Type:
+        """Replace type variables in a generic type alias tp with substitutions subs
+        resetting context. Length of subs should be already checked.
         """
         typ_args = get_typ_args(tp)
         new_args = typ_args[:]
@@ -246,8 +248,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 new_args[i] = subs[vars.index(tvar)]
             else:
                 # ...recursively, if needed.
-                new_args[i] = self.replace_alias_tvars(arg, vars, subs)
-        return set_typ_args(tp, new_args)
+                new_args[i] = self.replace_alias_tvars(arg, vars, subs, newline, newcolumn)
+        return set_typ_args(tp, new_args, newline, newcolumn)
 
     def visit_any(self, t: AnyType) -> Type:
         return t

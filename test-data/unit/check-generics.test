@@ -601,7 +601,7 @@ E = Node[Node[T, T], List[T]]
 F = Node[List[T, T], S] # E: "list" expects 1 type argument, but 2 given
 G = Callable[..., List[T, T]] # E: "list" expects 1 type argument, but 2 given
 H = Union[int, Tuple[T, Node[T]]] # E: "Node" expects 2 type arguments, but 1 given
-h = None # type: H
+h = None # type: H # E: "Node" expects 2 type arguments, but 1 given
 h1 = None # type: H[int, str] # E: Bad number of arguments for type alias, expected: 1, given: 2
 
 x = None # type: D[int, str]
@@ -945,13 +945,17 @@ S = TypeVar('S', int, list)
 class A(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None: ...
 
-BadA = A[str, T] # E: Bad ...
+BadA = A[str, T]  # This error is reported twice (but it actually looks useful)
 SameA = A[T, T]
 
 x = None # type: SameA[int]
-y = None # type: SameA[str] # E: Bad ...
+y = None # type: SameA[str] # E: Invalid type argument value for "A"
 
 [builtins fixtures/list.pyi]
+[out]
+main:8: error: Invalid type argument value for "A"
+main:8: error: Type argument 1 of "A" has incompatible value "str"
+
 
 -- Multiple assignment with lists
 -- ------------------------------

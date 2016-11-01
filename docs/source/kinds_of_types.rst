@@ -485,9 +485,9 @@ Following previous examples:
 
     A type alias does not create a new type. It's just a shorthand notation for
     another type -- it's equivalent to the target type. For generic type aliases
-    this means that variance or constraints of type variables used for alias
-    definition don't apply to aliases. Parameterized generic alias is treated
-    simply as an original type with corresponding type variables substituted.
+    this means that variance of type variables used for alias definition does not
+    apply to aliases. Parameterized generic alias is treated simply as an original
+    type with corresponding type variables substituted.
 
 .. _newtypes:
 

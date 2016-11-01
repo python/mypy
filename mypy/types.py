@@ -1536,14 +1536,17 @@ def get_typ_args(tp: Type) -> List[Type]:
     return typ_args
 
 
-def set_typ_args(tp: Type, new_args: List[Type]) -> Type:
+def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
     """Return a copy of a parameterizable Type with arguments set to new_args."""
+    line = line if line > 0 else tp.line
+    column = column if column > 0 else tp.column
     if isinstance(tp, Instance):
-        return Instance(tp.type, new_args, tp.line, tp.column)
+        return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
-        return UnionType.make_simplified_union(new_args, tp.line, tp.column)
+        return UnionType.make_simplified_union(new_args, line, column)
     if isinstance(tp, CallableType):
-        return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1])
+        return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
+                                line=line, column=column)
     return tp
