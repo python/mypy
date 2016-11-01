@@ -609,7 +609,10 @@ class TypeChecker(NodeVisitor[Type]):
                     arg_type = typ.arg_types[i]
 
                     ref_type = self.scope.active_class()
-                    if (not defn.is_static and i == 0 and ref_type is not None
+                    if (not isinstance(defn, FuncExpr)
+                            and not defn.is_static
+                            and i == 0
+                            and ref_type is not None
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
                         if defn.is_class:
                             ref_type = mypy.types.TypeType(ref_type)
