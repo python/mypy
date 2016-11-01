@@ -255,11 +255,11 @@ from typing import TypeVar, Type
 
 T = TypeVar('T', bound=str)
 class A:
-    def foo(self: T) -> T:   # E: The type of self 'builtins.str' is not a supertype of its class '__main__.A'
+    def foo(self: T) -> T:   # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.A'
         return self
 
     @classmethod
-    def cfoo(cls: Type[T]) -> T:  # E: The type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.A]'
+    def cfoo(cls: Type[T]) -> T:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.A]'
         return cls()
 
 Q = TypeVar('Q', bound='B')
@@ -279,7 +279,7 @@ class C:
         return cls()
 
 class D:
-    def foo(self: str) -> str:  # E: The type of self 'builtins.str' is not a supertype of its class '__main__.D'
+    def foo(self: str) -> str:  # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.D'
         return self    
 
     @staticmethod
@@ -287,7 +287,7 @@ class D:
         return self
 
     @classmethod
-    def cfoo(cls: Type[str]) -> str:  # E: The type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.D]'
+    def cfoo(cls: Type[str]) -> str:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.D]'
         return cls()
 
 [builtins fixtures/classmethod.pyi]
@@ -307,3 +307,29 @@ class C:
             ) -> None:
         pass
 [builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeNew]
+# flags: --hide-error-context
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound=A)    
+class A: 
+    def __new__(cls: Type[T]) -> T:
+        return cls()
+
+class B:
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
+        return cls()
+
+class C: 
+    def __new__(cls: Type[C]) -> C:
+        return cls()
+
+class D:
+    def __new__(cls: D) -> D:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+        return cls
+
+class E:
+    def __new__(cls) -> E:
+        reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
+        return cls()
