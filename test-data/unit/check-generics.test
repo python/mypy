@@ -766,7 +766,7 @@ if not isinstance(s, str):
 
 z = None # type: TNode # Same as TNode[Any]
 z.x
-z.foo() # E: Some element of union has no attribute "foo"
+z.foo() # Any simplyfies Union to Any
 
 [builtins fixtures/isinstance.pyi]
 
@@ -914,6 +914,44 @@ reveal_type(us) # E: Revealed type is 'Any'
 
 [out]
 
+[case testGenericTypeAliasesTypeVarBinding]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None: ...
+
+class B(Generic[T, S]):
+    def __init__(self, x: List[T], y: List[S]) -> None: ...
+
+SameA = A[T, T]
+SameB = B[T, T]
+
+class C(Generic[T]):
+    a = None # type: SameA[T]
+    b = SameB[T]([], [])
+
+reveal_type(C[int]().a) # E: Revealed type is '__main__.A[builtins.int*, builtins.int*]'
+reveal_type(C[str]().b) # E: Revealed type is '__main__.B[builtins.str*, builtins.str*]'
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesTypeVarConstraints]
+from typing import TypeVar, Generic
+T = TypeVar('T', int, list)
+S = TypeVar('S', int, list)
+
+class A(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None: ...
+
+BadA = A[str, T] # E: Bad ...
+SameA = A[T, T]
+
+x = None # type: SameA[int]
+y = None # type: SameA[str] # E: Bad ...
+
+[builtins fixtures/list.pyi]
 
 -- Multiple assignment with lists
 -- ------------------------------

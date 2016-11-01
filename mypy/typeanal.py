@@ -79,7 +79,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  fail_func: Callable[[str, Context], None], *,
-                 aliasing = False) -> None:
+                 aliasing: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
@@ -158,8 +158,6 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if exp_len == 0 and act_len == 0:
                     return override
                 if act_len != exp_len:
-                    # TODO: Detect wrong type variable numer for unused aliases
-                    # (it is difficult at this stage, see comment below, line 187 atm)
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
                     return t
@@ -174,7 +172,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
                     return AnyType()
-                # Allow unbount type variables when defining an alias
+                # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == UNBOUND_TVAR):
                     self.fail('Invalid type "{}"'.format(name), t)
                 return t
@@ -205,7 +203,7 @@ class TypeAnalyser(TypeVisitor[Type]):
             return AnyType()
 
     def get_type_var_names(self, tp: Type) -> List[str]:
-        """ Get all type variable names that are present in a generic type alias
+        """Get all type variable names that are present in a generic type alias
         in order of textual appearance (recursively, if needed).
         """
         tvars = []  # type: List[str]
@@ -236,7 +234,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return None
 
     def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type]) -> Type:
-        """ Replace type variables in a generic type alias tp with substitutions subs.
+        """Replace type variables in a generic type alias tp with substitutions subs.
         Length of subs should be already checked.
         """
         typ_args = get_typ_args(tp)

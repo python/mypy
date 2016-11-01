@@ -1527,6 +1527,7 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
 
 
 def get_typ_args(tp: Type) -> List[Type]:
+    """Get all type arguments from a parameterizable Type."""
     if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
         return []
     typ_args = (tp.args if isinstance(tp, Instance) else
@@ -1536,12 +1537,13 @@ def get_typ_args(tp: Type) -> List[Type]:
 
 
 def set_typ_args(tp: Type, new_args: List[Type]) -> Type:
+    """Return a copy of a parameterizable Type with arguments set to new_args."""
     if isinstance(tp, Instance):
-        return Instance(tp.type, new_args, tp.line)
+        return Instance(tp.type, new_args, tp.line, tp.column)
     if isinstance(tp, TupleType):
         return tp.copy_modified(items=new_args)
     if isinstance(tp, UnionType):
-        return UnionType.make_union(new_args, tp.line)
+        return UnionType.make_simplified_union(new_args, tp.line, tp.column)
     if isinstance(tp, CallableType):
         return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1])
     return tp

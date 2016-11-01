@@ -1733,13 +1733,15 @@ class TypeAliasExpr(Expression):
 
     type = None  # type: mypy.types.Type
     fback = None  # type: mypy.types.Type
-    runtime = False  # type: bool
+    # This type alias is subscripted in a runtime expression like Alias[int](42)
+    # (not in a type context like type annotation or base class).
+    in_runtime = False  # type: bool
 
     def __init__(self, type: 'mypy.types.Type', fback: 'mypy.types.Type' = None,
-                 runtime: bool = False) -> None:
+                 in_runtime: bool = False) -> None:
         self.type = type
         self.fback = fback
-        self.runtime = runtime
+        self.in_runtime = in_runtime
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)

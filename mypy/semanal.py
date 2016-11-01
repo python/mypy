@@ -1217,7 +1217,6 @@ class SemanticAnalyzer(NodeVisitor):
         """Make a dummy Instance with no methods. It is used as a fallback type
         to detect errors for non-Instance aliases (i.e. Unions, Tuples, Callables).
         """
-
         kind = (' to Callable' if isinstance(tp, CallableType) else
                 ' to Tuple' if isinstance(tp, TupleType) else
                 ' to Union' if isinstance(tp, UnionType) else '')
@@ -2378,13 +2377,13 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_index_expr(self, expr: IndexExpr) -> None:
         expr.base.accept(self)
         if isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
-            # Special form -- subcribing a generic type alias.
+            # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
             res = analyze_type_alias(expr,
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
                                      self.fail)
-            expr.analyzed = TypeAliasExpr(res, fback=self.alias_fallback(res), runtime=True)
+            expr.analyzed = TypeAliasExpr(res, fback=self.alias_fallback(res), in_runtime=True)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
