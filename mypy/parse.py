@@ -40,6 +40,9 @@ from mypy.options import Options
 from mypy import experiments
 
 
+class ParseError(Exception): pass
+
+
 precedence = {
     '**': 16,
     '-u': 15, '+u': 15, '~': 15,   # unary operators (-, + and ~)
@@ -236,7 +239,7 @@ class Parser:
         node = None  # type: ImportBase
         if self.current_str() == '*':
             if name == '__future__':
-                self.parse_error()
+                raise self.parse_error()
             # An import all from a module node:
             self.skip()
             node = ImportAll(name, relative)
@@ -402,8 +405,7 @@ class Parser:
         elif isinstance(expr, MemberExpr):
             if isinstance(expr.expr, NameExpr):
                 return expr.expr.name == 'typing' and expr.name == 'no_type_check'
-        else:
-            return False
+        return False
 
     def parse_function(self, no_type_checks: bool = False) -> FuncDef:
         def_tok = self.expect('def')
@@ -628,7 +630,7 @@ class Parser:
                 elif self.current_str() in ['*', '**']:
                     if bare_asterisk_before == len(args):
                         # named arguments must follow bare *
-                        self.parse_error()
+                        raise self.parse_error()
 
                     arg = self.parse_asterisk_arg(
                         allow_signature,
@@ -790,6 +792,8 @@ class Parser:
         if self.current_str() == ':':
             self.skip()
             return self.parse_expression(precedence[','])
+        else:
+            return None
 
     def parse_arg_type(self, allow_signature: bool) -> Type:
         if self.current_str() == ':' and allow_signature:
@@ -987,7 +991,7 @@ class Parser:
         expr = None
         current = self.current()
         if current.string == 'yield':
-            self.parse_error()
+            raise self.parse_error()
         if not isinstance(current, Break):
             expr = self.parse_expression()
         node = ReturnStmt(expr)
@@ -1243,10 +1247,10 @@ class Parser:
             if self.current_str() == ',':
                 self.skip()
                 if isinstance(self.current(), Break):
-                    self.parse_error()
+                    raise self.parse_error()
             else:
                 if not isinstance(self.current(), Break):
-                    self.parse_error()
+                    raise self.parse_error()
         comma = False
         while not isinstance(self.current(), Break):
             args.append(self.parse_expression(precedence[',']))
@@ -1321,7 +1325,7 @@ class Parser:
                 expr = self.parse_ellipsis()
             else:
                 # Invalid expression.
-                self.parse_error()
+                raise self.parse_error()
 
         # Set the line of the expression node, if not specified. This
         # simplifies recording the line number as not every node type needs to
@@ -1496,7 +1500,7 @@ class Parser:
             elif self.current_str() == 'for' and items == []:
                 return self.parse_set_comprehension(key)
             elif self.current_str() != ':':
-                self.parse_error()
+                raise self.parse_error()
             colon = self.expect(':')
             value = self.parse_expression(precedence['<for>'])
             if self.current_str() == 'for' and items == []:
@@ -1666,7 +1670,7 @@ class Parser:
                 kinds.append(nodes.ARG_POS)
                 names.append(None)
             else:
-                self.parse_error()
+                raise self.parse_error()
             args.append(self.parse_expression(precedence[',']))
             if self.current_str() != ',':
                 break
@@ -1734,7 +1738,7 @@ class Parser:
         op_str = op.string
         if op_str == '~':
             self.ind -= 1
-            self.parse_error()
+            raise self.parse_error()
         right = self.parse_expression(prec)
         node = OpExpr(op_str, left, right)
         return node
@@ -1751,7 +1755,7 @@ class Parser:
                     op_str = 'not in'
                     self.skip()
                 else:
-                    self.parse_error()
+                    raise self.parse_error()
             elif op_str == 'is' and self.current_str() == 'not':
                 op_str = 'is not'
                 self.skip()
@@ -1818,7 +1822,7 @@ class Parser:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def expect_indent(self) -> Token:
         if isinstance(self.current(), Indent):
@@ -1836,7 +1840,7 @@ class Parser:
             self.ind += 1
             return current
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def expect_break(self) -> Token:
         return self.expect_type(Break)
@@ -1850,9 +1854,9 @@ class Parser:
     def peek(self) -> Token:
         return self.tok[self.ind + 1]
 
-    def parse_error(self) -> None:
+    def parse_error(self) -> ParseError:
         self.parse_error_at(self.current())
-        raise ParseError()
+        return ParseError()
 
     def parse_error_at(self, tok: Token, skip: bool = True, reason: Optional[str] = None) -> None:
         msg = ''
@@ -1934,9 +1938,6 @@ class Parser:
             return type
         else:
             return None
-
-
-class ParseError(Exception): pass
 
 
 def token_repr(tok: Token) -> str:

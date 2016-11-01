@@ -176,8 +176,9 @@ def add_basic(driver: Driver) -> None:
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy')
-    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_strict_optional.ini')
+    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser', '--warn-no-return')
+    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
+                            '--config-file', 'mypy_strict_optional.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
