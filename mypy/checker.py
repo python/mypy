@@ -209,7 +209,7 @@ class TypeChecker(NodeVisitor[Type]):
                 self.errors.push_type(type_name)
 
             if active_class:
-                with self.scope.enter_class(active_class):
+                with self.scope.push_class(active_class):
                     self.accept(node)
             else:
                 self.accept(node)
@@ -642,7 +642,7 @@ class TypeChecker(NodeVisitor[Type]):
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
-                with self.scope.enter_function(defn):
+                with self.scope.push_function(defn):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
@@ -986,7 +986,7 @@ class TypeChecker(NodeVisitor[Type]):
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         with self.binder.top_frame_context():
-            with self.scope.enter_class(fill_typevars(defn.info)):
+            with self.scope.push_class(fill_typevars(defn.info)):
                 self.accept(defn.defs)
         self.binder = old_binder
         if not defn.has_incompatible_baseclass:
@@ -2770,13 +2770,13 @@ class Scope:
         return None
 
     @contextmanager
-    def enter_function(self, item: FuncItem) -> Iterator[None]:
+    def push_function(self, item: FuncItem) -> Iterator[None]:
         self.stack.append(item)
         yield
         self.stack.pop()
 
     @contextmanager
-    def enter_class(self, t: Type) -> Iterator[None]:
+    def push_class(self, t: Type) -> Iterator[None]:
         self.stack.append(t)
         yield
         self.stack.pop()
