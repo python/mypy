@@ -1946,6 +1946,29 @@ class TypeInfo(SymbolNode):
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
 
+    _metaclass_type = None  # type: Optional[mypy.types.Instance]
+
+    @property
+    def metaclass_type(self) -> 'Optional[mypy.types.Instance]':
+        if self._metaclass_type:
+            return self._metaclass_type
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        if self.mro is None:
+            # XXX why does this happen?
+            return None
+        if len(self.mro) > 1:
+            return self.mro[1].metaclass_type
+        # FIX: assert False
+        return None
+
+    @metaclass_type.setter
+    def metaclass_type(self, value: 'mypy.types.Instance'):
+        self._metaclass_type = value
+
+    def is_metaclass(self) -> bool:
+        return self.has_base('builtins.type')
+
     def name(self) -> str:
         """Short name."""
         return self.defn.name
