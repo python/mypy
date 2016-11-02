@@ -139,8 +139,12 @@ def process_options(args: List[str],
     # parsed into the separate special_opts namespace object.
     parser.add_argument('-v', '--verbose', action='count', dest='verbosity',
                         help="more verbose messages")
+    full_version = __version__
+    if git.is_git_repo('.') and git.have_git():
+        full_version += '-' + git.git_revision('.').decode('utf-8')
+
     parser.add_argument('-V', '--version', action='version',
-                        version='%(prog)s ' + __version__)
+                        version='%(prog)s ' + full_version)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
