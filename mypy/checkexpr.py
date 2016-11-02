@@ -1604,7 +1604,7 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    args = self.chk.function_stack[-1].arguments
+                    args = self.chk.scope.top_function().arguments
                     # An empty args with super() is an error; we need something in declared_self
                     if not args:
                         self.chk.fail('super() requires at least one positional argument', e)

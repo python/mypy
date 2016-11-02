@@ -2,9 +2,10 @@
 
 import itertools
 import fnmatch
+from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -35,10 +36,11 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away
+    is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away,
+    is_subtype_ignoring_tvars
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
@@ -65,7 +67,7 @@ DeferredNode = NamedTuple(
     [
         ('node', FuncItem),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
-        ('class_type', Optional[Type]),  # And its type (from class_context)
+        ('active_class', Optional[Type]),  # And its type (for selftype handline)
     ])
 
 
@@ -91,19 +93,13 @@ class TypeChecker(NodeVisitor[Type]):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
-    # Class context for checking overriding of a method of the form
-    #     def foo(self: T) -> T
-    # We need to pass the current class definition for instantiation of T
-    class_context = None  # type: List[Type]
-
+    scope = None  # type: Scope
     # Stack of function return types
     return_types = None  # type: List[Type]
     # Type context for type inference
     type_context = None  # type: List[Type]
     # Flags; true for dynamically typed functions
     dynamic_funcs = None  # type: List[bool]
-    # Stack of functions being type checked
-    function_stack = None  # type: List[FuncItem]
     # Stack of collections of variables with partial types
     partial_types = None  # type: List[Dict[Var, Context]]
     globals = None  # type: SymbolTable
@@ -139,13 +135,12 @@ class TypeChecker(NodeVisitor[Type]):
         self.path = path
         self.msg = MessageBuilder(errors, modules)
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg)
-        self.class_context = []
+        self.scope = Scope(tree)
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
         self.return_types = []
         self.type_context = []
         self.dynamic_funcs = []
-        self.function_stack = []
         self.partial_types = []
         self.deferred_nodes = []
         self.type_map = {}
@@ -203,7 +198,7 @@ class TypeChecker(NodeVisitor[Type]):
         todo = self.deferred_nodes
         self.deferred_nodes = []
         done = set()  # type: Set[FuncItem]
-        for node, type_name, class_type in todo:
+        for node, type_name, active_class in todo:
             if node in done:
                 continue
             # This is useful for debugging:
@@ -212,28 +207,27 @@ class TypeChecker(NodeVisitor[Type]):
             done.add(node)
             if type_name:
                 self.errors.push_type(type_name)
-            if class_type:
-                self.class_context.append(class_type)
-            self.accept(node)
-            if class_type:
-                self.class_context.pop()
+
+            if active_class:
+                with self.scope.push_class(active_class):
+                    self.accept(node)
+            else:
+                self.accept(node)
             if type_name:
                 self.errors.pop_type()
         return True
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        if self.pass_num < LAST_PASS and self.function_stack:
+        node = self.scope.top_function()
+        if self.pass_num < LAST_PASS and node is not None:
             # Don't report an error yet. Just defer.
-            node = self.function_stack[-1]
             if self.errors.type_name:
                 type_name = self.errors.type_name[-1]
             else:
                 type_name = None
-            if self.class_context:
-                class_context_top = self.class_context[-1]
-            else:
-                class_context_top = None
-            self.deferred_nodes.append(DeferredNode(node, type_name, class_context_top))
+            # Shouldn't we freeze the entire scope?
+            active_class = self.scope.active_class()
+            self.deferred_nodes.append(DeferredNode(node, type_name, active_class))
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
             # least one type that we don't know.
@@ -510,7 +504,6 @@ class TypeChecker(NodeVisitor[Type]):
         if isinstance(defn, FuncDef):
             fdef = defn
 
-        self.function_stack.append(defn)
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
         if fdef:
@@ -532,7 +525,6 @@ class TypeChecker(NodeVisitor[Type]):
             self.errors.pop_function()
 
         self.dynamic_funcs.pop()
-        self.function_stack.pop()
         self.current_node_deferred = False
 
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: str) -> None:
@@ -618,14 +610,22 @@ class TypeChecker(NodeVisitor[Type]):
                 for i in range(len(typ.arg_types)):
                     arg_type = typ.arg_types[i]
 
-                    # Refuse covariant parameter type variables
-                    # TODO: check recuresively for inner type variables
-                    if isinstance(arg_type, TypeVarType):
-                        if i > 0:
-                            if arg_type.variance == COVARIANT:
-                                self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
-                                          arg_type)
-                        # FIX: if i == 0 and this is not a method then same as above
+                    ref_type = self.scope.active_class()
+                    if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
+                            and not defn.is_static
+                            and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
+                        if defn.is_class or defn.name() == '__new__':
+                            ref_type = mypy.types.TypeType(ref_type)
+                        erased = erase_to_bound(arg_type)
+                        if not is_subtype_ignoring_tvars(ref_type, erased):
+                            self.fail("The erased type of self '{}' "
+                                      "is not a supertype of its class '{}'"
+                                      .format(erased, ref_type), defn)
+                    elif isinstance(arg_type, TypeVarType):
+                        # Refuse covariant parameter type variables
+                        # TODO: check recuresively for inner type variables
+                        if arg_type.variance == COVARIANT:
+                            self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',
@@ -644,7 +644,8 @@ class TypeChecker(NodeVisitor[Type]):
 
             # Type check body in a new scope.
             with self.binder.top_frame_context():
-                self.accept(item.body)
+                with self.scope.push_function(defn):
+                    self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
             if (self.options.warn_no_return and not unreachable
@@ -890,7 +891,7 @@ class TypeChecker(NodeVisitor[Type]):
             # The name of the method is defined in the base class.
 
             # Construct the type of the overriding method.
-            typ = bind_self(self.function_type(defn), self.class_context[-1])
+            typ = bind_self(self.function_type(defn), self.scope.active_class())
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
@@ -903,7 +904,7 @@ class TypeChecker(NodeVisitor[Type]):
                     assert False, str(base_attr.node)
             if isinstance(original_type, FunctionLike):
                 original = map_type_from_supertype(
-                    bind_self(original_type, self.class_context[-1]),
+                    bind_self(original_type, self.scope.active_class()),
                     defn.info, base)
                 # Check that the types are compatible.
                 # TODO overloaded signatures
@@ -987,9 +988,8 @@ class TypeChecker(NodeVisitor[Type]):
         old_binder = self.binder
         self.binder = ConditionalTypeBinder()
         with self.binder.top_frame_context():
-            self.class_context.append(fill_typevars(defn.info))
-            self.accept(defn.defs)
-            self.class_context.pop()
+            with self.scope.push_class(fill_typevars(defn.info)):
+                self.accept(defn.defs)
         self.binder = old_binder
         if not defn.has_incompatible_baseclass:
             # Otherwise we've already found errors; more errors are not useful
@@ -1528,8 +1528,8 @@ class TypeChecker(NodeVisitor[Type]):
         return None
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
-        if self.is_within_function():
-            defn = self.function_stack[-1]
+        defn = self.scope.top_function()
+        if defn is not None:
             if defn.is_generator:
                 return_type = self.get_generator_return_type(self.return_types[-1],
                                                              defn.is_coroutine)
@@ -1546,7 +1546,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.is_unusable_type(return_type):
                     # Lambdas are allowed to have a unusable returns.
                     # Functions returning a value of type None are allowed to have a Void return.
-                    if isinstance(self.function_stack[-1], FuncExpr) or isinstance(typ, NoneTyp):
+                    if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, NoneTyp):
                         return
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
@@ -1559,7 +1559,7 @@ class TypeChecker(NodeVisitor[Type]):
                         msg=messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
                 # Empty returns are valid in Generators with Any typed returns.
-                if (self.function_stack[-1].is_generator and isinstance(return_type, AnyType)):
+                if (defn.is_generator and isinstance(return_type, AnyType)):
                     return
 
                 if isinstance(return_type, (Void, NoneTyp, AnyType)):
@@ -2335,13 +2335,6 @@ class TypeChecker(NodeVisitor[Type]):
                 return partial_types
         return None
 
-    def is_within_function(self) -> bool:
-        """Are we currently type checking within a function?
-
-        I.e. not at class body or at the top level.
-        """
-        return self.return_types != []
-
     def is_unusable_type(self, typ: Type):
         """Is this type an unusable type?
 
@@ -2773,3 +2766,34 @@ def is_valid_inferred_type_component(typ: Type) -> bool:
             if not is_valid_inferred_type_component(item):
                 return False
     return True
+
+
+class Scope:
+    # We keep two stacks combined, to maintain the relative order
+    stack = None  # type: List[Union[Type, FuncItem, MypyFile]]
+
+    def __init__(self, module: MypyFile) -> None:
+        self.stack = [module]
+
+    def top_function(self) -> Optional[FuncItem]:
+        for e in reversed(self.stack):
+            if isinstance(e, FuncItem):
+                return e
+        return None
+
+    def active_class(self) -> Optional[Type]:
+        if isinstance(self.stack[-1], Type):
+            return self.stack[-1]
+        return None
+
+    @contextmanager
+    def push_function(self, item: FuncItem) -> Iterator[None]:
+        self.stack.append(item)
+        yield
+        self.stack.pop()
+
+    @contextmanager
+    def push_class(self, t: Type) -> Iterator[None]:
+        self.stack.append(t)
+        yield
+        self.stack.pop()
