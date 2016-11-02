@@ -208,12 +208,11 @@ class TypeChecker(NodeVisitor[Type]):
             if type_name:
                 self.errors.push_type(type_name)
 
-            # Shouldn't we freeze the entire scope?
             if active_class:
-                self.scope.push_class(active_class)
-            self.accept(node)
-            if active_class:
-                self.scope.pop_class()
+                with self.scope.enter_class(active_class):
+                    self.accept(node)
+            else:
+                self.accept(node)
             if type_name:
                 self.errors.pop_type()
         return True
@@ -226,6 +225,7 @@ class TypeChecker(NodeVisitor[Type]):
                 type_name = self.errors.type_name[-1]
             else:
                 type_name = None
+            # Shouldn't we freeze the entire scope?
             active_class = self.scope.active_class()
             self.deferred_nodes.append(DeferredNode(node, type_name, active_class))
             # Set a marker so that we won't infer additional types in this
@@ -2758,25 +2758,11 @@ class Scope:
     def __init__(self, module: MypyFile) -> None:
         self.stack = [module]
 
-    def push_function(self, item: FuncItem) -> None:
-        self.stack.append(item)
-
-    def pop_function(self) -> None:
-        assert isinstance(self.stack[-1], Type)
-        self.stack.pop()
-
     def top_function(self) -> Optional[FuncItem]:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
                 return e
         return None
-
-    def push_class(self, t: Type) -> None:
-        self.stack.append(t)
-
-    def pop_class(self) -> None:
-        assert isinstance(self.stack[-1], Type)
-        self.stack.pop()
 
     def active_class(self) -> Optional[Type]:
         if isinstance(self.stack[-1], Type):
@@ -2794,6 +2780,3 @@ class Scope:
         self.stack.append(t)
         yield
         self.stack.pop()
-
-    def is_method(self) -> bool:
-        return isinstance(self.stack[-1], Type)
