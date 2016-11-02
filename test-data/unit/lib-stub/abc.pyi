@@ -1,3 +1,3 @@
-class ABCMeta: pass
+class ABCMeta(type): pass
 abstractmethod = object()
 abstractproperty = object()
