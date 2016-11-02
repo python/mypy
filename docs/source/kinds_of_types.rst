@@ -443,7 +443,7 @@ variables replaced with ``Any``. Examples (following `PEP 484
 
     def response(query: str) -> UInt[str]:  # Same as Union[str, int]
         ...
-    def activate(cb: CBack[T]) -> T:        # Same as Callable[..., T]
+    def activate(cb: CBack[S]) -> S:        # Same as Callable[..., S]
         ...
     table_entry: TInt  # Same as Tuple[int, Any]
 
