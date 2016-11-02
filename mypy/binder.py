@@ -198,7 +198,6 @@ class ConditionalTypeBinder:
         return result
 
     def get_declaration(self, expr: BindableExpression) -> Type:
-        assert not isinstance(expr, SymbolTableNode)
         if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
             type = expr.node.type
             if not isinstance(type, PartialType):
