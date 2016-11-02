@@ -1313,6 +1313,8 @@ class TypeChecker(NodeVisitor[Type]):
         return (left, star, right)
 
     def type_is_iterable(self, type: Type) -> bool:
+        if isinstance(type, CallableType) and type.is_type_obj():
+            type = type.fallback
         return (is_subtype(type, self.named_generic_type('typing.Iterable',
                                                         [AnyType()])) and
                 isinstance(type, Instance))
@@ -1817,11 +1819,14 @@ class TypeChecker(NodeVisitor[Type]):
             return joined
         else:
             # Non-tuple iterable.
-            self.check_subtype(iterable,
-                               self.named_generic_type('typing.Iterable',
-                                                       [AnyType()]),
-                               expr, messages.ITERABLE_EXPECTED)
-
+            if isinstance(iterable, CallableType) and iterable.is_type_obj():
+                self.check_subtype(iterable.fallback,
+                                   self.named_generic_type('typing.Iterable', [AnyType()]),
+                                   expr, messages.ITERABLE_EXPECTED)
+            else:
+                self.check_subtype(iterable,
+                                   self.named_generic_type('typing.Iterable', [AnyType()]),
+                                   expr, messages.ITERABLE_EXPECTED)
             echk = self.expr_checker
             method = echk.analyze_external_member_access('__iter__', iterable,
                                                          expr)
@@ -1975,8 +1980,7 @@ class TypeChecker(NodeVisitor[Type]):
         # by __iter__.
         if isinstance(subexpr_type, AnyType):
             iter_type = AnyType()
-        elif (isinstance(subexpr_type, Instance) and
-                is_subtype(subexpr_type, self.named_type('typing.Iterable'))):
+        elif self.type_is_iterable(subexpr_type):
             if self.is_async_def(subexpr_type) and not self.has_coroutine_decorator(return_type):
                 self.msg.yield_from_invalid_operand_type(subexpr_type, e)
             iter_method_type = self.expr_checker.analyze_external_member_access(
@@ -2242,10 +2246,6 @@ class TypeChecker(NodeVisitor[Type]):
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
         return cast(TypeInfo, sym.node)
-
-    def type_type(self) -> Instance:
-        """Return instance type 'type'."""
-        return self.named_type('builtins.type')
 
     def object_type(self) -> Instance:
         """Return instance type 'object'."""
