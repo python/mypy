@@ -621,8 +621,8 @@ main:16:18: error: "list" expects 1 type argument, but 2 given
 main:17:24: error: "Node" expects 2 type arguments, but 1 given
 main:18:3: error: "Node" expects 2 type arguments, but 1 given
 main:19:4: error: Bad number of arguments for type alias, expected: 1, given: 2
-main:22: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
-main:24: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+main:22:0: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+main:24:0: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
 main:26:4: error: Type variable "__main__.T" is invalid as target for type alias
 
 [case testGenericTypeAliasesForAliases]
