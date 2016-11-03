@@ -576,6 +576,7 @@ class CallableType(FunctionLike):
                  ) -> None:
         if variables is None:
             variables = []
+        assert len(arg_types) == len(arg_kinds)
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names

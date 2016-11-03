@@ -456,6 +456,10 @@ class Parser:
                 else:
                     self.check_argument_kinds(arg_kinds, sig.arg_kinds,
                                               def_tok.line, def_tok.column)
+                    if len(sig.arg_types) > len(arg_kinds):
+                        raise ParseError('Type signature has too many arguments')
+                    if len(sig.arg_types) < len(arg_kinds):
+                        raise ParseError('Type signature has too few arguments')
                     typ = CallableType(
                         sig.arg_types,
                         arg_kinds,
