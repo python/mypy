@@ -23,7 +23,6 @@ from mypy.types import (
 from mypy import defaults
 from mypy import experiments
 from mypy import hooks
-from mypy.parsetype import parse_str_as_type
 from mypy.errors import Errors
 
 try:
@@ -100,7 +99,7 @@ def parse_docstring(docstring: str, arg_names: List[str],
         if t is None:
             return AnyType()
         else:
-            return parse_str_as_type(t, line)
+            return parse_type_comment(t, line=line)
 
     if hooks.docstring_parser is not None:
         type_map = hooks.docstring_parser(docstring)
