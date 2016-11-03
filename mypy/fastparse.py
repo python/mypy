@@ -112,6 +112,7 @@ def parse_docstring(docstring: str, arg_names: List[str],
                     'function signature: {}'.format(', '.join(type_map)),
                     line, 0)
             return arg_types, return_type
+    return None
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
