@@ -498,7 +498,6 @@ else:
     reveal_type(x)  # E: Revealed type is 'Union[builtins.str, builtins.int, builtins.None]'
 [builtins fixtures/ops.pyi]
 
-
 [case testWarnNoReturnWorksWithStrictOptional]
 # flags: --warn-no-return
 def f() -> None:
@@ -509,3 +508,27 @@ def g() -> int:
 [out]
 main: note: In function "g":
 main:5: note: Missing return statement
+
+[case testGenericTypeAliasesOptional]
+from typing import TypeVar, Generic, Optional
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+ONode = Optional[Node[T]]
+def f(x: T) -> ONode[T]:
+    if 1 > 0:
+        return Node(x)
+    else:
+        return None
+
+x = None # type: ONode[int]
+x = f(1)
+x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+x.x = 1 # E: Some element of union has no attribute "x"
+if x is not None:
+    x.x = 1 # OK here
+
+[builtins fixtures/ops.pyi]

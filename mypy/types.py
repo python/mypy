@@ -880,7 +880,7 @@ class UnionType(Type):
                 items[i] = true_or_false(ti)
 
         simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-        return UnionType.make_union(simplified_set)
+        return UnionType.make_union(simplified_set, line, column)
 
     def length(self) -> int:
         return len(self.items)
@@ -1524,3 +1524,27 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
             name,
             implicit=True,
         )
+
+
+def get_typ_args(tp: Type) -> List[Type]:
+    """Get all type arguments from a parameterizable Type."""
+    if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
+        return []
+    typ_args = (tp.args if isinstance(tp, Instance) else
+                tp.items if not isinstance(tp, CallableType) else
+                tp.arg_types + [tp.ret_type])
+    return typ_args
+
+
+def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
+    """Return a copy of a parameterizable Type with arguments set to new_args."""
+    if isinstance(tp, Instance):
+        return Instance(tp.type, new_args, line, column)
+    if isinstance(tp, TupleType):
+        return tp.copy_modified(items=new_args)
+    if isinstance(tp, UnionType):
+        return UnionType.make_simplified_union(new_args, line, column)
+    if isinstance(tp, CallableType):
+        return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
+                                line=line, column=column)
+    return tp

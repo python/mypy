@@ -6,7 +6,8 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance, function_type
+    true_only, false_only, is_named_instance, function_type,
+    get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -17,6 +18,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
+    UNBOUND_TVAR, BOUND_TVAR,
 )
 from mypy import nodes
 import mypy.checker
@@ -1375,7 +1377,54 @@ class ExpressionChecker:
         return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
+        """Get type of a type alias (could be generic) in a runtime expression."""
+        item = alias.type
+        if not alias.in_runtime:
+            # We don't replace TypeVar's with Any for alias used as Alias[T](42).
+            item = self.replace_tvars_any(item)
+        if isinstance(item, Instance):
+            # Normally we get a callable type (or overloaded) with .is_type_obj() true
+            # representing the class's constructor
+            tp = type_object_type(item.type, self.named_type)
+        else:
+            # This type is invalid in most runtime contexts
+            # and corresponding an error will be reported.
+            return alias.fallback
+        if isinstance(tp, CallableType):
+            if len(tp.variables) != len(item.args):
+                self.msg.incompatible_type_application(len(tp.variables),
+                                                       len(item.args), item)
+                return AnyType()
+            return self.apply_generic_arguments(tp, item.args, item)
+        elif isinstance(tp, Overloaded):
+            for it in tp.items():
+                if len(it.variables) != len(item.args):
+                    self.msg.incompatible_type_application(len(it.variables),
+                                                           len(item.args), item)
+                    return AnyType()
+            return Overloaded([self.apply_generic_arguments(it, item.args, item)
+                               for it in tp.items()])
         return AnyType()
+
+    def replace_tvars_any(self, tp: Type) -> Type:
+        """Replace all type variables of a type alias tp with Any. Basically, this function
+        finishes what could not be done in method TypeAnalyser.visit_unbound_type()
+        from typeanal.py.
+        """
+        typ_args = get_typ_args(tp)
+        new_args = typ_args[:]
+        for i, arg in enumerate(typ_args):
+            if isinstance(arg, UnboundType):
+                sym = None
+                try:
+                    sym = self.chk.lookup_qualified(arg.name)
+                except KeyError:
+                    pass
+                if sym and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+                    new_args[i] = AnyType()
+            else:
+                new_args[i] = self.replace_tvars_any(arg)
+        return set_typ_args(tp, new_args, tp.line, tp.column)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
