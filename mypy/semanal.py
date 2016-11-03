@@ -2241,6 +2241,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return
             expr.analyzed = RevealTypeExpr(expr.args[0])
             expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
             # Special form Any(...).
