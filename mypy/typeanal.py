@@ -447,7 +447,6 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     self.fail('Invalid type argument value for "{}"'.format(
                         type.name()), context)
                 else:
-                    # print(context.column)
                     self.fail('Type argument {} of "{}" has incompatible value "{}"'.format(
                         arg_number, type.name(), actual.type.name()), context)
 
