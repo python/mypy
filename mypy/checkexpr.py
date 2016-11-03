@@ -7,8 +7,7 @@ from mypy.types import (
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type,
-    get_typ_args, set_typ_args
-
+    get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -1390,7 +1389,7 @@ class ExpressionChecker:
         else:
             # This type is invalid in most runtime contexts
             # and corresponding an error will be reported.
-            return alias.fback
+            return alias.fallback
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(item.args):
                 self.msg.incompatible_type_application(len(tp.variables),
@@ -1425,7 +1424,7 @@ class ExpressionChecker:
                     new_args[i] = AnyType()
             else:
                 new_args[i] = self.replace_tvars_any(arg)
-        return set_typ_args(tp, new_args)
+        return set_typ_args(tp, new_args, tp.line, tp.column)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""

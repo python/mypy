@@ -5,7 +5,7 @@ from typing import Callable, cast, List, Optional
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -41,7 +41,8 @@ def analyze_type_alias(node: Expression,
     # (only string literals within index expressions).
     if isinstance(node, RefExpr):
         if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
-            fail_func('Invalid type "{}" for aliasing'.format(node.fullname), node)
+            fail_func('Type variable "{}" is invalid as target for type alias'.format(
+                node.fullname), node)
             return None
         if not (isinstance(node.node, TypeInfo) or
                 node.fullname == 'typing.Any' or
@@ -429,7 +430,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
-                                               TypeVar.values, i, t)
+                                               TypeVar.values, i + 1, t)
                 if not satisfies_upper_bound(arg, TypeVar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -448,7 +449,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                 else:
                     # print(context.column)
                     self.fail('Type argument {} of "{}" has incompatible value "{}"'.format(
-                        arg_number + 1, type.name(), actual.type.name()), context)
+                        arg_number, type.name(), actual.type.name()), context)
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)

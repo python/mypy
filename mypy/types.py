@@ -1538,8 +1538,6 @@ def get_typ_args(tp: Type) -> List[Type]:
 
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
     """Return a copy of a parameterizable Type with arguments set to new_args."""
-    line = line if line > 0 else tp.line
-    column = column if column > 0 else tp.column
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):

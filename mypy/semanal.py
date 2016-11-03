@@ -1175,7 +1175,8 @@ class SemanticAnalyzer(NodeVisitor):
                     node.kind = TYPE_ALIAS
                     node.type_override = res
                     if isinstance(s.rvalue, IndexExpr):
-                        s.rvalue.analyzed = TypeAliasExpr(res, fback=self.alias_fallback(res))
+                        s.rvalue.analyzed = TypeAliasExpr(res,
+                                                          fallback=self.alias_fallback(res))
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1220,7 +1221,7 @@ class SemanticAnalyzer(NodeVisitor):
         kind = (' to Callable' if isinstance(tp, CallableType) else
                 ' to Tuple' if isinstance(tp, TupleType) else
                 ' to Union' if isinstance(tp, UnionType) else '')
-        cdef = ClassDef('Type alias{}'.format(kind), Block([]))
+        cdef = ClassDef('Type alias' + kind, Block([]))
         fb_info = TypeInfo(SymbolTable(), cdef, self.cur_mod_id)
         fb_info.bases = [self.object_type()]
         fb_info.mro = [fb_info, self.object_type().type]
@@ -2383,7 +2384,8 @@ class SemanticAnalyzer(NodeVisitor):
                                      self.lookup_qualified,
                                      self.lookup_fully_qualified,
                                      self.fail)
-            expr.analyzed = TypeAliasExpr(res, fback=self.alias_fallback(res), in_runtime=True)
+            expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
+                                          in_runtime=True)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
