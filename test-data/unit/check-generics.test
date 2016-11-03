@@ -585,6 +585,7 @@ main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 main: note: At top level:
 
 [case testGenericTypeAliasesWrongAliases]
+# flags: --show-column-numbers --fast-parser --python-version 3.6
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')
@@ -592,26 +593,37 @@ class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         ...
 
-A = Node[T] # E: "Node" expects 2 type arguments, but 1 given
+A = Node[T] # Error
 B = Node[T, T]
-C = Node[T, T, T] # E: "Node" expects 2 type arguments, but 3 given
+C = Node[T, T, T] # Error
 D = Node[T, S]
 E = Node[Node[T, T], List[T]]
 
-F = Node[List[T, T], S] # E: "list" expects 1 type argument, but 2 given
-G = Callable[..., List[T, T]] # E: "list" expects 1 type argument, but 2 given
-H = Union[int, Tuple[T, Node[T]]] # E: "Node" expects 2 type arguments, but 1 given
-h = None # type: H # E: "Node" expects 2 type arguments, but 1 given
-h1 = None # type: H[int, str] # E: Bad number of arguments for type alias, expected: 1, given: 2
+F = Node[List[T, T], S] # Error
+G = Callable[..., List[T, T]] # Error
+H = Union[int, Tuple[T, Node[T]]] # Error
+h: H # Error
+h1: H[int, str] # Error
 
 x = None # type: D[int, str]
-reveal_type(x) # E: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+reveal_type(x)
 y = None # type: E[int]
-reveal_type(y) # E: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+reveal_type(y)
 
-X = T # E: Invalid type "__main__.T" for aliasing
+X = T # Error
 
 [builtins fixtures/list.pyi]
+[out]
+main:9:4: error: "Node" expects 2 type arguments, but 1 given
+main:11:4: error: "Node" expects 2 type arguments, but 3 given
+main:15:9: error: "list" expects 1 type argument, but 2 given
+main:16:18: error: "list" expects 1 type argument, but 2 given
+main:17:24: error: "Node" expects 2 type arguments, but 1 given
+main:18:3: error: "Node" expects 2 type arguments, but 1 given
+main:19:4: error: Bad number of arguments for type alias, expected: 1, given: 2
+main:22: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+main:24: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+main:26:4: error: Invalid type "__main__.T" for aliasing
 
 [case testGenericTypeAliasesForAliases]
 from typing import TypeVar, Generic, List, Union
@@ -938,6 +950,7 @@ reveal_type(C[str]().b) # E: Revealed type is '__main__.B[builtins.str*, builtin
 [builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesTypeVarConstraints]
+# flags: --show-column-numbers
 from typing import TypeVar, Generic
 T = TypeVar('T', int, list)
 S = TypeVar('S', int, list)
@@ -945,16 +958,17 @@ S = TypeVar('S', int, list)
 class A(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None: ...
 
-BadA = A[str, T]  # This error is reported twice (but it actually looks useful)
+BadA = A[str, T]  # One error here
 SameA = A[T, T]
 
 x = None # type: SameA[int]
-y = None # type: SameA[str] # E: Invalid type argument value for "A"
+y = None # type: SameA[str] # Two errors here, for both args of A
 
 [builtins fixtures/list.pyi]
 [out]
-main:8: error: Invalid type argument value for "A"
-main:8: error: Type argument 1 of "A" has incompatible value "str"
+main:9:7: error: Type argument 1 of "A" has incompatible value "str"
+main:13:8: error: Type argument 1 of "A" has incompatible value "str"
+main:13:8: error: Type argument 2 of "A" has incompatible value "str"
 
 
 -- Multiple assignment with lists

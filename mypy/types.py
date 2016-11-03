@@ -880,7 +880,7 @@ class UnionType(Type):
                 items[i] = true_or_false(ti)
 
         simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-        return UnionType.make_union(simplified_set)
+        return UnionType.make_union(simplified_set, line, column)
 
     def length(self) -> int:
         return len(self.items)

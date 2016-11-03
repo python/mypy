@@ -432,6 +432,7 @@ class ASTConverter(ast35.NodeTransformer):
             typ = parse_type_comment(n.type_comment, n.lineno)
         elif new_syntax:
             typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+            typ.column = n.annotation.col_offset
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression
         else:

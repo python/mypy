@@ -188,7 +188,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # checked only later, since we do not always know the
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
-                instance = Instance(info, self.anal_array(t.args), t.line)
+                instance = Instance(info, self.anal_array(t.args), t.line, t.column)
                 tup = info.tuple_type
                 if tup is None:
                     return instance
@@ -417,7 +417,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             t.args = [AnyType() for _ in info.type_vars]
         elif info.defn.type_vars:
             # Check type argument values.
-            for arg, TypeVar in zip(t.args, info.defn.type_vars):
+            for (i, arg), TypeVar in zip(enumerate(t.args), info.defn.type_vars):
                 if TypeVar.values:
                     if isinstance(arg, TypeVarType):
                         arg_values = arg.values
@@ -429,7 +429,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
-                                               TypeVar.values, t)
+                                               TypeVar.values, i, t)
                 if not satisfies_upper_bound(arg, TypeVar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -438,12 +438,17 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             arg.accept(self)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type],
-                              valids: List[Type], context: Context) -> None:
+                              valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in actuals:
             if (not isinstance(actual, AnyType) and
                     not any(is_same_type(actual, value) for value in valids)):
-                self.fail('Invalid type argument value for "{}"'.format(
-                    type.name()), context)
+                if len(actuals) > 1 or not isinstance(actual, Instance):
+                    self.fail('Invalid type argument value for "{}"'.format(
+                        type.name()), context)
+                else:
+                    # print(context.column)
+                    self.fail('Type argument {} of "{}" has incompatible value "{}"'.format(
+                        arg_number + 1, type.name(), actual.type.name()), context)
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)

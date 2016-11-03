@@ -20,11 +20,11 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
     """
     if isinstance(expr, NameExpr):
         name = expr.name
-        return UnboundType(name, line=expr.line)
+        return UnboundType(name, line=expr.line, column=expr.column)
     elif isinstance(expr, MemberExpr):
         fullname = get_member_expr_fullname(expr)
         if fullname:
-            return UnboundType(fullname, line=expr.line)
+            return UnboundType(fullname, line=expr.line, column=expr.column)
         else:
             raise TypeTranslationError()
     elif isinstance(expr, IndexExpr):
@@ -42,7 +42,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
         return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
-                        line=expr.line)
+                        line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr)):
         # Parse string literal type.
         try:
