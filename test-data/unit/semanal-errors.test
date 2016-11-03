@@ -964,15 +964,15 @@ class A(Generic[T], Generic[S]): pass \
 [case testInvalidMetaclass]
 class A(metaclass=x): pass
 [out]
-main:3: error: Name 'x' is not defined
-main:3: error: Invalid metaclass 'x'
+main:1: error: Name 'x' is not defined
+main:1: error: Invalid metaclass 'x'
 
 [case testInvalidQualifiedMetaclass]
 import abc
 class A(metaclass=abc.Foo): pass
 [out]
-main:3: error: Name 'abc.Foo' is not defined
-main:3: error: Invalid metaclass 'abc.Foo'
+main:2: error: Name 'abc.Foo' is not defined
+main:2: error: Invalid metaclass 'abc.Foo'
 
 [case testNonClassMetaclass]
 def f(): pass
