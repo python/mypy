@@ -296,6 +296,10 @@ class ASTConverter(ast35.NodeTransformer):
 
         func_type = None
         if any(arg_types) or return_type:
+            if len(arg_types) > len(arg_kinds):
+                raise FastParserError('Type signature has too many arguments', n.lineno, offset=0)
+            if len(arg_types) < len(arg_kinds):
+                raise FastParserError('Type signature has too few arguments', n.lineno, offset=0)
             func_type = CallableType([a if a is not None else AnyType() for a in arg_types],
                                      arg_kinds,
                                      arg_names,
