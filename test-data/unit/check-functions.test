@@ -1275,6 +1275,18 @@ f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
+-- Callable with specific arg list
+-- -------------------------------
+
+[case testCallableWithNamedArg]
+from typing import Callable
+from mypy_extensions import Arg
+
+def a(f: Callable[[Arg('x', int)], int]):
+    f(x=4)
+    f(5)
+
+[builtins fixtures/dict.pyi]
 
 -- Callable[..., T]
 -- ----------------

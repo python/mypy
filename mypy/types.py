@@ -225,8 +225,8 @@ class ErrorType(Type):
         return visitor.visit_error_type(self)
 
 
-class TypeList(Type):
-    """A list of types [...].
+class ArgumentList(Type):
+    """Information about argument types and names [...].
 
     This is only used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
@@ -234,23 +234,41 @@ class TypeList(Type):
     """
 
     items = None  # type: List[Type]
+    names = None  # type: List[Optional[str]]
+    kinds = None  # type: List[int]
 
-    def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(self,
+                 types: List[Type],
+                 names: List[Optional[str]],
+                 kinds: List[int],
+                 line: int = -1,
+                 column: int = -1) -> None:
         super().__init__(line, column)
-        self.items = items
+        self.types = types
+        self.names = names
+        self.kinds = kinds
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'TypeList',
-                'items': [t.serialize() for t in self.items],
-                }
+        return {'.class': 'ArgumentList',
+                'items': [t.serialize() for t in self.types],
+                'names': self.names,
+                'kinds': self.kinds,
+        }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeList':
-        assert data['.class'] == 'TypeList'
-        return TypeList([Type.deserialize(t) for t in data['items']])
+    def deserialize(cls, data: JsonDict) -> 'ArgumentList':
+        assert data['.class'] == 'ArgumentList' or data['.class'] == 'TypeList'
+        types = [Type.deserialize(t) for t in data['items']]
+        names = cast(List[Optional[str]], data.get('names', [None]*len(types)))
+        kinds = cast(List[int], data.get('kinds', [nodes.ARG_POS]*len(types)))
+        return ArgumentList(
+            types=[Type.deserialize(t) for t in data['items']],
+            names=names,
+            kinds=kinds,
+        )
 
 
 class AnyType(Type):
@@ -1030,7 +1048,7 @@ class TypeVisitor(Generic[T]):
     def visit_unbound_type(self, t: UnboundType) -> T:
         pass
 
-    def visit_type_list(self, t: TypeList) -> T:
+    def visit_type_list(self, t: ArgumentList) -> T:
         raise self._notimplemented_helper('type_list')
 
     def visit_error_type(self, t: ErrorType) -> T:
@@ -1107,7 +1125,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_type_list(self, t: ArgumentList) -> Type:
         return t
 
     def visit_error_type(self, t: ErrorType) -> Type:
@@ -1198,8 +1216,8 @@ class TypeStrVisitor(TypeVisitor[str]):
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_type_list(self, t: TypeList) -> str:
-        return '<TypeList {}>'.format(self.list_str(t.items))
+    def visit_type_list(self, t: ArgumentList) -> str:
+        return '<ArgumentList {}>'.format(self.list_str(t.items))
 
     def visit_error_type(self, t: ErrorType) -> str:
         return '<ERROR>'
@@ -1349,7 +1367,7 @@ class TypeQuery(TypeVisitor[bool]):
     def visit_unbound_type(self, t: UnboundType) -> bool:
         return self.default
 
-    def visit_type_list(self, t: TypeList) -> bool:
+    def visit_type_list(self, t: ArgumentList) -> bool:
         return self.default
 
     def visit_error_type(self, t: ErrorType) -> bool:

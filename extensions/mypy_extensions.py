@@ -5,6 +5,8 @@ Example usage:
     from mypy_extensions import TypedDict
 """
 
+from typing import Any
+
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
 
@@ -20,3 +22,9 @@ def TypedDict(typename, fields):
     new_dict.__name__ = typename
     new_dict.__supertype__ = dict
     return new_dict
+
+class Arg(object):
+    def __init__(name=None, typ=Any, keyword_only=False):
+        self.name = name
+        self.typ = typ
+        self.named_only = named_only

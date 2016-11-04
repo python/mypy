@@ -1,6 +1,1 @@
-from typing import Dict, Type, TypeVar
-
-T = TypeVar('T')
-
-
-def TypedDict(typename: str, fields: Dict[str, Type[T]]) -> Type[dict]: ...
+typeshed/third_party/2and3/mypy_extensions.pyi

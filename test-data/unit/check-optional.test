@@ -358,7 +358,7 @@ x = f  # type: Callable[[], None]
 from typing import Callable, Optional
 T = Optional[Callable[..., None]]
 
-[case testAnyTypeInPartialTypeList]
+[case testAnyTypeInPartialArgumentList]
 # flags: --check-untyped-defs
 def f(): ...
 

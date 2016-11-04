@@ -2408,7 +2408,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
     NameExpr(None)
-    Callable?[<TypeList >, None?]))
+    Callable?[<ArgumentList >, None?]))
 
 [case testFunctionTypeWithArgument]
 f = None # type: Callable[[str], int]
@@ -2417,7 +2417,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
     NameExpr(None)
-    Callable?[<TypeList str?>, int?]))
+    Callable?[<ArgumentList str?>, int?]))
 
 [case testFunctionTypeWithTwoArguments]
 f = None # type: Callable[[a[b], x.y], List[int]]
@@ -2426,7 +2426,7 @@ MypyFile:1(
   AssignmentStmt:1(
     NameExpr(f)
     NameExpr(None)
-    Callable?[<TypeList a?[b?], x.y?>, List?[int?]]))
+    Callable?[<ArgumentList a?[b?], x.y?>, List?[int?]]))
 
 [case testFunctionTypeWithExtraComma]
 def f(x: Callable[[str,], int]): pass
@@ -2436,7 +2436,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Callable?[<TypeList str?>, int?]) -> Any
+    def (x: Callable?[<ArgumentList str?>, int?]) -> Any
     Block:1(
       PassStmt:1())))
 

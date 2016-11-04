@@ -2,7 +2,7 @@ from typing import Dict, List
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
-    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
+    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, ArgumentList,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId
 )
 
@@ -42,7 +42,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_type_list(self, t: ArgumentList) -> Type:
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:

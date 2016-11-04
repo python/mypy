@@ -3,6 +3,7 @@
 Constructs a parse tree (abstract syntax tree) based on a string
 representing a source file. Performs only minimal semantic checks.
 """
+import traceback
 
 import re
 
@@ -1896,6 +1897,7 @@ class Parser:
         try:
             typ, self.ind = parse_type(self.tok, self.ind)
         except TypeParseError as e:
+            traceback.print_stack()
             self.parse_error_at(e.token, reason=e.message)
             raise ParseError()
         return typ

@@ -3,7 +3,7 @@ from typing import List, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
+    ErasedType, ArgumentList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -91,7 +91,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_error_type(self, left: ErrorType) -> bool:
         return False
 
-    def visit_type_list(self, t: TypeList) -> bool:
+    def visit_type_list(self, t: ArgumentList) -> bool:
         assert False, 'Not supported'
 
     def visit_any(self, left: AnyType) -> bool:
