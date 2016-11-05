@@ -2182,3 +2182,18 @@ class B(A):
 main: note: In class "B":
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[A], None])
 main:6: error: Signature of "b" incompatible with supertype "A"
+
+[case testVariableProperty]
+class A:
+    @property
+    def a(self) -> bool: pass
+class B(A):
+    a = None  # type: bool
+class C(A):
+    a = True
+class D(A):
+    a = 1
+[builtins fixtures/property.pyi]
+[out]
+main: note: In class "D":
+main:9: error: Incompatible types in assignment (expression has type "int", variable has type "bool")

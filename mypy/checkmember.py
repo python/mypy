@@ -641,4 +641,11 @@ def find_type_from_bases(e: NameExpr):
                 itype = map_instance_to_supertype(expr_base, base)
                 base_type = expand_type_by_instance(base_var.type, itype)
 
+            if isinstance(base_type, CallableType):
+                # If we are a property, return the Type of the return value, not the Callable
+                if isinstance(base_var.node, Decorator) and base_var.node.func.is_property:
+                    base_type = base_type.ret_type
+                elif isinstance(base_var.node, FuncDef) and base_var.node.is_property:
+                    base_type = base_type.ret_type
+
             return base_type
