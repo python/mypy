@@ -2090,6 +2090,17 @@ class B(A):
 class C(B):
     a = "a"
 [out]
+main: note: In class "B":
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSubclassTypeOverwriteImplicit]
+class A:
+    a = 1
+class B(A):
+    a = None  # type: str
+[out]
+main: note: In class "B":
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testVariableSuperUsage]
 class A:
