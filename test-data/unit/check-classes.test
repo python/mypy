@@ -2170,3 +2170,15 @@ class B(A[int]):
 [out]
 main: note: In class "B":
 main:8: error: List item 0 has incompatible type "str"
+
+[case testVariableMethod]
+class A:
+    def a(self) -> None: pass
+    b = 1
+class B(A):
+    a = 1
+    def b(self) -> None: pass
+[out]
+main: note: In class "B":
+main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[A], None])
+main:6: error: Signature of "b" incompatible with supertype "A"
