@@ -2058,9 +2058,9 @@ class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
 
 [case testVariableSubclass]
 class A:
-    a = 1 # type: int
+    a = 1  # type: int
 class B(A):
-    a = None
+    a = 1
 [out]
 
 [case testVariableSubclassAssignMismatch]
