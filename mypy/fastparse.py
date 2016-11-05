@@ -296,6 +296,10 @@ class ASTConverter(ast35.NodeTransformer):
 
         func_type = None
         if any(arg_types) or return_type:
+            if len(arg_types) > len(arg_kinds):
+                raise FastParserError('Type signature has too many arguments', n.lineno, offset=0)
+            if len(arg_types) < len(arg_kinds):
+                raise FastParserError('Type signature has too few arguments', n.lineno, offset=0)
             func_type = CallableType([a if a is not None else AnyType() for a in arg_types],
                                      arg_kinds,
                                      arg_names,
@@ -432,6 +436,7 @@ class ASTConverter(ast35.NodeTransformer):
             typ = parse_type_comment(n.type_comment, n.lineno)
         elif new_syntax:
             typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+            typ.column = n.annotation.col_offset
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression
         else:

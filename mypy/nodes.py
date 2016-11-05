@@ -1732,9 +1732,18 @@ class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
     type = None  # type: mypy.types.Type
+    # Simple fallback type for aliases that are invalid in runtime expressions
+    # (for example Union, Tuple, Callable).
+    fallback = None  # type: mypy.types.Type
+    # This type alias is subscripted in a runtime expression like Alias[int](42)
+    # (not in a type context like type annotation or base class).
+    in_runtime = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type') -> None:
+    def __init__(self, type: 'mypy.types.Type', fallback: 'mypy.types.Type' = None,
+                 in_runtime: bool = False) -> None:
         self.type = type
+        self.fallback = fallback
+        self.in_runtime = in_runtime
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)

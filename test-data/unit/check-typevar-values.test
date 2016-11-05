@@ -235,7 +235,7 @@ X = TypeVar('X', int, str)
 class A(Generic[X]): pass
 a = None  # type: A[int]
 b = None  # type: A[str]
-d = None  # type: A[object] # E: Invalid type argument value for "A"
+d = None  # type: A[object] # E: Type argument 1 of "A" has incompatible value "object"
 c = None  # type: A[Any]
 
 [case testConstructGenericTypeWithTypevarValuesAndTypeInference]
@@ -356,8 +356,8 @@ Y = TypeVar('Y', int, str)
 class C(Generic[X, Y]): pass
 a = None  # type: C[A, int]
 b = None  # type: C[B, str]
-c = None  # type: C[int, int] # E: Invalid type argument value for "C"
-d = None  # type: C[A, A]     # E: Invalid type argument value for "C"
+c = None  # type: C[int, int] # E: Type argument 1 of "C" has incompatible value "int"
+d = None  # type: C[A, A]     # E: Type argument 2 of "C" has incompatible value "A"
 
 [case testCallGenericFunctionUsingMultipleTypevarsWithValues]
 from typing import TypeVar

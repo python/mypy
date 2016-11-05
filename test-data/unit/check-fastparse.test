@@ -160,16 +160,12 @@ main: note: In function "f":
 def f():  # E: Type signature has too many arguments
     # type: (int) -> None
     pass
-[out]
-main: note: In function "f":
 
 [case testFasterParseTooFewArgumentsAnnotation]
 # flags: --fast-parser
 def f(x):  # E: Type signature has too few arguments
     # type: () -> None
     pass
-[out]
-main: note: In function "f":
 
 [case testFasterParseTypeCommentError_python2]
 # flags: --fast-parser

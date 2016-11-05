@@ -1,6 +1,9 @@
-"""Fixer that inserts mypy annotations into all methods.
+"""Fixer for lib2to3 that inserts mypy annotations into all methods.
 
-This transforms e.g.
+The simplest way to run this is to copy it into lib2to3's "fixes"
+subdirectory and then run "2to3 -f annotate" over your files.
+
+The fixer transforms e.g.
 
   def foo(self, bar, baz=12):
       return bar + baz

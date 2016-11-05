@@ -1,14 +1,14 @@
 """Semantic analysis of types"""
 
-from typing import Callable, cast, List
+from typing import Callable, cast, List, Optional
 
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, UnionType, Instance,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
-    BOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
+    BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr
 )
@@ -40,6 +40,10 @@ def analyze_type_alias(node: Expression,
     # that we don't support straight string literals as type aliases
     # (only string literals within index expressions).
     if isinstance(node, RefExpr):
+        if node.kind == UNBOUND_TVAR or node.kind == BOUND_TVAR:
+            fail_func('Type variable "{}" is invalid as target for type alias'.format(
+                node.fullname), node)
+            return None
         if not (isinstance(node.node, TypeInfo) or
                 node.fullname == 'typing.Any' or
                 node.kind == TYPE_ALIAS):
@@ -48,7 +52,8 @@ def analyze_type_alias(node: Expression,
         base = node.base
         if isinstance(base, RefExpr):
             if not (isinstance(base.node, TypeInfo) or
-                    base.fullname in type_constructors):
+                    base.fullname in type_constructors or
+                    base.kind == TYPE_ALIAS):
                 return None
         else:
             return None
@@ -61,7 +66,7 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True)
     return type.accept(analyzer)
 
 
@@ -74,10 +79,12 @@ class TypeAnalyser(TypeVisitor[Type]):
     def __init__(self,
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
-                 fail_func: Callable[[str, Context], None]) -> None:
+                 fail_func: Callable[[str, Context], None], *,
+                 aliasing: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
+        self.aliasing = aliasing
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -141,8 +148,22 @@ class TypeAnalyser(TypeVisitor[Type]):
                 item = items[0]
                 return TypeType(item, line=t.line)
             elif sym.kind == TYPE_ALIAS:
-                # TODO: Generic type aliases.
-                return sym.type_override
+                override = sym.type_override
+                an_args = self.anal_array(t.args)
+                all_vars = self.get_type_var_names(override)
+                exp_len = len(all_vars)
+                act_len = len(an_args)
+                if exp_len > 0 and act_len == 0:
+                    # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
+                    return self.replace_alias_tvars(override, all_vars, [AnyType()] * exp_len,
+                                                    t.line, t.column)
+                if exp_len == 0 and act_len == 0:
+                    return override
+                if act_len != exp_len:
+                    self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
+                              % (exp_len, act_len), t)
+                    return t
+                return self.replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
@@ -153,7 +174,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
                     return AnyType()
-                self.fail('Invalid type "{}"'.format(name), t)
+                # Allow unbound type variables when defining an alias
+                if not (self.aliasing and sym.kind == UNBOUND_TVAR):
+                    self.fail('Invalid type "{}"'.format(name), t)
                 return t
             info = sym.node  # type: TypeInfo
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
@@ -166,7 +189,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # checked only later, since we do not always know the
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
-                instance = Instance(info, self.anal_array(t.args), t.line)
+                instance = Instance(info, self.anal_array(t.args), t.line, t.column)
                 tup = info.tuple_type
                 if tup is None:
                     return instance
@@ -180,6 +203,54 @@ class TypeAnalyser(TypeVisitor[Type]):
                                              fallback=instance)
         else:
             return AnyType()
+
+    def get_type_var_names(self, tp: Type) -> List[str]:
+        """Get all type variable names that are present in a generic type alias
+        in order of textual appearance (recursively, if needed).
+        """
+        tvars = []  # type: List[str]
+        typ_args = get_typ_args(tp)
+        for arg in typ_args:
+            tvar = self.get_tvar_name(arg)
+            if tvar:
+                tvars.append(tvar)
+            else:
+                subvars = self.get_type_var_names(arg)
+                if subvars:
+                    tvars.extend(subvars)
+        # Get unique type variables in order of appearance
+        all_tvars = set(tvars)
+        new_tvars = []
+        for t in tvars:
+            if t in all_tvars:
+                new_tvars.append(t)
+                all_tvars.remove(t)
+        return new_tvars
+
+    def get_tvar_name(self, t: Type) -> Optional[str]:
+        if not isinstance(t, UnboundType):
+            return None
+        sym = self.lookup(t.name, t)
+        if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+            return t.name
+        return None
+
+    def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type],
+                            newline: int, newcolumn: int) -> Type:
+        """Replace type variables in a generic type alias tp with substitutions subs
+        resetting context. Length of subs should be already checked.
+        """
+        typ_args = get_typ_args(tp)
+        new_args = typ_args[:]
+        for i, arg in enumerate(typ_args):
+            tvar = self.get_tvar_name(arg)
+            if tvar and tvar in vars:
+                # Perform actual substitution...
+                new_args[i] = subs[vars.index(tvar)]
+            else:
+                # ...recursively, if needed.
+                new_args[i] = self.replace_alias_tvars(arg, vars, subs, newline, newcolumn)
+        return set_typ_args(tp, new_args, newline, newcolumn)
 
     def visit_any(self, t: AnyType) -> Type:
         return t
@@ -347,7 +418,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             t.args = [AnyType() for _ in info.type_vars]
         elif info.defn.type_vars:
             # Check type argument values.
-            for arg, TypeVar in zip(t.args, info.defn.type_vars):
+            for (i, arg), TypeVar in zip(enumerate(t.args), info.defn.type_vars):
                 if TypeVar.values:
                     if isinstance(arg, TypeVarType):
                         arg_values = arg.values
@@ -359,7 +430,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                     else:
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
-                                               TypeVar.values, t)
+                                               TypeVar.values, i + 1, t)
                 if not satisfies_upper_bound(arg, TypeVar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
@@ -368,12 +439,16 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             arg.accept(self)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type],
-                              valids: List[Type], context: Context) -> None:
+                              valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in actuals:
             if (not isinstance(actual, AnyType) and
                     not any(is_same_type(actual, value) for value in valids)):
-                self.fail('Invalid type argument value for "{}"'.format(
-                    type.name()), context)
+                if len(actuals) > 1 or not isinstance(actual, Instance):
+                    self.fail('Invalid type argument value for "{}"'.format(
+                        type.name()), context)
+                else:
+                    self.fail('Type argument {} of "{}" has incompatible value "{}"'.format(
+                        arg_number, type.name(), actual.type.name()), context)
 
     def visit_callable_type(self, t: CallableType) -> None:
         t.ret_type.accept(self)

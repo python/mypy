@@ -331,7 +331,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif isinstance(functype, CallableType):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
-                    if func.is_class:
+                    if func.is_class or func.name() == '__new__':
                         leading_type = self.class_type(self.type)
                     else:
                         leading_type = fill_typevars(self.type)
@@ -1128,7 +1128,8 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             self.visit_block(b)
 
-    def anal_type(self, t: Type, allow_tuple_literal: bool = False) -> Type:
+    def anal_type(self, t: Type, allow_tuple_literal: bool = False,
+                  aliasing: bool = False) -> Type:
         if t:
             if allow_tuple_literal:
                 # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
@@ -1145,7 +1146,8 @@ class SemanticAnalyzer(NodeVisitor):
                     return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
-                             self.fail)
+                             self.fail,
+                             aliasing=aliasing)
             return t.accept(a)
         else:
             return None
@@ -1192,7 +1194,8 @@ class SemanticAnalyzer(NodeVisitor):
                     node.kind = TYPE_ALIAS
                     node.type_override = res
                     if isinstance(s.rvalue, IndexExpr):
-                        s.rvalue.analyzed = TypeAliasExpr(res)
+                        s.rvalue.analyzed = TypeAliasExpr(res,
+                                                          fallback=self.alias_fallback(res))
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1229,6 +1232,19 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(rvalue, UnicodeExpr):
             return self.named_type_or_none('builtins.unicode')
         return None
+
+    def alias_fallback(self, tp: Type) -> Instance:
+        """Make a dummy Instance with no methods. It is used as a fallback type
+        to detect errors for non-Instance aliases (i.e. Unions, Tuples, Callables).
+        """
+        kind = (' to Callable' if isinstance(tp, CallableType) else
+                ' to Tuple' if isinstance(tp, TupleType) else
+                ' to Union' if isinstance(tp, UnionType) else '')
+        cdef = ClassDef('Type alias' + kind, Block([]))
+        fb_info = TypeInfo(SymbolTable(), cdef, self.cur_mod_id)
+        fb_info.bases = [self.object_type()]
+        fb_info.mro = [fb_info, self.object_type().type]
+        return Instance(fb_info, [])
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
@@ -2113,6 +2129,8 @@ class SemanticAnalyzer(NodeVisitor):
             return True
         elif isinstance(s, TupleExpr):
             return all(self.is_valid_del_target(item) for item in s.items)
+        else:
+            return False
 
     def visit_global_decl(self, g: GlobalDecl) -> None:
         for name in g.names:
@@ -2242,6 +2260,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return
             expr.analyzed = RevealTypeExpr(expr.args[0])
             expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
             # Special form Any(...).
@@ -2378,7 +2397,16 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
         expr.base.accept(self)
-        if refers_to_class_or_function(expr.base):
+        if isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
+            # Special form -- subscripting a generic type alias.
+            # Perform the type substitution and create a new alias.
+            res = analyze_type_alias(expr,
+                                     self.lookup_qualified,
+                                     self.lookup_fully_qualified,
+                                     self.fail)
+            expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
+                                          in_runtime=True)
+        elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
@@ -2392,7 +2420,7 @@ class SemanticAnalyzer(NodeVisitor):
                 except TypeTranslationError:
                     self.fail('Type expected within [...]', expr)
                     return
-                typearg = self.anal_type(typearg)
+                typearg = self.anal_type(typearg, aliasing=True)
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
@@ -3068,6 +3096,8 @@ class ThirdPass(TraverserVisitor):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
+        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
+            self.analyze(s.rvalue.analyzed.type)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:

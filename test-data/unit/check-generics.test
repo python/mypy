@@ -505,6 +505,472 @@ type[int] # this was crashing, see #2302 (comment)  # E: Type application target
 [out]
 
 
+-- Generic type aliases
+-- --------------------
+
+[case testGenericTypeAliasesBasic]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        ...
+
+IntNode = Node[int, S]
+IntIntNode = Node[int, int]
+SameNode = Node[T, T]
+
+n = Node(1, 1) # type: IntIntNode
+n1 = Node(1, 'a') # type: IntIntNode # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
+
+m = Node(1, 1) # type: IntNode
+m1 = Node('x', 1) # type: IntNode # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
+m2 = Node(1, 1) # type: IntNode[str] # E: Argument 2 to "Node" has incompatible type "int"; expected "str"
+
+s = Node(1, 1) # type: SameNode[int]
+reveal_type(s) # E: Revealed type is '__main__.Node[builtins.int, builtins.int]'
+s1 = Node(1, 'x') # type: SameNode[int] # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
+
+[out]
+
+[case testGenericTypeAliasesBasic2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        ...
+
+IntNode = Node[int, S]
+IntIntNode = Node[int, int]
+SameNode = Node[T, T]
+
+def output_bad() -> IntNode[str]:
+    return Node(1, 1) # Eroor - bad return type, see out
+
+def input(x: IntNode[str]) -> None:
+    pass
+input(Node(1, 's'))
+input(Node(1, 1)) # E: Argument 2 to "Node" has incompatible type "int"; expected "str"
+
+def output() -> IntNode[str]:
+    return Node(1, 'x')
+reveal_type(output()) # E: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+
+def func(x: IntNode[T]) -> IntNode[T]:
+    return x
+reveal_type(func) # E: Revealed type is 'def [T] (x: __main__.Node[builtins.int, T`-1]) -> __main__.Node[builtins.int, T`-1]'
+
+func(1) # E: Argument 1 to "func" has incompatible type "int"; expected Node[int, None]
+func(Node('x', 1)) # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
+reveal_type(func(Node(1, 'x'))) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
+
+def func2(x: SameNode[T]) -> SameNode[T]:
+    return x
+reveal_type(func2) # E: Revealed type is 'def [T] (x: __main__.Node[T`-1, T`-1]) -> __main__.Node[T`-1, T`-1]'
+
+func2(Node(1, 'x')) # E: Cannot infer type argument 1 of "func2"
+y = func2(Node('x', 'x'))
+reveal_type(y) # E: Revealed type is '__main__.Node[builtins.str*, builtins.str*]'
+
+def wrap(x: T) -> IntNode[T]:
+    return Node(1, x)
+
+z = None # type: str
+reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
+
+[out]
+main: note: In function "output_bad":
+main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
+main: note: At top level:
+
+[case testGenericTypeAliasesWrongAliases]
+# flags: --show-column-numbers --fast-parser --python-version 3.6
+from typing import TypeVar, Generic, List, Callable, Tuple, Union
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        ...
+
+A = Node[T] # Error
+B = Node[T, T]
+C = Node[T, T, T] # Error
+D = Node[T, S]
+E = Node[Node[T, T], List[T]]
+
+F = Node[List[T, T], S] # Error
+G = Callable[..., List[T, T]] # Error
+H = Union[int, Tuple[T, Node[T]]] # Error
+h: H # Error
+h1: H[int, str] # Error
+
+x = None # type: D[int, str]
+reveal_type(x)
+y = None # type: E[int]
+reveal_type(y)
+
+X = T # Error
+
+[builtins fixtures/list.pyi]
+[out]
+main:9:4: error: "Node" expects 2 type arguments, but 1 given
+main:11:4: error: "Node" expects 2 type arguments, but 3 given
+main:15:9: error: "list" expects 1 type argument, but 2 given
+main:16:18: error: "list" expects 1 type argument, but 2 given
+main:17:24: error: "Node" expects 2 type arguments, but 1 given
+main:18:3: error: "Node" expects 2 type arguments, but 1 given
+main:19:4: error: Bad number of arguments for type alias, expected: 1, given: 2
+main:22:0: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+main:24:0: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+main:26:4: error: Type variable "__main__.T" is invalid as target for type alias
+
+[case testGenericTypeAliasesForAliases]
+from typing import TypeVar, Generic, List, Union
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        pass
+
+ListedNode = Node[List[T], List[S]]
+Second = ListedNode[int, T]
+Third = Union[int, Second[str]]
+
+def f2(x: T) -> Second[T]:
+    return Node([1], [x])
+reveal_type(f2('a')) # E: Revealed type is '__main__.Node[builtins.list[builtins.int], builtins.list[builtins.str*]]'
+
+def f3() -> Third:
+    return Node([1], ['x'])
+reveal_type(f3()) # E: Revealed type is 'Union[builtins.int, __main__.Node[builtins.list[builtins.int], builtins.list[builtins.str]]]'
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesAny]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+IntNode = Node[int, S]
+AnyNode = Node[S, T]
+
+def output() -> IntNode[str]:
+    return Node(1, 'x')
+x = output() # type: IntNode # This is OK (implicit Any)
+
+y = None # type: IntNode
+y.x = 1
+y.x = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+y.y = 1 # Both are OK (implicit Any)
+y.y = 'x'
+
+z = Node(1, 'x') # type: AnyNode
+reveal_type(z) # E: Revealed type is '__main__.Node[Any, Any]'
+
+[out]
+
+[case testGenericTypeAliasesAcessingMethods]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+    def meth(self) -> T:
+        return self.x
+
+ListedNode = Node[List[T]]
+l = None # type: ListedNode[int]
+l.x.append(1)
+l.meth().append(1)
+reveal_type(l.meth()) # E: Revealed type is 'builtins.list*[builtins.int]'
+l.meth().append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+
+ListedNode[str]([]).x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type List[str])
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesSubclassing]
+from typing import TypeVar, Generic, Tuple, List
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+TupledNode = Node[Tuple[T, T]]
+
+class D(Generic[T], TupledNode[T]):
+    ...
+class L(Generic[T], List[TupledNode[T]]):
+    ...
+
+def f_bad(x: T) -> D[T]:
+    return D(1)  # Error, see out
+
+L[int]().append(Node((1, 1)))
+L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected Node[Tuple[int, int]]
+
+x = D((1, 1)) # type: D[int]
+y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "int"; expected "Tuple[int, int]"
+
+def f(x: T) -> D[T]:
+    return D((x, x))
+reveal_type(f('a'))  # E: Revealed type is '__main__.D[builtins.str*]'
+
+[builtins fixtures/list.pyi]
+[out]
+main: note: In function "f_bad":
+main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
+main: note: At top level:
+
+[case testGenericTypeAliasesSubclassingBad]
+from typing import TypeVar, Generic, Tuple, Union
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+TupledNode = Node[Tuple[T, T]]
+UNode = Union[int, Node[T]]
+
+class C(TupledNode): ... # Same as TupledNode[Any]
+class D(TupledNode[T]): ... # E: Invalid type "__main__.T"
+class E(Generic[T], UNode[T]): ... # E: Invalid base class
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesUnion]
+from typing import TypeVar, Generic, Union, Any
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+UNode = Union[int, Node[T]]
+x = 1 # type: UNode[int]
+
+x + 1 # E: Unsupported left operand type for + (some union)
+if not isinstance(x, Node):
+    x + 1
+
+if not isinstance(x, int):
+   x.x = 1
+   x.x = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+def f(x: T) -> UNode[T]:
+    if 1:
+        return Node(x)
+    else:
+        return 1
+
+reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int, __main__.Node[builtins.int*]]'
+
+TNode = Union[T, Node[int]]
+s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, Node[int]]")
+
+if not isinstance(s, str):
+    s.x = 1
+
+z = None # type: TNode # Same as TNode[Any]
+z.x
+z.foo() # Any simplifies Union to Any now. This test should be updated after #2197
+
+[builtins fixtures/isinstance.pyi]
+
+[case testGenericTypeAliasesTuple]
+from typing import TypeVar, Tuple
+T = TypeVar('T')
+
+SameTP = Tuple[T, T]
+IntTP = Tuple[int, T]
+
+def f1(x: T) -> SameTP[T]:
+    return x, x
+
+a, b, c = f1(1) # E: Need more than 2 values to unpack (3 expected)
+x, y = f1(1)
+reveal_type(x) # E: Revealed type is 'builtins.int'
+
+def f2(x: IntTP[T]) -> IntTP[T]:
+    return x
+
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, None]"
+reveal_type(f2((1, 'x'))) # E: Revealed type is 'Tuple[builtins.int, builtins.str*]'
+
+[builtins fixtures/for.pyi]
+
+[case testGenericTypeAliasesCallable]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T')
+class Node(Generic[T]):
+    def __init__(self, x: T) -> None:
+        ...
+
+BadC = Callable[T] # E: Invalid function type
+
+C = Callable[..., T]
+C2 = Callable[[T, T], Node[T]]
+
+def make_cb(x: T) -> C[T]:
+    return lambda *args: x
+
+reveal_type(make_cb(1)) # E: Revealed type is 'def (*Any, **Any) -> builtins.int*'
+
+def use_cb(arg: T, cb: C2[T]) -> Node[T]:
+    return cb(arg, arg)
+
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected Callable[[int, int], Node[int]]
+my_cb = None # type: C2[int]
+use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type Callable[[int, int], Node[int]]; expected Callable[[str, str], Node[str]]
+reveal_type(use_cb(1, my_cb)) # E: Revealed type is '__main__.Node[builtins.int]'
+
+[out]
+
+[case testGenericTypeAliasesPEPBasedExample]
+from typing import TypeVar, List, Tuple
+T = TypeVar('T', int, bool)
+
+Vec = List[Tuple[T, T]]
+
+vec = []  # type: Vec[bool]
+vec.append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "Tuple[bool, bool]"
+reveal_type(vec[0]) # E: Revealed type is 'Tuple[builtins.bool, builtins.bool]'
+
+def fun1(v: Vec[T]) -> T:
+    return v[0][0]
+def fun2(v: Vec[T], scale: T) -> Vec[T]:
+    return v
+
+reveal_type(fun1([(1, 1)])) # E: Revealed type is 'builtins.int*'
+fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected List[Tuple[int, int]]
+fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
+
+reveal_type(fun2([(1, 1)], 1)) # E: Revealed type is 'builtins.list[Tuple[builtins.int*, builtins.int*]]'
+fun2([('x', 'x')], 'x') # E: Type argument 1 of "fun2" has incompatible value "str"
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesImporting]
+from typing import TypeVar
+from a import Node, TupledNode
+T = TypeVar('T')
+
+n = None # type: TupledNode[int]
+n.x = 1
+n.y = (1, 1)
+n.y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "Tuple[int, int]")
+
+def f(x: Node[T, T]) -> TupledNode[T]:
+    return Node(x.x, (x.x, x.x))
+
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected Node[None, None]
+f(Node(1, 'x')) # E: Cannot infer type argument 1 of "f"
+reveal_type(Node('x', 'x')) # E: Revealed type is 'a.Node[builtins.str*, builtins.str*]'
+
+[file a.py]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
+TupledNode = Node[T, Tuple[T, T]]
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesRuntimeExpressionsInstance]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class Node(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None:
+        ...
+
+IntNode = Node[int, T]
+IntNode[int](1, 1)
+IntNode[int](1, 'a')  # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
+
+SameNode = Node[T, T]
+ff = SameNode[T](1, 1)  # E: Need type annotation for variable
+a = SameNode(1, 'x')
+reveal_type(a) # E: Revealed type is '__main__.Node[Any, Any]'
+b = SameNode[int](1, 1)
+reveal_type(b) # E: Revealed type is '__main__.Node[builtins.int*, builtins.int*]'
+SameNode[int](1, 'x') # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
+
+[out]
+
+[case testGenericTypeAliasesRuntimeExpressionsOther]
+from typing import TypeVar, Union, Tuple, Callable, Any
+T = TypeVar('T')
+
+CA = Callable[[T], int]
+TA = Tuple[T, int]
+UA = Union[T, int]
+
+cs = CA[str] + 1 # E: Unsupported left operand type for + ("Type alias to Callable")
+reveal_type(cs) # E: Revealed type is 'Any'
+
+ts = TA[str]() # E: "Type alias to Tuple" not callable
+reveal_type(ts) # E: Revealed type is 'Any'
+
+us = UA[str].x # E: "Type alias to Union" has no attribute "x"
+reveal_type(us) # E: Revealed type is 'Any'
+
+[out]
+
+[case testGenericTypeAliasesTypeVarBinding]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None: ...
+
+class B(Generic[T, S]):
+    def __init__(self, x: List[T], y: List[S]) -> None: ...
+
+SameA = A[T, T]
+SameB = B[T, T]
+
+class C(Generic[T]):
+    a = None # type: SameA[T]
+    b = SameB[T]([], [])
+
+reveal_type(C[int]().a) # E: Revealed type is '__main__.A[builtins.int*, builtins.int*]'
+reveal_type(C[str]().b) # E: Revealed type is '__main__.B[builtins.str*, builtins.str*]'
+
+[builtins fixtures/list.pyi]
+
+[case testGenericTypeAliasesTypeVarConstraints]
+# flags: --show-column-numbers
+from typing import TypeVar, Generic
+T = TypeVar('T', int, list)
+S = TypeVar('S', int, list)
+
+class A(Generic[T, S]):
+    def __init__(self, x: T, y: S) -> None: ...
+
+BadA = A[str, T]  # One error here
+SameA = A[T, T]
+
+x = None # type: SameA[int]
+y = None # type: SameA[str] # Two errors here, for both args of A
+
+[builtins fixtures/list.pyi]
+[out]
+main:9:7: error: Type argument 1 of "A" has incompatible value "str"
+main:13: error: Type argument 1 of "A" has incompatible value "str"
+main:13: error: Type argument 2 of "A" has incompatible value "str"
+
+
 -- Multiple assignment with lists
 -- ------------------------------
 
