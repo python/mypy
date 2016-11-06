@@ -71,7 +71,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef,
+    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type)
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
@@ -1803,31 +1803,41 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
-        # TODO: SelfType should be bind to actual 'self'
-        this_type = fill_typevars(info)
+        tvd = TypeVarDef('NT', 1, [], fill_typevars(info))
+        selftype = TypeVarType(tvd)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
-            if not is_classmethod:
-                args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
+            if is_classmethod:
+                first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
+            else:
+                first = [Argument(Var('self'), selftype, None, ARG_POS)]
+            args = first + args
+
             types = [arg.type_annotation for arg in args]
             items = [arg.variable.name() for arg in args]
             arg_kinds = [arg.kind for arg in args]
             signature = CallableType(types, arg_kinds, items, ret, function_type,
                                      name=name or info.name() + '.' + funcname)
-            signature.is_classmethod_class = is_classmethod
             func = FuncDef(funcname, args, Block([]), typ=signature)
             func.info = info
+            func.type.variables = [tvd]
             func.is_class = is_classmethod
-            info.names[funcname] = SymbolTableNode(MDEF, func)
+            if is_classmethod:
+                v = Var(funcname, signature)
+                v.is_classmethod = True
+                v.info = info
+                dec = Decorator(func, NameExpr('classmethod'), v)
+                info.names[funcname] = SymbolTableNode(MDEF, dec)
+            else:
+                info.names[funcname] = SymbolTableNode(MDEF, func)
 
-        add_method('_replace', ret=this_type,
+        add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED) for var in vars])
         add_method('__init__', ret=NoneTyp(), name=info.name(),
                    args=[Argument(var, var.type, None, ARG_POS) for var in vars])
         add_method('_asdict', args=[], ret=ordereddictype)
-        # FIX: make it actual class method
-        add_method('_make', ret=this_type, is_classmethod=True,
+        add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
                          Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
                          Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
