@@ -120,6 +120,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if left.type.fallback_to_any:
             return True
         right = self.right
+        if isinstance(right, TupleType) and right.fallback.type.is_enum:
+            return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
             if left.type._promote and is_subtype(left.type._promote,
                                                  self.right,
