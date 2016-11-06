@@ -255,8 +255,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 args = t.args[0].types
                 return CallableType(self.anal_array(args),
-                                    [nodes.ARG_POS] * len(args),
-                                    [None] * len(args),
+                                    t.args[0].kinds,
+                                    t.args[0].names,
                                     ret_type=ret_type,
                                     fallback=fallback)
             elif isinstance(t.args[0], EllipsisType):
