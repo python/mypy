@@ -1815,15 +1815,15 @@ class SemanticAnalyzer(NodeVisitor):
             arg_kinds = [arg.kind for arg in args]
             signature = CallableType(types, arg_kinds, items, ret, function_type,
                                      name=name or info.name() + '.' + funcname)
+            signature.variables = [tvd]
             func = FuncDef(funcname, args, Block([]), typ=signature)
             func.info = info
-            func.type.variables = [tvd]
             func.is_class = is_classmethod
             if is_classmethod:
                 v = Var(funcname, signature)
                 v.is_classmethod = True
                 v.info = info
-                dec = Decorator(func, NameExpr('classmethod'), v)
+                dec = Decorator(func, [NameExpr('classmethod')], v)
                 info.names[funcname] = SymbolTableNode(MDEF, dec)
             else:
                 info.names[funcname] = SymbolTableNode(MDEF, func)
