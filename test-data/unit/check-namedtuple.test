@@ -258,7 +258,7 @@ from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
-reveal_type(x._replace())  # E: Revealed type is '__main__.X*'
+reveal_type(x._replace())  # E: Revealed type is 'Tuple[Any, Any, fallback=__main__.X]'
 x._replace(y=5)
 x._replace(x=3)
 x._replace(x=3, y=5)
@@ -279,18 +279,19 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
-reveal_type(x._replace())  # E: Revealed type is '__main__.X*'
+reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
 x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
+
 
 [case testNamedTupleMake]
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-reveal_type(X._make([5, 'a']))  # E: Revealed type is '__main__.X*'
+reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
--- # FIX: not a proper class method
+-- # FIX: not a proper class method 
 -- x = None  # type: X
 -- reveal_type(x._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 -- x._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
