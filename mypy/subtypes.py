@@ -10,7 +10,7 @@ import mypy.constraints
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy import messages, sametypes
-from mypy.nodes import CONTRAVARIANT, COVARIANT
+from mypy.nodes import CONTRAVARIANT, COVARIANT, ARG_POS, ARG_OPT
 from mypy.maptype import map_instance_to_supertype
 
 from mypy import experiments
@@ -278,9 +278,17 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         return False
     if len(left.arg_types) < len(right.arg_types):
         return False
+
     for i in range(len(right.arg_types)):
         if not is_subtype(right.arg_types[i], left.arg_types[i]):
             return False
+        # A function with a named argument can be a subtype of a function
+        # without that argument named.  Otherwise, the argument names at the
+        # positions need to match, for positional arguments, for L to be a
+        # subtype of R.
+        if right.arg_kinds[i] in (ARG_POS, ARG_OPT) and right.arg_names[i] is not None:
+            if left.arg_names[i] != right.arg_names[i]:
+                return False
     return True
 
 

@@ -15,7 +15,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
-    ARG_STAR, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2
 )
 
 
@@ -167,8 +167,40 @@ class MessageBuilder:
                 return_type = strip_quotes(self.format(func.ret_type))
                 if func.is_ellipsis_args:
                     return 'Callable[..., {}]'.format(return_type)
-                arg_types = [strip_quotes(self.format(t)) for t in func.arg_types]
-                return 'Callable[[{}], {}]'.format(", ".join(arg_types), return_type)
+                arg_strings = []
+                for arg_name, arg_type, arg_kind in zip(
+                        func.arg_names, func.arg_types, func.arg_kinds):
+                    if arg_kind == ARG_POS and arg_name is None or verbosity == 0:
+                        arg_strings.append(
+                            strip_quotes(
+                                self.format(
+                                    arg_type,
+                                    verbosity = max(verbosity-1, 0))))
+                    else:
+                        constructor = {
+                            ARG_POS: "Arg",
+                            ARG_OPT: "DefaultArg",
+                            ARG_NAMED: "Arg",
+                            ARG_NAMED_OPT: "DefaultArg",
+                            ARG_STAR: "StarArg",
+                            ARG_STAR2: "KwArg",
+                        }[arg_kind]
+                        if arg_kind in (
+                                ARG_POS,
+                                ARG_OPT,
+                                ARG_NAMED,
+                                ARG_NAMED_OPT
+                        ):
+                            arg_strings.append("{}('{}', {}, {})".format(
+                                constructor,
+                                arg_name,
+                                strip_quotes(self.format(arg_type)),
+                                arg_kind in (ARG_NAMED, ARG_NAMED_OPT)))
+                        else:
+                            arg_strings.append("{}({})".format(
+                                constructor,
+                                arg_name))
+                return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:
                 # Use a simple representation for function types; proper
                 # function types may result in long and difficult-to-read

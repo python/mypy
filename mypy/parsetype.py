@@ -112,60 +112,85 @@ class TypeParser:
             arg_const = self.expect_type(Name).string
             name = None # type: Optional[str]
             typ = AnyType # type: Type
-            kind = nodes.ARG_POS
-            self.expect('(')
             if arg_const == 'Arg':
                 kind = nodes.ARG_POS
-                if self.current_token_str() != ')':
-                    name = self.expect_type(StrLit).parsed()
-                    if self.current_token_str() != ')':
-                        self.expect(',')
-                        typ = self.parse_type()
-                        if self.current_token_str() != ')':
-                            self.expect(',')
-                            self.expect('keyword_only')
-                            self.expect('=')
-                            if self.current_token_str() == 'True':
-                                kind = nodes.ARG_NAMED
-                                self.skip()
-                            elif self.current_token_str() == 'False':
-                                self.skip()
-                            else:
-                                self.parse_error()
+                name, typ, keyword_only = self.parse_arguments(
+                    read_name = True,
+                    read_typ = True,
+                    read_keyword_only = True)
+                if keyword_only:
+                    kind = nodes.ARG_NAMED
             elif arg_const == 'DefaultArg':
                 kind = nodes.ARG_OPT
-                if self.current_token_str() != ')':
-                    name = self.expect_type(StrLit).parsed()
-                    if self.current_token_str() != ')':
-                        self.expect(',')
-                        typ = self.parse_type()
-                        if self.current_token_str() != ')':
-                            self.expect(',')
-                            self.expect('keyword_only')
-                            self.expect('=')
-                            if self.current_token_str() == 'True':
-                                kind = nodes.ARG_NAMED_OPT
-                                self.skip()
-                            elif self.current_token_str() == 'False':
-                                self.skip()
-                            else:
-                                self.parse_error()
+                name, typ, keyword_only = self.parse_arguments(
+                    read_name = True,
+                    read_typ = True,
+                    read_keyword_only = True)
+                if keyword_only:
+                    kind = nodes.ARG_NAMED_OPT
             elif arg_const == 'StarArg':
                 # Takes one type
                 kind = nodes.ARG_STAR
-                if self.current_token_str() != ')':
-                    typ = self.parse_type()
+                _, typ, _ = self.parse_arguments(
+                    read_name = False,
+                    read_typ = True,
+                    read_keyword_only = False)
             elif arg_const == 'KwArg':
                 # Takes one type
                 kind = nodes.ARG_STAR2
-                if self.current_token_str() != ')':
-                    typ = self.parse_type()
+                _, typ, _ = self.parse_arguments(
+                    read_name = False,
+                    read_typ = True,
+                    read_keyword_only = False)
             else:
                 self.parse_error()
-            self.expect(')')
             return typ, name, kind
         else:
             return self.parse_type(), None, nodes.ARG_POS
+
+    def parse_arguments(self,
+                        *,
+                        read_name: bool,
+                        read_typ: bool,
+                        read_keyword_only: bool) -> Tuple[
+                            Optional[str],
+                            Optional[Type],
+                            bool]:
+        self.expect('(')
+        name = None
+        typ = AnyType
+        keyword_only = False
+        try:
+            if self.current_token_str() == ')':
+                return name, typ, keyword_only
+            if read_name:
+                if self.current_token_str() != 'None':
+                    name = self.expect_type(StrLit).parsed()
+                else:
+                    self.skip()
+                if self.current_token_str() == ')':
+                    return name, typ, keyword_only
+                else:
+                    self.expect(',')
+            if read_typ:
+                typ = self.parse_type()
+                if self.current_token_str() == ')':
+                    return name, typ, keyword_only
+                else:
+                    self.expect(',')
+            if read_keyword_only:
+                if self.current_token_str() == 'True':
+                    keyword_only = True
+                    self.skip()
+                else:
+                    self.expect('False')
+                if self.current_token_str() == ')':
+                    return name, typ, keyword_only
+                else:
+                    self.expect(',')
+        finally:
+            self.expect(')')
+
 
     def parse_argument_list(self) -> ArgumentList:
         """Parse type list [t, ...]."""

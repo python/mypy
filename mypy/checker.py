@@ -816,7 +816,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_getattr_method(self, typ: CallableType, context: Context) -> None:
         method_type = CallableType([AnyType(), self.named_type('builtins.str')],
                                    [nodes.ARG_POS, nodes.ARG_POS],
-                                   [None],
+                                   [None, None],
                                    AnyType(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):

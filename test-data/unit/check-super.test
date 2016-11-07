@@ -23,7 +23,7 @@ from typing import Any
 class B:
   def f(self, y: 'A') -> None: pass
 class A(B):
-  def f(self, x: Any) -> None:
+  def f(self, y: Any) -> None:
     a, b = None, None # type: (A, B)
     super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
     super().f(a)

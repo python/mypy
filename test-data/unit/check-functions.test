@@ -1285,6 +1285,50 @@ from mypy_extensions import Arg
 def a(f: Callable[[Arg('x', int)], int]):
     f(x=4)
     f(5)
+    f(y=3) # E: Unexpected keyword argument "y"
+
+[builtins fixtures/dict.pyi]
+
+[out]
+main: note: In function "a":
+
+[case testCallableWithOptionalArg]
+from typing import Callable
+from mypy_extensions import DefaultArg
+
+def a(f: Callable[[DefaultArg('x', int)], int]):
+    f(x=4)
+    f(2)
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
+
+[builtins fixtures/dict.pyi]
+
+[out]
+main: note: In function "a":
+
+[case testCallableArgKindSubtyping]
+from typing import Callable
+from mypy_extensions import Arg, DefaultArg
+
+int_str_fun = None # type: Callable[[int, str], str]
+int_opt_str_fun = None # type: Callable[[int, DefaultArg(None, str)], str]
+int_named_str_fun = None # type: Callable[[int, Arg('s', str)], str]
+
+def isf(ii: int, ss: str) -> str:
+    return ss
+
+def iosf(i: int, s: str = "bar") -> str:
+    return s
+
+int_str_fun = isf
+int_opt_str_fun = iosf
+int_str_fun = iosf
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, DefaultArg('None', str, False)], str])
+
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, Arg('s', str, False)], str])
+int_named_str_fun = iosf
 
 [builtins fixtures/dict.pyi]
 
@@ -1470,8 +1514,10 @@ class A(Generic[t]):
 [case testRedefineFunction]
 def f(x): pass
 def g(x, y): pass
-def h(y): pass
+def h(x): pass
+def j(y): pass
 f = h
+f = j # E: Incompatible types in assignment (expression has type Callable[[Arg('y', Any, False)], Any], variable has type Callable[[Arg('x', Any, False)], Any])
 f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
 
 [case testRedefineFunction2]

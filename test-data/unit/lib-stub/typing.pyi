@@ -75,8 +75,9 @@ class AsyncIterator(AsyncIterable[T], Generic[T]):
     def __anext__(self) -> Awaitable[T]: pass
 
 class Sequence(Iterable[T], Generic[T]):
+    # Use int because slice isn't defined in the default test builtins
     @abstractmethod
-    def __getitem__(self, n: Any) -> T: pass
+    def __getitem__(self, n: int) -> T: pass
 
 class Mapping(Generic[T, U]): pass
 

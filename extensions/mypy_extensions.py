@@ -28,3 +28,9 @@ class Arg(object):
         self.name = name
         self.typ = typ
         self.named_only = named_only
+
+class DefaultArg(object):
+    def __init__(name=None, typ=Any, keyword_only=False):
+        self.name = name
+        self.typ = typ
+        self.named_only = named_only

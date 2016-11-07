@@ -12,7 +12,7 @@ class type:
     def __call__(self, *a) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
     def __iter__(self) -> Iterator[Tco]: pass
-    def __getitem__(self, x: int) -> Tco: pass
+    def __getitem__(self, n: int) -> Tco: pass
 class function: pass
 
 # We need int for indexing tuples.
