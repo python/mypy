@@ -326,7 +326,7 @@ def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: b
             # we passed to typ.fallback in analyze_member_access. See #1432.
             if isinstance(selfarg, TupleType):
                 selfarg = selfarg.fallback
-            if not subtypes.is_equivalent(selfarg, itype):
+            if not subtypes.is_subtype(selfarg, itype):
                 msg.invalid_method_type(item, context)
         else:
             # Check that cls argument has type 'Any' or valid class type.

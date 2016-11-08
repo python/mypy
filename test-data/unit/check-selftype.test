@@ -333,3 +333,21 @@ class E:
     def __new__(cls) -> E:
         reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
         return cls()
+
+[case testSelfTypeProperty]
+from typing import TypeVar
+
+T = TypeVar('T', bound='A')
+
+class A:
+    @property
+    def member(self: T) -> T:
+        pass
+
+class B(A):
+    pass
+
+reveal_type(A().member)  # E: Revealed type is '__main__.A*'
+reveal_type(B().member)  # E: Revealed type is '__main__.B*'
+
+[builtins fixtures/property.pyi]
