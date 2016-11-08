@@ -1361,12 +1361,16 @@ class ExpressionChecker:
         """Type check a type application (expr[type, ...])."""
         tp = self.accept(tapp.expr)
         if isinstance(tp, CallableType):
+            if not tp.is_type_obj():
+                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
             if len(tp.variables) != len(tapp.types):
                 self.msg.incompatible_type_application(len(tp.variables),
                                                        len(tapp.types), tapp)
                 return AnyType()
             return self.apply_generic_arguments(tp, tapp.types, tapp)
         elif isinstance(tp, Overloaded):
+            if not tp.is_type_obj():
+                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
             for item in tp.items():
                 if len(item.variables) != len(tapp.types):
                     self.msg.incompatible_type_application(len(item.variables),

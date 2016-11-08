@@ -417,6 +417,14 @@ class A(Generic[T]):
 [out]
 main: note: In member "f" of class "A":
 
+[case testProhibitTypeApplicationToGenericFunctions]
+from typing import TypeVar
+T = TypeVar('T')
+def f(x: T) -> T: pass
+
+y = f[int]  # E: Type application is only supported for generic classes
+[out]
+
 
 -- Generic types in expressions
 -- ----------------------------
