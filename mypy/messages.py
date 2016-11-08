@@ -66,6 +66,7 @@ RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable 
 FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
 INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
 FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"
+ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"
 RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
 ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
