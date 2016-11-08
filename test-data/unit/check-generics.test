@@ -970,6 +970,13 @@ main:9:7: error: Type argument 1 of "A" has incompatible value "str"
 main:13: error: Type argument 1 of "A" has incompatible value "str"
 main:13: error: Type argument 2 of "A" has incompatible value "str"
 
+[case testGenericTypeAliasesIgnoredPotentialAlias]
+class A: ...
+Bad = A[int] # type: ignore
+
+reveal_type(Bad) # E: Revealed type is 'Any'
+[out]
+
 
 -- Multiple assignment with lists
 -- ------------------------------
