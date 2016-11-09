@@ -181,6 +181,7 @@ class UnboundType(Type):
     optional = False
     # is this type a return type?
     is_ret_type = False
+
     # special case for X[()]
     empty_tuple_index = False
 
@@ -211,7 +212,7 @@ class UnboundType(Type):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'UnboundType':
+    def deserialize(cls, data: JsonDict) -> 'UnboundType':
         assert data['.class'] == 'UnboundType'
         return UnboundType(data['name'],
                            [Type.deserialize(a) for a in data['args']])
@@ -247,7 +248,7 @@ class TypeList(Type):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'TypeList':
+    def deserialize(cls, data: JsonDict) -> 'TypeList':
         assert data['.class'] == 'TypeList'
         return TypeList([Type.deserialize(t) for t in data['items']])
 
@@ -365,7 +366,7 @@ class NoneTyp(Type):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'NoneTyp':
+    def deserialize(cls, data: JsonDict) -> 'NoneTyp':
         assert data['.class'] == 'NoneTyp'
         return NoneTyp(is_ret_type=data['is_ret_type'])
 
@@ -401,7 +402,7 @@ class DeletedType(Type):
                 'source': self.source}
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'DeletedType':
+    def deserialize(cls, data: JsonDict) -> 'DeletedType':
         assert data['.class'] == 'DeletedType'
         return DeletedType(data['source'])
 
@@ -414,7 +415,8 @@ class Instance(Type):
 
     type = None  # type: mypy.nodes.TypeInfo
     args = None  # type: List[Type]
-    erased = False      # True if result of type variable substitution
+    erased = False  # True if result of type variable substitution
+    invalid = False  # True if recovered after incorrect number of type arguments error
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
@@ -575,6 +577,7 @@ class CallableType(FunctionLike):
                  ) -> None:
         if variables is None:
             variables = []
+        assert len(arg_types) == len(arg_kinds)
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
@@ -746,7 +749,7 @@ class Overloaded(FunctionLike):
                 }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'Overloaded':
+    def deserialize(cls, data: JsonDict) -> 'Overloaded':
         assert data['.class'] == 'Overloaded'
         return Overloaded([CallableType.deserialize(t) for t in data['items']])
 
@@ -879,7 +882,7 @@ class UnionType(Type):
                 items[i] = true_or_false(ti)
 
         simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-        return UnionType.make_union(simplified_set)
+        return UnionType.make_union(simplified_set, line, column)
 
     def length(self) -> int:
         return len(self.items)
@@ -955,7 +958,7 @@ class EllipsisType(Type):
         return {'.class': 'EllipsisType'}
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> 'EllipsisType':
+    def deserialize(cls, data: JsonDict) -> 'EllipsisType':
         assert data['.class'] == 'EllipsisType'
         return EllipsisType()
 
@@ -1438,14 +1441,6 @@ def strip_type(typ: Type) -> Type:
         return typ
 
 
-def replace_leading_arg_type(t: CallableType, self_type: Type) -> CallableType:
-    """Return a copy of a callable type with a different self argument type.
-
-    Assume that the callable is the signature of a method.
-    """
-    return t.copy_modified(arg_types=[self_type] + t.arg_types[1:])
-
-
 def is_named_instance(t: Type, fullname: str) -> bool:
     return (isinstance(t, Instance) and
             t.type is not None and
@@ -1507,3 +1502,51 @@ def true_or_false(t: Type) -> Type:
     new_t.can_be_true = type(new_t).can_be_true
     new_t.can_be_false = type(new_t).can_be_false
     return new_t
+
+
+def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
+    if func.type:
+        assert isinstance(func.type, FunctionLike)
+        return func.type
+    else:
+        # Implicit type signature with dynamic types.
+        # Overloaded functions always have a signature, so func must be an ordinary function.
+        assert isinstance(func, mypy.nodes.FuncItem), str(func)
+        fdef = cast(mypy.nodes.FuncItem, func)
+        name = func.name()
+        if name:
+            name = '"{}"'.format(name)
+
+        return CallableType(
+            [AnyType()] * len(fdef.arg_names),
+            fdef.arg_kinds,
+            fdef.arg_names,
+            AnyType(),
+            fallback,
+            name,
+            implicit=True,
+        )
+
+
+def get_typ_args(tp: Type) -> List[Type]:
+    """Get all type arguments from a parameterizable Type."""
+    if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
+        return []
+    typ_args = (tp.args if isinstance(tp, Instance) else
+                tp.items if not isinstance(tp, CallableType) else
+                tp.arg_types + [tp.ret_type])
+    return typ_args
+
+
+def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
+    """Return a copy of a parameterizable Type with arguments set to new_args."""
+    if isinstance(tp, Instance):
+        return Instance(tp.type, new_args, line, column)
+    if isinstance(tp, TupleType):
+        return tp.copy_modified(items=new_args)
+    if isinstance(tp, UnionType):
+        return UnionType.make_simplified_union(new_args, line, column)
+    if isinstance(tp, CallableType):
+        return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
+                                line=line, column=column)
+    return tp

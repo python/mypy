@@ -118,3 +118,17 @@ takes_int(SomeExtIntEnum.x)
 def takes_some_ext_int_enum(s: SomeExtIntEnum):
     pass
 takes_some_ext_int_enum(SomeExtIntEnum.x)
+
+
+[case testNamedTupleEnum]
+from typing import NamedTuple
+from enum import Enum
+
+N = NamedTuple('N', [('bar', int)])
+
+class E(N, Enum):
+    X = N(1)
+
+def f(x: E) -> None: pass
+
+f(E.X)

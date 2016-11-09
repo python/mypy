@@ -44,7 +44,7 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from typing import (
-    List, Dict, Set, Tuple, cast, Any, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
 
 from mypy.nodes import (
@@ -53,17 +53,17 @@ from mypy.nodes import (
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
-    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
 from mypy.visitor import NodeVisitor
@@ -72,8 +72,8 @@ from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef,
-    replace_leading_arg_type, TupleType, UnionType, StarType, EllipsisType, TypeType)
-from mypy.nodes import function_type, implicit_module_attrs
+    TupleType, UnionType, StarType, EllipsisType, function_type)
+from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
@@ -84,10 +84,20 @@ from mypy.options import Options
 T = TypeVar('T')
 
 
-# Inferred value of an expression.
-ALWAYS_TRUE = 0
-ALWAYS_FALSE = 1
-TRUTH_VALUE_UNKNOWN = 2
+# Inferred truth value of an expression.
+ALWAYS_TRUE = 1
+MYPY_TRUE = 2  # True in mypy, False at runtime
+ALWAYS_FALSE = 3
+MYPY_FALSE = 4  # False in mypy, True at runtime
+TRUTH_VALUE_UNKNOWN = 5
+
+inverted_truth_mapping = {
+    ALWAYS_TRUE: ALWAYS_FALSE,
+    ALWAYS_FALSE: ALWAYS_TRUE,
+    TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
+    MYPY_TRUE: MYPY_FALSE,
+    MYPY_FALSE: MYPY_TRUE,
+}
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -167,7 +177,7 @@ class SemanticAnalyzer(NodeVisitor):
     bound_tvars = None  # type: List[SymbolTableNode]
     # Stack of type variables that were bound by outer classess
     tvar_stack = None  # type: List[List[SymbolTableNode]]
-    # Per-file options
+    # Per-module options
     options = None  # type: Options
 
     # Stack of functions being analyzed
@@ -270,9 +280,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.type.names:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
-                        if self.is_conditional_func(n, defn):
-                            defn.original_def = cast(FuncDef, n)
-                        else:
+                        if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn)
@@ -282,9 +290,7 @@ class SemanticAnalyzer(NodeVisitor):
                     if defn.name() in self.locals[-1]:
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
-                        if self.is_conditional_func(n, defn):
-                            defn.original_def = cast(FuncDef, n)
-                        else:
+                        if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
                     else:
                         self.add_local(defn, defn)
@@ -294,11 +300,7 @@ class SemanticAnalyzer(NodeVisitor):
                     symbol = self.globals.get(defn.name())
                     if isinstance(symbol.node, FuncDef) and symbol.node != defn:
                         # This is redefinition. Conditional redefinition is okay.
-                        original_def = symbol.node
-                        if self.is_conditional_func(original_def, defn):
-                            # Conditional function definition -- multiple defs are ok.
-                            defn.original_def = original_def
-                        else:
+                        if not self.set_original_def(symbol.node, defn):
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
@@ -320,19 +322,21 @@ class SemanticAnalyzer(NodeVisitor):
     def prepare_method_signature(self, func: FuncDef) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
+        functype = func.type
         if not func.is_static:
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif func.type:
-                sig = cast(FunctionLike, func.type)
-                if func.is_class:
-                    leading_type = self.class_type(self.type)
-                else:
-                    leading_type = self_type(self.type)
-                func.type = replace_implicit_first_type(sig, leading_type)
+            elif isinstance(functype, CallableType):
+                self_type = functype.arg_types[0]
+                if isinstance(self_type, AnyType):
+                    if func.is_class or func.name() == '__new__':
+                        leading_type = self.class_type(self.type)
+                    else:
+                        leading_type = fill_typevars(self.type)
+                    func.type = replace_implicit_first_type(functype, leading_type)
 
-    def is_conditional_func(self, previous: Node, new: FuncDef) -> bool:
-        """Does 'new' conditionally redefine 'previous'?
+    def set_original_def(self, previous: Node, new: FuncDef) -> bool:
+        """If 'new' conditionally redefine 'previous', set 'previous' as original
 
         We reject straight redefinitions of functions, as they are usually
         a programming error. For example:
@@ -340,7 +344,11 @@ class SemanticAnalyzer(NodeVisitor):
         . def f(): ...
         . def f(): ...  # Error: 'f' redefined
         """
-        return isinstance(previous, (FuncDef, Var)) and new.is_conditional
+        if isinstance(previous, (FuncDef, Var)) and new.is_conditional:
+            new.original_def = previous
+            return True
+        else:
+            return False
 
     def update_function_type_variables(self, defn: FuncDef) -> None:
         """Make any type variables in the signature of defn explicit.
@@ -349,8 +357,8 @@ class SemanticAnalyzer(NodeVisitor):
         if defn is generic.
         """
         if defn.type:
-            functype = cast(CallableType, defn.type)
-            typevars = self.infer_type_variables(functype)
+            assert isinstance(defn.type, CallableType)
+            typevars = self.infer_type_variables(defn.type)
             # Do not define a new type variable if already defined in scope.
             typevars = [(name, tvar) for name, tvar in typevars
                         if not self.is_defined_type_var(name, defn)]
@@ -360,7 +368,7 @@ class SemanticAnalyzer(NodeVisitor):
                                    tvar[1].values, tvar[1].upper_bound,
                                    tvar[1].variance)
                         for i, tvar in enumerate(typevars)]
-                functype.variables = defs
+                defn.type.variables = defs
 
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
@@ -374,8 +382,7 @@ class SemanticAnalyzer(NodeVisitor):
                     tvars.append(tvar_expr)
         return list(zip(names, tvars))
 
-    def find_type_variables_in_type(
-            self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
+    def find_type_variables_in_type(self, type: Type) -> List[Tuple[str, TypeVarExpr]]:
         """Return a list of all unique type variable references in type.
 
         This effectively does partial name binding, results of which are mostly thrown away.
@@ -385,7 +392,8 @@ class SemanticAnalyzer(NodeVisitor):
             name = type.name
             node = self.lookup_qualified(name, type)
             if node and node.kind == UNBOUND_TVAR:
-                result.append((name, cast(TypeVarExpr, node.node)))
+                assert isinstance(node.node, TypeVarExpr)
+                result.append((name, node.node))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
         elif isinstance(type, TypeList):
@@ -412,8 +420,9 @@ class SemanticAnalyzer(NodeVisitor):
             item.is_overload = True
             item.func.is_overload = True
             item.accept(self)
-            t.append(cast(CallableType, function_type(item.func,
-                                                  self.builtin_type('builtins.function'))))
+            callable = function_type(item.func, self.builtin_type('builtins.function'))
+            assert isinstance(callable, CallableType)
+            t.append(callable)
             if item.func.is_property and i == 0:
                 # This defines a property, probably with a setter and/or deleter.
                 self.analyze_property_with_multi_part_definition(defn)
@@ -511,8 +520,9 @@ class SemanticAnalyzer(NodeVisitor):
         nodes = []  # type: List[SymbolTableNode]
         if defn.type:
             tt = defn.type
+            assert isinstance(tt, CallableType)
+            items = tt.variables
             names = self.type_var_names()
-            items = cast(CallableType, tt).variables
             for item in items:
                 name = item.name
                 if name in names:
@@ -536,7 +546,8 @@ class SemanticAnalyzer(NodeVisitor):
         return node
 
     def check_function_signature(self, fdef: FuncItem) -> None:
-        sig = cast(CallableType, fdef.type)
+        sig = fdef.type
+        assert isinstance(sig, CallableType)
         if len(sig.arg_types) < len(fdef.arguments):
             self.fail('Type signature has too few arguments', fdef)
             # Add dummy Any arguments to prevent crashes later.
@@ -547,6 +558,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
+        if self.analyze_namedtuple_classdef(defn):
+            return
         self.setup_class_def_analysis(defn)
 
         self.bind_class_type_vars(defn)
@@ -558,8 +571,6 @@ class SemanticAnalyzer(NodeVisitor):
             self.analyze_class_decorator(defn, decorator)
 
         self.enter_class(defn)
-
-        self.setup_is_builtinclass(defn)
 
         # Analyze class body.
         defn.defs.accept(self)
@@ -605,15 +616,6 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-
-    def setup_is_builtinclass(self, defn: ClassDef) -> None:
-        for decorator in defn.decorators:
-            if refers_to_fullname(decorator, 'typing.builtinclass'):
-                defn.is_builtinclass = True
-        if defn.fullname == 'builtins.object':
-            # Only 'object' is marked as a built-in class, as otherwise things elsewhere
-            # would break. We need a better way of dealing with built-in classes.
-            defn.is_builtinclass = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -721,8 +723,59 @@ class SemanticAnalyzer(NodeVisitor):
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym is not None and sym.kind == UNBOUND_TVAR:
-            return unbound.name, cast(TypeVarExpr, sym.node)
+            assert isinstance(sym.node, TypeVarExpr)
+            return unbound.name, sym.node
         return None
+
+    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        # special case for NamedTuple
+        for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, RefExpr):
+                base_expr.accept(self)
+                if base_expr.fullname == 'typing.NamedTuple':
+                    node = self.lookup(defn.name, defn)
+                    if node is not None:
+                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                        items, types = self.check_namedtuple_classdef(defn)
+                        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+                        return True
+        return False
+
+    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                               'expected "field_name: field_type"')
+        if self.options.python_version < (3, 6):
+            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
+            return [], []
+        if len(defn.base_type_exprs) > 1:
+            self.fail('NamedTuple should be a single base', defn)
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if not isinstance(stmt, AssignmentStmt):
+                # Still allow pass or ... (for empty namedtuples).
+                if (not isinstance(stmt, PassStmt) and
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                # An assignment, but an invalid one.
+                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+            else:
+                # Append name and type in this case...
+                name = stmt.lvalues[0].name
+                items.append(name)
+                types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
+                # ...despite possible minor failures that allow further analyzis.
+                if name.startswith('_'):
+                    self.fail('NamedTuple field name cannot start with an underscore: {}'
+                              .format(name), stmt)
+                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
+                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                elif not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('Right hand side values are not supported in NamedTuple', stmt)
+        return items, types
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
@@ -846,6 +899,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
         if defn.metaclass:
+            if defn.metaclass == '<error>':
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                return
             sym = self.lookup_qualified(defn.metaclass, defn)
             if sym is not None and not isinstance(sym.node, TypeInfo):
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
@@ -865,16 +921,15 @@ class SemanticAnalyzer(NodeVisitor):
 
     def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, None)
-        return Instance(cast(TypeInfo, sym.node), args or [])
+        assert isinstance(sym.node, TypeInfo)
+        return Instance(sym.node, args or [])
 
     def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         sym = self.lookup_fully_qualified_or_none(qualified_name)
         if not sym:
             return None
-        return Instance(cast(TypeInfo, sym.node), args or [])
-
-    def is_instance_type(self, t: Type) -> bool:
-        return isinstance(t, Instance)
+        assert isinstance(sym.node, TypeInfo)
+        return Instance(sym.node, args or [])
 
     def bind_class_type_variables_in_symbol_table(
             self, info: TypeInfo) -> List[SymbolTableNode]:
@@ -1071,7 +1126,8 @@ class SemanticAnalyzer(NodeVisitor):
         if b:
             self.visit_block(b)
 
-    def anal_type(self, t: Type, allow_tuple_literal: bool = False) -> Type:
+    def anal_type(self, t: Type, allow_tuple_literal: bool = False,
+                  aliasing: bool = False) -> Type:
         if t:
             if allow_tuple_literal:
                 # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
@@ -1088,7 +1144,8 @@ class SemanticAnalyzer(NodeVisitor):
                     return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
-                             self.fail)
+                             self.fail,
+                             aliasing=aliasing)
             return t.accept(a)
         else:
             return None
@@ -1118,7 +1175,8 @@ class SemanticAnalyzer(NodeVisitor):
                     node.kind = TYPE_ALIAS
                     node.type_override = res
                     if isinstance(s.rvalue, IndexExpr):
-                        s.rvalue.analyzed = TypeAliasExpr(res)
+                        s.rvalue.analyzed = TypeAliasExpr(res,
+                                                          fallback=self.alias_fallback(res))
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1127,6 +1185,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
+        self.process_typeddict_definition(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -1154,6 +1213,19 @@ class SemanticAnalyzer(NodeVisitor):
         if isinstance(rvalue, UnicodeExpr):
             return self.named_type_or_none('builtins.unicode')
         return None
+
+    def alias_fallback(self, tp: Type) -> Instance:
+        """Make a dummy Instance with no methods. It is used as a fallback type
+        to detect errors for non-Instance aliases (i.e. Unions, Tuples, Callables).
+        """
+        kind = (' to Callable' if isinstance(tp, CallableType) else
+                ' to Tuple' if isinstance(tp, TupleType) else
+                ' to Union' if isinstance(tp, UnionType) else '')
+        cdef = ClassDef('Type alias' + kind, Block([]))
+        fb_info = TypeInfo(SymbolTable(), cdef, self.cur_mod_id)
+        fb_info.bases = [self.object_type()]
+        fb_info.mro = [fb_info, self.object_type().type]
+        return Instance(fb_info, [])
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed."""
@@ -1245,11 +1317,10 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.accept(self)
         elif (isinstance(lval, TupleExpr) or
               isinstance(lval, ListExpr)):
-            items = cast(Any, lval).items
+            items = lval.items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("Can't assign to ()", lval)
-            self.analyze_tuple_or_list_lvalue(cast(Union[ListExpr, TupleExpr], lval),
-                                              add_global, explicit_type)
+            self.analyze_tuple_or_list_lvalue(lval, add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
                 self.analyze_lvalue(lval.expr, nested, add_global, explicit_type)
@@ -1263,9 +1334,7 @@ class SemanticAnalyzer(NodeVisitor):
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
-        star_exprs = [cast(StarExpr, item)
-                      for item in items
-                      if isinstance(item, StarExpr)]
+        star_exprs = [item for item in items if isinstance(item, StarExpr)]
 
         if len(star_exprs) > 1:
             self.fail('Two starred expressions in assignment', lval)
@@ -1397,14 +1466,14 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
-        elif cast(StrExpr, call.args[0]).value != name:
+        elif args[0].value != name:
             msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
-            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
+            self.fail(msg.format(args[0].value, name), context)
             has_failed = True
 
         # Check second argument
         try:
-            unanalyzed_type = expr_to_unanalyzed_type(call.args[1])
+            unanalyzed_type = expr_to_unanalyzed_type(args[1])
         except TypeTranslationError:
             self.fail("Argument 2 to NewType(...) must be a valid type", context)
             return None
@@ -1442,7 +1511,8 @@ class SemanticAnalyzer(NodeVisitor):
         if not call:
             return
 
-        lvalue = cast(NameExpr, s.lvalues[0])
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
         name = lvalue.name
         if not lvalue.is_def:
             if s.type:
@@ -1483,9 +1553,9 @@ class SemanticAnalyzer(NodeVisitor):
                 or not call.arg_kinds[0] == ARG_POS):
             self.fail("TypeVar() expects a string literal as first argument", context)
             return False
-        if cast(StrExpr, call.args[0]).value != name:
+        elif call.args[0].value != name:
             msg = "String argument 1 '{}' to TypeVar(...) does not match variable name '{}'"
-            self.fail(msg.format(cast(StrExpr, call.args[0]).value, name), context)
+            self.fail(msg.format(call.args[0].value, name), context)
             return False
         return True
 
@@ -1498,9 +1568,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(s.rvalue, CallExpr):
             return None
         call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         if callee.fullname != 'typing.TypeVar':
             return None
         return call
@@ -1579,10 +1649,9 @@ class SemanticAnalyzer(NodeVisitor):
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
         node.kind = GDEF   # TODO locally defined namedtuple
-        # TODO call.analyzed
         node.node = named_tuple
 
-    def check_namedtuple(self, node: Expression, var_name: str = None) -> TypeInfo:
+    def check_namedtuple(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
@@ -1596,9 +1665,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not isinstance(node, CallExpr):
             return None
         call = node
-        if not isinstance(call.callee, RefExpr):
-            return None
         callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
         fullname = callee.fullname
         if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
             return None
@@ -1607,9 +1676,9 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         else:
-            # Give it a unique name derived from the line number.
             name = cast(StrExpr, call.args[0]).value
             if name != var_name:
+                # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
@@ -1620,7 +1689,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def parse_namedtuple_args(self, call: CallExpr,
                               fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO Share code with check_argument_count in checkexpr.py?
+        # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
@@ -1735,7 +1804,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
         # TODO: SelfType should be bind to actual 'self'
-        this_type = self_type(info)
+        this_type = fill_typevars(info)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
@@ -1776,6 +1845,114 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Type expected', node)
                 result.append(AnyType())
         return result
+
+    def process_typeddict_definition(self, s: AssignmentStmt) -> None:
+        """Check if s defines a TypedDict; if yes, store the definition in symbol table."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return
+        lvalue = s.lvalues[0]
+        name = lvalue.name
+        typed_dict = self.check_typeddict(s.rvalue, name)
+        if typed_dict is None:
+            return
+        # Yes, it's a valid TypedDict definition. Add it to the symbol table.
+        node = self.lookup(name, s)
+        node.kind = GDEF   # TODO locally defined TypedDict
+        node.node = typed_dict
+
+    def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
+        """Check if a call defines a TypedDict.
+
+        The optional var_name argument is the name of the variable to
+        which this is assigned, if any.
+
+        If it does, return the corresponding TypeInfo. Return None otherwise.
+
+        If the definition is invalid but looks like a TypedDict,
+        report errors but return (some) TypeInfo.
+        """
+        if not isinstance(node, CallExpr):
+            return None
+        call = node
+        callee = call.callee
+        if not isinstance(callee, RefExpr):
+            return None
+        fullname = callee.fullname
+        if fullname != 'mypy_extensions.TypedDict':
+            return None
+        items, types, ok = self.parse_typeddict_args(call, fullname)
+        if not ok:
+            # Error. Construct dummy return value.
+            return self.build_typeddict_typeinfo('TypedDict', [], [])
+        else:
+            name = cast(StrExpr, call.args[0]).value
+            if name != var_name:
+                # Give it a unique name derived from the line number.
+                name += '@' + str(call.line)
+            info = self.build_typeddict_typeinfo(name, items, types)
+            # Store it as a global just in case it would remain anonymous.
+            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        call.analyzed = TypedDictExpr(info)
+        call.analyzed.set_line(call.line, call.column)
+        return info
+
+    def parse_typeddict_args(self, call: CallExpr,
+                             fullname: str) -> Tuple[List[str], List[Type], bool]:
+        # TODO: Share code with check_argument_count in checkexpr.py?
+        args = call.args
+        if len(args) < 2:
+            return self.fail_typeddict_arg("Too few arguments for TypedDict()", call)
+        if len(args) > 2:
+            return self.fail_typeddict_arg("Too many arguments for TypedDict()", call)
+        # TODO: Support keyword arguments
+        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
+        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+            return self.fail_typeddict_arg(
+                "TypedDict() expects a string literal as the first argument", call)
+        if not isinstance(args[1], DictExpr):
+            return self.fail_typeddict_arg(
+                "TypedDict() expects a dictionary literal as the second argument", call)
+        dictexpr = args[1]
+        items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        return items, types, ok
+
+    def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
+                                          context: Context) -> Tuple[List[str], List[Type], bool]:
+        items = []  # type: List[str]
+        types = []  # type: List[Type]
+        for (field_name_expr, field_type_expr) in dict_items:
+            if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
+                items.append(field_name_expr.value)
+            else:
+                return self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+            try:
+                type = expr_to_unanalyzed_type(field_type_expr)
+            except TypeTranslationError:
+                return self.fail_typeddict_arg('Invalid field type', field_type_expr)
+            types.append(self.anal_type(type))
+        return items, types, True
+
+    def fail_typeddict_arg(self, message: str,
+                           context: Context) -> Tuple[List[str], List[Type], bool]:
+        self.fail(message, context)
+        return [], [], False
+
+    def build_typeddict_typeinfo(self, name: str, items: List[str],
+                                 types: List[Type]) -> TypeInfo:
+        strtype = self.named_type('__builtins__.str')  # type: Type
+        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
+                   or self.object_type())
+        fallback = dictype
+
+        info = self.basic_new_typeinfo(name, fallback)
+        info.is_typed_dict = True
+
+        # (TODO: Store {items, types} inside "info" somewhere for use later.
+        #        Probably inside a new "info.keys" field which
+        #        would be analogous to "info.names".)
+
+        return info
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
@@ -1933,6 +2110,8 @@ class SemanticAnalyzer(NodeVisitor):
             return True
         elif isinstance(s, TupleExpr):
             return all(self.is_valid_del_target(item) for item in s.items)
+        else:
+            return False
 
     def visit_global_decl(self, g: GlobalDecl) -> None:
         for name in g.names:
@@ -2062,6 +2241,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return
             expr.analyzed = RevealTypeExpr(expr.args[0])
             expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
             # Special form Any(...).
@@ -2146,7 +2326,8 @@ class SemanticAnalyzer(NodeVisitor):
             # This branch handles the case foo.bar where foo is a module.
             # In this case base.node is the module's MypyFile and we look up
             # bar in its namespace.  This must be done for all types of bar.
-            file = cast(MypyFile, base.node)
+            file = base.node
+            assert isinstance(file, MypyFile)
             n = file.names.get(expr.name, None) if file is not None else None
             if n:
                 n = self.normalize_type_alias(n, expr)
@@ -2197,7 +2378,16 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
         expr.base.accept(self)
-        if refers_to_class_or_function(expr.base):
+        if isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
+            # Special form -- subscripting a generic type alias.
+            # Perform the type substitution and create a new alias.
+            res = analyze_type_alias(expr,
+                                     self.lookup_qualified,
+                                     self.lookup_fully_qualified,
+                                     self.fail)
+            expr.analyzed = TypeAliasExpr(res, fallback=self.alias_fallback(res),
+                                          in_runtime=True)
+        elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
@@ -2211,7 +2401,7 @@ class SemanticAnalyzer(NodeVisitor):
                 except TypeTranslationError:
                     self.fail('Type expected within [...]', expr)
                     return
-                typearg = self.anal_type(typearg)
+                typearg = self.anal_type(typearg, aliasing=True)
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
@@ -2351,7 +2541,8 @@ class SemanticAnalyzer(NodeVisitor):
         # 5. Builtins
         b = self.globals.get('__builtins__', None)
         if b:
-            table = cast(MypyFile, b.node).names
+            assert isinstance(b.node, MypyFile)
+            table = b.node.names
             if name in table:
                 if name[0] == "_" and name[1] != "_":
                     self.name_not_defined(name, ctx)
@@ -2406,8 +2597,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         node = self.lookup_fully_qualified(fully_qualified_name)
-        info = cast(TypeInfo, node.node)
-        return Instance(info, [])
+        assert isinstance(node.node, TypeInfo)
+        return Instance(node.node, [])
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
@@ -2419,10 +2610,12 @@ class SemanticAnalyzer(NodeVisitor):
         parts = name.split('.')
         n = self.modules[parts[0]]
         for i in range(1, len(parts) - 1):
-            n = cast(MypyFile, n.names[parts[i]].node)
-        return n.names[parts[-1]]
+            next_sym = n.names[parts[i]]
+            assert isinstance(next_sym.node, MypyFile)
+            n = next_sym.node
+        return n.names.get(parts[-1])
 
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name.
 
         Assume that the name is defined. This happens in the global namespace -- the local
@@ -2435,7 +2628,8 @@ class SemanticAnalyzer(NodeVisitor):
             next_sym = n.names.get(parts[i])
             if not next_sym:
                 return None
-            n = cast(MypyFile, next_sym.node)
+            assert isinstance(next_sym.node, MypyFile)
+            n = next_sym.node
         return n.names.get(parts[-1])
 
     def qualified_name(self, n: str) -> str:
@@ -2459,6 +2653,9 @@ class SemanticAnalyzer(NodeVisitor):
 
     def is_class_scope(self) -> bool:
         return self.type is not None and not self.is_func_scope()
+
+    def is_module_scope(self) -> bool:
+        return not (self.is_class_scope() or self.is_func_scope())
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
@@ -2484,13 +2681,6 @@ class SemanticAnalyzer(NodeVisitor):
                 if not ok:
                     self.name_already_defined(name, context)
             self.globals[name] = node
-
-    def add_var(self, v: Var, ctx: Context) -> None:
-        if self.is_func_scope():
-            self.add_local(v, ctx)
-        else:
-            self.globals[v.name()] = SymbolTableNode(GDEF, v, self.cur_mod_id)
-            v._fullname = self.qualified_name(v.name())
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         name = node.name()
@@ -2642,47 +2832,61 @@ class FirstPass(NodeVisitor):
         self.sem.block_depth[-1] -= 1
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None)
+        if self.sem.is_module_scope():
+            for lval in s.lvalues:
+                self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
     def visit_func_def(self, func: FuncDef) -> None:
         sem = self.sem
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
-        if func.name() in sem.globals:
+        at_module = sem.is_module_scope()
+        if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
             if original_sym.kind == UNBOUND_IMPORTED:
                 # Ah this is an imported name. We can't resolve them now, so we'll postpone
                 # this until the main phase of semantic analysis.
                 return
-            original_def = original_sym.node
-            if sem.is_conditional_func(original_def, func):
-                # Conditional function definition -- multiple defs are ok.
-                func.original_def = cast(FuncDef, original_def)
-            else:
+            if not sem.set_original_def(original_sym.node, func):
                 # Report error.
                 sem.check_no_global(func.name(), func)
         else:
-            sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
+            if at_module:
+                sem.globals[func.name()] = SymbolTableNode(GDEF, func, sem.cur_mod_id)
+            # Also analyze the function body (in case there are conditional imports).
+            sem.function_stack.append(func)
+            sem.errors.push_function(func.name())
+            sem.enter()
+            func.body.accept(self)
+            sem.leave()
+            sem.errors.pop_function()
+            sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        self.sem.check_no_global(func.name(), func, True)
+        kind = self.kind_by_scope()
+        if kind == GDEF:
+            self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
-        self.sem.globals[func.name()] = SymbolTableNode(GDEF, func,
-                                                        self.sem.cur_mod_id)
+        if kind == GDEF:
+            self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
-        self.sem.check_no_global(cdef.name, cdef)
+        kind = self.kind_by_scope()
+        if kind == LDEF:
+            return
+        elif kind == GDEF:
+            self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
         info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
         info.set_line(cdef.line, cdef.column)
         cdef.info = info
-        self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info,
-                                                      self.sem.cur_mod_id)
+        if kind == GDEF:
+            self.sem.globals[cdef.name] = SymbolTableNode(kind, info, self.sem.cur_mod_id)
         self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
+        self.sem.enter_class(outer_def)
         for node in outer_def.defs.body:
             if isinstance(node, ClassDef):
                 node.info = TypeInfo(SymbolTable(), node, self.sem.cur_mod_id)
@@ -2694,20 +2898,28 @@ class FirstPass(NodeVisitor):
                 symbol = SymbolTableNode(MDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
+            elif isinstance(node, (ImportFrom, Import, ImportAll, IfStmt)):
+                node.accept(self)
+        self.sem.leave_class()
 
     def visit_import_from(self, node: ImportFrom) -> None:
         # We can't bind module names during the first pass, as the target module might be
         # unprocessed. However, we add dummy unbound imported names to the symbol table so
         # that we at least know that the name refers to a module.
-        node.is_top_level = True
+        at_module = self.sem.is_module_scope()
+        node.is_top_level = at_module
+        if not at_module:
+            return
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
                 self.sem.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
 
     def visit_import(self, node: Import) -> None:
-        node.is_top_level = True
+        node.is_top_level = self.sem.is_module_scope()
         # This is similar to visit_import_from -- see the comment there.
+        if not self.sem.is_module_scope():
+            return
         for id, as_id in node.ids:
             imported_id = as_id or id
             if imported_id not in self.sem.globals:
@@ -2717,28 +2929,31 @@ class FirstPass(NodeVisitor):
                 self.sem.globals[imported_id] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
     def visit_import_all(self, node: ImportAll) -> None:
-        node.is_top_level = True
+        node.is_top_level = self.sem.is_module_scope()
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
-        s.body.accept(self)
-        if s.else_body:
-            s.else_body.accept(self)
+        if self.sem.is_module_scope():
+            s.body.accept(self)
+            if s.else_body:
+                s.else_body.accept(self)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
-        self.analyze_lvalue(s.index)
-        s.body.accept(self)
-        if s.else_body:
-            s.else_body.accept(self)
+        if self.sem.is_module_scope():
+            self.analyze_lvalue(s.index)
+            s.body.accept(self)
+            if s.else_body:
+                s.else_body.accept(self)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
-        for n in s.target:
-            if n:
-                self.analyze_lvalue(n)
-        s.body.accept(self)
+        if self.sem.is_module_scope():
+            for n in s.target:
+                if n:
+                    self.analyze_lvalue(n)
+            s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
-        self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
+        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
@@ -2748,10 +2963,22 @@ class FirstPass(NodeVisitor):
             s.else_body.accept(self)
 
     def visit_try_stmt(self, s: TryStmt) -> None:
-        self.sem.analyze_try_stmt(s, self, add_global=True)
+        if self.sem.is_module_scope():
+            self.sem.analyze_try_stmt(s, self, add_global=self.sem.is_module_scope())
 
     def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False) -> None:
-        self.sem.analyze_lvalue(lvalue, add_global=True, explicit_type=explicit_type)
+        self.sem.analyze_lvalue(lvalue, add_global=self.sem.is_module_scope(),
+                                explicit_type=explicit_type)
+
+    def kind_by_scope(self) -> int:
+        if self.sem.is_module_scope():
+            return GDEF
+        elif self.sem.is_class_scope():
+            return MDEF
+        elif self.sem.is_func_scope():
+            return LDEF
+        else:
+            assert False, "Couldn't determine scope"
 
 
 class ThirdPass(TraverserVisitor):
@@ -2850,6 +3077,8 @@ class ThirdPass(TraverserVisitor):
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.analyze(s.type)
+        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
+            self.analyze(s.rvalue.analyzed.type)
         super().visit_assignment_stmt(s)
 
     def visit_cast_expr(self, e: CastExpr) -> None:
@@ -2884,7 +3113,7 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
-def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
+def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     """For a non-generic type, return instance type representing the type.
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
@@ -2899,11 +3128,12 @@ def self_type(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
-        return replace_leading_arg_type(sig, new)
-    else:
-        sig = cast(Overloaded, sig)
+        return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
+    elif isinstance(sig, Overloaded):
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))
                            for i in sig.items()])
+    else:
+        assert False
 
 
 def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
@@ -2982,12 +3212,16 @@ def infer_reachability_of_if_statement(s: IfStmt,
                                        platform: str) -> None:
     for i in range(len(s.expr)):
         result = infer_if_condition_value(s.expr[i], pyversion, platform)
-        if result == ALWAYS_FALSE:
-            # The condition is always false, so we skip the if/elif body.
+        if result in (ALWAYS_FALSE, MYPY_FALSE):
+            # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
-        elif result == ALWAYS_TRUE:
-            # This condition is always true, so all of the remaining
-            # elif/else bodies will never be executed.
+        elif result in (ALWAYS_TRUE, MYPY_TRUE):
+            # This condition is considered always true, so all of the remaining
+            # elif/else bodies should not be checked.
+            if result == MYPY_TRUE:
+                # This condition is false at runtime; this will affect
+                # import priorities.
+                mark_block_mypy_only(s.body[i])
             for body in s.body[i + 1:]:
                 mark_block_unreachable(body)
             if s.else_body:
@@ -2999,7 +3233,8 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
-    and TRUTH_VALUE_UNKNOWN otherwise.
+    MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
+    false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
     name = ''
     negated = False
@@ -3023,12 +3258,9 @@ def infer_if_condition_value(expr: Expression, pyversion: Tuple[int, int], platf
         elif name == 'PY3':
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
         elif name == 'MYPY' or name == 'TYPE_CHECKING':
-            result = ALWAYS_TRUE
+            result = MYPY_TRUE
     if negated:
-        if result == ALWAYS_TRUE:
-            result = ALWAYS_FALSE
-        elif result == ALWAYS_FALSE:
-            result = ALWAYS_TRUE
+        result = inverted_truth_mapping[result]
     return result
 
 
@@ -3201,6 +3433,23 @@ class MarkImportsUnreachableVisitor(TraverserVisitor):
 
     def visit_import_all(self, node: ImportAll) -> None:
         node.is_unreachable = True
+
+
+def mark_block_mypy_only(block: Block) -> None:
+    block.accept(MarkImportsMypyOnlyVisitor())
+
+
+class MarkImportsMypyOnlyVisitor(TraverserVisitor):
+    """Visitor that sets is_mypy_only (which affects priority)."""
+
+    def visit_import(self, node: Import) -> None:
+        node.is_mypy_only = True
+
+    def visit_import_from(self, node: ImportFrom) -> None:
+        node.is_mypy_only = True
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        node.is_mypy_only = True
 
 
 def is_identity_signature(sig: Type) -> bool:

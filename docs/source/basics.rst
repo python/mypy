@@ -99,8 +99,8 @@ running it::
 All errors reported by mypy are essentially warnings that you are free
 to ignore, if you so wish.
 
-The `README <https://github.com/python/mypy/blob/master/README.md>`_
-explains how to download and install mypy.
+The next chapter explains how to download and install mypy:
+:ref:`getting-started`.
 
 More command line options are documented in :ref:`command-line`.
 

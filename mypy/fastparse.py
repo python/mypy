@@ -157,8 +157,6 @@ class ASTConverter(ast35.NodeTransformer):
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
-        elif op_name == '@':
-            raise RuntimeError('mypy does not support the MatMult operator')
         else:
             return op_name
 
@@ -298,6 +296,10 @@ class ASTConverter(ast35.NodeTransformer):
 
         func_type = None
         if any(arg_types) or return_type:
+            if len(arg_types) > len(arg_kinds):
+                raise FastParserError('Type signature has too many arguments', n.lineno, offset=0)
+            if len(arg_types) < len(arg_kinds):
+                raise FastParserError('Type signature has too few arguments', n.lineno, offset=0)
             func_type = CallableType([a if a is not None else AnyType() for a in arg_types],
                                      arg_kinds,
                                      arg_names,
@@ -373,9 +375,10 @@ class ASTConverter(ast35.NodeTransformer):
         if isinstance(n, ast35.Name):
             return n.id
         elif isinstance(n, ast35.Attribute):
-            return "{}.{}".format(self.stringify_name(n.value), n.attr)
-        else:
-            assert False, "can't stringify " + str(type(n))
+            sv = self.stringify_name(n.value)
+            if sv is not None:
+                return "{}.{}".format(sv, n.attr)
+        return None  # Can't do it.
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -389,6 +392,8 @@ class ASTConverter(ast35.NodeTransformer):
         metaclass = None
         if metaclass_arg:
             metaclass = self.stringify_name(metaclass_arg.value)
+            if metaclass is None:
+                metaclass = '<error>'  # To be reported later
 
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
@@ -431,6 +436,7 @@ class ASTConverter(ast35.NodeTransformer):
             typ = parse_type_comment(n.type_comment, n.lineno)
         elif new_syntax:
             typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+            typ.column = n.annotation.col_offset
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression
         else:
@@ -735,6 +741,9 @@ class ASTConverter(ast35.NodeTransformer):
     # Num(object n) -- a number as a PyObject.
     @with_line
     def visit_Num(self, n: ast35.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
+        if getattr(n, 'contains_underscores', None) and self.pyversion < (3, 6):
+            raise FastParserError('Underscores in numeric literals are only '
+                                  'supported in Python 3.6', n.lineno, n.col_offset)
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):
@@ -863,7 +872,9 @@ class TypeConverter(ast35.NodeTransformer):
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast35.Subscript) -> Type:
-        assert isinstance(n.slice, ast35.Index)
+        if not isinstance(n.slice, ast35.Index):
+            raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, self.line,
+                                        getattr(n, 'col_offset', -1))
 
         value = self.visit(n.value)
 
@@ -906,3 +917,7 @@ class TypeCommentParseError(Exception):
         self.msg = msg
         self.lineno = lineno
         self.offset = offset
+
+
+class FastParserError(TypeCommentParseError):
+    pass

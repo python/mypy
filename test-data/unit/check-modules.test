@@ -1186,6 +1186,125 @@ reveal_type(x)
 main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:2: error: Revealed type is 'builtins.str'
 
+-- Tests for cross-module second_pass checking.
+
+[case testSymmetricImportCycle1]
+import a
+[file a.py]
+import b
+def f() -> int:
+    return b.x
+y = 0 + 0
+[file b.py]
+import a
+def g() -> int:
+    reveal_type(a.y)
+    return a.y
+x = 1 + 1
+[out]
+tmp/a.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/b.py: note: In function "g":
+tmp/b.py:3: error: Revealed type is 'builtins.int'
+
+[case testSymmetricImportCycle2]
+import b
+[file a.py]
+import b
+def f() -> int:
+    reveal_type(b.x)
+    return b.x
+y = 0 + 0
+[file b.py]
+import a
+def g() -> int:
+    return a.y
+x = 1 + 1
+[out]
+tmp/b.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/a.py: note: In function "f":
+tmp/a.py:3: error: Revealed type is 'builtins.int'
+
+[case testThreePassesRequired]
+import b
+[file a.py]
+import b
+class C:
+    def f1(self) -> None:
+        self.x2
+    def f2(self) -> None:
+        self.x2 = b.b
+[file b.py]
+import a
+b = 1 + 1
+[out]
+tmp/b.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/a.py: note: In member "f1" of class "C":
+tmp/a.py:4: error: Cannot determine type of 'x2'
+
+[case testErrorInPassTwo1]
+import b
+[file a.py]
+import b
+def f() -> None:
+    a = b.x + 1
+    a + ''
+[file b.py]
+import a
+x = 1 + 1
+[out]
+tmp/b.py:1: note: In module imported here,
+main:1: note: ... from here:
+tmp/a.py: note: In function "f":
+tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testErrorInPassTwo2]
+import a
+[file a.py]
+import b
+def f() -> None:
+    a = b.x + 1
+    a + ''
+[file b.py]
+import a
+x = 1 + 1
+[out]
+main:1: note: In module imported here:
+tmp/a.py: note: In function "f":
+tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testDeferredDecorator]
+import a
+[file a.py]
+import b
+def g() -> None:
+    f('')
+@b.deco
+def f(a: str) -> int: pass
+reveal_type(f)
+x = 1 + 1
+[file b.py]
+from typing import Callable, TypeVar
+import a
+T = TypeVar('T')
+def deco(f: Callable[[T], int]) -> Callable[[T], int]:
+    a.x
+    return f
+[out]
+main:1: note: In module imported here:
+tmp/a.py:6: error: Revealed type is 'def (builtins.str*) -> builtins.int'
+
+[case testDeferredClassContext]
+class A:
+    def f(self) -> str: return 'foo'
+class B(A):
+    def f(self) -> str: return self.x
+    def initialize(self): self.x = 'bar'
+[out]
+
+
 -- Scripts and __main__
 
 [case testScriptsAreModules]
@@ -1202,3 +1321,27 @@ pass
 [file b]
 pass
 [out]
+
+[case testTypeCheckPrio]
+# cmd: mypy -m part1 part2 part3 part4
+
+[file part1.py]
+from part3 import Thing
+class FirstThing: pass
+
+[file part2.py]
+from part4 import part4_thing as Thing
+
+[file part3.py]
+from part2 import Thing
+reveal_type(Thing)
+
+[file part4.py]
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from part1 import FirstThing
+def part4_thing(a: int) -> str: pass
+
+[builtins fixtures/bool.pyi]
+[out]
+tmp/part3.py:2: error: Revealed type is 'def (a: builtins.int) -> builtins.str'

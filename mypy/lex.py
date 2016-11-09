@@ -195,13 +195,13 @@ str_prefixes = set(['r', 'b', 'br', 'rb', 'u', 'ur', 'R', 'B', 'U'])
 
 # List of regular expressions that match non-alphabetical operators
 operators = [re.compile('[-+*/<>.%&|^~]'),
-             re.compile('==|!=|<=|>=|\\*\\*|//|<<|>>|<>')]
+             re.compile('==|!=|<=|>=|\\*\\*|@|//|<<|>>|<>')]
 
 # List of regular expressions that match punctuator tokens
 punctuators = [re.compile('[=,()@`]|(->)'),
                re.compile('\\['),
                re.compile(']'),
-               re.compile('([-+*/%&|^]|\\*\\*|//|<<|>>)=')]
+               re.compile('([-+*/%@&|^]|\\*\\*|//|<<|>>)=')]
 
 
 # Map single-character string escape sequences to corresponding characters.

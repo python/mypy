@@ -894,26 +894,6 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
-
--- Multiple inheritance, non-object built-in class as base
--- -------------------------------------------------------
-
-
-[case testInvalidMultipleInheritanceFromBuiltins-skip]
-import typing
-class A(int, str): pass # E: Instance layout conflict in multiple inheritance
-[out]
-main: note: In class "A":
-
-[case testInvalidMultipleInheritanceFromBuiltins-skip]
-import typing
-class S(str): pass
-class A(S, str): pass
-class B(S, int): pass # E: Instance layout conflict in multiple inheritance
-[out]
-main: note: In class "B":
-
-
 -- _promote decorators
 -- -------------------
 
@@ -1423,6 +1403,74 @@ C(arg=0)
 import typing
 class X(Nope): pass  # E: Name 'Nope' is not defined
 a, b = X()  # Used to crash here (#2244)
+
+
+-- Class-valued attributes
+-- -----------------------
+
+[case testClassValuedAttributesBasics]
+class A: ...
+class B:
+    a = A
+    bad = lambda: 42
+
+B().bad() # E: Invalid method type
+reveal_type(B.a) # E: Revealed type is 'def () -> __main__.A'
+reveal_type(B().a) # E: Revealed type is 'def () -> __main__.A'
+reveal_type(B().a()) # E: Revealed type is '__main__.A'
+
+class C:
+    a = A
+    def __init__(self) -> None:
+        self.aa = self.a()
+
+reveal_type(C().aa) # E: Revealed type is '__main__.A'
+[out]
+
+[case testClassValuedAttributesGeneric]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+class B(Generic[T]):
+    a = A[T]
+
+reveal_type(B[int]().a) # E: Revealed type is 'def (x: builtins.int*) -> __main__.A[builtins.int*]'
+B[int]().a('hi') # E: Argument 1 has incompatible type "str"; expected "int"
+
+class C(Generic[T]):
+    a = A
+    def __init__(self) -> None:
+        self.aa = self.a(42)
+
+reveal_type(C().aa) # E: Revealed type is '__main__.A[builtins.int]'
+[out]
+
+[case testClassValuedAttributesAlias]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T, S]): ...
+
+SameA = A[T, T]
+
+class B:
+    a_any = SameA
+    a_int = SameA[int]
+
+reveal_type(B().a_any) # E: Revealed type is 'def () -> __main__.A[Any, Any]'
+reveal_type(B().a_int()) # E: Revealed type is '__main__.A[builtins.int*, builtins.int*]'
+
+class C:
+    a_int = SameA[int]
+    def __init__(self) -> None:
+        self.aa = self.a_int()
+
+reveal_type(C().aa) # E: Revealed type is '__main__.A[builtins.int*, builtins.int*]'
+[out]
 
 
 -- Type[C]
@@ -2070,3 +2118,8 @@ class A: pass
 class B(object, A): # E: Cannot determine consistent method resolution order (MRO) for "B"
     def readlines(self): pass
     __iter__ = readlines
+
+[case testDynamicMetaclass]
+# flags: --fast-parser
+class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+    pass

@@ -277,8 +277,8 @@ A = NewType('A', T)
 B = NewType('B', List[T])
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Invalid type "__main__.T"
 main:3: error: Argument 2 to NewType(...) must be subclassable (got T?)
+main:3: error: Invalid type "__main__.T"
 main:4: error: Invalid type "__main__.T"
 
 [case testNewTypeWithNewTypeFails]

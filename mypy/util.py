@@ -2,6 +2,7 @@
 
 import re
 import subprocess
+from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Sequence
 
 
@@ -113,3 +114,39 @@ def try_find_python2_interpreter() -> Optional[str]:
         except OSError:
             pass
     return None
+
+
+PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+  </testcase>
+</testsuite>
+"""
+
+FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+    <failure message="mypy produced messages">{text}</failure>
+  </testcase>
+</testsuite>
+"""
+
+ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
+  <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
+    <error message="mypy produced errors">{text}</error>
+  </testcase>
+</testsuite>
+"""
+
+
+def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) -> None:
+    """XXX"""
+    if not messages and not serious:
+        xml = PASS_TEMPLATE.format(time=dt)
+    elif not serious:
+        xml = FAIL_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+    else:
+        xml = ERROR_TEMPLATE.format(text=escape('\n'.join(messages)), time=dt)
+    with open(path, 'wb') as f:
+        f.write(xml.encode('utf-8'))

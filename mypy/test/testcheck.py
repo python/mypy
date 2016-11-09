@@ -66,11 +66,16 @@ files = [
     'check-warnings.test',
     'check-async-await.test',
     'check-newtype.test',
+    'check-class-namedtuple.test',
     'check-columns.test',
+    'check-selftype.test',
 ]
 
 if 'annotation' in typed_ast.ast35.Assign._fields:
     files.append('check-newsyntax.test')
+
+if 'contains_underscores' in typed_ast.ast35.Num._fields:
+    files.append('check-underscores.test')
 
 
 class TypeCheckSuite(DataSuite):

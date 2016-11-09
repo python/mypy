@@ -6,7 +6,8 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance
+    true_only, false_only, is_named_instance, function_type,
+    get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -17,8 +18,8 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
+    UNBOUND_TVAR, BOUND_TVAR,
 )
-from mypy.nodes import function_type
 from mypy import nodes
 import mypy.checker
 from mypy import types
@@ -32,11 +33,11 @@ from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.semanal import self_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
 from mypy.util import split_module_names
+from mypy.semanal import fill_typevars
 
 from mypy import experiments
 
@@ -465,8 +466,7 @@ class ExpressionChecker:
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        return cast(CallableType, self.apply_generic_arguments(callable, new_args,
-                                                           error_context))
+        return self.apply_generic_arguments(callable, new_args, error_context)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -556,9 +556,8 @@ class ExpressionChecker:
         for i, arg in enumerate(inferred_args):
             if isinstance(arg, (NoneTyp, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
+        callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
-        callee_type = cast(CallableType, self.apply_generic_arguments(
-            callee_type, inferred_args, context))
         arg_types = self.infer_arg_types_in_context2(
             callee_type, args, arg_kinds, formal_to_actual)
 
@@ -604,8 +603,7 @@ class ExpressionChecker:
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
         # arguments.
-        return cast(CallableType, self.apply_generic_arguments(callee_type,
-                                                           inferred_args, context))
+        return self.apply_generic_arguments(callee_type, inferred_args, context)
 
     def check_argument_count(self, callee: CallableType, actual_types: List[Type],
                              actual_kinds: List[int], actual_names: List[str],
@@ -719,10 +717,10 @@ class ExpressionChecker:
 
                 # There may be some remaining tuple varargs items that haven't
                 # been checked yet. Handle them.
+                tuplet = arg_types[actual]
                 if (callee.arg_kinds[i] == nodes.ARG_STAR and
                         arg_kinds[actual] == nodes.ARG_STAR and
-                        isinstance(arg_types[actual], TupleType)):
-                    tuplet = cast(TupleType, arg_types[actual])
+                        isinstance(tuplet, TupleType)):
                     while tuple_counter[0] < len(tuplet.items):
                         actual_type = get_actual_type(arg_type,
                                                       arg_kinds[actual],
@@ -875,21 +873,9 @@ class ExpressionChecker:
         return ok
 
     def apply_generic_arguments(self, callable: CallableType, types: List[Type],
-                                context: Context) -> Type:
+                                context: Context) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(callable, types, self.msg, context)
-
-    def apply_generic_arguments2(self, overload: Overloaded, types: List[Type],
-                                 context: Context) -> Type:
-        items = []  # type: List[CallableType]
-        for item in overload.items():
-            applied = self.apply_generic_arguments(item, types, context)
-            if isinstance(applied, CallableType):
-                items.append(applied)
-            else:
-                # There was an error.
-                return AnyType()
-        return Overloaded(items)
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
@@ -1362,16 +1348,85 @@ class ExpressionChecker:
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
         revealed_type = self.accept(expr.expr)
-        self.msg.reveal_type(revealed_type, expr)
+        if not self.chk.current_node_deferred:
+            self.msg.reveal_type(revealed_type, expr)
         return revealed_type
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
-        self.chk.fail(messages.GENERIC_TYPE_NOT_VALID_AS_EXPRESSION, tapp)
+        tp = self.accept(tapp.expr)
+        if isinstance(tp, CallableType):
+            if not tp.is_type_obj():
+                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
+            if len(tp.variables) != len(tapp.types):
+                self.msg.incompatible_type_application(len(tp.variables),
+                                                       len(tapp.types), tapp)
+                return AnyType()
+            return self.apply_generic_arguments(tp, tapp.types, tapp)
+        elif isinstance(tp, Overloaded):
+            if not tp.is_type_obj():
+                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
+            for item in tp.items():
+                if len(item.variables) != len(tapp.types):
+                    self.msg.incompatible_type_application(len(item.variables),
+                                                           len(tapp.types), tapp)
+                    return AnyType()
+            return Overloaded([self.apply_generic_arguments(item, tapp.types, tapp)
+                               for item in tp.items()])
         return AnyType()
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
+        """Get type of a type alias (could be generic) in a runtime expression."""
+        if isinstance(alias.type, Instance) and alias.type.invalid:
+            # An invalid alias, error already has been reported
+            return AnyType()
+        item = alias.type
+        if not alias.in_runtime:
+            # We don't replace TypeVar's with Any for alias used as Alias[T](42).
+            item = self.replace_tvars_any(item)
+        if isinstance(item, Instance):
+            # Normally we get a callable type (or overloaded) with .is_type_obj() true
+            # representing the class's constructor
+            tp = type_object_type(item.type, self.named_type)
+        else:
+            # This type is invalid in most runtime contexts
+            # and corresponding an error will be reported.
+            return alias.fallback
+        if isinstance(tp, CallableType):
+            if len(tp.variables) != len(item.args):
+                self.msg.incompatible_type_application(len(tp.variables),
+                                                       len(item.args), item)
+                return AnyType()
+            return self.apply_generic_arguments(tp, item.args, item)
+        elif isinstance(tp, Overloaded):
+            for it in tp.items():
+                if len(it.variables) != len(item.args):
+                    self.msg.incompatible_type_application(len(it.variables),
+                                                           len(item.args), item)
+                    return AnyType()
+            return Overloaded([self.apply_generic_arguments(it, item.args, item)
+                               for it in tp.items()])
         return AnyType()
+
+    def replace_tvars_any(self, tp: Type) -> Type:
+        """Replace all type variables of a type alias tp with Any. Basically, this function
+        finishes what could not be done in method TypeAnalyser.visit_unbound_type()
+        from typeanal.py.
+        """
+        typ_args = get_typ_args(tp)
+        new_args = typ_args[:]
+        for i, arg in enumerate(typ_args):
+            if isinstance(arg, UnboundType):
+                sym = None
+                try:
+                    sym = self.chk.lookup_qualified(arg.name)
+                except KeyError:
+                    pass
+                if sym and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
+                    new_args[i] = AnyType()
+            else:
+                new_args[i] = self.replace_tvars_any(arg)
+        return set_typ_args(tp, new_args, tp.line, tp.column)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
@@ -1559,9 +1614,8 @@ class ExpressionChecker:
         # they must be considered as indeterminate. We use ErasedType since it
         # does not affect type inference results (it is for purposes like this
         # only).
-        ctx = replace_meta_vars(ctx, ErasedType())
-
-        callable_ctx = cast(CallableType, ctx)
+        callable_ctx = replace_meta_vars(ctx, ErasedType())
+        assert isinstance(callable_ctx, CallableType)
 
         arg_kinds = [arg.kind for arg in e.arguments]
 
@@ -1601,10 +1655,19 @@ class ExpressionChecker:
                         return AnyType()
                     if not self.chk.in_checked_function():
                         return AnyType()
-                    return analyze_member_access(e.name, self_type(e.info), e,
-                                                 is_lvalue, True, False,
-                                                 self.named_type, self.not_ready_callback,
-                                                 self.msg, base, chk=self.chk)
+                    args = self.chk.scope.top_function().arguments
+                    # An empty args with super() is an error; we need something in declared_self
+                    if not args:
+                        self.chk.fail('super() requires at least one positional argument', e)
+                        return AnyType()
+                    declared_self = args[0].variable.type
+                    return analyze_member_access(name=e.name, typ=fill_typevars(e.info), node=e,
+                                                 is_lvalue=False, is_super=True, is_operator=False,
+                                                 builtin_type=self.named_type,
+                                                 not_ready_callback=self.not_ready_callback,
+                                                 msg=self.msg, override_info=base, chk=self.chk,
+                                                 original_type=declared_self)
+            assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.
             return AnyType()
@@ -1752,10 +1815,6 @@ class ExpressionChecker:
         """Generate an error if type is Void."""
         self.chk.check_usable_type(typ, context)
 
-    def is_boolean(self, typ: Type) -> bool:
-        """Is type compatible with bool?"""
-        return is_subtype(typ, self.chk.bool_type())
-
     def named_type(self, name: str) -> Instance:
         """Return an instance type with type given by the name and no type
         arguments. Alias for TypeChecker.named_type.
@@ -1786,14 +1845,6 @@ class ExpressionChecker:
                     'builtins.dict',
                     [self.named_type('builtins.unicode'),
                      AnyType()])))
-
-    def has_non_method(self, typ: Type, member: str) -> bool:
-        """Does type have a member variable / property with the given name?"""
-        if isinstance(typ, Instance):
-            return (not typ.type.has_method(member) and
-                    typ.type.has_readable_member(member))
-        else:
-            return False
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""

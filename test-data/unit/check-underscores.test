@@ -1,0 +1,16 @@
+[case testUnderscoresRequire36]
+# flags: --fast-parser --python-version 3.5
+x = 1000_000  # E: Underscores in numeric literals are only supported in Python 3.6
+[out]
+
+[case testUnderscoresSyntaxError]
+# flags: --fast-parser --python-version 3.6
+x = 1000_000_  # E: invalid token
+[out]
+
+[case testUnderscoresBasics]
+# flags: --fast-parser --python-version 3.6
+x: int
+x = 1000_000
+x = 0x_FF_FF_FF_FF
+y: str = 1000_000.000_001  # E: Incompatible types in assignment (expression has type "float", variable has type "str")

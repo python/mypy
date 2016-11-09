@@ -1,8 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-import re
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional
@@ -283,8 +282,11 @@ class MypyFile(SymbolNode):
 
 class ImportBase(Statement):
     """Base class for all import statements."""
-    is_unreachable = False
-    is_top_level = False  # Set by semanal.FirstPass
+
+    is_unreachable = False  # Set by semanal.FirstPass if inside `if False` etc.
+    is_top_level = False  # Ditto if outside any class or def
+    is_mypy_only = False  # Ditto if inside `if TYPE_CHECKING` or `if MYPY`
+
     # If an import replaces existing definitions, we construct dummy assignment
     # statements that assign the imported names to the names in the current scope,
     # for type checking purposes. Example:
@@ -357,9 +359,6 @@ class FuncBase(Node):
 
     def fullname(self) -> str:
         return self._fullname
-
-    def is_method(self) -> bool:
-        return bool(self.info)
 
 
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
@@ -529,9 +528,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
-    def is_constructor(self) -> bool:
-        return self.info is not None and self._name == '__init__'
-
     def serialize(self) -> JsonDict:
         # We're deliberating omitting arguments and storing only arg_names and
         # arg_kinds for space-saving reasons (arguments is not used in later
@@ -692,8 +688,6 @@ class ClassDef(Statement):
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = ''
     decorators = None  # type: List[Expression]
-    # Built-in/extension class? (single implementation inheritance only)
-    is_builtinclass = False
     has_incompatible_baseclass = False
 
     def __init__(self,
@@ -722,7 +716,6 @@ class ClassDef(Statement):
                 'fullname': self.fullname,
                 'type_vars': [v.serialize() for v in self.type_vars],
                 'metaclass': self.metaclass,
-                'is_builtinclass': self.is_builtinclass,
                 }
 
     @classmethod
@@ -734,7 +727,6 @@ class ClassDef(Statement):
                        metaclass=data['metaclass'],
                        )
         res.fullname = data['fullname']
-        res.is_builtinclass = data['is_builtinclass']
         return res
 
 
@@ -1326,6 +1318,7 @@ op_methods = {
     '%': '__mod__',
     '//': '__floordiv__',
     '**': '__pow__',
+    '@': '__matmul__',
     '&': '__and__',
     '|': '__or__',
     '^': '__xor__',
@@ -1347,7 +1340,7 @@ ops_falling_back_to_cmp = {'__ne__', '__eq__',
 
 
 ops_with_inplace_method = {
-    '+', '-', '*', '/', '%', '//', '**', '&', '|', '^', '<<', '>>'}
+    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}
 
 inplace_operator_methods = set(
     '__i' + op_methods[op][2:] for op in ops_with_inplace_method)
@@ -1360,6 +1353,7 @@ reverse_op_methods = {
     '__mod__': '__rmod__',
     '__floordiv__': '__rfloordiv__',
     '__pow__': '__rpow__',
+    '__matmul__': '__rmatmul__',
     '__and__': '__rand__',
     '__or__': '__ror__',
     '__xor__': '__rxor__',
@@ -1736,16 +1730,25 @@ class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
     type = None  # type: mypy.types.Type
+    # Simple fallback type for aliases that are invalid in runtime expressions
+    # (for example Union, Tuple, Callable).
+    fallback = None  # type: mypy.types.Type
+    # This type alias is subscripted in a runtime expression like Alias[int](42)
+    # (not in a type context like type annotation or base class).
+    in_runtime = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type') -> None:
+    def __init__(self, type: 'mypy.types.Type', fallback: 'mypy.types.Type' = None,
+                 in_runtime: bool = False) -> None:
         self.type = type
+        self.fallback = fallback
+        self.in_runtime = in_runtime
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
 
 
 class NamedTupleExpr(Expression):
-    """Named tuple expression namedtuple(...)."""
+    """Named tuple expression namedtuple(...) or NamedTuple(...)."""
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
@@ -1756,6 +1759,19 @@ class NamedTupleExpr(Expression):
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)
+
+
+class TypedDictExpr(Expression):
+    """Typed dict expression TypedDict(...)."""
+
+    # The class representation of this typed dict
+    info = None  # type: TypeInfo
+
+    def __init__(self, info: 'TypeInfo') -> None:
+        self.info = info
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_typeddict_expr(self)
 
 
 class PromoteExpr(Expression):
@@ -1880,18 +1896,18 @@ class TypeInfo(SymbolNode):
     # Is this a named tuple type?
     is_named_tuple = False
 
+    # Is this a typed dict type?
+    is_typed_dict = False
+
     # Is this a newtype type?
     is_newtype = False
-
-    # Is this a dummy from deserialization?
-    is_dummy = False
 
     # Alternative to fullname() for 'anonymous' classes.
     alt_fullname = None  # type: Optional[str]
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype', 'is_dummy'
+        'is_typed_dict', 'is_newtype'
     ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -1945,32 +1961,8 @@ class TypeInfo(SymbolNode):
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 
-    def has_writable_member(self, name: str) -> bool:
-        return self.has_var(name)
-
-    def has_var(self, name: str) -> bool:
-        return self.get_var(name) is not None
-
     def has_method(self, name: str) -> bool:
         return self.get_method(name) is not None
-
-    def get_var(self, name: str) -> Var:
-        for cls in self.mro:
-            if name in cls.names:
-                node = cls.names[name].node
-                if isinstance(node, Var):
-                    return node
-                else:
-                    return None
-        return None
-
-    def get_var_or_getter(self, name: str) -> SymbolNode:
-        # TODO getter
-        return self.get_var(name)
-
-    def get_var_or_setter(self, name: str) -> SymbolNode:
-        # TODO setter
-        return self.get_var(name)
 
     def get_method(self, name: str) -> FuncBase:
         if self.mro is None:  # Might be because of a previous error.
@@ -2015,18 +2007,6 @@ class TypeInfo(SymbolNode):
                 if cls.fullname() == fullname:
                     return True
         return False
-
-    def all_subtypes(self) -> 'Set[TypeInfo]':
-        """Return TypeInfos of all subtypes, including this type, as a set."""
-        subtypes = set([self])
-        for subt in self.subtypes:
-            for t in subt.all_subtypes():
-                subtypes.add(t)
-        return subtypes
-
-    def all_base_classes(self) -> 'List[TypeInfo]':
-        """Return a list of base classes, including indirect bases."""
-        assert False
 
     def direct_base_classes(self) -> 'List[TypeInfo]':
         """Return a direct base classes.
@@ -2251,57 +2231,6 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             if key != '.class':
                 st[key] = SymbolTableNode.deserialize(value)
         return st
-
-
-def function_type(func: FuncBase, fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
-    if func.type:
-        assert isinstance(func.type, mypy.types.FunctionLike)
-        return func.type
-    else:
-        # Implicit type signature with dynamic types.
-        # Overloaded functions always have a signature, so func must be an ordinary function.
-        fdef = cast(FuncDef, func)
-        name = func.name()
-        if name:
-            name = '"{}"'.format(name)
-
-        return mypy.types.CallableType(
-            [mypy.types.AnyType()] * len(fdef.arg_names),
-            fdef.arg_kinds,
-            fdef.arg_names,
-            mypy.types.AnyType(),
-            fallback,
-            name,
-            implicit=True,
-        )
-
-
-def method_type_with_fallback(func: FuncBase,
-                              fallback: 'mypy.types.Instance') -> 'mypy.types.FunctionLike':
-    """Return the signature of a method (omit self)."""
-    return method_type(function_type(func, fallback))
-
-
-def method_type(sig: 'mypy.types.FunctionLike') -> 'mypy.types.FunctionLike':
-    if isinstance(sig, mypy.types.CallableType):
-        return method_callable(sig)
-    else:
-        sig = cast(mypy.types.Overloaded, sig)
-        items = []  # type: List[mypy.types.CallableType]
-        for c in sig.items():
-            items.append(method_callable(c))
-        return mypy.types.Overloaded(items)
-
-
-def method_callable(c: 'mypy.types.CallableType') -> 'mypy.types.CallableType':
-    if c.arg_kinds and c.arg_kinds[0] == ARG_STAR:
-        # The signature is of the form 'def foo(*args, ...)'.
-        # In this case we shouldn't drop the first arg,
-        # since self will be absorbed by the *args.
-        return c
-    return c.copy_modified(arg_types=c.arg_types[1:],
-                           arg_kinds=c.arg_kinds[1:],
-                           arg_names=c.arg_names[1:])
 
 
 class MroError(Exception):

@@ -235,8 +235,9 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             for i in range(t.length()):
                 items.append(self.join(t.items[i], self.s.items[i]))
             # join fallback types if they are different
-            from typing import cast
-            return TupleType(items, cast(Instance, join_instances(self.s.fallback, t.fallback)))
+            fallback = join_instances(self.s.fallback, t.fallback)
+            assert isinstance(fallback, Instance)
+            return TupleType(items, fallback)
         else:
             return self.default(self.s)
 

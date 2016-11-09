@@ -244,22 +244,51 @@ restrict the valid values for the type parameter in the same way.
 A type variable may not have both a value restriction (see
 :ref:`type-variable-value-restriction`) and an upper bound.
 
-One common application of type variable upper bounds is in declaring
-the types of decorators that do not change the type of the function
-they decorate:
+Declaring decorators
+********************
+
+One common application of type variable upper bounds is in declaring a
+decorator that preserves the signature of the function it decorates,
+regardless of that signature. Here's a complete example:
 
 .. code-block:: python
 
-   from typing import TypeVar, Callable, Any
+   from typing import Any, Callable, TypeVar, Tuple, cast
 
-   AnyCallable = TypeVar('AnyCallable', bound=Callable[..., Any])
+   FuncType = Callable[..., Any]
+   F = TypeVar('F', bound=FuncType)
 
-   def my_decorator(f: AnyCallable) -> AnyCallable: ...
+   # A decorator that preserves the signature.
+   def my_decorator(func: F) -> F:
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return cast(F, wrapper)
 
+   # A decorated function.
    @my_decorator
-   def my_function(x: int, y: str) -> bool:
-       ...
+   def foo(a: int) -> str:
+       return str(a)
 
-The decorated ``my_function`` still has type ``Callable[[int, str],
-bool]``. Due to the bound on ``AnyCallable``, an application of the
-decorator to a non-function like ``my_decorator(1)`` will be rejected.
+   # Another.
+   @my_decorator
+   def bar(x: float, y: float) -> Tuple[float, float, bool]:
+       return (x, y, x > y)
+
+   a = foo(12)
+   reveal_type(a)  # str
+   b = bar(3.14, 0)
+   reveal_type(b)  # Tuple[float, float, bool]
+   foo('x')    # Type check error: incompatible type "str"; expected "int"
+
+From the final block we see that the signatures of the decorated
+functions ``foo()`` and ``bar()`` are the same as those of the original
+functions (before the decorator is applied).
+
+The bound on ``F`` is used so that calling the decorator on a
+non-function (e.g. ``my_decorator(1)``) will be rejected.
+
+Also note that the ``wrapper()`` function is not type-checked. Wrapper
+functions are typically small enough that this is not a big
+problem. This is also the reason for the ``cast()`` call in the
+``return`` statement in ``my_decorator()``. See :ref:`casts`.

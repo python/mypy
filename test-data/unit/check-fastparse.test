@@ -160,16 +160,12 @@ main: note: In function "f":
 def f():  # E: Type signature has too many arguments
     # type: (int) -> None
     pass
-[out]
-main: note: In function "f":
 
 [case testFasterParseTooFewArgumentsAnnotation]
 # flags: --fast-parser
 def f(x):  # E: Type signature has too few arguments
     # type: () -> None
     pass
-[out]
-main: note: In function "f":
 
 [case testFasterParseTypeCommentError_python2]
 # flags: --fast-parser
@@ -179,3 +175,17 @@ def f(a):
     pass
 [out]
 main:3: error: invalid type comment
+
+[case testFastParseMatMul]
+# flags: --fast-parser
+from typing import Any
+x = None  # type: Any
+x @ 1
+x @= 1
+
+[case testIncorrectTypeCommentIndex]
+# flags: --fast-parser
+from typing import Dict
+x = None # type: Dict[x: y]
+[out]
+main:3: error: syntax error in type comment
