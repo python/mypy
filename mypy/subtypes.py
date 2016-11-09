@@ -240,7 +240,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
 def is_callable_subtype(left: CallableType, right: CallableType,
                         ignore_return: bool = False) -> bool:
     """Is left a subtype of right?"""
-    # TODO: Support named arguments, **args, etc.
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
         return False
