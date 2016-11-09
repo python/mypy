@@ -50,7 +50,7 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.meet import meet_simple, is_overlapping_types
-from mypy.binder import ConditionalTypeBinder
+from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.options import Options
 
 from mypy import experiments
@@ -1149,10 +1149,7 @@ class TypeChecker(NodeVisitor[Type]):
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type(lvalue,
-                                            rvalue_type,
-                                            lvalue_type,
-                                            False)
+                    self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
 
@@ -1858,10 +1855,8 @@ class TypeChecker(NodeVisitor[Type]):
             s.expr.accept(self)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type(elt,
-                                            DeletedType(source=elt.name),
-                                            self.binder.get_declaration(elt),
-                                            False)
+                    self.binder.assign_type(elt, DeletedType(source=elt.name),
+                                            get_declaration(elt), False)
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:

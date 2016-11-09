@@ -116,7 +116,7 @@ class ConditionalTypeBinder:
             return
         key = expr.literal_hash
         if key not in self.declarations:
-            self.declarations[key] = self.get_declaration(expr)
+            self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
         self._put(key, typ)
 
@@ -197,13 +197,6 @@ class ConditionalTypeBinder:
 
         return result
 
-    def get_declaration(self, expr: BindableExpression) -> Type:
-        if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-            type = expr.node.type
-            if not isinstance(type, PartialType):
-                return type
-        return None
-
     def assign_type(self, expr: Expression,
                     type: Type,
                     declared_type: Type,
@@ -256,9 +249,9 @@ class ConditionalTypeBinder:
 
     def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type:
         if isinstance(type, AnyType):
-            return self.get_declaration(expr)
+            return get_declaration(expr)
         key = expr.literal_hash
-        enclosers = ([self.get_declaration(expr)] +
+        enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames
                       if key in f and is_subtype(type, f[key])])
         return enclosers[-1]
@@ -342,3 +335,11 @@ class ConditionalTypeBinder:
         assert len(self.frames) == 1
         yield self.push_frame()
         self.pop_frame(True, 0)
+
+
+def get_declaration(expr: BindableExpression) -> Type:
+    if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
+        type = expr.node.type
+        if not isinstance(type, PartialType):
+            return type
+    return None
