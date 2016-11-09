@@ -1149,10 +1149,10 @@ class TypeChecker(NodeVisitor[Type]):
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
                 if rvalue_type and infer_lvalue_type:
-                    self.binder.assign_type_if_bindable(lvalue,
-                                                        rvalue_type,
-                                                        lvalue_type,
-                                                        False)
+                    self.binder.assign_type(lvalue,
+                                            rvalue_type,
+                                            lvalue_type,
+                                            False)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
 
@@ -1858,10 +1858,10 @@ class TypeChecker(NodeVisitor[Type]):
             s.expr.accept(self)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
-                    self.binder.assign_type_if_bindable(elt,
-                                                        DeletedType(source=elt.name),
-                                                        self.binder.get_declaration(elt),
-                                                        False)
+                    self.binder.assign_type(elt,
+                                            DeletedType(source=elt.name),
+                                            self.binder.get_declaration(elt),
+                                            False)
             return None
 
     def visit_decorator(self, e: Decorator) -> Type:
@@ -2376,7 +2376,7 @@ class TypeChecker(NodeVisitor[Type]):
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
-                self.binder.put_if_bindable(expr, type)
+                self.binder.put(expr, type)
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The

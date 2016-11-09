@@ -109,7 +109,7 @@ class ConditionalTypeBinder:
                 return self.frames[i][key]
         return None
 
-    def put_if_bindable(self, expr: Expression, typ: Type) -> None:
+    def put(self, expr: Expression, typ: Type) -> None:
         if not isinstance(expr, BindableTypes):
             return
         if not expr.literal:
@@ -204,10 +204,10 @@ class ConditionalTypeBinder:
                 return type
         return None
 
-    def assign_type_if_bindable(self, expr: Expression,
-                                type: Type,
-                                declared_type: Type,
-                                restrict_any: bool = False) -> None:
+    def assign_type(self, expr: Expression,
+                    type: Type,
+                    declared_type: Type,
+                    restrict_any: bool = False) -> None:
         if not isinstance(expr, BindableTypes):
             return None
         if not expr.literal:
@@ -234,9 +234,9 @@ class ConditionalTypeBinder:
                 and not restrict_any):
             pass
         elif isinstance(type, AnyType):
-            self.put_if_bindable(expr, declared_type)
+            self.put(expr, declared_type)
         else:
-            self.put_if_bindable(expr, type)
+            self.put(expr, type)
 
         for i in self.try_frames:
             # XXX This should probably not copy the entire frame, but

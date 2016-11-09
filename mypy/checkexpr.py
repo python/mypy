@@ -1754,7 +1754,7 @@ class ExpressionChecker:
 
                 if true_map:
                     for var, type in true_map.items():
-                        self.chk.binder.put_if_bindable(var, type)
+                        self.chk.binder.put(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         cond_type = self.accept(e.cond)
