@@ -7,7 +7,7 @@ from typing import (
 )
 
 import mypy.nodes
-from mypy.nodes import INVARIANT, SymbolNode
+from mypy.nodes import INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 
 from mypy import experiments
 
@@ -263,7 +263,7 @@ class ArgumentList(Type):
         assert data['.class'] == 'ArgumentList' or data['.class'] == 'TypeList'
         types = [Type.deserialize(t) for t in data['items']]
         names = cast(List[Optional[str]], data.get('names', [None]*len(types)))
-        kinds = cast(List[int], data.get('kinds', [nodes.ARG_POS]*len(types)))
+        kinds = cast(List[int], data.get('kinds', [ARG_POS]*len(types)))
         return ArgumentList(
             types=[Type.deserialize(t) for t in data['items']],
             names=names,
@@ -556,7 +556,7 @@ class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
     arg_types = None  # type: List[Type]  # Types of function arguments
-    arg_kinds = None  # type: List[int]   # mypy.nodes.ARG_ constants
+    arg_kinds = None  # type: List[int]   # ARG_ constants
     arg_names = None  # type: List[str]   # None if not a keyword argument
     min_args = 0                    # Minimum number of arguments; derived from arg_kinds
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
@@ -597,8 +597,9 @@ class CallableType(FunctionLike):
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
-        self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
-        self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
+        self.min_args = arg_kinds.count(ARG_POS)
+        self.is_var_arg = ARG_STAR in arg_kinds
+        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -669,6 +670,48 @@ class CallableType(FunctionLike):
         if self.is_var_arg:
             n -= 1
         return n
+
+    def argument_by_name(self, name: str) -> Optional[Tuple[
+            Optional[str],
+            Optional[int],
+            Type,
+            bool]]:
+        seen_star = False
+        for i, (arg_name, kind, typ) in enumerate(
+                zip(self.arg_names, self.arg_kinds, self.arg_types)):
+            # No more positional arguments after these.
+            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+                seen_star = True
+            if kind in (ARG_STAR, ARG_STAR2):
+                continue
+            if arg_name == name:
+                position = None if seen_star else i
+                return name, position, typ, kind in (ARG_POS, ARG_NAMED)
+        return None
+
+    def argument_by_position(self, position: int) -> Optional[Tuple[
+            Optional[str],
+            Optional[int],
+            Type,
+            bool]]:
+        if self.is_var_arg:
+            for kind, typ in zip(self.arg_kinds, self.arg_types):
+                if kind == ARG_STAR:
+                    star_type = typ
+                    break
+        if position >= len(self.arg_names):
+            if self.is_var_arg:
+                return None, position, star_type, False
+            else:
+                return None
+        name, kind, typ = self.arg_names[position], self.arg_kinds[position], self.arg_types[position]
+        if kind in (ARG_POS, ARG_OPT):
+            return name, position, typ, kind == ARG_POS
+        else:
+            if self.is_var_arg:
+                return None, position, star_type, False
+            else:
+                return None
 
     def items(self) -> List['CallableType']:
         return [self]
@@ -1266,17 +1309,17 @@ class TypeStrVisitor(TypeVisitor[str]):
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            if t.arg_kinds[i] == mypy.nodes.ARG_NAMED and not bare_asterisk:
+            if t.arg_kinds[i] == ARG_NAMED and not bare_asterisk:
                 s += '*, '
                 bare_asterisk = True
-            if t.arg_kinds[i] == mypy.nodes.ARG_STAR:
+            if t.arg_kinds[i] == ARG_STAR:
                 s += '*'
-            if t.arg_kinds[i] == mypy.nodes.ARG_STAR2:
+            if t.arg_kinds[i] == ARG_STAR2:
                 s += '**'
             if t.arg_names[i]:
                 s += t.arg_names[i] + ': '
             s += str(t.arg_types[i])
-            if t.arg_kinds[i] == mypy.nodes.ARG_OPT:
+            if t.arg_kinds[i] == ARG_OPT:
                 s += ' ='
 
         s = '({})'.format(s)
