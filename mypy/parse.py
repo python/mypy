@@ -840,7 +840,9 @@ class Parser:
             ret_type = AnyType(implicit=True)
         arg_kinds = [arg.kind for arg in args]
         if include_names:
-            arg_names = [arg.variable.name() for arg in args]
+            arg_names = [arg.variable.name()
+                         if not arg.variable.name().startswith('__') else None
+                         for arg in args]
         else:
             arg_names = [None]*len(args)
         return CallableType(arg_types, arg_kinds, arg_names, ret_type, None, name=None,

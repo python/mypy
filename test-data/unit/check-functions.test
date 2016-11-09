@@ -1322,7 +1322,12 @@ def isf(ii: int, ss: str) -> str:
 def iosf(i: int, s: str = "bar") -> str:
     return s
 
+def isf_unnamed(__i: int, __s: str) -> str:
+    return __s
+
 int_str_fun = isf
+int_str_fun = isf_unnamed
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg('s', str, False)], str])
 int_opt_str_fun = iosf
 int_str_fun = iosf
 int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, DefaultArg('None', str, False)], str])
