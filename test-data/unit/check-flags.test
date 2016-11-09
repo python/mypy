@@ -94,3 +94,33 @@ def i() -> int:
   ...
 def j() -> int:
   """docstring only"""
+
+[case testWarnNoReturnWorksWithAlwaysTrue]
+# flags: --warn-no-return
+PY3 = True
+def f() -> int:
+    if PY3:
+        return 0
+    else:
+        return 0
+[builtins fixtures/bool.pyi]
+
+[case testWarnNoReturnWorksWithAlwaysFalse]
+# flags: --warn-no-return
+PY2 = False
+def f() -> int:
+    if PY2:
+        return 0
+    else:
+        return 0
+[builtins fixtures/bool.pyi]
+
+[case testWarnNoReturnWorksWithMypyTrue]
+# flags: --warn-no-return
+MYPY = False
+def f() -> int:
+    if MYPY:
+        return 0
+    else:
+        return 0
+[builtins fixtures/bool.pyi]
