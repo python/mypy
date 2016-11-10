@@ -53,6 +53,19 @@ Type inference works for user-defined generic types as well:
 
    process(Stack())   # Argument has inferred type Stack[int]
 
+Construction of instances of generic types is also type checked:
+
+.. code-block:: python
+
+   class Box(Generic[T]):
+       def __init__(self, content: T) -> None:
+           self.content = content
+
+   Box(1)  # OK, inferred type is Box[int]
+   Box[int](1)  # Also OK
+   s = 'some string'
+   Box[int](s)  # Type error
+
 Generic class internals
 ***********************
 
