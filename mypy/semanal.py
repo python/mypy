@@ -810,10 +810,6 @@ class SemanticAnalyzer(NodeVisitor):
                 if info.tuple_type:
                     self.fail("Class has two incompatible bases derived from tuple", defn)
                     defn.has_incompatible_baseclass = True
-                if (not self.is_stub_file
-                        and not info.is_named_tuple
-                        and base.fallback.type.fullname() == 'builtins.tuple'):
-                    self.fail("Tuple[...] not supported as a base class outside a stub file", defn)
                 info.tuple_type = base
                 base_types.append(base.fallback)
             elif isinstance(base, Instance):
