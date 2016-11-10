@@ -1745,10 +1745,10 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_except_handler_test(self, n: Expression) -> Type:
         """Type check an exception handler test clause."""
-        type = self.accept(n)
+        typ = self.accept(n)
 
         all_types = []  # type: List[Type]
-        test_types = type.items if isinstance(type, TupleType) else [type]
+        test_types = typ.items if isinstance(typ, TupleType) else [typ]
 
         for ttype in test_types:
             if isinstance(ttype, AnyType):
@@ -1760,18 +1760,18 @@ class TypeChecker(NodeVisitor[Type]):
                 if not item.is_type_obj():
                     self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                     return AnyType()
-                ret_type = item.ret_type
+                exc_type = item.exc_type
             elif isinstance(ttype, TypeType):
-                ret_type = ttype.item
+                exc_type = ttype.item
             else:
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 
-            if not is_subtype(ret_type, self.named_type('builtins.BaseException')):
+            if not is_subtype(exc_type, self.named_type('builtins.BaseException')):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 
-            all_types.append(ret_type)
+            all_types.append(exc_type)
 
         return UnionType.make_simplified_union(all_types)
 
