@@ -366,3 +366,17 @@ class D(NamedTuple('D', []), A): pass
 g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
 y = None  # type: C
 y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+
+[case testNamedTupleSelfType]
+from typing import NamedTuple
+A = NamedTuple('A', [('x', str)])
+reveal_type(A('hello')._replace(x=''))  # E: Revealed type is '__main__.A*'
+a = None  # type: A
+a = A('hello')._replace(x='')
+
+class B(A):
+    pass
+
+reveal_type(B('hello')._replace(x=''))  # E: Revealed type is '__main__.B*'
+b = None  # type: B
+b = B('hello')._replace(x='')
