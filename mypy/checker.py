@@ -1760,7 +1760,7 @@ class TypeChecker(NodeVisitor[Type]):
                 if not item.is_type_obj():
                     self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                     return AnyType()
-                exc_type = item.exc_type
+                exc_type = item.ret_type
             elif isinstance(ttype, TypeType):
                 exc_type = ttype.item
             else:
