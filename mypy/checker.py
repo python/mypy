@@ -29,7 +29,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, ErrorType, strip_type,
+    Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     true_only, false_only, function_type
 )
@@ -1755,14 +1755,19 @@ class TypeChecker(NodeVisitor[Type]):
                 all_types.append(ttype)
                 continue
 
-            if not isinstance(ttype, FunctionLike):
+            if isinstance(ttype, FunctionLike):
+                item = ttype.items()[0]
+                if not item.is_type_obj():
+                    self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                    return AnyType()
+                ret_type = item.ret_type
+            elif isinstance(ttype, TypeType):
+                ret_type = ttype.item
+            else:
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 
-            item = ttype.items()[0]
-            ret_type = item.ret_type
-            if not (is_subtype(ret_type, self.named_type('builtins.BaseException'))
-                    and item.is_type_obj()):
+            if not is_subtype(ret_type, self.named_type('builtins.BaseException')):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 

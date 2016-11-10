@@ -789,8 +789,6 @@ main: note: In function "f":
 main:10: error: Revealed type is 'builtins.int'
 main:15: error: Revealed type is 'builtins.str'
 
-
-
 [case testArbitraryExpressionAsExceptionType]
 import typing
 a = BaseException
@@ -866,6 +864,26 @@ class EE(E): pass
 raise EE()
 raise EE
 [builtins fixtures/exception.pyi]
+
+[case testExceptionIsType]
+from typing import Type
+class B(BaseException): pass
+def f(e: Type[B]):
+    try: pass
+    except e: pass
+def g(e: Type[BaseException]):
+    try: pass
+    except e as err:
+        reveal_type(err)
+def h(e: Type[int]):
+    try: pass
+    except e: pass
+[builtins fixtures/exception.pyi]
+[out]
+main: note: In function "g":
+main:9: error: Revealed type is 'builtins.BaseException'
+main: note: In function "h":
+main:12: error: Exception type must be derived from BaseException
 
 
 -- Del statement
