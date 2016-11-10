@@ -1079,6 +1079,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_block(self, b: Block) -> Type:
         if b.is_unreachable:
+            self.binder.unreachable()
             return None
         for s in b.body:
             if self.binder.is_unreachable():
