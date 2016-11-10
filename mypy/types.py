@@ -592,6 +592,7 @@ class CallableType(FunctionLike):
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
         self.special_sig = special_sig
+        self.is_classmethod_class = is_classmethod_class
         super().__init__(line, column)
 
     def copy_modified(self,
@@ -636,7 +637,10 @@ class CallableType(FunctionLike):
         ret = self.ret_type
         if isinstance(ret, TupleType):
             ret = ret.fallback
-        return cast(Instance, ret).type
+        if isinstance(ret, TypeVarType):
+            ret = ret.upper_bound
+        assert isinstance(ret, Instance)
+        return ret.type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable_type(self)
