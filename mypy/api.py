@@ -18,15 +18,15 @@ Trivial example of code using this module:
 import sys
 from mypy import api
 
-result = api.run (' '.join (sys.argv [1:]))
+result = api.run(' '.join(sys.argv[1:]))
 
-if result [0]:
-    print ('\nType checking report:\n')
-    print (result [0])  # stdout
+if result[0]:
+    print('\nType checking report:\n')
+    print(result[0])  # stdout
 
-if result [1]:
-    print ('\nError report:\n')
-    print (result [1])  # stderr
+if result[1]:
+    print('\nError report:\n')
+    print(result[1])  # stderr
 '''
 
 import sys
@@ -34,24 +34,23 @@ import traceback
 from io import StringIO
 from mypy.main import main
 
-def run (params):
-    sys.argv = [None] + params.split ()
+def run(params):
+    sys.argv = [None] + params.split()
 
     old_stdout = sys.stdout
-    new_stdout = StringIO ()
+    new_stdout = StringIO()
     sys.stdout = new_stdout
 
     old_stderr = sys.stderr
-    new_stderr = StringIO ()
+    new_stderr = StringIO()
     sys.stderr = new_stderr
 
     try:
         main (None)
     except:
         pass
-        
+
     sys.stdout = old_stdout
     sys.stderr = old_stderr
-    
-    return (new_stdout.getvalue (), new_stderr.getvalue ())
-    
+
+    return(new_stdout.getvalue(), new_stderr.getvalue())
