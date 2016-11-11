@@ -559,10 +559,10 @@ main:15: error: Incompatible types in assignment (expression has type "Tuple[A, 
 
 a = None # type: A
 
-(a, a) + a  # E: Unsupported left operand type for + (Tuple[A, ...])
+(a, a) + a  # E: Unsupported left operand type for + ("Tuple[A, A]")
 a + (a, a)  # E: Unsupported operand types for + ("A" and "Tuple[A, A]")
 f((a, a))   # E: Argument 1 to "f" has incompatible type "Tuple[A, A]"; expected "A"
-(a, a).foo  # E: Tuple[A, ...] has no attribute "foo"
+(a, a).foo  # E: "Tuple[A, A]" has no attribute "foo"
 
 def f(x: 'A') -> None: pass
 
@@ -596,7 +596,7 @@ b = bool()
 s = t.__len__()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 i = t.__str__()  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 i = s in t       # E: Incompatible types in assignment (expression has type "bool", variable has type "int")
-t.foo            # E: Tuple[Any, ...] has no attribute "foo"
+t.foo            # E: "Tuple[int, str]" has no attribute "foo"
 
 i = t.__len__()
 s = t.__str__()

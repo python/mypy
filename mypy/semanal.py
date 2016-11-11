@@ -1799,7 +1799,7 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
-        tvd = TypeVarDef('NT', 1, [], TupleType(types, fill_typevars(info)))
+        tvd = TypeVarDef('NT', 1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,

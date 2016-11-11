@@ -108,14 +108,15 @@ def analyze_member_access(name: str,
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
-                                         chk=chk)
+                                         original_type=typ, chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg, chk=chk)
+                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     original_type=typ, chk=chk)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -573,7 +574,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
         return cast(F, func)
     if func.arg_kinds[0] == ARG_STAR:
         # The signature is of the form 'def foo(*args, ...)'.
-        # In this case we shouldn'func drop the first arg,
+        # In this case we shouldn't drop the first arg,
         # since func will be absorbed by the *args.
 
         # TODO: infer bounds on the type of *args?

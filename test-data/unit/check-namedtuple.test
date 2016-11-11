@@ -258,7 +258,7 @@ from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
-reveal_type(x._replace())  # E: Revealed type is '__main__.X*'
+reveal_type(x._replace())  # E: Revealed type is 'Tuple[Any, Any, fallback=__main__.X]'
 x._replace(y=5)
 x._replace(x=3)
 x._replace(x=3, y=5)
@@ -279,7 +279,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
-reveal_type(x._replace())  # E: Revealed type is '__main__.X*'
+reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
 x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
 
@@ -367,23 +367,37 @@ g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
 y = None  # type: C
 y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
 
-[case testNamedTupleSelfType]
+[case testNamedTupleSelfTypeMethod]
+from typing import TypeVar, NamedTuple
+
+T = TypeVar('T', bound='A')
+
+class A(NamedTuple('A', [('x', str)])):
+    def member(self: T) -> T:
+        return self
+
+class B(A):
+    pass
+
+a = None  # type: A
+a = A('').member()
+b = None  # type: B
+b = B('').member()
+a = B('')
+a = B('').member()
+
+
+[case testNamedTupleSelfTypeReplace]
 from typing import NamedTuple, TypeVar
 A = NamedTuple('A', [('x', str)])
-reveal_type(A('hello')._replace(x=''))  # E: Revealed type is '__main__.A*'
+reveal_type(A('hello')._replace(x=''))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.A]'
 a = None  # type: A
 a = A('hello')._replace(x='')
 
 class B(A):
     pass
 
-reveal_type(B('hello')._replace(x=''))  # E: Revealed type is '__main__.B*'
+reveal_type(B('hello')._replace(x=''))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.B]'
 b = None  # type: B
 b = B('hello')._replace(x='')
 
-T = TypeVar('T', bound='C')
-class C(B):
-    def foo(self: T) -> T: return self
-
-c = None  # type: C
-c = C('hello').foo()
