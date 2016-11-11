@@ -323,8 +323,9 @@ class ExpressionChecker:
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                         False, False, False, self.named_type,
-                                         self.not_ready_callback, self.msg, chk=self.chk)
+                                                  False, False, False, self.named_type,
+                                                  self.not_ready_callback, self.msg,
+                                                  original_type=callee, chk=self.chk)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -896,10 +897,11 @@ class ExpressionChecker:
             return self.analyze_ref_expr(e)
         else:
             # This is a reference to a non-module attribute.
-            return analyze_member_access(e.name, self.accept(e.expr), e,
+            original_type = self.accept(e.expr)
+            return analyze_member_access(e.name, original_type, e,
                                          is_lvalue, False, False,
                                          self.named_type, self.not_ready_callback, self.msg,
-                                         chk=self.chk)
+                                         original_type=original_type, chk=self.chk)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -909,7 +911,7 @@ class ExpressionChecker:
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
                                      self.named_type, self.not_ready_callback, self.msg,
-                                     chk=self.chk)
+                                     original_type=base_type, chk=self.chk)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -1070,7 +1072,7 @@ class ExpressionChecker:
         """
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
-                                            chk=self.chk)
+                                            original_type=base_type, chk=self.chk)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -1670,8 +1672,8 @@ class ExpressionChecker:
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,
-                                                 msg=self.msg, override_info=base, chk=self.chk,
-                                                 original_type=declared_self)
+                                                 msg=self.msg, override_info=base,
+                                                 original_type=declared_self, chk=self.chk)
             assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.

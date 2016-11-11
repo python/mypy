@@ -287,7 +287,7 @@ x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expe
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
-reveal_type(X._make([5, 'a']))  # E: Revealed type is '__main__.X*'
+reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
 -- # FIX: not a proper class method
@@ -386,7 +386,6 @@ b = B('').member()
 a = B('')
 a = B('').member()
 
-
 [case testNamedTupleSelfTypeReplace]
 from typing import NamedTuple, TypeVar
 A = NamedTuple('A', [('x', str)])
@@ -401,3 +400,16 @@ reveal_type(B('hello')._replace(x=''))  # E: Revealed type is 'Tuple[builtins.st
 b = None  # type: B
 b = B('hello')._replace(x='')
 
+[case testNamedTupleSelfTypeMake]
+from typing import NamedTuple, TypeVar
+A = NamedTuple('A', [('x', str)])
+reveal_type(A._make(['']))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.A]'
+a = A._make([''])  # type: A
+
+class B(A):
+    pass
+
+reveal_type(B._make(['']))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.B]'
+b = B._make([''])  # type: B
+
+[builtins fixtures/list.pyi]

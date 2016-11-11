@@ -32,9 +32,9 @@ def analyze_member_access(name: str,
                           is_operator: bool,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
-                          msg: MessageBuilder,
+                          msg: MessageBuilder, *,
+                          original_type: Type,
                           override_info: TypeInfo = None,
-                          original_type: Type = None,
                           chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Return the type of attribute `name` of typ.
 
@@ -108,7 +108,7 @@ def analyze_member_access(name: str,
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
-                                         original_type=typ, chk=chk)
+                                         original_type=original_type, chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
@@ -116,7 +116,7 @@ def analyze_member_access(name: str,
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
-                                     original_type=typ, chk=chk)
+                                     original_type=original_type, chk=chk)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -413,8 +413,6 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
         vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            if not isinstance(original_type, TypeType):
-                original_type = TypeType(itype)
             t = bind_self(t, original_type)
         return t.copy_modified(variables=vars + t.variables)
     elif isinstance(t, Overloaded):
