@@ -21,8 +21,8 @@ def run (params):
 	sys.stdout = string_io
 	try:
 		main (None)
-	except:
-		pass
+	except Exception as exception:
+		print (exception)
 	sys.stdout = old_stdout
 	return string_io.getvalue ()
 	
