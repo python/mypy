@@ -6,6 +6,7 @@
   <xsl:variable name="xml_stylesheet_pi" select="string(//processing-instruction('xml-stylesheet'))"/>
   <xsl:variable name="stylesheet_name" select="substring($xml_stylesheet_pi, 23, string-length($xml_stylesheet_pi) - 28)"/>
   <xsl:template match="/mypy-report-index">
+    <xsl:text disable-output-escaping='yes'>&lt;!DOCTYPE html&gt;&#10;</xsl:text>
     <html>
       <head>
         <link rel="stylesheet" type="text/css" href="{$stylesheet_name}.css"/>
@@ -48,6 +49,7 @@
     </html>
   </xsl:template>
   <xsl:template match="/mypy-report-file">
+    <xsl:text disable-output-escaping='yes'>&lt;!DOCTYPE html&gt;&#10;</xsl:text>
     <html>
       <head>
         <link rel="stylesheet" type="text/css" href="{$stylesheet_name}.css"/>
