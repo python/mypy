@@ -508,6 +508,12 @@ class MessageBuilder:
                 msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
+    def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
+        msg = 'Missing named argument "{}"'.format(name)
+        if callee.name:
+            msg += ' for function {}'.format(callee.name)
+        self.fail(msg, context)
+
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments'
         if callee.name:

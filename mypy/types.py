@@ -7,7 +7,7 @@ from typing import (
 )
 
 import mypy.nodes
-from mypy.nodes import INVARIANT, SymbolNode
+from mypy.nodes import INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 
 from mypy import experiments
 
@@ -539,7 +539,7 @@ class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
     arg_types = None  # type: List[Type]  # Types of function arguments
-    arg_kinds = None  # type: List[int]   # mypy.nodes.ARG_ constants
+    arg_kinds = None  # type: List[int]   # ARG_ constants
     arg_names = None  # type: List[str]   # None if not a keyword argument
     min_args = 0                    # Minimum number of arguments; derived from arg_kinds
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
@@ -581,8 +581,9 @@ class CallableType(FunctionLike):
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
-        self.min_args = arg_kinds.count(mypy.nodes.ARG_POS)
-        self.is_var_arg = mypy.nodes.ARG_STAR in arg_kinds
+        self.min_args = arg_kinds.count(ARG_POS)
+        self.is_var_arg = ARG_STAR in arg_kinds
+        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -1250,17 +1251,17 @@ class TypeStrVisitor(TypeVisitor[str]):
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            if t.arg_kinds[i] == mypy.nodes.ARG_NAMED and not bare_asterisk:
+            if t.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
                 s += '*, '
                 bare_asterisk = True
-            if t.arg_kinds[i] == mypy.nodes.ARG_STAR:
+            if t.arg_kinds[i] == ARG_STAR:
                 s += '*'
-            if t.arg_kinds[i] == mypy.nodes.ARG_STAR2:
+            if t.arg_kinds[i] == ARG_STAR2:
                 s += '**'
             if t.arg_names[i]:
                 s += t.arg_names[i] + ': '
             s += str(t.arg_types[i])
-            if t.arg_kinds[i] == mypy.nodes.ARG_OPT:
+            if t.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
                 s += ' ='
 
         s = '({})'.format(s)

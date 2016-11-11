@@ -115,12 +115,19 @@ main:4: error: Unexpected keyword argument "b"
 [case testKeywordOnlyArguments]
 import typing
 def f(a: 'A', *, b: 'B' = None) -> None: pass
+def g(a: 'A', *, b: 'B') -> None: pass
 f(A(), b=B())
 f(b=B(), a=A())
 f(A())
 f(A(), B()) # E: Too many positional arguments for "f"
+g(A(), b=B())
+g(b=B(), a=A())
+g(A()) # E: Missing named argument "b" for function "g"
+g(A(), B()) # E: Too many positional arguments for "g"
+
 class A: pass
 class B: pass
+
 
 [case testKwargsAfterBareArgs]
 from typing import Tuple, Any
