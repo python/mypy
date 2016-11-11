@@ -416,6 +416,11 @@ class Parser:
 
             arg_kinds = [arg.kind for arg in args]
             arg_names = [arg.variable.name() for arg in args]
+            # for overloads of special methods, let people name their arguments
+            # whatever they want, and don't let them call those functions with
+            # arguments by name.
+            if _special_function_elide_names(name):
+                arg_names = [None] * len(arg_names)
 
             body, comment_type = self.parse_block(allow_type=True)
             # Potentially insert extra assignment statements to the beginning of the
@@ -536,10 +541,11 @@ class Parser:
         try:
             name_tok = self.expect_type(Name)
             name = name_tok.string
+            include_names = not _special_function_elide_names(name)
 
             self.errors.push_function(name)
 
-            args, typ, extra_stmts = self.parse_args(no_type_checks)
+            args, typ, extra_stmts = self.parse_args(no_type_checks, include_names)
         except ParseError:
             if not isinstance(self.current(), Break):
                 self.ind -= 1  # Kludge: go back to the Break token
@@ -550,9 +556,11 @@ class Parser:
 
         return (name, args, typ, False, extra_stmts)
 
-    def parse_args(self, no_type_checks: bool=False) -> Tuple[List[Argument],
-                                                              CallableType,
-                                                              List[AssignmentStmt]]:
+    def parse_args(self,
+                   no_type_checks: bool=False,
+                   include_names: bool=True) -> Tuple[List[Argument],
+                                                  CallableType,
+                                                  List[AssignmentStmt]]:
         """Parse a function signature (...) [-> t].
 
         See parse_arg_list for an explanation of the final tuple item.
@@ -578,18 +586,24 @@ class Parser:
         self.verify_argument_kinds(arg_kinds, lparen.line, lparen.column)
 
         annotation = self.build_func_annotation(
-            ret_type, args, lparen.line, lparen.column)
+            ret_type, args, lparen.line, lparen.column, include_names=include_names)
 
         return args, annotation, extra_stmts
 
-    def build_func_annotation(self, ret_type: Type, args: List[Argument],
-            line: int, column: int, is_default_ret: bool = False) -> CallableType:
+    def build_func_annotation(self,
+                              ret_type: Type,
+                              args: List[Argument],
+                              line: int,
+                              column: int,
+                              is_default_ret: bool = False,
+                              *,
+                              include_names: bool = True) -> CallableType:
         arg_types = [arg.type_annotation for arg in args]
         # Are there any type annotations?
         if ((ret_type and not is_default_ret)
                 or arg_types != [None] * len(arg_types)):
             # Yes. Construct a type for the function signature.
-            return self.construct_function_type(args, ret_type, line, column)
+            return self.construct_function_type(args, ret_type, line, column, include_names)
         else:
             return None
 
@@ -819,8 +833,12 @@ class Parser:
                 self.fail('Invalid argument list', line, column)
             found.add(kind)
 
-    def construct_function_type(self, args: List[Argument], ret_type: Type,
-                                line: int, column: int) -> CallableType:
+    def construct_function_type(self,
+                                args: List[Argument],
+                                ret_type: Type,
+                                line: int,
+                                column: int,
+                                include_names: bool=True) -> CallableType:
         # Complete the type annotation by replacing omitted types with 'Any'.
         arg_types = [arg.type_annotation for arg in args]
         for i in range(len(arg_types)):
@@ -829,7 +847,12 @@ class Parser:
         if ret_type is None:
             ret_type = AnyType(implicit=True)
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]
+        if include_names:
+            arg_names = [arg.variable.name()
+                         if not arg.variable.name().startswith('__') else None
+                         for arg in args]
+        else:
+            arg_names = [None] * len(args)
         return CallableType(arg_types, arg_kinds, arg_names, ret_type, None, name=None,
                         variables=None, line=line, column=column)
 
@@ -1942,6 +1965,12 @@ class Parser:
             return type
         else:
             return None
+
+
+def _special_function_elide_names(name: str) -> bool:
+    if name == "__init__" or name == "__new__":
+        return False
+    return name.startswith("__") and name.endswith("__")
 
 
 def token_repr(tok: Token) -> str:

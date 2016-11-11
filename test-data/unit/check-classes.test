@@ -1230,9 +1230,9 @@ class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
 main: note: In member "__getattr__" of class "B":
-main:4: error: Invalid signature "def (self: __main__.B, x: __main__.A) -> __main__.B"
+main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
 main: note: In member "__getattr__" of class "C":
-main:6: error: Invalid signature "def (self: __main__.C, x: builtins.str, y: builtins.str) -> __main__.C"
+main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
 
 
 -- CallableType objects
