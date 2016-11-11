@@ -1,0 +1,353 @@
+[case testSelfTypeInstance]
+from typing import TypeVar
+
+T = TypeVar('T', bound='A', covariant=True)
+
+class A:
+    def copy(self: T) -> T: pass
+
+class B(A):
+    pass
+
+reveal_type(A().copy)  # E: Revealed type is 'def () -> __main__.A*'
+reveal_type(B().copy)  # E: Revealed type is 'def () -> __main__.B*'
+reveal_type(A().copy())  # E: Revealed type is '__main__.A*'
+reveal_type(B().copy())  # E: Revealed type is '__main__.B*'
+
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeStaticAccess]
+from typing import TypeVar
+
+T = TypeVar('T', bound='A', covariant=True)
+class A:
+    def copy(self: T) -> T: pass
+
+class B(A):
+    pass
+
+# Erased instances appear on reveal_type; unrelated to self type
+def f(a: A) -> None: pass
+f(A.copy(A()))
+f(A.copy(B()))
+f(B.copy(B()))
+
+# TODO: make it an error
+# f(B.copy(A()))
+
+def g(a: B) -> None: pass
+g(A.copy(A()))  # E: Argument 1 to "g" has incompatible type "A"; expected "B"
+g(A.copy(B()))
+g(B.copy(B()))
+
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeReturn]
+# flags: --hide-error-context
+from typing import TypeVar, Type
+
+R = TypeVar('R')
+def _type(self: R) -> Type[R]: pass
+
+T = TypeVar('T', bound='A', covariant=True)
+class A:
+    def copy(self: T) -> T:
+        if B():
+            return A()  # E: Incompatible return value type (got "A", expected "T")
+        elif A():
+            return B()  # E: Incompatible return value type (got "B", expected "T")
+        reveal_type(_type(self))  # E: Revealed type is 'Type[T`-1]'
+        return reveal_type(_type(self)())  # E: Revealed type is 'T`-1'
+
+class B(A):
+    pass
+
+Q = TypeVar('Q', bound='C', covariant=True)
+class C:
+    def __init__(self, a: int) -> None: pass
+
+    def copy(self: Q) -> Q:
+        if self:
+            return reveal_type(_type(self)(1))  # E: Revealed type is 'Q`-1'
+        else:
+            return _type(self)()  # E: Too few arguments for "C"
+
+
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeClass]
+# flags: --hide-error-context
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound='A')
+
+class A:
+    @classmethod
+    def new(cls: Type[T]) -> T:
+        return reveal_type(cls())  # E: Revealed type is 'T`-1'
+
+class B(A):
+    pass
+
+Q = TypeVar('Q', bound='C', covariant=True)
+class C:
+    def __init__(self, a: int) -> None: pass
+
+    @classmethod
+    def new(cls: Type[Q]) -> Q:
+        if cls:
+            return cls(1)
+        else:
+            return cls()  # E: Too few arguments for "C"
+
+
+reveal_type(A.new)  # E: Revealed type is 'def () -> __main__.A*'
+reveal_type(B.new)  # E: Revealed type is 'def () -> __main__.B*'
+reveal_type(A.new())  # E: Revealed type is '__main__.A*'
+reveal_type(B.new())  # E: Revealed type is '__main__.B*'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeOverride]
+from typing import TypeVar, cast
+ 
+T = TypeVar('T', bound='A', covariant=True)
+ 
+class A:
+    def copy(self: T) -> T: pass
+
+class B(A):
+    pass
+
+Q = TypeVar('Q', bound='C', covariant=True)
+class C(A):
+    def copy(self: Q) -> Q: pass
+
+reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C*'
+reveal_type(C().copy())  # E: Revealed type is '__main__.C*'
+reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A*'
+reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*' 
+
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeSuper]
+# flags: --hide-error-context
+from typing import TypeVar, cast
+ 
+T = TypeVar('T', bound='A', covariant=True)
+ 
+class A:
+    def copy(self: T) -> T: pass
+
+Q = TypeVar('Q', bound='B', covariant=True)
+class B(A):
+    def copy(self: Q) -> Q:
+        reveal_type(self)  # E: Revealed type is 'Q`-1'
+        reveal_type(super().copy)  # E: Revealed type is 'def () -> Q`-1'
+        return super().copy()
+
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeRecursiveBinding]
+# flags: --hide-error-context
+from typing import TypeVar, Callable, Type
+ 
+T = TypeVar('T', bound='A', covariant=True)
+class A:
+    # TODO: This is potentially unsafe, as we use T in an argument type
+    def copy(self: T, factory: Callable[[T], T]) -> T:
+        return factory(self)
+
+    @classmethod
+    def new(cls: Type[T], factory: Callable[[T], T]) -> T:
+        reveal_type(cls)   # E: Revealed type is 'Type[T`-1]'
+        reveal_type(cls())   # E: Revealed type is 'T`-1'
+        cls(2)  # E: Too many arguments for "A"
+        return cls()
+
+class B(A):
+    pass
+
+reveal_type(A().copy)  # E: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
+reveal_type(B().copy)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
+reveal_type(A.new)  # E: Revealed type is 'def (factory: def (__main__.A*) -> __main__.A*) -> __main__.A*'
+reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __main__.B*) -> __main__.B*'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeBound]
+# flags: --hide-error-context
+from typing import TypeVar, Callable, cast
+ 
+TA = TypeVar('TA', bound='A', covariant=True)
+
+class A:
+    def copy(self: TA) -> TA:
+        pass
+
+class C(A):
+    def copy(self: C) -> C:
+        pass
+
+class D(A):
+   def copy(self: A) -> A:  # E: Return type of "copy" incompatible with supertype "A"
+       pass
+
+TB = TypeVar('TB', bound='B', covariant=True)
+class B(A):
+    x = 1
+    def copy(self: TB) -> TB:
+        reveal_type(self.x)  # E: Revealed type is 'builtins.int'
+        return cast(TB, None)
+
+[builtins fixtures/bool.pyi]
+
+-- # TODO: fail for this
+-- [case testSelfTypeBare]
+-- # flags: --hide-error-context
+-- from typing import TypeVar, Type
+-- 
+-- T = TypeVar('T', bound='E')
+-- 
+-- class E:
+--     def copy(self: T, other: T) -> T: pass
+
+[case testSelfTypeClone]
+# flags: --hide-error-context
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound='C')
+
+class C:
+    def copy(self: T) -> T:
+        return self
+
+    @classmethod
+    def new(cls: Type[T]) -> T:
+        return cls()
+
+def clone(arg: T) -> T:
+    reveal_type(arg.copy)  # E: Revealed type is 'def () -> T`-1'
+    return arg.copy()
+
+
+def make(cls: Type[T]) -> T:
+    reveal_type(cls.new)  # E: Revealed type is 'def () -> T`-1'
+    return cls.new()
+
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeGeneric]
+from typing import TypeVar
+
+T = TypeVar('T', int, str)
+
+class A:
+    pass
+
+class B(A):
+    def __init__(self, arg: T) -> None:
+        super(B, self).__init__()
+
+[case testSelfTypeNonsensical]
+# flags: --hide-error-context
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound=str)
+class A:
+    def foo(self: T) -> T:   # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.A'
+        return self
+
+    @classmethod
+    def cfoo(cls: Type[T]) -> T:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.A]'
+        return cls()
+
+Q = TypeVar('Q', bound='B')
+class B:
+    def foo(self: Q) -> Q:
+        return self
+
+    @classmethod
+    def cfoo(cls: Type[Q]) -> Q:
+        return cls()
+    
+class C:
+    def foo(self: C) -> C: return self
+
+    @classmethod
+    def cfoo(cls: Type[C]) -> C:
+        return cls()
+
+class D:
+    def foo(self: str) -> str:  # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.D'
+        return self    
+
+    @staticmethod
+    def bar(self: str) -> str:
+        return self
+
+    @classmethod
+    def cfoo(cls: Type[str]) -> str:  # E: The erased type of self 'Type[builtins.str]' is not a supertype of its class 'Type[__main__.D]'
+        return cls()
+
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeLambdaDefault]
+# flags: --hide-error-context
+from typing import Callable
+class C:
+    @classmethod
+    def foo(cls,
+            arg: Callable[[int], str] = lambda a: ''
+            ) -> None:
+        pass
+
+    def bar(self,
+            arg: Callable[[int], str] = lambda a: ''
+            ) -> None:
+        pass
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeNew]
+# flags: --hide-error-context
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound=A)    
+class A: 
+    def __new__(cls: Type[T]) -> T:
+        return cls()
+
+class B:
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
+        return cls()
+
+class C: 
+    def __new__(cls: Type[C]) -> C:
+        return cls()
+
+class D:
+    def __new__(cls: D) -> D:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+        return cls
+
+class E:
+    def __new__(cls) -> E:
+        reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
+        return cls()
+
+[case testSelfTypeProperty]
+from typing import TypeVar
+
+T = TypeVar('T', bound='A')
+
+class A:
+    @property
+    def member(self: T) -> T:
+        pass
+
+class B(A):
+    pass
+
+reveal_type(A().member)  # E: Revealed type is '__main__.A*'
+reveal_type(B().member)  # E: Revealed type is '__main__.B*'
+
+[builtins fixtures/property.pyi]

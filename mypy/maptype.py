@@ -1,4 +1,4 @@
-from typing import Dict, List, cast
+from typing import Dict, List
 
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
@@ -36,7 +36,11 @@ def map_instance_to_supertypes(instance: Instance,
                 a.extend(map_instance_to_direct_supertypes(t, sup))
             types = a
         result.extend(types)
-    return result
+    if result:
+        return result
+    else:
+        # Nothing. Presumably due to an error. Construct a dummy using Any.
+        return [Instance(supertype, [AnyType()] * len(supertype.type_vars))]
 
 
 def class_derivation_paths(typ: TypeInfo,
@@ -72,7 +76,9 @@ def map_instance_to_direct_supertypes(instance: Instance,
     for b in typ.bases:
         if b.type == supertype:
             env = instance_to_type_environment(instance)
-            result.append(cast(Instance, expand_type(b, env)))
+            t = expand_type(b, env)
+            assert isinstance(t, Instance)
+            result.append(t)
 
     if result:
         return result

@@ -90,3 +90,234 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named 'mod'
+
+[case testFlagsFile]
+# cmd: mypy @flagsfile
+[file flagsfile]
+-2
+main.py
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testConfigFile]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testAltConfigFile]
+# cmd: mypy --config-file config.ini main.py
+[file config.ini]
+[[mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testPerFileConfigSection]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+hide_error_context = True
+disallow_untyped_defs = True
+[[mypy-y*]
+disallow_untyped_defs = False
+[[mypy-z*]
+disallow_untyped_calls = True
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[file y.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[file z.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+z.py:1: error: Function is missing a type annotation
+z.py:4: error: Call to untyped function "f" in typed context
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionMultipleMatches]
+# cmd: mypy xx.py xy.py yx.py yy.py
+[file mypy.ini]
+[[mypy]
+hide_error_context = True
+[[mypy-*x*]
+disallow_untyped_defs = True
+[[mypy-*y*]
+disallow_untyped_calls = True
+[file xx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file xy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[out]
+yy.py:2: error: Call to untyped function "f" in typed context
+yx.py:1: error: Function is missing a type annotation
+yx.py:2: error: Call to untyped function "f" in typed context
+xy.py:1: error: Function is missing a type annotation
+xy.py:2: error: Call to untyped function "f" in typed context
+xx.py:1: error: Function is missing a type annotation
+
+[case testMultipleGlobConfigSection]
+# cmd: mypy x.py y.py z.py
+[file mypy.ini]
+[[mypy]
+hide_error_context = True
+[[mypy-x*,z*]
+disallow_untyped_defs = True
+[file x.py]
+def f(a): pass
+[file y.py]
+def f(a): pass
+[file z.py]
+def f(a): pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testConfigErrorNoSection]
+# cmd: mypy -c pass
+[file mypy.ini]
+[out]
+mypy.ini: No [mypy] section in config file
+
+[case testConfigErrorUnknownFlag]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+bad = 0
+[out]
+mypy.ini: [mypy]: Unrecognized option: bad = 0
+
+[case testConfigErrorUnknownReport]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+bad_report = .
+[out]
+mypy.ini: [mypy]: Unrecognized report type: bad_report
+
+[case testConfigErrorBadBoolean]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+silent_imports = nah
+[out]
+mypy.ini: [mypy]: silent_imports: Not a boolean: nah
+
+[case testConfigErrorNotPerFile]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+[[mypy-*]
+strict_optional = True
+[out]
+mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (strict_optional)
+
+[case testCoberturaParser]
+# cmd: mypy --cobertura-xml-report build pkg
+[file pkg/__init__.py]
+[file pkg/a.py]
+from typing import Dict
+
+def foo() -> Dict:
+  z = {'hello': 'world'}
+  return z
+[file pkg/subpkg/__init__.py]
+[file pkg/subpkg/a.py]
+def bar() -> str:
+  return 'world'
+def untyped_function():
+  return 42
+[outfile build/cobertura.xml]
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8000" branch-rate="0">
+  <sources>
+    <source>$PWD</source>
+  </sources>
+  <packages>
+    <package complexity="1.0" name="pkg" branch-rate="0" line-rate="1.0000">
+      <classes>
+        <class complexity="1.0" filename="pkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+        <class complexity="1.0" filename="pkg/a.py" name="a.py" branch-rate="0" line-rate="1.0000">
+          <methods/>
+          <lines>
+            <line branch="true" hits="1" number="3" precision="imprecise" condition-coverage="50% (1/2)"/>
+            <line branch="false" hits="1" number="4" precision="precise"/>
+            <line branch="false" hits="1" number="5" precision="precise"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+    <package complexity="1.0" name="pkg.subpkg" branch-rate="0" line-rate="0.5000">
+      <classes>
+        <class complexity="1.0" filename="pkg/subpkg/__init__.py" name="__init__.py" branch-rate="0" line-rate="1.0">
+          <methods/>
+          <lines/>
+        </class>
+        <class complexity="1.0" filename="pkg/subpkg/a.py" name="a.py" branch-rate="0" line-rate="0.5000">
+          <methods/>
+          <lines>
+            <line branch="false" hits="1" number="1" precision="precise"/>
+            <line branch="false" hits="0" number="3" precision="any"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
+
+[case testConfigMypyPath]
+# cmd: mypy file.py
+[file mypy.ini]
+[[mypy]
+mypy_path =
+    foo:bar
+    , baz
+[file foo/foo.pyi]
+def foo(x: int) -> str: ...
+[file bar/bar.pyi]
+def bar(x: str) -> list: ...
+[file baz/baz.pyi]
+def baz(x: list) -> dict: ...
+[file file.py]
+import no_stubs
+from foo import foo
+from bar import bar
+from baz import baz
+baz(bar(foo(42)))
+baz(bar(foo('oof')))
+[out]
+file.py:1: error: Cannot find module named 'no_stubs'
+file.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"

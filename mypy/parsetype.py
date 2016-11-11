@@ -1,6 +1,6 @@
 """Type parser"""
 
-from typing import List, Tuple, Union, cast, Optional
+from typing import List, Tuple, Union, Optional
 
 from mypy.types import (
     Type, UnboundType, TupleType, TypeList, CallableType, StarType,
@@ -73,7 +73,7 @@ class TypeParser:
                 raise TypeParseError(e.token, self.ind)
             return result
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def parse_parens(self) -> Type:
         self.expect('(')
@@ -166,14 +166,14 @@ class TypeParser:
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def expect_type(self, typ: type) -> Token:
         if isinstance(self.current_token(), typ):
             self.ind += 1
             return self.tok[self.ind - 1]
         else:
-            self.parse_error()
+            raise self.parse_error()
 
     def current_token(self) -> Token:
         return self.tok[self.ind]
@@ -181,8 +181,8 @@ class TypeParser:
     def current_token_str(self) -> str:
         return self.current_token().string
 
-    def parse_error(self) -> None:
-        raise TypeParseError(self.tok[self.ind], self.ind)
+    def parse_error(self) -> TypeParseError:
+        return TypeParseError(self.tok[self.ind], self.ind)
 
 
 def parse_str_as_type(typestr: str, line: int) -> Type:
@@ -194,20 +194,6 @@ def parse_str_as_type(typestr: str, line: int) -> Type:
     typestr = typestr.strip()
     tokens = lex(typestr, line)[0]
     result, i = parse_type(tokens, 0)
-    if i < len(tokens) - 2:
-        raise TypeParseError(tokens[i], i)
-    return result
-
-
-def parse_str_as_signature(typestr: str, line: int) -> CallableType:
-    """Parse a signature represented as a string.
-
-    Raise TypeParseError on parse error.
-    """
-
-    typestr = typestr.strip()
-    tokens = lex(typestr, line)[0]
-    result, i = parse_signature(tokens)
     if i < len(tokens) - 2:
         raise TypeParseError(tokens[i], i)
     return result

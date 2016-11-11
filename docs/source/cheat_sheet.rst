@@ -24,6 +24,7 @@ Built-in types
    # For simple built-in types, just use the name of the type.
    x = 1 # type: int
    x = 1.0 # type: float
+   x = True # type: bool
    x = "test" # type: str
    x = u"test" # type: unicode
 
@@ -61,6 +62,11 @@ Functions
        """Your function docstring goes here after the type definition."""
        return str(num)
 
+   # This function has no parameters and also returns nothing. Annotations
+   # can also be placed on the same line as their function headers.
+   def greet_world(): # type: () -> None
+       print "Hello, world!"
+
    # And here's how you specify multiple arguments.
    def plus(num1, num2):
        # type: (int, int) -> int
@@ -82,6 +88,17 @@ Functions
        while i < n:
            yield i
            i += 1
+
+   # There's alternative syntax for functions with many arguments.
+   def send_email(address,     # type: Union[str, List[str]]
+                  sender,      # type: str
+                  cc,          # type: Optional[List[str]]
+                  bcc,         # type: Optional[List[str]]
+                  subject='',
+                  body=None    # type: List[str]
+                  ):
+       # type: (...) -> bool
+        <code>
 
 
 When you're puzzled or when things are complicated
@@ -175,8 +192,9 @@ Other stuff
 
 .. code-block:: python
 
+   import sys
    # typing.Match describes regex matches from the re module.
-   from typing import Match, AnyStr
+   from typing import Match, AnyStr, IO
    x = re.match(r'[0-9]+', "15") # type: Match[str]
 
    # Use AnyStr for functions that should accept any kind of string
@@ -186,7 +204,16 @@ Other stuff
    concat(u"foo", u"bar")  # type: unicode
    concat(b"foo", b"bar")  # type: bytes
 
-   # TODO: add typing.IO: e.g., sys.stdout has type IO[str]
+   # Use IO[] for functions that should accept or return any
+   # object that comes from an open() call. The IO[] does not
+   # distinguish between reading, writing or other modes.
+   def get_sys_IO(mode='w') -> IO[str]:
+       if mode == 'w':
+           return sys.stdout
+       elif mode == 'r':
+           return sys.stdin
+       else:
+           return sys.stdout
 
    # TODO: add TypeVar and a simple generic function
 

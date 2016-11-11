@@ -543,6 +543,12 @@ def syslog(a): pass
 [out]
 def syslog(a): ...
 
+[case testAsyncAwait_fast_parser]
+async def f(a):
+   x = await y
+[out]
+def f(a): ...
+
 [case testInferOptionalOnlyFunc]
 class A:
     x = None

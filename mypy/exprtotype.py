@@ -1,7 +1,8 @@
-"""Translate an expression (Node) to a Type value."""
+"""Translate an Expression to a Type value."""
 
 from mypy.nodes import (
-    Node, NameExpr, MemberExpr, IndexExpr, TupleExpr, ListExpr, StrExpr, BytesExpr, EllipsisExpr
+    Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
+    ListExpr, StrExpr, BytesExpr, EllipsisExpr
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
@@ -11,7 +12,7 @@ class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
 
-def expr_to_unanalyzed_type(expr: Node) -> Type:
+def expr_to_unanalyzed_type(expr: Expression) -> Type:
     """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.
@@ -19,11 +20,11 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
     """
     if isinstance(expr, NameExpr):
         name = expr.name
-        return UnboundType(name, line=expr.line)
+        return UnboundType(name, line=expr.line, column=expr.column)
     elif isinstance(expr, MemberExpr):
         fullname = get_member_expr_fullname(expr)
         if fullname:
-            return UnboundType(fullname, line=expr.line)
+            return UnboundType(fullname, line=expr.line, column=expr.column)
         else:
             raise TypeTranslationError()
     elif isinstance(expr, IndexExpr):
@@ -41,7 +42,7 @@ def expr_to_unanalyzed_type(expr: Node) -> Type:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
         return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
-                        line=expr.line)
+                        line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr)):
         # Parse string literal type.
         try:

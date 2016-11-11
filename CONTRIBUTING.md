@@ -29,10 +29,15 @@ tracker](https://github.com/python/mypy/issues).  This is the right
 place to start a discussion of any of the above or most any other
 topic concerning the project.
 
-We have an IRC channel, `#python-mypy` on irc.freenode.net.  This is
-lightly used, but some Mypy core developers are almost always present;
-feel free to find us there and we're happy to chat.  Substantive
-technical discussion will be directed to the issue tracker.
+For less formal discussion we have a chat room on
+[gitter.im](https://gitter.im/python/mypy).  Some Mypy core developers
+are almost always present; feel free to find us there and we're happy
+to chat.  Substantive technical discussion will be directed to the
+issue tracker.
+
+(We also have an IRC channel, `#python-mypy` on irc.freenode.net.
+This is lightly used, we have mostly switched to the gitter room
+mentioned above.)
 
 #### Code of Conduct
 

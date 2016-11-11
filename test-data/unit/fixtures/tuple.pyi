@@ -25,5 +25,3 @@ T = TypeVar('T')
 class list(Sequence[T], Generic[T]): pass
 
 def sum(iterable: Iterable[T], start: T = None) -> T: pass
-
-True = bool()

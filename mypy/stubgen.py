@@ -40,6 +40,7 @@ import imp
 import importlib
 import json
 import os.path
+import pkgutil
 import subprocess
 import sys
 import textwrap
@@ -52,7 +53,7 @@ import mypy.errors
 import mypy.traverser
 from mypy import defaults
 from mypy.nodes import (
-    Node, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
+    Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
     IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
@@ -66,13 +67,18 @@ Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('doc_dir', str),
                                  ('search_path', List[str]),
                                  ('interpreter', str),
-                                 ('modules', List[str])])
+                                 ('modules', List[str]),
+                                 ('ignore_errors', bool),
+                                 ('recursive', bool),
+                                 ('fast_parser', bool),
+                                 ])
 
 
 def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
                              add_header: bool = False, sigs: Dict[str, str] = {},
                              class_sigs: Dict[str, str] = {},
                              pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                             fast_parser: bool = False,
                              no_import: bool = False,
                              search_path: List[str] = [],
                              interpreter: str = sys.executable) -> None:
@@ -99,7 +105,8 @@ def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
             target += '.pyi'
         target = os.path.join(output_dir, target)
         generate_stub(module_path, output_dir, module_all,
-                      target=target, add_header=add_header, module=module, pyversion=pyversion)
+                      target=target, add_header=add_header, module=module,
+                      pyversion=pyversion, fast_parser=fast_parser)
     if not quiet:
         print('Created %s' % target)
 
@@ -164,10 +171,12 @@ def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optiona
 
 def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
-                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION) -> None:
+                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                  fast_parser: bool = False) -> None:
     source = open(path, 'rb').read()
     options = MypyOptions()
     options.python_version = pyversion
+    options.fast_parser = fast_parser
     try:
         ast = mypy.parse.parse(source, fnam=path, errors=None, options=options)
     except mypy.errors.CompileError as e:
@@ -356,7 +365,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if all(foundl):
             self._state = VAR
 
-    def is_namedtuple(self, expr: Node) -> bool:
+    def is_namedtuple(self, expr: Expression) -> bool:
         if not isinstance(expr, CallExpr):
             return False
         callee = expr.callee
@@ -441,7 +450,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add_import_line('import %s as %s\n' % (id, target_name))
                 self.record_name(target_name)
 
-    def get_init(self, lvalue: str, rvalue: Node) -> str:
+    def get_init(self, lvalue: str, rvalue: Expression) -> str:
         """Return initializer for a variable.
 
         Return None if we've generated one already or if the variable is internal.
@@ -500,7 +509,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                      '__setstate__',
                                                      '__slots__'))
 
-    def get_str_type_of_node(self, rvalue: Node,
+    def get_str_type_of_node(self, rvalue: Expression,
                              can_infer_optional: bool = False) -> str:
         if isinstance(rvalue, IntExpr):
             return 'int'
@@ -539,8 +548,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
-def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Node]]:
-    results = []  # type: List[Tuple[str, Node]]
+def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
+    results = []  # type: List[Tuple[str, Expression]]
 
     class SelfTraverser(mypy.traverser.TraverserVisitor):
         def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
@@ -554,7 +563,7 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Node]]:
     return results
 
 
-def find_classes(node: Node) -> Set[str]:
+def find_classes(node: MypyFile) -> Set[str]:
     results = set()  # type: Set[str]
 
     class ClassTraverser(mypy.traverser.TraverserVisitor):
@@ -565,7 +574,7 @@ def find_classes(node: Node) -> Set[str]:
     return results
 
 
-def get_qualified_name(o: Node) -> str:
+def get_qualified_name(o: Expression) -> str:
     if isinstance(o, NameExpr):
         return o.name
     elif isinstance(o, MemberExpr):
@@ -574,10 +583,22 @@ def get_qualified_name(o: Node) -> str:
         return '<ERROR>'
 
 
+def walk_packages(packages: List[str]):
+    for package_name in packages:
+        package = __import__(package_name)
+        yield package.__name__
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+                                                                     prefix=package.__name__ + ".",
+                                                                     onerror=lambda r: None):
+            yield qualified_name
+
+
 def main() -> None:
     options = parse_options()
     if not os.path.isdir('out'):
         raise SystemExit('Directory "out" does not exist')
+    if options.recursive and options.no_import:
+        raise SystemExit('recursive stub generation without importing is not currently supported')
     sigs = {}  # type: Any
     class_sigs = {}  # type: Any
     if options.doc_dir:
@@ -589,24 +610,34 @@ def main() -> None:
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
         class_sigs = dict(find_unique_signatures(all_class_sigs))
-    for module in options.modules:
-        generate_stub_for_module(module, 'out',
-                                 add_header=True,
-                                 sigs=sigs,
-                                 class_sigs=class_sigs,
-                                 pyversion=options.pyversion,
-                                 no_import=options.no_import,
-                                 search_path=options.search_path,
-                                 interpreter=options.interpreter)
+    for module in (options.modules if not options.recursive else walk_packages(options.modules)):
+        try:
+            generate_stub_for_module(module, 'out',
+                                     add_header=True,
+                                     sigs=sigs,
+                                     class_sigs=class_sigs,
+                                     pyversion=options.pyversion,
+                                     fast_parser=options.fast_parser,
+                                     no_import=options.no_import,
+                                     search_path=options.search_path,
+                                     interpreter=options.interpreter)
+        except Exception as e:
+            if not options.ignore_errors:
+                raise e
+            else:
+                print("Stub generation failed for", module, file=sys.stderr)
 
 
 def parse_options() -> Options:
     args = sys.argv[1:]
     pyversion = defaults.PYTHON3_VERSION
     no_import = False
+    recursive = False
+    ignore_errors = False
     doc_dir = ''
     search_path = []  # type: List[str]
     interpreter = ''
+    fast_parser = False
     while args and args[0].startswith('-'):
         if args[0] == '--doc-dir':
             doc_dir = args[1]
@@ -619,6 +650,12 @@ def parse_options() -> Options:
         elif args[0] == '-p':
             interpreter = args[1]
             args = args[1:]
+        elif args[0] == '--recursive':
+            recursive = True
+        elif args[0] == '--fast-parser':
+            fast_parser = True
+        elif args[0] == '--ignore-errors':
+            ignore_errors = True
         elif args[0] == '--py2':
             pyversion = defaults.PYTHON2_VERSION
         elif args[0] == '--no-import':
@@ -637,7 +674,10 @@ def parse_options() -> Options:
                    doc_dir=doc_dir,
                    search_path=search_path,
                    interpreter=interpreter,
-                   modules=args)
+                   modules=args,
+                   ignore_errors=ignore_errors,
+                   recursive=recursive,
+                   fast_parser=fast_parser)
 
 
 def default_python2_interpreter() -> str:
@@ -664,6 +704,9 @@ def usage() -> None:
 
         Options:
           --py2           run in Python 2 mode (default: Python 3 mode)
+          --recursive     traverse listed modules to generate inner package modules as well
+          --fast-parser   enable experimental fast parser
+          --ignore-errors ignore errors when trying to generate stubs for modules
           --no-import     don't import the modules, just parse and analyze them
                           (doesn't work with C extension modules and doesn't
                           respect __all__)

@@ -573,13 +573,13 @@ class A:
 [case testLargeTuplesInErrorMessages]
 
 a = None # type: LongTypeName
-a + (a, a, a, a, a, a, a) # Fail
+a + (a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a) # Fail
 
 class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Unsupported operand types for + ("LongTypeName" and tuple(length 7))
+main:3: error: Unsupported operand types for + ("LongTypeName" and tuple(length 50))
 
 
 -- Tuple methods
@@ -681,9 +681,23 @@ tmp/m.pyi:6: error: Incompatible types in assignment (expression has type "int",
 tmp/m.pyi:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/m.pyi:7: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
-[case testInvalidTupleBaseClass]
+[case testValidTupleBaseClass2]
 from typing import Tuple
-class A(Tuple[int, str]): pass # E: Tuple[...] not supported as a base class outside a stub file
+class A(Tuple[int, str]): pass
+
+x, y = A()
+reveal_type(x) # E: Revealed type is 'builtins.int'
+reveal_type(y) # E: Revealed type is 'builtins.str'
+
+x1 = A()[0] # type: int
+x2 = A()[1] # type: int # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+A()[2] # E: Tuple index out of range
+
+class B(Tuple[int, ...]): pass
+
+z1 = B()[0] # type: int
+z2 = B()[1] # type: str # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+B()[100]
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -712,7 +726,6 @@ class Test(Generic[T], Tuple[T]): pass
 x = Test() # type: Test[int]
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Tuple[...] not supported as a base class outside a stub file
 main:4: error: Generic tuple types not supported
 
 
@@ -819,4 +832,23 @@ def f() -> Union[int, Tuple[List[str]]]:
 from typing import List, Tuple
 def f() -> Tuple[List[str], ...]:
     return ([],)
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithoutArgs]
+from typing import Tuple
+def f(a: Tuple) -> None: pass
+f(())
+f((1,))
+f(('', ''))
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected Tuple[Any, ...]
+[builtins fixtures/tuple.pyi]
+
+[case testTupleSingleton]
+# flags: --fast-parser
+from typing import Tuple
+def f(a: Tuple[()]) -> None: pass
+f(())
+f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[]"
+f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[]"
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[]"
 [builtins fixtures/tuple.pyi]

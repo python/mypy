@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, List, cast
+from typing import Dict, List
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
@@ -66,14 +66,15 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types(t.args)
-        return Instance(t.type, args, t.line)
+        return Instance(t.type, args, t.line, t.column)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         repl = self.variables.get(t.id, t)
         if isinstance(repl, Instance):
             inst = repl
             # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, inst.line, True)
+            return Instance(inst.type, inst.args, line=inst.line,
+                            column=inst.column, erased=True)
         else:
             return repl
 
@@ -84,7 +85,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]
         for item in t.items():
-            items.append(cast(CallableType, item.accept(self)))
+            new_item = item.accept(self)
+            assert isinstance(new_item, CallableType)
+            items.append(new_item)
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
@@ -93,7 +96,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
-        return UnionType.make_simplified_union(self.expand_types(t.items), t.line)
+        return UnionType.make_simplified_union(self.expand_types(t.items), t.line, t.column)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

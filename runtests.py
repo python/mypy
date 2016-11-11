@@ -40,7 +40,7 @@ class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
             arglist: List[str], verbosity: int, parallel_limit: int,
-            xfail: List[str]) -> None:
+            xfail: List[str], coverage: bool) -> None:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.arglist = arglist
@@ -50,6 +50,7 @@ class Driver:
         self.cwd = os.getcwd()
         self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
+        self.coverage = coverage
 
     def prepend_path(self, name: str, paths: List[str]) -> None:
         old_val = self.env.get(name)
@@ -77,7 +78,7 @@ class Driver:
         if not self.allow(full_name):
             return
         args = [sys.executable, self.mypy] + mypy_args
-        args.append('--tb')  # Show traceback on crash.
+        args.append('--show-traceback')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -88,17 +89,21 @@ class Driver:
         args = list(itertools.chain(*(['-m', mod] for mod in modules)))
         self.add_mypy_cmd(name, args, cwd=cwd)
 
-    def add_mypy_package(self, name: str, packagename: str) -> None:
-        self.add_mypy_cmd(name, ['-p', packagename])
+    def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
+        self.add_mypy_cmd(name, ['-p', packagename] + list(flags))
 
     def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
-    def add_pytest(self, name: str, pytest_args: List[str]) -> None:
+    def add_pytest(self, name: str, pytest_args: List[str], coverage: bool = False) -> None:
         full_name = 'pytest %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, '-m', 'pytest'] + pytest_args
+        if coverage and self.coverage:
+            args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + pytest_args
+        else:
+            args = [sys.executable, '-m', 'pytest'] + pytest_args
+
         self.waiter.add(LazySubprocess(full_name, args, env=self.env))
 
     def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
@@ -110,12 +115,16 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+    def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None,
+                       coverage: bool = False) -> None:
         name = 'run %s' % name
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, '-m']
+        if coverage and self.coverage:
+            largs[0:0] = ['coverage', 'run', '-m']
+        else:
+            largs[0:0] = [sys.executable, '-m']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -167,7 +176,9 @@ def add_basic(driver: Driver) -> None:
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy')
+    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser', '--warn-no-return')
+    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
+                            '--config-file', 'mypy_strict_optional.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -202,17 +213,13 @@ PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
 
 def add_pytest(driver: Driver) -> None:
     for f in PYTEST_FILES:
-        driver.add_pytest(f, [f] + driver.arglist)
+        driver.add_pytest(f, [f] + driver.arglist, True)
 
 
 def add_myunit(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
         mod = file_to_module(f)
-        if '.codec.test.' in mod:
-            # myunit is Python3 only.
-            driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
-            driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
-        elif mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
+        if mod in ('mypy.test.testpythoneval', 'mypy.test.testcmdline'):
             # Run Python evaluation integration tests and command-line
             # parsing tests separately since they are much slower than
             # proper unit tests.
@@ -221,17 +228,20 @@ def add_myunit(driver: Driver) -> None:
             # This module has been converted to pytest; don't try to use myunit.
             pass
         else:
-            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod, *driver.arglist)
+            driver.add_python_mod('unit-test %s' % mod, 'mypy.myunit', '-m', mod,
+                                  *driver.arglist, coverage=True)
 
 
 def add_pythoneval(driver: Driver) -> None:
     driver.add_python_mod('eval-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testpythoneval', *driver.arglist)
+                          '-m', 'mypy.test.testpythoneval', *driver.arglist,
+                         coverage=True)
 
 
 def add_cmdline(driver: Driver) -> None:
     driver.add_python_mod('cmdline-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testcmdline', *driver.arglist)
+                          '-m', 'mypy.test.testcmdline', *driver.arglist,
+                         coverage=True)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -268,14 +278,7 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        if 'codec' in f:
-            cwd, bf = os.path.dirname(f), os.path.basename(f)
-            bf = bf[:-len('.py')]
-            driver.add_mypy_string('codec file %s' % f,
-                    'import mypy.codec.register, %s' % bf,
-                    cwd=cwd)
-        else:
-            driver.add_mypy('file %s' % f, f, '--fast-parser')
+        driver.add_mypy('file %s' % f, f, '--fast-parser')
 
 
 def usage(status: int) -> None:
@@ -298,6 +301,7 @@ def usage(status: int) -> None:
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
     print('  -x, --exclude FILTER   exclude tasks matching FILTER')
+    print('  -c, --coverage         calculate code coverage while running tests')
     print('  --                     treat all remaining arguments as positional')
     sys.exit(status)
 
@@ -326,6 +330,7 @@ def main() -> None:
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
     list_only = False
+    coverage = False
 
     allow_opts = True
     curlist = whitelist
@@ -350,6 +355,8 @@ def main() -> None:
                 curlist = arglist
             elif a == '-l' or a == '--list':
                 list_only = True
+            elif a == '-c' or a == '--coverage':
+                coverage = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -366,7 +373,7 @@ def main() -> None:
         whitelist.append('')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
-            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[])
+            verbosity=verbosity, parallel_limit=parallel_limit, xfail=[], coverage=coverage)
 
     driver.prepend_path('PATH', [join(driver.cwd, 'scripts')])
     driver.prepend_path('MYPYPATH', [driver.cwd])

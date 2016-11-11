@@ -29,6 +29,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-statements.test',
                  'semanal-abstractclasses.test',
                  'semanal-namedtuple.test',
+                 'semanal-typeddict.test',
                  'semanal-python2.test']
 
 
@@ -36,6 +37,7 @@ def get_semanal_options():
     options = Options()
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
+    options.show_traceback = True
     return options
 
 
@@ -77,6 +79,7 @@ def test_semanal(testcase):
             # TODO the test is not reliable
             if (not f.path.endswith((os.sep + 'builtins.pyi',
                                      'typing.pyi',
+                                     'mypy_extensions.pyi',
                                      'abc.pyi',
                                      'collections.pyi'))
                     and not os.path.basename(f.path).startswith('_')

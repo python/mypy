@@ -2,13 +2,16 @@ Mypy: Optional Static Typing for Python
 =======================================
 
 [![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
+[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 
 
 Got a question? File an issue!
 ------------------------------
 
-We don't have a mailing list; but we are always happy to answer questions
-filed as issues in our trackers:
+We don't have a mailing list; but we are always happy to answer
+questions on [gitter chat](https://gitter.im/python/mypy) or filed as
+issues in our trackers:
+
 - [mypy tracker](https://github.com/python/mypy/issues)
   for mypy isues
 - [typeshed tracker](https://github.com/python/typeshed/issues)
@@ -16,7 +19,6 @@ filed as issues in our trackers:
 - [typing tracker](https://github.com/python/typing/issues)
   for discussion of new type system features (PEP 484 changes) and
   runtime bugs in the typing module
-
 
 What is mypy?
 -------------
@@ -73,13 +75,13 @@ Quick start
 
 Mypy can be installed using pip:
 
-    $ pip3 install mypy-lang
+    $ python3 -m pip install -U mypy-lang
 
 *Note that the package name is `mypy-lang`, not `mypy`.*
 
 If you want to run the latest version of the code, you can install from git:
 
-    $ pip3 install git+git://github.com/python/mypy.git
+    $ python3 -m pip install -U git+git://github.com/python/mypy.git
 
 
 Now, if Python on your system is configured properly (else see
@@ -108,10 +110,17 @@ Or you can jump straight to the documentation:
 Troubleshooting
 ---------------
 
-Depending on your configuration, you may have to run `pip` like
+Depending on your configuration, you may have to run `pip3` like
 this:
 
-    $ python3 -m pip install mypy-lang
+    $ python3 -m pip install -U mypy-lang
+
+Double-check that you installed `mypy-lang`, not `mypy`.
+
+Except on Windows, it's best to always use the `--fast-parser`
+option to mypy; this requires installing `typed-ast`:
+
+    $ python3 -m pip install -U typed-ast
 
 If the `mypy` command isn't found after installation: After either
 `pip3 install` or `setup.py install`, the `mypy` script and
@@ -136,7 +145,7 @@ make sure you are running a python3 environment. Installing via `pip3`
 in a v2 environment will not configure the environment to run installed
 modules from the command line.
 
-    $ python3 -m pip install virtualenv
+    $ python3 -m pip install -U virtualenv
     $ python3 -m virtualenv env
 
 
@@ -150,12 +159,12 @@ If you want to contribute, first clone the mypy git repository:
 From the mypy directory, use pip to install mypy:
 
     $ cd mypy
-    $ python3 -m pip install --upgrade .
+    $ python3 -m pip install -U .
 
 Replace `python3` with your Python 3 interpreter.  You may have to do
 the above as root. For example, in Ubuntu:
 
-    $ sudo python3 -m pip install --upgrade .
+    $ sudo python3 -m pip install -U .
 
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
@@ -183,7 +192,7 @@ Running tests and linting
 
 First install any additional dependencies needed for testing:
 
-    $ pip3 install -r test-requirements.txt
+    $ python3 -m pip install -U -r test-requirements.txt
 
 To run all tests, run the script `runtests.py` in the mypy repository:
 
@@ -243,7 +252,7 @@ Coverage reports
 ----------------
 
 There is an experimental feature to generate coverage reports.  To use
-this feature, you need to `pip install lxml`.  This is an extension
+this feature, you need to `pip install -U lxml`.  This is an extension
 module and requires various library headers to install; on a
 Debian-derived system the command
   `apt-get install python3-dev libxml2-dev libxslt1-dev`
@@ -288,8 +297,9 @@ Help wanted
 Any help in testing, development, documentation and other tasks is
 highly appreciated and useful to the project. There are tasks for
 contributors of all experience levels. If you're just getting started,
-check out the [difficulty/newcomer](https://github.com/python/mypy/labels/difficulty%2Fnewcomer)
-and [difficulty/easy](https://github.com/python/mypy/labels/difficulty%2Feasy) labels.
+check out the
+[difficulty/easy](https://github.com/python/mypy/labels/difficulty%2Feasy)
+label.
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 

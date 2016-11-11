@@ -1,0 +1,90 @@
+[case testNewSyntaxRequire36]
+# flags: --fast-parser --python-version 3.5
+x: int = 5  # E: Variable annotation syntax is only suppoted in Python 3.6, use type comment instead
+[out]
+
+[case testNewSyntaxSyntaxError]
+# flags: --fast-parser --python-version 3.6
+x: int: int  # E: invalid syntax
+[out]
+
+[case testNewSyntaxBasics]
+# flags: --fast-parser --python-version 3.6
+x: int
+x = 5
+y: int = 5
+
+a: str
+a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+b: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+zzz: int
+zzz: str  # E: Name 'zzz' already defined
+[out]
+
+[case testNewSyntaxWithDict]
+# flags: --fast-parser --python-version 3.6
+from typing import Dict, Any
+
+d: Dict[int, str] = {}
+d[42] = 'ab'
+d[42] = 42  # E: Incompatible types in assignment (expression has type "int", target has type "str")
+d['ab'] = 'ab'  # E: Invalid index type "str" for "dict"
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testNewSyntaxWithRevealType]
+# flags: --fast-parser --python-version 3.6
+from typing import Dict
+
+def tst_local(dct: Dict[int, T]) -> Dict[T, int]:
+    ret: Dict[T, int] = {}
+    return ret
+
+reveal_type(tst_local({1: 'a'}))  # E: Revealed type is 'builtins.dict[builtins.str*, builtins.int]'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testNewSyntaxWithInstanceVars]
+# flags: --fast-parser --python-version 3.6
+class TstInstance:
+    a: str
+    def __init__(self) -> None:
+        self.x: int
+
+TstInstance().x = 5
+TstInstance().x = 'ab'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+TstInstance().a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+TstInstance().a = 'ab'
+[out]
+
+[case testNewSyntaxWithClassVars]
+# flags: --fast-parser --strict-optional --python-version 3.6
+class CCC:
+    a: str = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
+[out]
+main: note: In class "CCC":
+
+[case testNewSyntaxWithStrictOptional]
+# flags: --fast-parser --strict-optional --python-version 3.6
+strict: int
+strict = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+strict2: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[out]
+
+[case testNewSyntaxWithStrictOptionalFunctions]
+# flags: --fast-parser --strict-optional --python-version 3.6
+def f() -> None:
+    x: int
+    x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[out]
+main: note: In function "f":
+
+[case testNewSyntaxWithStrictOptionalClasses]
+# flags: --fast-parser --strict-optional --python-version 3.6
+class C:
+    def meth(self) -> None:
+        x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+        self.x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
+[out]
+main: note: In member "meth" of class "C":

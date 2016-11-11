@@ -46,36 +46,45 @@ def parse_test_cases(
             i += 1
 
             files = []  # type: List[Tuple[str, str]] # path and contents
+            output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
             tcout = []  # type: List[str]  # Regular output errors
             tcout2 = []  # type: List[str]  # Output errors for incremental, second run
             stale_modules = None  # type: Optional[Set[str]]  # module names
             rechecked_modules = None  # type: Optional[Set[str]]  # module names
             while i < len(p) and p[i].id != 'case':
-                if p[i].id == 'file':
+                if p[i].id == 'file' or p[i].id == 'outfile':
                     # Record an extra file needed for the test case.
-                    files.append((os.path.join(base_path, p[i].arg),
-                                  '\n'.join(p[i].data)))
+                    arg = p[i].arg
+                    assert arg is not None
+                    file_entry = (os.path.join(base_path, arg), '\n'.join(p[i].data))
+                    if p[i].id == 'file':
+                        files.append(file_entry)
+                    elif p[i].id == 'outfile':
+                        output_files.append(file_entry)
                 elif p[i].id in ('builtins', 'builtins_py2'):
                     # Use a custom source file for the std module.
-                    mpath = os.path.join(os.path.dirname(path), p[i].arg)
-                    f = open(mpath)
+                    arg = p[i].arg
+                    assert arg is not None
+                    mpath = os.path.join(os.path.dirname(path), arg)
                     if p[i].id == 'builtins':
                         fnam = 'builtins.pyi'
                     else:
                         # Python 2
                         fnam = '__builtin__.pyi'
-                    files.append((os.path.join(base_path, fnam), f.read()))
-                    f.close()
+                    with open(mpath) as f:
+                        files.append((os.path.join(base_path, fnam), f.read()))
                 elif p[i].id == 'stale':
-                    if p[i].arg is None:
+                    arg = p[i].arg
+                    if arg is None:
                         stale_modules = set()
                     else:
-                        stale_modules = {item.strip() for item in p[i].arg.split(',')}
+                        stale_modules = {item.strip() for item in arg.split(',')}
                 elif p[i].id == 'rechecked':
-                    if p[i].arg is None:
+                    arg = p[i].arg
+                    if arg is None:
                         rechecked_modules = set()
                     else:
-                        rechecked_modules = {item.strip() for item in p[i].arg.split(',')}
+                        rechecked_modules = {item.strip() for item in arg.split(',')}
                 elif p[i].id == 'out' or p[i].id == 'out1':
                     tcout = p[i].data
                     if native_sep and os.path.sep == '\\':
@@ -96,7 +105,9 @@ def parse_test_cases(
                 # If the set of rechecked modules isn't specified, make it the same as the set of
                 # modules with a stale public interface.
                 rechecked_modules = stale_modules
-            if stale_modules is not None and not stale_modules.issubset(rechecked_modules):
+            if (stale_modules is not None
+                    and rechecked_modules is not None
+                    and not stale_modules.issubset(rechecked_modules)):
                 raise ValueError(
                     'Stale modules must be a subset of rechecked modules ({})'.format(path))
 
@@ -109,7 +120,8 @@ def parse_test_cases(
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
-                                        files, stale_modules, rechecked_modules)
+                                        files, output_files, stale_modules,
+                                        rechecked_modules)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -135,7 +147,7 @@ class DataDrivenTestCase(TestCase):
     clean_up = None  # type: List[Tuple[bool, str]]
 
     def __init__(self, name, input, output, output2, file, line, lastline,
-                 perform, files, expected_stale_modules, expected_rechecked_modules):
+                 perform, files, output_files, expected_stale_modules, expected_rechecked_modules):
         super().__init__(name)
         self.input = input
         self.output = output
@@ -145,6 +157,7 @@ class DataDrivenTestCase(TestCase):
         self.line = line
         self.perform = perform
         self.files = files
+        self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
 
@@ -156,9 +169,8 @@ class DataDrivenTestCase(TestCase):
             dir = os.path.dirname(path)
             for d in self.add_dirs(dir):
                 self.clean_up.append((True, d))
-            f = open(path, 'w')
-            f.write(content)
-            f.close()
+            with open(path, 'w') as f:
+                f.write(content)
             self.clean_up.append((False, path))
             encountered_files.add(path)
             if path.endswith(".next"):
@@ -167,6 +179,13 @@ class DataDrivenTestCase(TestCase):
                 if renamed_path not in encountered_files:
                     encountered_files.add(renamed_path)
                     self.clean_up.append((False, renamed_path))
+        for path, _ in self.output_files:
+            # Create directories for expected output and mark them to be cleaned up at the end
+            # of the test case.
+            dir = os.path.dirname(path)
+            for d in self.add_dirs(dir):
+                self.clean_up.append((True, d))
+            self.clean_up.append((False, path))
 
     def add_dirs(self, dir: str) -> List[str]:
         """Add all subdirectories required to create dir.
@@ -227,7 +246,7 @@ class TestItem:
     """
 
     id = ''
-    arg = ''
+    arg = ''  # type: Optional[str]
 
     # Text data, array of 8-bit strings
     data = None  # type: List[str]
@@ -235,7 +254,7 @@ class TestItem:
     file = ''
     line = 0  # Line number in file
 
-    def __init__(self, id: str, arg: str, data: List[str], file: str,
+    def __init__(self, id: str, arg: Optional[str], data: List[str], file: str,
                  line: int) -> None:
         self.id = id
         self.arg = arg
@@ -250,8 +269,8 @@ def parse_test_data(l: List[str], fnam: str) -> List[TestItem]:
     ret = []  # type: List[TestItem]
     data = []  # type: List[str]
 
-    id = None  # type: str
-    arg = None  # type: str
+    id = None  # type: Optional[str]
+    arg = None  # type: Optional[str]
 
     i = 0
     i0 = 0
@@ -329,25 +348,30 @@ def expand_includes(a: List[str], base_path: str) -> List[str]:
     for s in a:
         if s.startswith('@include '):
             fn = s.split(' ', 1)[1].strip()
-            f = open(os.path.join(base_path, fn))
-            res.extend(f.readlines())
-            f.close()
+            with open(os.path.join(base_path, fn)) as f:
+                res.extend(f.readlines())
         else:
             res.append(s)
     return res
 
 
 def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
-    """Transform comments such as '# E: message' in input.
+    """Transform comments such as '# E: message' or
+    '# E:3: message' in input.
 
     The result is lines like 'fnam:line: error: message'.
     """
 
     for i in range(len(input)):
-        m = re.search('# ([EN]): (.*)$', input[i])
+        m = re.search('# ([EN]):((?P<col>\d+):)? (?P<message>.*)$', input[i])
         if m:
             severity = 'error' if m.group(1) == 'E' else 'note'
-            output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group(2)))
+            col = m.group('col')
+            if col is None:
+                output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
+            else:
+                output.append('{}:{}:{}: {}: {}'.format(
+                    fnam, i + 1, col, severity, m.group('message')))
 
 
 def fix_win_path(line: str) -> str:

@@ -3,6 +3,20 @@ Revision history
 
 List of major changes to this document:
 
+- October 2016
+    Publish ``mypy-lang`` version 0.4.5 on PyPI.
+
+    Add :ref:`python-36`.
+
+    Add :ref:`config-file`.
+
+    Updates to :ref:`command-line`: ``--strict-optional-white-list``,
+    ``--disallow-subclassing-any``, ``--config-file``, ``@flagfile``,
+    ``--hide-error-context`` (replaces ``--suppress-error-context``),
+    ``--show-column-numbers`` and ``--scripts-are-modules``.
+
+    Mention ``typing.TYPE_CHECKING`` in :ref:`import-cycles`.
+
 - August 2016
     Publish ``mypy-lang`` version 0.4.4 on PyPI.
 

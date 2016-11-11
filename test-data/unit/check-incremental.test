@@ -1567,3 +1567,70 @@ class Outer:
 [out2]
 main:1: note: In module imported here:
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
+
+[case testIncrementalPartialSubmoduleUpdate]
+# cmd: mypy -m a
+# cmd2: mypy -m a a.c
+# flags: --silent-imports
+
+[file a/__init__.py]
+from .b import B
+from .c import C
+
+[file a/b.py]
+class B: pass
+
+[file a/c.py]
+class C: pass
+
+[file a/c.py.next]
+class C: pass
+pass
+
+[rechecked a, a.c]
+[stale a, a.c]
+[out]
+
+[case testIncrementalNestedClassRef]
+import top
+
+[file top.py]
+from funcs import callee
+from classes import Outer
+def caller(a: Outer.Inner) -> None:
+    callee(a)
+
+[file funcs.py]
+from classes import Outer
+def callee(a: Outer.Inner) -> None:
+    pass
+
+[file classes.py]
+class Outer:
+    class Inner:
+        pass
+
+[file top.py.next]
+from funcs import callee
+from classes import Outer
+def caller(a: Outer.Inner) -> int:
+    callee(a)
+
+[case testIncrementalLoadsParentAfterChild]
+# cmd: mypy -m r.s
+
+[file r/__init__.py]
+from . import s
+
+[file r/m.py]
+class R: pass
+
+[file r/s.py]
+from . import m
+R = m.R
+a = None  # type: R
+
+[file r/s.py.next]
+from . import m
+R = m.R
+a = None  # type: R

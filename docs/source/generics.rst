@@ -40,7 +40,7 @@ Using ``Stack`` is similar to built-in container types:
 .. code-block:: python
 
    # Construct an empty Stack[int] instance
-   stack = Stack()  # type: Stack[int]
+   stack = Stack[int]()
    stack.push(2)
    stack.pop()
    stack.push('x')        # Type error
@@ -53,28 +53,48 @@ Type inference works for user-defined generic types as well:
 
    process(Stack())   # Argument has inferred type Stack[int]
 
+Construction of instances of generic types is also type checked:
+
+.. code-block:: python
+
+   class Box(Generic[T]):
+       def __init__(self, content: T) -> None:
+           self.content = content
+
+   Box(1)  # OK, inferred type is Box[int]
+   Box[int](1)  # Also OK
+   s = 'some string'
+   Box[int](s)  # Type error
+
 Generic class internals
 ***********************
 
 You may wonder what happens at runtime when you index
-``Stack``. Actually, indexing ``Stack`` just returns ``Stack``:
+``Stack``. Actually, indexing ``Stack`` returns essentially a copy
+of ``Stack`` that returns instances of the original class on
+instantiation:
 
 >>> print(Stack)
-<class '__main__.Stack'>
+__main__.Stack
 >>> print(Stack[int])
-<class '__main__.Stack'>
+__main__.Stack[int]
+>>> print(Stack[int]().__class__)
+__main__.Stack
 
 Note that built-in types ``list``, ``dict`` and so on do not support
 indexing in Python. This is why we have the aliases ``List``, ``Dict``
-and so on in the ``typing`` module. Indexing these aliases just gives
-you the target class in Python, similar to ``Stack``:
+and so on in the ``typing`` module. Indexing these aliases gives
+you a class that directly inherits from the target class in Python:
 
 >>> from typing import List
 >>> List[int]
-<class 'list'>
+typing.List[int]
+>>> List[int].__bases__
+(<class 'list'>, typing.MutableSequence)
 
-The above examples illustrate that type variables are erased at
-runtime. Generic ``Stack`` or ``list`` instances are just ordinary
+Generic types could be instantiated or subclassed as usual classes,
+but the above examples illustrate that type variables are erased at
+runtime. Generic ``Stack`` instances are just ordinary
 Python objects, and they have no extra runtime overhead or magic due
 to being generic, other than a metaclass that overloads the indexing
 operator.
@@ -112,7 +132,7 @@ example we use the same type variable in two generic functions:
 
 .. code-block:: python
 
-   from typing TypeVar, Sequence
+   from typing import TypeVar, Sequence
 
    T = TypeVar('T')      # Declare type variable
 
@@ -244,22 +264,51 @@ restrict the valid values for the type parameter in the same way.
 A type variable may not have both a value restriction (see
 :ref:`type-variable-value-restriction`) and an upper bound.
 
-One common application of type variable upper bounds is in declaring
-the types of decorators that do not change the type of the function
-they decorate:
+Declaring decorators
+********************
+
+One common application of type variable upper bounds is in declaring a
+decorator that preserves the signature of the function it decorates,
+regardless of that signature. Here's a complete example:
 
 .. code-block:: python
 
-   from typing import TypeVar, Callable, Any
+   from typing import Any, Callable, TypeVar, Tuple, cast
 
-   AnyCallable = TypeVar('AnyCallable', bound=Callable[..., Any])
+   FuncType = Callable[..., Any]
+   F = TypeVar('F', bound=FuncType)
 
-   def my_decorator(f: AnyCallable) -> AnyCallable: ...
+   # A decorator that preserves the signature.
+   def my_decorator(func: F) -> F:
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return cast(F, wrapper)
 
+   # A decorated function.
    @my_decorator
-   def my_function(x: int, y: str) -> bool:
-       ...
+   def foo(a: int) -> str:
+       return str(a)
 
-The decorated ``my_function`` still has type ``Callable[[int, str],
-bool]``. Due to the bound on ``AnyCallable``, an application of the
-decorator to a non-function like ``my_decorator(1)`` will be rejected.
+   # Another.
+   @my_decorator
+   def bar(x: float, y: float) -> Tuple[float, float, bool]:
+       return (x, y, x > y)
+
+   a = foo(12)
+   reveal_type(a)  # str
+   b = bar(3.14, 0)
+   reveal_type(b)  # Tuple[float, float, bool]
+   foo('x')    # Type check error: incompatible type "str"; expected "int"
+
+From the final block we see that the signatures of the decorated
+functions ``foo()`` and ``bar()`` are the same as those of the original
+functions (before the decorator is applied).
+
+The bound on ``F`` is used so that calling the decorator on a
+non-function (e.g. ``my_decorator(1)``) will be rejected.
+
+Also note that the ``wrapper()`` function is not type-checked. Wrapper
+functions are typically small enough that this is not a big
+problem. This is also the reason for the ``cast()`` call in the
+``return`` statement in ``my_decorator()``. See :ref:`casts`.

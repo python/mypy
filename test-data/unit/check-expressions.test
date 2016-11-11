@@ -182,6 +182,21 @@ main:3: error: Unsupported operand types for * ("A" and "C")
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:5: error: Unsupported left operand type for * ("B")
 
+[case testMatMul]
+a, b, c = None, None, None # type: (A, B, C)
+c = a @ c  # E: Unsupported operand types for @ ("A" and "C")
+a = a @ b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
+c = b @ a  # E: Unsupported left operand type for @ ("B")
+c = a @ b
+
+class A:
+    def __matmul__(self, x: 'B') -> 'C':
+        pass
+class B:
+    pass
+class C:
+    pass
+
 [case testDiv]
 
 a, b, c = None, None, None # type: (A, B, C)
@@ -1111,6 +1126,19 @@ main:4: error: Incompatible types in string interpolation (expression has type "
 [case testStringInterpolationSpaceKey]
 '%( )s' % {' ': 'foo'}
 
+[case testByteByteInterpolation]
+def foo(a: bytes, b: bytes):
+    b'%s:%s' % (a, b)
+foo(b'a', b'b') == b'a:b'
+
+[case testBytePercentInterpolationSupported]
+b'%s' % (b'xyz',)
+b'%(name)s' % {'name': 'jane'}
+b'%c' % (123)
+
+[case testUnicodeInterpolation_python2]
+u'%s' % (u'abc',)
+
 -- Lambdas
 -- -------
 
@@ -1122,8 +1150,8 @@ f = lambda: ''.x
 f = lambda: ''
 [out]
 main:3: error: "str" has no attribute "x"
-main:4: error: Incompatible return value type (got "str", expected "int")
 main:4: error: Incompatible types in assignment (expression has type Callable[[], str], variable has type Callable[[], int])
+main:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testVoidLambda]
 import typing
@@ -1246,8 +1274,8 @@ class C: pass
 def f(b: A) -> C: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 main:4: error: Value expression in dictionary comprehension has incompatible type "C"; expected type "B"
+main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 
 
 -- Generator expressions
@@ -1285,16 +1313,17 @@ x = 1 if f() else 2 # E: "f" does not return a value
 import typing
 class A: pass
 class B(A): pass
-x = B() if None else A()
+x = B() if bool() else A()
 x = A()
 x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
-y = A() if None else B()
+y = A() if bool() else B()
 y = A()
 y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
+[builtins fixtures/bool.pyi]
 
 [case testConditionalExpressionAndTypeContext]
 import typing
-x = [1] if None else []
+x = [1] if bool() else []
 x = [1]
 x = ['x'] # E: List item 0 has incompatible type "str"
 [builtins fixtures/list.pyi]
@@ -1565,8 +1594,8 @@ reveal_type(1) # E: Revealed type is 'builtins.int'
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: error: Name 'x' is not defined
 main:1: error: Revealed type is 'Any'
+main:1: error: Name 'x' is not defined
 
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass
@@ -1575,6 +1604,14 @@ reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str";
 [case testRevealTypeVar]
 reveal_type = 1
 1 + "foo" # E: Unsupported operand types for + ("int" and "str")
+
+[case testRevealForward]
+def f() -> None:
+    reveal_type(x)
+x = 1 + 1
+[out]
+main: note: In function "f":
+main:2: error: Revealed type is 'builtins.int'
 
 [case testEqNone]
 None == None

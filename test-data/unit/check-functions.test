@@ -1481,12 +1481,13 @@ g()
 [builtins fixtures/list.pyi]
 
 [case testFunctionDefinitionWithWhileStatement]
-while 1:
+while bool():
     def f(): pass
 else:
     def g(): pass
 f()
 g()
+[builtins fixtures/bool.pyi]
 
 [case testBareCallable]
 from typing import Callable, Any
@@ -1523,3 +1524,13 @@ class A:
 def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
 [out]
 main: note: In member "f" of class "A":
+
+[case testUnknownFunctionNotCallable]
+def f() -> None:
+    pass
+def g(x: int) -> None:
+    pass
+h = f if bool() else g
+reveal_type(h) # E: Revealed type is 'builtins.function'
+h(7) # E: Cannot call function of unknown type
+[builtins fixtures/bool.pyi]
