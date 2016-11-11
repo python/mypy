@@ -2,10 +2,11 @@
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
-    ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr
+    ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
+    ARG_POS, ARG_NAMED,
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
-from mypy.types import Type, UnboundType, TypeList, EllipsisType
+from mypy.types import Type, UnboundType, ArgumentList, EllipsisType, AnyType
 
 
 class TypeTranslationError(Exception):
@@ -15,7 +16,7 @@ class TypeTranslationError(Exception):
 def expr_to_unanalyzed_type(expr: Expression) -> Type:
     """Translate an expression to the corresponding type.
 
-    The result is not semantically analyzed. It can be UnboundType or TypeList.
+    The result is not semantically analyzed. It can be UnboundType or ArgumentList.
     Raise TypeTranslationError if the expression cannot represent a type.
     """
     if isinstance(expr, NameExpr):
@@ -43,9 +44,47 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
         else:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
+<<<<<<< HEAD
         return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
                         line=expr.line, column=expr.column)
     elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
+=======
+        types = [] # type: List[Type]
+        names = [] # type: List[Optional[str]]
+        kinds = [] # type: List[int]
+        for it in expr.items:
+            if isinstance(expr_to_unanalyzed_type(it), CallExpr):
+                if not isinstance(it.callee, NameExpr):
+                    raise TypeTranslationError()
+                arg_const = it.callee.name
+                if arg_const == 'Arg':
+                    if len(it.args) > 0:
+                        name = it.args[0]
+                        if not isinstance(name, StrLit):
+                            raise TypeTranslationError()
+                        names.append(name.parsed())
+                    else:
+                        names.append(None)
+
+                    if len(it.args) > 1:
+                        typ = it.args[1]
+                        types.append(expr_to_unanalyzed_type(typ))
+                    else:
+                        types.append(AnyType)
+
+                    if len(it.args) > 2:
+                        kinds.append(ARG_NAMED)
+                    else:
+                        kinds.append(ARG_POS)
+
+            else:
+                types.append(expr_to_unanalyzed_type(it))
+                names.append(None)
+                kinds.append(ARG_POS)
+        return ArgumentList(types, names, kinds,
+                        line=expr.line)
+    elif isinstance(expr, (StrExpr, BytesExpr)):
+>>>>>>> c45f8c6... Implement Callable[[Arg('name', Type)], ret] syntax
         # Parse string literal type.
         try:
             result = parse_str_as_type(expr.value, expr.line)

@@ -4,7 +4,7 @@ from typing import List, Optional
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
-    Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
+    Instance, CallableType, TupleType, TypedDictType, ErasedType, ArgumentList, UnionType, PartialType,
     DeletedType, UninhabitedType, TypeType
 )
 from mypy.subtypes import is_equivalent, is_subtype
@@ -134,7 +134,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_type_list(self, t: ArgumentList) -> Type:
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:

@@ -3,8 +3,8 @@
 from typing import List, Tuple, Union, Optional
 
 from mypy.types import (
-    Type, UnboundType, TupleType, TypeList, CallableType, StarType,
-    EllipsisType
+    Type, UnboundType, TupleType, ArgumentList, CallableType, StarType,
+    EllipsisType, AnyType
 )
 from mypy.lex import Token, Name, StrLit, lex
 from mypy import nodes
@@ -57,7 +57,7 @@ class TypeParser:
         if isinstance(t, Name):
             return self.parse_named_type()
         elif t.string == '[':
-            return self.parse_type_list()
+            return self.parse_argument_list()
         elif t.string == '*':
             return self.parse_star_type()
         elif t.string == '...':
@@ -102,19 +102,114 @@ class TypeParser:
             type = TupleType(items, None, type.line, implicit=True)
         return type
 
-    def parse_type_list(self) -> TypeList:
+    def parse_argument_spec(self) -> Tuple[Type, Optional[str], int]:
+        current = self.current_token()
+        nxt = self.next_token()
+        # This is a small recreation of a subset of parsing a CallExpr; just
+        # enough to parse what happens in an arugment list.
+        # TODO: Doesn't handle an explicit name of None yet.
+        if isinstance(current, Name) and nxt is not None and nxt.string == '(':
+            arg_const = self.expect_type(Name).string
+            name = None # type: Optional[str]
+            typ = AnyType # type: Type
+            if arg_const == 'Arg':
+                kind = nodes.ARG_POS
+                name, typ, keyword_only = self.parse_arguments(
+                    read_name = True,
+                    read_typ = True,
+                    read_keyword_only = True)
+                if keyword_only:
+                    kind = nodes.ARG_NAMED
+            elif arg_const == 'DefaultArg':
+                kind = nodes.ARG_OPT
+                name, typ, keyword_only = self.parse_arguments(
+                    read_name = True,
+                    read_typ = True,
+                    read_keyword_only = True)
+                if keyword_only:
+                    kind = nodes.ARG_NAMED_OPT
+            elif arg_const == 'StarArg':
+                # Takes one type
+                kind = nodes.ARG_STAR
+                _, typ, _ = self.parse_arguments(
+                    read_name = False,
+                    read_typ = True,
+                    read_keyword_only = False)
+            elif arg_const == 'KwArg':
+                # Takes one type
+                kind = nodes.ARG_STAR2
+                _, typ, _ = self.parse_arguments(
+                    read_name = False,
+                    read_typ = True,
+                    read_keyword_only = False)
+            else:
+                self.parse_error()
+            return typ, name, kind
+        else:
+            return self.parse_type(), None, nodes.ARG_POS
+
+    def parse_arguments(self,
+                        *,
+                        read_name: bool,
+                        read_typ: bool,
+                        read_keyword_only: bool) -> Tuple[
+                            Optional[str],
+                            Optional[Type],
+                            bool]:
+        self.expect('(')
+        name = None
+        typ = AnyType
+        keyword_only = False
+        try:
+            if self.current_token_str() == ')':
+                return name, typ, keyword_only
+            if read_name:
+                if self.current_token_str() != 'None':
+                    name = self.expect_type(StrLit).parsed()
+                else:
+                    self.skip()
+                if self.current_token_str() == ')':
+                    return name, typ, keyword_only
+                else:
+                    self.expect(',')
+            if read_typ:
+                typ = self.parse_type()
+                if self.current_token_str() == ')':
+                    return name, typ, keyword_only
+                else:
+                    self.expect(',')
+            if read_keyword_only:
+                if self.current_token_str() == 'True':
+                    keyword_only = True
+                    self.skip()
+                else:
+                    self.expect('False')
+                if self.current_token_str() == ')':
+                    return name, typ, keyword_only
+                else:
+                    self.expect(',')
+        finally:
+            self.expect(')')
+
+
+    def parse_argument_list(self) -> ArgumentList:
         """Parse type list [t, ...]."""
         lbracket = self.expect('[')
         commas = []  # type: List[Token]
         items = []  # type: List[Type]
+        names = [] # type: List[Optional[str]]
+        kinds = [] # type: List[int]
         while self.current_token_str() != ']':
-            t = self.parse_type()
+            t, name, kind = self.parse_argument_spec()
             items.append(t)
+            names.append(name)
+            kinds.append(kind)
+
             if self.current_token_str() != ',':
                 break
             commas.append(self.skip())
         self.expect(']')
-        return TypeList(items, line=lbracket.line)
+        return ArgumentList(items, names, kinds, line=lbracket.line)
 
     def parse_named_type(self) -> Type:
         line = self.current_token().line
@@ -177,6 +272,11 @@ class TypeParser:
 
     def current_token(self) -> Token:
         return self.tok[self.ind]
+
+    def next_token(self) -> Optional[Token]:
+        if self.ind + 1>= len(self.tok):
+            return None
+        return self.tok[self.ind + 1]
 
     def current_token_str(self) -> str:
         return self.current_token().string

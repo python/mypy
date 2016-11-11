@@ -803,7 +803,7 @@ Any(str, None) # E: 'Any' expects 1 argument
 Any(arg=str)   # E: 'Any' must be called with 1 positional argument
 [out]
 
-[case testTypeListAsType]
+[case testArgumentListAsType]
 def f(x:[int, str]) -> None: # E: Invalid type
     pass
 [out]

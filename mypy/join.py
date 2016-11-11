@@ -5,7 +5,7 @@ from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
+    ErrorType, TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, ArgumentList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
     UninhabitedType, TypeType, true_or_false
 )
@@ -115,7 +115,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_error_type(self, t: ErrorType) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_type_list(self, t: ArgumentList) -> Type:
         assert False, 'Not supported'
 
     def visit_any(self, t: AnyType) -> Type:

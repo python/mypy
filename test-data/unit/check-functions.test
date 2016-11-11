@@ -1355,6 +1355,67 @@ f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
+-- Callable with specific arg list
+-- -------------------------------
+
+[case testCallableWithNamedArg]
+from typing import Callable
+from mypy_extensions import Arg
+
+def a(f: Callable[[Arg('x', int)], int]):
+    f(x=4)
+    f(5)
+    f(y=3) # E: Unexpected keyword argument "y"
+
+[builtins fixtures/dict.pyi]
+
+[out]
+main: note: In function "a":
+
+[case testCallableWithOptionalArg]
+from typing import Callable
+from mypy_extensions import DefaultArg
+
+def a(f: Callable[[DefaultArg('x', int)], int]):
+    f(x=4)
+    f(2)
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
+
+[builtins fixtures/dict.pyi]
+
+[out]
+main: note: In function "a":
+
+[case testCallableArgKindSubtyping]
+from typing import Callable
+from mypy_extensions import Arg, DefaultArg
+
+int_str_fun = None # type: Callable[[int, str], str]
+int_opt_str_fun = None # type: Callable[[int, DefaultArg(None, str)], str]
+int_named_str_fun = None # type: Callable[[int, Arg('s', str)], str]
+
+def isf(ii: int, ss: str) -> str:
+    return ss
+
+def iosf(i: int, s: str = "bar") -> str:
+    return s
+
+def isf_unnamed(__i: int, __s: str) -> str:
+    return __s
+
+int_str_fun = isf
+int_str_fun = isf_unnamed
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg('s', str, False)], str])
+int_opt_str_fun = iosf
+int_str_fun = iosf
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, DefaultArg('None', str, False)], str])
+
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, Arg('s', str, False)], str])
+int_named_str_fun = iosf
+
+[builtins fixtures/dict.pyi]
 
 -- Callable[..., T]
 -- ----------------

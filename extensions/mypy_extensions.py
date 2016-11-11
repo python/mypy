@@ -5,6 +5,8 @@ Example usage:
     from mypy_extensions import TypedDict
 """
 
+from typing import Any
+
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
 import sys
@@ -88,3 +90,26 @@ TypedDict.__doc__ = \
     The latter syntax is only supported in Python 3.6+, while two other
     syntax forms work for Python 2.7 and 3.2+
     """
+    new_dict.__name__ = typename
+    new_dict.__supertype__ = dict
+    return new_dict
+
+class Arg(object):
+    def __init__(name=None, typ=Any, keyword_only=False):
+        self.name = name
+        self.typ = typ
+        self.named_only = named_only
+
+class DefaultArg(object):
+    def __init__(name=None, typ=Any, keyword_only=False):
+        self.name = name
+        self.typ = typ
+        self.named_only = named_only
+
+class StarArg(object):
+    def __init__(typ=Any) -> None:
+        self.typ = typ
+
+class KwArg(object):
+    def __init__(typ=Any) -> None:
+        self.typ = typ

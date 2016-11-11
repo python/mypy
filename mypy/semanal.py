@@ -72,7 +72,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
+    FunctionLike, UnboundType, ArgumentList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
 )
 from mypy.nodes import implicit_module_attrs
@@ -402,8 +402,8 @@ class SemanticAnalyzer(NodeVisitor):
                 result.append((name, node.node))
             for arg in type.args:
                 result.extend(self.find_type_variables_in_type(arg))
-        elif isinstance(type, TypeList):
-            for item in type.items:
+        elif isinstance(type, ArgumentList):
+            for item in type.types:
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, UnionType):
             for item in type.items:

@@ -19,7 +19,7 @@ from mypy.nodes import (
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
+    Type, CallableType, AnyType, UnboundType, TupleType, ArgumentList, EllipsisType,
 )
 from mypy import defaults
 from mypy import experiments
@@ -911,7 +911,11 @@ class TypeConverter(ast35.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast35.List) -> Type:
-        return TypeList(self.translate_expr_list(n.elts), line=self.line)
+        return ArgumentList(
+            self.translate_expr_list(n.elts),
+            [None]*len(n.elts),
+            [0]*len(n.elts),
+            line=self.line)
 
 
 class TypeCommentParseError(Exception):
