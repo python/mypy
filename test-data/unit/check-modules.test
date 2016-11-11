@@ -594,7 +594,7 @@ try:
 except:
     f = g
 [file m.py]
-def f(y): pass
+def f(x): pass
 
 [case testImportFunctionAndAssignIncompatible]
 try:
