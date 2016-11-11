@@ -368,7 +368,7 @@ y = None  # type: C
 y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
 
 [case testNamedTupleSelfType]
-from typing import NamedTuple
+from typing import NamedTuple, TypeVar
 A = NamedTuple('A', [('x', str)])
 reveal_type(A('hello')._replace(x=''))  # E: Revealed type is '__main__.A*'
 a = None  # type: A
@@ -380,3 +380,10 @@ class B(A):
 reveal_type(B('hello')._replace(x=''))  # E: Revealed type is '__main__.B*'
 b = None  # type: B
 b = B('hello')._replace(x='')
+
+T = TypeVar('T', bound='C')
+class C(B):
+    def foo(self: T) -> T: return self
+
+c = None  # type: C
+c = C('hello').foo()
