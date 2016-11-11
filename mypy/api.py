@@ -34,6 +34,7 @@ import traceback
 from io import StringIO
 from mypy.main import main
 
+
 def run(params):
     sys.argv = [None] + params.split()
 
@@ -46,7 +47,7 @@ def run(params):
     sys.stderr = new_stderr
 
     try:
-        main (None)
+        main(None)
     except:
         pass
 
