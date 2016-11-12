@@ -93,6 +93,9 @@ def i() -> int:
   """with docstring"""
   ...
 def j() -> int:
+  u"""with unicode docstring"""
+  pass
+def k() -> int:
   """docstring only"""
 
 [case testWarnNoReturnWorksWithAlwaysTrue]

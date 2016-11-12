@@ -668,7 +668,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         # Skip a docstring
         if (isinstance(body[0], ExpressionStmt) and
-                isinstance(body[0].expr, StrExpr)):
+                isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
             body = block.body[1:]
 
         if len(body) == 0:
