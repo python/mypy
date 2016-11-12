@@ -29,7 +29,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
-    Instance, NoneTyp, ErrorType, strip_type,
+    Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     true_only, false_only, function_type
 )
@@ -671,7 +671,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         # Skip a docstring
         if (isinstance(body[0], ExpressionStmt) and
-                isinstance(body[0].expr, StrExpr)):
+                isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
             body = block.body[1:]
 
         if len(body) == 0:
@@ -1082,6 +1082,7 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_block(self, b: Block) -> Type:
         if b.is_unreachable:
+            self.binder.unreachable()
             return None
         for s in b.body:
             if self.binder.is_unreachable():
@@ -1758,28 +1759,33 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_except_handler_test(self, n: Expression) -> Type:
         """Type check an exception handler test clause."""
-        type = self.accept(n)
+        typ = self.accept(n)
 
         all_types = []  # type: List[Type]
-        test_types = type.items if isinstance(type, TupleType) else [type]
+        test_types = typ.items if isinstance(typ, TupleType) else [typ]
 
         for ttype in test_types:
             if isinstance(ttype, AnyType):
                 all_types.append(ttype)
                 continue
 
-            if not isinstance(ttype, FunctionLike):
+            if isinstance(ttype, FunctionLike):
+                item = ttype.items()[0]
+                if not item.is_type_obj():
+                    self.fail(messages.INVALID_EXCEPTION_TYPE, n)
+                    return AnyType()
+                exc_type = item.ret_type
+            elif isinstance(ttype, TypeType):
+                exc_type = ttype.item
+            else:
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 
-            item = ttype.items()[0]
-            ret_type = item.ret_type
-            if not (is_subtype(ret_type, self.named_type('builtins.BaseException'))
-                    and item.is_type_obj()):
+            if not is_subtype(exc_type, self.named_type('builtins.BaseException')):
                 self.fail(messages.INVALID_EXCEPTION_TYPE, n)
                 return AnyType()
 
-            all_types.append(ret_type)
+            all_types.append(exc_type)
 
         return UnionType.make_simplified_union(all_types)
 

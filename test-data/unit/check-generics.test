@@ -417,6 +417,14 @@ class A(Generic[T]):
 [out]
 main: note: In member "f" of class "A":
 
+[case testProhibitTypeApplicationToGenericFunctions]
+from typing import TypeVar
+T = TypeVar('T')
+def f(x: T) -> T: pass
+
+y = f[int]  # E: Type application is only supported for generic classes
+[out]
+
 
 -- Generic types in expressions
 -- ----------------------------
@@ -969,6 +977,13 @@ y = None # type: SameA[str] # Two errors here, for both args of A
 main:9:7: error: Type argument 1 of "A" has incompatible value "str"
 main:13: error: Type argument 1 of "A" has incompatible value "str"
 main:13: error: Type argument 2 of "A" has incompatible value "str"
+
+[case testGenericTypeAliasesIgnoredPotentialAlias]
+class A: ...
+Bad = A[int] # type: ignore
+
+reveal_type(Bad) # E: Revealed type is 'Any'
+[out]
 
 
 -- Multiple assignment with lists

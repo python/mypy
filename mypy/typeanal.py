@@ -416,6 +416,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             # otherwise the type checker may crash as it expects
             # things to be right.
             t.args = [AnyType() for _ in info.type_vars]
+            t.invalid = True
         elif info.defn.type_vars:
             # Check type argument values.
             for (i, arg), TypeVar in zip(enumerate(t.args), info.defn.type_vars):

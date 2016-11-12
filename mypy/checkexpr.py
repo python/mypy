@@ -1361,12 +1361,16 @@ class ExpressionChecker:
         """Type check a type application (expr[type, ...])."""
         tp = self.accept(tapp.expr)
         if isinstance(tp, CallableType):
+            if not tp.is_type_obj():
+                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
             if len(tp.variables) != len(tapp.types):
                 self.msg.incompatible_type_application(len(tp.variables),
                                                        len(tapp.types), tapp)
                 return AnyType()
             return self.apply_generic_arguments(tp, tapp.types, tapp)
         elif isinstance(tp, Overloaded):
+            if not tp.is_type_obj():
+                self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
             for item in tp.items():
                 if len(item.variables) != len(tapp.types):
                     self.msg.incompatible_type_application(len(item.variables),
@@ -1378,6 +1382,9 @@ class ExpressionChecker:
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression."""
+        if isinstance(alias.type, Instance) and alias.type.invalid:
+            # An invalid alias, error already has been reported
+            return AnyType()
         item = alias.type
         if not alias.in_runtime:
             # We don't replace TypeVar's with Any for alias used as Alias[T](42).
