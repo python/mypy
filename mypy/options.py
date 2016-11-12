@@ -25,6 +25,7 @@ class Options:
         "debug_cache",
         "strict_optional_whitelist",
         "show_none_errors",
+        "warn_no_return",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
