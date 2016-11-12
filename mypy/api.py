@@ -30,7 +30,6 @@ if result[1]:
 '''
 
 import sys
-import traceback
 from io import StringIO
 from mypy.main import main
 
