@@ -55,7 +55,8 @@ from mypy import defaults
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, ARG_STAR, ARG_STAR2, ARG_NAMED
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase,
+    ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
@@ -261,7 +262,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             name = var.name()
             init_stmt = arg_.initialization_statement
             if init_stmt:
-                if kind == ARG_NAMED and '*' not in args:
+                if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
                     args.append('*')
                 typename = self.get_str_type_of_node(init_stmt.rvalue, True)
                 arg = '{}: {} = ...'.format(name, typename)

@@ -1005,7 +1005,7 @@ MypyFile:1(
     MaxPos(0)
     Args(
       Var(y))
-    def (*x: builtins.int, *, y: builtins.str) -> Any
+    def (*x: builtins.int, *, y: builtins.str =) -> Any
     Init(
       AssignmentStmt:1(
         NameExpr(y [l])

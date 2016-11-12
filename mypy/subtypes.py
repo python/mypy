@@ -10,7 +10,10 @@ import mypy.constraints
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy import messages, sametypes
-from mypy.nodes import CONTRAVARIANT, COVARIANT, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
+from mypy.nodes import (
+    CONTRAVARIANT, COVARIANT, ARG_POS, ARG_OPT, ARG_STAR,
+    ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+)
 from mypy.maptype import map_instance_to_supertype
 
 from mypy import experiments

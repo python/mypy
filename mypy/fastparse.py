@@ -15,7 +15,7 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
@@ -363,7 +363,7 @@ class ASTConverter(ast35.NodeTransformer):
 
         # keyword-only arguments with defaults
         for a, d in zip(args.kwonlyargs[num_no_kw_defaults:], args.kw_defaults):
-            new_args.append(make_argument(a, d, ARG_NAMED))
+            new_args.append(make_argument(a, d, ARG_NAMED_OPT))
 
         # **kwarg
         if args.kwarg is not None:

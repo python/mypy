@@ -41,9 +41,9 @@ class StrConv(NodeVisitor[str]):
         extra = []  # type: List[Tuple[str, List[mypy.nodes.Var]]]
         for i, arg in enumerate(o.arguments):
             kind = arg.kind  # type: int
-            if kind == mypy.nodes.ARG_POS:
+            if kind in (mypy.nodes.ARG_POS, mypy.nodes.ARG_NAMED):
                 args.append(o.arguments[i].variable)
-            elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED):
+            elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED_OPT):
                 args.append(o.arguments[i].variable)
                 init.append(o.arguments[i].initialization_statement)
             elif kind == mypy.nodes.ARG_STAR:
@@ -108,7 +108,8 @@ class StrConv(NodeVisitor[str]):
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> str:
         a = self.func_helper(o)
         a.insert(0, o.name())
-        if mypy.nodes.ARG_NAMED in [arg.kind for arg in o.arguments]:
+        arg_kinds = set([arg.kind for arg in o.arguments])
+        if len(arg_kinds & set([mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT])) > 0:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         if o.is_abstract:
             a.insert(-1, 'Abstract')
