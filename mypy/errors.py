@@ -47,7 +47,8 @@ class ErrorInfo:
 
     def __init__(self, import_ctx: List[Tuple[str, int]], file: str, typ: str,
                  function_or_member: str, line: int, column: int, severity: str,
-                 message: str, blocker: bool, only_once: bool) -> None:
+                 message: str, blocker: bool, only_once: bool,
+                 origin: Tuple[str, int] = None) -> None:
         self.import_ctx = import_ctx
         self.file = file
         self.type = typ
@@ -58,6 +59,7 @@ class ErrorInfo:
         self.message = message
         self.blocker = blocker
         self.only_once = only_once
+        self.origin = origin or (file, line)
 
 
 class Errors:
@@ -168,7 +170,8 @@ class Errors:
         self.import_ctx = ctx[:]
 
     def report(self, line: int, column: int, message: str, blocker: bool = False,
-               severity: str = 'error', file: str = None, only_once: bool = False) -> None:
+               severity: str = 'error', file: str = None, only_once: bool = False,
+               origin_line: int = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -178,6 +181,7 @@ class Errors:
             severity: 'error', 'note' or 'warning'
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
+            origin_line: if non-None, override current context as origin
         """
         type = self.type_name[-1]
         if len(self.function_or_member) > 2:
@@ -186,15 +190,16 @@ class Errors:
             file = self.file
         info = ErrorInfo(self.import_context(), file, type,
                          self.function_or_member[-1], line, column, severity, message,
-                         blocker, only_once)
+                         blocker, only_once,
+                         origin=(self.file, origin_line) if origin_line else None)
         self.add_error_info(info)
 
     def add_error_info(self, info: ErrorInfo) -> None:
-        if (info.file in self.ignored_lines and
-                info.line in self.ignored_lines[info.file] and
-                not info.blocker):
+        (file, line) = info.origin
+        if (file in self.ignored_lines and line in self.ignored_lines[file]
+                and not info.blocker):
             # Annotation requests us to ignore all errors on this line.
-            self.used_ignored_lines[info.file].add(info.line)
+            self.used_ignored_lines[file].add(line)
             return
         if info.only_once:
             if info.message in self.only_once_messages:
