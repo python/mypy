@@ -40,7 +40,7 @@ from typing import Any, Union
 
 def func(v:Union[int, Any]) -> None:
     if isinstance(v, int):
-        reveal_type(v) # E: Revealed type is 'builins.int'
+        reveal_type(v) # E: Revealed type is 'builtins.int'
     else:
         reveal_type(v) # E: Revealed type is 'Any'
 [builtins fixtures/isinstance.pyi]
