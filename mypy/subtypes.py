@@ -345,7 +345,8 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
     Currently just remove elements of a union type.
     """
     if isinstance(t, UnionType):
-        new_items = [item for item in t.items if not is_subtype(item, s)]
+        new_items = [item for item in t.items if (not is_subtype(item, s)
+                                                  or isinstance(item, AnyType))]
         return UnionType.make_union(new_items)
     else:
         return t
