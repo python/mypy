@@ -211,7 +211,7 @@ In the latter case, you must implement this method in all future subclasses.
 Note also that mypy cannot always verify that a the implementation of a copy
 or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
-possibly by making use of the `Any`type.
+possibly by making use of the ``Any`` type.
 
 The behavior of the type of self is still not completely specified.
 In certain cases the mypy might disallow legitimate use cases, or allow unsafe usage.
