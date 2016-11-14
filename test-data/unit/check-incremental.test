@@ -376,7 +376,7 @@ a = produce()
 accept_int(a.foo())
 
 [file mod2/__init__.py]
-from mod2.mod3 import CustomType 
+from mod2.mod3 import CustomType
 
 [file mod2/mod3/__init__.py]
 from mod2.mod3.mod4 import CustomType
@@ -407,13 +407,13 @@ tmp/mod1.py:6: error: Argument 1 to "accept_int" has incompatible type "str"; ex
 import mod1, mod2.mod3.mod5
 
 [file mod1.py]
-from mod2 import produce 
+from mod2 import produce
 def accept_int(x: int) -> None: pass
 a = produce()
 accept_int(a.foo())
 
 [file mod2/__init__.py]
-from mod2.mod3 import produce 
+from mod2.mod3 import produce
 
 [file mod2/mod3/__init__.py]
 from mod2.mod3.mod4 import CustomType
@@ -548,7 +548,7 @@ def func2() -> str:
 [out2]
 
 [case testIncrementalWithComplexDictExpression]
-import mod1 
+import mod1
 
 [file mod1.py]
 import mod1_private
@@ -570,7 +570,7 @@ my_dict = {
 [builtins fixtures/dict.pyi]
 
 [case testIncrementalWithComplexConstantExpressionNoAnnotation]
-import mod1 
+import mod1
 
 [file mod1.py]
 import mod1_private
@@ -1178,7 +1178,7 @@ def foo(a: str) -> None: pass
 
 [file client.py]
 import good
-import bad 
+import bad
 from good import foo
 foo(3)
 
@@ -1537,12 +1537,12 @@ tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; exp
 import foo
 
 [file foo.py]
-from mid import Outer 
+from mid import Outer
 def accept_int(x: int) -> None: pass
 accept_int(Outer.MyTuple(1, "b", "c").a)
 
 [file mid.py]
-from bar import Outer 
+from bar import Outer
 
 [file bar.py]
 from typing import NamedTuple
@@ -1634,3 +1634,20 @@ a = None  # type: R
 from . import m
 R = m.R
 a = None  # type: R
+
+[case testIncrementalBaseClassAttributeConflict]
+class A: pass
+class B: pass
+
+class X:
+    attr = None  # type: A
+class Y:
+    attr = None  # type: B
+class Z(X, Y): pass
+[stale]
+[out]
+main: note: In class "Z":
+main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
+[out2]
+main: note: In class "Z":
+main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"

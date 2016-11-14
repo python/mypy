@@ -2640,7 +2640,11 @@ class SemanticAnalyzer(NodeVisitor):
         return n.names.get(parts[-1])
 
     def qualified_name(self, n: str) -> str:
-        return self.cur_mod_id + '.' + n
+        if self.type is not None:
+            base = self.type._fullname
+        else:
+            base = self.cur_mod_id
+        return base + '.' + n
 
     def enter(self) -> None:
         self.locals.append(SymbolTable())
