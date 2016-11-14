@@ -1345,3 +1345,79 @@ def part4_thing(a: int) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
 tmp/part3.py:2: error: Revealed type is 'def (a: builtins.int) -> builtins.str'
+
+[case testImportStarAliasAnyList]
+import bar
+
+[file bar.py]
+from foo import *
+def bar(y: AnyAlias) -> None:  pass
+
+l = None # type: ListAlias[int]
+reveal_type(l)
+
+[file foo.py]
+from typing import Any, List
+AnyAlias = Any
+ListAlias = List
+[builtins fixtures/list.pyi]
+[out]
+main:1: note: In module imported here:
+tmp/bar.py:5: error: Revealed type is 'builtins.list[builtins.int]'
+
+[case testImportStarAliasSimpleGeneric]
+from ex2a import *
+
+def do_something(dic: Row) -> None:
+    pass
+
+def do_another() -> Row:
+    return {}
+
+do_something({'good': 'bad'}) # E: List item 0 has incompatible type "Tuple[str, str]"
+reveal_type(do_another()) # E: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+
+[file ex2a.py]
+from typing import Dict
+Row = Dict[str, int]
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testImportStarAliasGeneric]
+from y import *
+notes = None  # type: G[X]
+another = G[X]()
+second = XT[str]()
+last = XT[G]()
+
+reveal_type(notes) # E: Revealed type is 'y.G[y.G[builtins.int]]'
+reveal_type(another) # E: Revealed type is 'y.G[y.G*[builtins.int]]'
+reveal_type(second) # E: Revealed type is 'y.G[builtins.str*]'
+reveal_type(last) # E: Revealed type is 'y.G[y.G*]'
+
+[file y.py]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class G(Generic[T]):
+    pass
+
+X = G[int]
+XT = G[T]
+[out]
+
+[case testImportStarAliasCallable]
+from foo import *
+from typing import Any
+
+def bar(x: Any, y: AnyCallable) -> Any:
+    return 'foo'
+
+cb = None # type: AnyCallable
+reveal_type(cb) # E: Revealed type is 'def (*Any, **Any) -> Any'
+
+[file foo.py]
+from typing import Callable, Any
+AnyCallable = Callable[..., Any]
+[out]

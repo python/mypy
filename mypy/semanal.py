@@ -1090,7 +1090,8 @@ class SemanticAnalyzer(NodeVisitor):
                                 name, existing_symbol, node, i):
                             continue
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
-                                                          self.cur_mod_id), i)
+                                                          self.cur_mod_id,
+                                                          node.type_override), i)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
