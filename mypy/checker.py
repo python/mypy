@@ -2399,6 +2399,7 @@ class TypeChecker(NodeVisitor[Type]):
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
+
 TypeMap = Optional[Dict[Expression, Type]]
 
 

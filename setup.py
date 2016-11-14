@@ -84,6 +84,7 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
+
 package_dir = {'mypy': 'mypy'}
 if sys.version_info < (3, 5, 0):
     package_dir[''] = 'lib-typing/3.2'

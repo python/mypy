@@ -144,6 +144,7 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
 
+
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
 #                'TupleExpr', 'ListExpr']; see #1783.
