@@ -12,18 +12,20 @@ flag (or its long form ``--help``)::
               [-s] [--almost-silent] [--disallow-untyped-calls]
               [--disallow-untyped-defs] [--check-untyped-defs]
               [--disallow-subclassing-any] [--warn-incomplete-stub]
-              [--warn-redundant-casts] [--warn-unused-ignores]
-              [--hide-error-context] [--fast-parser] [-i] [--cache-dir DIR]
-              [--strict-optional]
-              [--strict-optional-whitelist [GLOB [GLOB ...]]] [--pdb]
-              [--show-traceback] [--stats] [--inferstats]
-              [--custom-typing MODULE] [--custom-typeshed-dir DIR]
-              [--scripts-are-modules] [--config-file CONFIG_FILE]
-              [--show-column-numbers] [--html-report DIR]
-              [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR] [--old-html-report DIR]
-              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
-              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--warn-redundant-casts] [--warn-no-return]
+              [--warn-unused-ignores] [--hide-error-context] [--fast-parser]
+              [-i] [--cache-dir DIR] [--strict-optional]
+              [--strict-optional-whitelist [GLOB [GLOB ...]]]
+              [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
+              [--inferstats] [--custom-typing MODULE]
+              [--custom-typeshed-dir DIR] [--scripts-are-modules]
+              [--config-file CONFIG_FILE] [--show-column-numbers]
+              [--find-occurrences CLASS.MEMBER] [--cobertura-xml-report DIR]
+              [--html-report DIR] [--linecount-report DIR]
+              [--linecoverage-report DIR] [--memory-xml-report DIR]
+              [--old-html-report DIR] [--txt-report DIR] [--xml-report DIR]
+              [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
+              [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -339,7 +341,18 @@ Here are some more useful flags:
   in the current directory.  Settings override mypy's built-in defaults
   and command line flags can override settings.  See :ref:`config-file`
   for the syntax of configuration files.
-  
+
+- ``--junit-xml JUNIT_XML`` will make mypy generate a JUnit XML test
+  result document with type checking results. This can make it easier
+  to integrate mypy with continuous integration (CI) tools.
+
+- ``--find-occurrences CLASS.MEMBER`` will make mypy print out all
+  usages of a class member based on static type information. This
+  feature is experimental.
+
+- ``--cobertura-xml-report DIR`` causes mypy to generate a Cobertura
+  XML type checking coverage report.
+
 For the remaining flags you can read the full ``mypy -h`` output.
 
 .. note::
