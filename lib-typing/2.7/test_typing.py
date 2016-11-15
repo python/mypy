@@ -375,6 +375,14 @@ class CallableTests(BaseTestCase):
         with self.assertRaises(TypeError):
             type(c)()
 
+    def test_callable_wrong_forms(self):
+        with self.assertRaises(TypeError):
+            Callable[(), int]
+        with self.assertRaises(TypeError):
+            Callable[[()], int]
+        with self.assertRaises(TypeError):
+            Callable[[int, 1], 2]
+
     def test_callable_instance_works(self):
         def f():
             pass
@@ -707,9 +715,10 @@ class GenericTests(BaseTestCase):
                          'Callable[[], List[int]]')
 
     def test_generic_forvard_ref(self):
-        LLT = List[List['T']]
+        LLT = List[List['CC']]
+        class CC: pass
+        self.assertEqual(typing._eval_type(LLT, globals(), locals()), List[List[CC]])
         T = TypeVar('T')
-        self.assertEqual(typing._eval_type(LLT, globals(), locals()), List[List[T]])
         TTE = Tuple[T, ...]
         self.assertIs(typing._eval_type(TTE, globals(), locals()), Tuple[T, ...])
 
