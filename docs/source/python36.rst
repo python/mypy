@@ -14,17 +14,17 @@ release).  The intention is to support all of these by the time Python
 .. note::
 
    Mypy only understands Python 3.6 syntax if you use the ``--fast-parser`` flag.
+   This requires that the `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
+   installed and has at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
    If running mypy on an earlier Python version, you also need to enable 3.6 support
    through ``--python-version 3.6``.
-   The prior requires that the `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
-   installed and has at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
 
    Example command line (or use :ref:`config-file`):
 
-   .. code-block:: text
+     .. code-block:: text
 
-      $ pip3 install -U typed_ast
-      $ mypy --fast-parser --python-version 3.6 program.py
+        $ pip3 install -U typed_ast
+        $ mypy --fast-parser --python-version 3.6 program.py
 
 Syntax for variable annotations (`PEP 526 <https://www.python.org/dev/peps/pep-0526>`_)
 ---------------------------------------------------------------------------------------
