@@ -299,7 +299,7 @@ Displaying the type of an expression
 
 You can use ``reveal_type(expr)`` to ask mypy to display the inferred
 static type of an expression. This can be useful when you don't quite
-understand how mypy handles a particlar piece of code. Example:
+understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
