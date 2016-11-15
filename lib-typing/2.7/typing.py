@@ -190,8 +190,7 @@ class _ForwardRef(_TypingBase):
     """Wrapper to hold a forward reference."""
 
     __slots__ = ('__forward_arg__', '__forward_code__',
-                 '__forward_evaluated__', '__forward_value__',
-                 '__forward_frame__')
+                 '__forward_evaluated__', '__forward_value__')
 
     def __init__(self, arg):
         super(_ForwardRef, self).__init__(arg)
@@ -206,15 +205,9 @@ class _ForwardRef(_TypingBase):
         self.__forward_code__ = code
         self.__forward_evaluated__ = False
         self.__forward_value__ = None
-        typing_globals = globals()
-        frame = sys._getframe(1)
-        while frame is not None and frame.f_globals is typing_globals:
-            frame = frame.f_back
-        assert frame is not None
-        self.__forward_frame__ = frame
 
     def _eval_type(self, globalns, localns):
-        if not self.__forward_evaluated__:
+        if not self.__forward_evaluated__ or localns is not globalns:
             if globalns is None and localns is None:
                 globalns = localns = {}
             elif globalns is None:
@@ -665,9 +658,13 @@ def _check_generic(cls, parameters):
                         ("many" if alen > elen else "few", repr(cls), alen, elen))
 
 
+_cleanups = []
+
+
 def _tp_cache(func):
     maxsize = 128
     cache = {}
+    _cleanups.append(cache.clear)
 
     @functools.wraps(func)
     def inner(*args):
@@ -1281,14 +1278,12 @@ class CallableMeta(GenericMeta):
         # super(CallableMeta, self)._tree_repr() for nice formatting.
         arg_list = []
         for arg in tree[1:]:
-            if arg == ():
-                arg_list.append('[]')
-            elif not isinstance(arg, tuple):
+            if not isinstance(arg, tuple):
                 arg_list.append(_type_repr(arg))
             else:
                 arg_list.append(arg[0]._tree_repr(arg))
-        if len(arg_list) == 2:
-            return repr(tree[0]) + '[%s]' % ', '.join(arg_list)
+        if arg_list[0] == '...':
+            return repr(tree[0]) + '[..., %s]' % arg_list[1]
         return (repr(tree[0]) +
                 '[[%s], %s]' % (', '.join(arg_list[:-1]), arg_list[-1]))
 
@@ -1305,25 +1300,20 @@ class CallableMeta(GenericMeta):
         args, result = parameters
         if args is Ellipsis:
             parameters = (Ellipsis, result)
-        elif args == []:
-            parameters = ((), result)
         else:
             if not isinstance(args, list):
                 raise TypeError("Callable[args, result]: args must be a list."
                                 " Got %.100r." % (args,))
-            parameters = tuple(args) + (result,)
+            parameters = (tuple(args), result)
         return self.__getitem_inner__(parameters)
 
     @_tp_cache
     def __getitem_inner__(self, parameters):
-        args = parameters[:-1]
-        result = parameters[-1]
+        args, result = parameters
         msg = "Callable[args, result]: result must be a type."
         result = _type_check(result, msg)
-        if args == (Ellipsis,):
+        if args is Ellipsis:
             return super(CallableMeta, self).__getitem__((_TypingEllipsis, result))
-        if args == ((),):
-            return super(CallableMeta, self).__getitem__((_TypingEmpty, result))
         msg = "Callable[[arg, ...], result]: each arg must be a type."
         args = tuple(_type_check(arg, msg) for arg in args)
         parameters = args + (result,)
