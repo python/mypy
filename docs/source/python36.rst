@@ -69,3 +69,8 @@ can now also contain list, set and dict comprehensions that use
 ``async for`` syntax.
 
 Mypy does not yet support this.
+
+New named tuple syntax
+----------------------
+
+Python 3.6 supports an alternative syntax for named tuples. See :ref:`named-tuples`.
