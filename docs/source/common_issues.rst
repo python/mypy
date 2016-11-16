@@ -299,7 +299,7 @@ Displaying the type of an expression
 
 You can use ``reveal_type(expr)`` to ask mypy to display the inferred
 static type of an expression. This can be useful when you don't quite
-understand how mypy handles a particlar piece of code. Example:
+understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
@@ -354,3 +354,19 @@ File ``bar.py``:
 
    The ``TYPE_CHECKING`` constant defined by the ``typing`` module
    is ``False`` at runtime but ``True`` while type checking.
+
+Python 3.5.1 doesn't have ``typing.TYPE_CHECKING``. An alternative is
+to define a constant named ``MYPY`` that has the value ``False``
+at runtime. Mypy considers it to be ``True`` when type checking.
+Here's the above example modified to use ``MYPY``:
+
+.. code-block:: python
+
+   from typing import List
+
+   MYPY = False
+   if MYPY:
+       import bar
+
+   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
+       return [arg]
