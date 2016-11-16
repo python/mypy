@@ -157,6 +157,32 @@ class B(A): pass
 B()# E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
 [out]
 
+[case testInstantiationAbstractsInType]
+from typing import Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+def f(cls: Type[A]) -> A:
+    return cls()  # OK
+
+def g() -> A:
+    return A()  # Error, see out
+
+f(A)  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+f(B)  # E: Cannot instantiate abstract class 'B' with abstract attribute 'm'
+f(C)  # OK
+[out]
+main: note: In function "g":
+main:16: error: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+main: note: At top level:
+
 [case testInstantiatingClassWithInheritedAbstractMethodAndSuppression]
 from abc import abstractmethod, ABCMeta
 import typing
