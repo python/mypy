@@ -3,11 +3,21 @@
 Dealing with common issues
 ==========================
 
-Statically typed function bodies are often identical to normal Python
-code, but sometimes you need to do things slightly differently. This
-section has examples of cases when you need to update your code
-to use static typing, and ideas for working
-around issues if the type checker gets confused about your code.
+This section has examples of cases when you need to update your code
+to use static typing, and ideas for working around issues if mypy
+doesn't work as expected. Statically typed code is often identical to
+normal Python code, but sometimes you need to do things slightly
+differently.
+
+Can't install mypy using pip
+----------------------------
+
+If installation fails, you've probably hit one of these issues:
+
+* The package name is **mypy-lang** -- *not* just mypy.
+* Mypy needs Python 3.3 or later to run.
+* You may have to run pip like this:
+  ``python3 -m pip install mypy-lang``.
 
 .. _annotations_needed:
 

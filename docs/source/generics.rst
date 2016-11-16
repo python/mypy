@@ -142,7 +142,7 @@ example we use the same type variable in two generic functions:
    def last(seq: Sequence[T]) -> T:
        return seq[-1]
 
-.. generic-methods-and-generic-self:
+.. _generic-methods-and-generic-self:
 
 Generic methods and generic self
 ********************************
@@ -151,6 +151,12 @@ You can also define generic methods — just use a type variable in the
 method signature that is different from class type variables. In particular,
 ``self`` may also be generic, allowing a method to return the most precise
 type known at the point of access.
+
+.. note::
+
+   This feature is experimental. Checking code with type annotations for self
+   arguments is still not fully implemented. Mypy may disallow valid code or
+   allow unsafe code.
 
 In this way, for example, you can typecheck chaining of setter methods:
 
@@ -212,10 +218,6 @@ Note also that mypy cannot always verify that a the implementation of a copy
 or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
-
-The behavior of the type of self is still not completely specified.
-In certain cases the mypy might disallow legitimate use cases, or allow unsafe usage.
-
 
 .. _type-variable-value-restriction:
 
@@ -335,6 +337,8 @@ restrict the valid values for the type parameter in the same way.
 
 A type variable may not have both a value restriction (see
 :ref:`type-variable-value-restriction`) and an upper bound.
+
+.. _declaring-decorators:
 
 Declaring decorators
 ********************
