@@ -227,6 +227,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                         return NoneTyp()
         elif isinstance(self.s, TypeType):
             return meet_types(t, self.s)
+        elif isinstance(self.s, TupleType):
+            return meet_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -243,6 +245,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
+        # Special case: all Tuple[t1, t2, ...] are subtypes of plain tuple.
+        elif (isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.tuple'
+              and len(self.s.args) == 1 and isinstance(self.s.args[0], AnyType)):
+            return t
         else:
             return self.default(self.s)
 
