@@ -214,7 +214,7 @@ Note that when overriding a method with generic ``self``, you must either
 return a generic ``self`` too, or return an instance of the current class.
 In the latter case, you must implement this method in all future subclasses.
 
-Note also that mypy cannot always verify that a the implementation of a copy
+Note also that mypy cannot always verify that the implementation of a copy
 or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
