@@ -44,6 +44,10 @@ class BaseTestCase(TestCase):
                 message += ' : %s' % msg
             raise self.failureException(message)
 
+    def clear_caches(self):
+        for f in typing._cleanups:
+            f()
+
 
 class Employee(object):
     pass
@@ -480,7 +484,13 @@ class ProtocolTests(BaseTestCase):
     def test_protocol_instance_type_error(self):
         with self.assertRaises(TypeError):
             isinstance(0, typing.SupportsAbs)
-
+        class C1(typing.SupportsInt):
+            def __int__(self):
+                return 42
+        class C2(C1):
+            pass
+        c = C2()
+        self.assertIsInstance(c, C1)
 
 class GenericTests(BaseTestCase):
 
@@ -719,8 +729,10 @@ class GenericTests(BaseTestCase):
         class CC: pass
         self.assertEqual(typing._eval_type(LLT, globals(), locals()), List[List[CC]])
         T = TypeVar('T')
-        TTE = Tuple[T, ...]
-        self.assertIs(typing._eval_type(TTE, globals(), locals()), Tuple[T, ...])
+        AT = Tuple[T, ...]
+        self.assertIs(typing._eval_type(AT, globals(), locals()), AT)
+        CT = Callable[..., List[T]]
+        self.assertIs(typing._eval_type(CT, globals(), locals()), CT)
 
     def test_extended_generic_rules_subclassing(self):
         class T1(Tuple[T, KT]): pass
@@ -771,6 +783,8 @@ class GenericTests(BaseTestCase):
 
     def test_type_erasure_special(self):
         T = TypeVar('T')
+        # this is the only test that checks type caching
+        self.clear_caches()
         class MyTup(Tuple[T, T]): pass
         self.assertIs(MyTup[int]().__class__, MyTup)
         self.assertIs(MyTup[int]().__orig_class__, MyTup[int])

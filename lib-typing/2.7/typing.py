@@ -1462,6 +1462,8 @@ class _ProtocolMeta(GenericMeta):
     """
 
     def __instancecheck__(self, obj):
+        if _Protocol not in self.__bases__:
+            return super(_ProtocolMeta, self).__instancecheck__(obj)
         raise TypeError("Protocols cannot be used with isinstance().")
 
     def __subclasscheck__(self, cls):
