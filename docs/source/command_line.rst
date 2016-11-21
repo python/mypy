@@ -353,6 +353,12 @@ Here are some more useful flags:
 - ``--cobertura-xml-report DIR`` causes mypy to generate a Cobertura
   XML type checking coverage report.
 
+- ``--warn-no-return`` causes mypy to generate errors for missing return
+  statements on some execution paths. Mypy doesn't generate these errors
+  for functions with ``None`` or ``Any`` return types. Mypy
+  also currently ignores functions with an empty body or a body that is
+  just ellipsis (``...``), since these can be valid as abstract methods.
+
 For the remaining flags you can read the full ``mypy -h`` output.
 
 .. note::

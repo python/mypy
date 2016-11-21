@@ -30,6 +30,8 @@ List of major changes to this document:
 
       * ``--cobertura-xml-report``
 
+      * ``--warn-no-return``
+
     * Updates to :ref:`config-file`:
 
       * Sections with fnmatch patterns now use

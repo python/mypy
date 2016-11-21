@@ -138,6 +138,8 @@ overridden by the pattern sections matching the module name.
   to strict ``None`` checking, if the global ``strict_optional`` flag
   is enabled.
 
+- ``warn_no_return`` (Boolean, default False) shows errors for
+  missing return statements on some execution paths.
 
 Example
 *******
