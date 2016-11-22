@@ -356,14 +356,12 @@ class ASTConverter(ast35.NodeTransformer):
         if args.vararg is not None:
             new_args.append(make_argument(args.vararg, None, ARG_STAR))
 
-        num_no_kw_defaults = len(args.kwonlyargs) - len(args.kw_defaults)
-        # keyword-only arguments without defaults
-        for a in args.kwonlyargs[:num_no_kw_defaults]:
-            new_args.append(make_argument(a, None, ARG_NAMED))
-
         # keyword-only arguments with defaults
-        for a, d in zip(args.kwonlyargs[num_no_kw_defaults:], args.kw_defaults):
-            new_args.append(make_argument(a, d, ARG_NAMED_OPT))
+        for a, d in zip(args.kwonlyargs, args.kw_defaults):
+            new_args.append(make_argument(
+                a,
+                d,
+                ARG_NAMED if d is None else ARG_NAMED_OPT))
 
         # **kwarg
         if args.kwarg is not None:

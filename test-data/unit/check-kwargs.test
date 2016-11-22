@@ -116,6 +116,8 @@ main:4: error: Unexpected keyword argument "b"
 import typing
 def f(a: 'A', *, b: 'B' = None) -> None: pass
 def g(a: 'A', *, b: 'B') -> None: pass
+def h(a: 'A', *, b: 'B', aa: 'A') -> None: pass
+def i(a: 'A', *, b: 'B', aa: 'A' = None) -> None: pass
 f(A(), b=B())
 f(b=B(), a=A())
 f(A())
@@ -124,10 +126,48 @@ g(A(), b=B())
 g(b=B(), a=A())
 g(A()) # E: Missing named argument "b" for function "g"
 g(A(), B()) # E: Too many positional arguments for "g"
+h(A()) # E: Missing named argument "b" for function "h" # E: Missing named argument "aa" for function "h"
+h(A(), b=B()) # E: Missing named argument "aa" for function "h"
+h(A(), aa=A()) # E: Missing named argument "b" for function "h"
+h(A(), b=B(), aa=A())
+h(A(), aa=A(), b=B())
+i(A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B())
+i(A(), aa=A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B(), aa=A())
+i(A(), aa=A(), b=B())
 
 class A: pass
 class B: pass
 
+[case testKeywordOnlyArgumentsFastparse]
+# flags: --fast-parser
+import typing
+def f(a: 'A', *, b: 'B' = None) -> None: pass
+def g(a: 'A', *, b: 'B') -> None: pass
+def h(a: 'A', *, b: 'B', aa: 'A') -> None: pass
+def i(a: 'A', *, b: 'B', aa: 'A' = None) -> None: pass
+f(A(), b=B())
+f(b=B(), a=A())
+f(A())
+f(A(), B()) # E: Too many positional arguments for "f"
+g(A(), b=B())
+g(b=B(), a=A())
+g(A()) # E: Missing named argument "b" for function "g"
+g(A(), B()) # E: Too many positional arguments for "g"
+h(A()) # E: Missing named argument "b" for function "h" # E: Missing named argument "aa" for function "h"
+h(A(), b=B()) # E: Missing named argument "aa" for function "h"
+h(A(), aa=A()) # E: Missing named argument "b" for function "h"
+h(A(), b=B(), aa=A())
+h(A(), aa=A(), b=B())
+i(A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B())
+i(A(), aa=A()) # E: Missing named argument "b" for function "i"
+i(A(), b=B(), aa=A())
+i(A(), aa=A(), b=B())
+
+class A: pass
+class B: pass
 
 [case testKwargsAfterBareArgs]
 from typing import Tuple, Any

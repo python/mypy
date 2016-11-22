@@ -363,15 +363,16 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
     """
 
     for i in range(len(input)):
-        m = re.search('# ([EN]):((?P<col>\d+):)? (?P<message>.*)$', input[i])
-        if m:
-            severity = 'error' if m.group(1) == 'E' else 'note'
-            col = m.group('col')
-            if col is None:
-                output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
-            else:
-                output.append('{}:{}:{}: {}: {}'.format(
-                    fnam, i + 1, col, severity, m.group('message')))
+        for possible_err_comment in input[i].split(' #'):
+            m = re.search(' ([EN]):((?P<col>\d+):)? (?P<message>.*)$', possible_err_comment)
+            if m:
+                severity = 'error' if m.group(1) == 'E' else 'note'
+                col = m.group('col')
+                if col is None:
+                    output.append('{}:{}: {}: {}'.format(fnam, i + 1, severity, m.group('message')))
+                else:
+                    output.append('{}:{}:{}: {}: {}'.format(
+                        fnam, i + 1, col, severity, m.group('message')))
 
 
 def fix_win_path(line: str) -> str:
