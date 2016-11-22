@@ -809,15 +809,16 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testTupleMeetTupleAny]
+# flags: --hide-error-context
 from typing import Union, Tuple
 class A: pass
 class B: pass
 
 def f(x: Union[B, Tuple[A, A]]) -> None:
     if isinstance(x, tuple):
-        reveal_type(x)
+        reveal_type(x) # E: Revealed type is 'Tuple[__main__.A, __main__.A]'
     else:
-        reveal_type(x)
+        reveal_type(x) # E: Revealed type is '__main__.B'
 
 def g(x: Union[str, Tuple[str, str]]) -> None:
     if isinstance(x, tuple):
@@ -827,24 +828,21 @@ def g(x: Union[str, Tuple[str, str]]) -> None:
 
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
-main:7: error: Revealed type is 'Tuple[__main__.A, __main__.A]'
-main:9: error: Revealed type is '__main__.B'
-main: note: In function "g":
 
 [case testTupleMeetTUpleAnyComplex]
+# flags: --hide-error-context
 from typing import Tuple, Union
 
 Pair = Tuple[int, int]
 Variant = Union[int, Pair]
 def tuplify(v: Variant) -> None:
-    reveal_type(v)
+    reveal_type(v) # E: Revealed type is 'Union[builtins.int, Tuple[builtins.int, builtins.int]]'
     if not isinstance(v, tuple):
-        reveal_type(v)
+        reveal_type(v) # E: Revealed type is 'builtins.int'
         v = (v, v)
-        reveal_type(v)
-    reveal_type(v)
-    reveal_type(v[0])
+        reveal_type(v) # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+    reveal_type(v) # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+    reveal_type(v[0]) # E: Revealed type is 'builtins.int'
 
 Pair2 = Tuple[int, str]
 Variant2 = Union[int, Pair2]
@@ -855,15 +853,9 @@ def tuplify2(v: Variant2) -> None:
         reveal_type(v) # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "tuplify":
-main:6: error: Revealed type is 'Union[builtins.int, Tuple[builtins.int, builtins.int]]'
-main:8: error: Revealed type is 'builtins.int'
-main:10: error: Revealed type is 'Tuple[builtins.int, builtins.int]'
-main:11: error: Revealed type is 'Tuple[builtins.int, builtins.int]'
-main:12: error: Revealed type is 'builtins.int'
-main: note: In function "tuplify2":
 
 [case testTupleMeetTupleAnyAfter]
+# flags: --hide-error-context
 from typing import Tuple, Union
 
 def good(blah: Union[Tuple[int, int], int]) -> None:
@@ -873,7 +865,6 @@ def good(blah: Union[Tuple[int, int], int]) -> None:
     reveal_type(blah) # E: Revealed type is 'Union[Tuple[builtins.int, builtins.int], builtins.int]'
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "good":
 
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
