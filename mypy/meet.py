@@ -227,6 +227,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                         return NoneTyp()
         elif isinstance(self.s, TypeType):
             return meet_types(t, self.s)
+        elif isinstance(self.s, TupleType):
+            return meet_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -243,6 +245,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
+        # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
+        elif (isinstance(self.s, Instance) and
+              self.s.type.fullname() == 'builtins.tuple' and self.s.args):
+            return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
         else:
             return self.default(self.s)
 
