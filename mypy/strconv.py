@@ -108,8 +108,8 @@ class StrConv(NodeVisitor[str]):
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> str:
         a = self.func_helper(o)
         a.insert(0, o.name())
-        arg_kinds = set([arg.kind for arg in o.arguments])
-        if len(arg_kinds & set([mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT])) > 0:
+        arg_kinds = {arg.kind for arg in o.arguments}
+        if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
         if o.is_abstract:
             a.insert(-1, 'Abstract')
