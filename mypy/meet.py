@@ -245,10 +245,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
-        # Special case: all Tuple[t1, t2, ...] are subtypes of plain tuple.
-        elif (isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.tuple'
-              and len(self.s.args) == 1 and isinstance(self.s.args[0], AnyType)):
-            return t
+        # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
+        elif (isinstance(self.s, Instance) and
+              self.s.type.fullname() == 'builtins.tuple' and self.s.args):
+            return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
         else:
             return self.default(self.s)
 

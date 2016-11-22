@@ -866,6 +866,26 @@ def good(blah: Union[Tuple[int, int], int]) -> None:
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testTupleMeetTupleVariable]
+from typing import Tuple, TypeVar, Generic, Union
+T = TypeVar('T')
+
+class A: pass
+class B1(A): pass
+class B2(A): pass
+class C: pass
+
+x = None # type: Tuple[A, ...]
+y = None # type: Tuple[Union[B1, C], Union[B2, C]]
+
+def g(x: T) -> Tuple[T, T]:
+    return (x, x)
+
+z = 1
+x, y = g(z) # E: Argument 1 to "g" has incompatible type "int"; expected "Tuple[B1, B2]"
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
