@@ -2,13 +2,17 @@
 
 from typing import Any, Dict, Optional
 
-from mypy.nodes import (MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
-                        TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
-                        TypeVarExpr, ClassDef,
-                        LDEF, MDEF, GDEF)
-from mypy.types import (CallableType, EllipsisType, Instance, Overloaded, TupleType,
-                        TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
-                        TypeType)
+from mypy.nodes import (
+    MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
+    TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
+    TypeVarExpr, ClassDef,
+    LDEF, MDEF, GDEF
+)
+from mypy.types import (
+    CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
+    TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
+    TypeType
+)
 from mypy.visitor import NodeVisitor
 
 
@@ -191,6 +195,13 @@ class TypeFixer(TypeVisitor[None]):
                 it.accept(self)
         if tt.fallback is not None:
             tt.fallback.accept(self)
+
+    def visit_typeddict_type(self, tdt: TypedDictType) -> None:
+        if tdt.items:
+            for it in tdt.items.values():
+                it.accept(self)
+        if tdt.fallback is not None:
+            tdt.fallback.accept(self)
 
     def visit_type_list(self, tl: TypeList) -> None:
         for t in tl.items:

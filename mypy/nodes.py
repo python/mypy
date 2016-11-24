@@ -1896,13 +1896,14 @@ class TypeInfo(SymbolNode):
     # object used for this class is not an Instance but a TupleType;
     # the corresponding Instance is set as the fallback type of the
     # tuple type.
-    tuple_type = None  # type: mypy.types.TupleType
+    tuple_type = None  # type: Optional[mypy.types.TupleType]
 
     # Is this a named tuple type?
     is_named_tuple = False
 
-    # Is this a typed dict type?
-    is_typed_dict = False
+    # If this class is defined by the TypedDict type constructor,
+    # then this is not None.
+    typeddict_type = None  # type: Optional[mypy.types.TypedDictType]
 
     # Is this a newtype type?
     is_newtype = False
@@ -1912,7 +1913,7 @@ class TypeInfo(SymbolNode):
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_typed_dict', 'is_newtype'
+        'is_newtype'
     ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2047,6 +2048,8 @@ class TypeInfo(SymbolNode):
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
+                'typeddict_type':
+                    None if self.typeddict_type is None else self.typeddict_type.serialize(),
                 'flags': get_flags(self, TypeInfo.FLAGS),
                 }
         return data
@@ -2067,6 +2070,8 @@ class TypeInfo(SymbolNode):
                        else mypy.types.Type.deserialize(data['_promote']))
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
+        ti.typeddict_type = (None if data['typeddict_type'] is None
+                            else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
         set_flags(ti, data['flags'])
         return ti
 

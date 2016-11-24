@@ -2,7 +2,7 @@ from typing import List, Dict, Callable
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
-    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded,
+    Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
@@ -184,6 +184,21 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return False
             if not is_subtype(left.fallback, right.fallback, self.check_type_parameter):
                 return False
+            return True
+        else:
+            return False
+
+    def visit_typeddict_type(self, left: TypedDictType) -> bool:
+        right = self.right
+        if isinstance(right, Instance):
+            return is_subtype(left.fallback, right, self.check_type_parameter)
+        elif isinstance(right, TypedDictType):
+            if not left.names_are_wider_than(right):
+                return False
+            for (_, l, r) in left.zip(right):
+                if not is_equivalent(l, r, self.check_type_parameter):
+                    return False
+            # (NOTE: Fallbacks don't matter.)
             return True
         else:
             return False

@@ -23,7 +23,7 @@ x[2] # E: Tuple index out of range
 [case testNamedTupleNoUnderscoreFields]
 from collections import namedtuple
 
-X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() Field names cannot start with an underscore: _y, _z
+X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() field names cannot start with an underscore: _y, _z
 
 [case testNamedTupleAccessingAttributes]
 from collections import namedtuple
