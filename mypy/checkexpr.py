@@ -666,15 +666,21 @@ class ExpressionChecker:
                 if messages:
                     messages.too_few_arguments(callee, context, actual_names)
                 ok = False
+            elif kind == nodes.ARG_NAMED and (not formal_to_actual[i] and
+                                              not is_unexpected_arg_error):
+                # No actual for a mandatory named formal
+                if messages:
+                    messages.missing_named_argument(callee, context, callee.arg_names[i])
+                ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
-                          nodes.ARG_NAMED] and is_duplicate_mapping(
+                          nodes.ARG_NAMED, nodes.ARG_NAMED_OPT] and is_duplicate_mapping(
                     formal_to_actual[i], actual_kinds):
                 if (self.chk.in_checked_function() or
                         isinstance(actual_types[formal_to_actual[i][0]], TupleType)):
                     if messages:
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
-            elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
+            elif (kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT) and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
@@ -1898,7 +1904,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
         if kind == nodes.ARG_POS:
             if j < ncallee:
                 if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
-                                       nodes.ARG_NAMED]:
+                                       nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
                     map[j].append(i)
                     j += 1
                 elif callee_kinds[j] == nodes.ARG_STAR:
@@ -1920,14 +1926,14 @@ def map_actuals_to_formals(caller_kinds: List[int],
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while j < ncallee:
-                    if callee_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_STAR2):
+                    if callee_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
                         break
                     else:
                         map[j].append(i)
                     if callee_kinds[j] == nodes.ARG_STAR:
                         break
                     j += 1
-        elif kind == nodes.ARG_NAMED:
+        elif kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
             name = caller_names[i]
             if name in callee_names:
                 map[callee_names.index(name)].append(i)

@@ -59,7 +59,7 @@ from mypy.nodes import (
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
@@ -1830,14 +1830,14 @@ class SemanticAnalyzer(NodeVisitor):
                 info.names[funcname] = SymbolTableNode(MDEF, func)
 
         add_method('_replace', ret=selftype,
-                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED) for var in vars])
+                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
         add_method('__init__', ret=NoneTyp(), name=info.name(),
                    args=[Argument(var, var.type, None, ARG_POS) for var in vars])
         add_method('_asdict', args=[], ret=ordereddictype)
         add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
-                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
-                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
+                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT),
+                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT)])
         return info
 
     def make_argument(self, name: str, type: Type) -> Argument:

@@ -1214,6 +1214,8 @@ ARG_STAR = 2  # type: int
 ARG_NAMED = 3  # type: int
 # **arg argument
 ARG_STAR2 = 4  # type: int
+# In an argument list, keyword-only and also optional
+ARG_NAMED_OPT = 5
 
 
 class CallExpr(Expression):

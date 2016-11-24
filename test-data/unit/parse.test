@@ -2340,7 +2340,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    def (x: A?, *, y: B?) -> None?
+    def (x: A?, *, y: B? =) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)
@@ -2357,7 +2357,7 @@ MypyFile:1(
     MaxPos(0)
     Args(
       Var(y))
-    def (*, y: B?) -> None?
+    def (*, y: B? =) -> None?
     Init(
       AssignmentStmt:1(
         NameExpr(y)
@@ -2375,7 +2375,6 @@ MypyFile:1(
     Args(
       Var(y))
     def (*, y: B?) -> None?
-    Init()
     Block:1(
       PassStmt:1())))
 

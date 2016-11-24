@@ -773,7 +773,7 @@ class Parser:
             self.expect('=')
             initializer = self.parse_expression(precedence[','])
             if require_named:
-                kind = nodes.ARG_NAMED
+                kind = nodes.ARG_NAMED_OPT
             else:
                 kind = nodes.ARG_OPT
         else:
