@@ -132,20 +132,24 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Context, severity: str, file: str = None) -> None:
+    def report(self, msg: str, context: Context, severity: str,
+               file: str = None, origin: Context = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file)
+                               msg.strip(), severity=severity, file=file,
+                               origin_line=origin.get_line() if origin else None)
 
-    def fail(self, msg: str, context: Context, file: str = None) -> None:
+    def fail(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file)
+        self.report(msg, context, 'error', file=file, origin=origin)
 
-    def note(self, msg: str, context: Context, file: str = None) -> None:
+    def note(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'note', file=file)
+        self.report(msg, context, 'note', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -551,7 +555,8 @@ class MessageBuilder:
             if fullname is not None and '.' in fullname:
                 module_name = fullname.rsplit('.', 1)[0]
                 path = self.modules[module_name].path
-                self.note('{} defined here'.format(callee.name), callee.definition, file=path)
+                self.note('{} defined here'.format(callee.name), callee.definition,
+                          file=path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
