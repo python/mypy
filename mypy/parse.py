@@ -14,6 +14,9 @@ from mypy.lex import (
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
     EllipsisToken
 )
+
+from mypy.sharedparse import special_function_elide_names
+
 from mypy.nodes import (
     MypyFile, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt, Statement,
@@ -419,7 +422,7 @@ class Parser:
             # for overloads of special methods, let people name their arguments
             # whatever they want, and don't let them call those functions with
             # arguments by name.
-            if _special_function_elide_names(name):
+            if special_function_elide_names(name):
                 arg_names = [None] * len(arg_names)
 
             body, comment_type = self.parse_block(allow_type=True)
@@ -541,7 +544,7 @@ class Parser:
         try:
             name_tok = self.expect_type(Name)
             name = name_tok.string
-            include_names = not _special_function_elide_names(name)
+            include_names = not special_function_elide_names(name)
 
             self.errors.push_function(name)
 
@@ -1965,12 +1968,6 @@ class Parser:
             return type
         else:
             return None
-
-
-def _special_function_elide_names(name: str) -> bool:
-    if name == "__init__" or name == "__new__":
-        return False
-    return name.startswith("__") and name.endswith("__")
 
 
 def token_repr(tok: Token) -> str:
