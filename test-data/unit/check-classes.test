@@ -2265,3 +2265,11 @@ class D(A):
 [out]
 main: note: In class "D":
 main:9: error: Incompatible types in assignment (expression has type "int", variable has type "bool")
+
+[case testVariableOverwriteAny]
+from typing import Any
+class A:
+    a = 1
+class B(A):
+    a = 'x'  # type: Any
+[out]
