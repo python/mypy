@@ -11,12 +11,12 @@ if sys.version_info < (3, 2, 0):
 
 from distutils.core import setup
 from distutils.command.build_py import build_py
-from mypy.version import __version__
+from mypy.version import base_version
 from mypy import git
 
 git.verify_git_integrity_or_abort(".")
 
-version = __version__
+version = base_version
 description = 'Optional static typing for Python'
 long_description = '''
 Mypy -- Optional Static Typing for Python
@@ -83,6 +83,7 @@ classifiers = [
     'Programming Language :: Python :: 3.5',
     'Topic :: Software Development',
 ]
+
 
 package_dir = {'mypy': 'mypy'}
 if sys.version_info < (3, 5, 0):

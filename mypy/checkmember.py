@@ -3,7 +3,7 @@
 from typing import cast, Callable, List, Optional, TypeVar
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, CallableType, FunctionLike, TypeVarDef,
+    Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
     DeletedType, NoneTyp, TypeType, function_type
 )
@@ -35,9 +35,9 @@ def analyze_member_access(name: str,
                           is_operator: bool,
                           builtin_type: Callable[[str], Instance],
                           not_ready_callback: Callable[[str, Context], None],
-                          msg: MessageBuilder,
+                          msg: MessageBuilder, *,
+                          original_type: Type,
                           override_info: TypeInfo = None,
-                          original_type: Type = None,
                           chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Return the type of attribute `name` of typ.
 
@@ -53,7 +53,6 @@ def analyze_member_access(name: str,
     the fallback type, for example.
     original_type is always the type used in the initial call.
     """
-    original_type = original_type or typ
     if isinstance(typ, Instance):
         if name == '__init__' and not is_super:
             # Accessing __init__ in statically typed code would compromise
@@ -78,7 +77,7 @@ def analyze_member_access(name: str,
             if method.is_property:
                 assert isinstance(method, OverloadedFuncDef)
                 return analyze_var(name, method.items[0].var, typ, info, node, is_lvalue, msg,
-                                   not_ready_callback)
+                                   original_type, not_ready_callback)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
@@ -111,14 +110,20 @@ def analyze_member_access(name: str,
         msg.disable_type_names += 1
         results = [analyze_member_access(name, subtype, node, is_lvalue, is_super,
                                          is_operator, builtin_type, not_ready_callback, msg,
-                                         chk=chk)
+                                         original_type=original_type, chk=chk)
                    for subtype in typ.items]
         msg.disable_type_names -= 1
         return UnionType.make_simplified_union(results)
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg, chk=chk)
+                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     original_type=original_type, chk=chk)
+    elif isinstance(typ, TypedDictType):
+        # Actually look up from the fallback instance type.
+        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                     is_operator, builtin_type, not_ready_callback, msg,
+                                     original_type=original_type, chk=chk)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?
@@ -193,7 +198,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                               builtin_type: Callable[[str], Instance],
                               not_ready_callback: Callable[[str, Context], None],
                               msg: MessageBuilder,
-                              original_type: Type = None,
+                              original_type: Type,
                               chk: 'mypy.checker.TypeChecker' = None) -> Type:
     """Analyse attribute access that does not target a method.
 
@@ -201,7 +206,6 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
     original_type is the type of E in the expression E.var
     """
-    original_type = original_type or itype
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, is_lvalue)
 
@@ -210,7 +214,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         # The associated Var node of a decorator contains the type.
         v = vv.var
     if isinstance(v, Var):
-        return analyze_var(name, v, itype, info, node, is_lvalue, msg, not_ready_callback)
+        return analyze_var(name, v, itype, info, node, is_lvalue, msg,
+                           original_type, not_ready_callback)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__']:
@@ -238,16 +243,14 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
-               is_lvalue: bool, msg: MessageBuilder,
-               not_ready_callback: Callable[[str, Context], None],
-               original_type: Type = None) -> Type:
+                is_lvalue: bool, msg: MessageBuilder, original_type: Type,
+                not_ready_callback: Callable[[str, Context], None]) -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
 
     original_type is the type of E in the expression E.var
     """
-    original_type = original_type or itype
     # Found a member variable.
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
@@ -303,7 +306,7 @@ def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: Messag
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str,
-                                  is_lvalue: bool) -> SymbolNode:
+                                  is_lvalue: bool) -> Optional[SymbolNode]:
     """Find the attribute/accessor node that refers to a member of a type."""
     # TODO handle lvalues
     node = info.get(name)
@@ -349,7 +352,7 @@ def analyze_class_attribute_access(itype: Instance,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder,
-                                   original_type: Type = None) -> Type:
+                                   original_type: Type) -> Type:
     """original_type is the type of E in the expression E.var"""
     node = itype.type.get(name)
     if not node:
@@ -394,7 +397,7 @@ def analyze_class_attribute_access(itype: Instance,
 
 def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
                     builtin_type: Callable[[str], Instance],
-                    original_type: Type = None) -> Type:
+                    original_type: Type) -> Type:
     """Instantiate type variables during analyze_class_attribute_access,
     e.g T and Q in the following:
 
@@ -408,21 +411,19 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
 
     original_type is the value of the type B in the expression B.foo()
     """
-    # TODO: verify consistency betweem Q and T
+    # TODO: verify consistency between Q and T
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        vars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
-                for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
+        tvars = [TypeVarDef(n, i + 1, None, builtin_type('builtins.object'), tv.variance)
+                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
-            if not isinstance(original_type, TypeType):
-                original_type = TypeType(itype)
             t = bind_self(t, original_type)
-        return t.copy_modified(variables=vars + t.variables)
+        return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(CallableType, add_class_tvars(i, itype, is_classmethod,
+        return Overloaded([cast(CallableType, add_class_tvars(item, itype, is_classmethod,
                                                               builtin_type, original_type))
-                           for i in t.items()])
+                           for item in t.items()])
     return t
 
 
@@ -576,15 +577,15 @@ def bind_self(method: F, original_type: Type = None) -> F:
         return cast(F, func)
     if func.arg_kinds[0] == ARG_STAR:
         # The signature is of the form 'def foo(*args, ...)'.
-        # In this case we shouldn'func drop the first arg,
+        # In this case we shouldn't drop the first arg,
         # since func will be absorbed by the *args.
 
         # TODO: infer bounds on the type of *args?
         return cast(F, func)
     self_param_type = func.arg_types[0]
     if func.variables and (isinstance(self_param_type, TypeVarType) or
-            (isinstance(self_param_type, TypeType) and
-             isinstance(self_param_type.item, TypeVarType))):
+                           (isinstance(self_param_type, TypeType) and
+                            isinstance(self_param_type.item, TypeVarType))):
         if original_type is None:
             # Type check method override
             # XXX value restriction as union?
@@ -604,10 +605,10 @@ def bind_self(method: F, original_type: Type = None) -> F:
         ret_type = func.ret_type
         variables = func.variables
     res = func.copy_modified(arg_types=arg_types,
-                          arg_kinds=func.arg_kinds[1:],
-                          arg_names=func.arg_names[1:],
-                          variables=variables,
-                          ret_type=ret_type)
+                             arg_kinds=func.arg_kinds[1:],
+                             arg_names=func.arg_names[1:],
+                             variables=variables,
+                             ret_type=ret_type)
     return cast(F, res)
 
 

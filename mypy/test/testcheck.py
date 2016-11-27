@@ -54,6 +54,7 @@ files = [
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-typeddict.test',
     'check-type-aliases.test',
     'check-ignore.test',
     'check-type-promotion.test',
@@ -107,7 +108,11 @@ class TypeCheckSuite(DataSuite):
             finally:
                 experiments.STRICT_OPTIONAL = False
         else:
-            self.run_case_once(testcase)
+            try:
+                old_strict_optional = experiments.STRICT_OPTIONAL
+                self.run_case_once(testcase)
+            finally:
+                experiments.STRICT_OPTIONAL = old_strict_optional
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR

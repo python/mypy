@@ -80,6 +80,8 @@ class Sequence(Iterable[T], Generic[T]):
 
 class Mapping(Generic[T, U]): pass
 
+class MutableMapping(Generic[T, U]): pass
+
 def NewType(name: str, tp: Type[T]) -> Callable[[T], T]:
     def new_type(x):
         return x

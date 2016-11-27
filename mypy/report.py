@@ -131,6 +131,7 @@ class LineCountReporter(AbstractReporter):
                 f.write('{:7} {:7} {:6} {:6} {}\n'.format(
                     c[0], c[1], c[2], c[3], p))
 
+
 register_reporter('linecount', LineCountReporter)
 
 
@@ -240,6 +241,7 @@ class LineCoverageReporter(AbstractReporter):
         with open(os.path.join(self.output_dir, 'coverage.json'), 'w') as f:
             json.dump({'lines': self.lines_covered}, f)
 
+
 register_reporter('linecoverage', LineCoverageReporter)
 
 
@@ -255,6 +257,7 @@ class OldHtmlReporter(AbstractReporter):
 
     def on_finish(self) -> None:
         stats.generate_html_index(self.output_dir)
+
 
 register_reporter('old-html', OldHtmlReporter)
 
@@ -345,6 +348,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.schema.assertValid(doc)
 
         self.last_xml = doc
+
 
 register_reporter('memory-xml', MemoryXmlReporter, needs_lxml=True)
 
@@ -466,6 +470,7 @@ class CoberturaXmlReporter(AbstractReporter):
         self.doc.write(out_path, encoding='utf-8', pretty_print=True)
         print('Generated Cobertura report:', os.path.abspath(out_path))
 
+
 register_reporter('cobertura-xml', CoberturaXmlReporter, needs_lxml=True)
 
 
@@ -511,6 +516,7 @@ class XmlReporter(AbstractXmlReporter):
         shutil.copyfile(self.memory_xml.css_html_path, out_css)
         print('Generated XML report:', os.path.abspath(out_path))
 
+
 register_reporter('xml', XmlReporter, needs_lxml=True)
 
 
@@ -550,6 +556,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
         shutil.copyfile(self.memory_xml.css_html_path, out_css)
         print('Generated HTML report (via XSLT):', os.path.abspath(out_path))
 
+
 register_reporter('xslt-html', XsltHtmlReporter, needs_lxml=True)
 
 
@@ -575,6 +582,7 @@ class XsltTxtReporter(AbstractXmlReporter):
         with open(out_path, 'wb') as out_file:
             out_file.write(transformed_txt)
         print('Generated TXT report (via XSLT):', os.path.abspath(out_path))
+
 
 register_reporter('xslt-txt', XsltTxtReporter, needs_lxml=True)
 

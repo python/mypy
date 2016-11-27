@@ -23,7 +23,7 @@ x[2] # E: Tuple index out of range
 [case testNamedTupleNoUnderscoreFields]
 from collections import namedtuple
 
-X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() Field names cannot start with an underscore: _y, _z
+X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() field names cannot start with an underscore: _y, _z
 
 [case testNamedTupleAccessingAttributes]
 from collections import namedtuple
@@ -283,7 +283,6 @@ reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.s
 x._replace(x=5)
 x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
 
-
 [case testNamedTupleMake]
 from typing import NamedTuple
 
@@ -291,7 +290,7 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
 
--- # FIX: not a proper class method 
+-- # FIX: not a proper class method
 -- x = None  # type: X
 -- reveal_type(x._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 -- x._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
@@ -367,3 +366,50 @@ class D(NamedTuple('D', []), A): pass
 g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
 y = None  # type: C
 y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+
+[case testNamedTupleSelfTypeMethod]
+from typing import TypeVar, NamedTuple
+
+T = TypeVar('T', bound='A')
+
+class A(NamedTuple('A', [('x', str)])):
+    def member(self: T) -> T:
+        return self
+
+class B(A):
+    pass
+
+a = None  # type: A
+a = A('').member()
+b = None  # type: B
+b = B('').member()
+a = B('')
+a = B('').member()
+
+[case testNamedTupleSelfTypeReplace]
+from typing import NamedTuple, TypeVar
+A = NamedTuple('A', [('x', str)])
+reveal_type(A('hello')._replace(x=''))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.A]'
+a = None  # type: A
+a = A('hello')._replace(x='')
+
+class B(A):
+    pass
+
+reveal_type(B('hello')._replace(x=''))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.B]'
+b = None  # type: B
+b = B('hello')._replace(x='')
+
+[case testNamedTupleSelfTypeMake]
+from typing import NamedTuple, TypeVar
+A = NamedTuple('A', [('x', str)])
+reveal_type(A._make(['']))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.A]'
+a = A._make([''])  # type: A
+
+class B(A):
+    pass
+
+reveal_type(B._make(['']))  # E: Revealed type is 'Tuple[builtins.str, fallback=__main__.B]'
+b = B._make([''])  # type: B
+
+[builtins fixtures/list.pyi]

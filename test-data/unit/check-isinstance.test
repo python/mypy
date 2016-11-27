@@ -391,7 +391,7 @@ def f(x: Union[List[int], List[str], int]) -> None:
     else:
         x[0] # E: Value of type "int" is not indexable
         x + 1
-    x[0] # E: Value of type "int" is not indexable
+    x[0] # E: Value of type "Union[List[int], List[str], int]" is not indexable
     x + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 [out]

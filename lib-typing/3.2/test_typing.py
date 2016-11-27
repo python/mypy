@@ -45,6 +45,10 @@ class BaseTestCase(TestCase):
                 message += ' : %s' % msg
             raise self.failureException(message)
 
+    def clear_caches(self):
+        for f in typing._cleanups:
+            f()
+
 
 class Employee:
     pass
@@ -378,6 +382,16 @@ class CallableTests(BaseTestCase):
         with self.assertRaises(TypeError):
             type(c)()
 
+    def test_callable_wrong_forms(self):
+        with self.assertRaises(TypeError):
+            Callable[[...], int]
+        with self.assertRaises(TypeError):
+            Callable[(), int]
+        with self.assertRaises(TypeError):
+            Callable[[()], int]
+        with self.assertRaises(TypeError):
+            Callable[[int, 1], 2]
+
     def test_callable_instance_works(self):
         def f():
             pass
@@ -499,6 +513,13 @@ class ProtocolTests(BaseTestCase):
     def test_protocol_instance_type_error(self):
         with self.assertRaises(TypeError):
             isinstance(0, typing.SupportsAbs)
+        class C1(typing.SupportsInt):
+            def __int__(self) -> int:
+                return 42
+        class C2(C1):
+            pass
+        c = C2()
+        self.assertIsInstance(c, C1)
 
 
 class GenericTests(BaseTestCase):
@@ -733,12 +754,17 @@ class GenericTests(BaseTestCase):
         self.assertEqual(repr(Callable[[], List[T]][int]).replace('typing.', ''),
                          'Callable[[], List[int]]')
 
-    def test_generic_forvard_ref(self):
-        def foobar(x: List[List['T']]): ...
+    def test_generic_forward_ref(self):
+        def foobar(x: List[List['CC']]): ...
+        class CC: ...
+        self.assertEqual(get_type_hints(foobar, globals(), locals()), {'x': List[List[CC]]})
         T = TypeVar('T')
-        self.assertEqual(get_type_hints(foobar, globals(), locals()), {'x': List[List[T]]})
-        def barfoo(x: Tuple[T, ...]): ...
-        self.assertIs(get_type_hints(barfoo, globals(), locals())['x'], Tuple[T, ...])
+        AT = Tuple[T, ...]
+        def barfoo(x: AT): ...
+        self.assertIs(get_type_hints(barfoo, globals(), locals())['x'], AT)
+        CT = Callable[..., List[T]]
+        def barfoo2(x: CT): ...
+        self.assertIs(get_type_hints(barfoo2, globals(), locals())['x'], CT)
 
     def test_extended_generic_rules_subclassing(self):
         class T1(Tuple[T, KT]): ...
@@ -789,6 +815,8 @@ class GenericTests(BaseTestCase):
 
     def test_type_erasure_special(self):
         T = TypeVar('T')
+        # this is the only test that checks type caching
+        self.clear_caches()
         class MyTup(Tuple[T, T]): ...
         self.assertIs(MyTup[int]().__class__, MyTup)
         self.assertIs(MyTup[int]().__orig_class__, MyTup[int])
@@ -1296,9 +1324,10 @@ PY36 = sys.version_info[:2] >= (3, 6)
 
 PY36_TESTS = """
 from test import ann_module, ann_module2, ann_module3
-from collections import ChainMap
 
-class B:
+class A:
+    y: float
+class B(A):
     x: ClassVar[Optional['B']] = None
     y: int
 class CSub(B):
@@ -1317,6 +1346,15 @@ if PY36:
 gth = get_type_hints
 
 class GetTypeHintTests(BaseTestCase):
+    def test_get_type_hints_from_various_objects(self):
+        # For invalid objects should fail with TypeError (not AttributeError etc).
+        with self.assertRaises(TypeError):
+            gth(123)
+        with self.assertRaises(TypeError):
+            gth('abc')
+        with self.assertRaises(TypeError):
+            gth(None)
+
     @skipUnless(PY36, 'Python 3.6 required')
     def test_get_type_hints_modules(self):
         self.assertEqual(gth(ann_module), {1: 2, 'f': Tuple[int, int], 'x': int, 'y': str})
@@ -1326,18 +1364,15 @@ class GetTypeHintTests(BaseTestCase):
     @skipUnless(PY36, 'Python 3.6 required')
     def test_get_type_hints_classes(self):
         self.assertEqual(gth(ann_module.C, ann_module.__dict__),
-                         ChainMap({'y': Optional[ann_module.C]}, {}))
-        self.assertEqual(repr(gth(ann_module.j_class)), 'ChainMap({}, {})')
-        self.assertEqual(gth(ann_module.M), ChainMap({'123': 123, 'o': type},
-                                                     {}, {}))
+                         {'y': Optional[ann_module.C]})
+        self.assertIsInstance(gth(ann_module.j_class), dict)
+        self.assertEqual(gth(ann_module.M), {'123': 123, 'o': type})
         self.assertEqual(gth(ann_module.D),
-                         ChainMap({'j': str, 'k': str,
-                                   'y': Optional[ann_module.C]}, {}))
-        self.assertEqual(gth(ann_module.Y), ChainMap({'z': int}, {}))
+                         {'j': str, 'k': str, 'y': Optional[ann_module.C]})
+        self.assertEqual(gth(ann_module.Y), {'z': int})
         self.assertEqual(gth(ann_module.h_class),
-                         ChainMap({}, {'y': Optional[ann_module.C]}, {}))
-        self.assertEqual(gth(ann_module.S), ChainMap({'x': str, 'y': str},
-                                                     {}))
+                         {'y': Optional[ann_module.C]})
+        self.assertEqual(gth(ann_module.S), {'x': str, 'y': str})
         self.assertEqual(gth(ann_module.foo), {'x': int})
 
     @skipUnless(PY36, 'Python 3.6 required')
@@ -1355,20 +1390,34 @@ class GetTypeHintTests(BaseTestCase):
         class Der(ABase): ...
         self.assertEqual(gth(ABase.meth), {'x': int})
 
+    def test_get_type_hints_for_builins(self):
+        # Should not fail for built-in classes and functions.
+        self.assertEqual(gth(int), {})
+        self.assertEqual(gth(type), {})
+        self.assertEqual(gth(dir), {})
+        self.assertEqual(gth(len), {})
 
     def test_previous_behavior(self):
         def testf(x, y): ...
         testf.__annotations__['x'] = 'int'
         self.assertEqual(gth(testf), {'x': int})
 
+    def test_get_type_hints_for_object_with_annotations(self):
+        class A: ...
+        class B: ...
+        b = B()
+        b.__annotations__ = {'x': 'A'}
+        self.assertEqual(gth(b, locals()), {'x': A})
+
     @skipUnless(PY36, 'Python 3.6 required')
     def test_get_type_hints_ClassVar(self):
+        self.assertEqual(gth(ann_module2.CV, ann_module2.__dict__),
+                         {'var': typing.ClassVar[ann_module2.CV]})
         self.assertEqual(gth(B, globals()),
-                         ChainMap({'y': int, 'x': ClassVar[Optional[B]]}, {}))
+                         {'y': int, 'x': ClassVar[Optional[B]]})
         self.assertEqual(gth(CSub, globals()),
-                         ChainMap({'z': ClassVar[CSub]},
-                                  {'y': int, 'x': ClassVar[Optional[B]]}, {}))
-        self.assertEqual(gth(G), ChainMap({'lst': ClassVar[List[T]]},{},{}))
+                         {'z': ClassVar[CSub], 'y': int, 'x': ClassVar[Optional[B]]})
+        self.assertEqual(gth(G), {'lst': ClassVar[List[T]]})
 
 
 class CollectionsAbcTests(BaseTestCase):
@@ -1832,6 +1881,20 @@ class NamedTupleTests(BaseTestCase):
         self.assertEqual(CoolEmployee.__name__, 'CoolEmployee')
         self.assertEqual(CoolEmployee._fields, ('name', 'cool'))
         self.assertEqual(CoolEmployee._field_types, dict(name=str, cool=int))
+
+    @skipUnless(PY36, 'Python 3.6 required')
+    def test_namedtuple_keyword_usage(self):
+        LocalEmployee = NamedTuple("LocalEmployee", name=str, age=int)
+        nick = LocalEmployee('Nick', 25)
+        self.assertIsInstance(nick, tuple)
+        self.assertEqual(nick.name, 'Nick')
+        self.assertEqual(LocalEmployee.__name__, 'LocalEmployee')
+        self.assertEqual(LocalEmployee._fields, ('name', 'age'))
+        self.assertEqual(LocalEmployee._field_types, dict(name=str, age=int))
+        with self.assertRaises(TypeError):
+            NamedTuple('Name', [('x', int)], y=str)
+        with self.assertRaises(TypeError):
+            NamedTuple('Name', x=1, y='a')
 
     def test_pickle(self):
         global Emp  # pickle wants to reference the class by name

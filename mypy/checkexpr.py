@@ -1,10 +1,11 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
+from collections import OrderedDict
 from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
+    TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type,
     get_typ_args, set_typ_args,
@@ -169,6 +170,10 @@ class ExpressionChecker:
         if e.analyzed:
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.chk.type_context[-1])
+        if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
+                e.callee.node.typeddict_type is not None:
+            return self.check_typeddict_call(e.callee.node.typeddict_type,
+                                             e.arg_kinds, e.arg_names, e.args, e)
         self.try_infer_partial_type(e)
         callee_type = self.accept(e.callee)
         if (self.chk.options.disallow_untyped_calls and
@@ -177,6 +182,80 @@ class ExpressionChecker:
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
         return self.check_call_expr_with_callee_type(callee_type, e)
+
+    def check_typeddict_call(self, callee: TypedDictType,
+                             arg_kinds: List[int],
+                             arg_names: List[str],
+                             args: List[Expression],
+                             context: Context) -> Type:
+        if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
+            # ex: Point(x=42, y=1337)
+            item_names = arg_names
+            item_args = args
+            return self.check_typeddict_call_with_kwargs(
+                callee, OrderedDict(zip(item_names, item_args)), context)
+
+        if len(args) == 1 and arg_kinds[0] == ARG_POS:
+            unique_arg = args[0]
+            if isinstance(unique_arg, DictExpr):
+                # ex: Point({'x': 42, 'y': 1337})
+                return self.check_typeddict_call_with_dict(callee, unique_arg, context)
+            if isinstance(unique_arg, CallExpr) and isinstance(unique_arg.analyzed, DictExpr):
+                # ex: Point(dict(x=42, y=1337))
+                return self.check_typeddict_call_with_dict(callee, unique_arg.analyzed, context)
+
+        if len(args) == 0:
+            # ex: EmptyDict()
+            return self.check_typeddict_call_with_kwargs(
+                callee, OrderedDict(), context)
+
+        self.chk.fail(messages.INVALID_TYPEDDICT_ARGS, context)
+        return AnyType()
+
+    def check_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> Type:
+        item_name_exprs = [item[0] for item in kwargs.items]
+        item_args = [item[1] for item in kwargs.items]
+
+        item_names = []  # List[str]
+        for item_name_expr in item_name_exprs:
+            if not isinstance(item_name_expr, StrExpr):
+                self.chk.fail(messages.TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL, item_name_expr)
+                return AnyType()
+            item_names.append(item_name_expr.value)
+
+        return self.check_typeddict_call_with_kwargs(
+            callee, OrderedDict(zip(item_names, item_args)), context)
+
+    def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
+                                         kwargs: 'OrderedDict[str, Expression]',
+                                         context: Context) -> Type:
+        if callee.items.keys() != kwargs.keys():
+            callee_item_names = callee.items.keys()
+            kwargs_item_names = kwargs.keys()
+
+            self.msg.typeddict_instantiated_with_unexpected_items(
+                expected_item_names=list(callee_item_names),
+                actual_item_names=list(kwargs_item_names),
+                context=context)
+            return AnyType()
+
+        items = OrderedDict()  # type: OrderedDict[str, Type]
+        for (item_name, item_expected_type) in callee.items.items():
+            item_value = kwargs[item_name]
+
+            item_actual_type = self.chk.check_simple_assignment(
+                lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
+                msg=messages.INCOMPATIBLE_TYPES,
+                lvalue_name='TypedDict item "{}"'.format(item_name),
+                rvalue_name='expression')
+            items[item_name] = item_actual_type
+
+        mapping_value_type = join.join_type_list(list(items.values()))
+        fallback = self.chk.named_generic_type('typing.Mapping',
+                                               [self.chk.str_type(), mapping_value_type])
+        return TypedDictType(items, fallback)
 
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
@@ -323,8 +402,9 @@ class ExpressionChecker:
                     callee)
         elif isinstance(callee, Instance):
             call_function = analyze_member_access('__call__', callee, context,
-                                         False, False, False, self.named_type,
-                                         self.not_ready_callback, self.msg, chk=self.chk)
+                                                  False, False, False, self.named_type,
+                                                  self.not_ready_callback, self.msg,
+                                                  original_type=callee, chk=self.chk)
             return self.check_call(call_function, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeVarType):
@@ -665,15 +745,21 @@ class ExpressionChecker:
                 if messages:
                     messages.too_few_arguments(callee, context, actual_names)
                 ok = False
+            elif kind == nodes.ARG_NAMED and (not formal_to_actual[i] and
+                                              not is_unexpected_arg_error):
+                # No actual for a mandatory named formal
+                if messages:
+                    messages.missing_named_argument(callee, context, callee.arg_names[i])
+                ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
-                          nodes.ARG_NAMED] and is_duplicate_mapping(
+                          nodes.ARG_NAMED, nodes.ARG_NAMED_OPT] and is_duplicate_mapping(
                     formal_to_actual[i], actual_kinds):
                 if (self.chk.in_checked_function() or
                         isinstance(actual_types[formal_to_actual[i][0]], TupleType)):
                     if messages:
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
-            elif (kind == nodes.ARG_NAMED and formal_to_actual[i] and
+            elif (kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT) and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
@@ -896,10 +982,11 @@ class ExpressionChecker:
             return self.analyze_ref_expr(e)
         else:
             # This is a reference to a non-module attribute.
-            return analyze_member_access(e.name, self.accept(e.expr), e,
+            original_type = self.accept(e.expr)
+            return analyze_member_access(e.name, original_type, e,
                                          is_lvalue, False, False,
                                          self.named_type, self.not_ready_callback, self.msg,
-                                         chk=self.chk)
+                                         original_type=original_type, chk=self.chk)
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
@@ -909,7 +996,7 @@ class ExpressionChecker:
         # TODO remove; no private definitions in mypy
         return analyze_member_access(member, base_type, context, False, False, False,
                                      self.named_type, self.not_ready_callback, self.msg,
-                                     chk=self.chk)
+                                     original_type=base_type, chk=self.chk)
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
@@ -1070,7 +1157,7 @@ class ExpressionChecker:
         """
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
-                                            chk=self.chk)
+                                            original_type=base_type, chk=self.chk)
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors)
 
@@ -1670,8 +1757,8 @@ class ExpressionChecker:
                                                  is_lvalue=False, is_super=True, is_operator=False,
                                                  builtin_type=self.named_type,
                                                  not_ready_callback=self.not_ready_callback,
-                                                 msg=self.msg, override_info=base, chk=self.chk,
-                                                 original_type=declared_self)
+                                                 msg=self.msg, override_info=base,
+                                                 original_type=declared_self, chk=self.chk)
             assert False, 'unreachable'
         else:
             # Invalid super. This has been reported by the semantic analyzer.
@@ -1896,7 +1983,7 @@ def map_actuals_to_formals(caller_kinds: List[int],
         if kind == nodes.ARG_POS:
             if j < ncallee:
                 if callee_kinds[j] in [nodes.ARG_POS, nodes.ARG_OPT,
-                                       nodes.ARG_NAMED]:
+                                       nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
                     map[j].append(i)
                     j += 1
                 elif callee_kinds[j] == nodes.ARG_STAR:
@@ -1918,14 +2005,14 @@ def map_actuals_to_formals(caller_kinds: List[int],
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while j < ncallee:
-                    if callee_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_STAR2):
+                    if callee_kinds[j] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
                         break
                     else:
                         map[j].append(i)
                     if callee_kinds[j] == nodes.ARG_STAR:
                         break
                     j += 1
-        elif kind == nodes.ARG_NAMED:
+        elif kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
             name = caller_names[i]
             if name in callee_names:
                 map[callee_names.index(name)].append(i)

@@ -3,11 +3,21 @@
 Dealing with common issues
 ==========================
 
-Statically typed function bodies are often identical to normal Python
-code, but sometimes you need to do things slightly differently. This
-section has examples of cases when you need to update your code
-to use static typing, and ideas for working
-around issues if the type checker gets confused about your code.
+This section has examples of cases when you need to update your code
+to use static typing, and ideas for working around issues if mypy
+doesn't work as expected. Statically typed code is often identical to
+normal Python code, but sometimes you need to do things slightly
+differently.
+
+Can't install mypy using pip
+----------------------------
+
+If installation fails, you've probably hit one of these issues:
+
+* The package name is **mypy-lang** -- *not* just mypy.
+* Mypy needs Python 3.3 or later to run.
+* You may have to run pip like this:
+  ``python3 -m pip install mypy-lang``.
 
 .. _annotations_needed:
 
@@ -299,7 +309,7 @@ Displaying the type of an expression
 
 You can use ``reveal_type(expr)`` to ask mypy to display the inferred
 static type of an expression. This can be useful when you don't quite
-understand how mypy handles a particlar piece of code. Example:
+understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
@@ -354,3 +364,19 @@ File ``bar.py``:
 
    The ``TYPE_CHECKING`` constant defined by the ``typing`` module
    is ``False`` at runtime but ``True`` while type checking.
+
+Python 3.5.1 doesn't have ``typing.TYPE_CHECKING``. An alternative is
+to define a constant named ``MYPY`` that has the value ``False``
+at runtime. Mypy considers it to be ``True`` when type checking.
+Here's the above example modified to use ``MYPY``:
+
+.. code-block:: python
+
+   from typing import List
+
+   MYPY = False
+   if MYPY:
+       import bar
+
+   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
+       return [arg]

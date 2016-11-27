@@ -10,8 +10,8 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 
 from mypy.errors import Errors
 from mypy.types import (
-    Type, CallableType, Instance, TypeVarType, TupleType, UnionType, Void, NoneTyp, AnyType,
-    Overloaded, FunctionLike, DeletedType, TypeType
+    Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
+    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -72,6 +72,10 @@ ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more 
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
     'Keyword argument only valid with "str" key type in call to "dict"'
 ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
+INVALID_TYPEDDICT_ARGS = \
+    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
+TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
+    'Expected TypedDict item name to be string literal'
 
 
 class MessageBuilder:
@@ -128,20 +132,24 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
-    def report(self, msg: str, context: Context, severity: str, file: str = None) -> None:
+    def report(self, msg: str, context: Context, severity: str,
+               file: str = None, origin: Context = None) -> None:
         """Report an error or note (unless disabled)."""
         if self.disable_count <= 0:
             self.errors.report(context.get_line() if context else -1,
                                context.get_column() if context else -1,
-                               msg.strip(), severity=severity, file=file)
+                               msg.strip(), severity=severity, file=file,
+                               origin_line=origin.get_line() if origin else None)
 
-    def fail(self, msg: str, context: Context, file: str = None) -> None:
+    def fail(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', file=file)
+        self.report(msg, context, 'error', file=file, origin=origin)
 
-    def note(self, msg: str, context: Context, file: str = None) -> None:
+    def note(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'note', file=file)
+        self.report(msg, context, 'note', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -204,8 +212,8 @@ class MessageBuilder:
                 # interpreted as a normal word.
                 return '"{}"'.format(base_str)
             elif itype.type.fullname() == 'builtins.tuple':
-                item_type = strip_quotes(self.format(itype.args[0]))
-                return 'Tuple[{}, ...]'.format(item_type)
+                item_type_str = strip_quotes(self.format(itype.args[0]))
+                return 'Tuple[{}, ...]'.format(item_type_str)
             elif itype.type.fullname() in reverse_type_aliases:
                 alias = reverse_type_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
@@ -239,6 +247,15 @@ class MessageBuilder:
                 return s
             else:
                 return 'tuple(length {})'.format(len(items))
+        elif isinstance(typ, TypedDictType):
+            # If the TypedDictType is named, return the name
+            if typ.fallback.type.fullname() != 'typing.Mapping':
+                return self.format_simple(typ.fallback)
+            items = []
+            for (item_name, item_type) in typ.items.items():
+                items.append('{}={}'.format(item_name, strip_quotes(self.format(item_type))))
+            s = '"TypedDict({})"'.format(', '.join(items))
+            return s
         elif isinstance(typ, UnionType):
             # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
@@ -508,6 +525,12 @@ class MessageBuilder:
                 msg += ' for {}'.format(callee.name)
         self.fail(msg, context)
 
+    def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
+        msg = 'Missing named argument "{}"'.format(name)
+        if callee.name:
+            msg += ' for function {}'.format(callee.name)
+        self.fail(msg, context)
+
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments'
         if callee.name:
@@ -532,7 +555,8 @@ class MessageBuilder:
             if fullname is not None and '.' in fullname:
                 module_name = fullname.rsplit('.', 1)[0]
                 path = self.modules[module_name].path
-                self.note('{} defined here'.format(callee.name), callee.definition, file=path)
+                self.note('{} defined here'.format(callee.name), callee.definition,
+                          file=path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
@@ -787,6 +811,13 @@ class MessageBuilder:
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.note('Redundant cast to {}'.format(self.format(typ)), context)
+
+    def typeddict_instantiated_with_unexpected_items(self,
+                                                     expected_item_names: List[str],
+                                                     actual_item_names: List[str],
+                                                     context: Context) -> None:
+        self.fail('Expected items {} but found {}.'.format(
+            expected_item_names, actual_item_names), context)
 
 
 def capitalize(s: str) -> str:

@@ -2,8 +2,8 @@ from typing import Optional, Container, Callable
 
 from mypy.types import (
     Type, TypeVisitor, UnboundType, ErrorType, AnyType, Void, NoneTyp, TypeVarId,
-    Instance, TypeVarType, CallableType, TupleType, UnionType, Overloaded, ErasedType,
-    PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
+    Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
+    ErasedType, PartialType, DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType
 )
 from mypy import experiments
 
@@ -76,6 +76,9 @@ class EraseTypeVisitor(TypeVisitor[Type]):
         return t.items()[0].accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
+        return t.fallback.accept(self)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> Type:
