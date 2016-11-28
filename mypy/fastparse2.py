@@ -18,9 +18,7 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
-
 from mypy.sharedparse import special_function_elide_names
-
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,

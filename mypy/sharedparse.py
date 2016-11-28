@@ -1,5 +1,4 @@
-"""Shared logic between our three mypy parser files.
-"""
+"""Shared logic between our three mypy parser files."""
 
 
 def special_function_elide_names(name: str) -> bool:

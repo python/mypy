@@ -14,9 +14,7 @@ from mypy.lex import (
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
     EllipsisToken
 )
-
 from mypy.sharedparse import special_function_elide_names
-
 from mypy.nodes import (
     MypyFile, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt, Statement,
@@ -560,8 +558,8 @@ class Parser:
         return (name, args, typ, False, extra_stmts)
 
     def parse_args(self,
-                   no_type_checks: bool=False,
-                   include_names: bool=True) -> Tuple[List[Argument],
+                   no_type_checks: bool = False,
+                   include_names: bool = True) -> Tuple[List[Argument],
                                                   CallableType,
                                                   List[AssignmentStmt]]:
         """Parse a function signature (...) [-> t].
@@ -611,7 +609,7 @@ class Parser:
             return None
 
     def parse_arg_list(self, allow_signature: bool = True,
-            no_type_checks: bool=False) -> Tuple[List[Argument],
+            no_type_checks: bool = False) -> Tuple[List[Argument],
                                                  List[AssignmentStmt]]:
         """Parse function definition argument list.
 
@@ -841,7 +839,7 @@ class Parser:
                                 ret_type: Type,
                                 line: int,
                                 column: int,
-                                include_names: bool=True) -> CallableType:
+                                include_names: bool = True) -> CallableType:
         # Complete the type annotation by replacing omitted types with 'Any'.
         arg_types = [arg.type_annotation for arg in args]
         for i in range(len(arg_types)):
