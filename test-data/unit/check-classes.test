@@ -2123,3 +2123,153 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
 # flags: --fast-parser
 class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
     pass
+
+[case testVariableSubclass]
+class A:
+    a = 1  # type: int
+class B(A):
+    a = 1
+[out]
+
+[case testVariableSubclassAssignMismatch]
+class A:
+    a = 1  # type: int
+class B(A):
+    a = "a"
+[out]
+main: note: In class "B":
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSubclassAssignment]
+class A:
+    a = None  # type: int
+class B(A):
+    def __init__(self) -> None:
+        self.a = "a"
+[out]
+main: note: In member "__init__" of class "B":
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSubclassTypeOverwrite]
+class A:
+    a = None  # type: int
+class B(A):
+    a = None  # type: str
+class C(B):
+    a = "a"
+[out]
+main: note: In class "B":
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSubclassTypeOverwriteImplicit]
+class A:
+    a = 1
+class B(A):
+    a = None  # type: str
+[out]
+main: note: In class "B":
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableSuperUsage]
+class A:
+    a = []  # type: list
+class B(A):
+    a = [1, 2]
+class C(B):
+    a = B.a + [3]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testVariableRvalue]
+class A:
+    a = None
+class B(A):
+    a = 1
+class C(B):
+    a = "a"
+[out]
+main: note: In class "A":
+main:2: error: Need type annotation for variable
+main: note: In class "C":
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableTypeVar]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: T
+class B(A[int]):
+    a = 1
+
+[case testVariableTypeVarInvalid]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: T
+class B(A[int]):
+    a = "abc"
+[out]
+main: note: In class "B":
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableTypeVarIndirectly]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: T
+class B(A[int]):
+    pass
+class C(B):
+    a = "a"
+[out]
+main: note: In class "C":
+main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testVariableTypeVarList]
+from typing import List, TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    a = None  # type: List[T]
+    b = None  # type: List[T]
+class B(A[int]):
+    a = [1]
+    b = ['']
+[builtins fixtures/list.pyi]
+[out]
+main: note: In class "B":
+main:8: error: List item 0 has incompatible type "str"
+
+[case testVariableMethod]
+class A:
+    def a(self) -> None: pass
+    b = 1
+class B(A):
+    a = 1
+    def b(self) -> None: pass
+[out]
+main: note: In class "B":
+main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[A], None])
+main:6: error: Signature of "b" incompatible with supertype "A"
+
+[case testVariableProperty]
+class A:
+    @property
+    def a(self) -> bool: pass
+class B(A):
+    a = None  # type: bool
+class C(A):
+    a = True
+class D(A):
+    a = 1
+[builtins fixtures/property.pyi]
+[out]
+main: note: In class "D":
+main:9: error: Incompatible types in assignment (expression has type "int", variable has type "bool")
+
+[case testVariableOverwriteAny]
+from typing import Any
+class A:
+    a = 1
+class B(A):
+    a = 'x'  # type: Any
+[out]

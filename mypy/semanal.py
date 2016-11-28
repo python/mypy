@@ -48,6 +48,7 @@ from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
 
+from mypy.checkmember import find_type_from_bases
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
@@ -67,6 +68,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
+from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
@@ -79,7 +81,6 @@ from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
-from mypy.erasetype import erase_typevars
 from mypy.options import Options
 from mypy import join
 
@@ -1162,11 +1163,15 @@ class SemanticAnalyzer(NodeVisitor):
             s.type = self.anal_type(s.type, allow_tuple_literal)
         else:
             # For simple assignments, allow binding type aliases.
-            # Also set the type if the rvalue is a simple literal.
+            # Also use the type of the base class if available, or
+            # set the type if the rvalue is a simple literal.
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
                 if s.lvalues[0].is_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    s.type = find_type_from_bases(s.lvalues[0])
+                    if s.type is None:
+                        s.type = self.analyze_simple_literal_type(s.rvalue)
+
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,
                                          self.lookup_fully_qualified,
@@ -3130,19 +3135,6 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
-def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
-    """For a non-generic type, return instance type representing the type.
-    For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
-    """
-    tv = []  # type: List[Type]
-    for i in range(len(typ.type_vars)):
-        tv.append(TypeVarType(typ.defn.type_vars[i]))
-    inst = Instance(typ, tv)
-    if typ.tuple_type is None:
-        return inst
-    return typ.tuple_type.copy_modified(fallback=inst)
-
-
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
         return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
@@ -3514,7 +3506,3 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             if isinstance(t.ret_type, CallableType):
                 return t.ret_type
     return None
-
-
-def has_no_typevars(typ: Type) -> bool:
-    return is_same_type(typ, erase_typevars(typ))

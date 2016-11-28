@@ -7,14 +7,17 @@ from mypy.types import (
     Overloaded, TypeVarType, UnionType, PartialType,
     DeletedType, NoneTyp, TypeType, function_type
 )
-from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
+from mypy.nodes import (
+    TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, MDEF,
+    NameExpr
+)
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2
 from mypy.nodes import Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
 from mypy.infer import infer_type_arguments
-from mypy.semanal import fill_typevars
+from mypy.typevars import fill_typevars, has_no_typevars
 from mypy import messages
 from mypy import subtypes
 MYPY = False
@@ -616,3 +619,34 @@ def erase_to_bound(t: Type):
         if isinstance(t.item, TypeVarType):
             return TypeType(t.item.upper_bound)
     return t
+
+
+def find_type_from_bases(e: NameExpr):
+    """For a NameExpr that is part of a class, walk all base classes and try
+    to find the first class that defines a Type for the same name."""
+
+    expr_node = e.node
+    if not (isinstance(expr_node, Var) and e.kind == MDEF and
+            len(expr_node.info.bases) > 0):
+        return None
+
+    expr_name = expr_node.name()
+    expr_base = expr_node.info.bases[0]
+
+    for base in expr_node.info.mro[1:]:
+        base_var = base.names.get(expr_name)
+        if base_var and base_var.type:
+            if has_no_typevars(base_var.type):
+                base_type = base_var.type
+            else:
+                itype = map_instance_to_supertype(expr_base, base)
+                base_type = expand_type_by_instance(base_var.type, itype)
+
+            if isinstance(base_type, CallableType):
+                # If we are a property, return the Type of the return value, not the Callable
+                if isinstance(base_var.node, Decorator) and base_var.node.func.is_property:
+                    base_type = base_type.ret_type
+                elif isinstance(base_var.node, FuncDef) and base_var.node.is_property:
+                    base_type = base_type.ret_type
+
+            return base_type
