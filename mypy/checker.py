@@ -36,17 +36,14 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
-from mypy.checkmember import (
-    map_type_from_supertype, bind_self, erase_to_bound, find_type_from_bases
-)
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away,
     is_subtype_ignoring_tvars
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars
-from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type
 from mypy.visitor import NodeVisitor
@@ -1116,16 +1113,6 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             if lvalue_type:
-                if isinstance(lvalue, NameExpr):
-                    base_type = find_type_from_bases(lvalue)
-
-                    # If a type is known, validate the type is a subtype of the base type
-                    if base_type:
-                        self.check_subtype(lvalue_type, base_type, lvalue,
-                                           messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                                           'expression has type',
-                                           'variable has type')
-
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
                     # Try to infer a proper type for a variable with a partial None type.
                     rvalue_type = self.accept(rvalue)

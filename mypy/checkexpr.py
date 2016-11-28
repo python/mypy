@@ -38,7 +38,7 @@ from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type
 from mypy.util import split_module_names
-from mypy.typevars import fill_typevars
+from mypy.semanal import fill_typevars
 
 from mypy import experiments
 
