@@ -189,3 +189,8 @@ from typing import Dict
 x = None # type: Dict[x: y]
 [out]
 main:3: error: syntax error in type comment
+
+[case testPrintStatementTrailingCommaFastParser_python2]
+# flags: --fast-parser
+print 0,
+print 1, 2,

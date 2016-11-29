@@ -543,7 +543,8 @@ class ASTConverter(ast27.NodeTransformer):
             keywords.append(ast27.keyword("file", n.dest))
 
         if not n.nl:
-            keywords.append(ast27.keyword("end", ast27.Str(" ", lineno=n.lineno, col_offset=-1)))
+            keywords.append(ast27.keyword("end", ast27.Str(" ", 0,
+                                                           lineno=n.lineno, col_offset=-1)))
 
         # TODO: Rather then desugaring Print into an intermediary ast27.Call object, it might
         # be more efficient to just directly create a mypy.node.CallExpr object.
