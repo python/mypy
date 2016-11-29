@@ -643,10 +643,21 @@ def find_type_from_bases(e: NameExpr):
                 base_type = expand_type_by_instance(base_var.type, itype)
 
             if isinstance(base_type, CallableType):
-                # If we are a property, return the Type of the return value, not the Callable
-                if isinstance(base_var.node, Decorator) and base_var.node.func.is_property:
-                    base_type = base_type.ret_type
-                elif isinstance(base_var.node, FuncDef) and base_var.node.is_property:
-                    base_type = base_type.ret_type
+                base_func = None
+
+                if isinstance(base_var.node, Decorator):
+                    base_func = base_var.node.func
+                elif isinstance(base_var.node, FuncDef):
+                    base_func = base_var.node
+
+                if base_func:
+                    if base_func.is_property:
+                        # If we are a property, return the Type of the return value, not the Callable
+                        base_type = base_type.ret_type
+                    elif not base_func.is_static:
+                        # Ensure that the 'self' is bound to our current class for methods
+                        if isinstance(base_type.arg_types[0], Instance) and base_type.arg_types[0].type == base:
+                            arg_types = [fill_typevars(expr_node.info)] + base_type.arg_types[1:]
+                            base_type = base_type.copy_modified(arg_types=arg_types)
 
             return base_type

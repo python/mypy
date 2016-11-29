@@ -2248,7 +2248,7 @@ class B(A):
     def b(self) -> None: pass
 [out]
 main: note: In class "B":
-main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[A], None])
+main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[B], None])
 main:6: error: Signature of "b" incompatible with supertype "A"
 
 [case testVariableProperty]
@@ -2273,3 +2273,20 @@ class A:
 class B(A):
     a = 'x'  # type: Any
 [out]
+
+[case testMethodOverwrite]
+class B():
+        def n(self, a: int) -> None: pass
+class C(B):
+        def m(self, a: int) -> None: pass
+        n = m
+[out]
+
+[case testMethodOverwriteTypevar]
+from typing import Generic, TypeVar
+T = TypeVar("T")
+class B(Generic[T]):
+        def n(self, a: T) -> None: pass
+class C(B[int]):
+        def m(self, a: int) -> None: pass
+        n = m
