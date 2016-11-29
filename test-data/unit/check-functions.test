@@ -1534,3 +1534,60 @@ h = f if bool() else g
 reveal_type(h) # E: Revealed type is 'builtins.function'
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
+
+-- Positional-only arguments
+-- -------------------------
+
+[case testPositionalOnlyArg]
+def f(__a: int) -> None: pass
+
+f(1)
+f(__a=1) # E: Unexpected keyword argument "__a" for "f"
+
+[builtins fixtures/bool.pyi]
+[out]
+main:1: note: "f" defined here
+
+[case testPositionalOnlyArgFastparse]
+# flags: --fast-parser
+
+def f(__a: int) -> None: pass
+
+f(1)
+f(__a=1) # E: Unexpected keyword argument "__a" for "f"
+
+[builtins fixtures/bool.pyi]
+[out]
+main:3: note: "f" defined here
+
+[case testMagicMethodPositionalOnlyArg]
+class A(object):
+    def __eq__(self, other) -> bool: return True # We are all equal.
+
+a = A()
+a.__eq__(a)
+a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
+
+[builtins fixtures/bool.pyi]
+
+[case testMagicMethodPositionalOnlyArgFastparse]
+# flags: --fast-parser
+
+class A(object):
+    def __eq__(self, other) -> bool: return True # We are all equal.
+
+a = A()
+a.__eq__(a)
+a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
+
+[builtins fixtures/bool.pyi]
+
+[case testTupleArguments]
+# flags: --python-version 2.7
+
+def f(a, (b, c), d): pass
+
+[case testTupleArgumentsFastparse]
+# flags: --fast-parser --python-version 2.7
+
+def f(a, (b, c), d): pass

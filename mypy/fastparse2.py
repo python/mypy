@@ -18,6 +18,7 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from mypy.sharedparse import special_function_elide_names, argument_elide_name
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -270,7 +271,11 @@ class ASTConverter(ast27.NodeTransformer):
         args = self.transform_args(n.args, n.lineno)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]
+        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
+        if special_function_elide_names(n.name):
+            arg_names = [None] * len(arg_names)
+
         arg_types = None  # type: List[Type]
         if n.type_comment is not None and len(n.type_comment) > 0:
             try:
