@@ -14,7 +14,7 @@ from mypy.lex import (
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
     EllipsisToken
 )
-from mypy.sharedparse import special_function_elide_names
+from mypy.sharedparse import special_function_elide_names, argument_elide_name
 from mypy.nodes import (
     MypyFile, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt, Statement,
@@ -849,8 +849,7 @@ class Parser:
             ret_type = AnyType(implicit=True)
         arg_kinds = [arg.kind for arg in args]
         if include_names:
-            arg_names = [arg.variable.name()
-                         if not arg.variable.name().startswith('__') else None
+            arg_names = [None if argument_elide_name(arg.variable.name()) else arg.variable.name()
                          for arg in args]
         else:
             arg_names = [None] * len(args)

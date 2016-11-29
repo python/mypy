@@ -1,3 +1,5 @@
+from typing import Union, Tuple
+
 """Shared logic between our three mypy parser files."""
 
 
@@ -90,3 +92,7 @@ MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS
 
 def special_function_elide_names(name: str) -> bool:
     return name in MAGIC_METHODS_POS_ARGS_ONLY
+
+
+def argument_elide_name(name: Union[str, Tuple, None]) -> bool:
+    return isinstance(name, str) and name.startswith("__")
