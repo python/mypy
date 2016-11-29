@@ -1101,6 +1101,9 @@ class State:
     # Options, specialized for this file
     options = None  # type: Options
 
+    # Whether to ignore all errors
+    ignore_all = False
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1138,14 +1141,24 @@ class State:
             path = find_module(file_id, manager.lib_path)
             if path:
                 # In silent mode, don't import .py files, except from stubs.
-                if (self.options.silent_imports and
-                        path.endswith('.py') and (caller_state or ancestor_for)):
-                    # (Never silence builtins, even if it's a .py file;
-                    # this can happen in tests!)
-                    if (id != 'builtins' and
-                        not ((caller_state and
-                              caller_state.tree and
-                              caller_state.tree.is_stub))):
+                # Note that almost_silent implies silent_mode.
+                # In half-assed mode, import them but mark them as ignore_all.
+                # Never do any of this for stubs, nor for builtins,
+                # even if it's a .py file; this can happen in tests!
+                if ((self.options.silent_imports
+                     or self.options.almost_silent
+                     or self.options.half_assed)
+                    and path.endswith('.py')
+                    and (caller_state or ancestor_for)
+                    and id != 'builtins'
+                    and not (caller_state and
+                             caller_state.tree and
+                             caller_state.tree.is_stub)):
+                    if self.options.half_assed:
+                        # OK, still import it, but silence all its errors.
+                        manager.log("Setting ignore_all for %s" % id)
+                        self.ignore_all = True
+                    else:
                         if self.options.almost_silent:
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
@@ -1360,7 +1373,8 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            self.tree = manager.parse_file(self.id, self.xpath, source, self.options.ignore_errors)
+            self.tree = manager.parse_file(self.id, self.xpath, source,
+                                           self.ignore_all or self.options.ignore_errors)
 
         modules[self.id] = self.tree
 

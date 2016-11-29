@@ -151,7 +151,7 @@ def process_options(args: List[str],
     parser.add_argument('-s', '--silent-imports', action='store_true',
                         help="don't follow imports to .py files")
     parser.add_argument('--almost-silent', action='store_true',
-                        help="like --silent-imports but reports the imports as errors")
+                        help="modifies --silent-imports to report the imports as errors")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -222,6 +222,11 @@ def process_options(args: List[str],
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
+    # --half-assed mode is a bit like --silent-imports in that it distinguishes
+    # modules listed on the command line; however instead of ignoring such
+    # imports, it follows them but silences errors.  Stubs are unaffected.
+    # about them.
+    parser.add_argument('--half-assed', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
                         help=argparse.SUPPRESS)

@@ -27,6 +27,7 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "ignore_errors",
+        "half_assed",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
@@ -42,6 +43,7 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.silent_imports = False
         self.almost_silent = False
+        self.half_assed = False
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
