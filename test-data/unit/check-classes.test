@@ -2274,7 +2274,7 @@ class B(A):
     a = 'x'  # type: Any
 [out]
 
-[case testMethodOverwrite]
+[case testInstnaceMethodOverwrite]
 class B():
         def n(self, a: int) -> None: pass
 class C(B):
@@ -2282,7 +2282,17 @@ class C(B):
         n = m
 [out]
 
-[case testMethodOverwriteTypevar]
+[case testInstnaceMethodOverwriteError]
+class B():
+        def n(self, a: int) -> None: pass
+class C(B):
+        def m(self, a: str) -> None: pass
+        n = m
+[out]
+main: note: In class "C":
+main:5: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[C, int], None])
+
+[case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
 T = TypeVar("T")
 class B(Generic[T]):
