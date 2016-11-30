@@ -639,34 +639,34 @@ def find_type_from_bases(e: NameExpr):
             continue
 
         base_node = base_var.node
-        if isinstance(base_var.node, Decorator):
+        base_type = base_var.type
+        if isinstance(base_node, Decorator):
             base_node = base_node.func
+            base_type = base_node.type
 
-        base_type = base_node.type
         if base_type:
             if not has_no_typevars(base_type):
                 itype = map_instance_to_supertype(expr_base, base)
                 base_type = expand_type_by_instance(base_type, itype)
 
-            if isinstance(base_type, CallableType):
+            if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
                 if base_node.is_property:
                     # If we are a property, return the Type of the return
                     # value, not the Callable
                     base_type = base_type.ret_type
                 elif not base_node.is_static:
                     cls_or_self_arg = base_type.arg_types[0]
+                    arg_types = base_type.arg_types[:]
 
                     # Ensure that the 'self' is bound to our current class for methods
-                    if isinstance(cls_or_self_arg, Instance) and cls_or_self_arg.type == base:
-                        arg_types = []  # type: List[Type]
-                        arg_types.append(fill_typevars(expr_node.info))
-                        arg_types.extend(base_type.arg_types[1:])
-                        base_type = base_type.copy_modified(arg_types=arg_types)
-                    if isinstance(cls_or_self_arg, CallableType) and cls_or_self_arg.is_type_obj():
-                        cls = base_type.arg_types[0].copy_modified(ret_type=fill_typevars(expr_node.info))
-                        arg_types = []  # type: List[Type]
-                        arg_types.append(cls)
-                        arg_types.extend(base_type.arg_types[1:])
-                        base_type = base_type.copy_modified(arg_types=arg_types)
+                    if isinstance(cls_or_self_arg, Instance):
+                        slf = fill_typevars(expr_node.info)
+                        arg_types[0] = slf
+                    elif (isinstance(cls_or_self_arg, CallableType) and
+                            cls_or_self_arg.is_type_obj()):
+                        cls = cls_or_self_arg.copy_modified(ret_type=fill_typevars(expr_node.info))
+                        arg_types[0] = cls
+
+                    base_type = base_type.copy_modified(arg_types=arg_types)
 
             return base_type
