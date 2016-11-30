@@ -2290,3 +2290,27 @@ class B(Generic[T]):
 class C(B[int]):
         def m(self, a: int) -> None: pass
         n = m
+
+[case testClassMethodOverwrite]
+class B():
+        @classmethod
+        def n(self, a: int) -> None: pass
+class C(B):
+        @classmethod
+        def m(self, a: int) -> None: pass
+        n = m
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testClassMethodOverwriteError]
+class B():
+        @classmethod
+        def n(self, a: int) -> None: pass
+class C(B):
+        @classmethod
+        def m(self, a: str) -> None: pass
+        n = m
+[builtins fixtures/classmethod.pyi]
+[out]
+main: note: In class "C":
+main:7: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[C, int], None])
