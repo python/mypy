@@ -179,11 +179,25 @@ class TypeChecker(NodeVisitor[Type]):
 
         all_ = self.globals.get('__all__')
         if all_ is not None and all_.type is not None:
-            seq_str = self.named_generic_type('typing.Sequence',
-                                              [self.named_type('builtins.str')])
-            if not is_subtype(all_.type, seq_str):
-                str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
-                self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
+            valid_all_types = [self.named_generic_type('typing.Sequence',
+                                                       [self.named_type('builtins.str')])]
+            if self.options.python_version[0] < 3:
+                valid_all_types.append(
+                    self.named_generic_type('typing.Sequence',
+                                            [self.named_type('builtins.unicode')]))
+            if not any(is_subtype(all_.type, x) for x in valid_all_types):
+                valid_types = []  # type: List[str]
+                all_s = self.msg.format(all_.type)
+                for valid_all_type in valid_all_types:
+                    str_seq_s, all_s = self.msg.format_distinctly(valid_all_type, all_.type)
+                    valid_types.append(str_seq_s)
+
+                if len(valid_types) > 1:
+                    valid_type_str = 'Union[{}]'.format(', '.join(valid_types))
+                else:
+                    valid_type_str = valid_types[0]
+
+                self.fail(messages.ALL_MUST_BE_SEQ_STR.format(valid_type_str, all_s),
                           all_.node)
 
     def check_second_pass(self) -> bool:
