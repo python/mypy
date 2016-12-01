@@ -318,8 +318,8 @@ aa, bb = None, None # type: (AA, BB)
 
 a[a], b[b] = a, bb   # E: Incompatible types in assignment (expression has type "A", target has type "AA")
 a[a], b[b] = aa, b   # E: Incompatible types in assignment (expression has type "B", target has type "BB")
-a[aa], b[b] = aa, bb # E: Index has incompatible type "AA"; expected type "A" when indexing into "A" as lvalue
-a[a], b[bb] = aa, bb # E: Index has incompatible type "BB"; expected type "B" when indexing into "B" as lvalue
+a[aa], b[b] = aa, bb # E: Invalid index type "AA" for "A"; expected type "A"
+a[a], b[bb] = aa, bb # E: Invalid index type "BB" for "B"; expected type "B"
 a[a], b[b] = aa, bb
 
 class A:

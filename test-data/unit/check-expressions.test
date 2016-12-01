@@ -678,11 +678,11 @@ class B:
 A()[1] # Error
 [out]
 main: note: In function "f":
-main:5: error: Index has incompatible type "int"; expected type "str" when indexing into "A" as rvalue
+main:5: error: Invalid index type "int" for "A"; expected type "str"
 main: note: In class "B":
-main:7: error: Index has incompatible type "int"; expected type "str" when indexing into "A" as rvalue
+main:7: error: Invalid index type "int" for "A"; expected type "str"
 main: note: At top level:
-main:8: error: Index has incompatible type "int"; expected type "str" when indexing into "A" as rvalue
+main:8: error: Invalid index type "int" for "A"; expected type "str"
 
 [case testErrorContextAndBinaryOperators2]
 import m
@@ -698,11 +698,11 @@ A()[1] # Error
 [out]
 main:1: note: In module imported here:
 tmp/m.py: note: In function "f":
-tmp/m.py:5: error: Index has incompatible type "int"; expected type "str" when indexing into "A" as rvalue
+tmp/m.py:5: error: Invalid index type "int" for "A"; expected type "str"
 tmp/m.py: note: In class "B":
-tmp/m.py:7: error: Index has incompatible type "int"; expected type "str" when indexing into "A" as rvalue
+tmp/m.py:7: error: Invalid index type "int" for "A"; expected type "str"
 tmp/m.py: note: At top level:
-tmp/m.py:8: error: Index has incompatible type "int"; expected type "str" when indexing into "A" as rvalue
+tmp/m.py:8: error: Invalid index type "int" for "A"; expected type "str"
 
 
 -- Unary operators
@@ -788,7 +788,7 @@ class A:
 class B: pass
 class C: pass
 [out]
-main:3: error: Index has incompatible type "C"; expected type "B" when indexing into "A" as rvalue
+main:3: error: Invalid index type "C" for "A"; expected type "B"
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:5: error: Value of type "B" is not indexable
 
@@ -808,7 +808,7 @@ class B:
 class C:
     pass
 [out]
-main:3: error: Index has incompatible type "C"; expected type "B" when indexing into "A" as lvalue
+main:3: error: Invalid index type "C" for "A"; expected type "B"
 main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
 main:5: error: Unsupported target for indexed assignment
 
@@ -956,8 +956,8 @@ class B: pass
 [case testSlicingWithInvalidBase]
 
 a = None # type: A
-a[1:2] # E: Index has incompatible type "slice"; expected type "int" when indexing into "A" as rvalue
-a[:]   # E: Index has incompatible type "slice"; expected type "int" when indexing into "A" as rvalue
+a[1:2] # E: Invalid index type "slice" for "A"; expected type "int"
+a[:]   # E: Invalid index type "slice" for "A"; expected type "int"
 class A:
   def __getitem__(self, n: int) -> 'A': pass
 [builtins fixtures/slice.pyi]
