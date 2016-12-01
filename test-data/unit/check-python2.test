@@ -218,3 +218,9 @@ def foo() -> int:
 # flags: --fast-parser
 import __builtin__
 __builtin__.str
+
+[case testUnicodeAlias]
+from typing import List
+Alias = List[u'Foo']
+class Foo: pass
+[builtins_py2 fixtures/python2.pyi]
