@@ -1083,8 +1083,15 @@ a = None # type: Any
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
 '%(a)d %%' % {'a': 1}
+'%(q)d' % {'a': 1, 'b': 2, 0: 3}  # E: Key 'q' not found in mapping
 
 [builtins fixtures/dict.pyi]
+
+[case testStringInterpolationMappingKeys_python2]
+'%(q)d' % {u'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+'%(a)d' % {u'a': 1, 'b': 2, 'c': 3}
+
+[builtins_py2 fixtures/python2.pyi]
 
 [case testStringInterpolationMappingDictTypes]
 from typing import Any, Dict
