@@ -33,7 +33,7 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
 
 def is_subtype(left: Type, right: Type,
                type_parameter_checker: TypeParameterChecker = check_type_parameter,
-               *, ignore_positional_arg_names: bool = False) -> bool:
+               *, ignore_pos_arg_names: bool = False) -> bool:
     """Is 'left' subtype of 'right'?
 
     Also consider Any to be a subtype of any type, and vice versa. This
@@ -50,11 +50,11 @@ def is_subtype(left: Type, right: Type,
         return True
     elif isinstance(right, UnionType) and not isinstance(left, UnionType):
         return any(is_subtype(left, item, type_parameter_checker,
-                              ignore_positional_arg_names = ignore_positional_arg_names)
+                              ignore_pos_arg_names=ignore_pos_arg_names)
                    for item in right.items)
     else:
         return left.accept(SubtypeVisitor(right, type_parameter_checker,
-                                          ignore_positional_arg_names=ignore_positional_arg_names))
+                                          ignore_pos_arg_names=ignore_pos_arg_names))
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
@@ -85,10 +85,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def __init__(self, right: Type,
                  type_parameter_checker: TypeParameterChecker,
-                 *, ignore_positional_arg_names: bool = False) -> None:
+                 *, ignore_pos_arg_names: bool = False) -> None:
         self.right = right
         self.check_type_parameter = type_parameter_checker
-        self.ignore_positional_arg_names = ignore_positional_arg_names
+        self.ignore_pos_arg_names = ignore_pos_arg_names
 
     # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
@@ -133,7 +133,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if left.type._promote and is_subtype(
                     left.type._promote, self.right, self.check_type_parameter,
-                    ignore_positional_arg_names=self.ignore_positional_arg_names):
+                    ignore_pos_arg_names=self.ignore_pos_arg_names):
                 return True
             rname = right.type.fullname()
             if not left.type.has_base(rname) and rname != 'builtins.object':
@@ -159,14 +159,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, CallableType):
             return is_callable_subtype(
                 left, right,
-                ignore_positional_arg_names=self.ignore_positional_arg_names)
+                ignore_pos_arg_names=self.ignore_pos_arg_names)
         elif isinstance(right, Overloaded):
             return all(is_subtype(left, item, self.check_type_parameter,
-                                  ignore_positional_arg_names=self.ignore_positional_arg_names)
+                                  ignore_pos_arg_names=self.ignore_pos_arg_names)
                        for item in right.items())
         elif isinstance(right, Instance):
             return is_subtype(left.fallback, right,
-                              ignore_positional_arg_names=self.ignore_positional_arg_names)
+                              ignore_pos_arg_names=self.ignore_pos_arg_names)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and is_subtype(left.ret_type, right.item)
@@ -223,7 +223,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 right, 'builtins.type'):
             for item in left.items():
                 if is_subtype(item, right, self.check_type_parameter,
-                              ignore_positional_arg_names=self.ignore_positional_arg_names):
+                              ignore_pos_arg_names=self.ignore_pos_arg_names):
                     return True
             return False
         elif isinstance(right, Overloaded):
@@ -232,7 +232,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             for i in range(len(left.items())):
                 if not is_subtype(left.items()[i], right.items()[i], self.check_type_parameter,
-                                  ignore_positional_arg_names=self.ignore_positional_arg_names):
+                                  ignore_pos_arg_names=self.ignore_pos_arg_names):
                     return False
             return True
         elif isinstance(right, UnboundType):
@@ -270,7 +270,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
 def is_callable_subtype(left: CallableType, right: CallableType,
                         ignore_return: bool = False,
-                        ignore_positional_arg_names: bool = False) -> bool:
+                        ignore_pos_arg_names: bool = False) -> bool:
     """Is left a subtype of right?"""
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
@@ -337,7 +337,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_name, right_kind, right_type, right_required = right_by_position
                 if not is_left_more_general(left_name, left_pos, left_type, left_required,
                                             right_name, right_pos, right_type, right_required,
-                                            ignore_positional_arg_names):
+                                            ignore_pos_arg_names):
                     return False
                 j += 1
 
@@ -363,7 +363,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_name, right_kind, right_type, right_required = right_by_name
                 if not is_left_more_general(left_name, left_pos, left_type, left_required,
                                             right_name, right_pos, right_type, right_required,
-                                            ignore_positional_arg_names):
+                                            ignore_pos_arg_names):
                     return False
             continue
 
@@ -405,7 +405,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
 
         if not is_left_more_general(left_name, left_pos, left_type, left_required,
                                     right_name, right_pos, right_type, right_required,
-                                    ignore_positional_arg_names):
+                                    ignore_pos_arg_names):
             return False
 
     for i in range(len(left.arg_types)):
@@ -443,12 +443,12 @@ def is_left_more_general(
         right_pos: Optional[int],
         right_type: Type,
         right_required: bool,
-        ignore_positional_arg_names: bool) -> bool:
+        ignore_pos_arg_names: bool) -> bool:
     # If right has a specific name it wants this argument to be, left must
     # have the same.
     if right_name is not None and left_name != right_name:
         # But pay attention to whether we're ignoring positional arg names
-        if not ignore_positional_arg_names or right_pos is None:
+        if not ignore_pos_arg_names or right_pos is None:
             return False
     # If right is at a specific position, left must have the same:
     if right_pos is not None and left_pos != right_pos:

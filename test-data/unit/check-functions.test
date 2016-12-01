@@ -130,6 +130,8 @@ ee_var = everywhere
 ee_var = specific_1 # The difference between Callable[[...], blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
 ee_def = specific_1 # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Any, Any], None])
 
+[builtins fixtures/dict.pyi]
+
 [case testLackOfNames]
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass
@@ -151,8 +153,6 @@ gg = g
 
 ff = g
 gg = f # E: Incompatible types in assignment (expression has type Callable[[int, str], None], variable has type Callable[[Arg('a', int, False), Arg('b', str, False)], None])
-
-[builtins fixtures/dict.pyi]
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Callable

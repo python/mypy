@@ -936,7 +936,7 @@ class TypeChecker(NodeVisitor[Type]):
         """
         # Use boolean variable to clarify code.
         fail = False
-        if not is_subtype(override, original, ignore_positional_arg_names=True):
+        if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
         elif (not isinstance(original, Overloaded) and
               isinstance(override, Overloaded) and
