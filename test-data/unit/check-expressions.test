@@ -812,6 +812,35 @@ main:3: error: Invalid index type "C" for "A"; expected type "B"
 main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
 main:5: error: Unsupported target for indexed assignment
 
+[case testOverloadedIndexing]
+
+from typing import overload
+
+a, b, c = None, None, None  # type: (A, B, C)
+a[b]
+a[c]
+a[1]  # Fail
+
+i, s = None, None  # type: (int, str)
+i = a[b]
+s = a[b]  # Fail
+i = a[c]  # Fail
+s = a[c]
+
+class A:
+    @overload
+    def __getitem__(self, x: 'B') -> int:
+        pass
+    @overload
+    def __getitem__(self, x: 'C') -> str:
+        pass
+class B: pass
+class C: pass
+[out]
+main:7: error: No overload variant of "__getitem__" of "A" matches argument types [builtins.int]
+main:11: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:12: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 
 -- Cast expression
 -- ---------------
