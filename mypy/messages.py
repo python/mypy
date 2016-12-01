@@ -452,13 +452,13 @@ class MessageBuilder:
 
             if name.startswith('"__getitem__" of'):
                 lvalue = False
-                self.invalid_index_type(arg_type, callee.arg_types[n-1], base, lvalue, context)
+                self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, lvalue, context)
                 return
 
             if name.startswith('"__setitem__" of'):
                 if n == 1:
                     lvalue = True
-                    self.invalid_index_type(arg_type, callee.arg_types[n-1], base, lvalue, context)
+                    self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, lvalue, context)
                 else:
                     msg = '{} (expression has type {}, target has type {})'
                     arg_type_str, callee_type_str = self.format_distinctly(arg_type,
