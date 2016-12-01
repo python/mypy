@@ -418,6 +418,20 @@ __all__ = [1, 2, 3]
 [out]
 main: error: Type of __all__ must be Sequence[str], not List[int]
 
+[case testAllMustBeSequenceStr_python2]
+import typing
+__all__ = [1, 2, 3]
+[builtins_py2 fixtures/module_all_python2.pyi]
+[out]
+main: error: Type of __all__ must be Sequence[unicode], not List[int]
+
+[case testAllUnicodeSequenceOK_python2]
+import typing
+__all__ = [u'a', u'b', u'c']
+[builtins_py2 fixtures/module_all_python2.pyi]
+
+[out]
+
 [case testEllipsisInitializerInStubFileWithType]
 import m
 m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
