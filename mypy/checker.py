@@ -31,7 +31,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
     Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
-    true_only, false_only, function_type, TypeType
+    true_only, false_only, function_type
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder

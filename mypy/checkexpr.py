@@ -1023,6 +1023,7 @@ class ExpressionChecker:
         bound_method = bind_self(function, descriptor_type)
         typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
         dunder_get_type = expand_type_by_instance(bound_method, typ)
+        owner_type = None  # type: Type
 
         if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
             instance_type = instance_type.items()[0].ret_type
