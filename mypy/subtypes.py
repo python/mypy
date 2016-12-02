@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Callable
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, ErrorType, Void, NoneTyp,
+    Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
@@ -303,22 +303,39 @@ def is_callable_subtype(left: CallableType, right: CallableType,
     right_star_type = None   # type: Optional[Type]
     right_star2_type = None  # type: Optional[Type]
 
-    # Check argument types.
+    # Match up corresponding arguments and check them for compatibility. In
+    # every pair (argL, argR) of corresponding arguments from L and R, argL must
+    # be "more general" than argR if L is to be a subtype of R.
+
+    # Arguments are corresponding if they either share a name, share a position,
+    # or both. If L's corresponding argument is ambiguous, L is not a subtype of
+    # R.
+
+    # If left has one corresponding argument by name and another by position,
+    # consider them to be one "merged" argument (and not ambiguous) if they're
+    # both optional, they're name-only and position-only respectively, and they
+    # have the same type.  This rule allows functions with (*args, **kwargs) to
+    # properly stand in for the full domain of formal arguments that they're
+    # used for in practice.
+
+    # Every argument in R must have a corresponding argument in L, and every
+    # required argument in L must have a corresponding arugment in R.
     done_with_positional = False
     for i in range(len(right.arg_types)):
-        right_name = right.arg_names[i]
         right_kind = right.arg_kinds[i]
-        right_type = right.arg_types[i]
         if right_kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
             done_with_positional = True
+        right_required = right_kind in (ARG_POS, ARG_NAMED)
+        right_pos = None if done_with_positional else i
 
-        if not done_with_positional:
-            right_pos = i
-        else:
-            right_pos = None
+        right_arg = FormalArgument(
+            right.arg_names[i],
+            right_pos,
+            right.arg_types[i],
+            right_required)
 
         if right_kind == ARG_STAR:
-            right_star_type = right_type
+            right_star_type = right_arg.typ
             # Right has an infinite series of optional positional arguments
             # here.  Get all further positional arguments of left, and make sure
             # they're more general than their corresponding member in this
@@ -330,20 +347,17 @@ def is_callable_subtype(left: CallableType, right: CallableType,
             while j < len(left.arg_kinds) and left.arg_kinds[j] in (ARG_POS, ARG_OPT):
                 left_by_position = left.argument_by_position(j)
                 assert left_by_position is not None
-                left_name, left_pos, left_type, left_required = left_by_position
                 # This fetches the synthetic argument that's from the *args
                 right_by_position = right.argument_by_position(j)
                 assert right_by_position is not None
-                right_name, right_kind, right_type, right_required = right_by_position
-                if not is_left_more_general(left_name, left_pos, left_type, left_required,
-                                            right_name, right_pos, right_type, right_required,
+                if not is_left_more_general(left_by_position, right_by_position,
                                             ignore_pos_arg_names):
                     return False
                 j += 1
-
             continue
+
         if right_kind == ARG_STAR2:
-            right_star2_type = right_type
+            right_star2_type = right_arg.typ
             # Right has an infinite set of optional named arguments here.  Get
             # all further named arguments of left and make sure they're more
             # general than their corresponding member in this set.  Also make
@@ -356,56 +370,51 @@ def is_callable_subtype(left: CallableType, right: CallableType,
             for name in left_only_names:
                 left_by_name = left.argument_by_name(name)
                 assert left_by_name is not None
-                left_name, left_pos, left_type, left_required = left_by_name
                 # This fetches the synthetic argument that's from the **kwargs
                 right_by_name = right.argument_by_name(name)
                 assert right_by_name is not None
-                right_name, right_kind, right_type, right_required = right_by_name
-                if not is_left_more_general(left_name, left_pos, left_type, left_required,
-                                            right_name, right_pos, right_type, right_required,
+                if not is_left_more_general(left_by_name, right_by_name,
                                             ignore_pos_arg_names):
                     return False
             continue
-
-        right_required = right_kind in (ARG_POS, ARG_NAMED)
 
         # Get possible corresponding arguments by name and by position.
         if not done_with_positional:
             left_by_position = left.argument_by_position(i)
         else:
             left_by_position = None
-        if right_name is not None:
-            left_by_name = left.argument_by_name(right_name)
+        if right_arg.name is not None:
+            left_by_name = left.argument_by_name(right_arg.name)
         else:
             left_by_name = None
 
         # Left must have some kind of corresponding argument.
         if left_by_name is None and left_by_position is None:
             return False
+
+        left_arg = None  # type: Optional[FormalArgument]
         # If there's ambiguity as to how to match up this argument, it's not a subtype
         if (left_by_name is not None
                 and left_by_position is not None
                 and left_by_name != left_by_position):
             # If we're dealing with an optional pos-only and an optional
             # name-only arg, merge them.
-            if (left_by_position[3] is False and left_by_name[3] is False
-                    and left_by_position[0] is None and left_by_name[1] is None
-                    and is_equivalent(left_by_position[2], left_by_name[2])):
-                left_name = left_by_name[0]
-                left_pos = left_by_position[1]
-                left_type = left_by_position[2]
-                left_required = False
+            if (left_by_position.required is False and left_by_name.required is False
+                    and left_by_position.name is None and left_by_name.pos is None
+                    and is_equivalent(left_by_position.typ, left_by_name.typ)):
+                left_arg = FormalArgument(
+                    left_by_name.name,
+                    left_by_position.pos,
+                    left_by_position.typ,
+                    required=False)
             else:
                 return False
-        elif left_by_name is not None:
-            left_name, left_pos, left_type, left_required = left_by_name
         else:
-            assert left_by_position is not None
-            left_name, left_pos, left_type, left_required = left_by_position
+            left_arg = left_by_name if left_by_name is not None else left_by_position
 
-        if not is_left_more_general(left_name, left_pos, left_type, left_required,
-                                    right_name, right_pos, right_type, right_required,
-                                    ignore_pos_arg_names):
+        assert left_arg is not None
+
+        if not is_left_more_general(left_arg, right_arg, ignore_pos_arg_names):
             return False
 
     for i in range(len(left.arg_types)):
@@ -416,7 +425,6 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         # right-hand argument.  The relationship between the two is handled in
         # the loop above.
 
-        # Also check that *arg types match in this loop
         if left_kind == ARG_POS and right.argument_by_position(i) is None:
             if left_name is None:
                 return False
@@ -425,6 +433,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         elif left_kind == ARG_NAMED:
             if right.argument_by_name(left_name) is None:
                 return False
+        # Also check that *args and **kwargs types match in this loop
         elif left_kind == ARG_STAR:
             if right_star_type is not None and not is_subtype(right_star_type, left_type):
                 return False
@@ -435,29 +444,23 @@ def is_callable_subtype(left: CallableType, right: CallableType,
 
 
 def is_left_more_general(
-        left_name: Optional[str],
-        left_pos: Optional[int],
-        left_type: Type,
-        left_required: bool,
-        right_name: Optional[str],
-        right_pos: Optional[int],
-        right_type: Type,
-        right_required: bool,
+        left: FormalArgument,
+        right: FormalArgument,
         ignore_pos_arg_names: bool) -> bool:
     # If right has a specific name it wants this argument to be, left must
     # have the same.
-    if right_name is not None and left_name != right_name:
+    if right.name is not None and left.name != right.name:
         # But pay attention to whether we're ignoring positional arg names
-        if not ignore_pos_arg_names or right_pos is None:
+        if not ignore_pos_arg_names or right.pos is None:
             return False
     # If right is at a specific position, left must have the same:
-    if right_pos is not None and left_pos != right_pos:
+    if right.pos is not None and left.pos != right.pos:
         return False
     # Left must have a more general type
-    if not is_subtype(right_type, left_type):
+    if not is_subtype(right.typ, left.typ):
         return False
     # If right's argument is optional, left's must also be.
-    if not right_required and left_required:
+    if not right.required and left.required:
         return False
     return True
 

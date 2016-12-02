@@ -5,6 +5,7 @@ import copy
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union, Iterable,
+    NamedTuple,
 )
 
 import mypy.nodes
@@ -542,6 +543,13 @@ class FunctionLike(Type):
 _dummy = object()  # type: Any
 
 
+FormalArgument = NamedTuple('FormalArgument', [
+    ('name', str),
+    ('pos', int),
+    ('typ', Type),
+    ('required', bool)])
+
+
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
@@ -662,11 +670,7 @@ class CallableType(FunctionLike):
             n -= 1
         return n
 
-    def argument_by_name(self, name: str) -> Optional[Tuple[
-            Optional[str],
-            Optional[int],
-            Type,
-            bool]]:
+    def argument_by_name(self, name: str) -> Optional[FormalArgument]:
         seen_star = False
         star2_type = None  # type: Optional[Type]
         for i, (arg_name, kind, typ) in enumerate(
@@ -681,16 +685,12 @@ class CallableType(FunctionLike):
                 continue
             if arg_name == name:
                 position = None if seen_star else i
-                return name, position, typ, kind in (ARG_POS, ARG_NAMED)
+                return FormalArgument(name, position, typ, kind in (ARG_POS, ARG_NAMED))
         if star2_type is not None:
-            return name, None, star2_type, False
+            return FormalArgument(name, None, star2_type, False)
         return None
 
-    def argument_by_position(self, position: int) -> Optional[Tuple[
-            Optional[str],
-            Optional[int],
-            Type,
-            bool]]:
+    def argument_by_position(self, position: int) -> Optional[FormalArgument]:
         if self.is_var_arg:
             for kind, typ in zip(self.arg_kinds, self.arg_types):
                 if kind == ARG_STAR:
@@ -698,7 +698,7 @@ class CallableType(FunctionLike):
                     break
         if position >= len(self.arg_names):
             if self.is_var_arg:
-                return None, position, star_type, False
+                return FormalArgument(None, position, star_type, False)
             else:
                 return None
         name, kind, typ = (
@@ -707,10 +707,10 @@ class CallableType(FunctionLike):
             self.arg_types[position],
         )
         if kind in (ARG_POS, ARG_OPT):
-            return name, position, typ, kind == ARG_POS
+            return FormalArgument(name, position, typ, kind == ARG_POS)
         else:
             if self.is_var_arg:
-                return None, position, star_type, False
+                return FormalArgument(None, position, star_type, False)
             else:
                 return None
 
