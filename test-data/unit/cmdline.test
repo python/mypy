@@ -321,3 +321,16 @@ baz(bar(foo('oof')))
 file.py:1: error: Cannot find module named 'no_stubs'
 file.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+[case testIgnoreErrorsConfig]
+# cmd: mypy x.py y.py
+[file mypy.ini]
+[[mypy]
+[[mypy-x]
+ignore_errors = True
+[file x.py]
+"" + 0
+[file y.py]
+"" + 0
+[out]
+y.py:1: error: Unsupported operand types for + ("str" and "int")

@@ -451,7 +451,7 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
-    def parse_file(self, id: str, path: str, source: str) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
@@ -464,7 +464,7 @@ class BuildManager:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
-        self.errors.set_file_ignored_lines(path, tree.ignored_lines)
+        self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
@@ -1360,7 +1360,7 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            self.tree = manager.parse_file(self.id, self.xpath, source)
+            self.tree = manager.parse_file(self.id, self.xpath, source, self.options.ignore_errors)
 
         modules[self.id] = self.tree
 

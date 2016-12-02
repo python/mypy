@@ -26,6 +26,7 @@ class Options:
         "strict_optional_whitelist",
         "show_none_errors",
         "warn_no_return",
+        "ignore_errors",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
@@ -65,6 +66,9 @@ class Options:
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
+
+        # Files in which to ignore all non-fatal errors
+        self.ignore_errors = False
 
         # Apply strict None checking
         self.strict_optional = False
