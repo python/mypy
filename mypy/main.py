@@ -148,10 +148,10 @@ def process_options(args: List[str],
                         "(defaults to sys.platform).")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
-    parser.add_argument('-s', '--silent-imports', action='store_true',
-                        help="don't follow imports to .py files")
-    parser.add_argument('--almost-silent', action='store_true',
-                        help="modifies --silent-imports to report the imports as errors")
+    parser.add_argument('--ignore-missing-imports', action='store_true',
+                        help="silently ignore imports of missing modules")
+    parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip'],
+                        default='normal', help="how to treat imports (default normal)")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -222,19 +222,18 @@ def process_options(args: List[str],
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
-    # --half-assed mode is a bit like --silent-imports in that it distinguishes
-    # modules listed on the command line; however instead of ignoring such
-    # imports, it follows them but silences errors.  Stubs are unaffected.
-    # about them.
-    parser.add_argument('--half-assed', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
-    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
-                        help=argparse.SUPPRESS)
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
                         help=argparse.SUPPRESS)
     parser.add_argument('--use-python-path', action='store_true',
                         dest='special-opts:use_python_path',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('-s', '--silent-imports', action='store_true',
+                        dest='special-opts:silent_imports',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--almost-silent', action='store_true',
+                        dest='special-opts:almost_silent',
                         help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
@@ -283,11 +282,12 @@ def process_options(args: List[str],
                      "See https://github.com/python/mypy/issues/1411 for more discussion."
                      )
 
-    # warn about deprecated options
-    if special_opts.silent:
-        print("Warning: --silent is deprecated; use --silent-imports",
-              file=sys.stderr)
-        options.silent_imports = True
+    # Process deprecated options
+    if special_opts.almost_silent:
+        options.follow_imports = 'skip'
+    elif special_opts.silent_imports:
+        options.silent_missing_imports = True
+        options.follow_imports = 'skip'
     if special_opts.dirty_stubs:
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",

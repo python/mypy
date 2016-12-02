@@ -204,7 +204,7 @@ class Errors:
 
     def add_error_info(self, info: ErrorInfo) -> None:
         (file, line) = info.origin
-        if not info.blocker:
+        if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines and line in self.ignored_lines[file]:
                 # Annotation requests us to ignore all errors on this line.
                 self.used_ignored_lines[file].add(line)

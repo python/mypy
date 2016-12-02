@@ -17,8 +17,8 @@ class Options:
     """Options collected from flags."""
 
     PER_MODULE_OPTIONS = {
-        "silent_imports",
-        "almost_silent",
+        "ignore_missing_imports",
+        "follow_imports",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -27,7 +27,6 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "ignore_errors",
-        "half_assed",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
@@ -41,9 +40,8 @@ class Options:
         self.custom_typeshed_dir = None  # type: Optional[str]
         self.mypy_path = []  # type: List[str]
         self.report_dirs = {}  # type: Dict[str, str]
-        self.silent_imports = False
-        self.almost_silent = False
-        self.half_assed = False
+        self.ignore_missing_imports = False
+        self.follow_imports = 'normal'  # normal|silent|skip
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False

@@ -229,9 +229,9 @@ mypy.ini: [mypy]: Unrecognized report type: bad_report
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-silent_imports = nah
+silent_missing_imports = nah
 [out]
-mypy.ini: [mypy]: silent_imports: Not a boolean: nah
+mypy.ini: [mypy]: silent_missing_imports: Not a boolean: nah
 
 [case testConfigErrorNotPerFile]
 # cmd: mypy -c pass

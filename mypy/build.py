@@ -1140,26 +1140,26 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
             if path:
-                # In silent mode, don't import .py files, except from stubs.
-                # Note that almost_silent implies silent_mode.
-                # In half-assed mode, import them but mark them as ignore_all.
-                # Never do any of this for stubs, nor for builtins,
-                # even if it's a .py file; this can happen in tests!
-                if ((self.options.silent_imports
-                     or self.options.almost_silent
-                     or self.options.half_assed)
-                    and path.endswith('.py')
-                    and (caller_state or ancestor_for)
-                    and id != 'builtins'
+                # For non-stubs, look at options.follow_imports:
+                # - normal (default) -> fully analyze
+                # - silent -> analyze but silence errors
+                # - skip -> don't analyze, make the type Any
+                follow_imports = self.options.follow_imports
+                if (follow_imports != 'normal'
+                    and path.endswith('.py')  # Stubs are always normal
+                    and id != 'builtins'  # Builtins is always normal
                     and not (caller_state and
                              caller_state.tree and
                              caller_state.tree.is_stub)):
-                    if self.options.half_assed:
-                        # OK, still import it, but silence all its errors.
-                        manager.log("Setting ignore_all for %s" % id)
+                    if follow_imports == 'silent':
+                        # Still import it, but silence non-blocker errors.
+                        manager.log("Silencing %s (%s)" % (path, id))
                         self.ignore_all = True
                     else:
-                        if self.options.almost_silent:
+                        # Produce special error messages unless
+                        # ignore_missing_imports is also given.
+                        manager.log("Skipping %s (%s)" % (path, id))
+                        if not self.options.ignore_missing_imports:
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
                             else:
@@ -1172,9 +1172,7 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    suppress_message = (self.options.silent_imports
-                                        and not self.options.almost_silent)
-                    if not suppress_message:
+                    if not self.options.ignore_missing_imports:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
                         manager.module_not_found(caller_state.xpath, caller_line, id)
@@ -1220,6 +1218,7 @@ class State:
         manager = self.manager
         manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
+        # XXX fix text of messages
         manager.errors.report(-1, -1, "Ancestor package '%s' silently ignored" % (id,),
                               severity='note', only_once=True)
         manager.errors.report(-1, -1, "(Using --silent-imports, submodule passed on command line)",
@@ -1237,6 +1236,7 @@ class State:
         manager.errors.report(line, 0,
                               "Import of '%s' silently ignored" % (id,),
                               severity='note')
+        # XXX fix text of messages
         manager.errors.report(line, 0,
                               "(Using --silent-imports, module not passed on command line)",
                               severity='note', only_once=True)
@@ -1316,13 +1316,13 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
-        """Corrects whether dependencies are considered stale or not when using silent_imports.
+        """Corrects whether dependencies are considered stale in silent mode.
 
-        This method is a hack to correct imports in silent_imports + incremental mode.
+        This method is a hack to correct imports in silent mode + incremental mode.
         In particular, the problem is that when running mypy with a cold cache, the
         `parse_file(...)` function is called *at the start* of the `load_graph(...)` function.
         Note that load_graph will mark some dependencies as suppressed if they weren't specified
-        on the command line in silent_imports mode.
+        on the command line in silent mode.
 
         However, if the interface for a module is changed, parse_file will be called within
         `process_stale_scc` -- *after* load_graph is finished, wiping out the changes load_graph
@@ -1333,7 +1333,8 @@ class State:
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
-        silent_mode = self.options.silent_imports or self.options.almost_silent
+        silent_mode = (self.options.ignore_missing_imports or
+                       self.options.follow_imports == 'skip')
         if not silent_mode:
             return
 
