@@ -301,7 +301,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
-# --silent-imports or simply not found.
+# silent mode or simply not found.
 
 
 # Priorities used for imports.  (Here, top-level includes inside a class.)
@@ -481,7 +481,7 @@ class BuildManager:
         else:
             self.errors.report(line, 0, "Cannot find module named '{}'".format(id))
             self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
-                               'or using the "--silent-imports" flag would help)',
+                               'or using the "--ignore-missing-imports" flag would help)',
                                severity='note', only_once=True)
 
     def report_file(self, file: MypyFile, type_map: Dict[Expression, Type]) -> None:
@@ -1156,10 +1156,9 @@ class State:
                         manager.log("Silencing %s (%s)" % (path, id))
                         self.ignore_all = True
                     else:
-                        # Produce special error messages unless
-                        # ignore_missing_imports is also given.
+                        # In 'error' mode, produce special error messages.
                         manager.log("Skipping %s (%s)" % (path, id))
-                        if not self.options.ignore_missing_imports:
+                        if follow_imports == 'error':
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
                             else:
@@ -1218,12 +1217,9 @@ class State:
         manager = self.manager
         manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
-        # XXX fix text of messages
-        manager.errors.report(-1, -1, "Ancestor package '%s' silently ignored" % (id,),
+        manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
-        manager.errors.report(-1, -1, "(Using --silent-imports, submodule passed on command line)",
-                              severity='note', only_once=True)
-        manager.errors.report(-1, -1, "(This note brought to you by --almost-silent)",
+        manager.errors.report(-1, -1, "(Using --follow-imports=error, submodule passed on command line)",
                               severity='note', only_once=True)
 
     def skipping_module(self, id: str, path: str) -> None:
@@ -1234,13 +1230,10 @@ class State:
         manager.errors.set_file(self.caller_state.xpath)
         line = self.caller_line
         manager.errors.report(line, 0,
-                              "Import of '%s' silently ignored" % (id,),
+                              "Import of '%s' ignored" % (id,),
                               severity='note')
-        # XXX fix text of messages
         manager.errors.report(line, 0,
-                              "(Using --silent-imports, module not passed on command line)",
-                              severity='note', only_once=True)
-        manager.errors.report(line, 0, "(This note courtesy of --almost-silent)",
+                              "(Using --follow-imports=error, module not passed on command line)",
                               severity='note', only_once=True)
         manager.errors.set_import_context(save_import_context)
 
@@ -1257,7 +1250,7 @@ class State:
         """Return whether the cache data for this file is fresh."""
         # NOTE: self.dependencies may differ from
         # self.meta.dependencies when a dependency is dropped due to
-        # suppression by --silent-imports.  However when a suppressed
+        # suppression by silent mode.  However when a suppressed
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.is_interface_fresh()
@@ -1329,7 +1322,7 @@ class State:
         previously made.
 
         This method is meant to be run after parse_file finishes in process_stale_scc and will
-        recompute what modules should be considered suppressed in silent_import mode.
+        recompute what modules should be considered suppressed in silent mode.
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
@@ -1428,7 +1421,7 @@ class State:
         # NOTE: What to do about race conditions (like editing the
         # file while mypy runs)?  A previous version of this code
         # explicitly checked for this, but ran afoul of other reasons
-        # for differences (e.g. --silent-imports).
+        # for differences (e.g. silent mode).
         self.dependencies = dependencies
         self.suppressed = suppressed
         self.priorities = priorities

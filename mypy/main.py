@@ -150,7 +150,7 @@ def process_options(args: List[str],
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
                         help="silently ignore imports of missing modules")
-    parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip'],
+    parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
@@ -284,10 +284,14 @@ def process_options(args: List[str],
 
     # Process deprecated options
     if special_opts.almost_silent:
-        options.follow_imports = 'skip'
+        # TODO: Warn about deprecated flag.
+        if options.follow_imports == 'normal':
+            options.follow_imports = 'skip'
     elif special_opts.silent_imports:
-        options.silent_missing_imports = True
-        options.follow_imports = 'skip'
+        # TODO: Warn about deprecated flag.
+        options.ignore_missing_imports = True
+        if options.follow_imports == 'normal':
+            options.follow_imports = 'skip'
     if special_opts.dirty_stubs:
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",
@@ -514,6 +518,7 @@ def parse_section(prefix: str, template: Options,
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
+    # XXX TODO B/W compat for silent_imports and almost_silent?
     results = {}
     report_dirs = {}  # type: Dict[str, str]
     for key in section:

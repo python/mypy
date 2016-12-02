@@ -229,9 +229,9 @@ mypy.ini: [mypy]: Unrecognized report type: bad_report
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-silent_missing_imports = nah
+ignore_missing_imports = nah
 [out]
-mypy.ini: [mypy]: silent_missing_imports: Not a boolean: nah
+mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 
 [case testConfigErrorNotPerFile]
 # cmd: mypy -c pass
@@ -319,7 +319,7 @@ baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
 file.py:1: error: Cannot find module named 'no_stubs'
-file.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
+file.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testIgnoreErrorsConfig]

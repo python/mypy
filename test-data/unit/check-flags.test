@@ -49,7 +49,7 @@ class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass 'FakeClass' 
 [out]
 
 [case testSubclassingAnySilentImports]
-# flags: --disallow-subclassing-any --silent-imports
+# flags: --disallow-subclassing-any --follow-imports=skip --ignore-missing-imports
 # cmd: mypy -m main
 
 [file main.py]
@@ -63,7 +63,7 @@ class BaseClass: pass
 tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
 
 [case testSubclassingAnySilentImports2]
-# flags: --disallow-subclassing-any --silent-imports
+# flags: --disallow-subclassing-any --follow-imports=skip
 # cmd: mypy -m main
 
 [file main.py]

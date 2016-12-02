@@ -982,7 +982,7 @@ import a.b
 tmp/b.py:4: error: Name 'a' already defined
 
 [case testIncrementalSilentImportsAndImportsInClass]
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 class MyObject(object):
     from bar import FooBar
 [stale]
@@ -1010,7 +1010,7 @@ tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "st
 [case testIncrementalUnsilencingModule]
 # cmd: mypy -m main package.subpackage.mod2
 # cmd2: mypy -m main package.subpackage.mod1
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from package.subpackage.mod1 import Class

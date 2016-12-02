@@ -41,7 +41,7 @@ class Options:
         self.mypy_path = []  # type: List[str]
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
-        self.follow_imports = 'normal'  # normal|silent|skip
+        self.follow_imports = 'normal'  # normal|silent|skip|error
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
