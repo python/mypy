@@ -1219,7 +1219,8 @@ class State:
         manager.errors.set_file(ancestor_for.xpath)
         manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
-        manager.errors.report(-1, -1, "(Using --follow-imports=error, submodule passed on command line)",
+        manager.errors.report(-1, -1,
+                              "(Using --follow-imports=error, submodule passed on command line)",
                               severity='note', only_once=True)
 
     def skipping_module(self, id: str, path: str) -> None:
