@@ -325,6 +325,7 @@ file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int
 [case testIgnoreErrorsConfig]
 # cmd: mypy x.py y.py
 [file mypy.ini]
+[[mypy]
 [[mypy-x]
 ignore_errors = True
 [file x.py]
