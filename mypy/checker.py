@@ -1043,7 +1043,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Method override
             first_sig = bind_self(first_type)
             second_sig = bind_self(second_type)
-            ok = is_subtype(first_sig, second_sig)
+            ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
         else:

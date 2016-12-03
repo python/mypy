@@ -64,8 +64,11 @@ def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
 
 
 def is_equivalent(a: Type, b: Type,
-                  type_parameter_checker: TypeParameterChecker = check_type_parameter) -> bool:
-    return is_subtype(a, b, type_parameter_checker) and is_subtype(b, a, type_parameter_checker)
+                  type_parameter_checker: TypeParameterChecker = check_type_parameter,
+                  *, ignore_pos_arg_names=False) -> bool:
+    return (
+        is_subtype(a, b, type_parameter_checker, ignore_pos_arg_names=ignore_pos_arg_names)
+        and is_subtype(b, a, type_parameter_checker, ignore_pos_arg_names=ignore_pos_arg_names))
 
 
 def satisfies_upper_bound(a: Type, upper_bound: Type) -> bool:
