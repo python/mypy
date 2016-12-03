@@ -180,3 +180,51 @@ import b
 tmp/a.py:1: note: In module imported here,
 main:2: note: ... from here:
 tmp/b.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testFollowImportsNormal]
+# flags: --follow-imports=normal
+from mod import x
+x + ""
+[file mod.py]
+1 + ""
+x = 0
+[out]
+tmp/mod.py:1: error: Unsupported operand types for + ("int" and "str")
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testFollowImportsSilent]
+# flags: --follow-imports=silent
+from mod import x
+x + ""  # E: Unsupported operand types for + ("int" and "str")
+[file mod.py]
+1 + ""
+x = 0
+
+[case testFollowImportsSkip]
+# flags: --follow-imports=skip
+from mod import x
+x + ""
+[file mod.py]
+this deliberate syntax error will not be reported
+[out]
+ 
+[case testFollowImportsError]
+# flags: --follow-imports=error
+from mod import x
+x + ""
+[file mod.py]
+deliberate syntax error
+[out]
+main:2: note: Import of 'mod' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testIgnoreMissingImportsFalse]
+from mod import x
+[out]
+main:1: error: Cannot find module named 'mod'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreMissingImportsTrue]
+# flags: --ignore-missing-imports
+from mod import x
+[out]
