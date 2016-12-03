@@ -49,7 +49,7 @@ class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass 'FakeClass' 
 [out]
 
 [case testSubclassingAnySilentImports]
-# flags: --disallow-subclassing-any --follow-imports=skip --ignore-missing-imports
+# flags: --disallow-subclassing-any --follow-imports=skip
 # cmd: mypy -m main
 
 [file main.py]

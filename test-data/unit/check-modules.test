@@ -952,7 +952,7 @@ tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command
 
 [case testStubImportNonStubWhileSilent]
 # cmd: mypy -m main
-# flags: --follow-imports=skip --ignore-missing-imports
+# flags: --follow-imports=skip
 [file main.py]
 from stub import x # Permitted
 from other import y # Disallowed
