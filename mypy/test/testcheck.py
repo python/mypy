@@ -188,8 +188,7 @@ class TypeCheckSuite(DataSuite):
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if incremental and res:
-            # XXX is this right?
-            if not options.ignore_missing_imports and testcase.output is None:
+            if options.follow_imports == 'normal' and testcase.output is None:
                 self.verify_cache(module_data, a, res.manager)
             if incremental == 2:
                 self.check_module_equivalence(
