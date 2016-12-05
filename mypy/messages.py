@@ -819,6 +819,19 @@ class MessageBuilder:
         self.fail('Expected items {} but found {}.'.format(
             expected_item_names, actual_item_names), context)
 
+    def typeddict_item_name_must_be_string_literal(self,
+                                                   typ: TypedDictType,
+                                                   context: Context):
+        self.fail('Cannot prove expression is a valid item name. Expected one of {}.'.format(
+            list(typ.items.keys())), context)
+
+    def typeddict_item_name_not_found(self,
+                                      typ: TypedDictType,
+                                      item_name: str,
+                                      context: Context):
+        self.fail('\'{}\' is not a valid item name. Expected one of {}.'.format(
+            item_name, list(typ.items.keys())), context)
+
 
 def capitalize(s: str) -> str:
     """Capitalize the first character of a string."""

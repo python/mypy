@@ -1435,6 +1435,8 @@ class ExpressionChecker:
             else:
                 self.chk.fail(messages.TUPLE_INDEX_MUST_BE_AN_INT_LITERAL, e)
                 return AnyType()
+        elif isinstance(left_type, TypedDictType):
+            return self.visit_typeddict_index_expr(left_type, e.index)
         else:
             result, method_type = self.check_op('__getitem__', left_type, e.index, e)
             e.method_type = method_type
@@ -1480,6 +1482,18 @@ class ExpressionChecker:
                 if isinstance(operand, IntExpr):
                     return -1 * operand.value
         return None
+
+    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression):
+        if not isinstance(index, (StrExpr, UnicodeExpr)):
+            self.msg.typeddict_item_name_must_be_string_literal(td_type, index)
+            return AnyType()
+        item_name = index.value
+
+        item_type = td_type.items.get(item_name)
+        if item_type is None:
+            self.msg.typeddict_item_name_not_found(td_type, item_name, index)
+            return AnyType()
+        return item_type
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
