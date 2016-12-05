@@ -98,7 +98,7 @@ The following global flags may only be set in the global section
 - ``hide_error_context`` (Boolean, default False) hides
   context notes before errors.
 
-- ``show_column_numbers`` (Boolean, default False) show column numbers in
+- ``show_column_numbers`` (Boolean, default False) shows column numbers in
   error messages.
 
 
@@ -138,7 +138,7 @@ overridden by the pattern sections matching the module name.
   to strict ``None`` checking, if the global ``strict_optional`` flag
   is enabled.
 
-- ``ignore_errors`` (Boolean, default False) ignore all non-fatal
+- ``ignore_errors`` (Boolean, default False) ignores all non-fatal
   errors.
 
 - ``warn_no_return`` (Boolean, default False) shows errors for
