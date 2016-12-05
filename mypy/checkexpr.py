@@ -1003,7 +1003,7 @@ class ExpressionChecker:
                 ``f`` is a descriptor).
             descriptor_type: The type of the descriptor attribute being accessed
                 (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
-            contetx: The node defining the context of this inference.
+            context: The node defining the context of this inference.
         Return:
             The return type of the appropriate ``__get__`` overload for the descriptor.
         """
