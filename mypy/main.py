@@ -175,7 +175,7 @@ def process_options(args: List[str],
                         dest='hide_error_context',
                         help="Hide context notes before errors")
     parser.add_argument('--fast-parser', action='store_true',
-                        help="enable experimental fast parser")
+                        help="enable fast parser (recommended except on Windows)")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
@@ -465,6 +465,9 @@ config_types = {
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
+    # These two are for backwards compatibility
+    'silent_imports': bool,
+    'almost_silent': bool,
 }
 
 
@@ -481,14 +484,13 @@ def parse_config_file(options: Options, filename: str) -> None:
         return
     if 'mypy' not in parser:
         print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
-        return
-
-    section = parser['mypy']
-    prefix = '%s: [%s]' % (filename, 'mypy')
-    updates, report_dirs = parse_section(prefix, options, section)
-    for k, v in updates.items():
-        setattr(options, k, v)
-    options.report_dirs.update(report_dirs)
+    else:
+        section = parser['mypy']
+        prefix = '%s: [%s]' % (filename, 'mypy')
+        updates, report_dirs = parse_section(prefix, options, section)
+        for k, v in updates.items():
+            setattr(options, k, v)
+        options.report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
@@ -518,8 +520,7 @@ def parse_section(prefix: str, template: Options,
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
-    # XXX TODO B/W compat for silent_imports and almost_silent?
-    results = {}
+    results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
         key = key.replace('-', '_')
@@ -552,6 +553,20 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
+        if key == 'silent_imports':
+            print("%s: silent_imports has been replaced by "
+                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
+            if v:
+                if 'ignore_missing_imports' not in results:
+                    results['ignore_missing_imports'] = True
+                if 'follow_imports' not in results:
+                    results['follow_imports'] = 'skip'
+        if key == 'almost_silent':
+            print("%s: almost_silent has been replaced by "
+                  "ignore_missing_imports=True; follow_imports=error" % prefix, file=sys.stderr)
+            if v:
+                if 'follow_imports' not in results:
+                    results['follow_imports'] = 'error'
         results[key] = v
     return results, report_dirs
 

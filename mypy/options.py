@@ -27,6 +27,9 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "ignore_errors",
+        # These two are for backwards compatibility
+        'silent_imports',
+        'almost_silent',
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
