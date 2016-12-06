@@ -285,12 +285,18 @@ class MemoryXmlReporter(AbstractReporter):
         super().__init__(reports, output_dir)
 
         self.xslt_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.xslt')
+        self.xslt_html_tooltips_path = os.path.join(
+            reports.data_dir, 'xml', 'mypy-html-tooltips.xslt')
         self.xslt_txt_path = os.path.join(reports.data_dir, 'xml', 'mypy-txt.xslt')
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
         self.last_xml = None  # type: etree._ElementTree
         self.files = []  # type: List[FileInfo]
+        self.type_columns = False
+
+    def set_type_columns(self, type_columns: bool) -> None:
+        self.type_columns = type_columns
 
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         self.last_xml = None
@@ -302,7 +308,8 @@ class MemoryXmlReporter(AbstractReporter):
         if 'stubs' in path.split('/'):
             return
 
-        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True, typemap=type_map, all_nodes=True,
+                                          linecol_typestr=self.type_columns)
         tree.accept(visitor)
 
         root = etree.Element('mypy-report-file', name=path, module=tree._fullname)
@@ -313,10 +320,28 @@ class MemoryXmlReporter(AbstractReporter):
             for lineno, line_text in enumerate(input_file, 1):
                 status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
                 file_info.counts[status] += 1
-                etree.SubElement(root, 'line',
+                line = etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
                                  content=line_text[:-1])
+
+                if self.type_columns:
+                    for column, ch in enumerate(line_text[:-1]):
+                        if lineno in visitor.linecol_typename_map:
+                            row = visitor.linecol_typename_map[lineno]
+                            if column in row:
+                                typestr = row[column]
+                            else:
+                                typestr = ""
+                        else:
+                            typestr = ""
+
+                        etree.SubElement(line,
+                                         "char",
+                                         column=str(column),
+                                         typestr=typestr,
+                                         content=ch)
+
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -530,8 +555,11 @@ class XsltHtmlReporter(AbstractXmlReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
 
-        self.xslt_html = etree.XSLT(etree.parse(self.memory_xml.xslt_html_path))
+        self.xslt_html = etree.XSLT(etree.parse(self.xslt_file_to_use()))
         self.param_html = etree.XSLT.strparam('html')
+
+    def xslt_file_to_use(self) -> str:
+        return self.memory_xml.xslt_html_path
 
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         last_xml = self.memory_xml.last_xml
@@ -558,6 +586,19 @@ class XsltHtmlReporter(AbstractXmlReporter):
 
 
 register_reporter('xslt-html', XsltHtmlReporter, needs_lxml=True)
+
+
+class XsltHtmlTooltipsReporter(XsltHtmlReporter):
+    def __init__(self, reports: Reports, output_dir: str) -> None:
+        super().__init__(reports, output_dir)
+        self.memory_xml.set_type_columns(True)
+
+    def xslt_file_to_use(self) -> str:
+        return self.memory_xml.xslt_html_tooltips_path
+
+
+register_reporter('xslt-html-tooltips',
+                  XsltHtmlTooltipsReporter, needs_lxml=True)
 
 
 class XsltTxtReporter(AbstractXmlReporter):

@@ -32,10 +32,12 @@ precision_names = [
 
 class StatisticsVisitor(TraverserVisitor):
     def __init__(self, inferred: bool, typemap: Dict[Expression, Type] = None,
-                 all_nodes: bool = False) -> None:
+                 all_nodes: bool = False,
+                 linecol_typestr: bool = False) -> None:
         self.inferred = inferred
         self.typemap = typemap
         self.all_nodes = all_nodes
+        self.linecol_typestr = linecol_typestr
 
         self.num_precise = 0
         self.num_imprecise = 0
@@ -51,6 +53,8 @@ class StatisticsVisitor(TraverserVisitor):
         self.line = -1
 
         self.line_map = {}  # type: Dict[int, int]
+
+        self.linecol_typename_map = {}  # type: Dict[int, Dict[int, str]]
 
         self.output = []  # type: List[str]
 
@@ -152,6 +156,11 @@ class StatisticsVisitor(TraverserVisitor):
         if self.all_nodes:
             typ = self.typemap.get(node)
             if typ:
+                if self.linecol_typestr:
+                    self.record_node_typestr(
+                        node.line,
+                        node.column,
+                        str(typ))
                 self.line = node.line
                 self.type(typ)
 
@@ -195,6 +204,16 @@ class StatisticsVisitor(TraverserVisitor):
     def record_line(self, line: int, precision: int) -> None:
         self.line_map[line] = max(precision,
                                   self.line_map.get(line, TYPE_PRECISE))
+
+    def record_node_typestr(self,
+                            line: int,
+                            column: int,
+                            typestr: str) -> None:
+        m = self.linecol_typename_map
+
+        m.setdefault(line, m.get(line, {}))
+
+        m[line][column] = typestr
 
 
 def dump_type_stats(tree: MypyFile, path: str, inferred: bool = False,
