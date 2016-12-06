@@ -284,11 +284,13 @@ def process_options(args: List[str],
 
     # Process deprecated options
     if special_opts.almost_silent:
-        # TODO: Warn about deprecated flag.
+        print("Warning: --almost-silent has been replaced by "
+              "--follow=imports=errors", file=sys.stderr)
         if options.follow_imports == 'normal':
             options.follow_imports = 'skip'
     elif special_opts.silent_imports:
-        # TODO: Warn about deprecated flag.
+        print("Warning: --silent-imports has been replaced by "
+              "--ignore-missing-imports --follow=imports=skip", file=sys.stderr)
         options.ignore_missing_imports = True
         if options.follow_imports == 'normal':
             options.follow_imports = 'skip'
@@ -563,7 +565,7 @@ def parse_section(prefix: str, template: Options,
                     results['follow_imports'] = 'skip'
         if key == 'almost_silent':
             print("%s: almost_silent has been replaced by "
-                  "ignore_missing_imports=True; follow_imports=error" % prefix, file=sys.stderr)
+                  "follow_imports=error" % prefix, file=sys.stderr)
             if v:
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'
