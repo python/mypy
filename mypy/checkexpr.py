@@ -1026,16 +1026,16 @@ class ExpressionChecker:
         owner_type = None  # type: Type
 
         if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
-            instance_type = instance_type.items()[0].ret_type
-            owner_type = NoneTyp()
+            owner_type = instance_type.items()[0].ret_type
+            instance_type = NoneTyp()
         elif isinstance(instance_type, TypeType):
-            instance_type = instance_type.item
-            owner_type = NoneTyp()
+            owner_type = instance_type.item
+            instance_type = NoneTyp()
         else:
             owner_type = instance_type
 
         _, inferred_dunder_get_type = self.check_call(
-            dunder_get_type, [TempNode(owner_type), TempNode(TypeType(instance_type))],
+            dunder_get_type, [TempNode(instance_type), TempNode(TypeType(owner_type))],
             [nodes.ARG_POS, nodes.ARG_POS], context)
 
         if isinstance(inferred_dunder_get_type, AnyType):

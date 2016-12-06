@@ -911,30 +911,28 @@ a = A()
 reveal_type(a.f)  # E: Revealed type is '__main__.D'
 
 [case testAccessingGenericNonDataDescriptor]
-from typing import TypeVar, Type, Generic
-T = TypeVar('T')
+from typing import TypeVar, Type, Generic, Any
 V = TypeVar('V')
-class D(Generic[T, V]):
+class D(Generic[V]):
     def __init__(self, v: V) -> None: self.v = v
-    def __get__(self, inst: T, own: Type[T]) -> V: return self.v
+    def __get__(self, inst: Any, own: Type) -> V: return self.v
 class A:
-    f = D(10)  # type: D[A, int]
-    g = D('10')  # type: D[A, str]
+    f = D(10)
+    g = D('10')
 a = A()
 reveal_type(a.f)  # E: Revealed type is 'builtins.int*'
 reveal_type(a.g)  # E: Revealed type is 'builtins.str*'
 
 [case testSettingGenericDataDescriptor]
-from typing import TypeVar, Type, Generic
-T = TypeVar('T')
+from typing import TypeVar, Type, Generic, Any
 V = TypeVar('V')
-class D(Generic[T, V]):
+class D(Generic[V]):
     def __init__(self, v: V) -> None: self.v = v
-    def __get__(self, inst: T, own: Type[T]) -> V: return self.v
-    def __set__(self, inst: T, v: V) -> None: pass
+    def __get__(self, inst: Any, own: Type) -> V: return self.v
+    def __set__(self, inst: Any, v: V) -> None: pass
 class A:
-    f = D(10)  # type: D[A, int]
-    g = D('10')  # type: D[A, str]
+    f = D(10)
+    g = D('10')
 a = A()
 a.f = 1
 a.f = '' # E: Argument 2 to "__set__" of "D" has incompatible type "str"; expected "int"
@@ -986,7 +984,6 @@ class D(Generic[T, V]):
 main: note: In function "f":
 main:8: error: Revealed type is 'd.D[__main__.A*, builtins.int*]'
 main:9: error: Revealed type is 'd.D[__main__.A*, builtins.str*]'
-
 
 [case testAccessingGenericDescriptorFromClassBadOverload]
 # flags: --strict-optional
@@ -1043,16 +1040,15 @@ a = A()
 reveal_type(a.f)  # E: Revealed type is '__main__.D'
 
 [case testAccessingGenericNonDataDescriptorSubclass]
-from typing import TypeVar, Type, Generic
-T = TypeVar('T')
+from typing import TypeVar, Type, Generic, Any
 V = TypeVar('V')
-class C(Generic[T, V]):
+class C(Generic[V]):
     def __init__(self, v: V) -> None: self.v = v
-    def __get__(self, inst: T, own: Type[T]) -> V: return self.v
-class D(C[T, V], Generic[T, V]): pass
+    def __get__(self, inst: Any, own: Type) -> V: return self.v
+class D(C[V], Generic[V]): pass
 class A:
-    f = D(10)  # type: D[A, int]
-    g = D('10')  # type: D[A, str]
+    f = D(10)
+    g = D('10')
 a = A()
 reveal_type(a.f)  # E: Revealed type is 'builtins.int*'
 reveal_type(a.g)  # E: Revealed type is 'builtins.str*'
@@ -1089,21 +1085,20 @@ A.f = D(20)
 A.f = D('some string')  # E: Argument 1 to "D" has incompatible type "str"; expected "int"
 
 [case testSetDescriptorOnInferredClass]
-from typing import TypeVar, Type, Generic
-T = TypeVar('T')
+from typing import TypeVar, Type, Generic, Any
 V = TypeVar('V')
-class D(Generic[T, V]):
+class D(Generic[V]):
     def __init__(self, v: V) -> None: self.v = v
-    def __get__(self, inst: T, own: Type[T]) -> V: return self.v
-    def __set__(self, inst: T, v: V) -> None: pass
+    def __get__(self, inst: Any, own: Type) -> V: return self.v
+    def __set__(self, inst: Any, v: V) -> None: pass
 class A:
-    f = D(10)  # type: D[A, int]
+    f = D(10)
 def f(some_class: Type[A]):
     A.f = D(20)
     A.f = D('some string')
 [out]
 main: note: In function "f":
-main:12: error: Argument 1 to "D" has incompatible type "str"; expected "int"
+main:11: error: Argument 1 to "D" has incompatible type "str"; expected "int"
 
 [case testDescriptorUncallableDunderSet]
 class D:
