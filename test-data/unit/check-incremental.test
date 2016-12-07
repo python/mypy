@@ -1216,7 +1216,7 @@ tmp/main.py:2: error: Revealed type is 'Any'
 [case testIncrementalImportIsNewlySilenced]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main
-# flags: --ignore-missing-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from foo import bar
@@ -1235,7 +1235,7 @@ bar = 3
 [case testIncrementalSilencedModuleNoLongerCausesError]
 # cmd: mypy -m main evil
 # cmd2: mypy -m main
-# flags: --ignore-missing-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from evil import bar
@@ -1509,7 +1509,7 @@ tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; exp
 [case testIncrementalPartialSubmoduleUpdate]
 # cmd: mypy -m a
 # cmd2: mypy -m a a.c
-# flags: --ignore-missing-imports
+# flags: --follow-imports=skip
 
 [file a/__init__.py]
 from .b import B
