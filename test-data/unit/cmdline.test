@@ -334,3 +334,59 @@ ignore_errors = True
 "" + 0
 [out]
 y.py:1: error: Unsupported operand types for + ("str" and "int")
+
+[case testConfigFollowImportsNormal]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + 0
+[file mypy.ini]
+[[mypy]
+follow_imports = normal
+[file a.py]
+x = 0
+x += ''  # Error reported here
+[out]
+main.py:1: note: In module imported here:
+a.py:2: error: Unsupported operand types for + ("int" and "str")
+
+[case testConfigFollowImportsSilent]
+# cmd: mypy main.py
+[file main.py]
+import a
+a.x + 0
+[file mypy.ini]
+[[mypy]
+follow_imports = silent
+[file a.py]
+x = 0
+x += ''  # No error reported
+[out]
+
+[case testConfigFollowImportsSkip]
+# cmd: mypy main.py
+[file main.py]
+import a
+reveal_type(a.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+follow_imports = skip
+[file a.py]
+/  # No error reported
+[out]
+main.py:2: error: Revealed type is 'Any'
+
+[case testConfigFollowImportsError]
+# cmd: mypy main.py
+[file main.py]
+import a  # Error reported here
+reveal_type(a.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+follow_imports = error
+[file a.py]
+/  # No error reported
+[out]
+main.py:1: note: Import of 'a' ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
+main.py:2: error: Revealed type is 'Any'
