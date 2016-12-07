@@ -1587,3 +1587,39 @@ class Z(X, Y): pass
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
 [out2]
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
+
+[case testIncrementalFollowImportsSilent]
+# flags: --follow-imports=silent
+import a
+[file a.py]
+x = 0
+[file a.py.next]
+x = 0
+x + ''
+
+[case testIncrementalFollowImportsSkip]
+# flags: --follow-imports=skip
+import a
+reveal_type(a.x)
+[file a.py]
+/
+[file a.py.next]
+//
+[out]
+main:3: error: Revealed type is 'Any'
+[out2]
+main:3: error: Revealed type is 'Any'
+
+[case testIncrementalFollowImportsError]
+# flags: --follow-imports=error
+import a
+[file a.py]
+/
+[file a.py.next]
+//
+[out]
+main:2: note: Import of 'a' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+[out2]
+main:2: note: Import of 'a' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
