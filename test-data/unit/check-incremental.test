@@ -1047,7 +1047,7 @@ import foo # type: ignore
 [case testIncrementalWithSilentImportsAndIgnore]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 import a  # type: ignore
@@ -1195,7 +1195,7 @@ tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; exp
 
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from evil import Hello
@@ -1216,7 +1216,7 @@ tmp/main.py:2: error: Revealed type is 'Any'
 [case testIncrementalImportIsNewlySilenced]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 
 [file main.py]
 from foo import bar
@@ -1235,7 +1235,7 @@ bar = 3
 [case testIncrementalSilencedModuleNoLongerCausesError]
 # cmd: mypy -m main evil
 # cmd2: mypy -m main
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 
 [file main.py]
 from evil import bar
@@ -1377,7 +1377,7 @@ tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
 [case testIncrementalSilentImportsWithInnerImports]
 # cmd: mypy -m main foo
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 
 [file main.py]
 from foo import MyClass
@@ -1402,7 +1402,7 @@ tmp/main.py:3: error: Revealed type is 'Any'
 [case testIncrementalSilentImportsWithInnerImportsAndNewFile]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main foo unrelated
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from foo import MyClass
@@ -1509,7 +1509,7 @@ tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; exp
 [case testIncrementalPartialSubmoduleUpdate]
 # cmd: mypy -m a
 # cmd2: mypy -m a a.c
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 
 [file a/__init__.py]
 from .b import B
