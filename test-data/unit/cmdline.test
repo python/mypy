@@ -390,3 +390,27 @@ follow_imports = error
 main.py:1: note: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: error: Revealed type is 'Any'
+
+[case testConfigSilentMissingImportsOff]
+# cmd: mypy main.py
+[file main.py]
+import missing  # Expect error here
+reveal_type(missing.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+ignore_missing_imports = False
+[out]
+main.py:1: error: Cannot find module named 'missing'
+main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:2: error: Revealed type is 'Any'
+
+[case testConfigSilentMissingImportsOn]
+# cmd: mypy main.py
+[file main.py]
+import missing  # No error here
+reveal_type(missing.x)  # Expect Any
+[file mypy.ini]
+[[mypy]
+ignore_missing_imports = True
+[out]
+main.py:2: error: Revealed type is 'Any'
