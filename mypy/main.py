@@ -287,7 +287,7 @@ def process_options(args: List[str],
         print("Warning: --almost-silent has been replaced by "
               "--follow=imports=errors", file=sys.stderr)
         if options.follow_imports == 'normal':
-            options.follow_imports = 'skip'
+            options.follow_imports = 'errors'
     elif special_opts.silent_imports:
         print("Warning: --silent-imports has been replaced by "
               "--ignore-missing-imports --follow=imports=skip", file=sys.stderr)
