@@ -864,10 +864,8 @@ T = TypeVar('T')
 def dec(f: T) -> T: return f
 
 [out]
-tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/b.py:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-main:1: note: In module imported here:
 tmp/a.py:5: error: Argument 1 to "g" has incompatible type "int"; expected "str"
 
 [case testDecoratorWithNoAnnotationInImportCycle]
@@ -912,10 +910,8 @@ from typing import Callable
 def dec(f: Callable[[int], str]) -> Callable[[int], str]: return f
 
 [out]
-tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/b.py:5: error: "str" not callable
-main:1: note: In module imported here:
 tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycle]
@@ -940,10 +936,8 @@ from typing import Callable
 def dec() -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 
 [out]
-tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/b.py:5: error: "str" not callable
-main:1: note: In module imported here:
 tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycleAndDecoratorArgs]
@@ -968,11 +962,9 @@ from typing import Callable
 def dec(x: str) -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 
 [out]
-tmp/a.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/b.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
 tmp/b.py:5: error: "str" not callable
-main:1: note: In module imported here:
 tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
 tmp/a.py:5: error: "str" not callable
 

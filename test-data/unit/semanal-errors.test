@@ -244,7 +244,6 @@ import m
 [file m/__init__.py]
 from .x import y
 [out]
-main:2: note: In module imported here:
 tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
 tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
@@ -255,7 +254,6 @@ import m.a
 [file m/a.py]
 from .x import y
 [out]
-main:2: note: In module imported here:
 tmp/m/a.py:1: error: Cannot find module named 'm.x'
 tmp/m/a.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
@@ -324,7 +322,6 @@ import m
 import typing
 x = y
 [out]
-main:1: note: In module imported here:
 tmp/m.py:2: error: Name 'y' is not defined
 
 [case testErrorInImportedModule2]
@@ -336,7 +333,6 @@ import k
 import typing
 x = y
 [out]
-tmp/m/n.py:1: note: In module imported here,
 main:1: note: ... from here:
 tmp/k.py:2: error: Name 'y' is not defined
 
