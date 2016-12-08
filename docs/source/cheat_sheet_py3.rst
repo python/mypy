@@ -4,7 +4,7 @@ Mypy syntax cheat sheet (Python 3)
 ==================================
 
 This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
-language represents various common types in Python 3. Up to the last section, the syntax is valid on all versions of Python 3. See the last section for more on variable annotation syntax.
+language represents various common types in Python 3. Unless otherwise noted, the syntax is valid on all versions of Python 3.
 
 .. note::
 
@@ -22,31 +22,32 @@ Built-in types
    from typing import List, Set, Dict, Tuple, Text, Optional, AnyStr
 
    # For simple built-in types, just use the name of the type.
-   x = 1 # type: int
-   x = 1.0 # type: float
-   x = True # type: bool
-   x = "test" # type: str
-   x = u"test" # type: unicode
+   x = 1  # type: int
+   x = 1.0  # type: float
+   x = True  # type: bool
+   x = "test"  # type: str
+   x = u"test"  # type: str
+   x = b"test"  # type: bytes
 
    # For collections, the name of the type is capitalized, and the
    # name of the type inside the collection is in brackets.
-   x = [1] # type: List[int]
-   x = set([6, 7]) # type: Set[int]
+   x = [1]  # type: List[int]
+   x = {6, 7}  # type: Set[int]
 
    # For mappings, we need the types of both keys and values.
-   x = dict(field=2.0) # type: Dict[str, float]
+   x = {'field': 2.0}  # type: Dict[str, float]
 
    # For tuples, we specify the types of all the elements.
-   x = (3, "yes", 7.5) # type: Tuple[int, str, float]
+   x = (3, "yes", 7.5)  # type: Tuple[int, str, float]
 
    # For textual data, use Text.
    # This is `unicode` in Python 2 and `str` in Python 3.
-   x = ["string", u"unicode"] # type: List[Text]
+   x = ["string", u"unicode"]  # type: List[Text]
 
 
 
    # Use Optional for values that could be None.
-   input_str = f() # type: Optional[str]
+   input_str = f()  # type: Optional[str]
    if input_str is not None:
       print(input_str)
 
@@ -92,7 +93,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
                   body: List[str] = None
                   ) -> bool:
        
-       pass
+       ...
 
 
 When you're puzzled or when things are complicated
@@ -105,28 +106,28 @@ When you're puzzled or when things are complicated
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type.  Mypy will print an error
    # message with the type; remove it again before running the code.
-   reveal_type(1) # -> error: Revealed type is 'builtins.int'
+   reveal_type(1)  # -> error: Revealed type is 'builtins.int'
 
    # Use Union when something could be one of a few types.
-   x = [3, 5, "test", "fun"] # type: List[Union[int, str]]
+   x = [3, 5, "test", "fun"]  # type: List[Union[int, str]]
 
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for.
-   x = mystery_function() # type: Any
+   x = mystery_function()  # type: Any
 
    # Use `ignore` to suppress type-checking on a given line, when your
    # code confuses mypy or runs into an outright bug in mypy.
    # Good practice is to comment every `ignore` with a bug link
    # (in mypy, typeshed, or your own code) or an explanation of the issue.
-   x = confusing_function() # type: ignore # https://github.com/python/mypy/issues/1167
+   x = confusing_function()  # type: ignore # https://github.com/python/mypy/issues/1167
 
    # cast is a helper function for mypy that allows for guidance of how to convert types.
    # it does not cast at runtime
    a = [4]
-   b = cast(List[int], a) # passes fine
-   c = cast(List[str], a) # passes fine (no runtime check)
-   reveal_type(c) # -> error: Revealed type is 'builtins.list[builtins.str]'
-   print(c) # -> [4] the object is not cast
+   b = cast(List[int], a)  # passes fine
+   c = cast(List[str], a)  # passes fine (no runtime check)
+   reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
+   print(c)  # -> [4] the object is not cast
 
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container
@@ -167,11 +168,11 @@ Classes
 
 .. code-block:: python
 
-   class MyClass(object):
+   class MyClass:
        # The __init__ method doesn't return anything, so it gets return
        # type None just like any other method that doesn't return anything.
        def __init__(self) -> None:
-           pass
+           ...
        # For instance methods, omit `self`.
        def my_class_method(self, num: int, str1: str) -> str:
            return num * str1
@@ -191,15 +192,15 @@ Other stuff
    import re
    # typing.Match describes regex matches from the re module.
    from typing import Match, AnyStr, IO
-   x = re.match(r'[0-9]+', "15") # type: Match[str]
+   x = re.match(r'[0-9]+', "15")  # type: Match[str]
 
    # You can use AnyStr to indicate that any string type will work
    # but not to mix types
    def full_name(first: AnyStr, last: AnyStr) -> AnyStr:
        return first+last
-   full_name('Jon','Doe') # same str ok
-   full_name(b'Bill', b'Bit') # same binary ok
-   full_name(b'Terry', 'Trouble') # different str types, fails
+   full_name('Jon','Doe')  # same str ok
+   full_name(b'Bill', b'Bit')  # same binary ok
+   full_name(b'Terry', 'Trouble')  # different str types, fails
 
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call. The IO[] does not
@@ -214,14 +215,14 @@ Other stuff
 
    # forward references are useful if you want to referemce a class before it is designed
    
-   def(foo: A) -> int: # this will fail
+   def f(foo: A) -> int:  # this will fail
        ...
    
    class A:
-       pass
+       ...
        
    # however, using the string 'A', it will pass as long as there is a class of that name later on
-   def(foo: 'A') -> int:
+   def f(foo: 'A') -> int:
        ...
 
    # TODO: add TypeVar and a simple generic function
@@ -230,27 +231,22 @@ Variable Annotation in Python 3.6 with PEP 526
 **********************************************
 
 Python 3.6 brings new syntax for annotating variables with `PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_.
-
+Mypy brings limited support for PEP 526 annotations.
 
 
 .. code-block:: python
 
-   from typing import ClassVar
    # annotation is similar to arguments to functions
    name: str = "Eric Idle"
    
-   # you can annotate objects in more complex expresions such as
-   a = {}
-   a['b']: int # the value is checked to be of type int
+   # class instances can be annotated as follows
+   mc : MyClass = MyClass()
    
-   b = Car() : Car
-   b.doors: int = 4 # you can type annotate instance variables after class instantiation
-   
-   # tuple unpacking can be done as follows
+   # tuple packing can be done as follows
    tu: Tuple[str, ...] = ('a', 'b', 'c')
    
    # annotations are not checked at runtime
-   year: int = '1972' # error in type checking, but work at runtime
+   year: int = '1972'  # error in type checking, but works at runtime
    
    # these are all equivalent
    hour = 24 # type: int
@@ -259,6 +255,7 @@ Python 3.6 brings new syntax for annotating variables with `PEP 526 <https://www
    
    # you do not (!) need to initialize a variable to annotate it
    a: int # ok for type checking and runtime
+   
    # which is useful in conditional branches
    child: bool
    if age < 18:
@@ -268,13 +265,17 @@ Python 3.6 brings new syntax for annotating variables with `PEP 526 <https://www
    
    # annotations for classes are for instance variables (those created in __init__ or __new__)
    class Battery:
-       charge_percent: int = 100 # this is an instance variable with a default value
-       capacity: int # an instance variable without a default
+       charge_percent: int = 100  # this is an instance variable with a default value
+       capacity: int  # an instance variable without a default
        
    # you can use the ClassVar annotation to make the variable a class variable instead of an instance variable.
    class Car:
        seats: ClassVar[int] = 4
        passengers: ClassVar[List[str]]
-    
+       
+    # You can also declare the type of an attribute in __init__
+    class Box:
+        def __init__(self) -> None:
+            self.items: List[str] = []
    
 Please see :ref:`python-36` for more on mypy's compatability with Python 3.6's new features.
