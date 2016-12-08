@@ -25,7 +25,6 @@ b = f(b)
 b = f(C()) # Fail
 [out]
 main:12: error: Type argument 1 of "f" has incompatible value "U"
-main: note: At top level:
 main:16: error: Type argument 1 of "f" has incompatible value "D"
 main:20: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 

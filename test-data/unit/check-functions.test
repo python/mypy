@@ -1031,7 +1031,6 @@ f('x') # fail
 [out]
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:9: error: Unsupported operand types for + ("int" and "str")
-main: note: At top level:
 main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testNestedConditionalFunctionDefinitionWithIfElse]
@@ -1211,7 +1210,6 @@ A().f('x') # fail
 main: note: In member "f" of class "A":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:10: error: Unsupported operand types for + ("int" and "str")
-main: note: At top level:
 main:13: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]

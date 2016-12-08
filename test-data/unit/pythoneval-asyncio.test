@@ -359,7 +359,6 @@ print(future.result())
 loop.close()
 [out]
 _program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
-_program.py: note: At top level:
 _program.py:12: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
 
 [case testErrorSettingCallbackWithDifferentFutureType]

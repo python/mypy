@@ -117,7 +117,6 @@ f(1, 1) # E
 main:3: error: "object" not callable
 main:4: error: "int" not callable
 main:5: error: "str" not callable
-main: note: At top level:
 main:7: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, str]"
 
 [case testNestedTupleArgListAnnotated]
@@ -135,7 +134,6 @@ main:3: error: "object" not callable
 main:4: error: "int" not callable
 main:5: error: "str" not callable
 main:6: error: "int" not callable
-main: note: At top level:
 main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, Tuple[str, int]]"
 
 [case testBackquoteExpr]

@@ -588,7 +588,6 @@ reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins
 
 [out]
 main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
-main: note: At top level:
 
 [case testGenericTypeAliasesWrongAliases]
 # flags: --show-column-numbers --fast-parser --python-version 3.6
@@ -731,7 +730,6 @@ reveal_type(f('a'))  # E: Revealed type is '__main__.D[builtins.str*]'
 [builtins fixtures/list.pyi]
 [out]
 main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
-main: note: At top level:
 
 [case testGenericTypeAliasesSubclassingBad]
 from typing import TypeVar, Generic, Tuple, Union

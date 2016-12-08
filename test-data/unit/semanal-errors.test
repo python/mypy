@@ -21,7 +21,6 @@ def f() -> None:
 y
 [out]
 main:3: error: Name 'x' is not defined
-main: note: At top level:
 main:4: error: Name 'y' is not defined
 
 [case testMethodScope]

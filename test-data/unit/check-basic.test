@@ -199,7 +199,6 @@ class A: pass
 class B: pass
 [out]
 main:3: error: Incompatible return value type (got "B", expected "A")
-main: note: At top level:
 main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testEmptyReturnInAnyTypedFunction]
@@ -260,7 +259,6 @@ class B: pass
 [out]
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main: note: At top level:
 main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
@@ -282,7 +280,6 @@ def f(x): # type: (int) -> str
 f('')
 [out]
 main:2: error: Incompatible return value type (got "int", expected "str")
-main: note: At top level:
 main:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testMethodSignatureAsComment]
@@ -296,7 +293,6 @@ A().f('') # Fail
 main: note: In member "f" of class "A":
 main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main:5: error: Incompatible return value type (got "int", expected "str")
-main: note: At top level:
 main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testTrailingCommaParsing-skip]

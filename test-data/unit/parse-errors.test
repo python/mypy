@@ -13,7 +13,6 @@ def f()
   pass
 [out]
 file:1: error: Parse error before end of line
-file: note: At top level:
 file:2: error: Inconsistent indentation
 
 [case testMissingIndent]

@@ -1496,7 +1496,6 @@ pro_user = new_user(ProUser)
 reveal_type(pro_user)
 [out]
 main:7: error: Revealed type is 'U`-1'
-main: note: At top level:
 main:10: error: Revealed type is '__main__.ProUser*'
 
 [case testTypeUsingTypeCTypeVarDefaultInit]
