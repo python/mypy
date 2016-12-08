@@ -1187,7 +1187,6 @@ class A:
    a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In class "A":
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInClassBody]
 class A:
@@ -1198,7 +1197,6 @@ class B:
     a.append(1)
 [builtins fixtures/list.pyi]
 [out]
-main: note: In class "A":
 
 [case testInferListInitializedToEmptyInMethod]
 class A:
@@ -1436,7 +1434,6 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In class "A":
 main:3: error: Need type annotation for variable
 main: note: In member "f" of class "A":
 main:5: error: None has no attribute "__iter__"
@@ -1452,7 +1449,6 @@ class A:
 [out]
 main: note: In member "f" of class "A":
 main:3: error: Need type annotation for variable
-main: note: In class "A":
 main:3: error: Need type annotation for variable
 
 [case testPartialTypeErrorSpecialCase3]
@@ -1463,7 +1459,6 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In class "A":
 main:2: error: Need type annotation for variable
 main: note: In member "f" of class "A":
 main:4: error: None has no attribute "__iter__"

@@ -38,7 +38,6 @@ class A:
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In class "A":
 
 [case testMultipleIsinstanceTests]
 import typing

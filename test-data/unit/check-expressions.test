@@ -678,7 +678,6 @@ class B:
 A()[1] # Error
 [out]
 main:5: error: Invalid index type "int" for "A"; expected type "str"
-main: note: In class "B":
 main:7: error: Invalid index type "int" for "A"; expected type "str"
 main: note: At top level:
 main:8: error: Invalid index type "int" for "A"; expected type "str"
@@ -697,7 +696,6 @@ A()[1] # Error
 [out]
 main:1: note: In module imported here:
 tmp/m.py:5: error: Invalid index type "int" for "A"; expected type "str"
-tmp/m.py: note: In class "B":
 tmp/m.py:7: error: Invalid index type "int" for "A"; expected type "str"
 tmp/m.py: note: At top level:
 tmp/m.py:8: error: Invalid index type "int" for "A"; expected type "str"
@@ -1249,7 +1247,6 @@ class A:
 class B: pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In class "A":
 
 
 -- Set comprehension

@@ -1183,7 +1183,6 @@ class A:
     f(x, 1)
     f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
 [out]
-main: note: In class "A":
 
 [case testCallConditionalMethodViaInstance]
 from typing import Any
@@ -1232,7 +1231,6 @@ class A:
     else:
         def f(self, x): pass # E: All conditional function variants must have identical signatures
 [out]
-main: note: In class "A":
 
 [case testConditionalFunctionDefinitionInTry]
 import typing

@@ -454,9 +454,7 @@ class D(A):
     @overload
     def f(self, x: str) -> str: return ''
 [out]
-main: note: In class "B":
 main:12: error: Signature of "f" incompatible with supertype "A"
-main: note: In class "C":
 main:17: error: Signature of "f" incompatible with supertype "A"
 
 [case testOverloadingAndDucktypeCompatibility]

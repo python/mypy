@@ -60,7 +60,6 @@ file:1: error: Parse error before **
 class A(C[):
   pass
 [out]
-file: note: In class "A":
 file:1: error: Parse error before )
 file:2: error: Parse error before end of file
 
@@ -68,7 +67,6 @@ file:2: error: Parse error before end of file
 class A(:
   pass
 [out]
-file: note: In class "A":
 file:1: error: Parse error before :
 file:2: error: Parse error before end of file
 
@@ -192,7 +190,6 @@ file:1: error: Parse error before end of line
 [case testInvalidMetaclass]
 class A(metaclass=1): pass
 [out]
-file: note: In class "A":
 file:1: error: Parse error before numeric literal
 file:1: error: Parse error before end of file
 

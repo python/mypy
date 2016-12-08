@@ -243,7 +243,6 @@ class B(A):
   def g(self, x: A, y: A) -> A: pass
   def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
-main: note: In class "B":
 main:7: error: Argument 1 of "f" incompatible with supertype "A"
 main:9: error: Return type of "h" incompatible with supertype "A"
 
@@ -256,7 +255,6 @@ class B(A):
     def f(self, x: A, y: A) -> None: pass # Fail
     def g(self, x: A) -> A: pass # Fail
 [out]
-main: note: In class "B":
 main:6: error: Signature of "f" incompatible with supertype "A"
 main:7: error: Signature of "g" incompatible with supertype "A"
 
@@ -269,7 +267,6 @@ class C(B): # with gap in implementations
     def f(self, x: 'C') -> None:  # Fail
         pass
 [out]
-main: note: In class "C":
 main:6: error: Argument 1 of "f" incompatible with supertype "A"
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy2]
@@ -282,7 +279,6 @@ class C(B): # with multiple implementations
     def f(self) -> B:  # Fail
         pass
 [out]
-main: note: In class "C":
 main:7: error: Return type of "f" incompatible with supertype "B"
 
 [case testMethodOverridingWithVoidReturnValue]
@@ -294,7 +290,6 @@ class B(A):
     def f(self) -> A: pass  # Fail
     def g(self) -> None: pass  # Fail
 [out]
-main: note: In class "B":
 main:6: error: Return type of "f" incompatible with supertype "A"
 main:7: error: Return type of "g" incompatible with supertype "A"
 
@@ -452,7 +447,6 @@ class A:
     c = x # type: A # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     c = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [out]
-main: note: In class "A":
 
 [case testMethodRefInClassBody]
 from typing import Callable
@@ -466,7 +460,6 @@ class A:
     ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type Callable[[A], None], variable has type Callable[[B], None])
     g = ff                # E: Incompatible types in assignment (expression has type Callable[[B], None], variable has type Callable[[A], None])
 [out]
-main: note: In class "A":
 
 
 -- Arbitrary statements in class body
@@ -485,7 +478,6 @@ class A:
     x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [builtins fixtures/for.pyi]
 [out]
-main: note: In class "A":
 
 
 -- Class attributes
@@ -586,7 +578,6 @@ class C:
 x = C.x
 [builtins fixtures/list.pyi]
 [out]
-main: note: In class "C":
 main:2: error: Need type annotation for variable
 
 
@@ -612,7 +603,6 @@ class A:
     b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     b = B(b) # E: Too many arguments for "B"
 [out]
-main: note: In class "A":
 
 [case testConstructNestedClassWithCustomInit]
 import typing
@@ -945,7 +935,6 @@ class B(A):
     @overload
     def __add__(self, x: str) -> str: pass
 [out]
-main: note: In class "B":
 
 [case testOperatorMethodOverrideWideningArgumentType]
 import typing
@@ -1009,7 +998,6 @@ class B(A):
     @overload
     def __add__(self, x: type) -> A: pass
 [out]
-main: note: In class "B":
 main:8: error: Signature of "__add__" incompatible with supertype "A"
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
@@ -1025,7 +1013,6 @@ class B(A):
     @overload
     def __add__(self, x: 'B') -> 'B': pass
 [out]
-main: note: In class "B":
 main:8: error: Signature of "__add__" incompatible with supertype "A"
 
 [case testReverseOperatorMethodArgumentType]
@@ -1156,7 +1143,6 @@ class B:
     def __iadd__(self, x: A) -> int: pass
 class C(A): pass
 [out]
-main: note: In class "A":
 main:5: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testOverloadedNormalAndInplaceOperatorMethod]
@@ -1180,7 +1166,6 @@ class B:
     @overload
     def __iadd__(self, x: str) -> str: pass
 [out]
-main: note: In class "A":
 main:7: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testIntroducingInplaceOperatorInSubclass]
@@ -1195,9 +1180,7 @@ class C(A):
 class D(A):
     def __iadd__(self, x: 'A') -> 'B': pass
 [out]
-main: note: In class "B":
 main:6: error: Return type of "__iadd__" incompatible with "__add__" of supertype "A"
-main: note: In class "C":
 main:8: error: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
 main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 

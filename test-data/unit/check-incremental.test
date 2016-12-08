@@ -1640,8 +1640,6 @@ class Y:
 class Z(X, Y): pass
 [stale]
 [out]
-main: note: In class "Z":
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
 [out2]
-main: note: In class "Z":
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"

@@ -63,7 +63,6 @@ TstInstance().a = 'ab'
 class CCC:
     a: str = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
 [out]
-main: note: In class "CCC":
 
 [case testNewSyntaxWithStrictOptional]
 # flags: --fast-parser --strict-optional --python-version 3.6
