@@ -84,7 +84,6 @@ class C(A, B):
 main: note: In member "f" of class "C":
 
 [case testSuperWithNew]
-# flags: --hide-error-context
 class A:
     def __new__(cls, x: int) -> 'A':
         return object.__new__(cls)

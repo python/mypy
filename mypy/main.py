@@ -171,7 +171,7 @@ def process_options(args: List[str],
                         help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
-    parser.add_argument('--hide-error-context', action='store_true',
+    parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
                         help="Hide context notes before errors")
     parser.add_argument('--fast-parser', action='store_true',

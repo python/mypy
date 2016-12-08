@@ -809,7 +809,6 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testTupleMeetTupleAny]
-# flags: --hide-error-context
 from typing import Union, Tuple
 class A: pass
 class B: pass
@@ -830,7 +829,6 @@ def g(x: Union[str, Tuple[str, str]]) -> None:
 [out]
 
 [case testTupleMeetTUpleAnyComplex]
-# flags: --hide-error-context
 from typing import Tuple, Union
 
 Pair = Tuple[int, int]
@@ -855,7 +853,6 @@ def tuplify2(v: Variant2) -> None:
 [out]
 
 [case testTupleMeetTupleAnyAfter]
-# flags: --hide-error-context
 from typing import Tuple, Union
 
 def good(blah: Union[Tuple[int, int], int]) -> None:
