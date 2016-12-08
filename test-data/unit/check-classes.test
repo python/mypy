@@ -67,7 +67,6 @@ class A:
     def f(self) -> None:
         a = object() # type: A    # Fail
 [out]
-main: note: In member "f" of class "A":
 main:4: error: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 [case testMethodArguments]
@@ -82,7 +81,6 @@ class A:
         a = b # Fail
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:5: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -95,7 +93,6 @@ class A:
         return A()
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:4: error: Incompatible return value type (got "B", expected "A")
 
 [case testSelfArgument]
@@ -108,7 +105,6 @@ class A:
         self.f()
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 main:5: error: "A" has no attribute "g"
 
@@ -188,7 +184,6 @@ class B(A):
     def f(self) -> None:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: note: In member "f" of class "B":
 
 [case testAssignmentToAttributeInMultipleMethods]
 import typing
@@ -200,9 +195,7 @@ class A:
     def __init__(self) -> None:
         self.x = '' # Fail
 [out]
-main: note: In member "g" of class "A":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main: note: In member "__init__" of class "A":
 main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
@@ -380,7 +373,6 @@ import typing
 class A:
     def __init__(self) -> 'A': pass
 [out]
-main: note: In member "__init__" of class "A":
 main:3: error: The return type of "__init__" must be None
 
 [case testConstructorWithImplicitReturnValueType]
@@ -388,7 +380,6 @@ import typing
 class A:
     def __init__(self, x: int): pass
 [out]
-main: note: In member "__init__" of class "A":
 main:3: error: The return type of "__init__" must be None
 
 [case testGlobalFunctionInitWithReturnType]
@@ -614,7 +605,6 @@ class A:
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         b = B() # E: Too few arguments for "B"
 [out]
-main: note: In member "f" of class "A":
 
 [case testDeclareVariableWithNestedClassType]
 
@@ -688,7 +678,6 @@ class A:
         b = None
 [out]
 main:5: error: Need type annotation for variable
-main: note: In member "f" of class "A":
 main:6: error: Need type annotation for variable
 
 
@@ -773,7 +762,6 @@ class C:
     cls.bozo()  # E: "C" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In member "bar" of class "C":
 
 [case testClassMethodCalledOnClass]
 import typing
@@ -840,7 +828,6 @@ class A:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "f" of class "A":
 
 [case testDynamicallyTypedProperty]
 import typing
@@ -1060,7 +1047,6 @@ class C:
     __add__ = 42
     def __radd__(self, other: C) -> C: return C()
 [out]
-main: note: In member "__radd__" of class "C":
 main:5: error: Forward operator "__add__" is not callable
 
 [case testOverloadedReverseOperatorMethodArgumentType]
@@ -1117,7 +1103,6 @@ class B:
 class X:
     def __add__(self, x): pass
 [out]
-main: note: In member "__radd__" of class "B":
 main:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
 [case testUnsafeOverlappingWithLineNo]
@@ -1128,7 +1113,6 @@ class Real:
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...
 [out]
-main: note: In member "__radd__" of class "Fraction":
 main:6: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
 [case testOverlappingNormalAndInplaceOperatorMethod]
@@ -1209,9 +1193,7 @@ class C:
 class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
-main: note: In member "__getattr__" of class "B":
 main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
-main: note: In member "__getattr__" of class "C":
 main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
 
 
@@ -1356,7 +1338,6 @@ class B:
         class D:
             def f(self, x: int) -> None: pass
 [out]
-main: note: In member "f" of class "B":
 
 [case testClassVsInstanceDisambiguation]
 class A: pass

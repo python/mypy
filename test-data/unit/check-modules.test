@@ -112,7 +112,6 @@ a = A()
 b = B()
 def f() -> None: pass
 [out]
-main: note: In member "f" of class "C":
 
 [case testImportWithinClassBody]
 import typing
@@ -1244,7 +1243,6 @@ b = 1 + 1
 [out]
 tmp/b.py:1: note: In module imported here,
 main:1: note: ... from here:
-tmp/a.py: note: In member "f1" of class "C":
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
 [case testErrorInPassTwo1]

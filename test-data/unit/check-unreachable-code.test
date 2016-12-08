@@ -382,7 +382,6 @@ class C:
         reveal_type(x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In member "foo" of class "C":
 
 [case testSysPlatformInFunctionImport]
 import sys

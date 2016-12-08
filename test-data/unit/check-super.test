@@ -16,7 +16,6 @@ class A(B):
     a = super().g() # E: "g" undefined in superclass
     b = super().f()
 [out]
-main: note: In member "f" of class "A":
 
 [case testAccessingSuperTypeMethodWithArgs]
 from typing import Any
@@ -30,7 +29,6 @@ class A(B):
     self.f(b)
     self.f(a)
 [out]
-main: note: In member "f" of class "A":
 
 [case testAccessingSuperInit]
 import typing
@@ -42,7 +40,6 @@ class A(B):
     super().__init__()       # E: Too few arguments for "__init__" of "B"
     super().__init__(A())
 [out]
-main: note: In member "__init__" of class "A":
 
 [case testAccessingSuperMemberWithDeepHierarchy]
 import typing
@@ -54,7 +51,6 @@ class A(B):
     super().g() # E: "g" undefined in superclass
     super().f()
 [out]
-main: note: In member "f" of class "A":
 
 [case testAssignToBaseClassMethod]
 import typing
@@ -80,7 +76,6 @@ class C(A, B):
         super().g() # E: Too few arguments for "g" of "B"
         super().not_there() # E: "not_there" undefined in superclass
 [out]
-main: note: In member "f" of class "C":
 
 [case testSuperWithNew]
 class A:

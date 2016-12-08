@@ -290,7 +290,6 @@ class A:
         return 1
 A().f('') # Fail
 [out]
-main: note: In member "f" of class "A":
 main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main:5: error: Incompatible return value type (got "int", expected "str")
 main:6: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
@@ -308,5 +307,4 @@ class C:
         # type: () -> int
         pass
 [out]
-main: note: In member "__init__" of class "C":
 main:2: error: The return type of "__init__" must be None

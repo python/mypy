@@ -787,7 +787,6 @@ class A(Generic[S]):
         l.append(b) # E: Argument 1 to "append" of "list" has incompatible type "S"; expected "T"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In member "f" of class "A":
 
 [case testLambdaInGenericFunction]
 from typing import TypeVar, Callable
@@ -807,6 +806,5 @@ class A(Generic[T]):
     def f(self, b: S) -> None:
         c = lambda x: x  # type: Callable[[T], S]
 [out]
-main: note: In member "f" of class "A":
 main:6: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
 main:6: error: Incompatible return value type (got "T", expected "S")

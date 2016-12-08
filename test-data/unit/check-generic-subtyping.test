@@ -332,7 +332,6 @@ class A(B):
 
 class C: pass
 [out]
-main: note: In member "g" of class "A":
 
 [case testInheritanceFromGenericWithImplicitDynamicAndOverriding]
 from typing import TypeVar, Generic, Tuple
@@ -361,7 +360,6 @@ class A(B[S], Generic[T, S]):
         super().f(t)   # E: Argument 1 to "f" of "B" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
-main: note: In member "g" of class "A":
 
 [case testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy]
 from typing import TypeVar, Generic
@@ -378,7 +376,6 @@ class A(B[S], Generic[T, S]):
         super().f(t)   # E: Argument 1 to "f" of "C" has incompatible type "T"; expected "S"
         super().f(s)
 [out]
-main: note: In member "g" of class "A":
 
 
 -- Type of inherited constructor

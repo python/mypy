@@ -123,7 +123,6 @@ class C(B):
         self.f(1) # E: Too many arguments for "f" of "C"
         self.g(1)
 [out]
-main: note: In member "f" of class "C":
 
 [case testIgnoredModuleDefinesBaseClass2]
 import m # type: ignore
@@ -159,7 +158,6 @@ class D(C, B):
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
-main: note: In member "f" of class "D":
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance2]
 from m import B # type: ignore
@@ -170,7 +168,6 @@ class D(C):
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
-main: note: In member "f" of class "D":
 
 [case testIgnoreWithFollowingIndentedComment]
 if 1:  # type: ignore

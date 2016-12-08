@@ -207,7 +207,6 @@ class A(Generic[T]):
 x = None # type: B
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:7: error: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
 main:8: error: Incompatible types in assignment (expression has type A[T], variable has type A[B])
 
@@ -228,7 +227,6 @@ class A(Generic[S, T]):
 
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:8: error: Incompatible types in assignment (expression has type "T", variable has type "S")
 main:9: error: Incompatible types in assignment (expression has type "S", variable has type "T")
 main:10: error: Incompatible types in assignment (expression has type A[S, T], variable has type A[S, B])
@@ -253,7 +251,6 @@ class A(Generic[T]):
         b = self.f() # type: object
         b = self.f()
 [out]
-main: note: In member "f" of class "A":
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 main:6: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 
@@ -414,7 +411,6 @@ class A(Generic[T]):
         p_s_t = None  # type: p[S, T]
         return p_s_t
 [out]
-main: note: In member "f" of class "A":
 
 [case testProhibitTypeApplicationToGenericFunctions]
 from typing import TypeVar
@@ -1196,7 +1192,6 @@ class A(Generic[T]):
         g(self.a)
         g(n) # E: Argument 1 to "g" has incompatible type "int"; expected "T"
 [out]
-main: note: In member "f" of class "A":
 
 
 -- Callable subtyping with generic functions

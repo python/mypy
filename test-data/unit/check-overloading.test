@@ -28,7 +28,6 @@ class A:
         x = B()
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 
 [case testCallToOverloadedFunction]
 from typing import overload

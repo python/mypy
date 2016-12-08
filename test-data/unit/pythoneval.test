@@ -533,7 +533,6 @@ b = None  # type: B
 b = C()
 print(A() + b)
 [out]
-_program.py: note: In member "__radd__" of class "B":
 _program.py:9: error: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
 [case testBytesAndBytearrayComparisons]
@@ -1111,7 +1110,6 @@ class A:
         super().__setattr__('a', 1)
         super().__setattr__(1, 'a')
 [out]
-_program.py: note: In member "__init__" of class "A":
 _program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
 
 [case testMetaclassAndSuper]

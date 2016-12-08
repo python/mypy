@@ -85,4 +85,3 @@ class C:
         x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
         self.x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
-main: note: In member "meth" of class "C":

@@ -286,7 +286,6 @@ class C(Generic[X]):
         x.g(1) # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
         x.h(1) # E: Argument 1 to "h" of "A" has incompatible type "int"; expected "str"
 [out]
-main: note: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues1]
 from typing import TypeVar, Generic
@@ -297,7 +296,6 @@ class C(Generic[X]):
         self.x = x
         self.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [out]
-main: note: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues2]
 from typing import TypeVar, Generic
@@ -331,7 +329,6 @@ class C(Generic[X, Y]):
     def f(self, x: X, y: Y) -> None:
         x.f(y)
 [out]
-main: note: In member "f" of class "C":
 main:10: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main:10: error: Argument 1 to "f" of "B" has incompatible type "int"; expected "str"
 

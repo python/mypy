@@ -516,7 +516,6 @@ class A(metaclass=ABCMeta):
     @abstractmethod
     def g(self, x: str) -> None: pass
 [out]
-main: note: In member "f" of class "A":
 
 [case testAbstractOperatorMethods1]
 import typing
@@ -650,7 +649,6 @@ b = B() # E
 b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "__init__" of class "B":
 main:7: error: Property "x" defined in "B" is read-only
 main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 main:9: error: "int" has no attribute "y"
@@ -666,7 +664,6 @@ class B(A):
         return super().x.y # E: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "x" of class "B":
 
 [case testSuperWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -684,7 +681,6 @@ class B(A):
         super().x = '' # E
 [builtins fixtures/property.pyi]
 [out]
-main: note: In member "x" of class "B":
 main:10: error: "int" has no attribute "y"
 main:13: error: Invalid assignment target
 
