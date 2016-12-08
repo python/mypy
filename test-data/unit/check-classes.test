@@ -603,7 +603,6 @@ def f() -> None:
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
 [out]
-main: note: In function "f":
 
 [case testConstructNestedClass]
 import typing
@@ -635,7 +634,6 @@ def f() -> None:
     a = A()
     a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [out]
-main: note: In function "f":
 
 [case testExternalReferenceToClassWithinClass]
 
@@ -699,7 +697,6 @@ class A:
             a = None
         b = None
 [out]
-main: note: In function "g":
 main:5: error: Need type annotation for variable
 main: note: In member "f" of class "A":
 main:6: error: Need type annotation for variable
@@ -1356,7 +1353,6 @@ class B:
     class C:
         def f(self, x: int) -> None: pass
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToNestedClassDeep]
 def f(o: 'B.C.D') -> None:
@@ -1367,7 +1363,6 @@ class B:
         class D:
             def f(self, x: int) -> None: pass
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToNestedClassWithinClass]
 class B:
@@ -1495,7 +1490,6 @@ def f(A: Type[B]) -> None:
     A(0)  # E: Too many arguments for "B"
     A()
 [out]
-main: note: In function "f":
 
 [case testTypeUsingTypeCInitWithArg]
 from typing import Type
@@ -1505,7 +1499,6 @@ def f(A: Type[B]) -> None:
     A(0)
     A()  # E: Too few arguments for "B"
 [out]
-main: note: In function "f":
 
 [case testTypeUsingTypeCTypeVar]
 from typing import Type, TypeVar
@@ -1519,7 +1512,6 @@ def new_user(user_class: Type[U]) -> U:
 pro_user = new_user(ProUser)
 reveal_type(pro_user)
 [out]
-main: note: In function "new_user":
 main:7: error: Revealed type is 'U`-1'
 main: note: At top level:
 main:10: error: Revealed type is '__main__.ProUser*'
@@ -1533,7 +1525,6 @@ def f(A: Type[T]) -> None:
     A()
     A(0)  # E: Too many arguments for "B"
 [out]
-main: note: In function "f":
 
 [case testTypeUsingTypeCTypeVarWithInit]
 from typing import Type, TypeVar
@@ -1544,7 +1535,6 @@ def f(A: Type[T]) -> None:
     A()  # E: Too few arguments for "B"
     A(0)
 [out]
-main: note: In function "f":
 
 [case testTypeUsingTypeCTwoTypeVars]
 from typing import Type, TypeVar
@@ -1562,7 +1552,6 @@ def error(u_c: Type[U]) -> P:
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: error: Revealed type is '__main__.WizUser*'
-main: note: In function "error":
 main:13: error: Incompatible return value type (got "U", expected "P")
 main:13: error: Type argument 1 of "new_pro" has incompatible value "U"
 
@@ -1584,7 +1573,6 @@ def new_user(user_class: Type[User]):
 def foo(arg: Type[int]):
     new_user(arg)  # E: Argument 1 to "new_user" has incompatible type Type[int]; expected Type[User]
 [out]
-main: note: In function "foo":
 
 [case testTypeUsingTypeCUnionOverload]
 from typing import Type, Union, overload
@@ -1611,7 +1599,6 @@ def foo(arg: Type[Any]):
 class X: pass
 foo(X)
 [out]
-main: note: In function "foo":
 
 [case testTypeUsingTypeCTypeNoArg]
 from typing import Type
@@ -1621,7 +1608,6 @@ def foo(arg: Type):
 class X: pass
 foo(X)
 [out]
-main: note: In function "foo":
 
 [case testTypeUsingTypeCBuiltinType]
 from typing import Type
@@ -1647,7 +1633,6 @@ def process(cls: Type[User]):
     cls.error  # E: Type[User] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "process":
 
 [case testTypeUsingTypeCClassMethodUnion]
 # Ideally this would work, but not worth the effort; just don't crash
@@ -1666,7 +1651,6 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     cls.error  # E: Type[Union[BasicUser, ProUser]] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "process":
 
 [case testTypeUsingTypeCClassMethodFromTypeVar]
 from typing import Type, TypeVar
@@ -1683,7 +1667,6 @@ def process(cls: Type[U]):
     cls.error  # E: Type[U] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "process":
 
 [case testTypeUsingTypeCClassMethodFromTypeVarUnionBound]
 # Ideally this would work, but not worth the effort; just don't crash
@@ -1703,7 +1686,6 @@ def process(cls: Type[U]):
     cls.error  # E: Type[U] has no attribute "error"
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "process":
 
 [case testTypeUsingTypeCErrorUnsupportedType]
 from typing import Type, Tuple
@@ -1711,7 +1693,6 @@ def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
     arg()
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "foo":
 
 [case testTypeUsingTypeCOverloadedClass]
 from typing import Type, TypeVar, overload
@@ -1735,7 +1716,6 @@ def new(uc: Type[U]) -> U:
 u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "new":
 main:16: error: No overload variant of "User" matches argument types [builtins.str]
 main:17: error: Too many arguments for "foo" of "User"
 
@@ -1751,7 +1731,6 @@ from typing import Type, Tuple
 def f(a: Type[Tuple[int, int]]):
     a()
 [out]
-main: note: In function "f":
 main:2: error: Unsupported type Type["Tuple[int, int]"]
 
 [case testTypeUsingTypeCNamedTuple]
@@ -1761,7 +1740,6 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 main:3: error: Unsupported type Type["N"]
 
 [case testTypeUsingTypeCJoin]
@@ -1775,7 +1753,6 @@ def foo(c: Type[C], d: Type[D]) -> None:
 
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "foo":
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
 
 [case testTypeMatchesOverloadedFunctions]

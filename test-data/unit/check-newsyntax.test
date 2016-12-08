@@ -78,7 +78,6 @@ def f() -> None:
     x: int
     x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testNewSyntaxWithStrictOptionalClasses]
 # flags: --fast-parser --strict-optional --python-version 3.6

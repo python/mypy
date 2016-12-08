@@ -23,7 +23,6 @@ def f(x: object, n: int, s: str) -> None:
     n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testSimpleIsinstance3]
 
@@ -54,7 +53,6 @@ def f(x: object, a: A, b: B, c: int) -> None:
         c = x # E: Incompatible types in assignment (expression has type "A", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipleIsinstanceTests2]
 import typing
@@ -72,7 +70,6 @@ def f(x: object, y: object, n: int, s: str) -> None:
         n = x
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceAndElif]
 import typing
@@ -90,7 +87,6 @@ def f(x: object, n: int, s: str) -> None:
     n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceAndAnyType]
 from typing import Any
@@ -102,7 +98,6 @@ def f(x: Any, n: int, s: str) -> None:
     s = x
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceAndGenericType]
 from typing import TypeVar, Generic
@@ -117,4 +112,3 @@ def f(x: object) -> None:
     x.g() # E: "object" has no attribute "g"
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":

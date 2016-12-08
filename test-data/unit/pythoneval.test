@@ -389,7 +389,6 @@ def bin(f: IO[bytes]) -> None:
 txt(sys.stdout)
 bin(sys.stdout)
 [out]
-_program.py: note: In function "txt":
 _program.py:5: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
 _program.py: note: At top level:
 _program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected IO[bytes]
@@ -431,7 +430,6 @@ S = TypeVar('S', int, str)
 def f(t: T, s: S) -> None:
     t + s
 [out]
-_program.py: note: In function "f":
 _program.py:7: error: Unsupported operand types for + ("int" and "str")
 _program.py:7: error: Unsupported operand types for + ("str" and "int")
 
@@ -751,7 +749,6 @@ print('>', list(b))
 import typing
 def f(x: _T) -> None: pass
 [out]
-_program.py: note: In function "f":
 _program.py:2: error: Name '_T' is not defined
 
 [case testVarArgsFunctionSubtyping]
@@ -915,7 +912,6 @@ def f(x: A) -> None:
     x(1)
     x('')
 [out]
-_program.py: note: In function "f":
 _program.py:5: error: Argument 1 has incompatible type "str"; expected "int"
 
 [case testSuperNew]
@@ -971,7 +967,6 @@ def f(*x: int) -> None:
     x.append(1)
 f(1)
 [out]
-_program.py: note: In function "f":
 _program.py:3: error: Tuple[int, ...] has no attribute "append"
 
 [case testExit]
@@ -1045,7 +1040,6 @@ def p(t: Tuple[str, ...]) -> None:
 ''.startswith(('x', 'y'))
 ''.startswith(('x', b'y'))
 [out]
-_program.py: note: In function "p":
 _program.py:6: error: "str" not callable
 _program.py: note: At top level:
 _program.py:8: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[str, bytes]"; expected "Union[str, Tuple[str, ...]]"

@@ -370,7 +370,6 @@ def foo() -> None:
     reveal_type(x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In function "foo":
 
 [case testSysPlatformInMethod]
 import sys

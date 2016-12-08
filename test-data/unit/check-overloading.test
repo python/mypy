@@ -14,7 +14,6 @@ def f(x: 'B'):
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testTypeCheckOverloadedMethodBody]
 from typing import overload
@@ -610,7 +609,6 @@ def g(x: U, y: V) -> None:
     f([x, y]) # E: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "g":
 
 [case testOverlapWithTypeVars]
 from typing import overload, TypeVar, Sequence

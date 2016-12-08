@@ -180,7 +180,6 @@ class MyClass:
 b = A(3)
 c = MyClass.C(3.5)
 [out]
-main: note: In function "func":
 
 [case testNewTypeInMultipleFiles]
 import a

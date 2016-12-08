@@ -64,7 +64,6 @@ class B(A):
     def g(self) -> None:
         super().f = None
 [out]
-main: note: In function "g":
 main:6: error: Invalid assignment target
 
 [case testSuperWithMultipleInheritance]

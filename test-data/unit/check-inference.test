@@ -28,7 +28,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:7: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
@@ -40,7 +39,6 @@ def f() -> None:
 
 def g() -> None: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypeFromArgument]
 import typing
@@ -53,7 +51,6 @@ def f(a: 'A') -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypeFromGvar]
 
@@ -67,7 +64,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testInferringImplicitDynamicTypeForLvar]
 import typing
@@ -78,7 +74,6 @@ def f() -> None:
 
 def g(): pass
 [out]
-main: note: In function "f":
 
 [case testInferringExplicitDynamicTypeForLvar]
 from typing import Any
@@ -89,7 +84,6 @@ def f(a: Any) -> None:
     None(b) # E: None not callable
     a.x()
 [out]
-main: note: In function "f":
 
 
 -- Inferring types of local variables with complex types
@@ -111,7 +105,6 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferringTupleTypeForLvarWithNones]
 import typing
@@ -122,7 +115,6 @@ def f() -> None:
 class A: pass
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferringGenericTypeForLvar]
 from typing import TypeVar, Generic
@@ -138,7 +130,6 @@ def f() -> None:
     a = a_i
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferringFunctionTypeForLvar]
 import typing
@@ -152,7 +143,6 @@ def g(a: 'A') -> None: pass
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testInferringFunctionTypeForLvarFromTypeObject]
 import typing
@@ -164,7 +154,6 @@ def f() -> None:
 
 class A: pass
 [out]
-main: note: In function "f":
 
 
 -- Inferring variable types in multiple definition
@@ -185,7 +174,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInTupleAssignment]
 from typing import Tuple
@@ -202,7 +190,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInNestedTupleAssignment1]
 from typing import Tuple
@@ -219,7 +206,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInNestedTupleAssignment2]
 import typing
@@ -238,7 +224,6 @@ class A: pass
 class B: pass
 class C: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInNestedListAssignment]
 import typing
@@ -257,7 +242,6 @@ class A: pass
 class B: pass
 class C: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInMultiDefWithNoneTypes]
 import typing
@@ -267,7 +251,6 @@ def f() -> None:
 
 class A: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInNestedTupleAssignmentWithNoneTypes]
 import typing
@@ -276,7 +259,6 @@ def f() -> None:
 
 class A: pass
 [out]
-main: note: In function "f":
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
 from typing import Tuple
@@ -288,7 +270,6 @@ def f() -> None:
     g, h, i = t
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 main:5: error: Too many values to unpack (2 expected, 3 provided)
 main:6: error: Need more than 3 values to unpack (4 expected)
 
@@ -300,7 +281,6 @@ def f() -> None:
 class A: pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testInvalidRvalueTypeInInferredNestedTupleAssignment]
 import typing
@@ -310,7 +290,6 @@ def f() -> None:
 class A: pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferringMultipleLvarDefinitionWithListRvalue]
 from typing import List
@@ -339,7 +318,6 @@ def f() -> None:
     d = e
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferringNestedTupleAssignmentWithListRvalue]
 from typing import List
@@ -368,7 +346,6 @@ def f() -> None:
     d = e
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue]
 import typing
@@ -435,7 +412,6 @@ def f() -> None:
 def id(x: T) -> T:
     return x
 [out]
-main: note: In function "f":
 
 [case testUnderspecifiedInferenceResult]
 from typing import TypeVar
@@ -453,7 +429,6 @@ g(a)
 def f() -> T: pass
 def g(a: T) -> None: pass
 [out]
-main: note: In function "ff":
 
 [case testUnsolvableInferenceResult]
 from typing import TypeVar
@@ -914,7 +889,6 @@ class A: pass
 class B: pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 
 -- Regression tests
@@ -1185,7 +1159,6 @@ def f() -> None:
    a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInFunction]
 def f() -> None:
@@ -1197,7 +1170,6 @@ a = []
 a.append(1)
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferListInitializedToEmptyAndReadBeforeAppendInFunction]
 def f() -> None:
@@ -1207,7 +1179,6 @@ def f() -> None:
     a.append('')
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferListInitializedToEmptyInClassBody]
 class A:
@@ -1321,7 +1292,6 @@ def f(blocks: Any): # E: Name 'Any' is not defined
     to_process = list(blocks)
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
@@ -1329,7 +1299,6 @@ def f(blocks: object):
     to_process = list(blocks) # E: No overload variant of "list" matches argument types [builtins.object]
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 
 -- Inferring types of variables first initialized to None (partial types)
@@ -1344,7 +1313,6 @@ def f() -> None:
         x = 1
     x() # E: "int" not callable
 [out]
-main: note: In function "f":
 
 [case testLocalVariablePartiallyTwiceInitializedToNone]
 def f() -> None:
@@ -1356,7 +1324,6 @@ def f() -> None:
         x = 1
     x() # E: "int" not callable
 [out]
-main: note: In function "f":
 
 [case testLvarInitializedToNoneWithoutType]
 import typing
@@ -1364,7 +1331,6 @@ def f() -> None:
     a = None # E: Need type annotation for variable
     a.x() # E: None has no attribute "x"
 [out]
-main: note: In function "f":
 
 [case testGvarPartiallyInitializedToNone]
 x = None
@@ -1397,7 +1363,6 @@ def f() -> None:
         x = []  # E: Need type annotation for variable
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testPartiallyInitializedToNoneAndThenToIncompleteType]
 from typing import TypeVar,  Dict
@@ -1413,7 +1378,6 @@ def f() -> None:
     x = None  # E: Need type annotation for variable
 x = 1
 [out]
-main: note: In function "f":
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
 x = None  # E: Need type annotation for variable
@@ -1515,7 +1479,6 @@ def f() -> None:
     y() # E: "int" not callable
 x = 1
 [out]
-main: note: In function "f":
 
 [case testMultipassAndAccessInstanceVariableBeforeDefinition]
 class A:
@@ -1593,7 +1556,6 @@ def f() -> None:
 y = ''
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypes2]
 s = ''
@@ -1608,7 +1570,6 @@ def f() -> None:
 y = ''
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypes3]
 from typing import Dict
@@ -1622,7 +1583,6 @@ def f() -> None:
 y = ''
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypes4]
 from typing import Dict
@@ -1635,7 +1595,6 @@ def f() -> None:
 y = ''
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndCircularDependency]
 class A:
@@ -1656,7 +1615,6 @@ def f() -> None:
 o = 1
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypesSpecialCase2]
 def f() -> None:
@@ -1667,7 +1625,6 @@ def f() -> None:
 o = 1
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypesSpecialCase3]
 def f() -> None:
@@ -1677,7 +1634,6 @@ def f() -> None:
 o = 1
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypesSpecialCase4]
 def f() -> None:
@@ -1687,7 +1643,6 @@ def f() -> None:
     x() # E: "int" not callable
 o = 1
 [out]
-main: note: In function "f":
 
 [case testMultipassAndPartialTypesSpecialCase5]
 def f() -> None:
@@ -1697,7 +1652,6 @@ def f() -> None:
     x() # E: "int" not callable
 o = 1
 [out]
-main: note: In function "f":
 
 [case testMultipassAndClassAttribute]
 class S:
@@ -1718,9 +1672,7 @@ def g() -> None:
 y = 0
 [out]
 main:1: note: In module imported here:
-tmp/m.py: note: In function "g":
 tmp/m.py:2: error: "int" not callable
-main: note: In function "f":
 main:3: error: "int" not callable
 
 

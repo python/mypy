@@ -393,7 +393,6 @@ def f(s: S, t: T) -> p[T, A]:
     p_t_a = None  # type: p[T, A]
     return p_t_a
 [out]
-main: note: In function "f":
 
 [case testTypeCheckingGenericMethodBody]
 from typing import TypeVar, Generic
@@ -588,7 +587,6 @@ z = None # type: str
 reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
 
 [out]
-main: note: In function "output_bad":
 main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 main: note: At top level:
 
@@ -732,7 +730,6 @@ reveal_type(f('a'))  # E: Revealed type is '__main__.D[builtins.str*]'
 
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f_bad":
 main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
 main: note: At top level:
 
@@ -1179,7 +1176,6 @@ def f() -> None:
     a = 1
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testClassLevelTypeVariable]
 from typing import TypeVar
@@ -1282,7 +1278,6 @@ def outer(t: T) -> None:
     y5 = f3
     y5 = f4
 [out]
-main: note: In function "outer":
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
 from typing import TypeVar, Callable
@@ -1339,7 +1334,6 @@ def f(a: T, b: T) -> T:
         return b
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In function "f":
 main:4: error: Unsupported left operand type for < ("T")
 
 

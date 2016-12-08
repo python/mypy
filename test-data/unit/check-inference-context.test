@@ -85,7 +85,6 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 [out]
-main: note: In function "g":
 
 [case testInferLocalVariableTypeWithUnderspecifiedGenericType]
 from typing import TypeVar, Generic
@@ -96,7 +95,6 @@ def g() -> None:
 def f() -> 'A[T]': pass
 class A(Generic[T]): pass
 [out]
-main: note: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithTupleRvalue]
 from typing import TypeVar, Generic
@@ -115,7 +113,6 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 [out]
-main: note: In function "g":
 
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
 from typing import TypeVar, List, Generic
@@ -137,7 +134,6 @@ class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "h":
 
 
 -- Return types with multiple tvar instances
@@ -396,7 +392,6 @@ def f() -> None:
 class B: pass
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testNestedListExpressions]
 from typing import List
@@ -487,7 +482,6 @@ class B: pass
 class C(B): pass
 class D: pass
 [out]
-main: note: In function "t":
 
 [case testIntersectionWithInferredGenericArgument]
 from typing import overload, TypeVar, Generic
@@ -781,7 +775,6 @@ def f(a: T) -> None:
     l.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "T"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testInferenceInGenericClass]
 from typing import TypeVar, Generic, List
@@ -803,7 +796,6 @@ S = TypeVar('S')
 def f(a: T, b: S) -> None:
     c = lambda x: x  # type: Callable[[T], S]
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
 main:5: error: Incompatible return value type (got "T", expected "S")
 

@@ -60,7 +60,6 @@ class B: pass
 class C: pass
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 
 [case testListWithStarExpr]
 (x, *a) = [1, 2, 3]

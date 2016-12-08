@@ -12,7 +12,6 @@
 def f()
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before end of line
 file: note: At top level:
 file:2: error: Inconsistent indentation
@@ -101,56 +100,48 @@ file:1: error: Parse error before "y"
 [case testInvalidBareAsteriskAndVarArgs2]
 def f(*x: A, *) -> None: pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before )
 file:1: error: Parse error before end of line
 
 [case testInvalidBareAsteriskAndVarArgs3]
 def f(*, *x: A) -> None: pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before *
 file:1: error: Parse error before end of line
 
 [case testInvalidBareAsteriskAndVarArgs4]
 def f(*, **x: A) -> None: pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before **
 file:1: error: Parse error before end of line
 
 [case testInvalidBareAsterisk1]
 def f(*) -> None: pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before )
 file:1: error: Parse error before end of line
 
 [case testInvalidBareAsterisk2]
 def f(x, *) -> None: pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before )
 file:1: error: Parse error before end of line
 
 [case testInvalidFuncDefArgs1]
 def f(x = y, x): pass
 [out]
-file: note: In function "f":
 file:1: error: Invalid argument list
 
 [case testInvalidFuncDefArgs3]
 def f(**x, y):
    pass
 [out]
-file: note: In function "f":
 file:1: error: Invalid argument list
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x):
     pass
 [out]
-file: note: In function "f":
 file:1: error: Invalid argument list
 
 [case testInvalidStringLiteralType]
@@ -158,7 +149,6 @@ def f(x:
      'A['
      ) -> None: pass
 [out]
-file: note: In function "f":
 file:2: error: Parse error before end of line
 file:3: error: Parse error before end of line
 
@@ -167,7 +157,6 @@ def f(x:
       'A B'
       ) -> None: pass
 [out]
-file: note: In function "f":
 file:2: error: Parse error before "B"
 file:3: error: Parse error before end of line
 
@@ -198,7 +187,6 @@ file:2: error: Parse error before end of line
 [case testInvalidMultilineLiteralType]
 def f() -> "A\nB": pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before end of line
 
 [case testInvalidMetaclass]
@@ -212,70 +200,60 @@ file:1: error: Parse error before end of file
 def f(): # type: x
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before "x"
 
 [case testInvalidSignatureInComment2]
 def f(): # type:
   pass
 [out]
-file: note: In function "f":
 file:1: error: Empty type annotation
 
 [case testInvalidSignatureInComment3]
 def f(): # type: (
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment4]
 def f(): # type: (.
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before .
 
 [case testInvalidSignatureInComment5]
 def f(): # type: (x
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment6]
 def f(): # type: (x)
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment7]
 def f(): # type: (x) -
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before -
 
 [case testInvalidSignatureInComment8]
 def f(): # type: (x) ->
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before end of line
 
 [case testInvalidSignatureInComment9]
 def f(): # type: (x) -> .
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before .
 
 [case testInvalidSignatureInComment10]
 def f(): # type: (x) -> x x
   pass
 [out]
-file: note: In function "f":
 file:1: error: Parse error before "x"
 
 [case testDuplicateSignatures1]
@@ -284,28 +262,24 @@ def f() -> None: # type: () -> None
 def f(): # type: () -> None
     pass
 [out]
-file: note: In function "f":
 file:1: error: Function has duplicate type signatures
 
 [case testDuplicateSignatures2]
 def f(x, y: Z): # type: (x, y) -> z
   pass
 [out]
-file: note: In function "f":
 file:1: error: Function has duplicate type signatures
 
 [case testTooManyTypes]
 def f(x, y): # type: (X, Y, Z) -> z
   pass
 [out]
-file: note: In function "f":
 file:1: error: Type signature has too many arguments
 
 [case testTooFewTypes]
 def f(x, y): # type: (X) -> z
   pass
 [out]
-file: note: In function "f":
 file:1: error: Type signature has too few arguments
 
 [case testCommentFunctionAnnotationVarArgMispatch]
@@ -314,9 +288,7 @@ def f(x): # type: (*X) -> Y
 def g(*x): # type: (X) -> Y
     pass
 [out]
-file: note: In function "f":
 file:1: error: Inconsistent use of '*' in function signature
-file: note: In function "g":
 file:3: error: Inconsistent use of '*' in function signature
 
 [case testCommentFunctionAnnotationVarArgMispatch2]
@@ -325,10 +297,8 @@ def f(*x, **y): # type: (**X, *Y) -> Z
 def g(*x, **y): # type: (*X, *Y) -> Z
     pass
 [out]
-file: note: In function "f":
 file:1: error: Inconsistent use of '*' in function signature
 file:1: error: Inconsistent use of '**' in function signature
-file: note: In function "g":
 file:3: error: Inconsistent use of '*' in function signature
 file:3: error: Inconsistent use of '**' in function signature
 
@@ -356,14 +326,12 @@ file:1: error: Parse error before "for"
 def f():
     yield from
 [out]
-file: note: In function "f":
 file:2: error: Parse error before end of line
 
 [case testYieldFromAfterReturn]
 def f():
     return yield from h()
 [out]
-file: note: In function "f":
 file:2: error: Parse error before "yield"
 
 [case testImportDotModule]
@@ -509,7 +477,6 @@ file:1: error: Parse error before ,
 [case testTupleArgListInPython3]
 def f(x, (y, z)): pass
 [out]
-file: note: In function "f":
 file:1: error: Tuples in argument lists only supported in Python 2 mode
 
 [case testBackquoteInPython3]

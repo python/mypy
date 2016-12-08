@@ -563,7 +563,6 @@ def f(a: A) -> None:
     a.x() # E: "int" not callable
     a.x = 1  # E: Property "x" defined in "A" is read-only
 [out]
-main: note: In function "f":
 
 [case testReadOnlyAbstractPropertyForwardRef]
 from abc import abstractproperty, ABCMeta
@@ -574,7 +573,6 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
 [out]
-main: note: In function "f":
 
 [case testReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -587,7 +585,6 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x: int) -> None: pass
 [out]
-main: note: In function "f":
 
 [case testInstantiateClassWithReadOnlyAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -701,7 +698,6 @@ class B(A):
 [out]
 main: note: In member "x" of class "B":
 main:10: error: "int" has no attribute "y"
-main: note: In function "x":
 main:13: error: Invalid assignment target
 
 [case testOnlyImplementGetterOfReadWriteAbstractProperty]
@@ -732,7 +728,6 @@ def f(a: A) -> None:
     a.x.y
     a.x = 1  # E: Property "x" defined in "A" is read-only
 [out]
-main: note: In function "f":
 
 [case testDynamicallyTypedReadOnlyAbstractPropertyForwardRef]
 from abc import abstractproperty, ABCMeta
@@ -743,7 +738,6 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self): pass
 [out]
-main: note: In function "f":
 
 [case testDynamicallyTypedReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta

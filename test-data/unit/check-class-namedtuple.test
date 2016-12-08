@@ -377,5 +377,4 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 main:8: error: Unsupported type Type["N"]
