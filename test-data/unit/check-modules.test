@@ -1092,7 +1092,6 @@ import x
 class Sub(x.Base):
     attr = 0
 [out]
-main:1: note: ... from here:
 tmp/x.py:5: error: Revealed type is 'builtins.int'
 
 -- This case has a symmetrical cycle, so it doesn't matter in what
@@ -1197,7 +1196,6 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-main:1: note: ... from here:
 tmp/b.py:3: error: Revealed type is 'builtins.int'
 
 [case testSymmetricImportCycle2]
@@ -1214,7 +1212,6 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-main:1: note: ... from here:
 tmp/a.py:3: error: Revealed type is 'builtins.int'
 
 [case testThreePassesRequired]
@@ -1230,7 +1227,6 @@ class C:
 import a
 b = 1 + 1
 [out]
-main:1: note: ... from here:
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
 [case testErrorInPassTwo1]
@@ -1244,7 +1240,6 @@ def f() -> None:
 import a
 x = 1 + 1
 [out]
-main:1: note: ... from here:
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testErrorInPassTwo2]

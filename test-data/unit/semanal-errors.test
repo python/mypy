@@ -333,7 +333,6 @@ import k
 import typing
 x = y
 [out]
-main:1: note: ... from here:
 tmp/k.py:2: error: Name 'y' is not defined
 
 [case testPackageWithoutInitFile]

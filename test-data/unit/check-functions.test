@@ -864,7 +864,6 @@ T = TypeVar('T')
 def dec(f: T) -> T: return f
 
 [out]
-main:1: note: ... from here:
 tmp/b.py:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 tmp/a.py:5: error: Argument 1 to "g" has incompatible type "int"; expected "str"
 
@@ -910,7 +909,6 @@ from typing import Callable
 def dec(f: Callable[[int], str]) -> Callable[[int], str]: return f
 
 [out]
-main:1: note: ... from here:
 tmp/b.py:5: error: "str" not callable
 tmp/a.py:5: error: "str" not callable
 
@@ -936,7 +934,6 @@ from typing import Callable
 def dec() -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 
 [out]
-main:1: note: ... from here:
 tmp/b.py:5: error: "str" not callable
 tmp/a.py:5: error: "str" not callable
 
@@ -962,7 +959,6 @@ from typing import Callable
 def dec(x: str) -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 
 [out]
-main:1: note: ... from here:
 tmp/b.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
 tmp/b.py:5: error: "str" not callable
 tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"

@@ -164,7 +164,6 @@ def foo() -> int:
 [rechecked mod2]
 [stale]
 [out2]
-main:1: note: ... from here:
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testIncrementalInternalScramble]
@@ -500,7 +499,6 @@ def func2() -> str:
 [rechecked mod0, mod1, mod2]
 [stale mod2]
 [out2]
-main:1: note: ... from here:
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testIncrementalOkChangeWithSave]
@@ -1131,11 +1129,9 @@ reveal_type(foo)
 [rechecked m, n]
 [stale]
 [out1]
-main:1: note: ... from here:
 tmp/n.py:2: error: Revealed type is 'builtins.str'
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 [out2]
-main:1: note: ... from here:
 tmp/n.py:2: error: Revealed type is 'builtins.float'
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "float"; expected "int"
 
@@ -1291,8 +1287,6 @@ class C:
 [rechecked mod3, mod2, mod1]
 [stale mod3, mod2]
 [out1]
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
@@ -1331,14 +1325,10 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4]
 [out1]
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
@@ -1379,8 +1369,6 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4, mod3, mod2]
 [out1]
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
