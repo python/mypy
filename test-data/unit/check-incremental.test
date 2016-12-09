@@ -1617,9 +1617,26 @@ import a
 /
 [file a.py.next]
 //
-[out]
+[out1]
 main:2: note: Import of 'a' ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 [out2]
 main:2: note: Import of 'a' ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testIncrementalFollowImportsVariable]
+# flags: --config-file tmp/mypy.ini
+import a
+reveal_type(a.x)
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+follow_imports = normal
+[file mypy.ini.next]
+[[mypy]
+follow_imports = skip
+[out1]
+main:3: error: Revealed type is 'builtins.int'
+[out2]
+main:3: error: Revealed type is 'Any'
