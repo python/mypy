@@ -66,7 +66,6 @@ import typing
 x = 1
 x = 'a'
 [out]
-main:9: note: In module imported here:
 tmp/m.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNegatedMypyConditional]
@@ -370,7 +369,6 @@ def foo() -> None:
     reveal_type(x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In function "foo":
 
 [case testSysPlatformInMethod]
 import sys
@@ -383,7 +381,6 @@ class C:
         reveal_type(x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In member "foo" of class "C":
 
 [case testSysPlatformInFunctionImport]
 import sys

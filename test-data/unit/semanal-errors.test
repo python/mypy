@@ -4,7 +4,6 @@ def f():
   1 1
 [out]
 main:1: error: Parse error before in
-main: note: In function "f":
 main:3: error: Parse error before numeric literal
 
 [case testUndefinedVariableInGlobalStatement]
@@ -21,9 +20,7 @@ def f() -> None:
   x
 y
 [out]
-main: note: In function "f":
 main:3: error: Name 'x' is not defined
-main: note: At top level:
 main:4: error: Name 'y' is not defined
 
 [case testMethodScope]
@@ -43,7 +40,6 @@ class B:
     f # error
     g # error
 [out]
-main: note: In function "g":
 main:6: error: Name 'f' is not defined
 main:7: error: Name 'g' is not defined
 
@@ -87,14 +83,12 @@ class B:
             x = None  # type: A[int] \
                 # E: "A" expects no type arguments, but 1 given
 [out]
-main: note: In function "f":
 
 [case testInvalidNumberOfGenericArgsInSignature]
 import typing
 class A: pass
 def f() -> A[int]: pass # E: "A" expects no type arguments, but 1 given
 [out]
-main: note: In function "f":
 
 [case testInvalidNumberOfGenericArgsInOverloadedSignature]
 from typing import overload
@@ -104,7 +98,6 @@ def f(): pass
 @overload
 def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
 [out]
-main: note: In function "f":
 
 [case testInvalidNumberOfGenericArgsInBaseType]
 import typing
@@ -132,7 +125,6 @@ class A(Generic[T]): pass
 class B: pass
 def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
 [out]
-main: note: In function "f":
 
 [case testInvalidNumberOfGenericArgsInTupleType]
 from typing import Tuple
@@ -182,7 +174,6 @@ def f() -> None:
   x = 0 # type: A
   x = 0 # type: A
 [out]
-main: note: In function "f":
 main:5: error: Name 'x' already defined
 
 [case testClassVarRedefinition]
@@ -253,7 +244,6 @@ import m
 [file m/__init__.py]
 from .x import y
 [out]
-main:2: note: In module imported here:
 tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
 tmp/m/__init__.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
@@ -264,7 +254,6 @@ import m.a
 [file m/a.py]
 from .x import y
 [out]
-main:2: note: In module imported here:
 tmp/m/a.py:1: error: Cannot find module named 'm.x'
 tmp/m/a.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 
@@ -307,9 +296,7 @@ def f() -> m.c: pass
 def g() -> n.c: pass
 [file m.py]
 [out]
-main: note: In function "f":
 main:3: error: Name 'm.c' is not defined
-main: note: In function "g":
 main:4: error: Name 'n' is not defined
 
 [case testMissingPackage]
@@ -335,7 +322,6 @@ import m
 import typing
 x = y
 [out]
-main:1: note: In module imported here:
 tmp/m.py:2: error: Name 'y' is not defined
 
 [case testErrorInImportedModule2]
@@ -347,8 +333,6 @@ import k
 import typing
 x = y
 [out]
-tmp/m/n.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/k.py:2: error: Name 'y' is not defined
 
 [case testPackageWithoutInitFile]
@@ -368,7 +352,6 @@ def f():
   break
 [out]
 main:1: error: 'break' outside loop
-main: note: In function "f":
 main:3: error: 'break' outside loop
 
 [case testContinueOutsideLoop]
@@ -377,7 +360,6 @@ def f():
   continue
 [out]
 main:1: error: 'continue' outside loop
-main: note: In function "f":
 main:3: error: 'continue' outside loop
 
 [case testReturnOutsideFunction]
@@ -526,7 +508,6 @@ class c(Generic[t]):
     def f(self) -> None: x = t
 def f(y: t): x = t
 [out]
-main: note: In function "f":
 main:4: error: 't' is a type variable and only valid in type context
 main:5: error: 't' is a type variable and only valid in type context
 
@@ -549,7 +530,6 @@ super().x
 def f() -> None: super().y
 [out]
 main:2: error: "super" used outside class
-main: note: In function "f":
 main:3: error: "super" used outside class
 
 [case testMissingSelfInMethod]
@@ -576,7 +556,6 @@ def f() -> None:
     global x
     x = None
 [out]
-main: note: In function "f":
 main:4: error: Name 'x' is not defined
 
 [case testInvalidNonlocalDecl]
@@ -586,7 +565,6 @@ def f():
        nonlocal x
        x = None
 [out]
-main: note: In function "g":
 main:4: error: No binding for nonlocal 'x' found
 main:5: error: Name 'x' is not defined
 
@@ -597,7 +575,6 @@ def f() -> None:
     nonlocal x
     x = None
 [out]
-main: note: In function "f":
 main:4: error: No binding for nonlocal 'x' found
 main:5: error: Name 'x' is not defined
 
@@ -609,7 +586,6 @@ def g():
         nonlocal x
         x = None
 [out]
-main: note: In function "f":
 main:5: error: Name 'x' is already defined in local scope before nonlocal declaration
 
 [case testNonlocalDeclOutsideFunction]
@@ -628,7 +604,6 @@ def f():
        nonlocal x
        x = None
 [out]
-main: note: In function "g":
 main:7: error: Name 'x' is nonlocal and global
 
 [case testNonlocalAndGlobalDecl]
@@ -641,7 +616,6 @@ def f():
        global x
        x = None
 [out]
-main: note: In function "g":
 main:7: error: Name 'x' is nonlocal and global
 
 [case testNestedFunctionAndScoping]
@@ -653,7 +627,6 @@ def f(x) -> None:
     y
     x
 [out]
-main: note: In function "f":
 main:5: error: Name 'z' is not defined
 main:6: error: Name 'y' is not defined
 
@@ -664,7 +637,6 @@ def f(x) -> None:
     x = 1
     def g(): pass
 [out]
-main: note: In function "f":
 main:5: error: Name 'g' already defined
 
 [case testRedefinedOverloadedFunction]
@@ -677,7 +649,6 @@ def f() -> None:
     x = 1
     def p(): pass # fail
 [out]
-main: note: In function "f":
 main:8: error: Name 'p' already defined
 
 [case testNestedFunctionInMethod]
@@ -688,9 +659,7 @@ class A:
            x
        y
 [out]
-main: note: In function "g":
 main:5: error: Name 'x' is not defined
-main: note: In function "f":
 main:6: error: Name 'y' is not defined
 
 [case testImportScope]
@@ -838,7 +807,6 @@ Any(arg=str)   # E: 'Any' must be called with 1 positional argument
 def f(x:[int, str]) -> None: # E: Invalid type
     pass
 [out]
-main: note: In function "f":
 
 [case testInvalidFunctionType]
 from typing import Callable
@@ -865,7 +833,6 @@ def g() -> None:
   @abstractmethod
   def foo(): pass
 [out]
-main: note: In function "g":
 main:4: error: 'abstractmethod' used with a non-method
 
 [case testInvalidTypeDeclaration]
@@ -893,7 +860,6 @@ class A:
   def f(self, x) -> None:
     x.y = 1 # type: int
 [out]
-main: note: In function "f":
 main:4: error: Type cannot be declared in assignment to non-self attribute
 
 [case testInvalidTypeInTypeApplication]
@@ -1034,7 +1000,6 @@ def f() -> None:
     T = TypeVar('T')
 def g(x: T) -> None: pass # E: Name 'T' is not defined
 [out]
-main: note: In function "g":
 
 [case testClassTypevarScope]
 from typing import TypeVar
@@ -1042,7 +1007,6 @@ class A:
     T = TypeVar('T')
 def g(x: T) -> None: pass # E: Name 'T' is not defined
 [out]
-main: note: In function "g":
 
 [case testRedefineVariableAsTypevar]
 from typing import TypeVar
@@ -1082,12 +1046,10 @@ from typing import Generic as t # E: Name 't' already defined
 [case testInvalidStrLiteralType]
 def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
-main: note: In function "f":
 
 [case testInvalidStrLiteralType2]
 def f(x: 'int['): pass # E: Parse error before end of line
 [out]
-main: note: In function "f":
 
 [case testInconsistentOverload]
 from typing import overload
@@ -1123,9 +1085,7 @@ def f(): # type: (int) -> int
 def g(x): # type: () -> int
   pass
 [out]
-main: note: In function "f":
 main:2: error: Type signature has too many arguments
-main: note: In function "g":
 main:4: error: Type signature has too few arguments
 
 [case testStaticmethodAndNonMethod]
@@ -1139,7 +1099,6 @@ class A:
 [builtins fixtures/staticmethod.pyi]
 [out]
 main:2: error: 'staticmethod' used with a non-method
-main: note: In function "g":
 main:6: error: 'staticmethod' used with a non-method
 
 [case testClassmethodAndNonMethod]
@@ -1153,7 +1112,6 @@ class A:
 [builtins fixtures/classmethod.pyi]
 [out]
 main:2: error: 'classmethod' used with a non-method
-main: note: In function "g":
 main:6: error: 'classmethod' used with a non-method
 
 [case testNonMethodProperty]
@@ -1219,7 +1177,6 @@ def f() -> None:
 y = 1
 [file y.py]
 [out]
-main: note: In function "f":
 
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
@@ -1236,7 +1193,6 @@ import typing
 def f() -> List[int]: pass
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 main:2: error: Name 'List' is not defined
 
 [case testImportObsoleteTypingFunction]
@@ -1252,10 +1208,8 @@ def f(x: typing.Function[[], None]) -> None: pass
 def g(x: _m.Function[[], None]) -> None: pass
 [file _m.py]
 [out]
-main: note: In function "f":
 main:3: error: Name 'typing.Function' is not defined (it's now called 'typing.Callable')
 --'
-main: note: In function "g":
 main:4: error: Name '_m.Function' is not defined
 
 [case testUnqualifiedNameRefersToObsoleteTypingFunction]
@@ -1294,7 +1248,6 @@ import typing
 def f() -> None:
     1[2] = 1  # type: int
 [out]
-main: note: In function "f":
 main:3: error: Unexpected type declaration
 
 [case testInvalidTypeAnnotation2]
@@ -1302,7 +1255,6 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main: note: In function "f":
 main:3: error: Invalid assignment target
 
 [case testInvalidReferenceToAttributeOfOuterClass]

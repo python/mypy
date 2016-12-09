@@ -55,7 +55,6 @@ x = None # type: int
 y = [x]
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "foo":
 
 [case testFunctionDefaultArgs]
 
@@ -68,7 +67,6 @@ def foo(x: A = B()):
     x.y   # E: "A" has no attribute "y"
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "foo":
 
 [case testIsinstanceFancyConditionals]
 
@@ -187,7 +185,6 @@ def bar() -> None:
     x + 'a'
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "bar":
 
 [case testUnionTryExcept]
 
@@ -367,7 +364,6 @@ def f() -> int:
     finally:
         return x.b # E: "A" has no attribute "b"
 [out]
-main: note: In function "f":
 [case testUnionListIsinstance]
 
 from typing import Union, List
@@ -395,7 +391,6 @@ def f(x: Union[List[int], List[str], int]) -> None:
     x + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "f":
 
 [case testUnionListIsinstance2]
 
@@ -622,7 +617,6 @@ def foo() -> None:
 foo()
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "foo":
 [case testIsInstanceThreeUnion]
 from typing import Union, List
 
@@ -922,7 +916,6 @@ def bar() -> None:
 
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "bar":
 
 [case testWhileExitCondition1]
 from typing import Union
@@ -1180,7 +1173,6 @@ def f(x: Union[int, str]) -> None:
 def foo(): pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceOr1]
 from typing import Optional
@@ -1191,7 +1183,6 @@ def f(a: bool, x: object) -> Optional[int]:
     return x
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceOr2]
 from typing import Optional
@@ -1202,7 +1193,6 @@ def g(a: bool, x: object) -> Optional[int]:
     return x
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "g":
 
 [case testIsinstanceOr3]
 from typing import Optional
@@ -1212,7 +1202,6 @@ def h(a: bool, x: object) -> Optional[int]:
     return x # E: Incompatible return value type (got "object", expected "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "h":
 
 [case testIsinstanceWithOverlappingUnionType]
 from typing import Union
@@ -1278,7 +1267,6 @@ def f(x: Any):
     x + "foo"  # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceOfGenericClassRetainsParameters]
 from typing import List, Union
@@ -1287,7 +1275,6 @@ def f(x: Union[List[int], str]) -> None:
         x[0]()
 [builtins fixtures/isinstancelist.pyi]
 [out]
-main: note: In function "f":
 main:4: error: "int" not callable
 
 [case testIsinstanceOrIsinstance]
@@ -1331,7 +1318,6 @@ def f(x: object) -> None:
         pass
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceAndOr]
 class A:
@@ -1342,4 +1328,3 @@ def f(x: object) -> None:
     reveal_type(b)  # E: Revealed type is '__main__.A'
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":

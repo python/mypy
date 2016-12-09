@@ -114,11 +114,9 @@ f(object(), (1, ''))
 f(1, 1) # E
 [builtins_py2 fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 main:3: error: "object" not callable
 main:4: error: "int" not callable
 main:5: error: "str" not callable
-main: note: At top level:
 main:7: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, str]"
 
 [case testNestedTupleArgListAnnotated]
@@ -132,12 +130,10 @@ f(object(), (1, ('', 2)))
 f(1, 1) # E
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 main:3: error: "object" not callable
 main:4: error: "int" not callable
 main:5: error: "str" not callable
 main:6: error: "int" not callable
-main: note: At top level:
 main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[int, Tuple[str, int]]"
 
 [case testBackquoteExpr]
@@ -182,7 +178,6 @@ def f(x, y, z): # type: (...) -> None
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main: note: In function "f":
 main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
 
 [case testLambdaTupleArgInPython2]

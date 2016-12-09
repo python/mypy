@@ -19,7 +19,6 @@ class B: pass
 class C: pass
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 
 
 [case testVarArgsAreTuple]

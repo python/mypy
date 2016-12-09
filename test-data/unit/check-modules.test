@@ -93,7 +93,6 @@ a = A()
 b = B()
 def f() -> None: pass
 [out]
-main: note: In function "f":
 
 [case testImportWithinMethod]
 import typing
@@ -113,7 +112,6 @@ a = A()
 b = B()
 def f() -> None: pass
 [out]
-main: note: In member "f" of class "C":
 
 [case testImportWithinClassBody]
 import typing
@@ -124,7 +122,6 @@ class C:
 [file m.py]
 def f() -> None: pass
 [out]
-main: note: In class "C":
 
 [case testImportWithinClassBody2]
 import typing
@@ -135,7 +132,6 @@ class C:
 [file m.py]
 def f() -> None: pass
 [out]
-main: note: In class "C":
 
 [case testImportWithStub]
 import _m
@@ -331,7 +327,6 @@ x.z
 import nonexistent
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/x.py:1: error: Cannot find module named 'nonexistent'
 tmp/x.py:1: note: (Perhaps setting MYPYPATH or using the "--silent-imports" flag would help)
 main:3: error: "module" has no attribute "z"
@@ -373,7 +368,6 @@ class B: pass
 x = A()
 y = B()
 [out]
-main:2: note: In module imported here:
 tmp/m/a.py:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
@@ -461,16 +455,12 @@ def f(x: int = ...) -> None: pass
 [file m.pyi]
 def g(x: int = '') -> None: pass
 [out]
-main:1: note: In module imported here:
-tmp/m.pyi: note: In function "g":
 tmp/m.pyi:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main: note: In function "f":
 main:2: error: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
 
 [case testEllipsisDefaultArgValueInNonStub]
 def f(x: int = ...) -> None: pass # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testStarImportOverlapping]
 from m1 import *
@@ -624,7 +614,6 @@ def g() -> None:
 [file m.py]
 def f(): pass
 [out]
-main: note: In function "g":
 
 [case testAssignToFuncDefViaNestedModules]
 import m.n
@@ -806,7 +795,6 @@ a.b.c.value
 [file a/b/c.py]
 value = 3.2
 [out]
-main:1: note: In module imported here:
 tmp/a/b/__init__.py:2: error: Name 'c' is not defined
 tmp/a/b/__init__.py:3: error: Name 'a' is not defined
 tmp/a/__init__.py:2: error: Name 'b' is not defined
@@ -837,7 +825,6 @@ foo = parent.common.SomeClass()
 
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/parent/child.py:3: error: Name 'parent' is not defined
 
 [case testSubmoduleMixingImportFromAndImport]
@@ -864,7 +851,6 @@ bar = parent.unrelated.ShouldNotLoad()
 
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/parent/child.py:8: error: Revealed type is 'parent.common.SomeClass'
 tmp/parent/child.py:9: error: "module" has no attribute "unrelated"
 
@@ -884,7 +870,6 @@ reveal_type(foo)
 
 [builtins fixtures/module.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/parent/child.py:4: error: Revealed type is 'parent.common.SomeClass'
 
 -- Tests repeated imports
@@ -1107,9 +1092,6 @@ import x
 class Sub(x.Base):
     attr = 0
 [out]
-tmp/y.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/x.py: note: In function "foo":
 tmp/x.py:5: error: Revealed type is 'builtins.int'
 
 -- This case has a symmetrical cycle, so it doesn't matter in what
@@ -1186,8 +1168,6 @@ def foo() -> int:
 import x
 value = 12
 [out]
-main:1: note: In module imported here:
-tmp/x.py: note: In function "foo":
 tmp/x.py:3: error: Revealed type is 'builtins.int'
 
 -- This is not really cycle-related but still about the lightweight
@@ -1216,9 +1196,6 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-tmp/a.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/b.py: note: In function "g":
 tmp/b.py:3: error: Revealed type is 'builtins.int'
 
 [case testSymmetricImportCycle2]
@@ -1235,9 +1212,6 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-tmp/b.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/a.py: note: In function "f":
 tmp/a.py:3: error: Revealed type is 'builtins.int'
 
 [case testThreePassesRequired]
@@ -1253,9 +1227,6 @@ class C:
 import a
 b = 1 + 1
 [out]
-tmp/b.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/a.py: note: In member "f1" of class "C":
 tmp/a.py:4: error: Cannot determine type of 'x2'
 
 [case testErrorInPassTwo1]
@@ -1269,9 +1240,6 @@ def f() -> None:
 import a
 x = 1 + 1
 [out]
-tmp/b.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/a.py: note: In function "f":
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testErrorInPassTwo2]
@@ -1285,8 +1253,6 @@ def f() -> None:
 import a
 x = 1 + 1
 [out]
-main:1: note: In module imported here:
-tmp/a.py: note: In function "f":
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
 [case testDeferredDecorator]
@@ -1307,7 +1273,6 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-main:1: note: In module imported here:
 tmp/a.py:6: error: Revealed type is 'def (builtins.str*) -> builtins.int'
 
 [case testDeferredClassContext]
@@ -1376,7 +1341,6 @@ AnyAlias = Any
 ListAlias = List
 [builtins fixtures/list.pyi]
 [out]
-main:1: note: In module imported here:
 tmp/bar.py:5: error: Revealed type is 'builtins.list[builtins.int]'
 
 [case testImportStarAliasSimpleGeneric]

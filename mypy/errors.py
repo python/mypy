@@ -99,13 +99,13 @@ class Errors:
     # Collection of reported only_once messages.
     only_once_messages = None  # type: Set[str]
 
-    # Set to True to suppress "In function "foo":" messages.
-    hide_error_context = False  # type: bool
+    # Set to False to show "In function "foo":" messages.
+    hide_error_context = True  # type: bool
 
     # Set to True to show column numbers in error messages
     show_column_numbers = False  # type: bool
 
-    def __init__(self, hide_error_context: bool = False,
+    def __init__(self, hide_error_context: bool = True,
                  show_column_numbers: bool = False) -> None:
         self.error_info = []
         self.import_ctx = []

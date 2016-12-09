@@ -153,7 +153,6 @@ class B(A):
         i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                           variable has type "int")
 [out]
-main: note: In member "f" of class "B":
 
 [case testNewNamedTupleTypeReferenceToClassDerivedFrom]
 # flags: --fast-parser --python-version 3.6
@@ -176,7 +175,6 @@ class B(A):
                           variable has type "int")
 
 [out]
-main: note: In member "f" of class "B":
 
 [case testNewNamedTupleSubtyping]
 # flags: --fast-parser --python-version 3.6
@@ -377,5 +375,4 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f":
 main:8: error: Unsupported type Type["N"]
