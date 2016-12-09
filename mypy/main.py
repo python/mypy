@@ -222,6 +222,9 @@ def process_options(args: List[str],
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--hide-error-context', action='store_true',
+                        dest='hide_error_context',
+                        help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
