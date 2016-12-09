@@ -509,3 +509,11 @@ def outer(x: T) -> T:
     return inner1(x)
 [out]
 main: note: In function "inner2":
+
+[case testClassMemberTypeVarInFunctionBody]
+from typing import TypeVar
+class C:
+    T = TypeVar('T', int)
+    def f(self, x: T) -> T:
+        A = C.T
+        return x
