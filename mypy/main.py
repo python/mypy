@@ -263,7 +263,11 @@ def process_options(args: List[str],
     # filename for the config file.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
-    config_file = dummy.config_file or defaults.CONFIG_FILE
+    config_file = defaults.CONFIG_FILE
+    if dummy.config_file:
+        config_file = dummy.config_file
+        if not os.path.exists(config_file):
+            parser.error("Cannot file config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
