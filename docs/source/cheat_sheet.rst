@@ -120,9 +120,10 @@ When you're puzzled or when things are complicated
    # dynamic to write a type for.
    x = mystery_function() # type: Any
 
-   # This is how to deal with kwargs, generally just use Any
+   # This is how to deal with varargs.
+   # This makes each positional arg and each keyword arg a 'str'.
    def call(self, *args, **kwargs):
-            # type: (*Any, **Any) -> str
+            # type: (*str, **str) -> str
             request = make_request(*args, **kwargs)
             return self.do_api_query(request)
 
