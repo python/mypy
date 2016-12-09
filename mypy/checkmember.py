@@ -7,7 +7,7 @@ from mypy.types import (
     Overloaded, TypeVarType, UnionType, PartialType,
     DeletedType, NoneTyp, TypeType, function_type
 )
-from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile
+from mypy.nodes import TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2
 from mypy.nodes import Decorator, OverloadedFuncDef
 from mypy.messages import MessageBuilder
@@ -377,6 +377,9 @@ def analyze_class_attribute_access(itype: Instance,
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
         return AnyType()
+
+    if isinstance(node.node, TypeVarExpr):
+        return node.node.upper_bound
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
