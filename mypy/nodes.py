@@ -627,6 +627,7 @@ class Var(SymbolNode):
     is_self = False
     is_ready = False  # If inferred, is the inferred type available?
     # Is this initialized explicitly to a non-None value in class body?
+    is_inferred = False
     is_initialized_in_class = False
     is_staticmethod = False
     is_classmethod = False
@@ -644,6 +645,8 @@ class Var(SymbolNode):
     def __init__(self, name: str, type: 'mypy.types.Type' = None) -> None:
         self._name = name
         self.type = type
+        if self.type is None:
+            self.is_inferred = True
         self.is_self = False
         self.is_ready = True
         self.is_initialized_in_class = False

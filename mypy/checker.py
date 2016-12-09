@@ -1433,6 +1433,7 @@ class TypeChecker(NodeVisitor[Type]):
         """
         if var and not self.current_node_deferred:
             var.type = type
+            var.is_inferred = True
             self.store_type(lvalue, type)
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
