@@ -123,3 +123,60 @@ def f() -> int:
     else:
         return 0
 [builtins fixtures/bool.pyi]
+
+[case testShowErrorContextFunction]
+# flags: --show-error-context
+def f() -> None:
+  0 + ""
+[out]
+main: note: In function "f":
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextClass]
+# flags: --show-error-context
+class A:
+  0 + ""
+[out]
+main: note: In class "A":
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextMember]
+# flags: --show-error-context
+class A:
+  def f(self, x: int) -> None:
+    self.f("")
+[out]
+main: note: In member "f" of class "A":
+main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testShowErrorContextModule]
+# flags: --show-error-context
+import m
+[file m.py]
+0 + ""
+[out]
+main:2: note: In module imported here:
+tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextTopLevel]
+# flags: --show-error-context
+def f() -> None:
+  0 + ""
+0 + ""
+[out]
+main: note: In function "f":
+main:3: error: Unsupported operand types for + ("int" and "str")
+main: note: At top level:
+main:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextFromHere]
+# flags: --show-error-context
+import a
+[file a.py]
+import b
+[file b.py]
+0 + ""
+[out]
+tmp/a.py:1: note: In module imported here,
+main:2: note: ... from here:
+tmp/b.py:1: error: Unsupported operand types for + ("int" and "str")
