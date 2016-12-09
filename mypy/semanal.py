@@ -1267,6 +1267,7 @@ class SemanticAnalyzer(NodeVisitor):
             if (add_global or nested_global) and lval.name not in self.globals:
                 # Define new global name.
                 v = Var(lval.name)
+                v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
@@ -1284,6 +1285,7 @@ class SemanticAnalyzer(NodeVisitor):
                   lval.name not in self.nonlocal_decls[-1]):
                 # Define new local name.
                 v = Var(lval.name)
+                v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = LDEF
@@ -1355,6 +1357,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Implicit attribute definition in __init__.
             lval.is_def = True
             v = Var(lval.name)
+            v.set_line(lval)
             v.info = self.type
             v.is_ready = False
             lval.def_var = v
