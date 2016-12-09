@@ -982,7 +982,7 @@ import a.b
 tmp/b.py:4: error: Name 'a' already defined
 
 [case testIncrementalSilentImportsAndImportsInClass]
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 class MyObject(object):
     from bar import FooBar
 [stale]
@@ -1010,7 +1010,7 @@ tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "st
 [case testIncrementalUnsilencingModule]
 # cmd: mypy -m main package.subpackage.mod2
 # cmd2: mypy -m main package.subpackage.mod1
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from package.subpackage.mod1 import Class
@@ -1047,7 +1047,7 @@ import foo # type: ignore
 [case testIncrementalWithSilentImportsAndIgnore]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 import a  # type: ignore
@@ -1195,7 +1195,7 @@ tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; exp
 
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from evil import Hello
@@ -1216,7 +1216,7 @@ tmp/main.py:2: error: Revealed type is 'Any'
 [case testIncrementalImportIsNewlySilenced]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from foo import bar
@@ -1235,7 +1235,7 @@ bar = 3
 [case testIncrementalSilencedModuleNoLongerCausesError]
 # cmd: mypy -m main evil
 # cmd2: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from evil import bar
@@ -1377,7 +1377,7 @@ tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
 [case testIncrementalSilentImportsWithInnerImports]
 # cmd: mypy -m main foo
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 
 [file main.py]
 from foo import MyClass
@@ -1402,7 +1402,7 @@ tmp/main.py:3: error: Revealed type is 'Any'
 [case testIncrementalSilentImportsWithInnerImportsAndNewFile]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main foo unrelated
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from foo import MyClass
@@ -1509,7 +1509,7 @@ tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; exp
 [case testIncrementalPartialSubmoduleUpdate]
 # cmd: mypy -m a
 # cmd2: mypy -m a a.c
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file a/__init__.py]
 from .b import B
@@ -1587,3 +1587,56 @@ class Z(X, Y): pass
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
 [out2]
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
+
+[case testIncrementalFollowImportsSilent]
+# flags: --follow-imports=silent
+import a
+[file a.py]
+x = 0
+[file a.py.next]
+x = 0
+x + ''
+
+[case testIncrementalFollowImportsSkip]
+# flags: --follow-imports=skip
+import a
+reveal_type(a.x)
+[file a.py]
+/
+[file a.py.next]
+//
+[out]
+main:3: error: Revealed type is 'Any'
+[out2]
+main:3: error: Revealed type is 'Any'
+
+[case testIncrementalFollowImportsError]
+# flags: --follow-imports=error
+import a
+[file a.py]
+/
+[file a.py.next]
+//
+[out1]
+main:2: note: Import of 'a' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+[out2]
+main:2: note: Import of 'a' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testIncrementalFollowImportsVariable]
+# flags: --config-file tmp/mypy.ini
+import a
+reveal_type(a.x)
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+follow_imports = normal
+[file mypy.ini.next]
+[[mypy]
+follow_imports = skip
+[out1]
+main:3: error: Revealed type is 'builtins.int'
+[out2]
+main:3: error: Revealed type is 'Any'
