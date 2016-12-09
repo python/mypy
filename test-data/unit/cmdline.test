@@ -353,7 +353,6 @@ follow_imports = normal
 x = 0
 x += ''  # Error reported here
 [out]
-main.py:1: note: In module imported here:
 a.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
@@ -449,7 +448,6 @@ bla bla
 [out]
 main.py:4: note: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:1: note: In module imported here:
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:5: error: Revealed type is 'builtins.int'
 main.py:6: error: Revealed type is 'builtins.int'
