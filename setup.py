@@ -9,6 +9,9 @@ if sys.version_info < (3, 2, 0):
     sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
     exit(1)
 
+# This requires setuptools when building; setuptools is not needed
+# when installing from a wheel file (though it is still neeeded for
+# alternative forms of installing, as suggested by README.md).
 from setuptools import setup
 from setuptools.command.build_py import build_py
 from mypy.version import base_version
@@ -92,6 +95,10 @@ scripts = ['scripts/mypy', 'scripts/stubgen']
 if os.name == 'nt':
     scripts.append('scripts/mypy.bat')
 
+# These requirements are used when installing by other means than bdist_wheel.
+# E.g. "pip3 install ." or
+# "pip3 install git+git://github.com/python/mypy.git"
+# (as suggested by README.md).
 install_requires = []
 if sys.platform != 'win32':
     install_requires.append('typed-ast >= 0.6.1')
