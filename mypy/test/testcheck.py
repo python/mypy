@@ -125,14 +125,7 @@ class TypeCheckSuite(DataSuite):
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental)
 
-        options = self.parse_options(original_program_text, testcase)
-        options.use_builtins_fixtures = True
-        options.show_traceback = True
-        if 'optional' in testcase.file:
-            options.strict_optional = True
-
         if incremental:
-            options.incremental = True
             if incremental == 1:
                 # In run 1, copy program text to program file.
                 for module_name, program_path, program_text in module_data:
@@ -141,10 +134,10 @@ class TypeCheckSuite(DataSuite):
                             f.write(program_text)
                         break
             elif incremental == 2:
-                # In run 2, copy *.py.next files to *.py files.
+                # In run 2, copy *.next files to * files.
                 for dn, dirs, files in os.walk(os.curdir):
                     for file in files:
-                        if file.endswith('.py.next'):
+                        if file.endswith('.next'):
                             full = os.path.join(dn, file)
                             target = full[:-5]
                             shutil.copy(full, target)
@@ -154,6 +147,15 @@ class TypeCheckSuite(DataSuite):
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
+
+        # Parse options after moving files (in case mypy.ini is being moved).
+        options = self.parse_options(original_program_text, testcase)
+        options.use_builtins_fixtures = True
+        options.show_traceback = True
+        if 'optional' in testcase.file:
+            options.strict_optional = True
+        if incremental:
+            options.incremental = True
 
         sources = []
         for module_name, program_path, program_text in module_data:
