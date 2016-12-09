@@ -415,6 +415,47 @@ main.py:1: note: (Using --follow-imports=error, module not passed on command lin
 main.py:2: error: Revealed type is 'Any'
 main.py:4: error: Revealed type is 'Any'
 
+[case testConfigFollowImportsSelective]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+[[mypy-normal]
+follow_imports = normal
+[[mypy-silent]
+follow_imports = silent
+[[mypy-skip]
+follow_imports = skip
+[[mypy-error]
+follow_imports = error
+[file main.py]
+import normal
+import silent
+import skip
+import error
+reveal_type(normal.x)
+reveal_type(silent.x)
+reveal_type(skip)
+reveal_type(error)
+[file normal.py]
+x = 0
+x += ''
+[file silent.py]
+x = 0
+x += ''
+[file skip.py]
+bla bla
+[file error.py]
+bla bla
+[out]
+main.py:4: note: Import of 'error' ignored
+main.py:4: note: (Using --follow-imports=error, module not passed on command line)
+main.py:1: note: In module imported here:
+normal.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:5: error: Revealed type is 'builtins.int'
+main.py:6: error: Revealed type is 'builtins.int'
+main.py:7: error: Revealed type is 'Any'
+main.py:8: error: Revealed type is 'Any'
+
 [case testConfigSilentMissingImportsOff]
 # cmd: mypy main.py
 [file main.py]
