@@ -73,6 +73,9 @@ class Options:
         # Apply strict None checking
         self.strict_optional = False
 
+        # Hide "note: In function "foo":" messages.
+        self.hide_error_context = True
+
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]
@@ -111,7 +114,6 @@ class Options:
         self.incremental = False
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
-        self.hide_error_context = True  # Hide "note: In function "foo":" messages.
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool
 
