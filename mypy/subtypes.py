@@ -353,7 +353,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 # This fetches the synthetic argument that's from the *args
                 right_by_position = right.argument_by_position(j)
                 assert right_by_position is not None
-                if not is_left_more_general(left_by_position, right_by_position,
+                if not are_args_compatible(left_by_position, right_by_position,
                                             ignore_pos_arg_names):
                     return False
                 j += 1
@@ -376,7 +376,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 # This fetches the synthetic argument that's from the **kwargs
                 right_by_name = right.argument_by_name(name)
                 assert right_by_name is not None
-                if not is_left_more_general(left_by_name, right_by_name,
+                if not are_args_compatible(left_by_name, right_by_name,
                                             ignore_pos_arg_names):
                     return False
             continue
@@ -421,7 +421,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
 
         assert left_arg is not None
 
-        if not is_left_more_general(left_arg, right_arg, ignore_pos_arg_names):
+        if not are_args_compatible(left_arg, right_arg, ignore_pos_arg_names):
             return False
 
     done_with_positional = False
@@ -462,14 +462,14 @@ def is_callable_subtype(left: CallableType, right: CallableType,
             return False
 
         # All *required* left-hand arguments must have a corresponding
-        # right-hand argument.
+        # right-hand argument.  Optional args it does not matter.
         if left_arg.required and right_by_pos is None and right_by_name is None:
             return False
 
     return True
 
 
-def is_left_more_general(
+def are_args_compatible(
         left: FormalArgument,
         right: FormalArgument,
         ignore_pos_arg_names: bool) -> bool:
