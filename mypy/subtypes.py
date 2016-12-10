@@ -367,8 +367,8 @@ def is_callable_subtype(left: CallableType, right: CallableType,
             # sure left has its own infinite set of optional named arguments.
             if not left.is_kw_arg:
                 return False
-            left_names = set([name for name in left.arg_names if name is not None])
-            right_names = set([name for name in right.arg_names if name is not None])
+            left_names = { name for name in left.arg_names if name is not None }
+            right_names = { name for name in right.arg_names if name is not None }
             left_only_names = left_names - right_names
             for name in left_only_names:
                 left_by_name = left.argument_by_name(name)
@@ -401,7 +401,11 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 and left_by_position is not None
                 and left_by_name != left_by_position):
             # If we're dealing with an optional pos-only and an optional
-            # name-only arg, merge them.
+            # name-only arg, merge them.  This is the case for all functions
+            # taking both *args and **args, or a pair of functions like so:
+
+            # def right(a: int = ...) -> None: ...
+            # def left(__a: int = ..., *, a: int = ...) -> None: ...
             if (left_by_position.required is False and left_by_name.required is False
                     and left_by_position.name is None and left_by_name.pos is None
                     and is_equivalent(left_by_position.typ, left_by_name.typ)):
