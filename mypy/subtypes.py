@@ -424,29 +424,48 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         if not is_left_more_general(left_arg, right_arg, ignore_pos_arg_names):
             return False
 
+    done_with_positional = False
     for i in range(len(left.arg_types)):
-        left_name = left.arg_names[i]
         left_kind = left.arg_kinds[i]
-        left_type = left.arg_types[i]
-        # All *required* left-hand arguments must have a corresponding
-        # right-hand argument.  The relationship between the two is handled in
-        # the loop above.
+        if left_kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+            done_with_positional = True
+        left_arg = FormalArgument(
+            left.arg_names[i],
+            None if done_with_positional else i,
+            left.arg_types[i],
+            left_kind in (ARG_POS, ARG_NAMED))
 
-        if left_kind == ARG_POS and right.argument_by_position(i) is None:
-            if left_name is None:
+        # Check that *args and **kwargs types match in this loop
+        if left_kind == ARG_STAR:
+            if right_star_type is not None and not is_subtype(right_star_type, left_arg.typ):
                 return False
-            if right.argument_by_name(left_name) is None:
-                return False
-        elif left_kind == ARG_NAMED:
-            if right.argument_by_name(left_name) is None:
-                return False
-        # Also check that *args and **kwargs types match in this loop
-        elif left_kind == ARG_STAR:
-            if right_star_type is not None and not is_subtype(right_star_type, left_type):
-                return False
+            continue
         elif left_kind == ARG_STAR2:
-            if right_star2_type is not None and not is_subtype(right_star2_type, left_type):
+            if right_star2_type is not None and not is_subtype(right_star2_type, left_arg.typ):
                 return False
+            continue
+
+        right_by_name = ( right.argument_by_name(left_arg.name)
+                          if left_arg.name is not None
+                          else None )
+
+        right_by_pos = ( right.argument_by_position(left_arg.pos)
+                         if left_arg.pos is not None
+                         else None )
+
+        # If the left hand argument corresponds to two right-hand arguments,
+        # neither of them can be required.
+        if (right_by_name is not None
+                and right_by_pos is not None
+                and right_by_name != right_by_pos
+                and (right_by_pos.required or right_by_name.required)):
+            return False
+
+        # All *required* left-hand arguments must have a corresponding
+        # right-hand argument.
+        if left_arg.required and right_by_pos is None and right_by_name is None:
+            return False
+
     return True
 
 

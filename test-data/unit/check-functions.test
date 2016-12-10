@@ -82,6 +82,17 @@ f = f
 g = g
 h = h
 
+[case testSubtypingFunctionsDoubleCorrespondence]
+
+def l(x) -> None: ...
+def r(__, *, x) -> None: ...
+r = l # E: Incompatible types in assignment (expression has type Callable[[Any], None], variable has type Callable[[Any, NamedArg('x', Any)], None])
+
+[case testSubtypingFunctionsRequiredLeftArgNotPresent]
+
+def l(x, y) -> None: ...
+def r(x) -> None: ...
+r = l # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
 [case testSubtypingFunctionsDefaultsNames]
 from typing import Callable
