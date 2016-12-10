@@ -80,8 +80,8 @@ TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
     ARG_OPT: "DefaultArg",
-    ARG_NAMED: "Arg",
-    ARG_NAMED_OPT: "DefaultArg",
+    ARG_NAMED: "NamedArg",
+    ARG_NAMED_OPT: "DefaultNamedArg",
     ARG_STAR: "StarArg",
     ARG_STAR2: "KwArg",
 }
@@ -188,7 +188,9 @@ class MessageBuilder:
                 arg_strings = []
                 for arg_name, arg_type, arg_kind in zip(
                         func.arg_names, func.arg_types, func.arg_kinds):
-                    if arg_kind == ARG_POS and arg_name is None or verbosity == 0:
+                    if ( arg_kind == ARG_POS and arg_name is None or
+                         verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT) ):
+
                         arg_strings.append(
                             strip_quotes(
                                 self.format(
@@ -199,13 +201,12 @@ class MessageBuilder:
                         if arg_kind in (ARG_STAR, ARG_STAR2):
                             arg_strings.append("{}({})".format(
                                 constructor,
-                                arg_name))
+                                strip_quotes(self.format(arg_type))))
                         else:
-                            arg_strings.append("{}('{}', {}, {})".format(
+                            arg_strings.append("{}('{}', {})".format(
                                 constructor,
                                 arg_name,
-                                strip_quotes(self.format(arg_type)),
-                                arg_kind in (ARG_NAMED, ARG_NAMED_OPT)))
+                                strip_quotes(self.format(arg_type))))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             else:
