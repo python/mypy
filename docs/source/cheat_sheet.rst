@@ -106,7 +106,7 @@ When you're puzzled or when things are complicated
 
 .. code-block:: python
 
-   from typing import Union, Any
+   from typing import Union, Any, cast
 
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type.  Mypy will print an error
@@ -134,7 +134,13 @@ When you're puzzled or when things are complicated
    # (in mypy, typeshed, or your own code) or an explanation of the issue.
    x = confusing_function() # type: ignore # https://github.com/python/mypy/issues/1167
 
-   # TODO: explain cast
+   # cast is a helper function for mypy that allows for guidance of how to convert types.
+   # it does not cast at runtime
+   a = [4]
+   b = cast(List[int], a)  # passes fine
+   c = cast(List[str], a)  # passes fine (no runtime check)
+   reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
+   print(c)  # -> [4] the object is not cast
 
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container
