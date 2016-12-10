@@ -1578,7 +1578,7 @@ def dump_graph(graph: Graph) -> None:
                     if dep in inv_nodes:
                         dep_id = inv_nodes[dep]
                         if (dep_id != node.node_id and
-                            (dep_id not in node.deps or pri < node.deps[dep_id])):
+                                (dep_id not in node.deps or pri < node.deps[dep_id])):
                             node.deps[dep_id] = pri
     print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
 
