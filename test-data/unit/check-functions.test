@@ -132,6 +132,28 @@ ee_def = specific_1 # E: Incompatible types in assignment (expression has type C
 
 [builtins fixtures/dict.pyi]
 
+[case testLackOfNamesImplicitAny]
+
+def f(__a): pass
+def g(a): pass
+
+ff = f
+gg = g
+ff = g
+gg = f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[Arg('a', Any, False)], Any])
+
+
+[case testLackOfNamesImplicitAnyFastparse]
+# flags: --fast-parser
+
+def f(__a): pass
+def g(a): pass
+
+ff = f
+gg = g
+ff = g
+gg = f # E: Incompatible types in assignment (expression has type Callable[[Any], Any], variable has type Callable[[Arg('a', Any, False)], Any])
+
 [case testLackOfNames]
 def f(__a: int, __b: str) -> None: pass
 def g(a: int, b: str) -> None: pass

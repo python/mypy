@@ -15,6 +15,7 @@ from mypy.nodes import (
 )
 
 from mypy import experiments
+from mypy.sharedparse import argument_elide_name
 
 
 T = TypeVar('T')
@@ -1699,7 +1700,7 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
         return CallableType(
             [AnyType()] * len(fdef.arg_names),
             fdef.arg_kinds,
-            fdef.arg_names,
+            [None if argument_elide_name(n) else n for n in fdef.arg_names],
             AnyType(),
             fallback,
             name,
