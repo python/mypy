@@ -98,5 +98,6 @@ class TypedDictTests(BaseTestCase):
             self.assertEqual(jane2, jane)
             self.assertEqual(jane2, {'name': 'jane', 'id': 37})
 
+
 if __name__ == '__main__':
     main()
