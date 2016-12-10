@@ -354,7 +354,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_by_position = right.argument_by_position(j)
                 assert right_by_position is not None
                 if not are_args_compatible(left_by_position, right_by_position,
-                                            ignore_pos_arg_names):
+                                           ignore_pos_arg_names):
                     return False
                 j += 1
             continue
@@ -367,8 +367,8 @@ def is_callable_subtype(left: CallableType, right: CallableType,
             # sure left has its own infinite set of optional named arguments.
             if not left.is_kw_arg:
                 return False
-            left_names = { name for name in left.arg_names if name is not None }
-            right_names = { name for name in right.arg_names if name is not None }
+            left_names = {name for name in left.arg_names if name is not None}
+            right_names = {name for name in right.arg_names if name is not None}
             left_only_names = left_names - right_names
             for name in left_only_names:
                 left_by_name = left.argument_by_name(name)
@@ -377,7 +377,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_by_name = right.argument_by_name(name)
                 assert right_by_name is not None
                 if not are_args_compatible(left_by_name, right_by_name,
-                                            ignore_pos_arg_names):
+                                           ignore_pos_arg_names):
                     return False
             continue
 
@@ -445,13 +445,13 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 return False
             continue
 
-        right_by_name = ( right.argument_by_name(left_arg.name)
-                          if left_arg.name is not None
-                          else None )
+        right_by_name = (right.argument_by_name(left_arg.name)
+                         if left_arg.name is not None
+                         else None)
 
-        right_by_pos = ( right.argument_by_position(left_arg.pos)
-                         if left_arg.pos is not None
-                         else None )
+        right_by_pos = (right.argument_by_position(left_arg.pos)
+                        if left_arg.pos is not None
+                        else None)
 
         # If the left hand argument corresponds to two right-hand arguments,
         # neither of them can be required.

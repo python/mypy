@@ -188,8 +188,8 @@ class MessageBuilder:
                 arg_strings = []
                 for arg_name, arg_type, arg_kind in zip(
                         func.arg_names, func.arg_types, func.arg_kinds):
-                    if ( arg_kind == ARG_POS and arg_name is None or
-                         verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT) ):
+                    if (arg_kind == ARG_POS and arg_name is None
+                            or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
 
                         arg_strings.append(
                             strip_quotes(
