@@ -1120,38 +1120,31 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                base_type, base_node = find_type_from_bases(lvalue)
+                base_type = find_type_from_bases(lvalue)
 
-                # If we are a class member and we have a base class that
-                # defined our lvalue too, ensure we are compatible
                 if base_type:
                     # Do not check if the rvalue is compatible if the lvalue
                     # had a type defined; this is handled by other parts, and
                     # all we have to worry about in that case is that lvalue
-                    # is compatible with that base class.
-
+                    # is compatible with the base class.
                     if lvalue_type:
-                        # If lvalue has a type, ensure that type is compatible
-                        # with the base class
-                        self.check_subtype(lvalue_type, base_type, lvalue,
+                        compare_type = lvalue_type
+                    else:
+                        compare_type = self.accept(rvalue)
+
+                    if compare_type:
+                        # Class-level function objects and classmethods become bound
+                        # methods: the former to the instance, the latter to the
+                        # class
+                        if (isinstance(base_type, CallableType)
+                                and isinstance(compare_type, CallableType)):
+                            base_type = bind_self(base_type)
+                            compare_type = bind_self(compare_type)
+
+                        self.check_subtype(compare_type, base_type, lvalue,
                                            messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                            'expression has type',
                                            'variable has type')
-                    else:
-                        rvalue_type = self.accept(rvalue)
-                        if rvalue_type:
-                            # Class-level function objects and classmethods become bound
-                            # methods: the former to the instance, the latter to the
-                            # class
-                            if (isinstance(base_type, CallableType)
-                                    and isinstance(rvalue_type, CallableType)):
-                                base_type = bind_self(base_type)
-                                rvalue_type = bind_self(rvalue_type)
-
-                            self.check_subtype(rvalue_type, base_type, lvalue,
-                                               messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                                               'expression has type',
-                                               'variable has type')
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:

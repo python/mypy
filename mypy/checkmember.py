@@ -628,7 +628,7 @@ def find_type_from_bases(e: NameExpr):
     expr_node = e.node
     if not (isinstance(expr_node, Var) and e.kind == MDEF and
             len(expr_node.info.bases) > 0):
-        return None, None
+        return None
 
     expr_name = expr_node.name()
     expr_base = expr_node.info.bases[0]
@@ -655,6 +655,5 @@ def find_type_from_bases(e: NameExpr):
                 if base_node.is_property:
                     base_type = base_type.ret_type
 
-            return base_type, base_node
+            return base_type
 
-    return None, None
