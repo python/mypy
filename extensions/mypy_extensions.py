@@ -7,14 +7,21 @@ Example usage:
 
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
-
 import sys
+import types
 from typing import _type_check  # type: ignore
 
 
+def _dict_new(inst, cls, *args, **kwargs):
+    return dict(*args, **kwargs)
+
 def _check_fails(cls, other):
-    if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools']:
-        raise TypeError('TypedDict does not support instance and class checks')
+    try:
+        if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools']:
+            raise TypeError('TypedDict does not support instance and class checks')
+    except (AttributeError, ValueError):
+        pass
+    return False
 
 class _TypedDictMeta(type):
     def __new__(cls, name, bases, ns):
@@ -29,6 +36,8 @@ class _TypedDictMeta(type):
         for base in bases:
             anns.update(base.__dict__.get('__annotations__', {}))
         tp_dict.__annotations__ = anns
+        if tp_dict.__name__ != 'TypedDict':
+            tp_dict.__new__ = types.MethodType(_dict_new, tp_dict)
         return tp_dict
 
     __instancecheck__ = __subclasscheck__ = _check_fails
@@ -60,13 +69,14 @@ class _TypedDict(object):
 
     The latter syntax is only supported in Python 3.6+
     """
-    def __new__(cls, _typename, fields=None, **kwargs):
-        if fields is None:
-            fields = kwargs
+    def __new__(cls, _typename, _fields=None, **kwargs):
+        if _fields is None:
+            _fields = kwargs
         elif kwargs:
             raise TypeError("Either list of fields or keywords"
                             " can be provided to TypedDict, not both")
-        return cls.__class__(_typename, (), {'__annotations__': dict(fields)})
+        return cls.__class__(_typename, (), {'__annotations__': dict(_fields)})
 
 
 TypedDict = _TypedDictMeta('TypedDict', _TypedDict.__bases__, dict(_TypedDict.__dict__))
+TypedDict.__module__ = __name__

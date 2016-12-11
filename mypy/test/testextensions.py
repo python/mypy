@@ -40,16 +40,14 @@ if PY36:
 class TypedDictTests(BaseTestCase):
 
     def test_basics_iterable_syntax(self):
-        # Check that two iterables allowed
-        Emp = TypedDict('Emp', [('name', str), ('id', int)])
         Emp = TypedDict('Emp', {'name': str, 'id': int})
         self.assertIsSubclass(Emp, dict)
         jim = Emp(name='Jim', id=1)
-        self.assertIsInstance(jim, Emp)
         self.assertIsInstance(jim, dict)
         self.assertEqual(jim['name'], 'Jim')
         self.assertEqual(jim['id'], 1)
         self.assertEqual(Emp.__name__, 'Emp')
+        self.assertEqual(Emp.__module__, 'mypy.test.testextensions')
         self.assertEqual(Emp.__bases__, (dict,))
         self.assertEqual(Emp.__annotations__, {'name': str, 'id': int})
 
@@ -57,18 +55,22 @@ class TypedDictTests(BaseTestCase):
         Emp = TypedDict('Emp', name=str, id=int)
         self.assertIsSubclass(Emp, dict)
         jim = Emp(name='Jim', id=1)
-        self.assertIsInstance(jim, Emp)
         self.assertIsInstance(jim, dict)
         self.assertEqual(jim['name'], 'Jim')
         self.assertEqual(jim['id'], 1)
         self.assertEqual(Emp.__name__, 'Emp')
+        self.assertEqual(Emp.__module__, 'mypy.test.testextensions')
         self.assertEqual(Emp.__bases__, (dict,))
         self.assertEqual(Emp.__annotations__, {'name': str, 'id': int})
 
     def test_typeddict_errors(self):
         Emp = TypedDict('Emp', {'name': str, 'id': int})
+        self.assertEqual(TypedDict.__module__, 'extensions.mypy_extensions')
+        jim = Emp(name='Jim', id=1)
         with self.assertRaises(TypeError):
             isinstance({}, Emp)
+        with self.assertRaises(TypeError):
+            isinstance(jim, Emp)
         with self.assertRaises(TypeError):
             issubclass(dict, Emp)
         with self.assertRaises(TypeError):
