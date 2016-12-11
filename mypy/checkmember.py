@@ -656,4 +656,3 @@ def find_type_from_bases(e: NameExpr):
                     base_type = base_type.ret_type
 
             return base_type
-
