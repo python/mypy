@@ -1685,7 +1685,12 @@ class SemanticAnalyzer(NodeVisitor):
                 name += '@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
-            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            # (Or in the nearest class if there is one.)
+            stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            if self.type:
+                self.type.names[name] = stnode
+            else:
+                self.globals[name] = stnode
         call.analyzed = NamedTupleExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -1904,6 +1909,7 @@ class SemanticAnalyzer(NodeVisitor):
                 name += '@' + str(call.line)
             info = self.build_typeddict_typeinfo(name, items, types)
             # Store it as a global just in case it would remain anonymous.
+            # XXX TODO the same treatment here.
             self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
