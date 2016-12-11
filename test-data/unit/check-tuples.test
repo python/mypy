@@ -318,8 +318,8 @@ aa, bb = None, None # type: (AA, BB)
 
 a[a], b[b] = a, bb   # E: Incompatible types in assignment (expression has type "A", target has type "AA")
 a[a], b[b] = aa, b   # E: Incompatible types in assignment (expression has type "B", target has type "BB")
-a[aa], b[b] = aa, bb # E: Invalid index type "AA" for "A"
-a[a], b[bb] = aa, bb # E: Invalid index type "BB" for "B"
+a[aa], b[b] = aa, bb # E: Invalid index type "AA" for "A"; expected type "A"
+a[a], b[bb] = aa, bb # E: Invalid index type "BB" for "B"; expected type "B"
 a[a], b[b] = aa, bb
 
 class A:
@@ -675,8 +675,6 @@ class A(Tuple[int, str]):
         self.f('')   # Error
 [builtins fixtures/tuple.pyi]
 [out]
-main:1: note: In module imported here:
-tmp/m.pyi: note: In member "f" of class "A":
 tmp/m.pyi:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 tmp/m.pyi:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/m.pyi:7: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
@@ -809,7 +807,6 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testTupleMeetTupleAny]
-# flags: --hide-error-context
 from typing import Union, Tuple
 class A: pass
 class B: pass
@@ -830,7 +827,6 @@ def g(x: Union[str, Tuple[str, str]]) -> None:
 [out]
 
 [case testTupleMeetTUpleAnyComplex]
-# flags: --hide-error-context
 from typing import Tuple, Union
 
 Pair = Tuple[int, int]
@@ -855,7 +851,6 @@ def tuplify2(v: Variant2) -> None:
 [out]
 
 [case testTupleMeetTupleAnyAfter]
-# flags: --hide-error-context
 from typing import Tuple, Union
 
 def good(blah: Union[Tuple[int, int], int]) -> None:

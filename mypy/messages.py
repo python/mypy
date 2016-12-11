@@ -451,12 +451,12 @@ class MessageBuilder:
                         return
 
             if name.startswith('"__getitem__" of'):
-                self.invalid_index_type(arg_type, base, context)
+                self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context)
                 return
 
             if name.startswith('"__setitem__" of'):
                 if n == 1:
-                    self.invalid_index_type(arg_type, base, context)
+                    self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context)
                 else:
                     msg = '{} (expression has type {}, target has type {})'
                     arg_type_str, callee_type_str = self.format_distinctly(arg_type,
@@ -503,10 +503,10 @@ class MessageBuilder:
                 n, target, arg_type_str, expected_type_str)
         self.fail(msg, context)
 
-    def invalid_index_type(self, index_type: Type, base_str: str,
+    def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context) -> None:
-        self.fail('Invalid index type {} for {}'.format(
-            self.format(index_type), base_str), context)
+        self.fail('Invalid index type {} for {}; expected type {}'.format(
+            self.format(index_type), base_str, self.format(expected_type)), context)
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: List[str]) -> None:

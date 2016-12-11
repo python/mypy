@@ -66,7 +66,6 @@ def f(a,        # type: A
     reveal_type(kwargs) # E: Revealed type is 'builtins.dict[builtins.str, __main__.F]'
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithReturn]
 # flags: --fast-parser
@@ -93,7 +92,6 @@ def f(a,        # type: A
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 # flags: --fast-parser
@@ -115,7 +113,6 @@ def f(*,
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotations_python2]
 # flags: --fast-parser
@@ -133,7 +130,6 @@ def f(a,        # type: A
     reveal_type(args)   # E: Revealed type is 'builtins.tuple[__main__.C]'
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testFastParsePerArgumentAnnotationsWithReturn_python2]
 # flags: --fast-parser
@@ -153,7 +149,6 @@ def f(a,        # type: A
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testFasterParseTooManyArgumentsAnnotation]
 # flags: --fast-parser

@@ -228,7 +228,6 @@ def f( **kwargs: 'A') -> None:
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testKwargsArgumentInFunctionBodyWithImplicitAny]
 from typing import Dict, Any
@@ -239,7 +238,6 @@ def f(**kwargs) -> None:
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testCallingFunctionThatAcceptsVarKwargs]
 import typing

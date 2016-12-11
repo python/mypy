@@ -625,7 +625,6 @@ class A(B):
         pass
 class D: pass
 [out]
-main: note: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature1]
 import typing
@@ -644,7 +643,6 @@ class A(B):
     def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
         pass
 [out]
-main: note: In class "A":
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature3]
 import typing
@@ -654,7 +652,6 @@ class A(B):
     def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
         x()
 [out]
-main: note: In class "A":
 
 
 -- Don't complain about too few/many arguments in dynamic functions

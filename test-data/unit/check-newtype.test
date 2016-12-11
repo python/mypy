@@ -180,7 +180,6 @@ class MyClass:
 b = A(3)
 c = MyClass.C(3.5)
 [out]
-main: note: In function "func":
 
 [case testNewTypeInMultipleFiles]
 import a
@@ -234,7 +233,6 @@ reveal_type(num)
 [stale]
 [out1]
 [out2]
-main:1: note: In module imported here:
 tmp/m.py:13: error: Revealed type is 'm.UserId'
 tmp/m.py:14: error: Revealed type is 'builtins.int'
 

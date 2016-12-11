@@ -468,5 +468,4 @@ re.subn(upat, lambda m: u'', u'')[0] + u''
 def g() -> int:
     yield
 [out]
-_program.py: note: In function "g":
 _program.py:2: error: The return type of a generator function should be "Generator" or one of its supertypes
