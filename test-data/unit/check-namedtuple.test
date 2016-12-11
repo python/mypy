@@ -171,7 +171,6 @@ class B(A):
 
 
 [out]
-main: note: In member "f" of class "B":
 
 [case testNamedTupleTypeReferenceToClassDerivedFrom]
 from typing import NamedTuple
@@ -189,7 +188,6 @@ class B(A):
                           variable has type "int")
 
 [out]
-main: note: In member "f" of class "B":
 
 [case testNamedTupleSubtyping]
 from typing import NamedTuple, Tuple

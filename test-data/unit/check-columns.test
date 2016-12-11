@@ -15,9 +15,7 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:5:8: error: Incompatible return value type (got "A", expected "B")
-main: note: In function "f":
 main:6:4: error: Incompatible return value type (got "B", expected "A")
 
 [case testColumnsNestedFunctionsWithFastParse]
@@ -30,9 +28,7 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:5:8: error: Incompatible return value type (got "A", expected "B")
-main: note: In function "f":
 main:6:4: error: Incompatible return value type (got "B", expected "A")
 
 
@@ -68,6 +64,5 @@ def f(x: object, n: int, s: str) -> None:
     n = x # E:4: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 

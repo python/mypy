@@ -2,14 +2,12 @@
 # flags: --disallow-untyped-defs
 def f(x): pass
 [out]
-main: note: In function "f":
 main:2: error: Function is missing a type annotation
 
 [case testUnannotatedArgument]
 # flags: --disallow-untyped-defs
 def f(x) -> int: pass
 [out]
-main: note: In function "f":
 main:2: error: Function is missing a type annotation for one or more arguments
 
 [case testNoArgumentFunction]
@@ -21,7 +19,6 @@ def f() -> int: pass
 # flags: --disallow-untyped-defs
 def f(x: int): pass
 [out]
-main: note: In function "f":
 main:2: error: Function is missing a return type annotation
 
 [case testLambda]
@@ -34,7 +31,6 @@ lambda x: x
 def f():
     1 + "str"
 [out]
-main: note: In function "f":
 main:2: error: Function is missing a type annotation
 
 [case testSubclassingAny]
@@ -53,7 +49,7 @@ class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass 'FakeClass' 
 [out]
 
 [case testSubclassingAnySilentImports]
-# flags: --disallow-subclassing-any --silent-imports
+# flags: --disallow-subclassing-any --follow-imports=skip
 # cmd: mypy -m main
 
 [file main.py]
@@ -67,7 +63,7 @@ class BaseClass: pass
 tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
 
 [case testSubclassingAnySilentImports2]
-# flags: --disallow-subclassing-any --silent-imports
+# flags: --disallow-subclassing-any --follow-imports=skip
 # cmd: mypy -m main
 
 [file main.py]
@@ -127,3 +123,108 @@ def f() -> int:
     else:
         return 0
 [builtins fixtures/bool.pyi]
+
+[case testShowErrorContextFunction]
+# flags: --show-error-context
+def f() -> None:
+  0 + ""
+[out]
+main: note: In function "f":
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextClass]
+# flags: --show-error-context
+class A:
+  0 + ""
+[out]
+main: note: In class "A":
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextMember]
+# flags: --show-error-context
+class A:
+  def f(self, x: int) -> None:
+    self.f("")
+[out]
+main: note: In member "f" of class "A":
+main:4: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+
+[case testShowErrorContextModule]
+# flags: --show-error-context
+import m
+[file m.py]
+0 + ""
+[out]
+main:2: note: In module imported here:
+tmp/m.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextTopLevel]
+# flags: --show-error-context
+def f() -> None:
+  0 + ""
+0 + ""
+[out]
+main: note: In function "f":
+main:3: error: Unsupported operand types for + ("int" and "str")
+main: note: At top level:
+main:4: error: Unsupported operand types for + ("int" and "str")
+
+[case testShowErrorContextFromHere]
+# flags: --show-error-context
+import a
+[file a.py]
+import b
+[file b.py]
+0 + ""
+[out]
+tmp/a.py:1: note: In module imported here,
+main:2: note: ... from here:
+tmp/b.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testFollowImportsNormal]
+# flags: --follow-imports=normal
+from mod import x
+x + ""
+[file mod.py]
+1 + ""
+x = 0
+[out]
+tmp/mod.py:1: error: Unsupported operand types for + ("int" and "str")
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testFollowImportsSilent]
+# flags: --follow-imports=silent
+from mod import x
+x + ""  # E: Unsupported operand types for + ("int" and "str")
+[file mod.py]
+1 + ""
+x = 0
+
+[case testFollowImportsSkip]
+# flags: --follow-imports=skip
+from mod import x
+x + ""
+[file mod.py]
+this deliberate syntax error will not be reported
+[out]
+ 
+[case testFollowImportsError]
+# flags: --follow-imports=error
+from mod import x
+x + ""
+[file mod.py]
+deliberate syntax error
+[out]
+main:2: note: Import of 'mod' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testIgnoreMissingImportsFalse]
+from mod import x
+[out]
+main:1: error: Cannot find module named 'mod'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreMissingImportsTrue]
+# flags: --ignore-missing-imports
+from mod import x
+[out]

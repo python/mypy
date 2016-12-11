@@ -218,7 +218,6 @@ def f(x: 'A' = A()) -> None:
 class B: pass
 class A: pass
 [out]
-main: note: In function "f":
 
 [case testDefaultArgumentExpressions2]
 import typing
@@ -229,7 +228,6 @@ def f(x: 'A' = B()) -> None: # E: Incompatible types in assignment (expression h
 class B: pass
 class A: pass
 [out]
-main: note: In function "f":
 
 [case testDefaultArgumentsWithSubtypes]
 import typing
@@ -241,7 +239,6 @@ def g(x: 'A' = B()) -> None:
 class A: pass
 class B(A): pass
 [out]
-main: note: In function "f":
 
 [case testMultipleDefaultArgumentExpressions]
 import typing
@@ -253,7 +250,6 @@ def h(x: 'A' = A(), y: 'B' = B()) -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testMultipleDefaultArgumentExpressions2]
 import typing
@@ -263,7 +259,6 @@ def g(x: 'A' = A(), y: 'B' = A()) -> None: # E: Incompatible types in assignment
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 
 [case testDefaultArgumentsAndSignatureAsComment]
 import typing
@@ -411,9 +406,7 @@ def f(a: 'A') -> None:
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main: note: In function "f":
 main:7: error: Argument 1 to "g" has incompatible type "A"; expected "B"
 
 [case testReturnAndNestedFunction]
@@ -427,9 +420,7 @@ def f() -> 'A':
 class A: pass
 class B: pass
 [out]
-main: note: In function "g":
 main:4: error: Incompatible return value type (got "A", expected "B")
-main: note: In function "f":
 main:6: error: Incompatible return value type (got "B", expected "A")
 
 [case testDynamicallyTypedNestedFunction]
@@ -440,7 +431,6 @@ def f(x: object) -> None:
     g() # E: Too few arguments for "g"
     g(x)
 [out]
-main: note: In function "f":
 
 [case testNestedFunctionInMethod]
 import typing
@@ -452,9 +442,7 @@ class A:
         g(2)
         g(A()) # fail
 [out]
-main: note: In function "g":
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
-main: note: In member "f" of class "A":
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
 [case testMutuallyRecursiveNestedFunctions]
@@ -466,9 +454,7 @@ def f() -> None:
         g()
         g(1) # E
 [out]
-main: note: In function "g":
 main:4: error: Argument 1 to "h" has incompatible type "str"; expected "int"
-main: note: In function "h":
 main:7: error: Too many arguments for "g"
 
 [case testMutuallyRecursiveDecoratedFunctions]
@@ -484,9 +470,7 @@ def f() -> None:
         g(1)
         g.x # E
 [out]
-main: note: In function "g":
 main:7: error: Callable[..., Any] has no attribute "x"
-main: note: In function "h":
 main:11: error: Callable[..., Any] has no attribute "x"
 
 [case testNestedGenericFunctions]
@@ -552,7 +536,6 @@ def g() -> None:
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
-main: note: In function "g":
 
 [case testCheckingDecoratedFunction]
 import typing
@@ -563,7 +546,6 @@ def f(x: 'A') -> None:
     x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [out]
-main: note: In function "f":
 
 [case testDecoratorThatSwitchesType]
 from typing import Callable
@@ -703,7 +685,6 @@ def g(): pass
 @dec
 def h(x: int) -> str: pass
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToDynamicallyTypedDecoratedMethod]
 def f(self) -> None:
@@ -732,7 +713,6 @@ T = TypeVar('T')
 def dec(f: T) -> T: return f
 [builtins fixtures/staticmethod.pyi]
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToDynamicallyTypedProperty]
 def f(self) -> None:
@@ -752,7 +732,6 @@ class A:
     def x(self) -> int: return 1
 [builtins fixtures/property.pyi]
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
@@ -764,7 +743,6 @@ class A:
     def x(x): pass
 [builtins fixtures/staticmethod.pyi]
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToStaticallyTypedStaticMethod]
 def f(self) -> None:
@@ -776,7 +754,6 @@ class A:
     def x(a: int) -> str: return ''
 [builtins fixtures/staticmethod.pyi]
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
@@ -788,7 +765,6 @@ class A:
     def x(cls, a): pass
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToStaticallyTypedClassMethod]
 def f(self) -> None:
@@ -800,7 +776,6 @@ class A:
     def x(cls, x: int) -> str: return ''
 [builtins fixtures/classmethod.pyi]
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToDecoratedFunctionUsingMemberExpr]
 import m
@@ -816,7 +791,6 @@ T = TypeVar('T')
 def dec(f: T) -> T:
     return f
 [out]
-main: note: In function "f":
 
 [case testForwardReferenceToFunctionWithMultipleDecorators]
 def f(self) -> None:
@@ -890,10 +864,7 @@ T = TypeVar('T')
 def dec(f: T) -> T: return f
 
 [out]
-tmp/a.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/b.py:5: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-main:1: note: In module imported here:
 tmp/a.py:5: error: Argument 1 to "g" has incompatible type "int"; expected "str"
 
 [case testDecoratorWithNoAnnotationInImportCycle]
@@ -938,10 +909,7 @@ from typing import Callable
 def dec(f: Callable[[int], str]) -> Callable[[int], str]: return f
 
 [out]
-tmp/a.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/b.py:5: error: "str" not callable
-main:1: note: In module imported here:
 tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycle]
@@ -966,10 +934,7 @@ from typing import Callable
 def dec() -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 
 [out]
-tmp/a.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/b.py:5: error: "str" not callable
-main:1: note: In module imported here:
 tmp/a.py:5: error: "str" not callable
 
 [case testDecoratorWithCallAndFixedReturnTypeInImportCycleAndDecoratorArgs]
@@ -994,11 +959,8 @@ from typing import Callable
 def dec(x: str) -> Callable[[Callable[[int], str]], Callable[[int], str]]: pass
 
 [out]
-tmp/a.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/b.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
 tmp/b.py:5: error: "str" not callable
-main:1: note: In module imported here:
 tmp/a.py:3: error: Argument 1 to "dec" has incompatible type "int"; expected "str"
 tmp/a.py:5: error: "str" not callable
 
@@ -1029,7 +991,6 @@ if x:
         x = 1
         x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testCallConditionalFunction]
 from typing import Any
@@ -1055,10 +1016,8 @@ else:
 f(1)
 f('x') # fail
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:9: error: Unsupported operand types for + ("int" and "str")
-main: note: At top level:
 main:12: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testNestedConditionalFunctionDefinitionWithIfElse]
@@ -1076,10 +1035,8 @@ def top() -> None:
     f(1)
     f('x') # fail
 [out]
-main: note: In function "f":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:10: error: Unsupported operand types for + ("int" and "str")
-main: note: In function "top":
 main:13: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
@@ -1154,7 +1111,6 @@ def g() -> None:
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
-main: note: In function "g":
 
 [case testRedefineFunctionDefinedAsVariableWithInvalidSignature]
 def g(): pass
@@ -1200,7 +1156,6 @@ class A:
             x = 1
             x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: note: In member "f" of class "A":
 
 [case testCallConditionalMethodInClassBody]
 from typing import Any
@@ -1213,7 +1168,6 @@ class A:
     f(x, 1)
     f(x, 'x') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
 [out]
-main: note: In class "A":
 
 [case testCallConditionalMethodViaInstance]
 from typing import Any
@@ -1239,10 +1193,8 @@ class A:
 A().f(1)
 A().f('x') # fail
 [out]
-main: note: In member "f" of class "A":
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:10: error: Unsupported operand types for + ("int" and "str")
-main: note: At top level:
 main:13: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalMethod]
@@ -1262,7 +1214,6 @@ class A:
     else:
         def f(self, x): pass # E: All conditional function variants must have identical signatures
 [out]
-main: note: In class "A":
 
 [case testConditionalFunctionDefinitionInTry]
 import typing
@@ -1288,7 +1239,6 @@ def f(x: Callable[..., int]) -> None:
     x(z=1)
     x() + '' # E: Unsupported operand types for + ("int" and "str")
 [out]
-main: note: In function "f":
 
 [case testCallableWithArbitraryArgs2]
 from typing import Callable
@@ -1306,7 +1256,6 @@ from typing import Callable
 def f(x: Callable[..., int]) -> None:
     x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type Callable[..., int])
 [out]
-main: note: In function "f":
 
 [case testCallableWithArbitraryArgsInGenericFunction]
 from typing import Callable, TypeVar
@@ -1364,7 +1313,6 @@ def f(x, **kwargs): # type: (...) -> None
 f(1, thing_in_kwargs=["hey"])
 [builtins fixtures/dict.pyi]
 [out]
-main: note: In function "f":
 
 [case testEllipsisWithArbitraryArgsOnBareFunctionWithVarargs]
 from typing import Tuple, Any
@@ -1374,7 +1322,6 @@ def f(x, *args): # type: (...) -> None
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]
-main: note: In function "f":
 
 [case testEllipsisWithArbitraryArgsOnInstanceMethod]
 class A:
@@ -1399,14 +1346,12 @@ class A:
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main: note: In function "f":
 main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main: note: In function "f":
 main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
 
 [case testRejectCovariantArgument]
@@ -1418,7 +1363,6 @@ class A(Generic[t]):
         return None
 [builtins fixtures/bool.pyi]
 [out]
-main: note: In member "foo" of class "A":
 main:5: error: Cannot use a covariant type variable as a parameter
 
 [case testRejectContravariantReturnType]
@@ -1430,7 +1374,6 @@ class A(Generic[t]):
         return None
 [builtins fixtures/bool.pyi]
 [out]
-main: note: In member "foo" of class "A":
 main:5: error: Cannot use a contravariant type variable as return type
 
 [case testAcceptCovariantReturnType]
@@ -1523,7 +1466,6 @@ class A:
 
 def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
 [out]
-main: note: In member "f" of class "A":
 
 [case testUnknownFunctionNotCallable]
 def f() -> None:

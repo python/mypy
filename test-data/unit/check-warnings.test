@@ -71,7 +71,6 @@ def g() -> int:
         return 1
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "g":
 main:5: note: Missing return statement
 
 [case testNoReturnWhile]
@@ -96,7 +95,6 @@ def j() -> int:
             continue
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "i":
 main:7: note: Missing return statement
 
 [case testNoReturnExcept]
@@ -124,7 +122,6 @@ def h() -> int:
         return 1
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "f":
 main:2: note: Missing return statement
 
 [case testNoReturnEmptyBodyWithDocstring]

@@ -1457,7 +1457,6 @@ MypyFile:1(
 [case testTupleExpressionAsType]
 def f(x: (int, int)) -> None: pass
 [out]
-main: note: In function "f":
 main:1: error: Invalid tuple literal type
 
 [case tesQualifiedTypeNameBasedOnAny]
