@@ -13,7 +13,6 @@ class A:
 class B:
     pass
 [out]
-main: note: In function "g":
 main:5: error: Incompatible return value type (got "A", expected "B")
 
 [case testReturnSubtype]
@@ -27,7 +26,6 @@ class A:
 class B(A):
     pass
 [out]
-main: note: In function "f":
 main:3: error: Incompatible return value type (got "A", expected "B")
 
 [case testReturnWithoutAValue]
@@ -39,7 +37,6 @@ def g() -> None:
 class A:
     pass
 [out]
-main: note: In function "f":
 main:3: error: Return value expected
 
 [case testReturnNoneInFunctionReturningNone]
@@ -49,7 +46,6 @@ def f() -> None:
 def g() -> None:
     return f()  # E: No return value expected
 [out]
-main: note: In function "g":
 
 [case testReturnInGenerator]
 from typing import Generator
@@ -64,7 +60,6 @@ def f() -> Generator[int, None, str]:
     yield 1
     return  # E: Return value expected
 [out]
-main: note: In function "f":
 
 [case testEmptyReturnInNoneTypedGenerator]
 from typing import Generator
@@ -79,7 +74,6 @@ def f() -> Generator[int, None, None]:
     yield 1
     return 42  # E: No return value expected
 [out]
-main: note: In function "f":
 
 [case testReturnInIterator]
 from typing import Iterator
@@ -520,7 +514,6 @@ def f() -> None:
 class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
 
@@ -534,7 +527,6 @@ def f() -> None:
   x + 'a' # E: Unsupported left operand type for + ("int")
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "f":
 
 [case testTryWithElse]
 import typing
@@ -737,7 +729,6 @@ def f(*arg: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "f":
 main:11: error: Revealed type is 'builtins.int'
 main:16: error: Revealed type is 'builtins.str'
 
@@ -761,7 +752,6 @@ def f(*arg: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "f":
 main:10: error: Revealed type is 'builtins.int'
 main:16: error: Revealed type is 'builtins.str'
 
@@ -785,7 +775,6 @@ def f(*arg: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "f":
 main:10: error: Revealed type is 'builtins.int'
 main:15: error: Revealed type is 'builtins.str'
 
@@ -880,9 +869,7 @@ def h(e: Type[int]):
     except e: pass
 [builtins fixtures/exception.pyi]
 [out]
-main: note: In function "g":
 main:9: error: Revealed type is 'builtins.BaseException'
-main: note: In function "h":
 main:12: error: Exception type must be derived from BaseException
 
 
@@ -952,7 +939,6 @@ def f() -> Iterator[int]:
     yield '' # E: Incompatible types in yield (actual type "str", expected type "int")
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testYieldInFunctionReturningGenerator]
 from typing import Generator
@@ -985,7 +971,6 @@ from typing import Callable
 def f() -> Callable[[], None]: # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield object()
 [out]
-main: note: In function "f":
 
 [case testYieldInDynamicallyTypedFunction]
 import typing
@@ -998,7 +983,6 @@ def f() -> int: # E: The return type of a generator function should be "Generato
     yield 1
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testTypeInferenceContextAndYield]
 from typing import List, Iterator
@@ -1007,7 +991,6 @@ def f() -> 'Iterator[List[int]]':
     yield [object()] # E: List item 0 has incompatible type "object"
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testYieldAndReturnWithoutValue]
 from typing import Iterator
@@ -1028,7 +1011,6 @@ def f() -> Iterator[int]:
     yield  # E: Yield value expected
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testYieldWithExplicitNone]
 from typing import Iterator
@@ -1036,7 +1018,6 @@ def f() -> Iterator[None]:
     yield None  # E: Incompatible types in yield (actual type None, expected type None)
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 
 -- Yield from statement
@@ -1055,7 +1036,6 @@ def f() -> Iterator[str]:
     yield from g()
     yield from h()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
 [out]
-main: note: In function "f":
 
 [case testYieldFromAppliedToAny]
 from typing import Any
@@ -1072,7 +1052,6 @@ def g() -> Iterator[int]:
 def f() -> Callable[[], None]:  # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield from g()
 [out]
-main: note: In function "f":
 
 [case testYieldFromNotIterableReturnType]
 from typing import Iterator
@@ -1081,7 +1060,6 @@ def g() -> Iterator[int]:
 def f() -> int:  # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield from g()
 [out]
-main: note: In function "f":
 
 [case testYieldFromNotAppliedIterator]
 from typing import Iterator
@@ -1090,7 +1068,6 @@ def g() -> int:
 def f() -> Iterator[int]:
     yield from g()  # E: "yield from" can't be applied to "int"
 [out]
-main: note: In function "f":
 
 [case testYieldFromCheckIncompatibleTypesTwoIterables]
 from typing import List, Iterator
@@ -1101,13 +1078,11 @@ def f() -> Iterator[List[int]]:
     yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type List[int])
 [builtins fixtures/for.pyi]
 [out]
-main: note: In function "f":
 
 [case testYieldFromNotAppliedToNothing]
 def h():
     yield from  # E: Parse error before end of line
 [out]
-main: note: In function "h":
 
 [case testYieldFromAndYieldTogether]
 from typing import Iterator
@@ -1242,7 +1217,6 @@ def f() -> None:
     x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/primitives.pyi]
 [out]
-main: note: In function "f":
 
 [case testChainedAssignmentWithType]
 
@@ -1316,7 +1290,6 @@ def f() -> None:
 class A(): pass
 class B(): pass
 [out]
-main: note: In function "f":
 main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeOfNonlocalUsed]
@@ -1330,7 +1303,6 @@ def f() -> None:
 class A(): pass
 class B(): pass
 [out]
-main: note: In function "g":
 main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testTypeOfOuterMostNonlocalUsed]
@@ -1347,5 +1319,4 @@ def f() -> None:
 class A(): pass
 class B(): pass
 [out]
-main: note: In function "h":
 main:8: error: Incompatible types in assignment (expression has type "A", variable has type "B")

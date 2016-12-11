@@ -81,7 +81,6 @@ def identity(p: PointA) -> PointB:
 [builtins fixtures/dict.pyi]
 
 [case testCannotConvertTypedDictToSimilarTypedDictWithNarrowerItemTypes]
-# flags: --hide-error-context
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 ObjectPoint = TypedDict('ObjectPoint', {'x': object, 'y': object})
@@ -90,7 +89,6 @@ def convert(op: ObjectPoint) -> Point:
 [builtins fixtures/dict.pyi]
 
 [case testCannotConvertTypedDictToSimilarTypedDictWithWiderItemTypes]
-# flags: --hide-error-context
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 ObjectPoint = TypedDict('ObjectPoint', {'x': object, 'y': object})
@@ -99,7 +97,6 @@ def convert(p: Point) -> ObjectPoint:
 [builtins fixtures/dict.pyi]
 
 [case testCannotConvertTypedDictToSimilarTypedDictWithIncompatibleItemTypes]
-# flags: --hide-error-context
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 Chameleon = TypedDict('Chameleon', {'x': str, 'y': str})
@@ -116,7 +113,6 @@ def narrow(p: Point) -> Point1D:
 [builtins fixtures/dict.pyi]
 
 [case testCannotConvertTypedDictToWiderTypedDict]
-# flags: --hide-error-context
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 Point3D = TypedDict('Point3D', {'x': int, 'y': int, 'z': int})
@@ -133,7 +129,6 @@ def as_mapping(p: Point) -> Mapping[str, int]:
 [builtins fixtures/dict.pyi]
 
 [case testCannotConvertTypedDictToCompatibleMapping]
-# flags: --hide-error-context
 from mypy_extensions import TypedDict
 from typing import Mapping
 Point = TypedDict('Point', {'x': int, 'y': int})
@@ -157,7 +152,6 @@ def as_mapping(p: Point) -> Mapping[str, str]:
 --[builtins fixtures/dict.pyi]
 
 [case testCannotConvertTypedDictToDictOrMutableMapping]
-# flags: --hide-error-context
 from mypy_extensions import TypedDict
 from typing import Dict, MutableMapping
 Point = TypedDict('Point', {'x': int, 'y': int})
@@ -377,7 +371,6 @@ reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
 
 -- TODO: Implement support for this case.
 --[case testCannotGetItemOfTypedDictWithInvalidStringLiteralKey]
---# flags: --hide-error-context
 --from mypy_extensions import TypedDict
 --TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 --p = TaggedPoint(type='2d', x=42, y=1337)
@@ -387,7 +380,6 @@ reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
 
 -- TODO: Implement support for this case.
 --[case testCannotGetItemOfTypedDictWithNonLiteralKey]
---# flags: --hide-error-context
 --from mypy_extensions import TypedDict
 --from typing import Union
 --TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
@@ -410,7 +402,6 @@ reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
 
 -- TODO: Implement support for this case.
 --[case testCannotSetItemOfTypedDictWithInvalidStringLiteralKey]
---# flags: --hide-error-context
 --from mypy_extensions import TypedDict
 --TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 --p = TaggedPoint(type='2d', x=42, y=1337)
@@ -420,7 +411,6 @@ reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
 
 -- TODO: Implement support for this case.
 --[case testCannotSetItemOfTypedDictWithNonLiteralKey]
---# flags: --hide-error-context
 --from mypy_extensions import TypedDict
 --from typing import Union
 --TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})

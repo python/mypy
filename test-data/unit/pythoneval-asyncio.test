@@ -277,7 +277,6 @@ try:
 finally:
     loop.close()
 [out]
-_program.py: note: In function "test":
 _program.py:13: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
@@ -301,7 +300,6 @@ loop.run_until_complete(print_sum(1, 2))
 loop.close()
 
 [out]
-_program.py: note: In function "compute":
 _program.py:9: error: Incompatible return value type (got "str", expected "int")
 
 [case testErrorSetFutureDifferentInternalType]
@@ -321,7 +319,6 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py: note: In function "slow_operation":
 _program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
 
 
@@ -361,9 +358,7 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py: note: In function "slow_operation":
 _program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
-_program.py: note: At top level:
 _program.py:12: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
 
 [case testErrorSettingCallbackWithDifferentFutureType]
@@ -427,7 +422,6 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py: note: In function "h3":
 _program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[Future[Future[int]]])
 
 [case testErrorOneLessFutureInReturnType]
@@ -462,7 +456,6 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py: note: In function "h3":
 _program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[int])
 
 [case testErrorAssignmentDifferentType]
@@ -490,5 +483,4 @@ future.set_result(A(42))
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py: note: In function "h":
 _program.py:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")

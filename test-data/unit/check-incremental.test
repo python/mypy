@@ -42,8 +42,6 @@ def foo() -> None:
 [rechecked m]
 [stale]
 [out2]
-main:1: note: In module imported here:
-tmp/m.py: note: In function "foo":
 tmp/m.py:2: error: Name 'bar' is not defined
 
 [case testIncrementalSimpleImportSequence]
@@ -103,8 +101,6 @@ def func1() -> A: pass
 [rechecked mod1]
 [stale]
 [out2]
-main:1: note: In module imported here:
-tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:1: error: Name 'A' is not defined
 
 [case testIncrementalSameNameChange]
@@ -168,9 +164,6 @@ def foo() -> int:
 [rechecked mod2]
 [stale]
 [out2]
-tmp/mod1.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/mod2.py: note: In function "foo":
 tmp/mod2.py:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testIncrementalInternalScramble]
@@ -243,7 +236,6 @@ class Child(Bad): pass
 [rechecked mod1, mod2]
 [stale mod2]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:2: error: "Child" has no attribute "good_method"
 
 [case testIncrementalCascadingChange]
@@ -271,7 +263,6 @@ C = "A"
 [rechecked mod1, mod2, mod3, mod4]
 [stale mod2, mod3, mod4]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalBrokenCascade]
@@ -298,7 +289,6 @@ const = 3
 [stale mod3]
 [builtins fixtures/module.pyi]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: "module" has no attribute "mod4"
 
 [case testIncrementalLongBrokenCascade]
@@ -334,7 +324,6 @@ const = 3
 [stale mod6]
 [builtins fixtures/module.pyi]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: "module" has no attribute "mod7"
 
 [case testIncrementalNestedBrokenCascade]
@@ -361,7 +350,6 @@ const = 3
 [stale mod2.mod3]
 [builtins fixtures/module.pyi]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: "module" has no attribute "mod4"
 
 [case testIncrementalNestedBrokenCascadeWithType1]
@@ -400,7 +388,6 @@ class CustomType:
 [builtins fixtures/module.pyi]
 [out1]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:6: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalNestedBrokenCascadeWithType2]
@@ -439,7 +426,6 @@ class CustomType:
 [builtins fixtures/module.pyi]
 [out1]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalRemoteChange]
@@ -465,7 +451,6 @@ const = "foo"
 [rechecked mod1, mod3, mod4]
 [stale mod4]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalBadChange]
@@ -488,8 +473,6 @@ def func2() -> str:
 [rechecked mod1, mod2]
 [stale mod2]
 [out2]
-main:1: note: In module imported here:
-tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testIncrementalBadChangeWithSave]
@@ -516,9 +499,6 @@ def func2() -> str:
 [rechecked mod0, mod1, mod2]
 [stale mod2]
 [out2]
-tmp/mod0.py:1: note: In module imported here,
-main:1: note: ... from here:
-tmp/mod1.py: note: In function "func1":
 tmp/mod1.py:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testIncrementalOkChangeWithSave]
@@ -627,7 +607,6 @@ def some_func(a: int) -> str:
 [stale mod1_private]
 [builtins fixtures/ops.pyi]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalWithDecorators]
@@ -665,7 +644,6 @@ def some_func(a: int) -> int:
 [stale mod1_private]
 [builtins fixtures/ops.pyi]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalChangingClassAttributes]
@@ -751,7 +729,6 @@ class Foo:
 [rechecked mod1, mod2]
 [stale mod2]
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:4: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalNestedClassDefinition]
@@ -1002,11 +979,10 @@ import a.b
 [rechecked b]
 [stale]
 [out2]
-main:1: note: In module imported here:
 tmp/b.py:4: error: Name 'a' already defined
 
 [case testIncrementalSilentImportsAndImportsInClass]
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 class MyObject(object):
     from bar import FooBar
 [stale]
@@ -1029,13 +1005,12 @@ bar(3)
 [rechecked m]
 [stale]
 [out2]
-main:1: note: In module imported here:
 tmp/m.py:4: error: Argument 1 to "bar" has incompatible type "int"; expected "str"
 
 [case testIncrementalUnsilencingModule]
 # cmd: mypy -m main package.subpackage.mod2
 # cmd2: mypy -m main package.subpackage.mod1
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from package.subpackage.mod1 import Class
@@ -1061,7 +1036,6 @@ class Class: pass
 [rechecked collections, main, package.subpackage.mod1]
 [stale collections, package.subpackage.mod1]
 [out2]
-tmp/main.py: note: In function "handle":
 tmp/main.py:4: error: "Class" has no attribute "some_attribute"
 
 [case testIncrementalWithIgnores]
@@ -1073,7 +1047,7 @@ import foo # type: ignore
 [case testIncrementalWithSilentImportsAndIgnore]
 # cmd: mypy -m main b
 # cmd2: mypy -m main c c.submodule
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 import a  # type: ignore
@@ -1155,16 +1129,10 @@ reveal_type(foo)
 [rechecked m, n]
 [stale]
 [out1]
-tmp/m.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/n.py:2: error: Revealed type is 'builtins.str'
-main:1: note: In module imported here:
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 [out2]
-tmp/m.py:1: note: In module imported here,
-main:1: note: ... from here:
 tmp/n.py:2: error: Revealed type is 'builtins.float'
-main:1: note: In module imported here:
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "float"; expected "int"
 
 [case testIncrementalReplacingImports]
@@ -1191,7 +1159,6 @@ foo(3)
 [rechecked client]
 [stale]
 [out2]
-main:1: note: In module imported here:
 tmp/client.py:4: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
 [case testIncrementalChangingAlias]
@@ -1224,12 +1191,11 @@ def C() -> str:
 [rechecked m1, m2, m3]
 [stale m3]
 [out2]
-main:1: note: In module imported here:
 tmp/m1.py:3: error: Argument 1 to "accepts_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from evil import Hello
@@ -1250,7 +1216,7 @@ tmp/main.py:2: error: Revealed type is 'Any'
 [case testIncrementalImportIsNewlySilenced]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from foo import bar
@@ -1269,7 +1235,7 @@ bar = 3
 [case testIncrementalSilencedModuleNoLongerCausesError]
 # cmd: mypy -m main evil
 # cmd2: mypy -m main
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from evil import bar
@@ -1321,17 +1287,10 @@ class C:
 [rechecked mod3, mod2, mod1]
 [stale mod3, mod2]
 [out1]
-tmp/mod2.py:1: note: In module imported here,
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
-tmp/mod3.py: note: In member "makeC" of class "B":
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:1: note: In module imported here:
-tmp/mod1.py: note: At top level:
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [case testIncrementalIncidentalChangeWithBugCausesPropagation]
@@ -1366,23 +1325,11 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4]
 [out1]
-tmp/mod2.py:1: note: In module imported here,
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
-tmp/mod3.py: note: In member "makeC" of class "B":
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:1: note: In module imported here:
-tmp/mod1.py: note: At top level:
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
-tmp/mod2.py:1: note: In module imported here,
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
-tmp/mod3.py: note: In member "makeC" of class "B":
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:1: note: In module imported here:
-tmp/mod1.py: note: At top level:
 tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
 [case testIncrementalIncidentalChangeWithBugFixCausesPropagation]
@@ -1422,22 +1369,15 @@ class C:
 [rechecked mod4, mod3, mod2, mod1]
 [stale mod4, mod3, mod2]
 [out1]
-tmp/mod2.py:1: note: In module imported here,
-tmp/mod1.py:1: note: ... from here,
-main:1: note: ... from here:
-tmp/mod3.py: note: In member "makeC" of class "B":
 tmp/mod3.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:1: note: In module imported here:
-tmp/mod1.py: note: At top level:
 tmp/mod1.py:3: error: Revealed type is 'builtins.int'
 
 [out2]
-main:1: note: In module imported here:
 tmp/mod1.py:3: error: Revealed type is 'builtins.str'
 
 [case testIncrementalSilentImportsWithInnerImports]
 # cmd: mypy -m main foo
-# flags: --silent-imports
+# flags: --ignore-missing-imports
 
 [file main.py]
 from foo import MyClass
@@ -1462,7 +1402,7 @@ tmp/main.py:3: error: Revealed type is 'Any'
 [case testIncrementalSilentImportsWithInnerImportsAndNewFile]
 # cmd: mypy -m main foo
 # cmd2: mypy -m main foo unrelated
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file main.py]
 from foo import MyClass
@@ -1530,7 +1470,6 @@ MyTuple = NamedTuple('MyTuple', [
 [rechecked bar, mid, foo]
 [stale bar]
 [out2]
-main:1: note: In module imported here:
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalWorksWithNestedNamedTuple]
@@ -1565,13 +1504,12 @@ class Outer:
 [rechecked bar, mid, foo]
 [stale bar]
 [out2]
-main:1: note: In module imported here:
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
 [case testIncrementalPartialSubmoduleUpdate]
 # cmd: mypy -m a
 # cmd2: mypy -m a a.c
-# flags: --silent-imports
+# flags: --follow-imports=skip
 
 [file a/__init__.py]
 from .b import B
@@ -1646,8 +1584,59 @@ class Y:
 class Z(X, Y): pass
 [stale]
 [out]
-main: note: In class "Z":
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
 [out2]
-main: note: In class "Z":
 main:8: error: Definition of "attr" in base class "X" is incompatible with definition in base class "Y"
+
+[case testIncrementalFollowImportsSilent]
+# flags: --follow-imports=silent
+import a
+[file a.py]
+x = 0
+[file a.py.next]
+x = 0
+x + ''
+
+[case testIncrementalFollowImportsSkip]
+# flags: --follow-imports=skip
+import a
+reveal_type(a.x)
+[file a.py]
+/
+[file a.py.next]
+//
+[out]
+main:3: error: Revealed type is 'Any'
+[out2]
+main:3: error: Revealed type is 'Any'
+
+[case testIncrementalFollowImportsError]
+# flags: --follow-imports=error
+import a
+[file a.py]
+/
+[file a.py.next]
+//
+[out1]
+main:2: note: Import of 'a' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+[out2]
+main:2: note: Import of 'a' ignored
+main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testIncrementalFollowImportsVariable]
+# flags: --config-file tmp/mypy.ini
+import a
+reveal_type(a.x)
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+follow_imports = normal
+[file mypy.ini.next]
+[[mypy]
+follow_imports = skip
+[out1]
+main:3: error: Revealed type is 'builtins.int'
+[out2]
+main:3: error: Revealed type is 'Any'

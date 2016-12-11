@@ -29,7 +29,7 @@ from typing import Dict, Any
 d: Dict[int, str] = {}
 d[42] = 'ab'
 d[42] = 42  # E: Incompatible types in assignment (expression has type "int", target has type "str")
-d['ab'] = 'ab'  # E: Invalid index type "str" for "dict"
+d['ab'] = 'ab'  # E: Invalid index type "str" for "dict"; expected type "int"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -63,7 +63,6 @@ TstInstance().a = 'ab'
 class CCC:
     a: str = None  # E: Incompatible types in assignment (expression has type None, variable has type "str")
 [out]
-main: note: In class "CCC":
 
 [case testNewSyntaxWithStrictOptional]
 # flags: --fast-parser --strict-optional --python-version 3.6
@@ -78,7 +77,6 @@ def f() -> None:
     x: int
     x = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testNewSyntaxWithStrictOptionalClasses]
 # flags: --fast-parser --strict-optional --python-version 3.6
@@ -87,4 +85,3 @@ class C:
         x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
         self.x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
-main: note: In member "meth" of class "C":

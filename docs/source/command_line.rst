@@ -13,7 +13,7 @@ flag (or its long form ``--help``)::
               [--disallow-untyped-defs] [--check-untyped-defs]
               [--disallow-subclassing-any] [--warn-incomplete-stub]
               [--warn-redundant-casts] [--warn-no-return]
-              [--warn-unused-ignores] [--hide-error-context] [--fast-parser]
+              [--warn-unused-ignores] [--show-error-context] [--fast-parser]
               [-i] [--cache-dir DIR] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
