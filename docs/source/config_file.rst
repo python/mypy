@@ -95,10 +95,10 @@ The following global flags may only be set in the global section
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
   info in the given folder in incremental mode.
 
-- ``hide_error_context`` (Boolean, default False) hides
+- ``show_error_context`` (Boolean, default False) shows
   context notes before errors.
 
-- ``show_column_numbers`` (Boolean, default False) show column numbers in
+- ``show_column_numbers`` (Boolean, default False) shows column numbers in
   error messages.
 
 
@@ -137,6 +137,9 @@ overridden by the pattern sections matching the module name.
 - ``show_none_errors`` (Boolean, default True) shows errors related
   to strict ``None`` checking, if the global ``strict_optional`` flag
   is enabled.
+
+- ``ignore_errors`` (Boolean, default False) ignores all non-fatal
+  errors.
 
 - ``warn_no_return`` (Boolean, default False) shows errors for
   missing return statements on some execution paths.

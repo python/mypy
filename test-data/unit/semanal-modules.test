@@ -771,7 +771,6 @@ import m.x
 [file m/x.py]
 from .x import nonexistent
 [out]
-main:1: note: In module imported here:
 tmp/m/x.py:1: error: Module 'm.x' has no attribute 'nonexistent'
 
 [case testImportFromSameModule]
@@ -780,7 +779,6 @@ import m.x
 [file m/x.py]
 from m.x import nonexistent
 [out]
-main:1: note: In module imported here:
 tmp/m/x.py:1: error: Module 'm.x' has no attribute 'nonexistent'
 
 [case testFromImportAsInStub]
@@ -847,7 +845,6 @@ x
 [file m.py]
 y
 [out]
-main:1: note: In module imported here:
 tmp/m.py:1: error: Name 'y' is not defined
 main:2: error: Name 'x' is not defined
 

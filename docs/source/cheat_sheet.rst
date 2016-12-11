@@ -106,7 +106,7 @@ When you're puzzled or when things are complicated
 
 .. code-block:: python
 
-   from typing import Union, Any
+   from typing import Union, Any, cast
 
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type.  Mypy will print an error
@@ -120,13 +120,27 @@ When you're puzzled or when things are complicated
    # dynamic to write a type for.
    x = mystery_function() # type: Any
 
+   # This is how to deal with varargs.
+   # This makes each positional arg and each keyword arg a 'str'.
+   def call(self, *args, **kwargs):
+            # type: (*str, **str) -> str
+            request = make_request(*args, **kwargs)
+            return self.do_api_query(request)
+
+   
    # Use `ignore` to suppress type-checking on a given line, when your
    # code confuses mypy or runs into an outright bug in mypy.
    # Good practice is to comment every `ignore` with a bug link
    # (in mypy, typeshed, or your own code) or an explanation of the issue.
    x = confusing_function() # type: ignore # https://github.com/python/mypy/issues/1167
 
-   # TODO: explain cast
+   # cast is a helper function for mypy that allows for guidance of how to convert types.
+   # it does not cast at runtime
+   a = [4]
+   b = cast(List[int], a)  # passes fine
+   c = cast(List[str], a)  # passes fine (no runtime check)
+   reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
+   print(c)  # -> [4] the object is not cast
 
    # TODO: explain "Need type annotation for variable" when
    # initializing with None or an empty container

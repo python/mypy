@@ -123,7 +123,6 @@ class B:
     def f(self, x: str) -> None: pass
 class C(A, B): pass
 [out]
-main: note: In class "C":
 main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodNameCollisionInMultipleInheritanceWithIncompatibleSigs2]
@@ -135,9 +134,7 @@ class B:
 class C(A, B): pass
 class D(B, A): pass
 [out]
-main: note: In class "C":
 main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
-main: note: In class "D":
 main:7: error: Definition of "f" in base class "B" is incompatible with definition in base class "A"
 
 
@@ -160,7 +157,6 @@ class B:
         self.x = ''
 class C(A, B): pass
 [out]
-main: note: In class "C":
 main:8: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [case testClassVarNameOverlapInMultipleInheritanceWithInvalidTypes]
@@ -171,7 +167,6 @@ class B:
     x = ''
 class C(A, B): pass
 [out]
-main: note: In class "C":
 main:6: error: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodOverlapsWithClassVariableInMultipleInheritance]
@@ -182,7 +177,6 @@ class B:
     f = ''
 class C(A, B): pass
 [out]
-main: note: In class "C":
 main:6: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMethodOverlapsWithInstanceVariableInMultipleInheritance]
@@ -194,7 +188,6 @@ class B:
         self.f = ''
 class C(A, B): pass
 [out]
-main: note: In class "C":
 main:7: error: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 
 [case testMultipleInheritanceAndInit]
@@ -215,7 +208,6 @@ class B:
 class C(B, A): pass
 class D(A, B): pass
 [out]
-main: note: In class "D":
 main:8: error: Definition of "clear" in base class "A" is incompatible with definition in base class "B"
 
 
@@ -246,6 +238,5 @@ class C:
 def dec(f: Callable[..., T]) -> Callable[..., T]:
     return f
 [out]
-main: note: In class "A":
 main:3: error: Cannot determine type of 'f' in base class 'B'
 main:3: error: Cannot determine type of 'f' in base class 'C'

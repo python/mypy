@@ -537,7 +537,6 @@ MypyFile:1(
 def f(x, y) -> None:
     del x, y + 1
 [out]
-main: note: In function "f":
 main:2: error: Invalid delete target
 
 [case testTry]

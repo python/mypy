@@ -2,7 +2,7 @@
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
-    ListExpr, StrExpr, BytesExpr, EllipsisExpr
+    ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
 from mypy.types import Type, UnboundType, TypeList, EllipsisType
@@ -43,7 +43,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
     elif isinstance(expr, ListExpr):
         return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
                         line=expr.line, column=expr.column)
-    elif isinstance(expr, (StrExpr, BytesExpr)):
+    elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.
         try:
             result = parse_str_as_type(expr.value, expr.line)

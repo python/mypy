@@ -184,6 +184,9 @@ class TypeChecker(NodeVisitor[Type]):
         if all_ is not None and all_.type is not None:
             seq_str = self.named_generic_type('typing.Sequence',
                                               [self.named_type('builtins.str')])
+            if self.options.python_version[0] < 3:
+                seq_str = self.named_generic_type('typing.Sequence',
+                                                  [self.named_type('builtins.unicode')])
             if not is_subtype(all_.type, seq_str):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),

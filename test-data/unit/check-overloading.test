@@ -14,7 +14,6 @@ def f(x: 'B'):
 class A: pass
 class B: pass
 [out]
-main: note: In function "f":
 
 [case testTypeCheckOverloadedMethodBody]
 from typing import overload
@@ -29,7 +28,6 @@ class A:
         x = B()
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 
 [case testCallToOverloadedFunction]
 from typing import overload
@@ -455,9 +453,7 @@ class D(A):
     @overload
     def f(self, x: str) -> str: return ''
 [out]
-main: note: In class "B":
 main:12: error: Signature of "f" incompatible with supertype "A"
-main: note: In class "C":
 main:17: error: Signature of "f" incompatible with supertype "A"
 
 [case testOverloadingAndDucktypeCompatibility]
@@ -610,7 +606,6 @@ def g(x: U, y: V) -> None:
     f([x, y]) # E: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "g":
 
 [case testOverlapWithTypeVars]
 from typing import overload, TypeVar, Sequence

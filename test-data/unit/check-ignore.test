@@ -38,7 +38,6 @@ from m import a # type: ignore
 [file m.py]
 +
 [out]
-main:1: note: In module imported here:
 tmp/m.py:1: error: Parse error before end of line
 
 [case testIgnoreAppliesOnlyToMissing]
@@ -60,7 +59,6 @@ from m import * # type: ignore
 [file m.py]
 +
 [out]
-main:1: note: In module imported here:
 tmp/m.py:1: error: Parse error before end of line
 
 [case testIgnoreAssignmentTypeError]
@@ -123,7 +121,6 @@ class C(B):
         self.f(1) # E: Too many arguments for "f" of "C"
         self.g(1)
 [out]
-main: note: In member "f" of class "C":
 
 [case testIgnoredModuleDefinesBaseClass2]
 import m # type: ignore
@@ -159,7 +156,6 @@ class D(C, B):
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
-main: note: In member "f" of class "D":
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance2]
 from m import B # type: ignore
@@ -170,7 +166,6 @@ class D(C):
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
 [out]
-main: note: In member "f" of class "D":
 
 [case testIgnoreWithFollowingIndentedComment]
 if 1:  # type: ignore
