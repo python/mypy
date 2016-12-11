@@ -2237,7 +2237,7 @@ class B(A[int]):
 [builtins fixtures/list.pyi]
 [out]
 main: note: In class "B":
-main:8: error: List item 0 has incompatible type "str"
+main:8: error: Incompatible types in assignment (expression has type List[str], variable has type List[int])
 
 [case testVariableMethod]
 class A:
@@ -2248,7 +2248,7 @@ class B(A):
     def b(self) -> None: pass
 [out]
 main: note: In class "B":
-main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[B], None])
+main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[A], None])
 main:6: error: Signature of "b" incompatible with supertype "A"
 
 [case testVariableProperty]
@@ -2290,7 +2290,7 @@ class C(B):
         n = m
 [out]
 main: note: In class "C":
-main:5: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[C, int], None])
+main:5: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[B, int], None])
 
 [case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
@@ -2300,6 +2300,18 @@ class B(Generic[T]):
 class C(B[int]):
         def m(self, a: int) -> None: pass
         n = m
+
+[case testInstanceMethodOverwriteTwice]
+class I:
+    def foo(self) -> None: pass
+class A(I):
+    def foo(self) -> None: pass
+class B(A):
+    def bar(self) -> None: pass
+    foo = bar
+class C(B):
+    def bar(self) -> None: pass
+    foo = bar
 
 [case testClassMethodOverwrite]
 class B():
@@ -2323,4 +2335,4 @@ class C(B):
 [builtins fixtures/classmethod.pyi]
 [out]
 main: note: In class "C":
-main:7: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[C, int], None])
+main:7: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[B, int], None])

@@ -1168,9 +1168,7 @@ class SemanticAnalyzer(NodeVisitor):
             if (s.type is None and len(s.lvalues) == 1 and
                     isinstance(s.lvalues[0], NameExpr)):
                 if s.lvalues[0].is_def:
-                    s.type = find_type_from_bases(s.lvalues[0])
-                    if s.type is None:
-                        s.type = self.analyze_simple_literal_type(s.rvalue)
+                    s.type = self.analyze_simple_literal_type(s.rvalue)
 
                 res = analyze_type_alias(s.rvalue,
                                          self.lookup_qualified,

@@ -1115,17 +1115,34 @@ class TypeChecker(NodeVisitor[Type]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-            if lvalue_type:
-                if isinstance(lvalue, NameExpr):
-                    base_type = find_type_from_bases(lvalue)
 
-                    # If a type is known, validate the type is a subtype of the base type
-                    if base_type:
+            if isinstance(lvalue, NameExpr):
+                base_type = find_type_from_bases(lvalue)
+
+                # If we are a class member and we have a base class that
+                # defined our lvalue too, ensure we are compatible
+                if base_type:
+                    # Do not check if the rvalue is compatible if the lvalue
+                    # had a type defined; this is handled by other parts, and
+                    # all we have to worry about in that case is that lvalue
+                    # is compatible with that base class.
+
+                    if lvalue_type:
+                        # If lvalue has a type, ensure that type is compatible
+                        # with the base class
                         self.check_subtype(lvalue_type, base_type, lvalue,
                                            messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                            'expression has type',
                                            'variable has type')
+                    else:
+                        rvalue_type = self.accept(rvalue)
+                        if rvalue_type:
+                            self.check_subtype(rvalue_type, base_type, lvalue,
+                                               messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                               'expression has type',
+                                               'variable has type')
 
+            if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
                     # Try to infer a proper type for a variable with a partial None type.
                     rvalue_type = self.accept(rvalue)
