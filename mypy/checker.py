@@ -1120,7 +1120,7 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                base_type = find_type_from_bases(lvalue)
+                base_type, base_node = find_type_from_bases(lvalue)
 
                 # If we are a class member and we have a base class that
                 # defined our lvalue too, ensure we are compatible
@@ -1140,6 +1140,14 @@ class TypeChecker(NodeVisitor[Type]):
                     else:
                         rvalue_type = self.accept(rvalue)
                         if rvalue_type:
+                            # Class-level function objects and classmethods become bound
+                            # methods: the former to the instance, the latter to the
+                            # class
+                            if (isinstance(base_type, CallableType)
+                                    and isinstance(rvalue_type, CallableType)):
+                                base_type = bind_self(base_type)
+                                rvalue_type = bind_self(rvalue_type)
+
                             self.check_subtype(rvalue_type, base_type, lvalue,
                                                messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                                'expression has type',

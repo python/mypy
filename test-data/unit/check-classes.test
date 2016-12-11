@@ -2218,7 +2218,7 @@ class C(B):
         def m(self, a: str) -> None: pass
         n = m
 [out]
-main:5: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[B, int], None])
+main:5: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
 
 [case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
@@ -2262,4 +2262,22 @@ class C(B):
         n = m
 [builtins fixtures/classmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[C, str], None], variable has type Callable[[B, int], None])
+main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+
+[case testClassSpec]
+from typing import Callable
+class A():
+        b = None  # type: Callable[[A, int], int]
+class B(A):
+        def c(self, a: int) -> int: pass
+        b = c
+
+[case testClassSpecError]
+from typing import Callable
+class A():
+        b = None  # type: Callable[[A, int], int]
+class B(A):
+        def c(self, a: str) -> int: pass
+        b = c
+[out]
+main:6: error: Incompatible types in assignment (expression has type Callable[[str], int], variable has type Callable[[int], int])

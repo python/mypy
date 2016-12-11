@@ -628,7 +628,7 @@ def find_type_from_bases(e: NameExpr):
     expr_node = e.node
     if not (isinstance(expr_node, Var) and e.kind == MDEF and
             len(expr_node.info.bases) > 0):
-        return None
+        return None, None
 
     expr_name = expr_node.name()
     expr_base = expr_node.info.bases[0]
@@ -650,13 +650,11 @@ def find_type_from_bases(e: NameExpr):
                 base_type = expand_type_by_instance(base_type, itype)
 
             if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
+                # If we are a property, return the Type of the return
+                # value, not the Callable
                 if base_node.is_property:
-                    # If we are a property, return the Type of the return
-                    # value, not the Callable
                     base_type = base_type.ret_type
-#                else:
-                    # Otherwise this is a member function; the type for
-                    # this is not a simple type, so do not return it
-#                    base_type = None
 
-            return base_type
+            return base_type, base_node
+
+    return None, None
