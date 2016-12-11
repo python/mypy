@@ -1679,3 +1679,45 @@ class C:
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
+
+[case testIncrementalTypedDictInMethod]
+from tdcrash import nope
+[file tdcrash.py]
+from mypy_extensions import TypedDict
+class C:
+    def f(self) -> None:
+        A = TypedDict('A', {'x': int, 'y': int})
+[builtins fixtures/dict.pyi]
+[out1]
+main:1: error: Module 'tdcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'tdcrash' has no attribute 'nope'
+
+[case testIncrementalTypedDictInMethod2]
+from tdcrash import nope
+[file tdcrash.py]
+from mypy_extensions import TypedDict
+class C:
+    class D:
+        def f(self) -> None:
+            A = TypedDict('A', {'x': int, 'y': int})
+[builtins fixtures/dict.pyi]
+[out1]
+main:1: error: Module 'tdcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'tdcrash' has no attribute 'nope'
+
+[case testIncrementalTypedDictInMethod3]
+from tdcrash import nope
+[file tdcrash.py]
+from mypy_extensions import TypedDict
+class C:
+    def a(self):
+        class D:
+            def f(self) -> None:
+                A = TypedDict('A', {'x': int, 'y': int})
+[builtins fixtures/dict.pyi]
+[out1]
+main:1: error: Module 'tdcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'tdcrash' has no attribute 'nope'
