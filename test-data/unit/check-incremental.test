@@ -1652,3 +1652,30 @@ class C:
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
+
+[case testIncrementalNamedTupleInMethod2]
+from ntcrash import nope
+[file ntcrash.py]
+from typing import NamedTuple
+class C:
+    class D:
+        def f(self) -> None:
+            A = NamedTuple('A', [('x', int), ('y', int)])
+[out1]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+
+[case testIncrementalNamedTupleInMethod3]
+from ntcrash import nope
+[file ntcrash.py]
+from typing import NamedTuple
+class C:
+    def a(self):
+        class D:
+            def f(self) -> None:
+                A = NamedTuple('A', [('x', int), ('y', int)])
+[out1]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
