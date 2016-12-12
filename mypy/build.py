@@ -1518,10 +1518,69 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
+    if manager.options.dump_graph:
+        dump_graph(graph)
+        return
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+
+
+class NodeInfo:
+    """Some info about a node in the graph of SCCs."""
+
+    def __init__(self, index: int, scc: List[str]) -> None:
+        self.node_id = "n%d" % index
+        self.scc = scc
+        self.sizes = {}  # type: Dict[str, int]  # mod -> size in bytes
+        self.deps = {}  # type: Dict[str, int]  # node_id -> pri
+
+    def dumps(self) -> str:
+        """Convert to JSON string."""
+        total_size = sum(self.sizes.values())
+        return "[%s, %s, %s,\n     %s,\n     %s]" % (json.dumps(self.node_id),
+                                                     json.dumps(total_size),
+                                                     json.dumps(self.scc),
+                                                     json.dumps(self.sizes),
+                                                     json.dumps(self.deps))
+
+
+def dump_graph(graph: Graph) -> None:
+    """Dump the graph as a JSON string to stdout.
+
+    This copies some of the work by process_graph()
+    (sorted_components() and order_ascc()).
+    """
+    nodes = []
+    sccs = sorted_components(graph)
+    for i, ascc in enumerate(sccs):
+        scc = order_ascc(graph, ascc)
+        node = NodeInfo(i, scc)
+        nodes.append(node)
+    inv_nodes = {}  # module -> node_id
+    for node in nodes:
+        for mod in node.scc:
+            inv_nodes[mod] = node.node_id
+    for node in nodes:
+        for mod in node.scc:
+            state = graph[mod]
+            size = 0
+            if state.path:
+                try:
+                    size = os.path.getsize(state.path)
+                except os.error:
+                    pass
+            node.sizes[mod] = size
+            for dep in state.dependencies:
+                if dep in state.priorities:
+                    pri = state.priorities[dep]
+                    if dep in inv_nodes:
+                        dep_id = inv_nodes[dep]
+                        if (dep_id != node.node_id and
+                                (dep_id not in node.deps or pri < node.deps[dep_id])):
+                            node.deps[dep_id] = pri
+    print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
