@@ -51,14 +51,14 @@ from typing import (
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
-    ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
+    ImportFrom, ImportAll, Block, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
+    FuncExpr, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
@@ -2881,24 +2881,24 @@ class FirstPass(NodeVisitor):
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        kind = self.kind_by_scope()
-        if kind == GDEF:
+        at_module = self.sem.is_module_scope()
+        if at_module:
             self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
-        if kind == GDEF:
+        if at_module:
             self.sem.globals[func.name()] = SymbolTableNode(GDEF, func, self.sem.cur_mod_id)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
-        kind = self.kind_by_scope()
-        if kind == LDEF:
+        if self.sem.is_func_scope():
             return
-        elif kind == GDEF:
+        at_module = not self.sem.is_class_scope()
+        if at_module:
             self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
         info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
         info.set_line(cdef.line, cdef.column)
         cdef.info = info
-        if kind == GDEF:
+        if at_module:
             self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info, self.sem.cur_mod_id)
         self.process_nested_classes(cdef)
 
@@ -2986,16 +2986,6 @@ class FirstPass(NodeVisitor):
     def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False) -> None:
         self.sem.analyze_lvalue(lvalue, add_global=self.sem.is_module_scope(),
                                 explicit_type=explicit_type)
-
-    def kind_by_scope(self) -> int:
-        if self.sem.is_module_scope():
-            return GDEF
-        elif self.sem.is_class_scope():
-            return MDEF
-        elif self.sem.is_func_scope():
-            return LDEF
-        else:
-            assert False, "Couldn't determine scope"
 
 
 class ThirdPass(TraverserVisitor):

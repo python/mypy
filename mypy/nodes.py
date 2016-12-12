@@ -36,9 +36,7 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: int
 GDEF = 1  # type: int
-MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
 # Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
 # valid as a type. A type variable is valid as a type (kind BOUND_TVAR) within
