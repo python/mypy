@@ -2886,7 +2886,7 @@ class FirstPass(NodeVisitor):
             self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
         if kind == GDEF:
-            self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
+            self.sem.globals[func.name()] = SymbolTableNode(GDEF, func, self.sem.cur_mod_id)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         kind = self.kind_by_scope()
@@ -2899,7 +2899,7 @@ class FirstPass(NodeVisitor):
         info.set_line(cdef.line, cdef.column)
         cdef.info = info
         if kind == GDEF:
-            self.sem.globals[cdef.name] = SymbolTableNode(kind, info, self.sem.cur_mod_id)
+            self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info, self.sem.cur_mod_id)
         self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
@@ -2970,7 +2970,7 @@ class FirstPass(NodeVisitor):
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
-        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d.var), d)
+        self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
