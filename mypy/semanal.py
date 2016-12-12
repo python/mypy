@@ -285,7 +285,7 @@ class SemanticAnalyzer(NodeVisitor):
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
-                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                    self.type.names[defn.name()] = SymbolTableNode(GDEF, defn)
                 self.prepare_method_signature(defn)
             elif self.is_func_scope():
                 # Nested function
@@ -438,7 +438,7 @@ class SemanticAnalyzer(NodeVisitor):
         defn.type.line = defn.line
 
         if self.is_class_scope():
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
+            self.type.names[defn.name()] = SymbolTableNode(GDEF, defn,
                                                            typ=defn.type)
             defn.info = self.type
         elif self.is_func_scope():
@@ -786,9 +786,9 @@ class SemanticAnalyzer(NodeVisitor):
             defn.info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
             defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
-            kind = MDEF
+            kind = GDEF
             if self.is_func_scope():
-                kind = LDEF
+                kind = GDEF
             self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
@@ -1037,7 +1037,7 @@ class SemanticAnalyzer(NodeVisitor):
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
-        if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
+        if (existing_symbol.kind in (GDEF, GDEF, GDEF) and
                 isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
             # This is a valid import over an existing definition in the file. Construct a dummy
             # assignment that we'll use to type check the import.
@@ -1286,7 +1286,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v = Var(lval.name)
                 lval.node = v
                 lval.is_def = True
-                lval.kind = LDEF
+                lval.kind = GDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
             elif not self.is_func_scope() and (self.type and
@@ -1298,9 +1298,9 @@ class SemanticAnalyzer(NodeVisitor):
                 v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
-                lval.kind = MDEF
+                lval.kind = GDEF
                 lval.fullname = lval.name
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+                self.type.names[lval.name] = SymbolTableNode(GDEF, v)
             else:
                 # Bind to an existing name.
                 if explicit_type:
@@ -1359,7 +1359,7 @@ class SemanticAnalyzer(NodeVisitor):
             v.is_ready = False
             lval.def_var = v
             lval.node = v
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            self.type.names[lval.name] = SymbolTableNode(GDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -1504,7 +1504,7 @@ class SemanticAnalyzer(NodeVisitor):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
-        info.names['__init__'] = SymbolTableNode(MDEF, init_func)
+        info.names['__init__'] = SymbolTableNode(GDEF, init_func)
 
         return info
 
@@ -1795,7 +1795,7 @@ class SemanticAnalyzer(NodeVisitor):
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            info.names[var.name()] = SymbolTableNode(MDEF, var)
+            info.names[var.name()] = SymbolTableNode(GDEF, var)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         for var in vars:
@@ -1831,9 +1831,9 @@ class SemanticAnalyzer(NodeVisitor):
                 v.is_classmethod = True
                 v.info = info
                 dec = Decorator(func, [NameExpr('classmethod')], v)
-                info.names[funcname] = SymbolTableNode(MDEF, dec)
+                info.names[funcname] = SymbolTableNode(GDEF, dec)
             else:
-                info.names[funcname] = SymbolTableNode(MDEF, func)
+                info.names[funcname] = SymbolTableNode(GDEF, func)
 
         add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
@@ -2009,12 +2009,12 @@ class SemanticAnalyzer(NodeVisitor):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
             if self.is_func_scope():
-                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec),
+                self.add_symbol(dec.var.name(), SymbolTableNode(GDEF, dec),
                                 dec)
             elif self.type:
                 dec.var.info = self.type
                 dec.var.is_initialized_in_class = True
-                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
+                self.add_symbol(dec.var.name(), SymbolTableNode(GDEF, dec),
                                 dec)
         if not no_type_check:
             dec.func.accept(self)
@@ -2704,7 +2704,7 @@ class SemanticAnalyzer(NodeVisitor):
         if name in self.locals[-1]:
             self.name_already_defined(name, ctx)
         node._fullname = name
-        self.locals[-1][name] = SymbolTableNode(LDEF, node)
+        self.locals[-1][name] = SymbolTableNode(GDEF, node)
 
     def add_exports(self, *exps: Expression) -> None:
         for exp in exps:
@@ -2912,7 +2912,7 @@ class FirstPass(NodeVisitor):
                 else:
                     node.info._fullname = node.info.name()
                 node.fullname = node.info._fullname
-                symbol = SymbolTableNode(MDEF, node.info)
+                symbol = SymbolTableNode(GDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
             elif isinstance(node, (ImportFrom, Import, ImportAll, IfStmt)):

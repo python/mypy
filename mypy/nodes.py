@@ -62,9 +62,7 @@ LITERAL_NO = 0
 ENUM_BASECLASS = "enum.Enum"
 
 node_kinds = {
-    LDEF: 'Ldef',
     GDEF: 'Gdef',
-    MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
     UNBOUND_TVAR: 'UnboundTvar',
     BOUND_TVAR: 'Tvar',
@@ -1132,7 +1130,7 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    kind = None  # type: int      # LDEF/GDEF/MDEF/... (None if not available)
+    kind = None  # type: int      # GDEF, MODULE_REF etc. (None if not available)
     node = None  # type: SymbolNode  # Var, FuncDef or TypeInfo that describes this
     fullname = None  # type: str  # Fully qualified name (or name if not global)
 
@@ -2078,9 +2076,7 @@ class TypeInfo(SymbolNode):
 
 class SymbolTableNode:
     # Kind of node. Possible values:
-    #  - LDEF: local definition (of any kind)
     #  - GDEF: global (module-level) definition
-    #  - MDEF: class member definition
     #  - UNBOUND_TVAR: TypeVar(...) definition, not bound
     #  - TVAR: type variable in a bound scope (generic function / generic clas)
     #  - MODULE_REF: reference to a module
