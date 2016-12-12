@@ -444,3 +444,10 @@ class C:
         A = TypedDict('A', {'y': int})
 C.A  # E: "C" has no attribute "A"
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictInFunction]
+from mypy_extensions import TypedDict
+def f() -> None:
+    A = TypedDict('A', {'x': int})
+A  # E: Name 'A' is not defined
+[builtins fixtures/dict.pyi]

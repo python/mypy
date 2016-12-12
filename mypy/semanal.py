@@ -1679,7 +1679,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
         name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.type:
+        if name != var_name or self.is_func_scope():
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
         info = self.build_namedtuple_typeinfo(name, items, types)
@@ -1902,7 +1902,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Error. Construct dummy return value.
             return self.build_typeddict_typeinfo('TypedDict', [], [])
         name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.type:
+        if name != var_name or self.is_func_scope():
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
         info = self.build_typeddict_typeinfo(name, items, types)

@@ -421,3 +421,9 @@ class C:
     def g(self):
         A = NamedTuple('A', [('y', int)])
 C.A  # E: "C" has no attribute "A"
+
+[case testNamedTupleInFunction]
+from typing import NamedTuple
+def f() -> None:
+    A = NamedTuple('A', [('x', int)])
+A  # E: Name 'A' is not defined
