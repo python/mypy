@@ -1678,19 +1678,11 @@ class SemanticAnalyzer(NodeVisitor):
         if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
-        else:
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name:
-                # Give it a unique name derived from the line number.
-                name += '@' + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, items, types)
-            # Store it as a global just in case it would remain anonymous.
-            # (Or in the nearest class if there is one.)
-            stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
-            if self.type:
-                self.type.names[name] = stnode
-            else:
-                self.globals[name] = stnode
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name:
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_namedtuple_typeinfo(name, items, types)
         call.analyzed = NamedTupleExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -1902,19 +1894,11 @@ class SemanticAnalyzer(NodeVisitor):
         if not ok:
             # Error. Construct dummy return value.
             return self.build_typeddict_typeinfo('TypedDict', [], [])
-        else:
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name:
-                # Give it a unique name derived from the line number.
-                name += '@' + str(call.line)
-            info = self.build_typeddict_typeinfo(name, items, types)
-            # Store it as a global just in case it would remain anonymous.
-            # (Or in the nearest class if there is one.)
-            stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
-            if self.type:
-                self.type.names[name] = stnode
-            else:
-                self.globals[name] = stnode
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name:
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_typeddict_typeinfo(name, items, types)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
