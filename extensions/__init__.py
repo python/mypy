@@ -1,1 +1,1 @@
-# This page intentioanlly left blank.
+# This page intentionally left blank.

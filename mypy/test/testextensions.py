@@ -1,6 +1,11 @@
 import sys
 import pickle
-from unittest import TestCase, main, skipUnless, SkipTest
+import typing
+try:
+    import collections.abc as collections_abc
+except ImportError:
+    import collections as collections_abc  # type: ignore # PY32 and earlier
+from unittest import TestCase, main, skipUnless
 from extensions.mypy_extensions import TypedDict
 
 
@@ -42,8 +47,10 @@ class TypedDictTests(BaseTestCase):
     def test_basics_iterable_syntax(self):
         Emp = TypedDict('Emp', {'name': str, 'id': int})
         self.assertIsSubclass(Emp, dict)
+        self.assertIsSubclass(Emp, typing.MutableMapping)
+        self.assertNotIsSubclass(Emp, collections_abc.Sequence)
         jim = Emp(name='Jim', id=1)
-        self.assertIsInstance(jim, dict)
+        self.assertIs(type(jim), dict)
         self.assertEqual(jim['name'], 'Jim')
         self.assertEqual(jim['id'], 1)
         self.assertEqual(Emp.__name__, 'Emp')
@@ -54,8 +61,10 @@ class TypedDictTests(BaseTestCase):
     def test_basics_keywords_syntax(self):
         Emp = TypedDict('Emp', name=str, id=int)
         self.assertIsSubclass(Emp, dict)
+        self.assertIsSubclass(Emp, typing.MutableMapping)
+        self.assertNotIsSubclass(Emp, collections_abc.Sequence)
         jim = Emp(name='Jim', id=1)
-        self.assertIsInstance(jim, dict)
+        self.assertIs(type(jim), dict)
         self.assertEqual(jim['name'], 'Jim')
         self.assertEqual(jim['id'], 1)
         self.assertEqual(Emp.__name__, 'Emp')
@@ -84,6 +93,7 @@ class TypedDictTests(BaseTestCase):
     def test_class_syntax_usage(self):
         self.assertEqual(LabelPoint2D.__annotations__, {'x': int, 'y': int, 'label': str})  # noqa
         self.assertEqual(LabelPoint2D.__bases__, (dict,))  # noqa
+        self.assertNotIsSubclass(LabelPoint2D, typing.Sequence)  # noqa
         not_origin = Point2D(x=0, y=1)  # noqa
         self.assertEqual(not_origin['x'], 0)
         self.assertEqual(not_origin['y'], 1)
