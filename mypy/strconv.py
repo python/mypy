@@ -322,12 +322,6 @@ class StrConv(NodeVisitor[str]):
                                        fullname is not None):
             # Append fully qualified name for global references.
             n += ' [{}]'.format(fullname)
-        elif kind == mypy.nodes.LDEF:
-            # Add tag to signify a local reference.
-            n += ' [l]'
-        elif kind == mypy.nodes.MDEF:
-            # Add tag to signify a member reference.
-            n += ' [m]'
         return n
 
     def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> str:

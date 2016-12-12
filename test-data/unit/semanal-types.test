@@ -33,12 +33,12 @@ MypyFile:1(
     f
     Block:2(
       AssignmentStmt:3(
-        NameExpr(x [l])
+        NameExpr(x)
         NameExpr(None [builtins.None])
         __main__.A)
       AssignmentStmt:4(
-        NameExpr(y* [l])
-        NameExpr(x [l])))))
+        NameExpr(y*)
+        NameExpr(x)))))
 
 [case testAnyType]
 from typing import Any
@@ -72,7 +72,7 @@ MypyFile:1(
       Block:3(
         AssignmentStmt:4(
           MemberExpr:4(
-            NameExpr(self [l])
+            NameExpr(self)
             x)
           NameExpr(None [builtins.None])
           builtins.int)))))
@@ -88,11 +88,11 @@ MypyFile:1(
   ClassDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(x [m])
+      NameExpr(x)
       NameExpr(None [builtins.None])
       builtins.int)
     AssignmentStmt:4(
-      NameExpr(x [m])
+      NameExpr(x)
       IntExpr(1))))
 
 [case testFunctionSig]
@@ -122,10 +122,10 @@ MypyFile:1(
     def (x: Any, y: __main__.A)
     Block:4(
       AssignmentStmt:5(
-        NameExpr(z* [l])
+        NameExpr(z*)
         TupleExpr:5(
-          NameExpr(x [l])
-          NameExpr(y [l]))))))
+          NameExpr(x)
+          NameExpr(y))))))
 
 [case testBaseclass]
 class A: pass
@@ -256,11 +256,11 @@ MypyFile:1(
     f
     Block:6(
       AssignmentStmt:7(
-        NameExpr(b [l])
+        NameExpr(b)
         NameExpr(None [builtins.None])
         __main__.A)
       AssignmentStmt:8(
-        NameExpr(b [l])
+        NameExpr(b)
         IntExpr(1)))))
 
 [case testCast]
@@ -417,7 +417,7 @@ MypyFile:1(
     def [t] (x: t`-1)
     Block:3(
       AssignmentStmt:4(
-        NameExpr(y [l])
+        NameExpr(y)
         NameExpr(None [builtins.None])
         t`-1))))
 
@@ -752,7 +752,7 @@ MypyFile:1(
         def (o: builtins.object) -> builtins.int
         Block:3(
           ExpressionStmt:3(
-            NameExpr(o [l])))))
+            NameExpr(o)))))
     Decorator:4(
       Var(f)
       NameExpr(overload [typing.overload])
@@ -763,7 +763,7 @@ MypyFile:1(
         def (a: builtins.str) -> builtins.object
         Block:5(
           ExpressionStmt:5(
-            NameExpr(a [l])))))))
+            NameExpr(a)))))))
 
 [case testReferenceToOverloadedFunction]
 from typing import overload
@@ -832,8 +832,8 @@ MypyFile:1(
             Block:6(
               PassStmt:6()))))
       AssignmentStmt:7(
-        NameExpr(y* [l])
-        NameExpr(g [l])))))
+        NameExpr(y*)
+        NameExpr(g)))))
 
 [case testImplicitGenericTypeArgs]
 from typing import TypeVar, Generic
@@ -1008,7 +1008,7 @@ MypyFile:1(
     def (*x: builtins.int, *, y: builtins.str =) -> Any
     Init(
       AssignmentStmt:1(
-        NameExpr(y [l])
+        NameExpr(y)
         StrExpr()))
     VarArg(
       Var(x))
@@ -1081,7 +1081,7 @@ MypyFile:1(
     f
     Block:2(
       AssignmentStmt:3(
-        NameExpr(T* [l])
+        NameExpr(T*)
         TypeVarExpr:3())
       FuncDef:4(
         g
@@ -1102,7 +1102,7 @@ MypyFile:1(
   ClassDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(T* [m])
+      NameExpr(T*)
       TypeVarExpr:3())
     FuncDef:4(
       g
@@ -1130,7 +1130,7 @@ MypyFile:1(
     TypeVars(
       T)
     AssignmentStmt:4(
-      NameExpr(y [m])
+      NameExpr(y)
       NameExpr(None [builtins.None])
       T`1)))
 
@@ -1153,7 +1153,7 @@ MypyFile:1(
     TypeVars(
       _m.T)
     AssignmentStmt:4(
-      NameExpr(a [m])
+      NameExpr(a)
       NameExpr(None [builtins.None])
       _m.T`1)
     FuncDef:5(
@@ -1164,7 +1164,7 @@ MypyFile:1(
       def (self: __main__.A[_m.T`1], x: _m.T`1) -> Any
       Block:5(
         AssignmentStmt:6(
-          NameExpr(b [l])
+          NameExpr(b)
           NameExpr(None [builtins.None])
           _m.T`1)))))
 
@@ -1185,7 +1185,7 @@ MypyFile:1(
     def [_m.T] (x: _m.T`-1)
     Block:2(
       AssignmentStmt:3(
-        NameExpr(a [l])
+        NameExpr(a)
         NameExpr(None [builtins.None])
         _m.T`-1))))
 
@@ -1203,7 +1203,7 @@ MypyFile:1(
     def (x: builtins.int) -> Any
     Block:2(
       AssignmentStmt:3(
-        NameExpr(x [l])
+        NameExpr(x)
         IntExpr(1)))))
 
 [case testMethodCommentAnnotation]
@@ -1224,7 +1224,7 @@ MypyFile:1(
       def (self: __main__.A, x: builtins.int) -> builtins.str
       Block:3(
         AssignmentStmt:4(
-          NameExpr(x [l])
+          NameExpr(x)
           IntExpr(1))))))
 
 [case testTypevarWithValues]

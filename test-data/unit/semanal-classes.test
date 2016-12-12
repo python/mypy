@@ -29,16 +29,16 @@ MypyFile:1(
         Var(x))
       Block:2(
         AssignmentStmt:3(
-          NameExpr(y* [l])
-          NameExpr(x [l]))))
+          NameExpr(y*)
+          NameExpr(x))))
     FuncDef:4(
       f
       Args(
         Var(self))
       Block:4(
         AssignmentStmt:5(
-          NameExpr(y* [l])
-          NameExpr(self [l]))))))
+          NameExpr(y*)
+          NameExpr(self))))))
 
 [case testMemberDefinitionInInit]
 class A:
@@ -56,12 +56,12 @@ MypyFile:1(
       Block:2(
         AssignmentStmt:3(
           MemberExpr:3(
-            NameExpr(self [l])
+            NameExpr(self)
             x*)
           IntExpr(1))
         AssignmentStmt:4(
           MemberExpr:4(
-            NameExpr(self [l])
+            NameExpr(self)
             y*)
           IntExpr(2))))))
 
@@ -82,7 +82,7 @@ MypyFile:1(
       Block:2(
         AssignmentStmt:3(
           MemberExpr:3(
-            NameExpr(self [l])
+            NameExpr(self)
             x*)
           IntExpr(1)))))
   FuncDef:4(
@@ -92,7 +92,7 @@ MypyFile:1(
     Block:4(
       AssignmentStmt:5(
         MemberExpr:5(
-          NameExpr(self [l])
+          NameExpr(self)
           y)
         IntExpr(1)))))
 
@@ -116,7 +116,7 @@ MypyFile:1(
       Block:2(
         AssignmentStmt:3(
           MemberExpr:3(
-            NameExpr(self [l])
+            NameExpr(self)
             y)
           IntExpr(1)))))
   ClassDef:4(
@@ -127,11 +127,11 @@ MypyFile:1(
         Var(x))
       Block:5(
         AssignmentStmt:6(
-          NameExpr(self* [l])
-          NameExpr(x [l]))
+          NameExpr(self*)
+          NameExpr(x))
         AssignmentStmt:7(
           MemberExpr:7(
-            NameExpr(self [l])
+            NameExpr(self)
             z)
           IntExpr(1))))))
 
@@ -150,7 +150,7 @@ MypyFile:1(
       Block:2(
         AssignmentStmt:3(
           MemberExpr:3(
-            NameExpr(x [l])
+            NameExpr(x)
             y*)
           IntExpr(1))))))
 
@@ -170,12 +170,12 @@ MypyFile:1(
       Block:2(
         AssignmentStmt:3(
           MemberExpr:3(
-            NameExpr(self [l])
+            NameExpr(self)
             x*)
           IntExpr(1))
         AssignmentStmt:4(
           MemberExpr:4(
-            NameExpr(self [l])
+            NameExpr(self)
             x)
           IntExpr(2))))))
 
@@ -204,7 +204,7 @@ MypyFile:1(
           def (self: __main__.A)
           Block:4(
             ExpressionStmt:4(
-              NameExpr(self [l])))))
+              NameExpr(self)))))
       Decorator:5(
         Var(f)
         NameExpr(overload [typing.overload])
@@ -216,7 +216,7 @@ MypyFile:1(
           def (self: __main__.A, x: __main__.A)
           Block:6(
             ExpressionStmt:6(
-              NameExpr(self [l]))))))))
+              NameExpr(self))))))))
 
 [case testAttributeWithoutType]
 class A:
@@ -226,7 +226,7 @@ MypyFile:1(
   ClassDef:1(
     A
     AssignmentStmt:2(
-      NameExpr(a* [m])
+      NameExpr(a*)
       NameExpr(object [builtins.object]))))
 
 [case testDataAttributeRefInClassBody]
@@ -238,11 +238,11 @@ MypyFile:1(
   ClassDef:1(
     A
     AssignmentStmt:2(
-      NameExpr(x* [m])
+      NameExpr(x*)
       IntExpr(1))
     AssignmentStmt:3(
-      NameExpr(y* [m])
-      NameExpr(x [m]))))
+      NameExpr(y*)
+      NameExpr(x))))
 
 [case testMethodRefInClassBody]
 class A:
@@ -259,8 +259,8 @@ MypyFile:1(
       Block:2(
         PassStmt:2()))
     AssignmentStmt:3(
-      NameExpr(g* [m])
-      NameExpr(f [m]))))
+      NameExpr(g*)
+      NameExpr(f))))
 
 [case testIfStatementInClassBody]
 class A:
@@ -277,11 +277,11 @@ MypyFile:1(
         NameExpr(A [__main__.A]))
       Then(
         AssignmentStmt:3(
-          NameExpr(x* [m])
+          NameExpr(x*)
           IntExpr(1)))
       Else(
         AssignmentStmt:5(
-          NameExpr(x [m])
+          NameExpr(x)
           IntExpr(2))))))
 
 [case testForStatementInClassBody]
@@ -293,14 +293,14 @@ MypyFile:1(
   ClassDef:1(
     A
     ForStmt:2(
-      NameExpr(x* [m])
+      NameExpr(x*)
       ListExpr:2(
         IntExpr(1)
         IntExpr(2))
       Block:2(
         AssignmentStmt:3(
-          NameExpr(y* [m])
-          NameExpr(x [m]))))))
+          NameExpr(y*)
+          NameExpr(x))))))
 
 [case testReferenceToClassWithinFunction]
 def f():
@@ -315,7 +315,7 @@ MypyFile:1(
         A
         PassStmt:2())
       ExpressionStmt:3(
-        NameExpr(A [l])))))
+        NameExpr(A)))))
 
 [case testReferenceToClassWithinClass]
 class A:
@@ -362,7 +362,7 @@ MypyFile:1(
         A
         PassStmt:2())
       AssignmentStmt:3(
-        NameExpr(x [l])
+        NameExpr(x)
         NameExpr(None [builtins.None])
         A))))
 
@@ -382,16 +382,16 @@ MypyFile:1(
       ClassDef:2(
         A
         AssignmentStmt:3(
-          NameExpr(y* [m])
-          NameExpr(x [l]))
+          NameExpr(y*)
+          NameExpr(x))
         FuncDef:4(
           g
           Args(
             Var(self))
           Block:4(
             AssignmentStmt:5(
-              NameExpr(z* [l])
-              NameExpr(x [l]))))))))
+              NameExpr(z*)
+              NameExpr(x))))))))
 
 [case testQualifiedMetaclass]
 import abc
@@ -529,7 +529,7 @@ MypyFile:1(
   ClassDef:2(
     A
     AssignmentStmt:3(
-      NameExpr(X* [m])
+      NameExpr(X*)
       IntExpr(1))
     FuncDef:4(
       f
@@ -539,8 +539,8 @@ MypyFile:1(
       def (self: __main__.A, x: builtins.int =)
       Init(
         AssignmentStmt:4(
-          NameExpr(x [l])
-          NameExpr(X [m])))
+          NameExpr(x)
+          NameExpr(X)))
       Block:4(
         PassStmt:4()))))
 

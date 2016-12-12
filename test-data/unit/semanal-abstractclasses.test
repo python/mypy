@@ -34,7 +34,7 @@ MypyFile:1(
         Abstract
         Block:8(
           ReturnStmt:8(
-            NameExpr(self [l])))))))
+            NameExpr(self)))))))
 
 [case testClassInheritingTwoAbstractClasses]
 from abc import abstractmethod, ABCMeta
