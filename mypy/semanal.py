@@ -738,7 +738,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if base_expr.fullname == 'typing.NamedTuple':
                     node = self.lookup(defn.name, defn)
                     if node is not None:
-                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                        node.kind = GDEF
                         items, types = self.check_namedtuple_classdef(defn)
                         node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
                         return True
@@ -786,10 +786,7 @@ class SemanticAnalyzer(NodeVisitor):
             defn.info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
             defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
-            kind = GDEF
-            if self.is_func_scope():
-                kind = GDEF
-            self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
+            self.add_symbol(defn.name, SymbolTableNode(GDEF, defn.info), defn)
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.
@@ -1037,7 +1034,7 @@ class SemanticAnalyzer(NodeVisitor):
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
-        if (existing_symbol.kind in (GDEF, GDEF, GDEF) and
+        if (existing_symbol.kind == GDEF and
                 isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
             # This is a valid import over an existing definition in the file. Construct a dummy
             # assignment that we'll use to type check the import.
@@ -1430,7 +1427,6 @@ class SemanticAnalyzer(NodeVisitor):
         if node is None:
             self.fail("Could not find {} in current namespace".format(name), s)
             return
-        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
         call.analyzed.info = node.node = newtype_class_info
 
@@ -1651,7 +1647,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined namedtuple
+        node.kind = GDEF
         node.node = named_tuple
 
     def check_namedtuple(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
@@ -1870,7 +1866,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid TypedDict definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined TypedDict
+        node.kind = GDEF
         node.node = typed_dict
 
     def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
