@@ -318,9 +318,8 @@ class StrConv(NodeVisitor[str]):
         n = name
         if is_def:
             n += '*'
-        if kind == mypy.nodes.GDEF or (fullname != name and
-                                       fullname is not None):
-            # Append fully qualified name for global references.
+        if fullname is not None and fullname != name:
+            # Append fully qualified name if non-trivially different.
             n += ' [{}]'.format(fullname)
         return n
 
