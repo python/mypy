@@ -1946,25 +1946,41 @@ class TypeInfo(SymbolNode):
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
 
-    _metaclass_type = None  # type: Optional[mypy.types.Instance]
+    declared_metaclass_type = None  # type: Optional[mypy.types.Instance]
 
     @property
     def metaclass_type(self) -> 'Optional[mypy.types.Instance]':
-        if self._metaclass_type:
-            return self._metaclass_type
-        if self._fullname == 'builtins.type':
-            return mypy.types.Instance(self, [])
+        """ (From the docs)
+        The appropriate metaclass is determined as follows:
+        * if no bases and no explicit metaclass are given, then type() is used
+        * if an explicit metaclass is given and it is not an instance of type(),
+          then it is used directly as the metaclass
+        * if an instance of type() is given as the explicit metaclass, or bases are defined,
+          then the most derived metaclass is used
+
+        The most derived metaclass is selected from the explicitly specified metaclass (if any)
+        and the metaclasses (i.e. type(cls)) of all specified base classes.
+        The most derived metaclass is one which is a subtype of all of these candidate metaclasses.
+        If none of the candidate metaclasses meets that criterion, it is a TypeError.
+        """
         if self.mro is None:
             # XXX why does this happen?
             return None
-        if len(self.mro) > 1:
-            return self.mro[1].metaclass_type
-        # FIX: assert False
+        declared = self.declared_metaclass_type
+        if declared is not None and not declared.type.has_base('builtins.type'):
+            return declared
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        candidates = ({declared} | {s.metaclass_type for s in self.mro[1:]}) - {None}
+        for c in candidates:
+            if all(other in c.type.mro for other in candidates):
+                return c
+        # TypeError
         return None
 
     @metaclass_type.setter
     def metaclass_type(self, value: 'mypy.types.Instance'):
-        self._metaclass_type = value
+        self.declared_metaclass_type = value
 
     def is_metaclass(self) -> bool:
         return self.has_base('builtins.type')
@@ -2083,6 +2099,7 @@ class TypeInfo(SymbolNode):
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
+                'declared_metaclass_type': self.declared_metaclass_type,
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2104,6 +2121,7 @@ class TypeInfo(SymbolNode):
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
                        else mypy.types.Type.deserialize(data['_promote']))
+        ti.declared_metaclass_type = data['declared_metaclass_type']
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
