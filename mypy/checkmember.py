@@ -210,6 +210,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
+
     if isinstance(v, Var):
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, not_ready_callback)
