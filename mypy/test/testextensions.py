@@ -6,7 +6,7 @@ try:
 except ImportError:
     import collections as collections_abc  # type: ignore # PY32 and earlier
 from unittest import TestCase, main, skipUnless
-from extensions.mypy_extensions import TypedDict
+from mypy_extensions import TypedDict
 
 
 class BaseTestCase(TestCase):
@@ -90,7 +90,7 @@ class TypedDictTests(BaseTestCase):
             TypedDict('Hi', [('x', int)], y=int)
 
     @skipUnless(PY36, 'Python 3.6 required')
-    def test_class_syntax_usage(self):
+    def test_py36_class_syntax_usage(self):
         self.assertEqual(LabelPoint2D.__annotations__, {'x': int, 'y': int, 'label': str})  # noqa
         self.assertEqual(LabelPoint2D.__bases__, (dict,))  # noqa
         self.assertNotIsSubclass(LabelPoint2D, typing.Sequence)  # noqa

@@ -12,9 +12,6 @@ import types
 from typing import _type_check  # type: ignore
 
 
-def _dict_new(inst, cls, *args, **kwargs):
-    return dict(*args, **kwargs)
-
 def _check_fails(cls, other):
     try:
         if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools']:
@@ -22,6 +19,17 @@ def _check_fails(cls, other):
     except (AttributeError, ValueError):
         pass
     return False
+
+def _dict_new(inst, cls, *args, **kwargs):
+    return dict(*args, **kwargs)
+
+def _typeddict_new(inst, cls, _typename, _fields=None, **kwargs):
+    if _fields is None:
+        _fields = kwargs
+    elif kwargs:
+        raise TypeError("TypedDict takes either a dict or "
+                        "keyword arguments, but not both")
+    return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields)})
 
 class _TypedDictMeta(type):
     def __new__(cls, name, bases, ns):
@@ -36,14 +44,18 @@ class _TypedDictMeta(type):
         for base in bases:
             anns.update(base.__dict__.get('__annotations__', {}))
         tp_dict.__annotations__ = anns
-        if tp_dict.__name__ != 'TypedDict':
+        if name == 'TypedDict':
+            tp_dict.__new__ = types.MethodType(_typeddict_new, tp_dict)
+        else:
             tp_dict.__new__ = types.MethodType(_dict_new, tp_dict)
         return tp_dict
 
     __instancecheck__ = __subclasscheck__ = _check_fails
 
 
-class _TypedDict(object):
+TypedDict = _TypedDictMeta('TypedDict', (dict,), {})
+TypedDict.__module__ = __name__
+TypedDict.__doc__ = \
     """A simple typed name space. At runtime it is equivalent to a plain dict.
 
     TypedDict creates a dictionary type that expects all of its
@@ -67,16 +79,6 @@ class _TypedDict(object):
             y: int
             label: str
 
-    The latter syntax is only supported in Python 3.6+
+    The latter syntax is only supported in Python 3.6+, while two other
+    syntax forms work for Python 2.7 and 3.2+
     """
-    def __new__(cls, _typename, _fields=None, **kwargs):
-        if _fields is None:
-            _fields = kwargs
-        elif kwargs:
-            raise TypeError("Either list of fields or keywords"
-                            " can be provided to TypedDict, not both")
-        return cls.__class__(_typename, (), {'__annotations__': dict(_fields)})
-
-
-TypedDict = _TypedDictMeta('TypedDict', _TypedDict.__bases__, dict(_TypedDict.__dict__))
-TypedDict.__module__ = __name__
