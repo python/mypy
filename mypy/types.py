@@ -1332,7 +1332,10 @@ class TypeStrVisitor(TypeVisitor[str]):
             return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t: Instance) -> str:
-        s = t.type.fullname() if t.type is not None else '<?>'
+        if t.type is not None:
+            s = t.type.fullname() or t.type.name() or '<???>'
+        else:
+            s = '<?>'
         if t.erased:
             s += '*'
         if t.args != []:
