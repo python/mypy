@@ -1025,7 +1025,6 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main: note: In function "f":
 main:8: error: Revealed type is 'd.D[__main__.A*, builtins.int*]'
 main:9: error: Revealed type is 'd.D[__main__.A*, builtins.str*]'
 
@@ -1141,7 +1140,6 @@ def f(some_class: Type[A]):
     A.f = D(20)
     A.f = D('some string')
 [out]
-main: note: In function "f":
 main:11: error: Argument 1 to "D" has incompatible type "str"; expected "int"
 
 [case testDescriptorUncallableDunderSet]
