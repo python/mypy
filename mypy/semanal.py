@@ -1870,8 +1870,9 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid TypedDict definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined TypedDict
-        node.node = typed_dict
+        if node:
+            node.kind = GDEF   # TODO locally defined TypedDict
+            node.node = typed_dict
 
     def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a TypedDict.

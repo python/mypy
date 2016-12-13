@@ -6,6 +6,7 @@ try:
 except ImportError:
     import collections as collections_abc  # type: ignore # PY32 and earlier
 from unittest import TestCase, main, skipUnless
+sys.path[0:0] = ['extensions']
 from mypy_extensions import TypedDict
 
 
@@ -63,7 +64,7 @@ class TypedDictTests(BaseTestCase):
         self.assertIsSubclass(Emp, dict)
         self.assertIsSubclass(Emp, typing.MutableMapping)
         self.assertNotIsSubclass(Emp, collections_abc.Sequence)
-        jim = Emp(name='Jim', id=1)
+        jim = Emp(name='Jim', id=1)  # type: ignore # mypy doesn't support keyword syntax yet
         self.assertIs(type(jim), dict)
         self.assertEqual(jim['name'], 'Jim')
         self.assertEqual(jim['id'], 1)
@@ -74,7 +75,7 @@ class TypedDictTests(BaseTestCase):
 
     def test_typeddict_errors(self):
         Emp = TypedDict('Emp', {'name': str, 'id': int})
-        self.assertEqual(TypedDict.__module__, 'extensions.mypy_extensions')
+        self.assertEqual(TypedDict.__module__, 'mypy_extensions')
         jim = Emp(name='Jim', id=1)
         with self.assertRaises(TypeError):
             isinstance({}, Emp)
