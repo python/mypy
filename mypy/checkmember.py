@@ -143,7 +143,7 @@ def analyze_member_access(name: str,
                 # the corresponding method in the current instance to avoid this edge case.
                 # See https://github.com/python/mypy/pull/1787 for more info.
                 result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
-                                                        builtin_type, not_ready_callback, msg, chk,
+                                                        builtin_type, not_ready_callback, msg,
                                                         original_type=original_type)
                 if result:
                     return result
@@ -176,7 +176,7 @@ def analyze_member_access(name: str,
         if item and not is_operator:
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
-                                                    builtin_type, not_ready_callback, msg, chk,
+                                                    builtin_type, not_ready_callback, msg,
                                                     original_type=original_type)
             if result:
                 return result
@@ -350,7 +350,6 @@ def analyze_class_attribute_access(itype: Instance,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder,
-                                   chk: 'mypy.checker.TypeChecker',
                                    original_type: Type) -> Type:
     """original_type is the type of E in the expression E.var"""
     node = itype.type.get(name)
