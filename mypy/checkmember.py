@@ -379,7 +379,7 @@ def analyze_class_attribute_access(itype: Instance,
         return AnyType()
 
     if isinstance(node.node, TypeVarExpr):
-        return node.node.upper_bound
+        return TypeVarType(node.tvar_def, node.tvar_def.line, node.tvar_def.column)
 
     if isinstance(node.node, TypeInfo):
         return type_object_type(node.node, builtin_type)
