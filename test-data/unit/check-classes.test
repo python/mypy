@@ -2802,3 +2802,7 @@ class GoodMeta(type, Iterable[int]):
 
 class Good(metaclass=GoodMeta): pass
 for _ in Good: pass
+reveal_type(list(Good))  # E: Revealed type is 'builtins.list[builtins.int*]'
+
+[builtins fixtures/list.pyi]
+
