@@ -53,4 +53,4 @@ def run(params: str) -> Tuple[str, str]:
     sys.stdout = old_stdout
     sys.stderr = old_stderr
 
-    return new_stdout.getvalue(), new_stderr.getvalue() 
+    return new_stdout.getvalue(), new_stderr.getvalue()
