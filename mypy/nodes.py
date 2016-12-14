@@ -36,9 +36,7 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: int
 GDEF = 1  # type: int
-MDEF = 2  # type: int
 MODULE_REF = 3  # type: int
 # Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
 # valid as a type. A type variable is valid as a type (kind BOUND_TVAR) within
@@ -62,9 +60,7 @@ LITERAL_NO = 0
 ENUM_BASECLASS = "enum.Enum"
 
 node_kinds = {
-    LDEF: 'Ldef',
     GDEF: 'Gdef',
-    MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
     UNBOUND_TVAR: 'UnboundTvar',
     BOUND_TVAR: 'Tvar',
@@ -1135,7 +1131,7 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    kind = None  # type: int      # LDEF/GDEF/MDEF/... (None if not available)
+    kind = None  # type: int      # GDEF, MODULE_REF etc. (None if not available)
     node = None  # type: SymbolNode  # Var, FuncDef or TypeInfo that describes this
     fullname = None  # type: str  # Fully qualified name (or name if not global)
 
@@ -2081,9 +2077,7 @@ class TypeInfo(SymbolNode):
 
 class SymbolTableNode:
     # Kind of node. Possible values:
-    #  - LDEF: local definition (of any kind)
     #  - GDEF: global (module-level) definition
-    #  - MDEF: class member definition
     #  - UNBOUND_TVAR: TypeVar(...) definition, not bound
     #  - TVAR: type variable in a bound scope (generic function / generic clas)
     #  - MODULE_REF: reference to a module

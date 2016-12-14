@@ -9,7 +9,7 @@ MypyFile:1(
       Var(x))
     Block:1(
       ReturnStmt:1(
-        NameExpr(x [l]))))
+        NameExpr(x))))
   FuncDef:2(
     g
     Block:2(
@@ -102,11 +102,11 @@ MypyFile:1(
     f
     Block:1(
       ForStmt:2(
-        NameExpr(x* [l])
+        NameExpr(x*)
         NameExpr(f [__main__.f])
         Block:2(
           ExpressionStmt:3(
-            NameExpr(x [l])))))))
+            NameExpr(x)))))))
 
 [case testMultipleForIndexVars]
 for x, y in []:
@@ -149,12 +149,12 @@ MypyFile:1(
     f
     Block:1(
       ForStmt:2(
-        NameExpr(x* [l])
+        NameExpr(x*)
         ListExpr:2()
         Block:2(
           PassStmt:3()))
       ExpressionStmt:4(
-        NameExpr(x [l])))))
+        NameExpr(x)))))
 
 [case testReusingForLoopIndexVariable]
 for x in None:
@@ -186,12 +186,12 @@ MypyFile:1(
     f
     Block:1(
       ForStmt:2(
-        NameExpr(x* [l])
+        NameExpr(x*)
         NameExpr(None [builtins.None])
         Block:2(
           PassStmt:3()))
       ForStmt:4(
-        NameExpr(x [l])
+        NameExpr(x)
         NameExpr(None [builtins.None])
         Block:4(
           PassStmt:5())))))
@@ -417,10 +417,10 @@ MypyFile:1(
     f
     Block:1(
       AssignmentStmt:2(
-        NameExpr(x* [l])
+        NameExpr(x*)
         IntExpr(1))
       ExpressionStmt:3(
-        NameExpr(x [l])))))
+        NameExpr(x)))))
 
 [case testMultipleDefOnlySomeNew]
 x = 1
@@ -513,7 +513,7 @@ MypyFile:1(
       Var(x))
     Block:1(
       DelStmt:2(
-        NameExpr(x [l])))))
+        NameExpr(x)))))
 
 [case testDelMultipleThings]
 def f(x, y):
@@ -528,9 +528,9 @@ MypyFile:1(
     Block:1(
       DelStmt:2(
         TupleExpr:2(
-          NameExpr(x [l])
+          NameExpr(x)
           IndexExpr:2(
-            NameExpr(y [l])
+            NameExpr(y)
             IntExpr(0)))))))
 
 [case testDelMultipleThingsInvalid]
@@ -674,10 +674,10 @@ MypyFile:1(
         Expr(
           NameExpr(f [__main__.f]))
         Target(
-          NameExpr(x* [l]))
+          NameExpr(x*))
         Block:2(
           ExpressionStmt:3(
-            NameExpr(x [l])))))))
+            NameExpr(x)))))))
 
 [case testComplexWith]
 with object, object:
@@ -855,7 +855,7 @@ MypyFile:1(
         Block:2(
           PassStmt:3())
         NameExpr(object [builtins.object])
-        NameExpr(o* [l])
+        NameExpr(o*)
         Block:4(
           PassStmt:5())))))
 
@@ -877,11 +877,11 @@ MypyFile:1(
         Block:2(
           PassStmt:3())
         NameExpr(object [builtins.object])
-        NameExpr(o* [l])
+        NameExpr(o*)
         Block:4(
           PassStmt:5())
         NameExpr(object [builtins.object])
-        NameExpr(o [l])
+        NameExpr(o)
         Block:6(
           PassStmt:7())))))
 
@@ -909,17 +909,17 @@ MypyFile:1(
             Args(
               IntExpr(0))))
         Target(
-          NameExpr(a* [l]))
+          NameExpr(a*))
         Expr(
           CallExpr:4(
             NameExpr(f [__main__.f])
             Args(
-              NameExpr(a [l]))))
+              NameExpr(a))))
         Target(
-          NameExpr(b* [l]))
+          NameExpr(b*))
         Block:4(
           AssignmentStmt:5(
-            NameExpr(x* [l])
+            NameExpr(x*)
             TupleExpr:5(
-              NameExpr(a [l])
-              NameExpr(b [l]))))))))
+              NameExpr(a)
+              NameExpr(b))))))))

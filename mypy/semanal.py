@@ -51,14 +51,14 @@ from typing import (
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,
-    ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
+    ImportFrom, ImportAll, Block, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
-    FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
+    FuncExpr, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
@@ -285,7 +285,7 @@ class SemanticAnalyzer(NodeVisitor):
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn)
-                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                    self.type.names[defn.name()] = SymbolTableNode(GDEF, defn)
                 self.prepare_method_signature(defn)
             elif self.is_func_scope():
                 # Nested function
@@ -438,7 +438,7 @@ class SemanticAnalyzer(NodeVisitor):
         defn.type.line = defn.line
 
         if self.is_class_scope():
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
+            self.type.names[defn.name()] = SymbolTableNode(GDEF, defn,
                                                            typ=defn.type)
             defn.info = self.type
         elif self.is_func_scope():
@@ -738,7 +738,7 @@ class SemanticAnalyzer(NodeVisitor):
                 if base_expr.fullname == 'typing.NamedTuple':
                     node = self.lookup(defn.name, defn)
                     if node is not None:
-                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                        node.kind = GDEF
                         items, types = self.check_namedtuple_classdef(defn)
                         node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
                         return True
@@ -786,10 +786,7 @@ class SemanticAnalyzer(NodeVisitor):
             defn.info = TypeInfo(SymbolTable(), defn, self.cur_mod_id)
             defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
-            kind = MDEF
-            if self.is_func_scope():
-                kind = LDEF
-            self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
+            self.add_symbol(defn.name, SymbolTableNode(GDEF, defn.info), defn)
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.
@@ -1037,7 +1034,7 @@ class SemanticAnalyzer(NodeVisitor):
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
                                           import_node: ImportBase) -> bool:
-        if (existing_symbol.kind in (LDEF, GDEF, MDEF) and
+        if (existing_symbol.kind == GDEF and
                 isinstance(existing_symbol.node, (Var, FuncDef, TypeInfo))):
             # This is a valid import over an existing definition in the file. Construct a dummy
             # assignment that we'll use to type check the import.
@@ -1288,7 +1285,7 @@ class SemanticAnalyzer(NodeVisitor):
                 v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
-                lval.kind = LDEF
+                lval.kind = GDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
             elif not self.is_func_scope() and (self.type and
@@ -1300,9 +1297,9 @@ class SemanticAnalyzer(NodeVisitor):
                 v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
-                lval.kind = MDEF
+                lval.kind = GDEF
                 lval.fullname = lval.name
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+                self.type.names[lval.name] = SymbolTableNode(GDEF, v)
             else:
                 # Bind to an existing name.
                 if explicit_type:
@@ -1362,7 +1359,7 @@ class SemanticAnalyzer(NodeVisitor):
             v.is_ready = False
             lval.def_var = v
             lval.node = v
-            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            self.type.names[lval.name] = SymbolTableNode(GDEF, v)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -1433,7 +1430,6 @@ class SemanticAnalyzer(NodeVisitor):
         if node is None:
             self.fail("Could not find {} in current namespace".format(name), s)
             return
-        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
         node.kind = GDEF
         call.analyzed.info = node.node = newtype_class_info
 
@@ -1507,7 +1503,7 @@ class SemanticAnalyzer(NodeVisitor):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
-        info.names['__init__'] = SymbolTableNode(MDEF, init_func)
+        info.names['__init__'] = SymbolTableNode(GDEF, init_func)
 
         return info
 
@@ -1654,7 +1650,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid namedtuple definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined namedtuple
+        node.kind = GDEF
         node.node = named_tuple
 
     def check_namedtuple(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
@@ -1798,7 +1794,7 @@ class SemanticAnalyzer(NodeVisitor):
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            info.names[var.name()] = SymbolTableNode(MDEF, var)
+            info.names[var.name()] = SymbolTableNode(GDEF, var)
 
         vars = [Var(item, typ) for item, typ in zip(items, types)]
         for var in vars:
@@ -1834,9 +1830,9 @@ class SemanticAnalyzer(NodeVisitor):
                 v.is_classmethod = True
                 v.info = info
                 dec = Decorator(func, [NameExpr('classmethod')], v)
-                info.names[funcname] = SymbolTableNode(MDEF, dec)
+                info.names[funcname] = SymbolTableNode(GDEF, dec)
             else:
-                info.names[funcname] = SymbolTableNode(MDEF, func)
+                info.names[funcname] = SymbolTableNode(GDEF, func)
 
         add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
@@ -1873,7 +1869,7 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid TypedDict definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined TypedDict
+        node.kind = GDEF
         node.node = typed_dict
 
     def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
@@ -2012,12 +2008,12 @@ class SemanticAnalyzer(NodeVisitor):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
             if self.is_func_scope():
-                self.add_symbol(dec.var.name(), SymbolTableNode(LDEF, dec),
+                self.add_symbol(dec.var.name(), SymbolTableNode(GDEF, dec),
                                 dec)
             elif self.type:
                 dec.var.info = self.type
                 dec.var.is_initialized_in_class = True
-                self.add_symbol(dec.var.name(), SymbolTableNode(MDEF, dec),
+                self.add_symbol(dec.var.name(), SymbolTableNode(GDEF, dec),
                                 dec)
         if not no_type_check:
             dec.func.accept(self)
@@ -2707,7 +2703,7 @@ class SemanticAnalyzer(NodeVisitor):
         if name in self.locals[-1]:
             self.name_already_defined(name, ctx)
         node._fullname = name
-        self.locals[-1][name] = SymbolTableNode(LDEF, node)
+        self.locals[-1][name] = SymbolTableNode(GDEF, node)
 
     def add_exports(self, *exps: Expression) -> None:
         for exp in exps:
@@ -2884,25 +2880,25 @@ class FirstPass(NodeVisitor):
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        kind = self.kind_by_scope()
-        if kind == GDEF:
+        at_module = self.sem.is_module_scope()
+        if at_module:
             self.sem.check_no_global(func.name(), func, True)
         func._fullname = self.sem.qualified_name(func.name())
-        if kind == GDEF:
-            self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
+        if at_module:
+            self.sem.globals[func.name()] = SymbolTableNode(GDEF, func, self.sem.cur_mod_id)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
-        kind = self.kind_by_scope()
-        if kind == LDEF:
+        if self.sem.is_func_scope():
             return
-        elif kind == GDEF:
+        at_module = not self.sem.is_class_scope()
+        if at_module:
             self.sem.check_no_global(cdef.name, cdef)
         cdef.fullname = self.sem.qualified_name(cdef.name)
         info = TypeInfo(SymbolTable(), cdef, self.sem.cur_mod_id)
         info.set_line(cdef.line, cdef.column)
         cdef.info = info
-        if kind == GDEF:
-            self.sem.globals[cdef.name] = SymbolTableNode(kind, info, self.sem.cur_mod_id)
+        if at_module:
+            self.sem.globals[cdef.name] = SymbolTableNode(GDEF, info, self.sem.cur_mod_id)
         self.process_nested_classes(cdef)
 
     def process_nested_classes(self, outer_def: ClassDef) -> None:
@@ -2915,7 +2911,7 @@ class FirstPass(NodeVisitor):
                 else:
                     node.info._fullname = node.info.name()
                 node.fullname = node.info._fullname
-                symbol = SymbolTableNode(MDEF, node.info)
+                symbol = SymbolTableNode(GDEF, node.info)
                 outer_def.info.names[node.name] = symbol
                 self.process_nested_classes(node)
             elif isinstance(node, (ImportFrom, Import, ImportAll, IfStmt)):
@@ -2973,7 +2969,7 @@ class FirstPass(NodeVisitor):
 
     def visit_decorator(self, d: Decorator) -> None:
         d.var._fullname = self.sem.qualified_name(d.var.name())
-        self.sem.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d.var), d)
+        self.sem.add_symbol(d.var.name(), SymbolTableNode(GDEF, d.var), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
@@ -2989,16 +2985,6 @@ class FirstPass(NodeVisitor):
     def analyze_lvalue(self, lvalue: Lvalue, explicit_type: bool = False) -> None:
         self.sem.analyze_lvalue(lvalue, add_global=self.sem.is_module_scope(),
                                 explicit_type=explicit_type)
-
-    def kind_by_scope(self) -> int:
-        if self.sem.is_module_scope():
-            return GDEF
-        elif self.sem.is_class_scope():
-            return MDEF
-        elif self.sem.is_func_scope():
-            return LDEF
-        else:
-            assert False, "Couldn't determine scope"
 
 
 class ThirdPass(TraverserVisitor):

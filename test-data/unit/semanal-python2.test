@@ -60,12 +60,12 @@ MypyFile:1(
     Block:1(
       AssignmentStmt:1(
         TupleExpr:1(
-          NameExpr(y* [l])
-          NameExpr(z* [l]))
-        NameExpr(__tuple_arg_2 [l]))
+          NameExpr(y*)
+          NameExpr(z*))
+        NameExpr(__tuple_arg_2))
       AssignmentStmt:2(
-        NameExpr(x [l])
-        NameExpr(y [l])))))
+        NameExpr(x)
+        NameExpr(y)))))
 
 [case testBackquoteExpr_python2]
 `object`

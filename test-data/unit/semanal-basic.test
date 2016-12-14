@@ -81,8 +81,8 @@ MypyFile:1(
     Block:1(
       ExpressionStmt:2(
         TupleExpr:2(
-          NameExpr(x [l])
-          NameExpr(y [l]))))))
+          NameExpr(x)
+          NameExpr(y))))))
 
 [case testLocalVar]
 def f():
@@ -94,10 +94,10 @@ MypyFile:1(
     f
     Block:1(
       AssignmentStmt:2(
-        NameExpr(x* [l])
+        NameExpr(x*)
         IntExpr(1))
       ExpressionStmt:3(
-        NameExpr(x [l])))))
+        NameExpr(x)))))
 
 [case testAccessGlobalInFn]
 def f():
@@ -145,13 +145,13 @@ MypyFile:1(
       Var(y))
     Block:3(
       AssignmentStmt:4(
-        NameExpr(y [l])
+        NameExpr(y)
         IntExpr(1))
       AssignmentStmt:5(
-        NameExpr(z* [l])
+        NameExpr(z*)
         IntExpr(1))
       AssignmentStmt:6(
-        NameExpr(z [l])
+        NameExpr(z)
         IntExpr(2)))))
 
 [case testLocalAndGlobalAliasing]
@@ -169,10 +169,10 @@ MypyFile:1(
     f
     Block:2(
       AssignmentStmt:3(
-        NameExpr(x* [l])
+        NameExpr(x*)
         IntExpr(2))
       ExpressionStmt:4(
-        NameExpr(x [l]))))
+        NameExpr(x))))
   ExpressionStmt:5(
     NameExpr(x [__main__.x])))
 
@@ -188,16 +188,16 @@ MypyFile:1(
       Var(y))
     Init(
       AssignmentStmt:1(
-        NameExpr(x [l])
+        NameExpr(x)
         NameExpr(f [__main__.f]))
       AssignmentStmt:1(
-        NameExpr(y [l])
+        NameExpr(y)
         NameExpr(object [builtins.object])))
     Block:1(
       ExpressionStmt:2(
         TupleExpr:2(
-          NameExpr(x [l])
-          NameExpr(y [l]))))))
+          NameExpr(x)
+          NameExpr(y))))))
 
 [case testVarArgs]
 def f(x, *y):
@@ -213,8 +213,8 @@ MypyFile:1(
     Block:1(
       ExpressionStmt:2(
         TupleExpr:2(
-          NameExpr(x [l])
-          NameExpr(y [l]))))))
+          NameExpr(x)
+          NameExpr(y))))))
 
 [case testGlobalDecl]
 x = None
@@ -286,7 +286,7 @@ MypyFile:1(
     g
     Block:4(
       AssignmentStmt:5(
-        NameExpr(x* [l])
+        NameExpr(x*)
         NameExpr(None [builtins.None])))))
 
 [case testGlobalDeclScope]
@@ -309,7 +309,7 @@ MypyFile:1(
     g
     Block:4(
       AssignmentStmt:5(
-        NameExpr(x* [l])
+        NameExpr(x*)
         NameExpr(None [builtins.None])))))
 
 [case testGlobaWithinMethod]
@@ -334,7 +334,7 @@ MypyFile:1(
           x)
         AssignmentStmt:5(
           NameExpr(x [__main__.x])
-          NameExpr(self [l]))))))
+          NameExpr(self))))))
 
 [case testGlobalDefinedInBlock]
 if object:
@@ -371,7 +371,7 @@ MypyFile:1(
     g
     Block:1(
       AssignmentStmt:2(
-        NameExpr(x* [l])
+        NameExpr(x*)
         NameExpr(None [builtins.None]))
       FuncDef:3(
         f
@@ -379,10 +379,10 @@ MypyFile:1(
           NonlocalDecl:4(
             x)
           AssignmentStmt:5(
-            NameExpr(x [l])
+            NameExpr(x)
             NameExpr(None [builtins.None]))
           ExpressionStmt:6(
-            NameExpr(x [l])))))))
+            NameExpr(x)))))))
 
 [case testMultipleNamesInNonlocalDecl]
 def g():
@@ -397,8 +397,8 @@ MypyFile:1(
     Block:1(
       AssignmentStmt:2(
         TupleExpr:2(
-          NameExpr(x* [l])
-          NameExpr(y* [l]))
+          NameExpr(x*)
+          NameExpr(y*))
         TupleExpr:2(
           NameExpr(None [builtins.None])
           NameExpr(None [builtins.None])))
@@ -411,8 +411,8 @@ MypyFile:1(
             x
             y)
           AssignmentStmt:5(
-            NameExpr(x [l])
-            NameExpr(y [l])))))))
+            NameExpr(x)
+            NameExpr(y)))))))
 
 [case testNestedFunctions]
 def f(x):
@@ -432,13 +432,13 @@ MypyFile:1(
           Var(y))
         Block:2(
           AssignmentStmt:3(
-            NameExpr(z* [l])
+            NameExpr(z*)
             OpExpr:3(
               +
-              NameExpr(y [l])
-              NameExpr(x [l])))))
+              NameExpr(y)
+              NameExpr(x)))))
       ReturnStmt:4(
-        NameExpr(g [l])))))
+        NameExpr(g)))))
 
 [case testNestedFunctionWithOverlappingName]
 def f(x):
@@ -455,5 +455,5 @@ MypyFile:1(
         g
         Block:2(
           AssignmentStmt:3(
-            NameExpr(x* [l])
+            NameExpr(x*)
             IntExpr(1)))))))

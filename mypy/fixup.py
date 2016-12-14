@@ -5,8 +5,7 @@ from typing import Any, Dict, Optional
 from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
     TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
-    TypeVarExpr, ClassDef,
-    LDEF, MDEF, GDEF
+    TypeVarExpr, ClassDef, GDEF,
 )
 from mypy.types import (
     CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
@@ -27,7 +26,7 @@ def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
 
 def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
     for key, value in symtab.items():
-        if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
+        if value.kind == GDEF and isinstance(value.node, TypeInfo):
             info = value.node
             info.calculate_mro()
             assert info.mro, "No MRO calculated for %s" % (info.fullname(),)
