@@ -2030,8 +2030,10 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # Non-tuple iterable.
             self.check_subtype(iterable,
-                               self.named_generic_type('typing.Iterable', [AnyType()]),
+                               self.named_generic_type('typing.Iterable',
+                                                       [AnyType()]),
                                expr, messages.ITERABLE_EXPECTED)
+
             echk = self.expr_checker
             method = echk.analyze_external_member_access('__iter__', iterable,
                                                          expr)
