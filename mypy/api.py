@@ -1,5 +1,4 @@
-'''
-This module makes it possible to use mypy as part of a Python application.
+"""This module makes it possible to use mypy as part of a Python application.
 
 Since mypy still changes, the API was kept utterly simple and non-intrusive.
 It just mimics command line activation without starting a new interpreter.
@@ -27,15 +26,16 @@ if result[0]:
 if result[1]:
     print('\nError report:\n')
     print(result[1])  # stderr
-'''
+"""
 
 import sys
 from io import StringIO
+from typing import Tuple
 from mypy.main import main
 
 
-def run(params):
-    sys.argv = [None] + params.split()
+def run(params: str) -> Tuple[str, str]:
+    sys.argv = [''] + params.split()
 
     old_stdout = sys.stdout
     new_stdout = StringIO()
@@ -53,4 +53,4 @@ def run(params):
     sys.stdout = old_stdout
     sys.stderr = old_stderr
 
-    return(new_stdout.getvalue(), new_stderr.getvalue())
+    return new_stdout.getvalue(), new_stderr.getvalue() 
