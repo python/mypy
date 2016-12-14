@@ -110,6 +110,9 @@ class TypedDictTests(BaseTestCase):
             jane2 = pickle.loads(z)
             self.assertEqual(jane2, jane)
             self.assertEqual(jane2, {'name': 'jane', 'id': 37})
+            ZZ = pickle.dumps(EmpD, proto)
+            EmpDnew = pickle.loads(ZZ)
+            self.assertEqual(EmpDnew({'name': 'jane', 'id': 37}), jane)
 
 
 if __name__ == '__main__':

@@ -8,33 +8,43 @@ Example usage:
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
 import sys
-import types
+# _type_check is NOT a part of public typing API, it is used here only to mimic
+# the (convenient) behavior of types provided by typing module.
 from typing import _type_check  # type: ignore
 
 
 def _check_fails(cls, other):
     try:
         if sys._getframe(1).f_globals['__name__'] not in ['abc', 'functools']:
+            # Typed dicts are only for static structural subtyping.
             raise TypeError('TypedDict does not support instance and class checks')
     except (AttributeError, ValueError):
         pass
     return False
 
-def _dict_new(inst, cls, *args, **kwargs):
+def _dict_new(cls, *args, **kwargs):
     return dict(*args, **kwargs)
 
-def _typeddict_new(inst, cls, _typename, _fields=None, **kwargs):
+def _typeddict_new(cls, _typename, _fields=None, **kwargs):
     if _fields is None:
         _fields = kwargs
     elif kwargs:
-        raise TypeError("TypedDict takes either a dict or "
-                        "keyword arguments, but not both")
+        raise TypeError("TypedDict takes either a dict or keyword arguments,"
+                        " but not both")
     return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields)})
 
 class _TypedDictMeta(type):
     def __new__(cls, name, bases, ns):
+        # Create new typed dict class object.
+        # This method is called directly when TypedDict is subclassed,
+        # or via _typeddict_new when TypedDict is instantiated. This way
+        # TypedDict supports all three syntaxes described in its docstring.
+        # Subclasses and instanes of TypedDict return actual dictionaries
+        # via _dict_new.
+        ns['__new__'] = _typeddict_new if name == 'TypedDict' else _dict_new
         tp_dict = super(_TypedDictMeta, cls).__new__(cls, name, (dict,), ns)
         try:
+            # Setting correct module is necessary to make typed dict classes pickleable.
             tp_dict.__module__ = sys._getframe(2).f_globals.get('__name__', '__main__')
         except (AttributeError, ValueError):
             pass
@@ -44,10 +54,6 @@ class _TypedDictMeta(type):
         for base in bases:
             anns.update(base.__dict__.get('__annotations__', {}))
         tp_dict.__annotations__ = anns
-        if name == 'TypedDict':
-            tp_dict.__new__ = types.MethodType(_typeddict_new, tp_dict)
-        else:
-            tp_dict.__new__ = types.MethodType(_dict_new, tp_dict)
         return tp_dict
 
     __instancecheck__ = __subclasscheck__ = _check_fails
