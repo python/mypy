@@ -1947,22 +1947,9 @@ class TypeInfo(SymbolNode):
                 self.type_vars.append(vd.name)
 
     declared_metaclass_type = None  # type: Optional[mypy.types.Instance]
+    metaclass_type = None  # type: Optional[mypy.types.Instance]
 
-    @property
-    def metaclass_type(self) -> 'Optional[mypy.types.Instance]':
-        """ (From the docs)
-        The appropriate metaclass is determined as follows:
-        * if no bases and no explicit metaclass are given, then type() is used
-        * if an explicit metaclass is given and it is not an instance of type(),
-          then it is used directly as the metaclass
-        * if an instance of type() is given as the explicit metaclass, or bases are defined,
-          then the most derived metaclass is used
-
-        The most derived metaclass is selected from the explicitly specified metaclass (if any)
-        and the metaclasses (i.e. type(cls)) of all specified base classes.
-        The most derived metaclass is one which is a subtype of all of these candidate metaclasses.
-        If none of the candidate metaclasses meets that criterion, it is a TypeError.
-        """
+    def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         if self.mro is None:
             # XXX why does this happen?
             return None
@@ -1971,16 +1958,11 @@ class TypeInfo(SymbolNode):
             return declared
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
-        candidates = ({declared} | {s.metaclass_type for s in self.mro[1:]}) - {None}
+        candidates = {s.declared_metaclass_type for s in self.mro} - {None}
         for c in candidates:
-            if all(other in c.type.mro for other in candidates):
+            if all(other.type in c.type.mro for other in candidates):
                 return c
-        # TypeError
         return None
-
-    @metaclass_type.setter
-    def metaclass_type(self, value: 'mypy.types.Instance'):
-        self.declared_metaclass_type = value
 
     def is_metaclass(self) -> bool:
         return self.has_base('builtins.type')
