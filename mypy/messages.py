@@ -822,15 +822,15 @@ class MessageBuilder:
     def typeddict_item_name_must_be_string_literal(self,
                                                    typ: TypedDictType,
                                                    context: Context):
-        self.fail('Cannot prove expression is a valid item name. Expected one of {}.'.format(
-            list(typ.items.keys())), context)
+        self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
+            format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,
                                       typ: TypedDictType,
                                       item_name: str,
                                       context: Context):
-        self.fail('\'{}\' is not a valid item name. Expected one of {}.'.format(
-            item_name, list(typ.items.keys())), context)
+        self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
+            item_name, format_item_name_list(typ.items.keys())), context)
 
 
 def capitalize(s: str) -> str:
@@ -873,6 +873,14 @@ def format_string_list(s: Iterable[str]) -> str:
         return '%s and %s' % (', '.join(l[:-1]), l[-1])
     else:
         return '%s, ... and %s (%i methods suppressed)' % (', '.join(l[:2]), l[-1], len(l) - 3)
+
+
+def format_item_name_list(s: Iterable[str]) -> str:
+    l = list(s)
+    if len(l) <= 5:
+        return '[' + ', '.join(["'%s'" % name for name in l]) + ']'
+    else:
+        return '[' + ', '.join(["'%s'" % name for name in l[:5]]) + ', ...]'
 
 
 def callable_name(type: CallableType) -> str:
