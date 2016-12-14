@@ -913,7 +913,7 @@ class SemanticAnalyzer(NodeVisitor):
                 return
             inst = fill_typevars(sym.node)
             assert isinstance(inst, Instance)
-            defn.info.declared_metaclass_type = inst
+            defn.info.declared_metaclass = inst
             defn.info.metaclass_type = defn.info.calculate_metaclass_type()
             if defn.info.metaclass_type is None:
                 # Inconsistency may happen due to multiple baseclasses even in classes that

@@ -1946,19 +1946,19 @@ class TypeInfo(SymbolNode):
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
 
-    declared_metaclass_type = None  # type: Optional[mypy.types.Instance]
+    declared_metaclass = None  # type: Optional[mypy.types.Instance]
     metaclass_type = None  # type: Optional[mypy.types.Instance]
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         if self.mro is None:
             # XXX why does this happen?
             return None
-        declared = self.declared_metaclass_type
+        declared = self.declared_metaclass
         if declared is not None and not declared.type.has_base('builtins.type'):
             return declared
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
-        candidates = {s.declared_metaclass_type for s in self.mro} - {None}
+        candidates = {s.declared_metaclass for s in self.mro} - {None}
         for c in candidates:
             if all(other.type in c.type.mro for other in candidates):
                 return c
@@ -2081,7 +2081,8 @@ class TypeInfo(SymbolNode):
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
-                'declared_metaclass_type': self.declared_metaclass_type,
+                'declared_metaclass': (None if self.declared_metaclass is None
+                                       else self.declared_metaclass.serialize()),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2103,7 +2104,9 @@ class TypeInfo(SymbolNode):
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
                        else mypy.types.Type.deserialize(data['_promote']))
-        ti.declared_metaclass_type = data['declared_metaclass_type']
+        ti.declared_metaclass = (None if data['declared_metaclass'] is None
+                                 else mypy.types.Instance.deserialize(data['declared_metaclass']))
+        ti.metaclass_type = ti.calculate_metaclass_type()
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
