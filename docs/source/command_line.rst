@@ -9,12 +9,13 @@ flag (or its long form ``--help``)::
 
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
-              [-s] [--almost-silent] [--disallow-untyped-calls]
-              [--disallow-untyped-defs] [--check-untyped-defs]
-              [--disallow-subclassing-any] [--warn-incomplete-stub]
-              [--warn-redundant-casts] [--warn-no-return]
-              [--warn-unused-ignores] [--show-error-context] [--fast-parser]
-              [-i] [--cache-dir DIR] [--strict-optional]
+              [--ignore-missing-imports]
+              [--follow-imports {normal,silent,skip,error}]
+              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--check-untyped-defs] [--disallow-subclassing-any]
+              [--warn-incomplete-stub] [--warn-redundant-casts]
+              [--warn-no-return] [--warn-unused-ignores] [--show-error-context]
+              [--fast-parser] [-i] [--cache-dir DIR] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
@@ -125,6 +126,8 @@ reading flags (not files) from a file is to use a
 :ref:`configuration file <config-file>`.
 
 
+.. _finding-imports:
+
 How imports are found
 *********************
 
@@ -169,88 +172,89 @@ same directory on the search path, only the stub file is used.
 in the earlier directory is used.)
 
 NOTE: These rules are relevant to the following section too:
-the ``-s`` flag described below is applied _after_ the above algorithm
-has determined which package, stub or module to use.
+the ``--follow-imports`` flag described below is applied _after_ the
+above algorithm has determined which package, stub or module to use.
 
-.. _silent-imports:
+.. _follow-imports:
 
 Following imports or not?
 *************************
 
-When you're first attacking a large existing code base (without
-annotations) with mypy, you may only want it to type check selected
-files (for example, the files to which you have added annotations).
-While mypy's command line flags don't (yet) help you choose which
-files to type check, you *can* prevent it from type checking other files
-that may be imported from the files and/or packages you are explicitly
-passing on the command line.  For example, suppose your entire program
-consists of the files ``a.py`` and ``b.py``, and ``a.py`` contains
-``import b``.  Now let's say you have added annotations to ``a.py``
-but not yet to ``b.py``.  However, when you run::
+When you're first attacking a large existing codebase with mypy, you
+may only want to check selected files.  For example, you may only want
+to check those files to which you have already added annotations.
+This is easily accomplished using a shell pipeline like this::
 
-  $ mypy a.py
+  mypy $(find . -name \*.py | xargs grep -l '# type:')
 
-this will also type check ``b.py`` (because of the import).  There
-might be errors in ``b.py`` that you don't care to deal with right
-now.  In this case the ``-s`` flag (``--silent-imports``) is handy::
+(While there are many improvements possible to make this example more
+robust, this is not the place for a tutorial in shell programming.)
 
-  $ mypy -s a.py
+However, by default mypy doggedly tries to :ref:`follow imports
+<finding-imports>`.  This may cause several types of problems that you
+may want to silence during your initial conquest:
 
-will only type check ``a.py`` and ignore the ``import b``.  When you're
-ready to also type check ``b.py``, you can add it to the command line::
+- Your code may import library modules for which no stub files exist
+  yet.  This can cause a lot of errors like the following::
 
-  $ mypy -s a.py b.py
+    main.py:1: error: No library stub file for standard library module 'antigravity'
+    main.py:2: error: No library stub file for module 'flask'
+    main.py:3: error: Cannot find module named 'sir_not_appearing_in_this_film'
 
-or you can of course remove the ``-s`` from the command line::
+  If you see only a few of these you may be able to silence them by
+  putting ``# type: ignore`` on the respective ``import`` statements,
+  but it's usually easier to silence all such errors by using
+  :ref:`--ignore-missing-imports <ignore-missing-imports>`.
 
-  $ mypy a.py
+- Your project's directory structure may hinder mypy in finding
+  certain modules that are part of your project, e.g. modules hidden
+  away in a subdirectory that's not a package.  You can usually deal
+  with this by setting the ``MYPYPATH`` variable (see
+  :ref:`finding-imports`).
 
-However these are not quite equivalent!  If you keep the ``-s`` flag,
-any *other* imports in either ``a.py`` or ``b.py`` (say, ``import
-pylons``) will still be ignored silently.  On the other hand if you
-remove the ``-s`` flag, mypy will try to follow those imports and
-issue an error if the target module is not found.  Pick your poison!
+- When following imports mypy may find a module that's part of your
+  project but which you haven't annotated yet, mypy may report errors
+  for the top level code in that module (where the top level includes
+  class bodies and function/method default values).  Here the
+  ``--follow-imports`` flag comes in handy.
 
-The behavior of ``-s`` is actually a bit more subtle that that,
-though.  Even with ``-s``, an import that resolve to a stub file
-(i.e. a file with a ``.pyi`` extension) will always be followed.  In
-particular, this means that imports for which the typeshed package
-(see :ref:`library-stubs`) supplies a stub will still be followed.
-This is good, because it means mypy will always take the definitions
-in stubs into account when it type checks your code.  If mypy decides
-not to follow an import (because it leads to a ``.py`` file that
-wasn't specified on the command line), it will pretend the module
-object itself (and anything imported from it) has type ``Any`` which
-pretty much shuts up all uses.  While that's probably what you want
-when you're just getting started, it's also sometimes confusing.  For
-example, this code::
+The ``--follow-imports`` flag takes a mandatory string value that can
+take one of four values.  It only applies to modules for which a
+``.py`` file is found (but no corresponding ``.pyi`` stub file) and
+that are not given on the command line.  Passing a package or
+directory on the command line implies all modules in that package or
+directory.  The four possible values are:
 
-  from somewhere import BaseClass
+- ``normal`` (the default) follow imports normally and type check all
+  top level code (as well as the bodies of all functions and methods
+  with at least one type annotation in the signature).
 
-  class MyClass(BaseClass):
+- ``silent`` follow imports normally and even "type check" them
+  normally, but *suppress any error messages*. This is typically the
+  best option for a new codebase.
 
-      def finagle(self) -> int:
-          return super().finnagle() + 1
+- ``skip`` *don't* follow imports, silently replacing the module (and
+  everything imported *from* it) with an object of type ``Any``.
+  (This option used to be known as ``--silent-imports`` and while it
+  is very powerful it can also cause hard-to-debug errors, hence the
+  recommendation of using ``silent`` instead.)
 
-probably contains a subtle misspelling of the super method; however if
-``somewhere`` is ignored by ``-s``, the type of ``BaseClass`` will be
-``Any``, and mypy will assume there may in fact be a ``finnagle()``
-method, so it won't flag the error.
+- ``error`` the same behavior as ``skip`` but not quite as silent --
+  it flags the import as an error, like this::
 
-.. _almost-silent:
+    main.py:1: note: Import of 'submodule' ignored
+    main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
-For an effect similar to ``-s`` that's a little less silent you can
-use ``--almost-silent``.  This uses the same rules for deciding
-whether to check an imported module as ``-s``, but it will issue
-errors for those imports so that you can double-check whether maybe
-you should add another file to the command line.  This won't directly
-flag the error in the above fragment, but it will help you realize
-that ``BaseClass`` is not really imported.
 
 Additional command line flags
 *****************************
 
 Here are some more useful flags:
+
+.. _ignore-missing-imports:
+
+- ``--ignore-missing-imports`` suppresses error messages about imports
+  that cannot be resolved (see :ref:`follow-imports` for some examples).
 
 - ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
   types and ``None`` values. Without this option, mypy doesn't generally check the
@@ -284,12 +288,15 @@ Here are some more useful flags:
 .. _disallow-subclassing-any:
 
 - ``--disallow-subclassing-any`` reports an error whenever a class
-  inherits a value of type ``Any``. This often occurs when inheriting
-  a class that was imported from a module not typechecked by mypy while
-  using ``--silent-imports``. Since the module is silenced, the imported
-  class is given a type of ``Any``. By default, mypy will assume the
-  subclass correctly inherited the base class even though that may not
-  actually be the case. This flag makes mypy raise an error instead.
+  subclasses a value of type ``Any``.  This may occur when the base
+  class is imported from a module that doesn't exist (when using
+  :ref:`--ignore-missing-imports <ignore-missing-imports>`) or is
+  ignored due to :ref:`--follow-imports=skip <follow-imports>` or a
+  ``# type: ignore`` comment on the ``import`` statement.  Since the
+  module is silenced, the imported class is given a type of ``Any``.
+  By default mypy will assume that the subclass correctly inherited
+  the base class even though that may not actually be the case.  This
+  flag makes mypy raise an error instead.
 
 - ``--incremental`` is an experimental option that enables incremental
   type checking. When enabled, mypy caches results from previous runs
