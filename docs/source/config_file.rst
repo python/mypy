@@ -114,11 +114,26 @@ overridden by the pattern sections matching the module name.
    If multiple pattern sections match a module they are processed in
    unspecified order.
 
-- ``silent_imports`` (Boolean, default False) silences complaints
-  about :ref:`imports not found <silent-imports>`.
+- ``follow_imports`` (string, default ``normal``) directs what to do
+  with imports when the imported module is found as a ``.py`` file and
+  not part of the files, modules and packages on the command line.
+  The four possible values are ``normal``, ``silent``, ``skip`` and
+  ``error``.  For explanations see the discussion for the
+  :ref:`--follow-imports <follow-imports>` command line flag.  Note
+  that if pattern matching is used, the pattern should match the name
+  of the _imported_ module, not the module containing the import
+  statement.
 
-- ``almost_silent`` (Boolean, default False) is similar but
-  :ref:`slightly less silent <almost-silent>`.
+- ``ignore_missing_imports`` (Boolean, default False) suppress error
+  messages about imports that cannot be resolved.  Note that if
+  pattern matching is used, the pattern should match the name of the
+  _imported_ module, not the module containing the import statement.
+
+- ``silent_imports`` (Boolean, deprecated) equivalent to
+  ``follow_imports=skip`` plus ``ignore_missing_imports=True``.
+
+- ``almost_silent`` (Boolean, deprecated) equivalent to
+  ``follow_imports=skip``.
 
 - ``disallow_untyped_calls`` (Boolean, default False) disallows
   calling functions without type annotations from functions with type
