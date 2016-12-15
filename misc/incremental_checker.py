@@ -36,6 +36,7 @@ from typing import Any, Dict, List, Tuple
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
 import json
 import os
+import random
 import shutil
 import subprocess
 import sys
@@ -245,11 +246,17 @@ def test_repo(target_repo_url: str, temp_repo_path: str, target_file_path: str,
     # Stage 2: Get all commits we want to test
     if range_type == "last":
         start_commit = get_nth_commit(temp_repo_path, int(range_start))[0]
+    elif range_type == "random":
+        # Get N random commits (not in chronological order) from the last 100*N.
+        # TODO: Make the fraction parameterizable.
+        start_commit = get_nth_commit(temp_repo_path, 100 * int(range_start))[0]
     elif range_type == "commit":
         start_commit = range_start
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
+    if range_type == "random":
+        commits = random.sample(commits, int(range_start))
 
     # Stage 3: Find and cache expected results for each commit (without incremental mode)
     cache = load_cache(incremental_cache_path)
@@ -270,7 +277,7 @@ def main() -> None:
         description=__doc__,
         formatter_class=help_factory)
 
-    parser.add_argument("range_type", metavar="START_TYPE", choices=["last", "commit"],
+    parser.add_argument("range_type", metavar="START_TYPE", choices=["last", "random", "commit"],
                         help="must be one of 'last' or 'commit'")
     parser.add_argument("range_start", metavar="COMMIT_ID_OR_NUMBER",
                         help="the commit id to start from, or the number of "
