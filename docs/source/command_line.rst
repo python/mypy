@@ -375,8 +375,8 @@ For the remaining flags you can read the full ``mypy -h`` output.
 Integrating mypy into another Python application
 ************************************************
 
-It is possible to integrate mypy into another Python application by
-importing ``mypy.api`` and call the ``run`` function with exactly the string
+It is possible to integrate mypy into another Python 3 application by
+importing ``mypy.api`` and calling the ``run`` function with exactly the string
 you would have passed to mypy from the command line.
 
 Function ``run`` returns a tuple of strings:
