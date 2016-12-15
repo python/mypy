@@ -1,11 +1,11 @@
 """Type inference constraints."""
 
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
-    Instance, TupleType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
-    UninhabitedType, TypeType, TypeVarId, is_named_instance
+    Instance, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
+    DeletedType, UninhabitedType, TypeType, TypeVarId, is_named_instance
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
@@ -342,11 +342,27 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         else:
             return []
 
+    def visit_typeddict_type(self, template: TypedDictType) -> List[Constraint]:
+        actual = self.actual
+        if isinstance(actual, TypedDictType):
+            res = []  # type: List[Constraint]
+            # NOTE: Non-matching keys are ignored. Compatibility is checked
+            #       elsewhere so this shouldn't be unsafe.
+            for (item_name, template_item_type, actual_item_type) in template.zip(actual):
+                res.extend(infer_constraints(template_item_type,
+                                             actual_item_type,
+                                             self.direction))
+            return res
+        elif isinstance(actual, AnyType):
+            return self.infer_against_any(template.items.values())
+        else:
+            return []
+
     def visit_union_type(self, template: UnionType) -> List[Constraint]:
         assert False, ("Unexpected UnionType in ConstraintBuilderVisitor"
                        " (should have been handled in infer_constraints)")
 
-    def infer_against_any(self, types: List[Type]) -> List[Constraint]:
+    def infer_against_any(self, types: Iterable[Type]) -> List[Constraint]:
         res = []  # type: List[Constraint]
         for t in types:
             res.extend(infer_constraints(t, AnyType(), self.direction))

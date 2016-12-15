@@ -301,7 +301,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
-# --silent-imports or simply not found.
+# silent mode or simply not found.
 
 
 # Priorities used for imports.  (Here, top-level includes inside a class.)
@@ -451,7 +451,7 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module(id, self.lib_path) is not None
 
-    def parse_file(self, id: str, path: str, source: str) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
@@ -464,7 +464,7 @@ class BuildManager:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
-        self.errors.set_file_ignored_lines(path, tree.ignored_lines)
+        self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
@@ -481,7 +481,7 @@ class BuildManager:
         else:
             self.errors.report(line, 0, "Cannot find module named '{}'".format(id))
             self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
-                               'or using the "--silent-imports" flag would help)',
+                               'or using the "--ignore-missing-imports" flag would help)',
                                severity='note', only_once=True)
 
     def report_file(self, file: MypyFile, type_map: Dict[Expression, Type]) -> None:
@@ -1101,6 +1101,9 @@ class State:
     # Options, specialized for this file
     options = None  # type: Options
 
+    # Whether to ignore all errors
+    ignore_all = False
+
     def __init__(self,
                  id: Optional[str],
                  path: Optional[str],
@@ -1137,16 +1140,25 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path)
             if path:
-                # In silent mode, don't import .py files, except from stubs.
-                if (self.options.silent_imports and
-                        path.endswith('.py') and (caller_state or ancestor_for)):
-                    # (Never silence builtins, even if it's a .py file;
-                    # this can happen in tests!)
-                    if (id != 'builtins' and
-                        not ((caller_state and
-                              caller_state.tree and
-                              caller_state.tree.is_stub))):
-                        if self.options.almost_silent:
+                # For non-stubs, look at options.follow_imports:
+                # - normal (default) -> fully analyze
+                # - silent -> analyze but silence errors
+                # - skip -> don't analyze, make the type Any
+                follow_imports = self.options.follow_imports
+                if (follow_imports != 'normal'
+                    and path.endswith('.py')  # Stubs are always normal
+                    and id != 'builtins'  # Builtins is always normal
+                    and not (caller_state and
+                             caller_state.tree and
+                             caller_state.tree.is_stub)):
+                    if follow_imports == 'silent':
+                        # Still import it, but silence non-blocker errors.
+                        manager.log("Silencing %s (%s)" % (path, id))
+                        self.ignore_all = True
+                    else:
+                        # In 'error' mode, produce special error messages.
+                        manager.log("Skipping %s (%s)" % (path, id))
+                        if follow_imports == 'error':
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
                             else:
@@ -1159,9 +1171,7 @@ class State:
                 # misspelled module name, missing stub, module not in
                 # search path or the module has not been installed.
                 if caller_state:
-                    suppress_message = (self.options.silent_imports
-                                        and not self.options.almost_silent)
-                    if not suppress_message:
+                    if not self.options.ignore_missing_imports:
                         save_import_context = manager.errors.import_context()
                         manager.errors.set_import_context(caller_state.import_context)
                         manager.module_not_found(caller_state.xpath, caller_line, id)
@@ -1207,11 +1217,10 @@ class State:
         manager = self.manager
         manager.errors.set_import_context([])
         manager.errors.set_file(ancestor_for.xpath)
-        manager.errors.report(-1, -1, "Ancestor package '%s' silently ignored" % (id,),
+        manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
-        manager.errors.report(-1, -1, "(Using --silent-imports, submodule passed on command line)",
-                              severity='note', only_once=True)
-        manager.errors.report(-1, -1, "(This note brought to you by --almost-silent)",
+        manager.errors.report(-1, -1,
+                              "(Using --follow-imports=error, submodule passed on command line)",
                               severity='note', only_once=True)
 
     def skipping_module(self, id: str, path: str) -> None:
@@ -1222,12 +1231,10 @@ class State:
         manager.errors.set_file(self.caller_state.xpath)
         line = self.caller_line
         manager.errors.report(line, 0,
-                              "Import of '%s' silently ignored" % (id,),
+                              "Import of '%s' ignored" % (id,),
                               severity='note')
         manager.errors.report(line, 0,
-                              "(Using --silent-imports, module not passed on command line)",
-                              severity='note', only_once=True)
-        manager.errors.report(line, 0, "(This note courtesy of --almost-silent)",
+                              "(Using --follow-imports=error, module not passed on command line)",
                               severity='note', only_once=True)
         manager.errors.set_import_context(save_import_context)
 
@@ -1244,7 +1251,7 @@ class State:
         """Return whether the cache data for this file is fresh."""
         # NOTE: self.dependencies may differ from
         # self.meta.dependencies when a dependency is dropped due to
-        # suppression by --silent-imports.  However when a suppressed
+        # suppression by silent mode.  However when a suppressed
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.is_interface_fresh()
@@ -1303,24 +1310,25 @@ class State:
         fixup_module_pass_two(self.tree, self.manager.modules)
 
     def fix_suppressed_dependencies(self, graph: Graph) -> None:
-        """Corrects whether dependencies are considered stale or not when using silent_imports.
+        """Corrects whether dependencies are considered stale in silent mode.
 
-        This method is a hack to correct imports in silent_imports + incremental mode.
+        This method is a hack to correct imports in silent mode + incremental mode.
         In particular, the problem is that when running mypy with a cold cache, the
         `parse_file(...)` function is called *at the start* of the `load_graph(...)` function.
         Note that load_graph will mark some dependencies as suppressed if they weren't specified
-        on the command line in silent_imports mode.
+        on the command line in silent mode.
 
         However, if the interface for a module is changed, parse_file will be called within
         `process_stale_scc` -- *after* load_graph is finished, wiping out the changes load_graph
         previously made.
 
         This method is meant to be run after parse_file finishes in process_stale_scc and will
-        recompute what modules should be considered suppressed in silent_import mode.
+        recompute what modules should be considered suppressed in silent mode.
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
-        silent_mode = self.options.silent_imports or self.options.almost_silent
+        silent_mode = (self.options.ignore_missing_imports or
+                       self.options.follow_imports == 'skip')
         if not silent_mode:
             return
 
@@ -1360,7 +1368,8 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            self.tree = manager.parse_file(self.id, self.xpath, source)
+            self.tree = manager.parse_file(self.id, self.xpath, source,
+                                           self.ignore_all or self.options.ignore_errors)
 
         modules[self.id] = self.tree
 
@@ -1413,7 +1422,7 @@ class State:
         # NOTE: What to do about race conditions (like editing the
         # file while mypy runs)?  A previous version of this code
         # explicitly checked for this, but ran afoul of other reasons
-        # for differences (e.g. --silent-imports).
+        # for differences (e.g. silent mode).
         self.dependencies = dependencies
         self.suppressed = suppressed
         self.priorities = priorities
@@ -1509,10 +1518,69 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
     manager.log("Loaded graph with %d nodes" % len(graph))
+    if manager.options.dump_graph:
+        dump_graph(graph)
+        return
     process_graph(graph, manager)
     if manager.options.warn_unused_ignores:
         # TODO: This could also be a per-module option.
         manager.errors.generate_unused_ignore_notes()
+
+
+class NodeInfo:
+    """Some info about a node in the graph of SCCs."""
+
+    def __init__(self, index: int, scc: List[str]) -> None:
+        self.node_id = "n%d" % index
+        self.scc = scc
+        self.sizes = {}  # type: Dict[str, int]  # mod -> size in bytes
+        self.deps = {}  # type: Dict[str, int]  # node_id -> pri
+
+    def dumps(self) -> str:
+        """Convert to JSON string."""
+        total_size = sum(self.sizes.values())
+        return "[%s, %s, %s,\n     %s,\n     %s]" % (json.dumps(self.node_id),
+                                                     json.dumps(total_size),
+                                                     json.dumps(self.scc),
+                                                     json.dumps(self.sizes),
+                                                     json.dumps(self.deps))
+
+
+def dump_graph(graph: Graph) -> None:
+    """Dump the graph as a JSON string to stdout.
+
+    This copies some of the work by process_graph()
+    (sorted_components() and order_ascc()).
+    """
+    nodes = []
+    sccs = sorted_components(graph)
+    for i, ascc in enumerate(sccs):
+        scc = order_ascc(graph, ascc)
+        node = NodeInfo(i, scc)
+        nodes.append(node)
+    inv_nodes = {}  # module -> node_id
+    for node in nodes:
+        for mod in node.scc:
+            inv_nodes[mod] = node.node_id
+    for node in nodes:
+        for mod in node.scc:
+            state = graph[mod]
+            size = 0
+            if state.path:
+                try:
+                    size = os.path.getsize(state.path)
+                except os.error:
+                    pass
+            node.sizes[mod] = size
+            for dep in state.dependencies:
+                if dep in state.priorities:
+                    pri = state.priorities[dep]
+                    if dep in inv_nodes:
+                        dep_id = inv_nodes[dep]
+                        if (dep_id != node.node_id and
+                                (dep_id not in node.deps or pri < node.deps[dep_id])):
+                            node.deps[dep_id] = pri
+    print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:

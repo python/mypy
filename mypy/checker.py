@@ -45,7 +45,7 @@ from mypy.subtypes import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
@@ -181,6 +181,9 @@ class TypeChecker(NodeVisitor[Type]):
         if all_ is not None and all_.type is not None:
             seq_str = self.named_generic_type('typing.Sequence',
                                               [self.named_type('builtins.str')])
+            if self.options.python_version[0] < 3:
+                seq_str = self.named_generic_type('typing.Sequence',
+                                                  [self.named_type('builtins.unicode')])
             if not is_subtype(all_.type, seq_str):
                 str_seq_s, all_s = self.msg.format_distinctly(seq_str, all_.type)
                 self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
@@ -668,7 +671,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         # Skip a docstring
         if (isinstance(body[0], ExpressionStmt) and
-                isinstance(body[0].expr, StrExpr)):
+                isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
             body = block.body[1:]
 
         if len(body) == 0:
@@ -1146,6 +1149,11 @@ class TypeChecker(NodeVisitor[Type]):
                         not new_syntax):
                     # Allow None's to be assigned to class variables with non-Optional types.
                     rvalue_type = lvalue_type
+                elif (isinstance(lvalue, MemberExpr) and
+                        lvalue.kind is None):  # Ignore member access to modules
+                    instance_type = self.accept(lvalue.expr)
+                    rvalue_type, infer_lvalue_type = self.check_member_assignment(
+                        instance_type, lvalue_type, rvalue, lvalue)
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
@@ -1430,6 +1438,7 @@ class TypeChecker(NodeVisitor[Type]):
         """
         if var and not self.current_node_deferred:
             var.type = type
+            var.is_inferred = True
             self.store_type(lvalue, type)
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type,
@@ -1474,6 +1483,60 @@ class TypeChecker(NodeVisitor[Type]):
                                    '{} has type'.format(rvalue_name),
                                    '{} has type'.format(lvalue_name))
             return rvalue_type
+
+    def check_member_assignment(self, instance_type: Type, attribute_type: Type,
+                                rvalue: Expression, context: Context) -> Tuple[Type, bool]:
+        """Type member assigment.
+
+        This is defers to check_simple_assignment, unless the member expression
+        is a descriptor, in which case this checks descriptor semantics as well.
+
+        Return the inferred rvalue_type and whether to infer anything about the attribute type
+        """
+        # Descriptors don't participate in class-attribute access
+        if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
+                isinstance(instance_type, TypeType)):
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            return rvalue_type, True
+
+        if not isinstance(attribute_type, Instance):
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            return rvalue_type, True
+
+        if not attribute_type.type.has_readable_member('__set__'):
+            # If there is no __set__, we type-check that the assigned value matches
+            # the return type of __get__. This doesn't match the python semantics,
+            # (which allow you to override the descriptor with any value), but preserves
+            # the type of accessing the attribute (even after the override).
+            if attribute_type.type.has_readable_member('__get__'):
+                attribute_type = self.expr_checker.analyze_descriptor_access(
+                    instance_type, attribute_type, context)
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            return rvalue_type, True
+
+        dunder_set = attribute_type.type.get_method('__set__')
+        if dunder_set is None:
+            self.msg.fail("{}.__set__ is not callable".format(attribute_type), context)
+            return AnyType(), False
+
+        function = function_type(dunder_set, self.named_type('builtins.function'))
+        bound_method = bind_self(function, attribute_type)
+        typ = map_instance_to_supertype(attribute_type, dunder_set.info)
+        dunder_set_type = expand_type_by_instance(bound_method, typ)
+
+        _, inferred_dunder_set_type = self.expr_checker.check_call(
+            dunder_set_type, [TempNode(instance_type), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS], context)
+
+        if not isinstance(inferred_dunder_set_type, CallableType):
+            self.fail("__set__ is not callable", context)
+            return AnyType(), True
+
+        if len(inferred_dunder_set_type.arg_types) < 2:
+            # A message already will have been recorded in check_call
+            return AnyType(), False
+
+        return inferred_dunder_set_type.arg_types[1], False
 
     def check_indexed_assignment(self, lvalue: IndexExpr,
                                  rvalue: Expression, context: Context) -> None:
@@ -2398,6 +2461,7 @@ class TypeChecker(NodeVisitor[Type]):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
+
 
 TypeMap = Optional[Dict[Expression, Type]]
 

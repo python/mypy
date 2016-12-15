@@ -69,9 +69,7 @@ def f(x: AB) -> AB:
 def g(x: AB) -> AB:
     return x.g() # Error
 [out]
-main: note: In function "f":
 main:10: error: Incompatible return value type (got "A", expected "B")
-main: note: In function "g":
 main:12: error: Incompatible return value type (got "B", expected "A")
 
 [case testTypeInferenceAndTypeVarValues]
@@ -90,7 +88,6 @@ def f(x: AB) -> AB:
     else:
         return y.g() # E: Incompatible return value type (got "B", expected "A")
 [out]
-main: note: In function "f":
 
 [case testTypeDeclaredBasedOnTypeVarWithValues]
 from typing import TypeVar
@@ -103,7 +100,6 @@ def f(x: T) -> T:
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [out]
-main: note: In function "f":
 
 [case testIsinstanceAndTypeVarValues]
 from typing import TypeVar
@@ -120,7 +116,6 @@ def h(x: T) -> T:
     return x
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "h":
 
 [case testIsinstanceAndTypeVarValues2]
 from typing import TypeVar
@@ -138,7 +133,6 @@ def g(x: T) -> T:
     return x
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "g":
 
 [case testIsinstanceAndTypeVarValues3]
 from typing import TypeVar
@@ -162,7 +156,6 @@ def f(x: T) -> T:
     return y # E: Incompatible return value type (got "object", expected "str")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceAndTypeVarValues5]
 from typing import TypeVar
@@ -175,7 +168,6 @@ def f(x: T) -> T:
     return y # E: Incompatible return value type (got "object", expected "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues]
 from typing import TypeVar
@@ -199,7 +191,6 @@ def g(x: S) -> None:
         x = y
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues2]
 from typing import TypeVar
@@ -218,7 +209,6 @@ def f(x: T) -> None:
         x = S() # E: Incompatible types in assignment (expression has type "S", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
 [case testTypeVarValuesAndNestedCalls]
 from typing import TypeVar
@@ -263,9 +253,7 @@ def g(x: Y) -> None:
 def h(x: Z) -> None:
     a = None  # type: D[Z]
 [out]
-main: note: In function "g":
 main:11: error: Invalid type argument value for "D"
-main: note: In function "h":
 main:13: error: Type variable "Z" not valid as type argument value for "D"
 
 [case testGenericTypeWithTypevarValuesAndSubtypePromotion]
@@ -298,7 +286,6 @@ class C(Generic[X]):
         x.g(1) # E: Argument 1 to "g" of "B" has incompatible type "int"; expected "str"
         x.h(1) # E: Argument 1 to "h" of "A" has incompatible type "int"; expected "str"
 [out]
-main: note: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues1]
 from typing import TypeVar, Generic
@@ -309,7 +296,6 @@ class C(Generic[X]):
         self.x = x
         self.x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [out]
-main: note: In member "f" of class "C":
 
 [case testAttributeInGenericTypeWithTypevarValues2]
 from typing import TypeVar, Generic
@@ -343,7 +329,6 @@ class C(Generic[X, Y]):
     def f(self, x: X, y: Y) -> None:
         x.f(y)
 [out]
-main: note: In member "f" of class "C":
 main:10: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 main:10: error: Argument 1 to "f" of "B" has incompatible type "int"; expected "str"
 
@@ -384,7 +369,6 @@ def f(x: X, y: Y, z: int) -> None:
     z = y # Error
     y.foo # Error
 [out]
-main: note: In function "f":
 main:8: error: Type argument 1 of "C" has incompatible value "X"
 main:9: error: Incompatible types in assignment (expression has type "X", variable has type "int")
 main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -436,7 +420,6 @@ class C(A[str]):
     def f(self) -> int: # E: Return type of "f" incompatible with supertype "A"
         pass
 [out]
-main: note: In class "C":
 
 [case testDefaultArgumentValueInGenericClassWithTypevarValues]
 from typing import TypeVar, Generic
@@ -462,7 +445,6 @@ def g(x: int) -> int: return x
 @overload
 def g(x: str) -> str: return x
 [out]
-main: note: In function "f":
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "int")
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "str")
 
@@ -496,7 +478,6 @@ def outer(x: T) -> T:
     outer(3)
     return x
 [out]
-main: note: In function "outer":
 
 [case testInnerFunctionMutualRecursionWithTypevarValues]
 from typing import TypeVar
@@ -508,4 +489,11 @@ def outer(x: T) -> T:
         return inner1('a') # E: Argument 1 to "inner1" has incompatible type "str"; expected "int"
     return inner1(x)
 [out]
-main: note: In function "inner2":
+
+[case testClassMemberTypeVarInFunctionBody]
+from typing import TypeVar
+class C:
+    T = TypeVar('T', int)
+    def f(self, x: T) -> T:
+        A = C.T
+        return x

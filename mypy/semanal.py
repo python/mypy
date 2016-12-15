@@ -43,6 +43,7 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
+from collections import OrderedDict
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
@@ -59,7 +60,7 @@ from mypy.nodes import (
     SymbolTableNode, BOUND_TVAR, UNBOUND_TVAR, ListComprehension, GeneratorExpr,
     FuncExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
@@ -71,14 +72,16 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef,
-    TupleType, UnionType, StarType, EllipsisType, function_type)
+    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
+    TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
+)
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 from mypy.options import Options
+from mypy import join
 
 
 T = TypeVar('T')
@@ -905,6 +908,9 @@ class SemanticAnalyzer(NodeVisitor):
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
 
+    def str_type(self) -> Instance:
+        return self.named_type('__builtins__.str')
+
     def class_type(self, info: TypeInfo) -> Type:
         # Construct a function type whose fallback is cls.
         from mypy import checkmember  # To avoid import cycle.
@@ -1090,7 +1096,8 @@ class SemanticAnalyzer(NodeVisitor):
                                 name, existing_symbol, node, i):
                             continue
                     self.add_symbol(name, SymbolTableNode(node.kind, node.node,
-                                                          self.cur_mod_id), i)
+                                                          self.cur_mod_id,
+                                                          node.type_override), i)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -1260,6 +1267,7 @@ class SemanticAnalyzer(NodeVisitor):
             if (add_global or nested_global) and lval.name not in self.globals:
                 # Define new global name.
                 v = Var(lval.name)
+                v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
@@ -1277,6 +1285,7 @@ class SemanticAnalyzer(NodeVisitor):
                   lval.name not in self.nonlocal_decls[-1]):
                 # Define new local name.
                 v = Var(lval.name)
+                v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = LDEF
@@ -1348,6 +1357,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Implicit attribute definition in __init__.
             lval.is_def = True
             v = Var(lval.name)
+            v.set_line(lval)
             v.info = self.type
             v.is_ready = False
             lval.def_var = v
@@ -1671,14 +1681,18 @@ class SemanticAnalyzer(NodeVisitor):
         if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name or self.is_func_scope():
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_namedtuple_typeinfo(name, items, types)
+        # Store it as a global just in case it would remain anonymous.
+        # (Or in the nearest class if there is one.)
+        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        if self.type:
+            self.type.names[name] = stnode
         else:
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name:
-                # Give it a unique name derived from the line number.
-                name += '@' + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, items, types)
-            # Store it as a global just in case it would remain anonymous.
-            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            self.globals[name] = stnode
         call.analyzed = NamedTupleExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -1723,7 +1737,7 @@ class SemanticAnalyzer(NodeVisitor):
             types = [AnyType() for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail("namedtuple() Field names cannot start with an underscore: "
+            self.fail("namedtuple() field names cannot start with an underscore: "
                       + ', '.join(underscore), call)
         return items, types, ok
 
@@ -1766,7 +1780,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
                                   types: List[Type]) -> TypeInfo:
-        strtype = self.named_type('__builtins__.str')  # type: Type
+        strtype = self.str_type()
         basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
         dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
                    or self.object_type())
@@ -1799,34 +1813,44 @@ class SemanticAnalyzer(NodeVisitor):
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
-        # TODO: SelfType should be bind to actual 'self'
-        this_type = fill_typevars(info)
+        tvd = TypeVarDef('NT', 1, [], info.tuple_type)
+        selftype = TypeVarType(tvd)
 
         def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
                        is_classmethod=False) -> None:
-            if not is_classmethod:
-                args = [Argument(Var('self'), this_type, None, ARG_POS)] + args
+            if is_classmethod:
+                first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
+            else:
+                first = [Argument(Var('self'), selftype, None, ARG_POS)]
+            args = first + args
+
             types = [arg.type_annotation for arg in args]
             items = [arg.variable.name() for arg in args]
             arg_kinds = [arg.kind for arg in args]
             signature = CallableType(types, arg_kinds, items, ret, function_type,
                                      name=name or info.name() + '.' + funcname)
-            signature.is_classmethod_class = is_classmethod
+            signature.variables = [tvd]
             func = FuncDef(funcname, args, Block([]), typ=signature)
             func.info = info
             func.is_class = is_classmethod
-            info.names[funcname] = SymbolTableNode(MDEF, func)
+            if is_classmethod:
+                v = Var(funcname, signature)
+                v.is_classmethod = True
+                v.info = info
+                dec = Decorator(func, [NameExpr('classmethod')], v)
+                info.names[funcname] = SymbolTableNode(MDEF, dec)
+            else:
+                info.names[funcname] = SymbolTableNode(MDEF, func)
 
-        add_method('_replace', ret=this_type,
-                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED) for var in vars])
+        add_method('_replace', ret=selftype,
+                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
         add_method('__init__', ret=NoneTyp(), name=info.name(),
                    args=[Argument(var, var.type, None, ARG_POS) for var in vars])
         add_method('_asdict', args=[], ret=ordereddictype)
-        # FIX: make it actual class method
-        add_method('_make', ret=this_type, is_classmethod=True,
+        add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
-                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED),
-                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED)])
+                         Argument(Var('new'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT),
+                         Argument(Var('len'), AnyType(), EllipsisExpr(), ARG_NAMED_OPT)])
         return info
 
     def make_argument(self, name: str, type: Type) -> Argument:
@@ -1853,8 +1877,9 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid TypedDict definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined TypedDict
-        node.node = typed_dict
+        if node:
+            node.kind = GDEF   # TODO locally defined TypedDict
+            node.node = typed_dict
 
     def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a TypedDict.
@@ -1880,14 +1905,18 @@ class SemanticAnalyzer(NodeVisitor):
         if not ok:
             # Error. Construct dummy return value.
             return self.build_typeddict_typeinfo('TypedDict', [], [])
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name or self.is_func_scope():
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_typeddict_typeinfo(name, items, types)
+        # Store it as a global just in case it would remain anonymous.
+        # (Or in the nearest class if there is one.)
+        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        if self.type:
+            self.type.names[name] = stnode
         else:
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name:
-                # Give it a unique name derived from the line number.
-                name += '@' + str(call.line)
-            info = self.build_typeddict_typeinfo(name, items, types)
-            # Store it as a global just in case it would remain anonymous.
-            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            self.globals[name] = stnode
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -1911,6 +1940,10 @@ class SemanticAnalyzer(NodeVisitor):
                 "TypedDict() expects a dictionary literal as the second argument", call)
         dictexpr = args[1]
         items, types, ok = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        underscore = [item for item in items if item.startswith('_')]
+        if underscore:
+            self.fail("TypedDict() item names cannot start with an underscore: "
+                      + ', '.join(underscore), call)
         return items, types, ok
 
     def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
@@ -1936,17 +1969,13 @@ class SemanticAnalyzer(NodeVisitor):
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type]) -> TypeInfo:
-        strtype = self.named_type('__builtins__.str')  # type: Type
-        dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
-                   or self.object_type())
-        fallback = dictype
+        mapping_value_type = join.join_type_list(types)
+        fallback = (self.named_type_or_none('typing.Mapping',
+                                            [self.str_type(), mapping_value_type])
+                    or self.object_type())
 
         info = self.basic_new_typeinfo(name, fallback)
-        info.is_typed_dict = True
-
-        # (TODO: Store {items, types} inside "info" somewhere for use later.
-        #        Probably inside a new "info.keys" field which
-        #        would be analogous to "info.names".)
+        info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
 
         return info
 
@@ -2629,7 +2658,11 @@ class SemanticAnalyzer(NodeVisitor):
         return n.names.get(parts[-1])
 
     def qualified_name(self, n: str) -> str:
-        return self.cur_mod_id + '.' + n
+        if self.type is not None:
+            base = self.type._fullname
+        else:
+            base = self.cur_mod_id
+        return base + '.' + n
 
     def enter(self) -> None:
         self.locals.append(SymbolTable())

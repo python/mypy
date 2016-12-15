@@ -2,6 +2,7 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from mypy.sharedparse import special_function_elide_names, argument_elide_name
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -15,7 +16,7 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType,
@@ -261,7 +262,10 @@ class ASTConverter(ast35.NodeTransformer):
         args = self.transform_args(n.args, n.lineno)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]
+        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
+        if special_function_elide_names(n.name):
+            arg_names = [None] * len(arg_names)
         arg_types = None  # type: List[Type]
         if n.type_comment is not None:
             try:
@@ -356,14 +360,12 @@ class ASTConverter(ast35.NodeTransformer):
         if args.vararg is not None:
             new_args.append(make_argument(args.vararg, None, ARG_STAR))
 
-        num_no_kw_defaults = len(args.kwonlyargs) - len(args.kw_defaults)
-        # keyword-only arguments without defaults
-        for a in args.kwonlyargs[:num_no_kw_defaults]:
-            new_args.append(make_argument(a, None, ARG_NAMED))
-
         # keyword-only arguments with defaults
-        for a, d in zip(args.kwonlyargs[num_no_kw_defaults:], args.kw_defaults):
-            new_args.append(make_argument(a, d, ARG_NAMED))
+        for a, d in zip(args.kwonlyargs, args.kw_defaults):
+            new_args.append(make_argument(
+                a,
+                d,
+                ARG_NAMED if d is None else ARG_NAMED_OPT))
 
         # **kwarg
         if args.kwarg is not None:

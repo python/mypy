@@ -1,10 +1,11 @@
 """Calculation of the least upper bound types (joins)."""
 
-from typing import List
+from collections import OrderedDict
+from typing import cast, List
 
 from mypy.types import (
     Type, AnyType, NoneTyp, Void, TypeVisitor, Instance, UnboundType,
-    ErrorType, TypeVarType, CallableType, TupleType, ErasedType, TypeList,
+    ErrorType, TypeVarType, CallableType, TupleType, TypedDictType, ErasedType, TypeList,
     UnionType, FunctionLike, Overloaded, PartialType, DeletedType,
     UninhabitedType, TypeType, true_or_false
 )
@@ -170,6 +171,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             return join_types(t, self.s.fallback)
         elif isinstance(self.s, TypeType):
             return join_types(t, self.s)
+        elif isinstance(self.s, TypedDictType):
+            return join_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -234,10 +237,24 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             items = []  # type: List[Type]
             for i in range(t.length()):
                 items.append(self.join(t.items[i], self.s.items[i]))
-            # join fallback types if they are different
             fallback = join_instances(self.s.fallback, t.fallback)
             assert isinstance(fallback, Instance)
             return TupleType(items, fallback)
+        else:
+            return self.default(self.s)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if isinstance(self.s, TypedDictType):
+            items = OrderedDict([
+                (item_name, s_item_type)
+                for (item_name, s_item_type, t_item_type) in self.s.zip(t)
+                if is_equivalent(s_item_type, t_item_type)
+            ])
+            mapping_value_type = join_type_list(list(items.values()))
+            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            return TypedDictType(items, fallback)
+        elif isinstance(self.s, Instance):
+            return join_instances(self.s, t.fallback)
         else:
             return self.default(self.s)
 
@@ -265,6 +282,8 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(typ, Void) or isinstance(typ, ErrorType):
             return ErrorType()
         elif isinstance(typ, TupleType):
+            return self.default(typ.fallback)
+        elif isinstance(typ, TypedDictType):
             return self.default(typ.fallback)
         elif isinstance(typ, FunctionLike):
             return self.default(typ.fallback)

@@ -44,6 +44,10 @@ class BaseTestCase(TestCase):
                 message += ' : %s' % msg
             raise self.failureException(message)
 
+    def clear_caches(self):
+        for f in typing._cleanups:
+            f()
+
 
 class Employee(object):
     pass
@@ -375,6 +379,14 @@ class CallableTests(BaseTestCase):
         with self.assertRaises(TypeError):
             type(c)()
 
+    def test_callable_wrong_forms(self):
+        with self.assertRaises(TypeError):
+            Callable[(), int]
+        with self.assertRaises(TypeError):
+            Callable[[()], int]
+        with self.assertRaises(TypeError):
+            Callable[[int, 1], 2]
+
     def test_callable_instance_works(self):
         def f():
             pass
@@ -472,7 +484,13 @@ class ProtocolTests(BaseTestCase):
     def test_protocol_instance_type_error(self):
         with self.assertRaises(TypeError):
             isinstance(0, typing.SupportsAbs)
-
+        class C1(typing.SupportsInt):
+            def __int__(self):
+                return 42
+        class C2(C1):
+            pass
+        c = C2()
+        self.assertIsInstance(c, C1)
 
 class GenericTests(BaseTestCase):
 
@@ -707,11 +725,14 @@ class GenericTests(BaseTestCase):
                          'Callable[[], List[int]]')
 
     def test_generic_forvard_ref(self):
-        LLT = List[List['T']]
+        LLT = List[List['CC']]
+        class CC: pass
+        self.assertEqual(typing._eval_type(LLT, globals(), locals()), List[List[CC]])
         T = TypeVar('T')
-        self.assertEqual(typing._eval_type(LLT, globals(), locals()), List[List[T]])
-        TTE = Tuple[T, ...]
-        self.assertIs(typing._eval_type(TTE, globals(), locals()), Tuple[T, ...])
+        AT = Tuple[T, ...]
+        self.assertIs(typing._eval_type(AT, globals(), locals()), AT)
+        CT = Callable[..., List[T]]
+        self.assertIs(typing._eval_type(CT, globals(), locals()), CT)
 
     def test_extended_generic_rules_subclassing(self):
         class T1(Tuple[T, KT]): pass
@@ -762,6 +783,8 @@ class GenericTests(BaseTestCase):
 
     def test_type_erasure_special(self):
         T = TypeVar('T')
+        # this is the only test that checks type caching
+        self.clear_caches()
         class MyTup(Tuple[T, T]): pass
         self.assertIs(MyTup[int]().__class__, MyTup)
         self.assertIs(MyTup[int]().__orig_class__, MyTup[int])
@@ -825,6 +848,43 @@ class GenericTests(BaseTestCase):
         for t in things:
             self.assertEqual(t, deepcopy(t))
             self.assertEqual(t, copy(t))
+
+    def test_parameterized_slots(self):
+        T = TypeVar('T')
+        class C(Generic[T]):
+            __slots__ = ('potato',)
+
+        c = C()
+        c_int = C[int]()
+        self.assertEqual(C.__slots__, C[str].__slots__)
+
+        c.potato = 0
+        c_int.potato = 0
+        with self.assertRaises(AttributeError):
+            c.tomato = 0
+        with self.assertRaises(AttributeError):
+            c_int.tomato = 0
+
+        self.assertEqual(typing._eval_type(C['C'], globals(), locals()), C[C])
+        self.assertEqual(typing._eval_type(C['C'], globals(), locals()).__slots__,
+                         C.__slots__)
+        self.assertEqual(copy(C[int]), deepcopy(C[int]))
+
+    def test_parameterized_slots_dict(self):
+        T = TypeVar('T')
+        class D(Generic[T]):
+            __slots__ = {'banana': 42}
+
+        d = D()
+        d_int = D[int]()
+        self.assertEqual(D.__slots__, D[str].__slots__)
+
+        d.banana = 'yes'
+        d_int.banana = 'yes'
+        with self.assertRaises(AttributeError):
+            d.foobar = 'no'
+        with self.assertRaises(AttributeError):
+            d_int.foobar = 'no'
 
     def test_errors(self):
         with self.assertRaises(TypeError):

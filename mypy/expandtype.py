@@ -1,9 +1,9 @@
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, ErrorType, AnyType,
-    Void, NoneTyp, TypeVarType, Overloaded, TupleType, UnionType, ErasedType, TypeList,
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId
+    Void, NoneTyp, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId
 )
 
 
@@ -93,6 +93,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return t.copy_modified(items=self.expand_types(t.items))
 
+    def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        return t.copy_modified(item_types=self.expand_types(t.items.values()))
+
     def visit_union_type(self, t: UnionType) -> Type:
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
@@ -108,7 +111,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         item = t.item.accept(self)
         return TypeType(item)
 
-    def expand_types(self, types: List[Type]) -> List[Type]:
+    def expand_types(self, types: Iterable[Type]) -> List[Type]:
         a = []  # type: List[Type]
         for t in types:
             a.append(t.accept(self))

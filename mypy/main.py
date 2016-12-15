@@ -148,10 +148,10 @@ def process_options(args: List[str],
                         "(defaults to sys.platform).")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
-    parser.add_argument('-s', '--silent-imports', action='store_true',
-                        help="don't follow imports to .py files")
-    parser.add_argument('--almost-silent', action='store_true',
-                        help="like --silent-imports but reports the imports as errors")
+    parser.add_argument('--ignore-missing-imports', action='store_true',
+                        help="silently ignore imports of missing modules")
+    parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
+                        default='normal', help="how to treat imports (default normal)")
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -171,11 +171,11 @@ def process_options(args: List[str],
                         help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
-    parser.add_argument('--hide-error-context', action='store_true',
+    parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
                         help="Hide context notes before errors")
     parser.add_argument('--fast-parser', action='store_true',
-                        help="enable experimental fast parser")
+                        help="enable fast parser (recommended except on Windows)")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
@@ -222,14 +222,23 @@ def process_options(args: List[str],
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
-    # deprecated options
-    parser.add_argument('--silent', action='store_true', dest='special-opts:silent',
+    # --dump-graph will dump the contents of the graph of SCCs and exit.
+    parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--hide-error-context', action='store_true',
+                        dest='hide_error_context',
                         help=argparse.SUPPRESS)
+    # deprecated options
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
                         help=argparse.SUPPRESS)
     parser.add_argument('--use-python-path', action='store_true',
                         dest='special-opts:use_python_path',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('-s', '--silent-imports', action='store_true',
+                        dest='special-opts:silent_imports',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--almost-silent', action='store_true',
+                        dest='special-opts:almost_silent',
                         help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
@@ -259,7 +268,11 @@ def process_options(args: List[str],
     # filename for the config file.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
-    config_file = dummy.config_file or defaults.CONFIG_FILE
+    config_file = defaults.CONFIG_FILE
+    if dummy.config_file:
+        config_file = dummy.config_file
+        if not os.path.exists(config_file):
+            parser.error("Cannot file config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
@@ -278,11 +291,18 @@ def process_options(args: List[str],
                      "See https://github.com/python/mypy/issues/1411 for more discussion."
                      )
 
-    # warn about deprecated options
-    if special_opts.silent:
-        print("Warning: --silent is deprecated; use --silent-imports",
-              file=sys.stderr)
-        options.silent_imports = True
+    # Process deprecated options
+    if special_opts.almost_silent:
+        print("Warning: --almost-silent has been replaced by "
+              "--follow=imports=errors", file=sys.stderr)
+        if options.follow_imports == 'normal':
+            options.follow_imports = 'errors'
+    elif special_opts.silent_imports:
+        print("Warning: --silent-imports has been replaced by "
+              "--ignore-missing-imports --follow=imports=skip", file=sys.stderr)
+        options.ignore_missing_imports = True
+        if options.follow_imports == 'normal':
+            options.follow_imports = 'skip'
     if special_opts.dirty_stubs:
         print("Warning: -f/--dirty-stubs is deprecated and no longer necessary. Mypy no longer "
               "checks the git status of stubs.",
@@ -456,6 +476,9 @@ config_types = {
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
+    # These two are for backwards compatibility
+    'silent_imports': bool,
+    'almost_silent': bool,
 }
 
 
@@ -472,14 +495,13 @@ def parse_config_file(options: Options, filename: str) -> None:
         return
     if 'mypy' not in parser:
         print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
-        return
-
-    section = parser['mypy']
-    prefix = '%s: [%s]' % (filename, 'mypy')
-    updates, report_dirs = parse_section(prefix, options, section)
-    for k, v in updates.items():
-        setattr(options, k, v)
-    options.report_dirs.update(report_dirs)
+    else:
+        section = parser['mypy']
+        prefix = '%s: [%s]' % (filename, 'mypy')
+        updates, report_dirs = parse_section(prefix, options, section)
+        for k, v in updates.items():
+            setattr(options, k, v)
+        options.report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
@@ -509,7 +531,7 @@ def parse_section(prefix: str, template: Options,
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
-    results = {}
+    results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
         key = key.replace('-', '_')
@@ -542,6 +564,20 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
+        if key == 'silent_imports':
+            print("%s: silent_imports has been replaced by "
+                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)
+            if v:
+                if 'ignore_missing_imports' not in results:
+                    results['ignore_missing_imports'] = True
+                if 'follow_imports' not in results:
+                    results['follow_imports'] = 'skip'
+        if key == 'almost_silent':
+            print("%s: almost_silent has been replaced by "
+                  "follow_imports=error" % prefix, file=sys.stderr)
+            if v:
+                if 'follow_imports' not in results:
+                    results['follow_imports'] = 'error'
         results[key] = v
     return results, report_dirs
 

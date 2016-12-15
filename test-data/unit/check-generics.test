@@ -207,7 +207,6 @@ class A(Generic[T]):
 x = None # type: B
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:7: error: Argument 1 to "f" of "A" has incompatible type "B"; expected "T"
 main:8: error: Incompatible types in assignment (expression has type A[T], variable has type A[B])
 
@@ -228,7 +227,6 @@ class A(Generic[S, T]):
 
 class B: pass
 [out]
-main: note: In member "f" of class "A":
 main:8: error: Incompatible types in assignment (expression has type "T", variable has type "S")
 main:9: error: Incompatible types in assignment (expression has type "S", variable has type "T")
 main:10: error: Incompatible types in assignment (expression has type A[S, T], variable has type A[S, B])
@@ -253,7 +251,6 @@ class A(Generic[T]):
         b = self.f() # type: object
         b = self.f()
 [out]
-main: note: In member "f" of class "A":
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 main:6: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 
@@ -288,7 +285,7 @@ class C: pass
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 main:9: error: Unsupported operand types for + ("A" and "C")
 main:10: error: Incompatible types in assignment (expression has type "B", variable has type "C")
-main:11: error: Invalid index type "B" for "A"
+main:11: error: Invalid index type "B" for "A"; expected type "C"
 
 [case testOperatorAssignmentWithIndexLvalue1]
 from typing import TypeVar, Generic
@@ -312,7 +309,7 @@ class C:
 [out]
 main:7: error: Unsupported operand types for + ("C" and "B")
 main:7: error: Incompatible types in assignment (expression has type "B", target has type "C")
-main:8: error: Invalid index type "C" for "A"
+main:8: error: Invalid index type "C" for "A"; expected type "B"
 
 [case testOperatorAssignmentWithIndexLvalue2]
 from typing import TypeVar, Generic
@@ -333,9 +330,9 @@ class B: pass
 class C:
     def __add__(self, o: 'C') -> 'C': pass
 [out]
-main:7: error: Invalid index type "B" for "A"
-main:8: error: Invalid index type "C" for "A"
-main:9: error: Invalid index type "B" for "A"
+main:7: error: Invalid index type "B" for "A"; expected type "C"
+main:8: error: Invalid index type "C" for "A"; expected type "B"
+main:9: error: Invalid index type "B" for "A"; expected type "C"
 
 
 -- Nested generic types
@@ -393,7 +390,6 @@ def f(s: S, t: T) -> p[T, A]:
     p_t_a = None  # type: p[T, A]
     return p_t_a
 [out]
-main: note: In function "f":
 
 [case testTypeCheckingGenericMethodBody]
 from typing import TypeVar, Generic
@@ -415,7 +411,6 @@ class A(Generic[T]):
         p_s_t = None  # type: p[S, T]
         return p_s_t
 [out]
-main: note: In member "f" of class "A":
 
 [case testProhibitTypeApplicationToGenericFunctions]
 from typing import TypeVar
@@ -588,9 +583,7 @@ z = None # type: str
 reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins.str*]'
 
 [out]
-main: note: In function "output_bad":
 main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
-main: note: At top level:
 
 [case testGenericTypeAliasesWrongAliases]
 # flags: --show-column-numbers --fast-parser --python-version 3.6
@@ -732,9 +725,7 @@ reveal_type(f('a'))  # E: Revealed type is '__main__.D[builtins.str*]'
 
 [builtins fixtures/list.pyi]
 [out]
-main: note: In function "f_bad":
 main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
-main: note: At top level:
 
 [case testGenericTypeAliasesSubclassingBad]
 from typing import TypeVar, Generic, Tuple, Union
@@ -1179,7 +1170,6 @@ def f() -> None:
     a = 1
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [out]
-main: note: In function "f":
 
 [case testClassLevelTypeVariable]
 from typing import TypeVar
@@ -1202,7 +1192,6 @@ class A(Generic[T]):
         g(self.a)
         g(n) # E: Argument 1 to "g" has incompatible type "int"; expected "T"
 [out]
-main: note: In member "f" of class "A":
 
 
 -- Callable subtyping with generic functions
@@ -1282,7 +1271,6 @@ def outer(t: T) -> None:
     y5 = f3
     y5 = f4
 [out]
-main: note: In function "outer":
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
 from typing import TypeVar, Callable
@@ -1339,7 +1327,6 @@ def f(a: T, b: T) -> T:
         return b
 [builtins fixtures/ops.pyi]
 [out]
-main: note: In function "f":
 main:4: error: Unsupported left operand type for < ("T")
 
 

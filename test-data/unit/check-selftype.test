@@ -43,7 +43,6 @@ g(B.copy(B()))
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeReturn]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 R = TypeVar('R')
@@ -76,7 +75,6 @@ class C:
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeClass]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound='A')
@@ -131,7 +129,6 @@ reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*'
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeSuper]
-# flags: --hide-error-context
 from typing import TypeVar, cast
  
 T = TypeVar('T', bound='A', covariant=True)
@@ -149,7 +146,6 @@ class B(A):
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeRecursiveBinding]
-# flags: --hide-error-context
 from typing import TypeVar, Callable, Type
  
 T = TypeVar('T', bound='A', covariant=True)
@@ -176,7 +172,6 @@ reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeBound]
-# flags: --hide-error-context
 from typing import TypeVar, Callable, cast
  
 TA = TypeVar('TA', bound='A', covariant=True)
@@ -204,7 +199,6 @@ class B(A):
 
 -- # TODO: fail for this
 -- [case testSelfTypeBare]
--- # flags: --hide-error-context
 -- from typing import TypeVar, Type
 -- 
 -- T = TypeVar('T', bound='E')
@@ -213,7 +207,6 @@ class B(A):
 --     def copy(self: T, other: T) -> T: pass
 
 [case testSelfTypeClone]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound='C')
@@ -250,7 +243,6 @@ class B(A):
         super(B, self).__init__()
 
 [case testSelfTypeNonsensical]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound=str)
@@ -293,7 +285,6 @@ class D:
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeLambdaDefault]
-# flags: --hide-error-context
 from typing import Callable
 class C:
     @classmethod
@@ -309,7 +300,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeNew]
-# flags: --hide-error-context
 from typing import TypeVar, Type
 
 T = TypeVar('T', bound=A)    

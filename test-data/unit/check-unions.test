@@ -33,8 +33,17 @@ def f(x: Union[int, str]) -> None:
         z = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-main: note: In function "f":
 
+[case testUnionAnyIsInstance]
+from typing import Any, Union
+
+def func(v:Union[int, Any]) -> None:
+    if isinstance(v, int):
+        reveal_type(v) # E: Revealed type is 'builtins.int'
+    else:
+        reveal_type(v) # E: Revealed type is 'Any'
+[builtins fixtures/isinstance.pyi]
+[out]
 
 [case testUnionAttributeAccess]
 from typing import Union

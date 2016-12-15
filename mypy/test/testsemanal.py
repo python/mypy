@@ -93,6 +93,7 @@ def test_semanal(testcase):
         'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
                                                                 testcase.line))
 
+
 # Semantic analyzer error test cases
 
 # Paths to files containing test case descriptions.

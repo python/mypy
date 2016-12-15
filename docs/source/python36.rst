@@ -11,6 +11,21 @@ support matrix for these in mypy (to be updated with each new mypy
 release).  The intention is to support all of these by the time Python
 3.6 is released.
 
+.. note::
+
+   Mypy only understands Python 3.6 syntax if you use the ``--fast-parser`` flag.
+   This requires that the `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
+   installed and has at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
+   If running mypy on an earlier Python version, you also need to enable 3.6 support
+   through ``--python-version 3.6``.
+
+   Example command line (or use :ref:`config-file`):
+
+     .. code-block:: text
+
+        $ pip3 install -U typed_ast
+        $ mypy --fast-parser --python-version 3.6 program.py
+
 Syntax for variable annotations (`PEP 526 <https://www.python.org/dev/peps/pep-0526>`_)
 ---------------------------------------------------------------------------------------
 
@@ -31,10 +46,7 @@ Mypy fully supports this syntax, interpreting them as equivalent to
 
 .. note::
 
-   This requires the ``--fast-parser`` flag and it requires that the
-   `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
-   installed and has at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
-
+   See above for how to enable Python 3.6 syntax.
 
 Literal string formatting (`PEP 498 <https://www.python.org/dev/peps/pep-0498>`_)
 ---------------------------------------------------------------------------------
@@ -69,3 +81,8 @@ can now also contain list, set and dict comprehensions that use
 ``async for`` syntax.
 
 Mypy does not yet support this.
+
+New named tuple syntax
+----------------------
+
+Python 3.6 supports an alternative syntax for named tuples. See :ref:`named-tuples`.

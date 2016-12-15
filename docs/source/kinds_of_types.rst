@@ -636,6 +636,25 @@ item types:
                                  ('y', int)])
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
 
+Python 3.6 will have an alternative, class-based syntax for named tuples with types.
+Mypy supports it already:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    class Point(NamedTuple):
+        x: int
+        y: int
+
+    p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
+
+.. note::
+
+   The Python 3.6 syntax requires the ``--fast-parser`` flag. You must also have the
+   `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package
+   installed and have at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
+
 .. _type-of-class:
 
 The type of class objects
@@ -797,7 +816,7 @@ Note that unlike many other generics in the typing module, the ``SendType`` of
 ``Generator`` behaves contravariantly, not covariantly or invariantly.
 
 If you do not plan on recieving or returning values, then set the ``SendType``
-or ``ReturnType`` to ``None``, as appropriate. For example, we could have 
+or ``ReturnType`` to ``None``, as appropriate. For example, we could have
 annotated the first example as the following:
 
 .. code-block:: python
@@ -892,7 +911,7 @@ will be a value of type ``Awaitable[T]``.
    ``yield from`` statements:
 
    .. code-block:: python
-   
+
       import asyncio
 
       @asyncio.coroutine
@@ -906,7 +925,7 @@ will be a value of type ``Awaitable[T]``.
    something like this:
 
    .. code-block:: python
-   
+
       from typing import Generator
       import asyncio
 

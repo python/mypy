@@ -54,6 +54,7 @@ files = [
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-typeddict.test',
     'check-type-aliases.test',
     'check-ignore.test',
     'check-type-promotion.test',
@@ -107,7 +108,11 @@ class TypeCheckSuite(DataSuite):
             finally:
                 experiments.STRICT_OPTIONAL = False
         else:
-            self.run_case_once(testcase)
+            try:
+                old_strict_optional = experiments.STRICT_OPTIONAL
+                self.run_case_once(testcase)
+            finally:
+                experiments.STRICT_OPTIONAL = old_strict_optional
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
@@ -120,14 +125,7 @@ class TypeCheckSuite(DataSuite):
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental)
 
-        options = self.parse_options(original_program_text, testcase)
-        options.use_builtins_fixtures = True
-        options.show_traceback = True
-        if 'optional' in testcase.file:
-            options.strict_optional = True
-
         if incremental:
-            options.incremental = True
             if incremental == 1:
                 # In run 1, copy program text to program file.
                 for module_name, program_path, program_text in module_data:
@@ -136,10 +134,10 @@ class TypeCheckSuite(DataSuite):
                             f.write(program_text)
                         break
             elif incremental == 2:
-                # In run 2, copy *.py.next files to *.py files.
+                # In run 2, copy *.next files to * files.
                 for dn, dirs, files in os.walk(os.curdir):
                     for file in files:
-                        if file.endswith('.py.next'):
+                        if file.endswith('.next'):
                             full = os.path.join(dn, file)
                             target = full[:-5]
                             shutil.copy(full, target)
@@ -149,6 +147,15 @@ class TypeCheckSuite(DataSuite):
                             # change. We manually set the mtime to circumvent this.
                             new_time = os.stat(target).st_mtime + 1
                             os.utime(target, times=(new_time, new_time))
+
+        # Parse options after moving files (in case mypy.ini is being moved).
+        options = self.parse_options(original_program_text, testcase)
+        options.use_builtins_fixtures = True
+        options.show_traceback = True
+        if 'optional' in testcase.file:
+            options.strict_optional = True
+        if incremental:
+            options.incremental = True
 
         sources = []
         for module_name, program_path, program_text in module_data:
@@ -183,7 +190,7 @@ class TypeCheckSuite(DataSuite):
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if incremental and res:
-            if not options.silent_imports and testcase.output is None:
+            if options.follow_imports == 'normal' and testcase.output is None:
                 self.verify_cache(module_data, a, res.manager)
             if incremental == 2:
                 self.check_module_equivalence(

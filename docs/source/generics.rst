@@ -142,8 +142,82 @@ example we use the same type variable in two generic functions:
    def last(seq: Sequence[T]) -> T:
        return seq[-1]
 
+.. _generic-methods-and-generic-self:
+
+Generic methods and generic self
+********************************
+
 You can also define generic methods — just use a type variable in the
-method signature that is different from class type variables.
+method signature that is different from class type variables. In particular,
+``self`` may also be generic, allowing a method to return the most precise
+type known at the point of access.
+
+.. note::
+
+   This feature is experimental. Checking code with type annotations for self
+   arguments is still not fully implemented. Mypy may disallow valid code or
+   allow unsafe code.
+
+In this way, for example, you can typecheck chaining of setter methods:
+
+.. code-block:: python
+
+   from typing import TypeVar
+
+   T = TypeVar('T', bound='Shape')
+
+   class Shape:
+       def set_scale(self: T, scale: float) -> T:
+           self.scale = scale
+           return self
+
+   class Circle(Shape):
+       def set_radius(self, r: float) -> 'Circle':
+           self.radius = r
+           return self
+
+   class Square(Shape):
+       def set_width(self, w: float) -> 'Square':
+           self.width = w
+           return self
+
+   circle = Circle().set_scale(0.5).set_radius(2.7)  # type: Circle
+   square = Square().set_scale(0.5).set_width(3.2)  # type: Square
+
+Without using generic ``self``, the last two lines could not be type-checked properly.
+
+Other uses are factory methods, such as copy and deserialization.
+For class methods, you can also define generic ``cls``, using ``Type[T]``:
+
+.. code-block:: python
+
+   from typing import TypeVar, Tuple, Type
+
+   T = TypeVar('T', bound='Friend')
+
+   class Friend:
+       other = None  # type: Friend
+
+       @classmethod
+       def make_pair(cls: Type[T]) -> Tuple[T, T]:
+           a, b = cls(), cls()
+           a.other = b
+           b.other = a
+           return a, b
+
+   class SuperFriend(Friend):
+       pass
+
+   a, b = SuperFriend.make_pair()
+
+Note that when overriding a method with generic ``self``, you must either
+return a generic ``self`` too, or return an instance of the current class.
+In the latter case, you must implement this method in all future subclasses.
+
+Note also that mypy cannot always verify that the implementation of a copy
+or a deserialization method returns the actual type of self. Therefore
+you may need to silence mypy inside these methods (but not at the call site),
+possibly by making use of the ``Any`` type.
 
 .. _type-variable-value-restriction:
 
@@ -263,6 +337,8 @@ restrict the valid values for the type parameter in the same way.
 
 A type variable may not have both a value restriction (see
 :ref:`type-variable-value-restriction`) and an upper bound.
+
+.. _declaring-decorators:
 
 Declaring decorators
 ********************
