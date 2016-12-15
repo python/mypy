@@ -371,3 +371,30 @@ For the remaining flags you can read the full ``mypy -h`` output.
 .. note::
 
    Command line flags are liable to change between releases.
+   
+Integrating mypy into another Python application
+************************************************
+
+It is possible to integrate mypy into another Python 3 application by
+importing ``mypy.api`` and calling the ``run`` function with exactly the string
+you would have passed to mypy from the command line.
+
+Function ``run`` returns a tuple of strings:
+``(<normal_report>, <error_report>)``, in which ``<normal_report>`` is what mypy
+normally writes to ``sys.stdout`` and ``<error_report>`` is what mypy normally
+writes to ``sys.stderr``.
+
+A trivial example of this is the following::
+
+    import sys
+    from mypy import api
+    
+    result = api.run(' '.join(sys.argv[1:]))
+    
+    if result[0]:
+        print('\nType checking report:\n')
+        print(result[0])  # stdout
+        
+    if result[1]:
+        print('\nError report:\n')
+        print(result[1])  # stderr
