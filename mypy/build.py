@@ -368,12 +368,14 @@ class BuildManager:
         self.reports = reports
         self.options = options
         self.version_id = version_id
-        self.semantic_analyzer = SemanticAnalyzer(lib_path, self.errors)
+        self.modules = {}  # type: Dict[str, MypyFile]
+        self.missing_modules = set()  # type: Set[str]
+        self.semantic_analyzer = SemanticAnalyzer(self.modules, self.missing_modules,
+                                                  lib_path, self.errors)
         self.modules = self.semantic_analyzer.modules
         self.semantic_analyzer_pass3 = ThirdPass(self.modules, self.errors)
         self.all_types = {}  # type: Dict[Expression, Type]
         self.indirection_detector = TypeIndirectionVisitor()
-        self.missing_modules = set()  # type: Set[str]
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
 

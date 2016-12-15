@@ -203,6 +203,8 @@ class SemanticAnalyzer(NodeVisitor):
     errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self,
+                 modules: Dict[str, MypyFile],
+                 missing_modules: Set[str],
                  lib_path: List[str], errors: Errors) -> None:
         """Construct semantic analyzer.
 
@@ -221,7 +223,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.loop_depth = 0
         self.lib_path = lib_path
         self.errors = errors
-        self.modules = {}
+        self.modules = modules
+        self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
@@ -994,6 +997,7 @@ class SemanticAnalyzer(NodeVisitor):
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
+            missing = False
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
@@ -1003,6 +1007,8 @@ class SemanticAnalyzer(NodeVisitor):
                 if mod is not None:
                     node = SymbolTableNode(MODULE_REF, mod, import_id)
                     self.add_submodules_to_parent_modules(possible_module_id, True)
+                elif possible_module_id in self.missing_modules:
+                    missing = True
 
             if node and node.kind != UNBOUND_IMPORTED:
                 node = self.normalize_type_alias(node, imp)
@@ -1022,7 +1028,7 @@ class SemanticAnalyzer(NodeVisitor):
                                          node.type_override,
                                          module_public=module_public)
                 self.add_symbol(imported_id, symbol, imp)
-            elif module:
+            elif module and not missing:
                 # Missing attribute.
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
