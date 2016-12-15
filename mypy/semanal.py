@@ -161,7 +161,7 @@ class SemanticAnalyzer(NodeVisitor):
     # Library search paths
     lib_path = None  # type: List[str]
     # Module name space
-    modules = None  # type: Dict[str, Optional[MypyFile]]
+    modules = None  # type: Dict[str, MypyFile]
     # Global name space for current module
     globals = None  # type: SymbolTable
     # Names declared using "global" (separate set for each scope)
