@@ -31,9 +31,11 @@ To run this script starting from the commit id 2a432b:
     python3 misc/incremental_checker.py commit 2a432b
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from argparse import ArgumentParser, RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
+from argparse import (ArgumentParser, RawDescriptionHelpFormatter,
+                      ArgumentDefaultsHelpFormatter, Namespace)
+import base64
 import json
 import os
 import random
@@ -218,7 +220,8 @@ def cleanup(temp_repo_path: str, mypy_cache_path: str) -> None:
 
 def test_repo(target_repo_url: str, temp_repo_path: str, target_file_path: str,
               mypy_path: str, incremental_cache_path: str, mypy_cache_path: str,
-              range_type: str, range_start: str, branch: str) -> None:
+              range_type: str, range_start: str, branch: str,
+              params: Optional[Namespace] = None) -> None:
     """Tests incremental mode against the repo specified in `target_repo_url`.
 
     This algorithm runs in five main stages:
@@ -246,17 +249,16 @@ def test_repo(target_repo_url: str, temp_repo_path: str, target_file_path: str,
     # Stage 2: Get all commits we want to test
     if range_type == "last":
         start_commit = get_nth_commit(temp_repo_path, int(range_start))[0]
-    elif range_type == "random":
-        # Get N random commits (not in chronological order) from the last 100*N.
-        # TODO: Make the fraction parameterizable.
-        start_commit = get_nth_commit(temp_repo_path, 100 * int(range_start))[0]
     elif range_type == "commit":
         start_commit = range_start
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
-    if range_type == "random":
-        commits = random.sample(commits, int(range_start))
+    if params is not None and params.sample:
+        seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
+        random.seed(seed)
+        commits = random.sample(commits, params.sample)
+        print("Sampled down to %d commits using random seed %s" % (len(commits), seed))
 
     # Stage 3: Find and cache expected results for each commit (without incremental mode)
     cache = load_cache(incremental_cache_path)
@@ -277,7 +279,7 @@ def main() -> None:
         description=__doc__,
         formatter_class=help_factory)
 
-    parser.add_argument("range_type", metavar="START_TYPE", choices=["last", "random", "commit"],
+    parser.add_argument("range_type", metavar="START_TYPE", choices=["last", "commit"],
                         help="must be one of 'last' or 'commit'")
     parser.add_argument("range_start", metavar="COMMIT_ID_OR_NUMBER",
                         help="the commit id to start from, or the number of "
@@ -291,6 +293,8 @@ def main() -> None:
     parser.add_argument("--branch", default=None, metavar="NAME",
                         help="check out and test a custom branch"
                         "uses the default if not specified")
+    parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
+    parser.add_argument("--seed", type=str, help="random seed")
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -326,7 +330,8 @@ def main() -> None:
 
     test_repo(params.repo_url, temp_repo_path, target_file_path,
               mypy_path, incremental_cache_path, mypy_cache_path,
-              params.range_type, params.range_start, params.branch)
+              params.range_type, params.range_start, params.branch,
+              params)
 
 
 if __name__ == '__main__':
