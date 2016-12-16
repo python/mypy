@@ -118,8 +118,9 @@ def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
     return get_commits(repo_folder_path, '-{}'.format(n))[0]
 
 
-def run_mypy(target_file_path: str,
+def run_mypy(target_file_path: Optional[str],
              mypy_cache_path: str,
+             mypy_script: Optional[str],
              incremental: bool = True,
              verbose: bool = False) -> Tuple[float, str]:
     """Runs mypy against `target_file_path` and returns what mypy prints to stdout as a string.
@@ -128,12 +129,17 @@ def run_mypy(target_file_path: str,
     inside `mypy_cache_path`. If `verbose` is set to True, this function will pass the "-v -v"
     flags to mypy to make it output debugging information.
     """
-    command = ["python3", "-m", "mypy", "--cache-dir", mypy_cache_path]
+    if mypy_script is None:
+        command = ["python3", "-m", "mypy"]
+    else:
+        command = [mypy_script]
+    command.extend(["--cache-dir", mypy_cache_path])
     if incremental:
         command.append("--incremental")
     if verbose:
         command.extend(["-v", "-v"])
-    command.append(target_file_path)
+    if target_file_path is not None:
+        command.append(target_file_path)
     start = time.time()
     output, stderr, _ = execute(command, False)
     if stderr != "":
@@ -158,8 +164,9 @@ def save_cache(cache: JsonDict, incremental_cache_path: str = CACHE_PATH) -> Non
 def set_expected(commits: List[Tuple[str, str]],
                  cache: JsonDict,
                  temp_repo_path: str,
-                 target_file_path: str,
-                 mypy_cache_path: str) -> None:
+                 target_file_path: Optional[str],
+                 mypy_cache_path: str,
+                 mypy_script: Optional[str]) -> None:
     """Populates the given `cache` with the expected results for all of the given `commits`.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`, and stores
@@ -173,7 +180,8 @@ def set_expected(commits: List[Tuple[str, str]],
         else:
             print('Caching expected output for commit {0}: "{1}"'.format(commit_id, message))
             execute(["git", "-C", temp_repo_path, "checkout", commit_id])
-            runtime, output = run_mypy(target_file_path, mypy_cache_path, incremental=False)
+            runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
+                                       incremental=False)
             cache[commit_id] = {'runtime': runtime, 'output': output}
             if output == "":
                 print("    Clean output ({:.3f} sec)".format(runtime))
@@ -186,8 +194,9 @@ def set_expected(commits: List[Tuple[str, str]],
 def test_incremental(commits: List[Tuple[str, str]],
                      cache: JsonDict,
                      temp_repo_path: str,
-                     target_file_path: str,
-                     mypy_cache_path: str) -> None:
+                     target_file_path: Optional[str],
+                     mypy_cache_path: str,
+                     mypy_script: Optional[str]) -> None:
     """Runs incremental mode on all `commits` to verify the output matches the expected output.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`. The
@@ -198,7 +207,8 @@ def test_incremental(commits: List[Tuple[str, str]],
     for commit_id, message in commits:
         print('Now testing commit {0}: "{1}"'.format(commit_id, message))
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
-        runtime, output = run_mypy(target_file_path, mypy_cache_path, incremental=True)
+        runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
+                                   incremental=True)
         expected_runtime = cache[commit_id]['runtime']  # type: float
         expected_output = cache[commit_id]['output']  # type: str
         if output != expected_output:
@@ -218,7 +228,8 @@ def cleanup(temp_repo_path: str, mypy_cache_path: str) -> None:
     delete_folder(mypy_cache_path)
 
 
-def test_repo(target_repo_url: str, temp_repo_path: str, target_file_path: str,
+def test_repo(target_repo_url: str, temp_repo_path: str,
+              target_file_path: Optional[str],
               mypy_path: str, incremental_cache_path: str, mypy_cache_path: str,
               range_type: str, range_start: str, branch: str,
               params: Optional[Namespace] = None) -> None:
@@ -262,11 +273,13 @@ def test_repo(target_repo_url: str, temp_repo_path: str, target_file_path: str,
 
     # Stage 3: Find and cache expected results for each commit (without incremental mode)
     cache = load_cache(incremental_cache_path)
-    set_expected(commits, cache, temp_repo_path, target_file_path, mypy_cache_path)
+    set_expected(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
+                 mypy_script=params.mypy_script)
     save_cache(cache, incremental_cache_path)
 
     # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
-    test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path)
+    test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
+                     mypy_script=params.mypy_script)
 
     # Stage 5: Remove temp files
     cleanup(temp_repo_path, mypy_cache_path)
@@ -295,6 +308,7 @@ def main() -> None:
                         "uses the default if not specified")
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
+    parser.add_argument("--mypy-script", type=str, help="alternate mypy script to run")
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -314,7 +328,11 @@ def main() -> None:
     temp_repo_path = os.path.abspath(os.path.join(mypy_path, "tmp_repo"))
 
     # The particular file or package to typecheck inside the repo.
-    target_file_path = os.path.abspath(os.path.join(temp_repo_path, params.file_path))
+    if params.file_path:
+        target_file_path = os.path.abspath(os.path.join(temp_repo_path, params.file_path))
+    else:
+        # Allow `-f ''` to clear target_file_path.
+        target_file_path = None
 
     # The path to where the incremental checker cache data is stored.
     incremental_cache_path = os.path.abspath(params.cache_path)
