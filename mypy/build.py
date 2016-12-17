@@ -783,7 +783,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
 
     # Ignore cache if (relevant) options aren't the same.
     cached_options = m.options
-    current_options = manager.options.select_options_affecting_cache()
+    current_options = manager.options.clone_for_module(id).select_options_affecting_cache()
     if cached_options != current_options:
         manager.trace('Metadata abandoned for {}: options differ'.format(id))
         return None

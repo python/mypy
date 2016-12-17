@@ -1766,3 +1766,15 @@ main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
 main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
+
+[case testIncrementalPerFileFlags]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+pass
+[file mypy.ini]
+[[mypy]
+warn_no_return = False
+[[mypy-a]
+warn_no_return = True
+[rechecked]
