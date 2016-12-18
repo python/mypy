@@ -48,7 +48,6 @@ from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
 )
 
-from mypy.checkmember import find_type_from_bases
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, MODULE_REF, FuncItem, Import, Expression, Lvalue,

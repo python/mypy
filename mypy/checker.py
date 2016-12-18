@@ -25,7 +25,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
     AwaitExpr,
-    CONTRAVARIANT, COVARIANT)
+    CONTRAVARIANT, COVARIANT, MDEF)
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
@@ -36,19 +36,17 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
-from mypy.checkmember import (
-    map_type_from_supertype, bind_self, erase_to_bound, find_type_from_bases
-)
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away,
     is_subtype_ignoring_tvars
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars
+from mypy.typevars import fill_typevars, has_no_typevars
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
@@ -1120,13 +1118,13 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                base_type = find_type_from_bases(lvalue)
+                base_type = self.find_type_from_bases(lvalue)
 
                 if base_type:
-                    # Do not check if the rvalue is compatible if the lvalue
-                    # had a type defined; this is handled by other parts, and
-                    # all we have to worry about in that case is that lvalue
-                    # is compatible with the base class.
+                    # Do not check whether the rvalue is compatible if the
+                    # lvalue had a type defined; this is handled by other
+                    # parts, and all we have to worry about in that case is
+                    # that lvalue is compatible with the base class.
                     if lvalue_type:
                         compare_type = lvalue_type
                     else:
@@ -1194,6 +1192,42 @@ class TypeChecker(NodeVisitor[Type]):
             if inferred:
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
+
+    def find_type_from_bases(self, e: NameExpr):
+        """For a NameExpr that is part of a class, walk all base classes and try
+        to find the first class that defines a Type for the same name."""
+
+        expr_node = e.node
+        if not (isinstance(expr_node, Var) and e.kind == MDEF and
+                        len(expr_node.info.bases) > 0):
+            return None
+
+        expr_name = expr_node.name()
+        expr_base = expr_node.info.bases[0]
+
+        for base in reversed(expr_node.info.mro[1:]):
+            base_var = base.names.get(expr_name)
+            if not base_var:
+                continue
+
+            base_node = base_var.node
+            base_type = base_var.type
+            if isinstance(base_node, Decorator):
+                base_node = base_node.func
+                base_type = base_node.type
+
+            if base_type:
+                if not has_no_typevars(base_type):
+                    itype = map_instance_to_supertype(expr_base, base)
+                    base_type = expand_type_by_instance(base_type, itype)
+
+                if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
+                    # If we are a property, return the Type of the return
+                    # value, not the Callable
+                    if base_node.is_property:
+                        base_type = base_type.ret_type
+
+                return base_type
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
