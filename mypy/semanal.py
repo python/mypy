@@ -203,6 +203,8 @@ class SemanticAnalyzer(NodeVisitor):
     errors = None  # type: Errors     # Keeps track of generated errors
 
     def __init__(self,
+                 modules: Dict[str, MypyFile],
+                 missing_modules: Set[str],
                  lib_path: List[str], errors: Errors) -> None:
         """Construct semantic analyzer.
 
@@ -221,7 +223,8 @@ class SemanticAnalyzer(NodeVisitor):
         self.loop_depth = 0
         self.lib_path = lib_path
         self.errors = errors
-        self.modules = {}
+        self.modules = modules
+        self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
         self.all_exports = set()  # type: Set[str]
@@ -994,6 +997,7 @@ class SemanticAnalyzer(NodeVisitor):
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
+            missing = False
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
@@ -1003,6 +1007,8 @@ class SemanticAnalyzer(NodeVisitor):
                 if mod is not None:
                     node = SymbolTableNode(MODULE_REF, mod, import_id)
                     self.add_submodules_to_parent_modules(possible_module_id, True)
+                elif possible_module_id in self.missing_modules:
+                    missing = True
 
             if node and node.kind != UNBOUND_IMPORTED:
                 node = self.normalize_type_alias(node, imp)
@@ -1022,7 +1028,7 @@ class SemanticAnalyzer(NodeVisitor):
                                          node.type_override,
                                          module_public=module_public)
                 self.add_symbol(imported_id, symbol, imp)
-            elif module:
+            elif module and not missing:
                 # Missing attribute.
                 message = "Module '{}' has no attribute '{}'".format(import_id, id)
                 extra = self.undefined_name_extra_info('{}.{}'.format(import_id, id))
@@ -1267,6 +1273,7 @@ class SemanticAnalyzer(NodeVisitor):
             if (add_global or nested_global) and lval.name not in self.globals:
                 # Define new global name.
                 v = Var(lval.name)
+                v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
                 v.is_ready = False  # Type not inferred yet
                 lval.node = v
@@ -1284,6 +1291,7 @@ class SemanticAnalyzer(NodeVisitor):
                   lval.name not in self.nonlocal_decls[-1]):
                 # Define new local name.
                 v = Var(lval.name)
+                v.set_line(lval)
                 lval.node = v
                 lval.is_def = True
                 lval.kind = LDEF
@@ -1355,6 +1363,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Implicit attribute definition in __init__.
             lval.is_def = True
             v = Var(lval.name)
+            v.set_line(lval)
             v.info = self.type
             v.is_ready = False
             lval.def_var = v
@@ -1678,14 +1687,18 @@ class SemanticAnalyzer(NodeVisitor):
         if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [])
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name or self.is_func_scope():
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_namedtuple_typeinfo(name, items, types)
+        # Store it as a global just in case it would remain anonymous.
+        # (Or in the nearest class if there is one.)
+        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        if self.type:
+            self.type.names[name] = stnode
         else:
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name:
-                # Give it a unique name derived from the line number.
-                name += '@' + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, items, types)
-            # Store it as a global just in case it would remain anonymous.
-            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            self.globals[name] = stnode
         call.analyzed = NamedTupleExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info
@@ -1870,8 +1883,9 @@ class SemanticAnalyzer(NodeVisitor):
             return
         # Yes, it's a valid TypedDict definition. Add it to the symbol table.
         node = self.lookup(name, s)
-        node.kind = GDEF   # TODO locally defined TypedDict
-        node.node = typed_dict
+        if node:
+            node.kind = GDEF   # TODO locally defined TypedDict
+            node.node = typed_dict
 
     def check_typeddict(self, node: Expression, var_name: str = None) -> Optional[TypeInfo]:
         """Check if a call defines a TypedDict.
@@ -1897,14 +1911,18 @@ class SemanticAnalyzer(NodeVisitor):
         if not ok:
             # Error. Construct dummy return value.
             return self.build_typeddict_typeinfo('TypedDict', [], [])
+        name = cast(StrExpr, call.args[0]).value
+        if name != var_name or self.is_func_scope():
+            # Give it a unique name derived from the line number.
+            name += '@' + str(call.line)
+        info = self.build_typeddict_typeinfo(name, items, types)
+        # Store it as a global just in case it would remain anonymous.
+        # (Or in the nearest class if there is one.)
+        stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
+        if self.type:
+            self.type.names[name] = stnode
         else:
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name:
-                # Give it a unique name derived from the line number.
-                name += '@' + str(call.line)
-            info = self.build_typeddict_typeinfo(name, items, types)
-            # Store it as a global just in case it would remain anonymous.
-            self.globals[name] = SymbolTableNode(GDEF, info, self.cur_mod_id)
+            self.globals[name] = stnode
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call.line, call.column)
         return info

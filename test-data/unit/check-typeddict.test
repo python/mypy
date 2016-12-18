@@ -432,3 +432,22 @@ reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
 
 -- TODO: Implement support for this case.
 --[case testCannotIsInstanceTypedDictType]
+
+-- scoping
+[case testTypedDictInClassNamespace]
+# https://github.com/python/mypy/pull/2553#issuecomment-266474341
+from mypy_extensions import TypedDict
+class C:
+    def f(self):
+        A = TypedDict('A', {'x': int})
+    def g(self):
+        A = TypedDict('A', {'y': int})
+C.A  # E: "C" has no attribute "A"
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictInFunction]
+from mypy_extensions import TypedDict
+def f() -> None:
+    A = TypedDict('A', {'x': int})
+A  # E: Name 'A' is not defined
+[builtins fixtures/dict.pyi]

@@ -207,7 +207,7 @@ def add_imports(driver: Driver) -> None:
 
 
 PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
-    'testcheck',
+    'testcheck', 'testextensions',
 ]]
 
 

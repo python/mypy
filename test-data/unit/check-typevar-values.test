@@ -489,3 +489,11 @@ def outer(x: T) -> T:
         return inner1('a') # E: Argument 1 to "inner1" has incompatible type "str"; expected "int"
     return inner1(x)
 [out]
+
+[case testClassMemberTypeVarInFunctionBody]
+from typing import TypeVar
+class C:
+    T = TypeVar('T', int)
+    def f(self, x: T) -> T:
+        A = C.T
+        return x
