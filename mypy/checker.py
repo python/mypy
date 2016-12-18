@@ -25,7 +25,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
     AwaitExpr,
-    CONTRAVARIANT, COVARIANT, MDEF)
+    CONTRAVARIANT, COVARIANT, MDEF, Node)
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
@@ -1176,26 +1176,50 @@ class TypeChecker(NodeVisitor[Type]):
         if (isinstance(lvalue_node, Var) and
                 lvalue.kind == MDEF and
                 len(lvalue_node.info.bases) > 0):
-            base_type = self.lvalue_type_from_base(lvalue_node)
+            base_type, base_node = self.lvalue_type_from_base(lvalue_node)
 
             if base_type:
                 # Do not check whether the rvalue is compatible if the
                 # lvalue had a type defined; this is handled by other
                 # parts, and all we have to worry about in that case is
                 # that lvalue is compatible with the base class.
+                compare_node = None  # type: Node
                 if lvalue_type:
                     compare_type = lvalue_type
+                    compare_node = lvalue_node
                 else:
                     compare_type = self.accept(rvalue)
+                    if isinstance(rvalue, NameExpr):
+                        compare_node = rvalue.node
+                        if isinstance(compare_node, Decorator):
+                            compare_node = compare_node.func
 
                 if compare_type:
-                    # Class-level function objects and classmethods become bound
-                    # methods: the former to the instance, the latter to the
-                    # class
                     if (isinstance(base_type, CallableType) and
                             isinstance(compare_type, CallableType)):
-                        base_type = bind_self(base_type, self.scope.active_class())
-                        compare_type = bind_self(compare_type, self.scope.active_class())
+                        base_static = is_node_static(base_node)
+                        compare_static = is_node_static(compare_node)
+
+                        # In case compare_static is unknown, also check
+                        # if 'definition' is set. The most common case for
+                        # this is with TempNode(), where we lose all
+                        # information about the real rvalue node (but only get
+                        # the rvalue type)
+                        if compare_static is None and compare_type.definition:
+                            compare_static = is_node_static(compare_type.definition)
+
+                        # Compare against False, as is_node_static can return None
+                        if base_static is False and compare_static is False:
+                            # Class-level function objects and classmethods become bound
+                            # methods: the former to the instance, the latter to the
+                            # class
+                            base_type = bind_self(base_type, self.scope.active_class())
+                            compare_type = bind_self(compare_type, self.scope.active_class())
+
+                        # If we are a static method, ensure to also tell the
+                        # lvalue it now contains a static method
+                        if base_static and compare_static:
+                            lvalue_node.is_staticmethod = True
 
                     self.check_subtype(compare_type, base_type, lvalue,
                                        messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
@@ -1230,7 +1254,9 @@ class TypeChecker(NodeVisitor[Type]):
                     if base_node.is_property:
                         base_type = base_type.ret_type
 
-                return base_type
+                return base_type, base_node
+
+        return None, None
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
@@ -2844,6 +2870,18 @@ def is_valid_inferred_type_component(typ: Type) -> bool:
             if not is_valid_inferred_type_component(item):
                 return False
     return True
+
+
+def is_node_static(node: Node) -> Optional[bool]:
+    """Find out if a node describes a static function method."""
+
+    if isinstance(node, FuncDef):
+        return node.is_static
+
+    if isinstance(node, Var):
+        return node.is_staticmethod
+
+    return None
 
 
 class Scope:

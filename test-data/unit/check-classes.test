@@ -2282,3 +2282,35 @@ class B(A):
     b = c
 [out]
 main:6: error: Incompatible types in assignment (expression has type Callable[[str], int], variable has type Callable[[int], int])
+
+[case testClassStaticMethod]
+class A():
+    @staticmethod
+    def a(a: int) -> None: pass
+class B(A):
+    @staticmethod
+    def b(a: str) -> None: pass
+    a = b
+[builtins fixtures/staticmethod.pyi]
+[out]
+main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+
+[case testClassStaticMethodIndirect]
+class A():
+    @staticmethod
+    def a(a: int) -> None: pass
+    c = a
+class B(A):
+    @staticmethod
+    def b(a: str) -> None: pass
+    c = b
+[builtins fixtures/staticmethod.pyi]
+[out]
+main:8: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+
+[case testTempNode]
+class A():
+    def a(self) -> None: pass
+class B(A):
+    def b(self) -> None: pass
+    a = c = b
