@@ -2097,6 +2097,7 @@ class C(B):
     a = "a"
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testVariableSubclassTypeOverwriteImplicit]
 class A:
@@ -2116,16 +2117,16 @@ class C(B):
 [builtins fixtures/list.pyi]
 [out]
 
-[case testVariableRvalue]
+[case testClassTopBaseClassFirst]
+from typing import Union
 class A:
-    a = None
+    a = None  # type: Union[int, str]
 class B(A):
     a = 1
 class C(B):
-    a = "a"
-[out]
-main:2: error: Need type annotation for variable
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+    a = "str"
+class D(A):
+    a = "str"
 
 [case testVariableTypeVar]
 from typing import TypeVar, Generic

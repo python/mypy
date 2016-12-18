@@ -1207,7 +1207,7 @@ class TypeChecker(NodeVisitor[Type]):
         to find the first class that defines a Type for the same name."""
         expr_name = expr_node.name()
 
-        for base in expr_node.info.mro[1:]:
+        for base in reversed(expr_node.info.mro[1:]):
             base_var = base.names.get(expr_name)
             if not base_var:
                 continue
