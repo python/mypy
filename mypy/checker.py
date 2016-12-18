@@ -1118,31 +1118,7 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                base_type = self.find_type_from_bases(lvalue)
-
-                if base_type:
-                    # Do not check whether the rvalue is compatible if the
-                    # lvalue had a type defined; this is handled by other
-                    # parts, and all we have to worry about in that case is
-                    # that lvalue is compatible with the base class.
-                    if lvalue_type:
-                        compare_type = lvalue_type
-                    else:
-                        compare_type = self.accept(rvalue)
-
-                    if compare_type:
-                        # Class-level function objects and classmethods become bound
-                        # methods: the former to the instance, the latter to the
-                        # class
-                        if (isinstance(base_type, CallableType)
-                                and isinstance(compare_type, CallableType)):
-                            base_type = bind_self(base_type)
-                            compare_type = bind_self(compare_type)
-
-                        self.check_subtype(compare_type, base_type, lvalue,
-                                           messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                                           'expression has type',
-                                           'variable has type')
+                self.check_compatibility_super(lvalue, lvalue_type, rvalue)
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
@@ -1193,19 +1169,45 @@ class TypeChecker(NodeVisitor[Type]):
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
 
-    def find_type_from_bases(self, e: NameExpr):
+    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Type, rvalue: Expression):
+        lvalue_node = lvalue.node
+
+        # Check if we are a class variable with at least one base class
+        if (isinstance(lvalue_node, Var) and
+                lvalue.kind == MDEF and
+                len(lvalue_node.info.bases) > 0):
+            base_type = self.lvalue_type_from_base(lvalue_node)
+
+            if base_type:
+                # Do not check whether the rvalue is compatible if the
+                # lvalue had a type defined; this is handled by other
+                # parts, and all we have to worry about in that case is
+                # that lvalue is compatible with the base class.
+                if lvalue_type:
+                    compare_type = lvalue_type
+                else:
+                    compare_type = self.accept(rvalue)
+
+                if compare_type:
+                    # Class-level function objects and classmethods become bound
+                    # methods: the former to the instance, the latter to the
+                    # class
+                    if (isinstance(base_type, CallableType) and
+                            isinstance(compare_type, CallableType)):
+                        base_type = bind_self(base_type, self.scope.active_class())
+                        compare_type = bind_self(compare_type, self.scope.active_class())
+
+                    self.check_subtype(compare_type, base_type, lvalue,
+                                       messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                       'expression has type',
+                                       'variable has type')
+
+    def lvalue_type_from_base(self, expr_node: Var):
         """For a NameExpr that is part of a class, walk all base classes and try
         to find the first class that defines a Type for the same name."""
-
-        expr_node = e.node
-        if not (isinstance(expr_node, Var) and e.kind == MDEF and
-                        len(expr_node.info.bases) > 0):
-            return None
-
         expr_name = expr_node.name()
-        expr_base = expr_node.info.bases[0]
 
-        for base in reversed(expr_node.info.mro[1:]):
+        for base in expr_node.info.mro[1:]:
             base_var = base.names.get(expr_name)
             if not base_var:
                 continue
@@ -1218,7 +1220,8 @@ class TypeChecker(NodeVisitor[Type]):
 
             if base_type:
                 if not has_no_typevars(base_type):
-                    itype = map_instance_to_supertype(expr_base, base)
+                    instance = cast(Instance, self.scope.active_class())
+                    itype = map_instance_to_supertype(instance, base)
                     base_type = expand_type_by_instance(base_type, itype)
 
                 if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
