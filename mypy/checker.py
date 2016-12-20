@@ -24,11 +24,12 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr,
-    CONTRAVARIANT, COVARIANT, MDEF, Node)
+    AwaitExpr, Node,
+    ARG_POS, MDEF,
+    CONTRAVARIANT, COVARIANT)
 from mypy import nodes
 from mypy.types import (
-    Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType,
+    Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     true_only, false_only, function_type
@@ -1640,8 +1641,18 @@ class TypeChecker(NodeVisitor[Type]):
         """
         self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = self.accept(lvalue.base)
-        method_type = self.expr_checker.analyze_external_member_access(
-            '__setitem__', basetype, context)
+        if isinstance(basetype, TypedDictType):
+            item_type = self.expr_checker.visit_typeddict_index_expr(basetype, lvalue.index)
+            method_type = CallableType(
+                arg_types=[self.named_type('builtins.str'), item_type],
+                arg_kinds=[ARG_POS, ARG_POS],
+                arg_names=[None, None],
+                ret_type=NoneTyp(),
+                fallback=self.named_type('builtins.function')
+            )  # type: Type
+        else:
+            method_type = self.expr_checker.analyze_external_member_access(
+                '__setitem__', basetype, context)
         lvalue.method_type = method_type
         self.expr_checker.check_call(method_type, [lvalue.index, rvalue],
                                      [nodes.ARG_POS, nodes.ARG_POS],
