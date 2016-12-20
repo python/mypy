@@ -61,3 +61,14 @@ def f(x: bytes): pass
 bytes
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [builtins fixtures/alias.pyi]
+
+[case testEmptyTupleTypeAlias]
+from typing import Tuple, Callable
+EmptyTuple = Tuple[()]
+x = None # type: EmptyTuple
+reveal_type(x)  # E: Revealed type is 'Tuple[]'
+
+EmptyTupleCallable = Callable[[Tuple[()]], None]
+f = None # type: EmptyTupleCallable
+reveal_type(f)  # E: Revealed type is 'def (Tuple[])'
+[builtins fixtures/list.pyi]
