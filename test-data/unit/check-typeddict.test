@@ -360,64 +360,73 @@ reveal_type(f(g))  # E: Revealed type is '<uninhabited>'
 
 -- Special Method: __getitem__
 
--- TODO: Implement support for this case.
---[case testCanGetItemOfTypedDictWithValidStringLiteralKey]
---from mypy_extensions import TypedDict
---TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
---p = TaggedPoint(type='2d', x=42, y=1337)
---def get_x(p: TaggedPoint) -> int:
---    return p['x']
---[builtins fixtures/dict.pyi]
+[case testCanGetItemOfTypedDictWithValidStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+reveal_type(p['type'])  # E: Revealed type is 'builtins.str'
+reveal_type(p['x'])     # E: Revealed type is 'builtins.int'
+reveal_type(p['y'])     # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
 
--- TODO: Implement support for this case.
---[case testCannotGetItemOfTypedDictWithInvalidStringLiteralKey]
---from mypy_extensions import TypedDict
---TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
---p = TaggedPoint(type='2d', x=42, y=1337)
---def get_z(p: TaggedPoint) -> int:
---    return p['z']  # E: ... 'z' is not a valid key for Point. Expected one of {'x', 'y'}.
---[builtins fixtures/dict.pyi]
+[case testCanGetItemOfTypedDictWithValidBytesOrUnicodeLiteralKey]
+# flags: --python-version 2.7
+from mypy_extensions import TypedDict
+Cell = TypedDict('Cell', {'value': int})
+c = Cell(value=42)
+reveal_type(c['value'])   # E: Revealed type is 'builtins.int'
+reveal_type(c[u'value'])  # E: Revealed type is 'builtins.int'
+[builtins_py2 fixtures/dict.pyi]
 
--- TODO: Implement support for this case.
---[case testCannotGetItemOfTypedDictWithNonLiteralKey]
---from mypy_extensions import TypedDict
---from typing import Union
---TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
---p = TaggedPoint(type='2d', x=42, y=1337)
---def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
---    return p[key]  # E: ... Cannot prove 'key' is a valid key for Point. Expected one of {'x', 'y'}
---[builtins fixtures/dict.pyi]
+[case testCannotGetItemOfTypedDictWithInvalidStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p['z']  # E: 'z' is not a valid item name; expected one of ['type', 'x', 'y']
+[builtins fixtures/dict.pyi]
+
+[case testCannotGetItemOfTypedDictWithNonLiteralKey]
+from mypy_extensions import TypedDict
+from typing import Union
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
+    return p[key]  # E: Cannot prove expression is a valid item name; expected one of ['type', 'x', 'y']
+[builtins fixtures/dict.pyi]
 
 
 -- Special Method: __setitem__
 
--- TODO: Implement support for this case.
---[case testCanSetItemOfTypedDictWithValidStringLiteralKey]
---from mypy_extensions import TypedDict
---TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
---p = TaggedPoint(type='2d', x=42, y=1337)
---def set_x(p: TaggedPoint, x: int) -> None:
---    p['x'] = x
---[builtins fixtures/dict.pyi]
+[case testCanSetItemOfTypedDictWithValidStringLiteralKeyAndCompatibleValueType]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p['type'] = 'two_d'
+p['x'] = 1
+[builtins fixtures/dict.pyi]
 
--- TODO: Implement support for this case.
---[case testCannotSetItemOfTypedDictWithInvalidStringLiteralKey]
---from mypy_extensions import TypedDict
---TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
---p = TaggedPoint(type='2d', x=42, y=1337)
---def set_z(p: TaggedPoint, z: int) -> None:
---    p['z'] = z  # E: ... 'z' is not a valid key for Point. Expected one of {'x', 'y'}.
---[builtins fixtures/dict.pyi]
+[case testCannotSetItemOfTypedDictWithIncompatibleValueType]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p['x'] = 'y'  # E: Argument 2 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
 
--- TODO: Implement support for this case.
---[case testCannotSetItemOfTypedDictWithNonLiteralKey]
---from mypy_extensions import TypedDict
---from typing import Union
---TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
---p = TaggedPoint(type='2d', x=42, y=1337)
---def set_coordinate(p: TaggedPoint, key: str, value: Union[str, int]) -> None:
---    p[key] = value  # E: ... Cannot prove 'key' is a valid key for Point. Expected one of {'x', 'y'}
---[builtins fixtures/dict.pyi]
+[case testCannotSetItemOfTypedDictWithInvalidStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p['z'] = 1  # E: 'z' is not a valid item name; expected one of ['type', 'x', 'y']
+[builtins fixtures/dict.pyi]
+
+[case testCannotSetItemOfTypedDictWithNonLiteralKey]
+from mypy_extensions import TypedDict
+from typing import Union
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
+    p[key] = value  # E: Cannot prove expression is a valid item name; expected one of ['type', 'x', 'y']
+[builtins fixtures/dict.pyi]
 
 
 -- Special Method: get
