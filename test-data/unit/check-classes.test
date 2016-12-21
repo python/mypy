@@ -2468,7 +2468,7 @@ class C(B):
 [builtins fixtures/list.pyi]
 [out]
 
-[case testClassTopBaseClassFirst]
+[case testClassAllBases]
 from typing import Union
 class A:
     a = None  # type: Union[int, str]
@@ -2478,6 +2478,8 @@ class C(B):
     a = "str"
 class D(A):
     a = "str"
+[out]
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testVariableTypeVar]
 from typing import TypeVar, Generic
@@ -2673,3 +2675,13 @@ class A:
 class B(A):
     x = [1]
 [builtins fixtures/list.pyi]
+
+[case testClassMemberObject]
+class A:
+    x = object()
+class B(A):
+    x = 1
+class C(B):
+    x = ''
+[out]
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")

@@ -1119,7 +1119,7 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                self.check_compatibility_super(lvalue, lvalue_type, rvalue)
+                self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue)
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
@@ -1175,73 +1175,85 @@ class TypeChecker(NodeVisitor[Type]):
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
 
-    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Type, rvalue: Expression):
+    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Type,
+                                       rvalue: Expression) -> None:
         lvalue_node = lvalue.node
 
         # Check if we are a class variable with at least one base class
         if (isinstance(lvalue_node, Var) and
                 lvalue.kind == MDEF and
                 len(lvalue_node.info.bases) > 0):
-            base_type, base_node = self.lvalue_type_from_base(lvalue_node)
 
-            if base_type:
-                # Do not check whether the rvalue is compatible if the
-                # lvalue had a type defined; this is handled by other
-                # parts, and all we have to worry about in that case is
-                # that lvalue is compatible with the base class.
-                compare_node = None  # type: Node
-                if lvalue_type:
-                    compare_type = lvalue_type
-                    compare_node = lvalue_node
-                else:
-                    compare_type = self.accept(rvalue, base_type)
-                    if isinstance(rvalue, NameExpr):
-                        compare_node = rvalue.node
-                        if isinstance(compare_node, Decorator):
-                            compare_node = compare_node.func
+            for base in reversed(lvalue_node.info.mro[1:]):
+                if not self.check_compatibility_super(lvalue, lvalue_type, rvalue, base):
+                    # Only show one error per variable; even if other
+                    # base classes are also incompatible
+                    break
 
-                if compare_type:
-                    if (isinstance(base_type, CallableType) and
-                            isinstance(compare_type, CallableType)):
-                        base_static = is_node_static(base_node)
-                        compare_static = is_node_static(compare_node)
+    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Type, rvalue: Expression,
+                                  base: TypeInfo) -> bool:
+        lvalue_node = lvalue.node
+        assert isinstance(lvalue_node, Var)
 
-                        # In case compare_static is unknown, also check
-                        # if 'definition' is set. The most common case for
-                        # this is with TempNode(), where we lose all
-                        # information about the real rvalue node (but only get
-                        # the rvalue type)
-                        if compare_static is None and compare_type.definition:
-                            compare_static = is_node_static(compare_type.definition)
+        base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
 
-                        # Compare against False, as is_node_static can return None
-                        if base_static is False and compare_static is False:
-                            # Class-level function objects and classmethods become bound
-                            # methods: the former to the instance, the latter to the
-                            # class
-                            base_type = bind_self(base_type, self.scope.active_class())
-                            compare_type = bind_self(compare_type, self.scope.active_class())
+        if base_type:
+            # Do not check whether the rvalue is compatible if the
+            # lvalue had a type defined; this is handled by other
+            # parts, and all we have to worry about in that case is
+            # that lvalue is compatible with the base class.
+            compare_node = None  # type: Node
+            if lvalue_type:
+                compare_type = lvalue_type
+                compare_node = lvalue.node
+            else:
+                compare_type = self.accept(rvalue, base_type)
+                if isinstance(rvalue, NameExpr):
+                    compare_node = rvalue.node
+                    if isinstance(compare_node, Decorator):
+                        compare_node = compare_node.func
 
-                        # If we are a static method, ensure to also tell the
-                        # lvalue it now contains a static method
-                        if base_static and compare_static:
-                            lvalue_node.is_staticmethod = True
+            if compare_type:
+                if (isinstance(base_type, CallableType) and
+                        isinstance(compare_type, CallableType)):
+                    base_static = is_node_static(base_node)
+                    compare_static = is_node_static(compare_node)
 
-                    self.check_subtype(compare_type, base_type, lvalue,
-                                       messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                                       'expression has type',
-                                       'variable has type')
+                    # In case compare_static is unknown, also check
+                    # if 'definition' is set. The most common case for
+                    # this is with TempNode(), where we lose all
+                    # information about the real rvalue node (but only get
+                    # the rvalue type)
+                    if compare_static is None and compare_type.definition:
+                        compare_static = is_node_static(compare_type.definition)
 
-    def lvalue_type_from_base(self, expr_node: Var):
+                    # Compare against False, as is_node_static can return None
+                    if base_static is False and compare_static is False:
+                        # Class-level function objects and classmethods become bound
+                        # methods: the former to the instance, the latter to the
+                        # class
+                        base_type = bind_self(base_type, self.scope.active_class())
+                        compare_type = bind_self(compare_type, self.scope.active_class())
+
+                    # If we are a static method, ensure to also tell the
+                    # lvalue it now contains a static method
+                    if base_static and compare_static:
+                        lvalue_node.is_staticmethod = True
+
+                return self.check_subtype(compare_type, base_type, lvalue,
+                                          messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                          'expression has type',
+                                          'variable has type')
+        return True
+
+    def lvalue_type_from_base(self, expr_node: Var,
+                              base: TypeInfo) -> Tuple[Optional[Type], Optional[Node]]:
         """For a NameExpr that is part of a class, walk all base classes and try
         to find the first class that defines a Type for the same name."""
         expr_name = expr_node.name()
+        base_var = base.names.get(expr_name)
 
-        for base in reversed(expr_node.info.mro[1:]):
-            base_var = base.names.get(expr_name)
-            if not base_var:
-                continue
-
+        if base_var:
             base_node = base_var.node
             base_type = base_var.type
             if isinstance(base_node, Decorator):
