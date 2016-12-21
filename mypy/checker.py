@@ -1194,7 +1194,7 @@ class TypeChecker(NodeVisitor[Type]):
                     compare_type = lvalue_type
                     compare_node = lvalue_node
                 else:
-                    compare_type = self.accept(rvalue)
+                    compare_type = self.accept(rvalue, base_type)
                     if isinstance(rvalue, NameExpr):
                         compare_node = rvalue.node
                         if isinstance(compare_node, Decorator):

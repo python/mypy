@@ -2520,7 +2520,7 @@ class B(A[int]):
     b = ['']
 [builtins fixtures/list.pyi]
 [out]
-main:8: error: Incompatible types in assignment (expression has type List[str], variable has type List[int])
+main:8: error: List item 0 has incompatible type "str"
 
 [case testVariableMethod]
 class A:
@@ -2665,3 +2665,11 @@ class A():
 class B(A):
     def b(self) -> None: pass
     a = c = b
+
+[case testListObject]
+from typing import List
+class A:
+    x = []  # type: List[object]
+class B(A):
+    x = [1]
+[builtins fixtures/list.pyi]
