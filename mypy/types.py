@@ -545,8 +545,8 @@ _dummy = object()  # type: Any
 
 
 FormalArgument = NamedTuple('FormalArgument', [
-    ('name', str),
-    ('pos', int),
+    ('name', Optional[str]),
+    ('pos', Optional[int]),
     ('typ', Type),
     ('required', bool)])
 
