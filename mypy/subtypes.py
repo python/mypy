@@ -381,45 +381,10 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                     return False
             continue
 
-        # Get possible corresponding arguments by name and by position.
-        if not done_with_positional:
-            left_by_position = left.argument_by_position(i)
-        else:
-            left_by_position = None
-        if right_arg.name is not None:
-            left_by_name = left.argument_by_name(right_arg.name)
-        else:
-            left_by_name = None
-
         # Left must have some kind of corresponding argument.
-        if left_by_name is None and left_by_position is None:
+        left_arg = left.corresponding_argument(right_arg)
+        if left_arg is None:
             return False
-
-        left_arg = None  # type: Optional[FormalArgument]
-        # If there's ambiguity as to how to match up this argument, it's not a subtype
-        if (left_by_name is not None
-                and left_by_position is not None
-                and left_by_name != left_by_position):
-            # If we're dealing with an optional pos-only and an optional
-            # name-only arg, merge them.  This is the case for all functions
-            # taking both *args and **args, or a pair of functions like so:
-
-            # def right(a: int = ...) -> None: ...
-            # def left(__a: int = ..., *, a: int = ...) -> None: ...
-            if (left_by_position.required is False and left_by_name.required is False
-                    and left_by_position.name is None and left_by_name.pos is None
-                    and is_equivalent(left_by_position.typ, left_by_name.typ)):
-                left_arg = FormalArgument(
-                    left_by_name.name,
-                    left_by_position.pos,
-                    left_by_position.typ,
-                    required=False)
-            else:
-                return False
-        else:
-            left_arg = left_by_name if left_by_name is not None else left_by_position
-
-        assert left_arg is not None
 
         if not are_args_compatible(left_arg, right_arg, ignore_pos_arg_names):
             return False
