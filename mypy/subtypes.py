@@ -275,6 +275,11 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                         ignore_return: bool = False,
                         ignore_pos_arg_names: bool = False) -> bool:
     """Is left a subtype of right?"""
+
+    # If either function is implicitly typed, ignore positional arg names too
+    if left.implicit or right.implicit:
+        ignore_pos_arg_names = True
+
     # Non-type cannot be a subtype of type.
     if right.is_type_obj() and not left.is_type_obj():
         return False
