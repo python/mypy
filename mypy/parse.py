@@ -14,7 +14,9 @@ from mypy.lex import (
     UnicodeLit, FloatLit, Op, Indent, Keyword, Punct, LexError, ComplexLit,
     EllipsisToken
 )
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name, is_overload_part,
+)
 from mypy.nodes import (
     MypyFile, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt, Statement,
@@ -900,14 +902,22 @@ class Parser:
             return node, type
 
     def try_combine_overloads(self, s: Statement, stmt: List[Statement]) -> bool:
-        if isinstance(s, Decorator) and stmt:
-            fdef = s
-            n = fdef.func.name()
-            if isinstance(stmt[-1], Decorator) and stmt[-1].func.name() == n:
-                stmt[-1] = OverloadedFuncDef([stmt[-1], fdef])
+        if is_overload_part(s) and stmt:
+            assert isinstance(s, Decorator)
+            n = s.func.name()
+            if is_overload_part(stmt[-1]) and stmt[-1].func.name() == n:
+                stmt[-1] = OverloadedFuncDef([stmt[-1], s], None)
                 return True
             elif isinstance(stmt[-1], OverloadedFuncDef) and stmt[-1].name() == n:
-                stmt[-1].items.append(fdef)
+                stmt[-1].items.append(s)
+                return True
+        elif isinstance(s, FuncDef) and stmt:
+            n = s.name()
+            if is_overload_part(stmt[-1]) and stmt[-1].func.name() == n:
+                stmt[-1] = OverloadedFuncDef([stmt[-1]], s)
+                return True
+            elif isinstance(stmt[-1], OverloadedFuncDef) and stmt[-1].impl is None and stmt[-1].name() == n:
+                stmt[-1].impl = s
                 return True
         return False
 

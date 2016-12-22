@@ -449,6 +449,9 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.is_func_scope():
             self.add_local(defn, defn)
 
+        if defn.impl:
+            defn.impl.accept(self)
+
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
 
@@ -3133,6 +3136,16 @@ class FirstPass(NodeVisitor):
         func._fullname = self.sem.qualified_name(func.name())
         if kind == GDEF:
             self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
+        if func.impl:
+            # Also analyze the function body (in case there are conditional imports).
+            sem = self.sem
+            sem.function_stack.append(func.impl)
+            sem.errors.push_function(func.name())
+            sem.enter()
+            func.impl.body.accept(self)
+            sem.leave()
+            sem.errors.pop_function()
+            sem.function_stack.pop()
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         kind = self.kind_by_scope()

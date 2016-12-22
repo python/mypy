@@ -168,6 +168,8 @@ class TransformVisitor(NodeVisitor[Node]):
         new._fullname = node._fullname
         new.type = self.type(node.type)
         new.info = node.info
+        if node.impl:
+            node.impl = node.impl.accept(self)
         return new
 
     def visit_class_def(self, node: ClassDef) -> ClassDef:

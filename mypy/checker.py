@@ -261,6 +261,9 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         num_abstract = 0
+        assert defn.items
+        if len(defn.items) == 1:
+            self.fail('Single overload definition, multiple required', defn)
         if defn.is_property:
             # HACK: Infer the type of the property.
             self.visit_decorator(defn.items[0])
@@ -274,6 +277,9 @@ class TypeChecker(StatementVisitor[None]):
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         self.check_overlapping_overloads(defn)
+        if defn.impl:
+            defn.impl.accept(self)
+        return None
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         for i, item in enumerate(defn.items):

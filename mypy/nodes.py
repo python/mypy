@@ -376,9 +376,11 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """
 
     items = None  # type: List[Decorator]
+    impl = None # type: Optional[FuncDef]
 
-    def __init__(self, items: List['Decorator']) -> None:
+    def __init__(self, items: List['Decorator'], impl: Optional['FuncDef'] = None) -> None:
         self.items = items
+        self.impl = impl
         self.set_line(items[0].line)
 
     def name(self) -> str:
@@ -393,12 +395,16 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 'type': None if self.type is None else self.type.serialize(),
                 'fullname': self._fullname,
                 'is_property': self.is_property,
+                'impl': None if self.impl is None else self.impl.serialize()
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
         assert data['.class'] == 'OverloadedFuncDef'
-        res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']])
+        impl = None # type: Optional[FuncDef]
+        if data.get('impl') is not None:
+            impl = FuncDef.deserialize(data['impl'])
+        res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']], impl)
         if data.get('type') is not None:
             res.type = mypy.types.Type.deserialize(data['type'])
         res._fullname = data['fullname']
