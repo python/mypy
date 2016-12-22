@@ -322,7 +322,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
     # used for in practice.
 
     # Every argument in R must have a corresponding argument in L, and every
-    # required argument in L must have a corresponding arugment in R.
+    # required argument in L must have a corresponding argument in R.
     done_with_positional = False
     for i in range(len(right.arg_types)):
         right_kind = right.arg_kinds[i]
