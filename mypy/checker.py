@@ -40,8 +40,8 @@ import mypy.checkexpr
 from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_proper_subtype, is_more_precise, restrict_subtype_away,
-    is_subtype_ignoring_tvars
+    is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
+    restrict_subtype_away, is_subtype_ignoring_tvars
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
@@ -835,7 +835,7 @@ class TypeChecker(NodeVisitor[Type]):
     def check_getattr_method(self, typ: CallableType, context: Context) -> None:
         method_type = CallableType([AnyType(), self.named_type('builtins.str')],
                                    [nodes.ARG_POS, nodes.ARG_POS],
-                                   [None],
+                                   [None, None],
                                    AnyType(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
@@ -936,7 +936,7 @@ class TypeChecker(NodeVisitor[Type]):
         """
         # Use boolean variable to clarify code.
         fail = False
-        if not is_subtype(override, original):
+        if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
         elif (not isinstance(original, Overloaded) and
               isinstance(override, Overloaded) and
@@ -1043,7 +1043,7 @@ class TypeChecker(NodeVisitor[Type]):
             # Method override
             first_sig = bind_self(first_type)
             second_sig = bind_self(second_type)
-            ok = is_subtype(first_sig, second_sig)
+            ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
         else:
