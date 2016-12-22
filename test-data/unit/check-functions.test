@@ -149,8 +149,8 @@ ee_def = specific_1 # E: Incompatible types in assignment (expression has type C
 
 [case testLackOfNamesImplicitAny]
 
-def f(__a): pass
-def g(a): pass
+def f(__a) -> Any: pass
+def g(a) -> Any: pass
 
 ff = f
 gg = g
@@ -161,8 +161,8 @@ gg = f # E: Incompatible types in assignment (expression has type Callable[[Any]
 [case testLackOfNamesImplicitAnyFastparse]
 # flags: --fast-parser
 
-def f(__a): pass
-def g(a): pass
+def f(__a) -> Any: pass
+def g(a) -> Any: pass
 
 ff = f
 gg = g
