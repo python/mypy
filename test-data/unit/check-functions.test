@@ -87,6 +87,17 @@ def l(x, y) -> None: ...
 def r(x) -> None: ...
 r = l # E: Incompatible types in assignment (expression has type Callable[[Any, Any], None], variable has type Callable[[Any], None])
 
+[case testSubtypingFunctionsImplicitNames]
+
+def f(a, b): pass
+def g(c: Any, d: Any) -> Any: pass
+
+ff = f
+gg = g
+
+gg = f
+ff = g
+
 [case testSubtypingFunctionsDefaultsNames]
 from typing import Callable
 
@@ -1539,10 +1550,10 @@ class A(Generic[t]):
 
 
 [case testRedefineFunction]
-def f(x): pass
+def f(x) -> Any: pass
 def g(x, y): pass
 def h(x): pass
-def j(y): pass
+def j(y) -> Any: pass
 f = h
 f = j # E: Incompatible types in assignment (expression has type Callable[[Arg('y', Any)], Any], variable has type Callable[[Arg('x', Any)], Any])
 f = g # E: Incompatible types in assignment (expression has type Callable[[Any, Any], Any], variable has type Callable[[Any], Any])
