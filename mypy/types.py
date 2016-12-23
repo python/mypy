@@ -5,6 +5,7 @@ import copy
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Sequence, Optional, Union, Iterable,
+    NamedTuple,
 )
 
 import mypy.nodes
@@ -14,6 +15,7 @@ from mypy.nodes import (
 )
 
 from mypy import experiments
+from mypy.sharedparse import argument_elide_name
 
 
 T = TypeVar('T')
@@ -542,6 +544,13 @@ class FunctionLike(Type):
 _dummy = object()  # type: Any
 
 
+FormalArgument = NamedTuple('FormalArgument', [
+    ('name', Optional[str]),
+    ('pos', Optional[int]),
+    ('typ', Type),
+    ('required', bool)])
+
+
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
@@ -661,6 +670,78 @@ class CallableType(FunctionLike):
         if self.is_var_arg:
             n -= 1
         return n
+
+    def corresponding_argument(self, model: FormalArgument) -> Optional[FormalArgument]:
+        """Return the argument in this function that corresponds to `model`"""
+
+        by_name = self.argument_by_name(model.name)
+        by_pos = self.argument_by_position(model.pos)
+        if by_name is None and by_pos is None:
+            return None
+        if by_name is not None and by_pos is not None:
+            if by_name == by_pos:
+                return by_name
+            # If we're dealing with an optional pos-only and an optional
+            # name-only arg, merge them.  This is the case for all functions
+            # taking both *args and **args, or a pair of functions like so:
+
+            # def right(a: int = ...) -> None: ...
+            # def left(__a: int = ..., *, a: int = ...) -> None: ...
+            from mypy.subtypes import is_equivalent
+            if (not (by_name.required or by_pos.required)
+                    and by_pos.name is None
+                    and by_name.pos is None
+                    and is_equivalent(by_name.typ, by_pos.typ)):
+                return FormalArgument(by_name.name, by_pos.pos, by_name.typ, False)
+        return by_name if by_name is not None else by_pos
+
+    def argument_by_name(self, name: str) -> Optional[FormalArgument]:
+        if name is None:
+            return None
+        seen_star = False
+        star2_type = None  # type: Optional[Type]
+        for i, (arg_name, kind, typ) in enumerate(
+                zip(self.arg_names, self.arg_kinds, self.arg_types)):
+            # No more positional arguments after these.
+            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+                seen_star = True
+            if kind == ARG_STAR:
+                continue
+            if kind == ARG_STAR2:
+                star2_type = typ
+                continue
+            if arg_name == name:
+                position = None if seen_star else i
+                return FormalArgument(name, position, typ, kind in (ARG_POS, ARG_NAMED))
+        if star2_type is not None:
+            return FormalArgument(name, None, star2_type, False)
+        return None
+
+    def argument_by_position(self, position: int) -> Optional[FormalArgument]:
+        if position is None:
+            return None
+        if self.is_var_arg:
+            for kind, typ in zip(self.arg_kinds, self.arg_types):
+                if kind == ARG_STAR:
+                    star_type = typ
+                    break
+        if position >= len(self.arg_names):
+            if self.is_var_arg:
+                return FormalArgument(None, position, star_type, False)
+            else:
+                return None
+        name, kind, typ = (
+            self.arg_names[position],
+            self.arg_kinds[position],
+            self.arg_types[position],
+        )
+        if kind in (ARG_POS, ARG_OPT):
+            return FormalArgument(name, position, typ, kind == ARG_POS)
+        else:
+            if self.is_var_arg:
+                return FormalArgument(None, position, star_type, False)
+            else:
+                return None
 
     def items(self) -> List['CallableType']:
         return [self]
@@ -1647,7 +1728,7 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
         return CallableType(
             [AnyType()] * len(fdef.arg_names),
             fdef.arg_kinds,
-            fdef.arg_names,
+            [None if argument_elide_name(n) else n for n in fdef.arg_names],
             AnyType(),
             fallback,
             name,

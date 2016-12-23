@@ -1311,3 +1311,13 @@ class A:
 [out]
 main:5: error: Name 'x' is not defined
 main:5: error: Name 'y' is not defined
+
+[case testTypeRedeclarationNoSpuriousWarnings]
+from typing import Tuple
+a = 1  # type: int
+a = 's'  # type: str
+a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
+
+[out]
+main:3: error: Name 'a' already defined
+main:4: error: Name 'a' already defined

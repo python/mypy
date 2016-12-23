@@ -1309,10 +1309,11 @@ class SemanticAnalyzer(NodeVisitor):
                 lval.kind = MDEF
                 lval.fullname = lval.name
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+            elif explicit_type:
+                # Don't re-bind types
+                self.name_already_defined(lval.name, lval)
             else:
                 # Bind to an existing name.
-                if explicit_type:
-                    self.name_already_defined(lval.name, lval)
                 lval.accept(self)
                 self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):

@@ -37,6 +37,8 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
             else:
                 args = [expr.index]
             base.args = [expr_to_unanalyzed_type(arg) for arg in args]
+            if not base.args:
+                base.empty_tuple_index = True
             return base
         else:
             raise TypeTranslationError()
