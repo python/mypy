@@ -24,13 +24,14 @@ if True:
     # Now `typing` is available.
 
 
-from typing import Dict, List, Optional, Set, Iterable
+from typing import Dict, List, Optional, Set, Iterable, Pattern
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
 
 import itertools
 import os
+import re
 
 
 # Ideally, all tests would be `discover`able so that they can be driven
@@ -181,11 +182,14 @@ def add_selftypecheck(driver: Driver) -> None:
                             '--config-file', 'mypy_strict_optional.ini')
 
 
-def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
+def find_files(base: str, prefix: str = '', suffix: str = '',
+        blacklist: Pattern = None) -> List[str]:
     return [join(root, f)
             for root, dirs, files in os.walk(base)
             for f in files
-            if f.startswith(prefix) and f.endswith(suffix)]
+            if (f.startswith(prefix)
+                and f.endswith(suffix)
+                and (blacklist is None or blacklist.match(f)))]
 
 
 def file_to_module(file: str) -> str:
@@ -248,13 +252,17 @@ def add_stubs(driver: Driver) -> None:
     # We only test each module in the one version mypy prefers to find.
     # TODO: test stubs for other versions, especially Python 2 stubs.
 
+    with open("typeshed/tests/mypy_blacklist.txt") as fb:
+        blacklist_sub = re.findall(r"^\s*([^\s#]+)\s*(?:#.*)?$", fb.read(), flags=re.M)
+        blacklist = re.compile("(%s)$" % "|".join(blacklist_sub))
+
     modules = set()  # type: Set[str]
     modules.add('typing')
     # TODO: This should also test Python 2, and pass pyversion accordingly.
     for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
         for stub_type in ['builtins', 'stdlib', 'third_party']:
             stubdir = join('typeshed', stub_type, version)
-            for f in find_files(stubdir, suffix='.pyi'):
+            for f in find_files(stubdir, suffix='.pyi', blacklist=blacklist):
                 module = file_to_module(f[len(stubdir) + 1:])
                 modules.add(module)
 
