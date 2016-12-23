@@ -1062,25 +1062,25 @@ from typing import overload
 def dec(x): pass
 @overload
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@dec # E: Name 'f' already defined
 def f(): pass
 [out]
 
 [case testInconsistentOverload2]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec
 def f(): pass
-@overload
+@overload # E: Name 'f' already defined
 def f(): pass
 [out]
 
 [case testMissingOverloadDecorator]
 from typing import overload
 def dec(x): pass
-@dec  # E: 'overload' decorator expected
+@dec
 def f(): pass
-@dec  # E: 'overload' decorator expected
+@dec # E: Name 'f' already defined
 def f(): pass
 [out]
 

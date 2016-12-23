@@ -101,6 +101,7 @@ def special_function_elide_names(name: str) -> bool:
 def argument_elide_name(name: Union[str, Tuple, None]) -> bool:
     return isinstance(name, str) and name.startswith("__")
 
+
 def _is_overload_decorator(dec):
     if isinstance(dec, NameExpr) and dec.name in {'overload', 'property', 'abstractproperty'}:
         return True
@@ -108,6 +109,6 @@ def _is_overload_decorator(dec):
         return True
     return False
 
-def is_overload_part(stmt: Statement) -> bool:
-    return isinstance(stmt, Decorator) and any(_is_overload_decorator(dec)
-                                               for dec in stmt.decorators)
+
+def is_overload_part(stmt: Decorator) -> bool:
+    return any(_is_overload_decorator(dec) for dec in stmt.decorators)

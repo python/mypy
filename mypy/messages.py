@@ -829,6 +829,14 @@ class MessageBuilder:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
+    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot accept all possible arguments '
+                  'of signature {}'.format(index1), context)
+
+    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot produce return type '
+                  'of signature {}'.format(index1), context)
+
     def operator_method_signatures_overlap(
             self, reverse_class: str, reverse_method: str, forward_class: str,
             forward_method: str, context: Context) -> None:

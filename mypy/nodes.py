@@ -376,7 +376,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """
 
     items = None  # type: List[Decorator]
-    impl = None # type: Optional[FuncDef]
+    impl = None  # type: Optional[FuncDef]
 
     def __init__(self, items: List['Decorator'], impl: Optional['FuncDef'] = None) -> None:
         self.items = items
@@ -401,7 +401,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
         assert data['.class'] == 'OverloadedFuncDef'
-        impl = None # type: Optional[FuncDef]
+        impl = None  # type: Optional[FuncDef]
         if data.get('impl') is not None:
             impl = FuncDef.deserialize(data['impl'])
         res = OverloadedFuncDef([Decorator.deserialize(d) for d in data['items']], impl)

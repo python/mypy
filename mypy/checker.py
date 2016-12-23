@@ -36,7 +36,7 @@ from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
-    restrict_subtype_away, is_subtype_ignoring_tvars
+    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
@@ -283,13 +283,20 @@ class TypeChecker(StatementVisitor[None]):
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         for i, item in enumerate(defn.items):
+            sig1 = self.function_type(item.func)
             for j, item2 in enumerate(defn.items[i + 1:]):
                 # TODO overloads involving decorators
-                sig1 = self.function_type(item.func)
                 sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
                     self.msg.overloaded_signatures_overlap(i + 1, i + j + 2,
                                                            item.func)
+            if defn.impl:
+                assert isinstance(defn.impl.type, CallableType) and isinstance(sig1, CallableType)
+
+                if not is_callable_subtype(defn.impl.type, sig1, ignore_return=True):
+                    self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
+                if not is_subtype(sig1.ret_type, defn.impl.type.ret_type):
+                    self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
     #

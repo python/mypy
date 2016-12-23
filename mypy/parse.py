@@ -902,10 +902,11 @@ class Parser:
             return node, type
 
     def try_combine_overloads(self, s: Statement, stmt: List[Statement]) -> bool:
-        if is_overload_part(s) and stmt:
-            assert isinstance(s, Decorator)
+        if isinstance(s, Decorator) and is_overload_part(s) and stmt:
             n = s.func.name()
-            if is_overload_part(stmt[-1]) and stmt[-1].func.name() == n:
+            if (isinstance(stmt[-1], Decorator)
+                    and is_overload_part(stmt[-1])
+                    and stmt[-1].func.name() == n):
                 stmt[-1] = OverloadedFuncDef([stmt[-1], s], None)
                 return True
             elif isinstance(stmt[-1], OverloadedFuncDef) and stmt[-1].name() == n:
@@ -913,10 +914,14 @@ class Parser:
                 return True
         elif isinstance(s, FuncDef) and stmt:
             n = s.name()
-            if is_overload_part(stmt[-1]) and stmt[-1].func.name() == n:
+            if (isinstance(stmt[-1], Decorator)
+                    and is_overload_part(stmt[-1])
+                    and stmt[-1].func.name() == n):
                 stmt[-1] = OverloadedFuncDef([stmt[-1]], s)
                 return True
-            elif isinstance(stmt[-1], OverloadedFuncDef) and stmt[-1].impl is None and stmt[-1].name() == n:
+            elif (isinstance(stmt[-1], OverloadedFuncDef)
+                  and stmt[-1].impl is None
+                  and stmt[-1].name() == n):
                 stmt[-1].impl = s
                 return True
         return False
