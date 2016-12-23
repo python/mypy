@@ -244,7 +244,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
-            ret.append(OverloadedFuncDef(current_overload))
+            ret.append(OverloadedFuncDef(current_overload, None))
         return ret
 
     def in_class(self) -> bool:

@@ -20,6 +20,28 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
+[case testTypeCheckOverloadWithImplementationFastparse]
+# flags: --fast-parser
+
+from typing import overload, Any
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+def f(x: Any) -> Any:
+   if isinstance(x, A):
+       return B()
+   else:
+       return A()
+
+reveal_type(f(A())) # E: Revealed type is '__main__.B'
+reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
 [case testTypeCheckOverloadWithImplementationError]
 from typing import overload, Any
 

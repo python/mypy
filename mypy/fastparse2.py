@@ -18,7 +18,9 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name, is_overload_part,
+)
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -218,19 +220,27 @@ class ASTConverter(ast27.NodeTransformer):
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
-        current_overload = []
+        current_overload = []  # type: List[Decorator]
         current_overload_name = None
         # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
-            if isinstance(stmt, Decorator) and stmt.name() == current_overload_name:
+            if (isinstance(stmt, Decorator)
+                    and is_overload_part(stmt)
+                    and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
+            elif (isinstance(stmt, FuncDef)
+                  and stmt.name() == current_overload_name
+                  and stmt.name() is not None):
+                ret.append(OverloadedFuncDef(current_overload, stmt))
+                current_overload = []
+                current_overload_name = None
             else:
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
-                    ret.append(OverloadedFuncDef(current_overload))
+                    ret.append(OverloadedFuncDef(current_overload, None))
 
-                if isinstance(stmt, Decorator):
+                if isinstance(stmt, Decorator) and is_overload_part(stmt):
                     current_overload = [stmt]
                     current_overload_name = stmt.name()
                 else:
@@ -241,7 +251,7 @@ class ASTConverter(ast27.NodeTransformer):
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
-            ret.append(OverloadedFuncDef(current_overload))
+            ret.append(OverloadedFuncDef(current_overload, None))
         return ret
 
     def in_class(self) -> bool:
