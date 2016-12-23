@@ -1191,7 +1191,7 @@ class TypeChecker(NodeVisitor[Type]):
                 # anything other than 3 elements. The exception to this rule
                 # is __slots__, where it is allowed for any child class to
                 # redefine it.
-                if lvalue_node.name() == "__slots__" and base.name() != "object":
+                if lvalue_node.name() == "__slots__" and base.fullname() != "builtins.object":
                     continue
 
                 if not self.check_compatibility_super(lvalue, lvalue_type, rvalue, base):
