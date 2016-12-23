@@ -1185,6 +1185,15 @@ class TypeChecker(NodeVisitor[Type]):
                 len(lvalue_node.info.bases) > 0):
 
             for base in reversed(lvalue_node.info.mro[1:]):
+                # Only check __slots__ against the 'object'
+                # If a base class defines a Tuple of 3 elements, a child of
+                # this class should not be allowed to define it as a Tuple of
+                # anything other than 3 elements. The exception to this rule
+                # is __slots__, where it is allowed for any child class to
+                # redefine it.
+                if lvalue_node.name() == "__slots__" and base.name() != "object":
+                    continue
+
                 if not self.check_compatibility_super(lvalue, lvalue_type, rvalue, base):
                     # Only show one error per variable; even if other
                     # base classes are also incompatible
