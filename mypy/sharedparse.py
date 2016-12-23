@@ -1,6 +1,6 @@
 from typing import Union, Tuple
 
-from mypy.nodes import Decorator, NameExpr, Statement
+from mypy.nodes import Decorator, NameExpr, Statement, MemberExpr
 
 """Shared logic between our three mypy parser files."""
 
@@ -101,7 +101,13 @@ def special_function_elide_names(name: str) -> bool:
 def argument_elide_name(name: Union[str, Tuple, None]) -> bool:
     return isinstance(name, str) and name.startswith("__")
 
+def _is_overload_decorator(dec):
+    if isinstance(dec, NameExpr) and dec.name in {'overload', 'property', 'abstractproperty'}:
+        return True
+    elif isinstance(dec, MemberExpr) and dec.name in {'setter', 'deleter'}:
+        return True
+    return False
+
 def is_overload_part(stmt: Statement) -> bool:
-    return isinstance(stmt, Decorator) and any(
-        isinstance(dec, NameExpr) and dec.name == 'overload'
-        for dec in stmt.decorators)
+    return isinstance(stmt, Decorator) and any(_is_overload_decorator(dec)
+                                               for dec in stmt.decorators)
