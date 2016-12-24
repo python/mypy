@@ -6,7 +6,7 @@ from mypy.nodes import (
     ARG_POS, ARG_NAMED,
 )
 from mypy.parsetype import parse_str_as_type, TypeParseError
-from mypy.types import Type, UnboundType, ArgumentList, EllipsisType, AnyType
+from mypy.types import Type, UnboundType, ArgumentList, EllipsisType, AnyType, Optional
 
 
 class TypeTranslationError(Exception):
@@ -44,20 +44,20 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
         else:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
-        types = [] # type: List[Type]
-        names = [] # type: List[Optional[str]]
-        kinds = [] # type: List[int]
+        types = []  # type: List[Type]
+        names = []  # type: List[Optional[str]]
+        kinds = []  # type: List[int]
         for it in expr.items:
-            if isinstance(expr_to_unanalyzed_type(it), CallExpr):
+            if isinstance(it, CallExpr):
                 if not isinstance(it.callee, NameExpr):
                     raise TypeTranslationError()
                 arg_const = it.callee.name
                 if arg_const == 'Arg':
                     if len(it.args) > 0:
-                        name = it.args[0]
-                        if not isinstance(name, StrLit):
+                        arg_name = it.args[0]
+                        if not isinstance(arg_name, StrExpr):
                             raise TypeTranslationError()
-                        names.append(name.parsed())
+                        names.append(arg_name.value)
                     else:
                         names.append(None)
 
@@ -65,7 +65,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                         typ = it.args[1]
                         types.append(expr_to_unanalyzed_type(typ))
                     else:
-                        types.append(AnyType)
+                        types.append(AnyType())
 
                     if len(it.args) > 2:
                         kinds.append(ARG_NAMED)

@@ -1,14 +1,18 @@
 """Type parser"""
 
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, TypeVar, cast
+
+import typing
 
 from mypy.types import (
     Type, UnboundType, TupleType, ArgumentList, CallableType, StarType,
     EllipsisType, AnyType
 )
+
 from mypy.lex import Token, Name, StrLit, lex
 from mypy import nodes
 
+T = TypeVar('T', bound=Token)
 
 none = Token('')  # Empty token
 
@@ -110,8 +114,8 @@ class TypeParser:
         # TODO: Doesn't handle an explicit name of None yet.
         if isinstance(current, Name) and nxt is not None and nxt.string == '(':
             arg_const = self.expect_type(Name).string
-            name = None # type: Optional[str]
-            typ = AnyType # type: Type
+            name = None  # type: Optional[str]
+            typ = AnyType(implicit=True)  # type: Type
             kind = {
                 'Arg': nodes.ARG_POS,
                 'DefaultArg': nodes.ARG_OPT,
@@ -119,7 +123,7 @@ class TypeParser:
                 'DefaultNamedArg': nodes.ARG_NAMED_OPT,
                 'StarArg': nodes.ARG_STAR,
                 'KwArg': nodes.ARG_STAR2,
-                }[arg_const]
+            }[arg_const]
             if arg_const in {'Arg', 'DefaultArg', 'NamedArg', 'DefaultNamedArg'}:
                 name, typ = self.parse_arg_args(read_name = True)
             elif arg_const in {'StarArg', 'KwArg'}:
@@ -132,8 +136,8 @@ class TypeParser:
 
     def parse_arg_args(self, *, read_name: bool) -> Tuple[Optional[str], Optional[Type]]:
         self.expect('(')
-        name = None
-        typ = AnyType
+        name = None  # type: Optional[str]
+        typ = AnyType(implicit=True)  # type: Type
         try:
             if self.current_token_str() == ')':
                 return name, typ
@@ -154,15 +158,15 @@ class TypeParser:
                 self.expect(',')
         finally:
             self.expect(')')
-
+        return name, typ
 
     def parse_argument_list(self) -> ArgumentList:
         """Parse type list [t, ...]."""
         lbracket = self.expect('[')
         commas = []  # type: List[Token]
         items = []  # type: List[Type]
-        names = [] # type: List[Optional[str]]
-        kinds = [] # type: List[int]
+        names = []  # type: List[Optional[str]]
+        kinds = []  # type: List[int]
         while self.current_token_str() != ']':
             t, name, kind = self.parse_argument_spec()
             items.append(t)
@@ -227,10 +231,10 @@ class TypeParser:
         else:
             raise self.parse_error()
 
-    def expect_type(self, typ: type) -> Token:
+    def expect_type(self, typ: typing.Type[T]) -> T:
         if isinstance(self.current_token(), typ):
             self.ind += 1
-            return self.tok[self.ind - 1]
+            return cast(T, self.tok[self.ind - 1])
         else:
             raise self.parse_error()
 
@@ -238,7 +242,7 @@ class TypeParser:
         return self.tok[self.ind]
 
     def next_token(self) -> Optional[Token]:
-        if self.ind + 1>= len(self.tok):
+        if self.ind + 1 >= len(self.tok):
             return None
         return self.tok[self.ind + 1]
 

@@ -43,7 +43,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return self._visit(*t.args)
 
     def visit_type_list(self, t: types.ArgumentList) -> Set[str]:
-        return self._visit(*t.items)
+        return self._visit(*t.types)
 
     def visit_error_type(self, t: types.ErrorType) -> Set[str]:
         return set()

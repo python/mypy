@@ -239,7 +239,7 @@ class ArgumentList(Type):
     but a syntactic AST construct.
     """
 
-    items = None  # type: List[Type]
+    types = None  # type: List[Type]
     names = None  # type: List[Optional[str]]
     kinds = None  # type: List[int]
 
@@ -261,15 +261,14 @@ class ArgumentList(Type):
         return {'.class': 'ArgumentList',
                 'items': [t.serialize() for t in self.types],
                 'names': self.names,
-                'kinds': self.kinds,
-        }
+                'kinds': self.kinds}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'ArgumentList':
         assert data['.class'] == 'ArgumentList' or data['.class'] == 'TypeList'
         types = [Type.deserialize(t) for t in data['items']]
-        names = cast(List[Optional[str]], data.get('names', [None]*len(types)))
-        kinds = cast(List[int], data.get('kinds', [ARG_POS]*len(types)))
+        names = cast(List[Optional[str]], data.get('names', [None] * len(types)))
+        kinds = cast(List[int], data.get('kinds', [ARG_POS] * len(types)))
         return ArgumentList(
             types=[Type.deserialize(t) for t in data['items']],
             names=names,
@@ -1403,7 +1402,7 @@ class TypeStrVisitor(TypeVisitor[str]):
         return s
 
     def visit_type_list(self, t: ArgumentList) -> str:
-        return '<ArgumentList {}>'.format(self.list_str(t.items))
+        return '<ArgumentList {}>'.format(self.list_str(t.types))
 
     def visit_error_type(self, t: ErrorType) -> str:
         return '<ERROR>'

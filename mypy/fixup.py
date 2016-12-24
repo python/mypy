@@ -204,7 +204,7 @@ class TypeFixer(TypeVisitor[None]):
             tdt.fallback.accept(self)
 
     def visit_type_list(self, tl: ArgumentList) -> None:
-        for t in tl.items:
+        for t in tl.types:
             t.accept(self)
 
     def visit_type_var(self, tvt: TypeVarType) -> None:

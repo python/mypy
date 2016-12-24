@@ -913,8 +913,8 @@ class TypeConverter(ast35.NodeTransformer):
     def visit_List(self, n: ast35.List) -> Type:
         return ArgumentList(
             self.translate_expr_list(n.elts),
-            [None]*len(n.elts),
-            [0]*len(n.elts),
+            [None] * len(n.elts),
+            [0] * len(n.elts),
             line=self.line)
 
 
