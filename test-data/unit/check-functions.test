@@ -1390,7 +1390,7 @@ def a(f: Callable[[NamedArg('x', int)], int]):
     f(2) # E: Too many positional arguments
     f() # E: Missing named argument "x"
     f(y=3) # E: Unexpected keyword argument "y"
-    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableWithKeywordOnlyOptionalArg]
@@ -1402,7 +1402,7 @@ def a(f: Callable[[DefaultNamedArg('x', int)], int]):
     f(2) # E: Too many positional arguments
     f()
     f(y=3) # E: Unexpected keyword argument "y"
-    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableArgKindSubtyping]
