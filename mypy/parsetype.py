@@ -112,82 +112,46 @@ class TypeParser:
             arg_const = self.expect_type(Name).string
             name = None # type: Optional[str]
             typ = AnyType # type: Type
-            if arg_const == 'Arg':
-                kind = nodes.ARG_POS
-                name, typ, keyword_only = self.parse_arguments(
-                    read_name = True,
-                    read_typ = True,
-                    read_keyword_only = True)
-                if keyword_only:
-                    kind = nodes.ARG_NAMED
-            elif arg_const == 'DefaultArg':
-                kind = nodes.ARG_OPT
-                name, typ, keyword_only = self.parse_arguments(
-                    read_name = True,
-                    read_typ = True,
-                    read_keyword_only = True)
-                if keyword_only:
-                    kind = nodes.ARG_NAMED_OPT
-            elif arg_const == 'StarArg':
-                # Takes one type
-                kind = nodes.ARG_STAR
-                _, typ, _ = self.parse_arguments(
-                    read_name = False,
-                    read_typ = True,
-                    read_keyword_only = False)
-            elif arg_const == 'KwArg':
-                # Takes one type
-                kind = nodes.ARG_STAR2
-                _, typ, _ = self.parse_arguments(
-                    read_name = False,
-                    read_typ = True,
-                    read_keyword_only = False)
+            kind = {
+                'Arg': nodes.ARG_POS,
+                'DefaultArg': nodes.ARG_OPT,
+                'NamedArg': nodes.ARG_NAMED,
+                'DefaultNamedArg': nodes.ARG_NAMED_OPT,
+                'StarArg': nodes.ARG_STAR,
+                'KwArg': nodes.ARG_STAR2,
+                }[arg_const]
+            if arg_const in {'Arg', 'DefaultArg', 'NamedArg', 'DefaultNamedArg'}:
+                name, typ = self.parse_arg_args(read_name = True)
+            elif arg_const in {'StarArg', 'KwArg'}:
+                _, typ = self.parse_arg_args(read_name = False)
             else:
                 self.parse_error()
             return typ, name, kind
         else:
             return self.parse_type(), None, nodes.ARG_POS
 
-    def parse_arguments(self,
-                        *,
-                        read_name: bool,
-                        read_typ: bool,
-                        read_keyword_only: bool) -> Tuple[
-                            Optional[str],
-                            Optional[Type],
-                            bool]:
+    def parse_arg_args(self, *, read_name: bool) -> Tuple[Optional[str], Optional[Type]]:
         self.expect('(')
         name = None
         typ = AnyType
-        keyword_only = False
         try:
             if self.current_token_str() == ')':
-                return name, typ, keyword_only
+                return name, typ
             if read_name:
                 if self.current_token_str() != 'None':
                     name = self.expect_type(StrLit).parsed()
                 else:
                     self.skip()
                 if self.current_token_str() == ')':
-                    return name, typ, keyword_only
+                    return name, typ
                 else:
                     self.expect(',')
-            if read_typ:
-                typ = self.parse_type()
-                if self.current_token_str() == ')':
-                    return name, typ, keyword_only
-                else:
-                    self.expect(',')
-            if read_keyword_only:
-                if self.current_token_str() == 'True':
-                    keyword_only = True
-                    self.skip()
-                else:
-                    self.expect('False')
-                if self.current_token_str() == ')':
-                    return name, typ, keyword_only
-                else:
-                    self.expect(',')
+
+            typ = self.parse_type()
+            if self.current_token_str() == ')':
+                return name, typ
+            else:
+                self.expect(',')
         finally:
             self.expect(')')
 

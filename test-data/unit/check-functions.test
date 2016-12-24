@@ -1369,9 +1369,6 @@ def a(f: Callable[[Arg('x', int)], int]):
 
 [builtins fixtures/dict.pyi]
 
-[out]
-main: note: In function "a":
-
 [case testCallableWithOptionalArg]
 from typing import Callable
 from mypy_extensions import DefaultArg
@@ -1382,11 +1379,31 @@ def a(f: Callable[[DefaultArg('x', int)], int]):
     f()
     f(y=3) # E: Unexpected keyword argument "y"
     f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
-
 [builtins fixtures/dict.pyi]
 
-[out]
-main: note: In function "a":
+[case testCallableWithKeywordOnlyArg]
+from typing import Callable
+from mypy_extensions import NamedArg
+
+def a(f: Callable[[NamedArg('x', int)], int]):
+    f(x=4)
+    f(2) # E: Too many positional arguments
+    f() # E: Missing named argument "x"
+    f(y=3) # E: Unexpected keyword argument "y"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithKeywordOnlyOptionalArg]
+from typing import Callable
+from mypy_extensions import DefaultNamedArg
+
+def a(f: Callable[[DefaultNamedArg('x', int)], int]):
+    f(x=4)
+    f(2) # E: Too many positional arguments
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
 
 [case testCallableArgKindSubtyping]
 from typing import Callable
@@ -1407,12 +1424,12 @@ def isf_unnamed(__i: int, __s: str) -> str:
 
 int_str_fun = isf
 int_str_fun = isf_unnamed
-int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg('s', str, False)], str])
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type Callable[[int, str], str], variable has type Callable[[int, Arg('s', str)], str])
 int_opt_str_fun = iosf
 int_str_fun = iosf
-int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, DefaultArg('None', str, False)], str])
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int), Arg('ss', str)], str], variable has type Callable[[int, DefaultArg(None, str)], str])
 
-int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int, False), Arg('ss', str, False)], str], variable has type Callable[[int, Arg('s', str, False)], str])
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type Callable[[Arg('ii', int), Arg('ss', str)], str], variable has type Callable[[int, Arg('s', str)], str])
 int_named_str_fun = iosf
 
 [builtins fixtures/dict.pyi]

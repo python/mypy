@@ -5,7 +5,7 @@ Example usage:
     from mypy_extensions import TypedDict
 """
 
-from typing import Any
+from typing import Any, TypeVar
 
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
@@ -14,6 +14,7 @@ import sys
 # the (convenient) behavior of types provided by typing module.
 from typing import _type_check  # type: ignore
 
+T = TypeVar('T')
 
 def _check_fails(cls, other):
     try:
@@ -90,26 +91,21 @@ TypedDict.__doc__ = \
     The latter syntax is only supported in Python 3.6+, while two other
     syntax forms work for Python 2.7 and 3.2+
     """
-    new_dict.__name__ = typename
-    new_dict.__supertype__ = dict
-    return new_dict
 
-class Arg(object):
-    def __init__(name=None, typ=Any, keyword_only=False):
-        self.name = name
-        self.typ = typ
-        self.named_only = named_only
+def Arg(name=None, typ: T = Any) -> T:
+    return typ
 
-class DefaultArg(object):
-    def __init__(name=None, typ=Any, keyword_only=False):
-        self.name = name
-        self.typ = typ
-        self.named_only = named_only
+def DefaultArg(name=None, typ: T = Any) -> T:
+    return typ
 
-class StarArg(object):
-    def __init__(typ=Any) -> None:
-        self.typ = typ
+def NamedArg(name=None, typ: T = Any) -> T:
+    return typ
 
-class KwArg(object):
-    def __init__(typ=Any) -> None:
-        self.typ = typ
+def DefaultNamedArg(name=None, typ: T = Any) -> T:
+    return typ
+
+def StarArg(typ: T = Any) -> T:
+    return typ
+
+def KwArg(typ: T =Any) -> T:
+    return typ

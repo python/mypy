@@ -44,11 +44,6 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
         else:
             raise TypeTranslationError()
     elif isinstance(expr, ListExpr):
-<<<<<<< HEAD
-        return TypeList([expr_to_unanalyzed_type(t) for t in expr.items],
-                        line=expr.line, column=expr.column)
-    elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
-=======
         types = [] # type: List[Type]
         names = [] # type: List[Optional[str]]
         kinds = [] # type: List[int]
@@ -82,9 +77,8 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 names.append(None)
                 kinds.append(ARG_POS)
         return ArgumentList(types, names, kinds,
-                        line=expr.line)
-    elif isinstance(expr, (StrExpr, BytesExpr)):
->>>>>>> c45f8c6... Implement Callable[[Arg('name', Type)], ret] syntax
+                        line=expr.line, column=expr.column)
+    elif isinstance(expr, (StrExpr, BytesExpr, UnicodeExpr)):
         # Parse string literal type.
         try:
             result = parse_str_as_type(expr.value, expr.line)

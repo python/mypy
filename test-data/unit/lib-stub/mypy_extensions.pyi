@@ -3,22 +3,16 @@ from typing import Dict, Type, TypeVar, Optional, Any
 T = TypeVar('T')
 
 
-def TypedDict(typename: str, fields: Dict[str, Type[T]]) -> Type[dict]: ...
+def TypedDict(typename: str, fields: Dict[str, Type[T]]) -> Type[dict]: pass
 
-class Arg(object):
-    def __init__(name: Optional[str]=...,
-                 typ: Type[T]=...,
-                 keyword_only: Optional[bool]=...) -> None:
-        ...
+def Arg(name=None, typ: T = ...) -> T: pass
 
-class DefaultArg(object):
-    def __init__(name: Optional[str]=...,
-                 typ: Type[T]=...,
-                 keyword_only: Optional[bool]=...) -> None:
-        ...
+def DefaultArg(name=None, typ: T = ...) -> T: pass
 
-class StarArg(object):
-    def __init__(typ: Type[T]=...) -> None: ...
+def NamedArg(name=None, typ: T = ...) -> T: pass
 
-class KwArg(object):
-    def __init__(typ: Type[T]=...) -> None: ...
+def DefaultNamedArg(name=None, typ: T = ...) -> T: pass
+
+def StarArg(typ: T = ...) -> T: pass
+
+def KwArg(typ: T = ...) -> T: pass

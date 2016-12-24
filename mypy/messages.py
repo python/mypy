@@ -203,9 +203,9 @@ class MessageBuilder:
                                 constructor,
                                 strip_quotes(self.format(arg_type))))
                         else:
-                            arg_strings.append("{}('{}', {})".format(
+                            arg_strings.append("{}({}, {})".format(
                                 constructor,
-                                arg_name,
+                                repr(arg_name),
                                 strip_quotes(self.format(arg_type))))
 
                 return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
