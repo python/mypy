@@ -887,13 +887,7 @@ class TypeConverter(ast35.NodeTransformer):
                 typ = AnyType(implicit=True)  # type: Type
                 for i, arg in enumerate(e.args):
                     if i == 0 and not star:
-                        if isinstance(arg, ast35.Name) and arg.id == 'None':
-                            name = None
-                        elif isinstance(arg, ast35.Str):
-                            name = arg.s
-                        else:
-                            raise FastParserError("Bad type for name of argument",
-                                                  value.lineno, value.col_offset)
+                        name = _extract_str(arg)
                     elif i == 1 and not star or i == 0 and star:
                         try:
                             typ = self.visit(arg)
@@ -906,10 +900,7 @@ class TypeConverter(ast35.NodeTransformer):
                 for k in e.keywords:
                     value = k.value
                     if k.arg == "name" and not star:
-                        if isinstance(value, ast35.Name) and value.id == 'None':
-                            name = None
-                        elif isinstance(value, ast35.Str):
-                            name = value.s
+                        name = _extract_str(value)
                     elif k.arg == "typ":
                         try:
                             typ = self.visit(value)
@@ -992,3 +983,14 @@ class TypeCommentParseError(Exception):
 
 class FastParserError(TypeCommentParseError):
     pass
+
+def _extract_str(arg: ast35.AST) -> Optional[str]:
+    if isinstance(arg, ast35.Name) and arg.id == 'None':
+        return None
+    elif isinstance(arg, ast35.NameConstant) and arg.value is None:
+        return None
+    elif isinstance(arg, ast35.Str):
+        return arg.s
+    else:
+        raise FastParserError("Bad type for name of argument",
+                              arg.lineno, arg.col_offset)
