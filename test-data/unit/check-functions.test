@@ -1412,10 +1412,13 @@ from typing import Callable
 from mypy_extensions import Arg, StarArg, KwArg
 
 def WrongArg(x, y): return y
-
-F = Callable[[WrongArg('x', int)], int] # E: Invalid type alias
-G = Callable[[Arg('x', 1)], int] # E: Invalid type alias
-H = Callable[[StarArg('x', int)], int] # E: Invalid type alias # E: Too many arguments for "StarArg"
+# Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
+# and a consequence of Callable being set to an int in the test stub.  We can't set it to
+# something else sensible, because other tests require the stub not have anything
+# that looks like a function call.
+F = Callable[[WrongArg('x', int)], int] # E: Invalid type alias # E: Value of type "int" is not indexable
+G = Callable[[Arg('x', 1)], int] # E: Invalid type alias # E: Value of type "int" is not indexable
+H = Callable[[StarArg('x', int)], int] # E: Invalid type alias # E: Value of type "int" is not indexable # E: Too many arguments for "StarArg"
 I = Callable[[StarArg(int)], int] # ok
 J = Callable[[StarArg(), KwArg()], int] # ok
 K = Callable[[StarArg(), int], int] # E: Required positional args may not appear after default, named or star args

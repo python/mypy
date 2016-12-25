@@ -567,14 +567,20 @@ FormalArgument = NamedTuple('FormalArgument', [
     ('typ', Type),
     ('required', bool)])
 
+
 class ArgKindException(Exception):
+    """Raised when the argument kinds are not in the right order"""
     message = None  # type: str
-    def __init__(self, message: str):
+
+    def __init__(self, message: str) -> None:
         self.message = message
 
+
 class ArgNameException(Exception):
+    """Raised when there are duplicate arg names"""
     message = None  # type: str
-    def __init__(self, message: str):
+
+    def __init__(self, message: str) -> None:
         self.message = message
 
 
@@ -660,7 +666,8 @@ class CallableType(FunctionLike):
                                            "after default, named or star args")
             elif kind == ARG_OPT:
                 if self.is_var_arg or self.is_kw_arg or seen_named:
-                    raise ArgKindException("Positional default args may not appear after named or star args")
+                    raise ArgKindException("Positional default args may not appear "
+                                           "after named or star args")
                 seen_opt = True
             elif kind == ARG_STAR:
                 if self.is_var_arg or self.is_kw_arg or seen_named:

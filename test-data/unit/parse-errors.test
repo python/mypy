@@ -287,17 +287,6 @@ def g(*x): # type: (X) -> Y
 file:1: error: Inconsistent use of '*' in function signature
 file:3: error: Inconsistent use of '*' in function signature
 
-[case testCommentFunctionAnnotationVarArgMispatch2]
-def f(*x, **y): # type: (**X, *Y) -> Z
-    pass
-def g(*x, **y): # type: (*X, *Y) -> Z
-    pass
-[out]
-file:1: error: Inconsistent use of '*' in function signature
-file:1: error: Inconsistent use of '**' in function signature
-file:3: error: Inconsistent use of '*' in function signature
-file:3: error: Inconsistent use of '**' in function signature
-
 [case testPrintStatementInPython3]
 print 1
 [out]

@@ -13,6 +13,7 @@ from mypy.types import Type, UnboundType, ArgumentList, EllipsisType, AnyType, O
 class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
+
 def _extract_str(expr: Expression) -> Optional[str]:
     if isinstance(expr, NameExpr) and expr.name == 'None':
         return None
@@ -66,7 +67,7 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 except KeyError:
                     raise TypeTranslationError()
                 name = None
-                typ = AnyType(implicit=True)
+                typ = AnyType(implicit=True)  # type: Type
                 star = arg_const in STAR_ARG_CONSTRUCTORS
                 for i, arg in enumerate(it.args):
                     if it.arg_names[i] is not None:

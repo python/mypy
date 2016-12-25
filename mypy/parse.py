@@ -433,6 +433,7 @@ class Parser:
                     self.errors.report(
                         def_tok.line, def_tok.column, 'Function has duplicate type signatures')
                 sig = cast(CallableType, comment_type)
+
                 if sig.is_ellipsis_args:
                     # When we encounter an ellipsis, fill in the arg_types with
                     # a bunch of AnyTypes, emulating Callable[..., T]

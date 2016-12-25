@@ -984,7 +984,8 @@ class TypeCommentParseError(Exception):
 class FastParserError(TypeCommentParseError):
     pass
 
-def _extract_str(arg: ast35.AST) -> Optional[str]:
+
+def _extract_str(arg: ast35.expr) -> Optional[str]:
     if isinstance(arg, ast35.Name) and arg.id == 'None':
         return None
     elif isinstance(arg, ast35.NameConstant) and arg.value is None:

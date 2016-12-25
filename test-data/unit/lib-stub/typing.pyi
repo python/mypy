@@ -16,6 +16,7 @@ _promote = 0
 NamedTuple = 0
 Type = 0
 no_type_check = 0
+Callable = 0
 
 # Type aliases.
 List = 0
@@ -26,11 +27,6 @@ T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
-
-class _Callable(object):
-    def __getattr__(self, o): pass
-
-Callable = _Callable()
 
 class Container(Generic[T]):
     @abstractmethod
