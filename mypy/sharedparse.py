@@ -1,5 +1,7 @@
 from typing import Union, Tuple
 
+from mypy.nodes import (ARG_POS, ARG_NAMED, ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2)
+
 """Shared logic between our three mypy parser files."""
 
 
@@ -89,6 +91,17 @@ MAGIC_METHODS_ALLOWING_KWARGS = {
 
 MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS
 
+
+ARG_KINDS_BY_CONSTRUCTOR = {
+    'Arg': ARG_POS,
+    'DefaultArg': ARG_OPT,
+    'NamedArg': ARG_NAMED,
+    'DefaultNamedArg': ARG_NAMED_OPT,
+    'StarArg': ARG_STAR,
+    'KwArg': ARG_STAR2,
+}
+
+STAR_ARG_CONSTRUCTORS = {'StarArg', 'KwArg'}
 
 def special_function_elide_names(name: str) -> bool:
     return name in MAGIC_METHODS_POS_ARGS_ONLY

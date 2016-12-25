@@ -567,6 +567,16 @@ FormalArgument = NamedTuple('FormalArgument', [
     ('typ', Type),
     ('required', bool)])
 
+class ArgKindException(Exception):
+    message = None  # type: str
+    def __init__(self, message: str):
+        self.message = message
+
+class ArgNameException(Exception):
+    message = None  # type: str
+    def __init__(self, message: str):
+        self.message = message
+
 
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
@@ -576,6 +586,7 @@ class CallableType(FunctionLike):
     arg_names = None  # type: List[str]   # None if not a keyword argument
     min_args = 0                    # Minimum number of arguments; derived from arg_kinds
     is_var_arg = False              # Is it a varargs function?  derived from arg_kinds
+    is_kw_arg = False
     ret_type = None  # type: Type   # Return value type
     name = ''                       # Name (may be None; for error messages)
     definition = None  # type: SymbolNode # For error messages.  May be None.
@@ -608,6 +619,8 @@ class CallableType(FunctionLike):
                  is_classmethod_class: bool = False,
                  special_sig: Optional[str] = None,
                  ) -> None:
+        self._process_kinds_on_init(arg_kinds)
+        self._process_names_on_init(arg_names)
         if variables is None:
             variables = []
         assert len(arg_types) == len(arg_kinds)
@@ -615,8 +628,6 @@ class CallableType(FunctionLike):
         self.arg_kinds = arg_kinds
         self.arg_names = arg_names
         self.min_args = arg_kinds.count(ARG_POS)
-        self.is_var_arg = ARG_STAR in arg_kinds
-        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -627,6 +638,40 @@ class CallableType(FunctionLike):
         self.implicit = implicit
         self.special_sig = special_sig
         super().__init__(line, column)
+
+    def _process_names_on_init(self, arg_names):
+        seen = set()  # type: Set[str]
+        for name in arg_names:
+            if name is None:
+                continue
+            if name in seen:
+                raise ArgNameException('Duplicate argument name "{}"'.format(name))
+            seen.add(name)
+
+    def _process_kinds_on_init(self, arg_kinds):
+        self.is_var_arg = False
+        self.is_kw_arg = False
+        seen_named = False
+        seen_opt = False
+        for kind in arg_kinds:
+            if kind == ARG_POS:
+                if self.is_var_arg or self.is_kw_arg or seen_named or seen_opt:
+                    raise ArgKindException("Required positional args may not appear "
+                                           "after default, named or star args")
+            elif kind == ARG_OPT:
+                if self.is_var_arg or self.is_kw_arg or seen_named:
+                    raise ArgKindException("Positional default args may not appear after named or star args")
+                seen_opt = True
+            elif kind == ARG_STAR:
+                if self.is_var_arg or self.is_kw_arg or seen_named:
+                    raise ArgKindException("Star args may not appear after named or star args")
+                self.is_var_arg = True
+            elif kind == ARG_NAMED or kind == ARG_NAMED_OPT:
+                seen_named = True
+            elif kind == ARG_STAR2:
+                if self.is_kw_arg:
+                    raise ArgKindException("You may only have one **kwargs argument")
+                self.is_kw_arg = True
 
     def copy_modified(self,
                       arg_types: List[Type] = _dummy,

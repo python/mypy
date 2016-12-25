@@ -2,7 +2,10 @@ from functools import wraps
 import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
+from mypy.sharedparse import (
+    special_function_elide_names, argument_elide_name,
+    ARG_KINDS_BY_CONSTRUCTOR, STAR_ARG_CONSTRUCTORS,
+)
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
@@ -862,6 +865,72 @@ class TypeConverter(ast35.NodeTransformer):
     def translate_expr_list(self, l: Sequence[ast35.AST]) -> List[Type]:
         return [self.visit(e) for e in l]
 
+    def translate_argument_list(self, l: Sequence[ast35.AST]) -> ArgumentList:
+        types = []  # type: List[Type]
+        names = []  # type: List[Optional[str]]
+        kinds = []  # type: List[int]
+        for e in l:
+            if isinstance(e, ast35.Call):
+                # Parse the arg constructor
+                f = e.func
+                if not isinstance(f, ast35.Name):
+                    raise FastParserError("Expected arg constructor name",
+                                          e.lineno, e.col_offset)
+                try:
+                    kind = ARG_KINDS_BY_CONSTRUCTOR[f.id]
+                    star = f.id in STAR_ARG_CONSTRUCTORS
+                except KeyError:
+                    raise FastParserError("Unknown argument constructor {}".format(f.id),
+                                          f.lineno, f.col_offset)
+
+                name = None  # type: Optional[str]
+                typ = AnyType(implicit=True)  # type: Type
+                for i, arg in enumerate(e.args):
+                    if i == 0 and not star:
+                        if isinstance(arg, ast35.Name) and arg.id == 'None':
+                            name = None
+                        elif isinstance(arg, ast35.Str):
+                            name = arg.s
+                        else:
+                            raise FastParserError("Bad type for name of argument",
+                                                  value.lineno, value.col_offset)
+                    elif i == 1 and not star or i == 0 and star:
+                        try:
+                            typ = self.visit(arg)
+                        except TypeCommentParseError:
+                            raise FastParserError("Bad type for callable argument",
+                                                  arg.lineno, arg.col_offset)
+                    else:
+                        raise FastParserError("Too many arguments for argument constructor",
+                                              f.lineno, f.col_offset)
+                for k in e.keywords:
+                    value = k.value
+                    if k.arg == "name" and not star:
+                        if isinstance(value, ast35.Name) and value.id == 'None':
+                            name = None
+                        elif isinstance(value, ast35.Str):
+                            name = value.s
+                    elif k.arg == "typ":
+                        try:
+                            typ = self.visit(value)
+                        except TypeCommentParseError:
+                            raise FastParserError("Bad type for callable argument",
+                                                  value.lineno, value.col_offset)
+                    else:
+                        raise FastParserError(
+                            'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                            value.lineno, value.col_offset)
+
+                types.append(typ)
+                names.append(name)
+                kinds.append(kind)
+            else:
+                types.append(self.visit(e))
+                names.append(None)
+                kinds.append(ARG_POS)
+
+        return ArgumentList(types, names, kinds, line=self.line)
+
     def visit_Name(self, n: ast35.Name) -> Type:
         return UnboundType(n.id, line=self.line)
 
@@ -911,11 +980,7 @@ class TypeConverter(ast35.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast35.List) -> Type:
-        return ArgumentList(
-            self.translate_expr_list(n.elts),
-            [None] * len(n.elts),
-            [0] * len(n.elts),
-            line=self.line)
+        return self.translate_argument_list(n.elts)
 
 
 class TypeCommentParseError(Exception):

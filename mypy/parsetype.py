@@ -9,6 +9,8 @@ from mypy.types import (
     EllipsisType, AnyType
 )
 
+from mypy.sharedparse import ARG_KINDS_BY_CONSTRUCTOR, STAR_ARG_CONSTRUCTORS
+
 from mypy.lex import Token, Name, StrLit, lex
 from mypy import nodes
 
@@ -116,20 +118,11 @@ class TypeParser:
             arg_const = self.expect_type(Name).string
             name = None  # type: Optional[str]
             typ = AnyType(implicit=True)  # type: Type
-            kind = {
-                'Arg': nodes.ARG_POS,
-                'DefaultArg': nodes.ARG_OPT,
-                'NamedArg': nodes.ARG_NAMED,
-                'DefaultNamedArg': nodes.ARG_NAMED_OPT,
-                'StarArg': nodes.ARG_STAR,
-                'KwArg': nodes.ARG_STAR2,
-            }[arg_const]
-            if arg_const in {'Arg', 'DefaultArg', 'NamedArg', 'DefaultNamedArg'}:
-                name, typ = self.parse_arg_args(read_name = True)
-            elif arg_const in {'StarArg', 'KwArg'}:
-                _, typ = self.parse_arg_args(read_name = False)
-            else:
-                self.parse_error()
+            try:
+                kind = ARG_KINDS_BY_CONSTRUCTOR[arg_const]
+            except KeyError:
+                raise self.parse_error("Unknown argument constructor {}".format(arg_const))
+            name, typ = self.parse_arg_args(read_name = arg_const not in STAR_ARG_CONSTRUCTORS)
             return typ, name, kind
         else:
             return self.parse_type(), None, nodes.ARG_POS
@@ -138,26 +131,37 @@ class TypeParser:
         self.expect('(')
         name = None  # type: Optional[str]
         typ = AnyType(implicit=True)  # type: Type
-        try:
-            if self.current_token_str() == ')':
-                return name, typ
-            if read_name:
-                if self.current_token_str() != 'None':
-                    name = self.expect_type(StrLit).parsed()
-                else:
-                    self.skip()
-                if self.current_token_str() == ')':
-                    return name, typ
-                else:
-                    self.expect(',')
-
-            typ = self.parse_type()
-            if self.current_token_str() == ')':
-                return name, typ
-            else:
+        i = 0
+        while self.current_token_str() != ')':
+            if i > 0:
                 self.expect(',')
-        finally:
-            self.expect(')')
+            if self.next_token() and self.next_token().string == '=':
+                arg_arg_name = self.current_token_str()
+                if arg_arg_name == 'name' and read_name:
+                    self.expect('name')
+                    self.expect('=')
+                    if self.current_token_str() == 'None':
+                        self.expect('None')
+                    else:
+                        name = self.expect_type(StrLit).parsed()
+                elif arg_arg_name == 'typ':
+                    self.expect('typ')
+                    self.expect('=')
+                    typ = self.parse_type()
+                else:
+                    raise self.parse_error(
+                        'Unexpected argument "{}" for argument constructor'.format(arg_arg_name))
+            elif i == 0 and read_name:
+                if self.current_token_str() == 'None':
+                    self.expect('None')
+                else:
+                    name = self.expect_type(StrLit).parsed()
+            elif i == 0 and not read_name or i == 1 and read_name:
+                typ = self.parse_type()
+            else:
+                raise self.parse_error("Unexpected argument for argument constructor")
+            i += 1
+        self.expect(')')
         return name, typ
 
     def parse_argument_list(self) -> ArgumentList:
@@ -249,8 +253,8 @@ class TypeParser:
     def current_token_str(self) -> str:
         return self.current_token().string
 
-    def parse_error(self) -> TypeParseError:
-        return TypeParseError(self.tok[self.ind], self.ind)
+    def parse_error(self, message: Optional[str] = None) -> TypeParseError:
+        return TypeParseError(self.tok[self.ind], self.ind, message=message)
 
 
 def parse_str_as_type(typestr: str, line: int) -> Type:

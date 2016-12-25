@@ -5,12 +5,21 @@ from mypy.nodes import (
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
     ARG_POS, ARG_NAMED,
 )
+from mypy.sharedparse import ARG_KINDS_BY_CONSTRUCTOR, STAR_ARG_CONSTRUCTORS
 from mypy.parsetype import parse_str_as_type, TypeParseError
 from mypy.types import Type, UnboundType, ArgumentList, EllipsisType, AnyType, Optional
 
 
 class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
+
+def _extract_str(expr: Expression) -> Optional[str]:
+    if isinstance(expr, NameExpr) and expr.name == 'None':
+        return None
+    elif isinstance(expr, StrExpr):
+        return expr.value
+    else:
+        raise TypeTranslationError()
 
 
 def expr_to_unanalyzed_type(expr: Expression) -> Type:
@@ -52,26 +61,32 @@ def expr_to_unanalyzed_type(expr: Expression) -> Type:
                 if not isinstance(it.callee, NameExpr):
                     raise TypeTranslationError()
                 arg_const = it.callee.name
-                if arg_const == 'Arg':
-                    if len(it.args) > 0:
-                        arg_name = it.args[0]
-                        if not isinstance(arg_name, StrExpr):
+                try:
+                    kind = ARG_KINDS_BY_CONSTRUCTOR[arg_const]
+                except KeyError:
+                    raise TypeTranslationError()
+                name = None
+                typ = AnyType(implicit=True)
+                star = arg_const in STAR_ARG_CONSTRUCTORS
+                for i, arg in enumerate(it.args):
+                    if it.arg_names[i] is not None:
+                        if it.arg_names[i] == "name":
+                            name = _extract_str(arg)
+                            continue
+                        elif it.arg_names[i] == "typ":
+                            typ = expr_to_unanalyzed_type(arg)
+                            continue
+                        else:
                             raise TypeTranslationError()
-                        names.append(arg_name.value)
+                    elif i == 0 and not star:
+                        name = _extract_str(arg)
+                    elif i == 1 and not star or i == 0 and star:
+                        typ = expr_to_unanalyzed_type(arg)
                     else:
-                        names.append(None)
-
-                    if len(it.args) > 1:
-                        typ = it.args[1]
-                        types.append(expr_to_unanalyzed_type(typ))
-                    else:
-                        types.append(AnyType())
-
-                    if len(it.args) > 2:
-                        kinds.append(ARG_NAMED)
-                    else:
-                        kinds.append(ARG_POS)
-
+                        raise TypeTranslationError()
+                names.append(name)
+                types.append(typ)
+                kinds.append(kind)
             else:
                 types.append(expr_to_unanalyzed_type(it))
                 names.append(None)

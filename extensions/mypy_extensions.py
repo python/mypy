@@ -5,7 +5,7 @@ Example usage:
     from mypy_extensions import TypedDict
 """
 
-from typing import Any, TypeVar
+from typing import Any
 
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
 
@@ -13,8 +13,6 @@ import sys
 # _type_check is NOT a part of public typing API, it is used here only to mimic
 # the (convenient) behavior of types provided by typing module.
 from typing import _type_check  # type: ignore
-
-T = TypeVar('T')
 
 def _check_fails(cls, other):
     try:
@@ -92,20 +90,20 @@ TypedDict.__doc__ = \
     syntax forms work for Python 2.7 and 3.2+
     """
 
-def Arg(name=None, typ: T = Any) -> T:
+def Arg(name=None, typ=Any):
     return typ
 
-def DefaultArg(name=None, typ: T = Any) -> T:
+def DefaultArg(name=None, typ=Any):
     return typ
 
-def NamedArg(name=None, typ: T = Any) -> T:
+def NamedArg(name=None, typ=Any):
     return typ
 
-def DefaultNamedArg(name=None, typ: T = Any) -> T:
+def DefaultNamedArg(name=None, typ=Any):
     return typ
 
-def StarArg(typ: T = Any) -> T:
+def StarArg(typ=Any):
     return typ
 
-def KwArg(typ: T =Any) -> T:
+def KwArg(typ=Any):
     return typ

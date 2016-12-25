@@ -1381,6 +1381,127 @@ def a(f: Callable[[DefaultArg('x', int)], int]):
     f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
+[case testCallableWithNamedArgFromExpr]
+from typing import Callable
+from mypy_extensions import Arg
+
+F = Callable[[Arg('x', int)], int]
+
+def a(f: F):
+    f(x=4)
+    f(5)
+    f(y=3) # E: Unexpected keyword argument "y"
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableWithOptionalArgFromExpr]
+from typing import Callable
+from mypy_extensions import DefaultArg
+
+F = Callable[[DefaultArg('x', int)], int]
+def a(f: F):
+    f(x=4)
+    f(2)
+    f()
+    f(y=3) # E: Unexpected keyword argument "y"
+    f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testCallableParsingFromExpr]
+from typing import Callable
+from mypy_extensions import Arg, StarArg, KwArg
+
+def WrongArg(x, y): return y
+
+F = Callable[[WrongArg('x', int)], int] # E: Invalid type alias
+G = Callable[[Arg('x', 1)], int] # E: Invalid type alias
+H = Callable[[StarArg('x', int)], int] # E: Invalid type alias # E: Too many arguments for "StarArg"
+I = Callable[[StarArg(int)], int] # ok
+J = Callable[[StarArg(), KwArg()], int] # ok
+K = Callable[[StarArg(), int], int] # E: Required positional args may not appear after default, named or star args
+L = Callable[[Arg(name='x', typ=int)], int] # ok
+# I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
+# M = Callable[[Arg(gnome='x', typ=int)], int] #  Invalid type alias, Unexpected keyword argument "gnome" for "Arg"
+N = Callable[[Arg(name=None, typ=int)], int] # ok
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableParsing]
+from typing import Callable
+from mypy_extensions import Arg, StarArg, KwArg
+
+def WrongArg(x, y): return y
+
+def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Parse error before (: Unknown argument constructor WrongArg # E: Parse error before end of line
+def b(f: Callable[[Arg('x', 1)], int]): pass # E: Parse error before numeric literal # E: Parse error before end of line
+def c(f: Callable[[StarArg('x', int)], int]): pass # E: Parse error before "int": Unexpected argument for argument constructor # E: Parse error before end of line
+def d(f: Callable[[StarArg(int)], int]): pass # ok
+def e(f: Callable[[StarArg(), KwArg()], int]): pass # ok
+def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
+def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass # E: Parse error before "gnome": Unexpected argument "gnome" for argument constructor # E: Parse error before end of line
+def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseWrongArg]
+# flags: --fast-parser
+from typing import Callable
+def WrongArg(x, y): return y
+def a(f: Callable[[WrongArg('x', int)], int]): pass # E: Unknown argument constructor WrongArg
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseWrongTypeType]
+# flags: --fast-parser
+from typing import Callable
+from mypy_extensions import Arg
+def b(f: Callable[[Arg('x', 1)], int]): pass # E: Bad type for callable argument
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseTooManyStarArg]
+# flags: --fast-parser
+from typing import Callable
+from mypy_extensions import StarArg
+def c(f: Callable[[StarArg('x', int)], int]): pass # E: Too many arguments for argument constructor
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseGood]
+# flags: --fast-parser
+from typing import Callable
+from mypy_extensions import StarArg, Arg
+def d(f: Callable[[StarArg(int)], int]): pass # ok
+def e(f: Callable[[StarArg(), KwArg()], int]): pass # ok
+def g(f: Callable[[Arg(name='x', typ=int)], int]): pass # ok
+def i(f: Callable[[Arg(name=None, typ=int)], int]): pass # ok
+[builtins fixtures/dict.pyi]
+
+[case testCallableFastParseBadArgArgName]
+# flags: --fast-parser
+from typing import Callable
+from mypy_extensions import Arg
+def h(f: Callable[[Arg(gnome='x', typ=int)], int]): pass # E: Unexpected argument "gnome" for argument constructor
+[builtins fixtures/dict.pyi]
+
+[case testCallableKindsOrdering]
+from typing import Callable
+from mypy_extensions import Arg, StarArg, KwArg, DefaultArg
+
+def f(f: Callable[[StarArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
+def g(f: Callable[[StarArg(), StarArg()], int]): pass # E: Star args may not appear after named or star args
+def h(f: Callable[[KwArg(), KwArg()], int]): pass # E: You may only have one **kwargs argument
+def i(f: Callable[[DefaultArg(), int], int]): pass # E: Required positional args may not appear after default, named or star args
+def j(f: Callable[[NamedArg('x'), DefaultArg('y', int)], int]): pass # E: Positional default args may not appear after named or star args
+
+[builtins fixtures/dict.pyi]
+
+[case testCallableDuplicateNames]
+from typing import Callable
+from mypy_extensions import Arg, StarArg, KwArg, DefaultArg
+
+def f(f: Callable[[Arg('x', int), int, Arg('x', int)], int]): pass # E: Duplicate argument name "x"
+
+[builtins fixtures/dict.pyi]
+
+
 [case testCallableWithKeywordOnlyArg]
 from typing import Callable
 from mypy_extensions import NamedArg

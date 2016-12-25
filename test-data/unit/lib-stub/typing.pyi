@@ -11,7 +11,6 @@ Optional = 0
 TypeVar = 0
 Generic = 0
 Tuple = 0
-Callable = 0
 builtinclass = 0
 _promote = 0
 NamedTuple = 0
@@ -27,6 +26,11 @@ T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
+
+class _Callable(object):
+    def __getattr__(self, o): pass
+
+Callable = _Callable()
 
 class Container(Generic[T]):
     @abstractmethod
