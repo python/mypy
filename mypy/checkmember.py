@@ -5,8 +5,8 @@ from typing import cast, Callable, List, Optional, TypeVar
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType,
-    DeletedType, NoneTyp, TypeType, function_type
-)
+    DeletedType, NoneTyp, TypeType, function_type,
+    TypedDictGetFunction)
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
     ARG_POS, ARG_STAR, ARG_STAR2,
@@ -120,9 +120,12 @@ def analyze_member_access(name: str,
                                      original_type=original_type, chk=chk)
     elif isinstance(typ, TypedDictType):
         # Actually look up from the fallback instance type.
-        return analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
-                                     is_operator, builtin_type, not_ready_callback, msg,
-                                     original_type=original_type, chk=chk)
+        result = analyze_member_access(name, typ.fallback, node, is_lvalue, is_super,
+                                       is_operator, builtin_type, not_ready_callback, msg,
+                                       original_type=original_type, chk=chk)
+        if name == 'get' and isinstance(result, CallableType):
+            result = TypedDictGetFunction(typ, result)
+        return result
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Class attribute.
         # TODO super?

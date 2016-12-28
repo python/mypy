@@ -980,6 +980,26 @@ class TypedDictType(Type):
             yield (item_name, None, right_item_type)
 
 
+class TypedDictGetFunction(CallableType):
+    """A special callable type containing a reference to the TypedDict `get` callable instance.
+    This is needed to delay determining the signature of a TypedDict's `get` method until the
+    method is actually called.  This allows `get` to behave just as indexing into the TypedDict
+    would.
+
+    This is not a real type, but is needed to allow TypedDict.get to behave as expected.
+    """
+    def __init__(self, typed_dict: TypedDictType, fallback_callable: CallableType) -> None:
+        super().__init__(fallback_callable.arg_types, fallback_callable.arg_kinds,
+                         fallback_callable.arg_names, fallback_callable.ret_type,
+                         fallback_callable.fallback, fallback_callable.name,
+                         fallback_callable.definition, fallback_callable.variables,
+                         fallback_callable.line, fallback_callable.column,
+                         fallback_callable.is_ellipsis_args, fallback_callable.implicit,
+                         fallback_callable.is_classmethod_class, fallback_callable.special_sig)
+        self.typed_dict = typed_dict
+        self.fallback_callable = fallback_callable
+
+
 class StarType(Type):
     """The star type *type_parameter.
 

@@ -9,7 +9,7 @@ from mypy.types import (
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
-)
+    TypedDictGetFunction)
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
@@ -341,6 +341,10 @@ class ExpressionChecker:
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
+            if isinstance(callee, TypedDictGetFunction):
+                if 1 <= len(args) <= 2 and isinstance(args[0], (StrExpr, UnicodeExpr)):
+                    return_type = self.get_typeddict_index_type(callee.typed_dict, args[0])
+                    return return_type, callee
             if callee.is_concrete_type_obj() and callee.type_object().is_abstract:
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
@@ -1484,11 +1488,13 @@ class ExpressionChecker:
         return None
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
+        return self.get_typeddict_index_type(td_type, index)
+
+    def get_typeddict_index_type(self, td_type: TypedDictType, index: Expression) -> Type:
         if not isinstance(index, (StrExpr, UnicodeExpr)):
             self.msg.typeddict_item_name_must_be_string_literal(td_type, index)
             return AnyType()
         item_name = index.value
-
         item_type = td_type.items.get(item_name)
         if item_type is None:
             self.msg.typeddict_item_name_not_found(td_type, item_name, index)

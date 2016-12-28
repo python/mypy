@@ -18,6 +18,7 @@ class dict(Iterable[KT], Mapping[KT, VT], Generic[KT, VT]):
     def __init__(self, arg: Iterable[Tuple[KT, VT]], **kwargs: VT) -> None: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
+    def get(self, k: KT, default: VT=None) -> VT: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
 
 class int: # for convenience

@@ -431,6 +431,38 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 
 -- Special Method: get
 
+[case testCanUseGetMethodWithStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+reveal_type(p.get('type'))  # E: Revealed type is 'builtins.str'
+reveal_type(p.get('x'))     # E: Revealed type is 'builtins.int'
+reveal_type(p.get('y'))     # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testCannotGetMethodWithInvalidStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p.get('z')  # E: 'z' is not a valid item name; expected one of ['type', 'x', 'y']
+[builtins fixtures/dict.pyi]
+
+[case testGetMethodWithVariableKeyFallsBack]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+key = 'type'
+reveal_type(p.get(key))  # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+
+[case testChainedGetMethodWithFallback]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+PointSet = TypedDict('PointSet', {'first_point': TaggedPoint})
+p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
+reveal_type(p.get('first_point', {}).get('x'))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
 -- TODO: Implement support for these cases:
 --[case testGetOfTypedDictWithValidStringLiteralKeyReturnsPreciseType]
 --[case testGetOfTypedDictWithInvalidStringLiteralKeyIsError]
