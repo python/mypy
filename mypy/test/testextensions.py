@@ -114,6 +114,14 @@ class TypedDictTests(BaseTestCase):
             EmpDnew = pickle.loads(ZZ)
             self.assertEqual(EmpDnew({'name': 'jane', 'id': 37}), jane)
 
+    def test_optional(self):
+        EmpD = TypedDict('EmpD', name=str, id=int)
+
+        def internal_function() -> typing.Optional[EmpD]:
+            return None
+
+        internal_function()
+
 
 if __name__ == '__main__':
     main()
