@@ -117,10 +117,8 @@ class TypedDictTests(BaseTestCase):
     def test_optional(self):
         EmpD = TypedDict('EmpD', name=str, id=int)
 
-        def internal_function() -> typing.Optional[EmpD]:
-            return None
-
-        internal_function()
+        self.assertEqual(typing.Optional[EmpD], typing.Union[None, EmpD])
+        self.assertNotEqual(typing.List[EmpD], typing.Tuple[EmpD])
 
 
 if __name__ == '__main__':
