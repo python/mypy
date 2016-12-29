@@ -463,6 +463,26 @@ p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
 reveal_type(p.get('first_point', {}).get('x'))  # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
+[case testDictGetMethodStillCallable]
+from typing import Callable
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(x=42, y=13)
+def invoke_method(method: Callable[[str, int], int]) -> None:
+    pass
+invoke_method(p.get)
+[builtins fixtures/dict.pyi]
+
+[case testDictGetMethodStillCallableWithObject]
+from typing import Callable
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+def invoke_method(method: Callable[..., object]) -> None:
+    pass
+invoke_method(p.get)
+[builtins fixtures/dict.pyi]
+
 -- TODO: Implement support for these cases:
 --[case testGetOfTypedDictWithValidStringLiteralKeyReturnsPreciseType]
 --[case testGetOfTypedDictWithInvalidStringLiteralKeyIsError]
