@@ -2,6 +2,7 @@
 
 import argparse
 import configparser
+import fnmatch
 import os
 import re
 import sys
@@ -522,7 +523,8 @@ def parse_config_file(options: Options, filename: str) -> None:
                 glob = glob.replace(os.sep, '.')
                 if os.altsep:
                     glob = glob.replace(os.altsep, '.')
-                options.per_module_options[glob] = updates
+                pattern = re.compile(fnmatch.translate(glob))
+                options.per_module_options[pattern] = updates
 
 
 def parse_section(prefix: str, template: Options,

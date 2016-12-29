@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List
+from typing import Any, Mapping, Optional, Tuple, List, Pattern
 
 from mypy import defaults
 
@@ -93,7 +93,7 @@ class Options:
         self.junit_xml = None  # type: Optional[str]
 
         # Per-module options (raw)
-        self.per_module_options = {}  # type: Dict[str, Dict[str, object]]
+        self.per_module_options = {}  # type: Dict[Pattern[str], Dict[str, object]]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -139,11 +139,11 @@ class Options:
         new_options.__dict__.update(updates)
         return new_options
 
-    def module_matches_pattern(self, module: str, pattern: str) -> bool:
+    def module_matches_pattern(self, module: str, pattern: Pattern[str]) -> bool:
         # If the pattern is 'mod.*', we want 'mod' to match that too.
         # (That's so that a pattern specifying a package also matches
         # that package's __init__.)
-        return fnmatch.fnmatch(module, pattern) or fnmatch.fnmatch(module + '.', pattern)
+        return pattern.match(module) is not None or pattern.match(module + '.') is not None
 
     def select_options_affecting_cache(self) -> Mapping[str, bool]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
