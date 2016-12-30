@@ -779,7 +779,6 @@ class ASTConverter(ast35.NodeTransformer):
         # FormattedValue(expr value)
         @with_line
         def visit_FormattedValue(self, n: ast35.FormattedValue) -> StrExpr:
-            print(n, n.value, dir(n))
             return self.visit(n.value)
 
     # Bytes(bytes s)

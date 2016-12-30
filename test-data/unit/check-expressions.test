@@ -1167,8 +1167,7 @@ u'%s' % (u'abc',)
 f'foobar'
 
 [case testFStringTypecheckExpression]
-# flags: --fast-parser
-# flags: --python-version 3.6
+# flags: --fast-parser --python-version 3.6
 a: str
 a = 'foo'
 b: str
@@ -1177,7 +1176,7 @@ b == 'foobar'
 f'{1 + "a"}'
 f'{1 + 1}'
 [out]
-main:2: error: Unsupported operand types for + ("int" and "str")
+main:7: error: Unsupported operand types for + ("int" and "str") (diff)
 
 
 -- Lambdas
