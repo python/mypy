@@ -88,14 +88,6 @@ def convert(op: ObjectPoint) -> Point:
     return op  # E: Incompatible return value type (got "ObjectPoint", expected "Point")
 [builtins fixtures/dict.pyi]
 
-[case testCannotConvertTypedDictToSimilarTypedDictWithWiderItemTypes]
-from mypy_extensions import TypedDict
-Point = TypedDict('Point', {'x': int, 'y': int})
-ObjectPoint = TypedDict('ObjectPoint', {'x': object, 'y': object})
-def convert(p: Point) -> ObjectPoint:
-    return p  # E: Incompatible return value type (got "Point", expected "ObjectPoint")
-[builtins fixtures/dict.pyi]
-
 [case testCannotConvertTypedDictToSimilarTypedDictWithIncompatibleItemTypes]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
@@ -134,6 +126,37 @@ from typing import Mapping
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_mapping(p: Point) -> Mapping[str, str]:
     return p  # E: Incompatible return value type (got "Point", expected Mapping[str, str])
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictAcceptsIntForFloatDuckTypes]
+from mypy_extensions import TypedDict
+from typing import Any, Mapping
+Point = TypedDict('Point', {'x': float, 'y': float})
+def create_point() -> Point:
+    return Point(x=1, y=2)
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictDoesNotAcceptsFloatForInt]
+from mypy_extensions import TypedDict
+from typing import Any, Mapping
+Point = TypedDict('Point', {'x': int, 'y': int})
+def create_point() -> Point:
+    return Point(x=1.2, y=2.5)
+[out]
+main:5: error: Incompatible return value type (got "TypedDict(x=float, y=float)", expected "Point")
+main:5: error: Incompatible types (expression has type "float", TypedDict item "x" has type "int")
+main:5: error: Incompatible types (expression has type "float", TypedDict item "y" has type "int")
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictAcceptsAnyType]
+from mypy_extensions import TypedDict
+from typing import Any, Mapping
+Point = TypedDict('Point', {'x': float, 'y': float})
+def create_point(something: Any) -> Point:
+    return Point({
+      'x': something.x,
+      'y': something.y
+    })
 [builtins fixtures/dict.pyi]
 
 -- TODO: Fix mypy stubs so that the following passes in the test suite
