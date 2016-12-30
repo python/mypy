@@ -774,11 +774,14 @@ class ASTConverter(ast35.NodeTransformer):
         # JoinedStr(expr* values)
         @with_line
         def visit_JoinedStr(self, n: ast35.JoinedStr) -> StrExpr:
-            return StrExpr(n.values[0])
+            result_string_expression = StrExpr('')
+            for value in n.values:
+                result_string_expression = OpExpr('+', result_string_expression, self.visit(value))
+            return result_string_expression
 
         # FormattedValue(expr value)
         @with_line
-        def visit_FormattedValue(self, n: ast35.FormattedValue) -> StrExpr:
+        def visit_FormattedValue(self, n: ast35.FormattedValue) -> Expression:
             return self.visit(n.value)
 
     # Bytes(bytes s)

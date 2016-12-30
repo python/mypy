@@ -1162,21 +1162,23 @@ u'%s' % (u'abc',)
 -- --------
 
 
-[case testFStringParseOk]
-# flags: --fast-parser
-f'foobar'
-
-[case testFStringTypecheckExpression]
+[case testFStringBasics]
 # flags: --fast-parser --python-version 3.6
+f'foobar'
+f'{"foobar"}'
+f'foo{"bar"}'
 a: str
-a = 'foo'
-b: str
-b = f'{a}bar'
-b == 'foobar'
-f'{1 + "a"}'
-f'{1 + 1}'
+a = f'foobar'
+a = f'{"foobar"}'
+
+[case testFStringExpressions]
+# flags: --fast-parser --python-version 3.6
+f'{1 + ""}'
+f' {1 + ""}'
 [out]
-main:7: error: Unsupported operand types for + ("int" and "str") (diff)
+main:2: error: Unsupported operand types for + ("int" and "str")
+main:3: error: Unsupported operand types for + ("int" and "str")
+main:3: error: Unsupported operand types for + ("str" and "int")
 
 
 -- Lambdas
