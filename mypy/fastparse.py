@@ -769,6 +769,11 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return UnicodeExpr(n.s)
 
+    # JoinedStr(expr* values)
+    @with_line
+    def visit_JoinedStr(self, n: ast35.JoinedStr) -> StrExpr:
+        return StrExpr(n.values[0])
+
     # Bytes(bytes s)
     @with_line
     def visit_Bytes(self, n: ast35.Bytes) -> Union[BytesExpr, StrExpr]:
