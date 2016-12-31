@@ -773,12 +773,11 @@ class ASTConverter(ast35.NodeTransformer):
     if hasattr(ast35, 'JoinedStr'):
         # JoinedStr(expr* values)
         @with_line
-        def visit_JoinedStr(self, n: ast35.JoinedStr) -> StrExpr:
-            result_string_expression = StrExpr('')
-            for value in n.values:
-                value_as_string_expr = cast(StrExpr, self.visit(value))
-                result_string_expression = cast(StrExpr, OpExpr('+', result_string_expression, value_as_string_expr))
-            return result_string_expression
+        def visit_JoinedStr(self, n: ast35.JoinedStr) -> Expression:
+            result_expression = StrExpr('')  # type: Expression
+            for value_expr in self.translate_expr_list(n.values):
+                result_expression = OpExpr('+', result_expression, value_expr)
+            return result_expression
 
         # FormattedValue(expr value)
         @with_line
