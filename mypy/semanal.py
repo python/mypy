@@ -1544,7 +1544,7 @@ class SemanticAnalyzer(NodeVisitor):
         res = self.process_typevar_parameters(call.args[1 + n_values:],
                                               call.arg_names[1 + n_values:],
                                               call.arg_kinds[1 + n_values:],
-                                              bool(values),
+                                              n_values,
                                               s)
         if res is None:
             return
@@ -1591,8 +1591,9 @@ class SemanticAnalyzer(NodeVisitor):
     def process_typevar_parameters(self, args: List[Expression],
                                    names: List[Optional[str]],
                                    kinds: List[int],
-                                   has_values: bool,
+                                   num_values: int,
                                    context: Context) -> Optional[Tuple[int, Type]]:
+        has_values = (num_values > 0)
         covariant = False
         contravariant = False
         upper_bound = self.object_type()   # type: Type
@@ -1641,6 +1642,9 @@ class SemanticAnalyzer(NodeVisitor):
 
         if covariant and contravariant:
             self.fail("TypeVar cannot be both covariant and contravariant", context)
+            return None
+        elif num_values == 1:
+            self.fail("TypeVar cannot have only a single constraint", context)
             return None
         elif covariant:
             variance = COVARIANT
