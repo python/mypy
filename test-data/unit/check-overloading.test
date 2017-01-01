@@ -749,3 +749,11 @@ f(1, x)
 y = (2, 3)  # type: Tuple[int, ...]
 f(1, y) # E: Argument 2 to "f" has incompatible type Tuple[int, ...]; expected Tuple[str, ...]
 [builtins fixtures/tuple.pyi]
+
+[case testCallableSpecificOverload]
+from typing import overload, Callable
+@overload
+def f(a: Callable[[], int]) -> None: pass
+@overload
+def f(a: str) -> None: pass
+f(0)  # E: No overload variant of "f" matches argument types [builtins.int]
