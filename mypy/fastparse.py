@@ -776,7 +776,8 @@ class ASTConverter(ast35.NodeTransformer):
         def visit_JoinedStr(self, n: ast35.JoinedStr) -> Expression:
             result_expression = StrExpr('')  # type: Expression
             for value_expr in self.translate_expr_list(n.values):
-                result_expression = OpExpr('+', result_expression, value_expr)
+                stringified_value_expr = CallExpr(MemberExpr(value_expr, '__str__'), [], [])
+                result_expression = OpExpr('+', result_expression, stringified_value_expr)
             return result_expression
 
         # FormattedValue(expr value)
