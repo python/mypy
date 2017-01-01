@@ -147,7 +147,7 @@ T = TypeVar('T', bound=A)
 def f(x: T) -> T:
     x.foo()
     x.bar()
-    x.baz()  # E: "A" has no attribute "baz"
+    x.baz()  # E: "T" has no attribute "baz"
     x.a
     x.b
     return x
