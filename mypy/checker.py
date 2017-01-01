@@ -2506,6 +2506,68 @@ def conditional_type_map(expr: Expression,
         return {}, {}
 
 
+def is_callable_type(type: Optional[Type]) -> bool:
+    """Takes in a type and returns if that type is callable, that is,
+    if `type()` is well-typed (ignoring arguments)."""
+    callable_types = (FunctionLike, AnyType, TypeType)
+    if any(isinstance(type, callable_type) for callable_type in callable_types):
+        return True
+
+    if isinstance(type, UnionType):
+        return all(is_callable_type(item) for item in type.items)
+
+    if isinstance(type, TypeVarType):
+        return not is_callable_type(type.erase_to_union_or_bound())
+
+    if isinstance(type, Instance):
+        method = type.type.get_method('__call__')
+        if method:
+            return is_callable_type(method.type)
+
+    return False
+
+
+def conditional_callable_type_map(expr: Expression,
+                                  current_type: Optional[Type],
+                                  ) -> Tuple[TypeMap, TypeMap]:
+    """Takes in an expression and the current type of the expression
+
+    Returns a 2-tuple: The first element is a map from the expression to
+    the restricted type if it must be callable. The second element is a
+    map from the expression to the type it would hold if it weren't
+    callable. Considers AnyType to be both callable and uncallable."""
+    if not current_type:
+        return {}, {}
+
+    if isinstance(current_type, AnyType):
+        return {}, {}
+
+    if isinstance(current_type, UnionType):
+        callables = []  # type: List[Type]
+        uncallables = []  # type: List[Type]
+        for item in current_type.items:
+
+            if isinstance(item, AnyType):
+                # We want Any to be considered both callable and uncallable
+                callables.append(item)
+                uncallables.append(item)
+
+            else:
+                if is_callable_type(item):
+                    callables.append(item)
+                else:
+                    uncallables.append(item)
+
+        callable_map = {expr: UnionType.make_union(callables)} if len(callables) else None
+        uncallable_map = {expr: UnionType.make_union(uncallables)} if len(uncallables) else None
+        return callable_map, uncallable_map
+
+    if is_callable_type(current_type):
+        return {}, None
+
+    return None, {}
+
+
 def is_true_literal(n: Expression) -> bool:
     return (refers_to_fullname(n, 'builtins.True')
             or isinstance(n, IntExpr) and n.value == 1)
@@ -2579,7 +2641,7 @@ def find_isinstance_check(node: Expression,
                           type_map: Dict[Expression, Type],
                           ) -> Tuple[TypeMap, TypeMap]:
     """Find any isinstance checks (within a chain of ands).  Includes
-    implicit and explicit checks for None.
+    implicit and explicit checks for None and calls to callable.
 
     Return value is a map of variables to their types if the condition
     is true and a map of variables to their types if the condition is false.
@@ -2600,6 +2662,11 @@ def find_isinstance_check(node: Expression,
                 vartype = type_map[expr]
                 type = get_isinstance_type(node.args[1], type_map)
                 return conditional_type_map(expr, vartype, type)
+        elif refers_to_fullname(node.callee, 'builtins.callable'):
+            expr = node.args[0]
+            if expr.literal == LITERAL_TYPE:
+                vartype = type_map[expr]
+                return conditional_callable_type_map(expr, vartype)
     elif (isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL):
         # Check for `x is None` and `x is not None`.
         is_not = node.operators == ['is not']
