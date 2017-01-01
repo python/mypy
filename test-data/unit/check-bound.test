@@ -142,7 +142,7 @@ class A(A0):
 class B(A):
     def baz(self) -> None: pass
 
-T = TypeVar('T', A)
+T = TypeVar('T', bound=A)
 
 def f(x: T) -> T:
     x.foo()

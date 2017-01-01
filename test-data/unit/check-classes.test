@@ -1458,7 +1458,7 @@ main:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely
 
 [case testUnsafeOverlappingWithLineNo]
 from typing import TypeVar
-T = TypeVar('T', Real)
+T = TypeVar('T', bound=Real)
 class Real:
     def __add__(self, other): ...
 class Fraction(Real):
