@@ -1,0 +1,221 @@
+[case testCallableDef]
+def f() -> None: pass
+
+if callable(f):
+    f()
+else:
+    f += 5
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableLambda]
+f = lambda: None
+
+if callable(f):
+    f()
+else:
+    f += 5
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableNotCallable]
+x = 5
+
+if callable(x):
+    x()
+else:
+    x += 5
+
+[builtins fixtures/callable.pyi]
+
+[case testUnion]
+from typing import Callable, Union
+
+x = 5  # type: Union[int, Callable[[], str]]
+
+if callable(x):
+    y = x() + 'test'
+else:
+    z = x + 6
+
+[builtins fixtures/callable.pyi]
+
+[case testUnionMultipleReturnTypes]
+from typing import Callable, Union
+
+x = 5  # type: Union[int, Callable[[], str], Callable[[], int]]
+
+if callable(x):
+    y = x() + 2 # E: Unsupported operand types for + (likely involving Union)
+else:
+    z = x + 6
+
+[builtins fixtures/callable.pyi]
+
+[case testUnionMultipleNonCallableTypes]
+from typing import Callable, Union
+
+x = 5  # type: Union[int, str, Callable[[], str]]
+
+if callable(x):
+    y = x() + 'test'
+else:
+    z = x + 6  # E: Unsupported operand types for + (likely involving Union)
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableThenIsinstance]
+from typing import Callable, Union
+
+x = 5  # type: Union[int, str, Callable[[], str], Callable[[], int]]
+
+if callable(x):
+    y = x()
+    if isinstance(y, int):
+        b1 = y + 2
+    else:
+        b2 = y + 'test'
+else:
+    if isinstance(x, int):
+        b3 = x + 3
+    else:
+        b4 = x + 'test2'
+
+[builtins fixtures/callable.pyi]
+
+[case testIsinstanceThenCallable]
+from typing import Callable, Union
+
+x = 5  # type: Union[int, str, Callable[[], str], Callable[[], int]]
+
+if isinstance(x, int):
+    b1 = x + 1
+else:
+    if callable(x):
+        y = x()
+        if isinstance(y, int):
+            b2 = y + 1
+        else:
+            b3 = y + 'test'
+    else:
+        b4 = x + 'test2'
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableWithDifferentArgTypes]
+from typing import Callable, Union
+
+x = 5  # type: Union[int, Callable[[], None], Callable[[int], None]]
+
+if callable(x):
+    x()  # E: Too few arguments
+
+[builtins fixtures/callable.pyi]
+
+[case testClassInitializer]
+from typing import Callable, Union
+
+class A:
+    x = 5
+
+a = A  # type: Union[A, Callable[[], A]]
+
+if callable(a):
+    a = a()
+
+a.x + 6
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableVariables]
+from typing import Union
+
+class A:
+    x = 5
+
+class B:
+    x = int
+
+x = A()  # type: Union[A, B]
+
+if callable(x.x):
+    y = x.x()
+else:
+    y = x.x + 5
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableAnd]
+from typing import Union, Callable
+
+x = 5  # type: Union[int, Callable[[], str]]
+
+if callable(x) and x() == 'test':
+    x()
+else:
+    x + 5  # E: Unsupported left operand type for + (some union)
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableOr]
+from typing import Union, Callable
+
+x = 5  # type: Union[int, Callable[[], str]]
+
+if callable(x) or x() == 'test':  # E: "int" not callable
+    x()  # E: "int" not callable
+else:
+    x + 5
+[builtins fixtures/callable.pyi]
+
+[case testCallableOrOtherType]
+from typing import Union, Callable
+
+x = 5  # type: Union[int, Callable[[], str]]
+
+if callable(x) or x == 2:
+    pass
+else:
+    pass
+[builtins fixtures/callable.pyi]
+
+[case testAnyCallable]
+from typing import Any
+
+x = 5  # type: Any
+
+if callable(x):
+    reveal_type(x)  # E: Revealed type is 'Any'
+else:
+    reveal_type(x)  # E: Revealed type is 'Any'
+[builtins fixtures/callable.pyi]
+
+[case testCallableCallableClasses]
+from typing import Union
+
+
+class A:
+    pass
+
+
+class B:
+    def __call__(self) -> None:
+        pass
+
+
+a = A()  # type: A
+b = B()  # type: B
+c = A()  # type: Union[A, B]
+
+if callable(a):
+    5 + 'test'
+
+if not callable(b):
+    5 + 'test'
+
+if callable(c):
+    reveal_type(c)  # E: Revealed type is '__main__.B'
+else:
+    reveal_type(c)  # E: Revealed type is '__main__.A'
+
+[builtins fixtures/callable.pyi]
