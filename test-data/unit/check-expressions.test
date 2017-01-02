@@ -1171,11 +1171,13 @@ f'.{1}.'
 a: str
 a = f'foobar'
 a = f'{"foobar"}'
+[builtins fixtures/primitives.pyi]
 
 [case testFStringExpressions]
 # flags: --fast-parser --python-version 3.6
 f'{1 + ""}'
 f' {1 + ""}'
+[builtins fixtures/primitives.pyi]
 [out]
 main:2: error: Unsupported operand types for + ("int" and "str")
 main:3: error: Unsupported operand types for + ("int" and "str")
