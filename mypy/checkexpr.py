@@ -1772,6 +1772,12 @@ class ExpressionChecker:
         """
         # TODO also accept 'Any' context
         ctx = self.chk.type_context[-1]
+
+        if isinstance(ctx, UnionType):
+            callables = [t for t in ctx.items if isinstance(t, CallableType)]
+            if len(callables) == 1:
+                ctx = callables[0]
+
         if not ctx or not isinstance(ctx, CallableType):
             return None
 
