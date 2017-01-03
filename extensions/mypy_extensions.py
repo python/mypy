@@ -22,8 +22,10 @@ def _check_fails(cls, other):
         pass
     return False
 
+
 def _dict_new(cls, *args, **kwargs):
     return dict(*args, **kwargs)
+
 
 def _typeddict_new(cls, _typename, _fields=None, **kwargs):
     if _fields is None:
@@ -32,6 +34,7 @@ def _typeddict_new(cls, _typename, _fields=None, **kwargs):
         raise TypeError("TypedDict takes either a dict or keyword arguments,"
                         " but not both")
     return _TypedDictMeta(_typename, (), {'__annotations__': dict(_fields)})
+
 
 class _TypedDictMeta(type):
     def __new__(cls, name, bases, ns):

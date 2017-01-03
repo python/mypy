@@ -151,11 +151,11 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_flake8(self, name: str, file: str, cwd: Optional[str] = None) -> None:
-        name = 'lint %s' % name
+    def add_flake8(self, cwd: Optional[str] = None) -> None:
+        name = 'lint'
         if not self.allow(name):
             return
-        largs = ['flake8', file]
+        largs = ['flake8', '-j{}'.format(self.waiter.limit)]
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -167,13 +167,9 @@ class Driver:
 def add_basic(driver: Driver) -> None:
     if False:
         driver.add_mypy('file setup.py', 'setup.py')
-    driver.add_flake8('file setup.py', 'setup.py')
     driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_flake8('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_flake8('legacy entry script', 'scripts/mypy')
     driver.add_mypy('legacy myunit script', 'scripts/myunit')
-    driver.add_flake8('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
     driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
 
@@ -206,7 +202,6 @@ def add_imports(driver: Driver) -> None:
         mod = file_to_module(f)
         if not mod.endswith('.__main__'):
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
-        driver.add_flake8('module %s' % mod, f)
 
 
 PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
@@ -411,6 +406,7 @@ def main() -> None:
     add_stubs(driver)
     add_stdlibsamples(driver)
     add_samples(driver)
+    driver.add_flake8()
 
     if list_only:
         driver.list_tasks()
