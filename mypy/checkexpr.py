@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance, function_type, FunctionLike,
+    true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
@@ -1746,8 +1746,7 @@ class ExpressionChecker:
             # XXX Why we don't need "with self.chk.scope.push_function(e):" here?
             ret_type = e.expr().accept(self.chk)
             fallback = self.named_type('builtins.function')
-            inferred_type = function_type(e, fallback)
-            return replace_callable_return_type(inferred_type, ret_type)
+            return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=inferred_type)
