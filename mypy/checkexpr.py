@@ -1744,7 +1744,7 @@ class ExpressionChecker:
         if not inferred_type:
             # No useful type context.
             # XXX Why we don't need "with self.chk.scope.push_function(e):" here?
-            ret_type = e.expr().accept(self.chk)
+            ret_type = self.accept(e.expr())
             fallback = self.named_type('builtins.function')
             return callable_type(e, fallback, ret_type)
         else:

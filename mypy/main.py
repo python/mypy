@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, cast
 
 from mypy import build
 from mypy import defaults
@@ -128,8 +128,8 @@ def process_options(args: List[str],
     """Parse command line arguments."""
 
     # Make the help output a little less jarring.
-    help_factory = (lambda prog:
-                    argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))
+    help_factory = cast(Type[argparse.HelpFormatter], (lambda prog:
+                        argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28)))
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
                                      formatter_class=help_factory)
@@ -480,7 +480,7 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
-}
+}  # type: Dict[str, Any]
 
 
 def parse_config_file(options: Options, filename: str) -> None:
