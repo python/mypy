@@ -577,12 +577,17 @@ list_a = [] # type: List[A]
 f(list_a, lambda a: a.x)
 [builtins fixtures/list.pyi]
 
+[case testLambdaWithoutContext]
+reveal_type(lambda x: x)  # E: Revealed type is 'def (x: Any) -> Any'
+reveal_type(lambda x: 1)  # E: Revealed type is 'def (x: Any) -> builtins.int'
+
 [case testInvalidContextForLambda]
 from typing import Callable
 f = lambda x: A() # type: Callable[[], A]
 f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
+main:2: error: Incompatible types in assignment (expression has type Callable[[Any], A], variable has type Callable[[], A])
 main:2: error: Cannot infer type of lambda
 main:3: error: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
 main:3: error: Cannot infer type of lambda

@@ -1743,15 +1743,11 @@ class ExpressionChecker:
         inferred_type = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             # No useful type context.
+            # XXX Why we don't need "with self.chk.scope.push_function(e):" here?
             ret_type = e.expr().accept(self.chk)
-            if not e.arguments:
-                # Form 'lambda: e'; just use the inferred return type.
-                return CallableType([], [], [], ret_type, self.named_type('builtins.function'))
-            else:
-                # TODO: Consider reporting an error. However, this is fine if
-                # we are just doing the first pass in contextual type
-                # inference.
-                return AnyType()
+            fallback = self.named_type('builtins.function')
+            inferred_type = function_type(e, fallback)
+            return replace_callable_return_type(inferred_type, ret_type)
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=inferred_type)
