@@ -518,3 +518,10 @@ if x is not None:
     x.x = 1 # OK here
 
 [builtins fixtures/ops.pyi]
+
+[case testOptionalLambdaInference]
+from typing import Optional, Callable
+f = None # type: Optional[Callable[[int], None]]
+f = lambda x: None
+f(0)
+[builtins fixtures/function.pyi]
