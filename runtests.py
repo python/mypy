@@ -255,7 +255,7 @@ def add_pythoneval(driver: Driver) -> None:
             'mypy.test.testpythoneval',
             'test_testpythoneval_PythonEvaluationSuite.test' + prefix + '*',
             *driver.arglist,
-            coverage=True,
+            coverage=True
         )
 
 
