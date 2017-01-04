@@ -245,7 +245,7 @@ def add_pythoneval(driver: Driver) -> None:
                 if m:
                     case_name = m.group(1)
                     assert case_name[:4] == 'test'
-                    cases.add(m.group(1)[4:5])
+                    cases.add(case_name[4:5])
 
     for prefix in sorted(cases):
         driver.add_python_mod(

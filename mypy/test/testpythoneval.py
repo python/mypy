@@ -68,7 +68,7 @@ def get_subprocess_cmdlines(
     else:
         interpreter = python3_path
     if not interpreter:
-        # Skip, can't find a Python 2 interpreter.
+        # Skip, can't find a Python interpreter.
         raise SkipTestCaseException()
 
     program = '_' + testcase.name + '.py'
@@ -79,7 +79,7 @@ def get_subprocess_cmdlines(
 
 @contextmanager
 def program_on_disk(testcase: DataDrivenTestCase) -> typing.Generator:
-    """Holds the contents of the testcase's input on disk for the lifecycl of the decorator."""
+    """Holds the contents of the testcase's input on disk for the lifecycle of the decorator."""
     program = '_' + testcase.name + '.py'
     program_path = os.path.join(test_temp_dir, program)
     with open(program_path, 'w') as file:
