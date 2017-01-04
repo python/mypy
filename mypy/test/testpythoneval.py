@@ -107,7 +107,7 @@ def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
 
 
 def run(
-    cmdline: List[str], *, env: Dict[str, str] = None, timeout: int =10
+    cmdline: List[str], *, env: Dict[str, str] = None, timeout: int = 30
 ) -> Tuple[int, List[str]]:
     """A poor man's subprocess.run() for 3.3 and 3.4 compatibility."""
     process = subprocess.Popen(
@@ -120,6 +120,7 @@ def run(
     try:
         out, err = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
+        out = err = b''
         process.kill()
     return process.returncode, split_lines(out, err)
 
