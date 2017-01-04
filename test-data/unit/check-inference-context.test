@@ -592,7 +592,9 @@ f = lambda x: A() # type: Callable[[], A]
 f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
+main:2: error: Incompatible types in assignment (expression has type Callable[[Any], A], variable has type Callable[[], A])
 main:2: error: Cannot infer type of lambda
+main:3: error: Incompatible types in assignment (expression has type Callable[[], A], variable has type Callable[[A], A])
 main:3: error: Cannot infer type of lambda
 
 [case testEllipsisContextForLambda]
