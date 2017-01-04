@@ -2,9 +2,8 @@
 
 import re
 import subprocess
-import sys
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Sequence, no_type_check
+from typing import TypeVar, List, Tuple, Optional, Sequence
 
 
 T = TypeVar('T')
