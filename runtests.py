@@ -28,9 +28,12 @@ from typing import Dict, List, Optional, Set, Iterable
 
 from mypy.waiter import Waiter, LazySubprocess
 from mypy import util
+from mypy.test.config import test_data_prefix
+from mypy.test.testpythoneval import python_eval_files, python_34_eval_files
 
 import itertools
 import os
+import re
 
 
 # Ideally, all tests would be `discover`able so that they can be driven
@@ -233,9 +236,27 @@ def add_myunit(driver: Driver) -> None:
 
 
 def add_pythoneval(driver: Driver) -> None:
-    driver.add_python_mod('eval-test', 'mypy.myunit',
-                          '-m', 'mypy.test.testpythoneval', *driver.arglist,
-                         coverage=True)
+    cases = set()
+    case_re = re.compile(r'^\[case ([^\]]+)\]$')
+    for file in python_eval_files + python_34_eval_files:
+        with open(os.path.join(test_data_prefix, file), 'r') as f:
+            for line in f:
+                m = case_re.match(line)
+                if m:
+                    case_name = m.group(1)
+                    assert case_name[:4] == 'test'
+                    cases.add(m.group(1)[4:5])
+
+    for prefix in sorted(cases):
+        driver.add_python_mod(
+            'eval-test-' + prefix,
+            'mypy.myunit',
+            '-m',
+            'mypy.test.testpythoneval',
+            'test_testpythoneval_PythonEvaluationSuite.test' + prefix + '*',
+            *driver.arglist,
+            coverage=True,
+        )
 
 
 def add_cmdline(driver: Driver) -> None:
