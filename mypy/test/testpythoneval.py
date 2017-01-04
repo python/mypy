@@ -46,16 +46,19 @@ class PythonEvaluationSuite(Suite):
         for f in python_eval_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_python_evaluation, test_temp_dir, True)
-        if sys.version_info >= (3, 4):
+        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
             for f in python_34_eval_files:
                 c += parse_test_cases(os.path.join(test_data_prefix, f),
                     test_python_evaluation, test_temp_dir, True)
         return c
 
 
-def get_subprocess_cmdlines(
-    testcase: DataDrivenTestCase
-) -> Tuple[List[str], List[str], bool]:
+def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+    """Runs Mypy in a subprocess.
+
+    If this passes without errors, executes the script again with a given Python
+    version.
+    """
     mypy_cmdline = [
         python3_path,
         os.path.join(testcase.old_cwd, 'scripts', 'mypy'),
@@ -63,30 +66,39 @@ def get_subprocess_cmdlines(
     ]
     py2 = testcase.name.lower().endswith('python2')
     if py2:
-        interpreter = try_find_python2_interpreter()
         mypy_cmdline.append('--py2')
+        interpreter = try_find_python2_interpreter()
+        if not interpreter:
+            # Skip, can't find a Python 2 interpreter.
+            raise SkipTestCaseException()
     else:
         interpreter = python3_path
-    if not interpreter:
-        # Skip, can't find a Python interpreter.
-        raise SkipTestCaseException()
 
+    # Write the program to a file.
     program = '_' + testcase.name + '.py'
     mypy_cmdline.append(program)
-    interpreter_cmdline = [interpreter, program]
-    return mypy_cmdline, interpreter_cmdline, py2
-
-
-@contextmanager
-def program_on_disk(testcase: DataDrivenTestCase) -> typing.Generator:
-    """Holds the contents of the testcase's input on disk for the lifecycle of the decorator."""
-    program = '_' + testcase.name + '.py'
     program_path = os.path.join(test_temp_dir, program)
     with open(program_path, 'w') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
-    yield
+    # Type check the program.
+    # This uses the same PYTHONPATH as the current process.
+    returncode, out = run(mypy_cmdline)
+    if returncode == 0:
+        # Set up module path for the execution.
+        # This needs the typing module but *not* the mypy module.
+        vers_dir = '2.7' if py2 else '3.2'
+        typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
+        assert os.path.isdir(typing_path)
+        env = os.environ.copy()
+        env['PYTHONPATH'] = typing_path
+        returncode, interp_out = run([interpreter, program], env=env)
+        out += interp_out
+    # Remove temp file.
     os.remove(program_path)
+    assert_string_arrays_equal(adapt_output(testcase), out,
+                               'Invalid output ({}, line {})'.format(
+                                   testcase.file, testcase.line))
 
 
 def split_lines(*streams: bytes) -> List[str]:
@@ -101,9 +113,7 @@ def split_lines(*streams: bytes) -> List[str]:
 def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
     """Translates the generic _program.py into the actual filename."""
     program = '_' + testcase.name + '.py'
-    return [
-        program_re.sub(program, line) for line in testcase.output
-    ]
+    return [program_re.sub(program, line) for line in testcase.output]
 
 
 def run(
@@ -123,31 +133,3 @@ def run(
         out = err = b''
         process.kill()
     return process.returncode, split_lines(out, err)
-
-
-def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
-    """Runs Mypy in a subprocess.
-
-    If this passes without errors, executes the script again with a given Python
-    version.
-    """
-    mypy_cmdline, interpreter_cmdline, py2 = get_subprocess_cmdlines(testcase)
-    with program_on_disk(testcase):
-        # Type check the program.
-        # This uses the same PYTHONPATH as the current process.
-        returncode, out = run(mypy_cmdline)
-        if returncode == 0:
-            # Set up module path for the execution.
-            # This needs the typing module but *not* the mypy module.
-            vers_dir = '2.7' if py2 else '3.2'
-            typing_path = os.path.join(testcase.old_cwd, 'lib-typing', vers_dir)
-            assert os.path.isdir(typing_path)
-            env = os.environ.copy()
-            env['PYTHONPATH'] = typing_path
-            returncode, interp_out = run(interpreter_cmdline, env=env)
-            out += interp_out
-    assert_string_arrays_equal(
-        adapt_output(testcase),
-        out,
-        'Invalid output ({}, line {})'.format(testcase.file, testcase.line),
-    )
