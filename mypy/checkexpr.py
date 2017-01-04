@@ -18,7 +18,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
+    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
     UNBOUND_TVAR, BOUND_TVAR,
 )
 from mypy import nodes
@@ -1740,12 +1740,23 @@ class ExpressionChecker:
 
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""
-        inferred_type = self.infer_lambda_type_using_context(e)
-        if not inferred_type:
+        # TODO also accept 'Any' context
+        ctx = self.chk.type_context[-1]
+
+        if isinstance(ctx, UnionType):
+            callables = [t for t in ctx.items if isinstance(t, CallableType)]
+            if len(callables) == 1:
+                ctx = callables[0]
+        arg_kinds = [arg.kind for arg in e.arguments]
+        if not ctx or not isinstance(ctx, CallableType) or ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
             # No useful type context.
             ret_type = self.accept(e.expr())
             fallback = self.named_type('builtins.function')
             return callable_type(e, fallback, ret_type)
+        inferred_type = self.infer_lambda_type_using_context(e, ctx)
+        if not inferred_type:
+            # No useful type context.
+            return AnyType()
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=inferred_type)
@@ -1759,22 +1770,11 @@ class ExpressionChecker:
                 return inferred_type
             return replace_callable_return_type(inferred_type, ret_type)
 
-    def infer_lambda_type_using_context(self, e: FuncExpr) -> CallableType:
+    def infer_lambda_type_using_context(self, e: FuncExpr, ctx: CallableType) -> CallableType:
         """Try to infer lambda expression type using context.
 
         Return None if could not infer type.
         """
-        # TODO also accept 'Any' context
-        ctx = self.chk.type_context[-1]
-
-        if isinstance(ctx, UnionType):
-            callables = [t for t in ctx.items if isinstance(t, CallableType)]
-            if len(callables) == 1:
-                ctx = callables[0]
-
-        if not ctx or not isinstance(ctx, CallableType):
-            return None
-
         # The context may have function type variables in it. We replace them
         # since these are the type variables we are ultimately trying to infer;
         # they must be considered as indeterminate. We use ErasedType since it
