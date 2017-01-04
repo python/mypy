@@ -88,3 +88,6 @@ TypedDict.__doc__ = \
     The latter syntax is only supported in Python 3.6+, while two other
     syntax forms work for Python 2.7 and 3.2+
     """
+
+# Return type that indicates a function does not return
+class NoReturn: pass
