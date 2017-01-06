@@ -174,7 +174,7 @@ def process_options(args: List[str],
                         help="warn about unneeded '# type: ignore' comments")
     parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
-                        help="Hide context notes before errors")
+                        help='Precede errors with "note:" messages explaining context')
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable fast parser (recommended except on Windows)")
     parser.add_argument('-i', '--incremental', action='store_true',
