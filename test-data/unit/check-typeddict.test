@@ -435,9 +435,9 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-reveal_type(p.get('type'))  # E: Revealed type is 'builtins.str'
-reveal_type(p.get('x'))     # E: Revealed type is 'builtins.int'
-reveal_type(p.get('y'))     # E: Revealed type is 'builtins.int'
+reveal_type(p.get('type'))  # E: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(p.get('x'))     # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(p.get('y', 0))     # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testCannotGetMethodWithInvalidStringLiteralKey]
@@ -460,7 +460,7 @@ from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 PointSet = TypedDict('PointSet', {'first_point': TaggedPoint})
 p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
-reveal_type(p.get('first_point', {}).get('x'))  # E: Revealed type is 'builtins.int'
+reveal_type(p.get('first_point', {}).get('x', 0))  # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testDictGetMethodStillCallable]

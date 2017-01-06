@@ -344,6 +344,9 @@ class ExpressionChecker:
             if isinstance(callee, TypedDictGetFunction):
                 if 1 <= len(args) <= 2 and isinstance(args[0], (StrExpr, UnicodeExpr)):
                     return_type = self.get_typeddict_index_type(callee.typed_dict, args[0])
+                    if len(args) == 1:
+                        return_type = UnionType.make_union([
+                            return_type, NoneTyp()])
                     return return_type, callee
             if callee.is_concrete_type_obj() and callee.type_object().is_abstract:
                 type = callee.type_object()
