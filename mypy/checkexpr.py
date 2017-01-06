@@ -341,13 +341,6 @@ class ExpressionChecker:
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
-            if isinstance(callee, TypedDictGetFunction):
-                if 1 <= len(args) <= 2 and isinstance(args[0], (StrExpr, UnicodeExpr)):
-                    return_type = self.get_typeddict_index_type(callee.typed_dict, args[0])
-                    if len(args) == 1:
-                        return_type = UnionType.make_union([
-                            return_type, NoneTyp()])
-                    return return_type, callee
             if callee.is_concrete_type_obj() and callee.type_object().is_abstract:
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
@@ -368,6 +361,24 @@ class ExpressionChecker:
 
             arg_types = self.infer_arg_types_in_context2(
                 callee, args, arg_kinds, formal_to_actual)
+
+            if isinstance(callee, TypedDictGetFunction):
+                if 1 <= len(args) <= 2 and isinstance(args[0], (StrExpr, UnicodeExpr)):
+                    return_type = self.get_typeddict_index_type(callee.typed_dict, args[0])
+                    if len(args) == 1:
+                        return_type = UnionType.make_union([
+                            return_type, NoneTyp()])
+                    else:
+                        # Explicitly set the return type to be a the TypedDict in cases where the
+                        # call site is of the form `x.get('key', {})` and x['key'] is another
+                        # TypedDict.  This special case allows for chaining of `get` methods when
+                        # accessing elements deep within nested dictionaries in a safe and
+                        # concise way without having to set up exception handlers.
+                        if not (isinstance(return_type, TypedDictType) and
+                                is_subtype(arg_types[1], self.named_type('typing.Mapping'))):
+                            return_type = UnionType.make_simplified_union(
+                                [return_type, arg_types[1]])
+                    return return_type, callee
 
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)
