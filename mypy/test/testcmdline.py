@@ -15,7 +15,7 @@ from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.version import __version__
+from mypy.version import __version__, base_version
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -99,5 +99,6 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
     timestamp_regex = re.compile('\d{10}')
     result = [x.replace(current_abs_path, '$PWD') for x in content]
     result = [x.replace(__version__, '$VERSION') for x in result]
+    result = [x.replace(base_version, '$VERSION') for x in result]
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result
