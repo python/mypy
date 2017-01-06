@@ -211,7 +211,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.names_are_wider_than(right):
                 return False
             for (_, l, r) in left.zip(right):
-                if not is_subtype(l, r, self.check_type_parameter):
+                if not is_equivalent(l, r, self.check_type_parameter):
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True
