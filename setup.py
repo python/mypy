@@ -100,10 +100,9 @@ if os.name == 'nt':
 # "pip3 install git+git://github.com/python/mypy.git"
 # (as suggested by README.md).
 install_requires = []
-if sys.platform != 'win32':
-    install_requires.append('typed-ast >= 0.6.1')
+install_requires.append('typed-ast >= 0.6.2')
 if sys.version_info < (3, 5):
-    install_requires.append('typing >= 3.5.2')
+    install_requires.append('typing >= 3.5.3')
 
 setup(name='mypy-lang',
       version=version,
