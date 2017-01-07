@@ -618,7 +618,7 @@ class TypeChecker(NodeVisitor[Type]):
                     if (isinstance(defn, FuncDef) and ref_type is not None and i == 0
                             and not defn.is_static
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
-                        if defn.is_class or defn.name() == '__new__':
+                        if defn.is_class or defn.name() in ('__new__', '__init_subclass__'):
                             ref_type = mypy.types.TypeType(ref_type)
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):

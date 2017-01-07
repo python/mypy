@@ -335,7 +335,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif isinstance(functype, CallableType):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
-                    if func.is_class or func.name() == '__new__':
+                    if func.is_class or func.name() in ('__new__', '__init_subclass__'):
                         leading_type = self.class_type(self.type)
                     else:
                         leading_type = fill_typevars(self.type)
