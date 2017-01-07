@@ -550,10 +550,10 @@ class TypeChecker(NodeVisitor[Type]):
 
                 if fdef:
                     # Check if __init__ has an invalid, non-None return type.
-                    if (fdef.info and fdef.name() == '__init__' and
+                    if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
                             not isinstance(typ.ret_type, (Void, NoneTyp)) and
                             not self.dynamic_funcs[-1]):
-                        self.fail(messages.INIT_MUST_HAVE_NONE_RETURN_TYPE,
+                        self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item.type)
 
                     show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
