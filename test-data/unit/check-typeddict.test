@@ -480,6 +480,15 @@ p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
 p.get('first_point', 32).get('x', 0)  # E: Some element of union has no attribute "get"
 [builtins fixtures/dict.pyi]
 
+[case testGetMethodOnList]
+from typing import List
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+PointSet = TypedDict('PointSet', {'points': List[TaggedPoint]})
+p = PointSet(points=[TaggedPoint(type='2d', x=42, y=1337)])
+reveal_type(p.get('points', []))  # E: Revealed type is 'builtins.list[TypedDict(type=builtins.str, x=builtins.int, y=builtins.int, _fallback=__main__.TaggedPoint)]'
+[builtins fixtures/dict.pyi]
+
 [case testDictGetMethodStillCallable]
 from typing import Callable
 from mypy_extensions import TypedDict
