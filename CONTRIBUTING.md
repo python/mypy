@@ -111,51 +111,42 @@ to help us track which issues we intend to get to when, and may apply
 labels to carry some other information.  Here's what our milestones
 and labels mean.
 
-### Milestones
+### Task priority and sizing
 
-We use GitHub "milestones" ([see our
-list](https://github.com/python/mypy/milestones)) to roughly order
-what we want to do soon and less soon.
+We use GitHub "labels" ([see our
+list](https://github.com/python/mypy/labels)) to roughly order what we
+want to do soon and less soon.  There's two dimensions taken into
+account: **priority** (does it matter to our users) and **size** (how
+long will it take to complete).
 
-This means they represent a combination of priority and scale of work.
 Bugs that aren't a huge deal but do matter to users and don't seem
-like a lot of work to fix generally go in a near milestone; things
+like a lot of work to fix generally will be dealt with sooner; things
 that will take longer may go further out.
 
-Specifically:
+We are trying to keep the backlog at a manageable size, an issue that is
+unlikely to be acted upon in foreseeable future is going to be
+respectfully closed.  This doesn't mean the issue is not important, but
+rather reflects the man power limits of the team.
 
-* **Numbered milestones** correspond to releases.  These assignments
-  are changeable, and issues may be moved earlier or later.
-  Assignments to further-out milestones are more likely to
-  change.
-* Point releases, like 0.x.y when we're already at 0.x.z, generally
-  have issues that are less work to tackle and whose user-facing
-  impact is small or a bugfix.  Meatier or more radical issues
-  generally go to a full "minor" release, like 0.x.0.
-* **Future** has other things we don't currently plan to get to anytime
-  soon -- akin to "backlog" in some systems.
-* **Questions** is for issue threads where a user is asking a question
-  but it isn't yet clear that it represents something to actually
-  change.  We use the issue tracker as the preferred venue for such
-  questions, even when they aren't literally issues, to keep down the
-  number of distinct discussion venues anyone needs to track.  These
-  might move to a different milestone if after discussion a bug or
-  feature request emerges.
-* Issues **without a milestone** haven't been triaged.  We aim to
-  triage all new issues promptly, but there are some issues from 2015
-  and earlier that we haven't yet reviewed for triage since adopting
-  these conventions.
+The **question** label is for issue threads where a user is asking a
+question but it isn't yet clear that it represents something to actually
+change.  We use the issue tracker as the preferred venue for such
+questions, even when they aren't literally issues, to keep down the
+number of distinct discussion venues anyone needs to track.  These might
+evolve into a bug or feature request.
 
-### Labels
+Issues **without a priority or size** haven't been triaged.  We aim to
+triage all new issues promptly, but there are some issues from previous
+years that we haven't yet re-reviewed since adopting these conventions.
+
+### Other labels
 
 * **needs discussion**: This issue needs agreement on some kind of
   design before it makes sense to implement it, and it either doesn't
   yet have a design or doesn't yet have agreement on one.
-* **feature**, **bug**, **refactoring**: These classify the user-facing
-  impact of the change.  Specifically "refactoring" means there should
-  be no user-facing effect.
-* **duplicate**, **wontfix**: These identify issues that we've closed
-  for the respective reasons.
-* **priority**, **question**, **postponed**: These labels predate the
-  milestone conventions and are deprecated; they should be gone on all
-  issues that have been triaged to a milestone.
+* **feature**, **bug**, **crash**, **refactoring**, **documentation**:
+  These classify the user-facing impact of the change.  Specifically
+  "refactoring" means there should be no user-facing effect.
+* **topic-** labels group issues touching a similar aspect of the
+  project, for example PEP 484 compatibility, a specific command-line
+  option or dependency.
