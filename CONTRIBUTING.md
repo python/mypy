@@ -126,7 +126,7 @@ that will take longer may go further out.
 We are trying to keep the backlog at a manageable size, an issue that is
 unlikely to be acted upon in foreseeable future is going to be
 respectfully closed.  This doesn't mean the issue is not important, but
-rather reflects the man power limits of the team.
+rather reflects the limits of the team.
 
 The **question** label is for issue threads where a user is asking a
 question but it isn't yet clear that it represents something to actually
