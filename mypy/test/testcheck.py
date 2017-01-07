@@ -27,17 +27,22 @@ from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
+    'check-columns.test',
+    'check-expressions.test',
+    'check-functions.test',
+    'check-generic-subtyping.test',
+    'check-python2.test',
+    'check-tuples.test',
+    'check-varargs.test',
+]
+fast_parser_files = [
     'check-basic.test',
     'check-classes.test',
-    'check-expressions.test',
     'check-statements.test',
     'check-generics.test',
-    'check-tuples.test',
     'check-dynamic-typing.test',
-    'check-functions.test',
     'check-inference.test',
     'check-inference-context.test',
-    'check-varargs.test',
     'check-kwargs.test',
     'check-overloading.test',
     'check-type-checks.test',
@@ -45,9 +50,7 @@ files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
-    'check-generic-subtyping.test',
     'check-typevar-values.test',
-    'check-python2.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
     'check-unions.test',
@@ -68,9 +71,10 @@ files = [
     'check-async-await.test',
     'check-newtype.test',
     'check-class-namedtuple.test',
-    'check-columns.test',
     'check-selftype.test',
 ]
+
+files.extend(fast_parser_files)
 
 if 'annotation' in typed_ast.ast35.Assign._fields:
     files.append('check-newsyntax.test')
@@ -156,6 +160,8 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental:
             options.incremental = True
+        if os.path.split(testcase.file)[1] in fast_parser_files:
+            options.fast_parser = True
 
         sources = []
         for module_name, program_path, program_text in module_data:

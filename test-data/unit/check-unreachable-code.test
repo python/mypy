@@ -157,9 +157,13 @@ else:
 [case testSysVersionInfo_python2]
 import sys
 if sys.version_info[0] >= 3:
-    def foo() -> int: return 0
+    def foo():
+        # type: () -> int
+        return 0
 else:
-    def foo() -> str: return ''
+    def foo():
+        # type: () -> str
+        return ''
 reveal_type(foo())  # E: Revealed type is 'builtins.str'
 [builtins_py2 fixtures/ops.pyi]
 [out]
@@ -177,9 +181,13 @@ reveal_type(foo())  # E: Revealed type is 'builtins.int'
 [case testSysVersionInfoNegated_python2]
 import sys
 if not (sys.version_info[0] < 3):
-    def foo() -> int: return 0
+    def foo():
+        # type: () -> int
+        return 0
 else:
-    def foo() -> str: return ''
+    def foo():
+        # type: () -> str
+        return ''
 reveal_type(foo())  # E: Revealed type is 'builtins.str'
 [builtins_py2 fixtures/ops.pyi]
 [out]

@@ -38,7 +38,7 @@ from m import a # type: ignore
 [file m.py]
 +
 [out]
-tmp/m.py:1: error: Parse error before end of line
+tmp/m.py:1: error: invalid syntax
 
 [case testIgnoreAppliesOnlyToMissing]
 import a # type: ignore
@@ -59,7 +59,7 @@ from m import * # type: ignore
 [file m.py]
 +
 [out]
-tmp/m.py:1: error: Parse error before end of line
+tmp/m.py:1: error: invalid syntax
 
 [case testIgnoreAssignmentTypeError]
 x = 1
