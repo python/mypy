@@ -1304,9 +1304,9 @@ from typing import Iterator
 # The implementation is mostly identical to list comprehensions, so a single
 # test case is ok.
 a = None # type: Iterator[int]
-a = x for x in a
+a = (x for x in a)
 b = None # type: Iterator[str]
-b = x for x in a # E: Generator has incompatible item type "int"
+b = (x for x in a) # E: Generator has incompatible item type "int"
 [builtins fixtures/for.pyi]
 
 
