@@ -572,7 +572,7 @@ class TypeChecker(NodeVisitor[Type]):
 
                 if name in nodes.reverse_op_method_set:
                     self.check_reverse_op_method(item, typ, name)
-                elif name == '__getattr__':
+                elif name in ('__getattr__', '__getattribute__'):
                     self.check_getattr_method(typ, defn)
 
                 # Refuse contravariant return type variable
