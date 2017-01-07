@@ -174,7 +174,8 @@ def generate_stub(path: str, output_dir: str, _all_: Optional[List[str]] = None,
                   target: str = None, add_header: bool = False, module: str = None,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                   fast_parser: bool = False) -> None:
-    source = open(path, 'rb').read()
+    with open(path, 'rb') as f:
+        source = f.read()
     options = MypyOptions()
     options.python_version = pyversion
     options.fast_parser = fast_parser
@@ -606,7 +607,8 @@ def main() -> None:
         all_sigs = []  # type: Any
         all_class_sigs = []  # type: Any
         for path in glob.glob('%s/*.rst' % options.doc_dir):
-            func_sigs, class_sigs = parse_all_signatures(open(path).readlines())
+            with open(path) as f:
+                func_sigs, class_sigs = parse_all_signatures(f.readlines())
             all_sigs += func_sigs
             all_class_sigs += class_sigs
         sigs = dict(find_unique_signatures(all_sigs))
