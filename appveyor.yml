@@ -1,0 +1,31 @@
+environment:
+  matrix:
+
+    - PYTHON: "C:\\Python35"
+      PYTHON_VERSION: "3.5.1"
+      PYTHON_ARCH: "32"
+      
+    - PYTHON: "C:\\Python35-x64"
+      PYTHON_VERSION: "3.5.1"
+      PYTHON_ARCH: "64"
+    
+    - PYTHON: "C:\\Python36"
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "32"
+      
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "64"
+     
+     
+install:
+   - "%PYTHON%\\python.exe -m pip install -r test-requirements.txt"
+   - "git submodule update --init typeshed"
+   - "%PYTHON%\\python.exe setup.py -q install"
+   
+build: off
+
+test_script:
+  # we ignore test-cmdline, due to path differences and other tests that need lxml. extensions and check don't have tests that are discovered
+  - "%PYTHON%\\python.exe runtests.py -x lint -x check -x extensions -x reports -x cmdline"
+  - ps: if ($env:PYTHON_VERSION -Match "3.6.x" -And $env:PYTHON_ARCH -Match "64") { iex "$env:PYTHON\\python.exe -m flake8"}
