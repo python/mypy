@@ -103,7 +103,7 @@ reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builti
 
 [case testLambdaReturningNone]
 f = lambda: None
-x = f()
+x = f()  # E: Function does not return a value
 
 [case testNoneArgumentType]
 def f(x: None) -> None: pass
