@@ -1744,6 +1744,8 @@ class ExpressionChecker:
         if not inferred_type:
             # No useful type context.
             ret_type = self.accept(e.expr())
+            if isinstance(ret_type, NoneTyp):
+                ret_type = Void()
             fallback = self.named_type('builtins.function')
             return callable_type(e, fallback, ret_type)
         else:
