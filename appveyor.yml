@@ -28,4 +28,4 @@ build: off
 test_script:
   # we ignore test-cmdline, due to path differences and other tests that need lxml. extensions and check don't have tests that are discovered
   - "%PYTHON%\\python.exe runtests.py -x lint -x check -x extensions -x reports -x cmdline"
-  - ps: if ($env:PYTHON_VERSION -Match "3.6.x") { flake8}
+  - ps: if ($env:PYTHON_VERSION -Match "3.6.x") { iex "$env:PYTHON\\python.exe -m flake8"}
