@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
-    true_only, false_only, is_named_instance, function_type, FunctionLike,
+    true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
 )
 from mypy.nodes import (
@@ -18,7 +18,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
-    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR2, MODULE_REF,
+    TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
     UNBOUND_TVAR, BOUND_TVAR,
 )
 from mypy import nodes
@@ -1743,15 +1743,11 @@ class ExpressionChecker:
         inferred_type = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             # No useful type context.
-            ret_type = e.expr().accept(self.chk)
-            if not e.arguments:
-                # Form 'lambda: e'; just use the inferred return type.
-                return CallableType([], [], [], ret_type, self.named_type('builtins.function'))
-            else:
-                # TODO: Consider reporting an error. However, this is fine if
-                # we are just doing the first pass in contextual type
-                # inference.
-                return AnyType()
+            ret_type = self.accept(e.expr())
+            if isinstance(ret_type, NoneTyp):
+                ret_type = Void()
+            fallback = self.named_type('builtins.function')
+            return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
             self.chk.check_func_item(e, type_override=inferred_type)
@@ -1765,7 +1761,7 @@ class ExpressionChecker:
                 return inferred_type
             return replace_callable_return_type(inferred_type, ret_type)
 
-    def infer_lambda_type_using_context(self, e: FuncExpr) -> CallableType:
+    def infer_lambda_type_using_context(self, e: FuncExpr) -> Optional[CallableType]:
         """Try to infer lambda expression type using context.
 
         Return None if could not infer type.
@@ -1799,6 +1795,9 @@ class ExpressionChecker:
                 arg_kinds=arg_kinds
             )
 
+        if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
+            # TODO treat this case appropriately
+            return None
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
