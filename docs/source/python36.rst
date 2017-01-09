@@ -63,7 +63,7 @@ Mypy fully supports this syntax:
 
    This requires the ``--fast-parser`` flag and it requires that the
    `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
-   installed and has at least version 0.6.1.  Use ``pip3 install -U typed_ast``.
+   installed and has at least version 0.6.2.  Use ``pip3 install -U typed_ast``.
 
 Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_)
 -------------------------------------------------------------------------------
