@@ -1720,15 +1720,14 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an ordinary function.
         assert isinstance(func, mypy.nodes.FuncItem), str(func)
-        fdef = cast(mypy.nodes.FuncItem, func)
         name = func.name()
         if name:
             name = '"{}"'.format(name)
 
         return CallableType(
-            [AnyType()] * len(fdef.arg_names),
-            fdef.arg_kinds,
-            [None if argument_elide_name(n) else n for n in fdef.arg_names],
+            [AnyType()] * len(func.arg_names),
+            func.arg_kinds,
+            [None if argument_elide_name(n) else n for n in func.arg_names],
             AnyType(),
             fallback,
             name,

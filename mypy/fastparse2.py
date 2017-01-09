@@ -347,9 +347,7 @@ class ASTConverter(ast27.NodeTransformer):
             type.optional = optional
 
     def transform_args(self, n: ast27.arguments, line: int) -> List[Argument]:
-        # TODO: remove the cast once https://github.com/python/typeshed/pull/522
-        # is accepted and synced
-        type_comments = cast(List[str], n.type_comments)  # type: ignore
+        type_comments = cast(List[str], n.type_comments)
         converter = TypeConverter(line=line)
 
         def convert_arg(arg: ast27.expr) -> Var:

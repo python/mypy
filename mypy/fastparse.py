@@ -427,7 +427,7 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Assign(self, n: ast35.Assign) -> AssignmentStmt:
         typ = None
-        if hasattr(n, 'annotation') and n.annotation is not None:  # type: ignore
+        if hasattr(n, 'annotation') and n.annotation is not None:
             new_syntax = True
         else:
             new_syntax = False
@@ -439,7 +439,7 @@ class ASTConverter(ast35.NodeTransformer):
         if n.type_comment is not None:
             typ = parse_type_comment(n.type_comment, n.lineno)
         elif new_syntax:
-            typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+            typ = TypeConverter(line=n.lineno).visit(n.annotation)
             typ.column = n.annotation.col_offset
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression

@@ -603,7 +603,7 @@ class MessageBuilder:
         """
         if isinstance(unusable_type, Void) and unusable_type.source is not None:
             self.fail('{} does not return a value'.format(
-                capitalize((cast(Void, unusable_type)).source)), context)
+                capitalize((unusable_type).source)), context)
         else:
             self.fail('Function does not return a value', context)
 
