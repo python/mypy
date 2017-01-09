@@ -204,7 +204,7 @@ def add_imports(driver: Driver) -> None:
             driver.add_python_string('import %s' % mod, 'import %s' % mod)
 
 
-PYTEST_FILES = ['mypy/test/{}.py'.format(name) for name in [
+PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
     'testcheck', 'testextensions',
 ]]
 
