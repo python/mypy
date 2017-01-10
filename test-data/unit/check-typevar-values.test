@@ -497,3 +497,9 @@ class C:
     def f(self, x: T) -> T:
         A = C.T
         return x
+
+[case testParameterLessGenericAsRestriction]
+from typing import Sequence, Iterable, TypeVar
+S = TypeVar('S', Sequence, Iterable)
+def my_len(s: S) -> None: pass
+def crash() -> None: my_len((0,))
