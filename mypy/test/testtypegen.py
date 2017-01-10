@@ -3,7 +3,7 @@
 import os.path
 import re
 
-from typing import Set
+from typing import Set, List
 
 from mypy import build
 from mypy.build import BuildSource

@@ -2,7 +2,7 @@
 
 import os.path
 
-import typing
+from typing import List
 
 from mypy import defaults
 from mypy.myunit import Suite, AssertionFailure
