@@ -45,7 +45,9 @@ import subprocess
 import sys
 import textwrap
 
-from typing import Any, List, Dict, Tuple, Iterable, Optional, NamedTuple, Set
+from typing import (
+    Any, List, Dict, Tuple, Iterable, Iterator, Optional, NamedTuple, Set, Union, cast
+)
 
 import mypy.build
 import mypy.parse
@@ -341,6 +343,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
         for lvalue in o.lvalues:
             if isinstance(lvalue, NameExpr) and self.is_namedtuple(o.rvalue):
+                assert isinstance(o.rvalue, CallExpr)
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
             if isinstance(lvalue, TupleExpr):
@@ -374,7 +377,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return ((isinstance(callee, NameExpr) and callee.name.endswith('namedtuple')) or
                 (isinstance(callee, MemberExpr) and callee.name == 'namedtuple'))
 
-    def process_namedtuple(self, lvalue, rvalue):
+    def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         self.add_import_line('from collections import namedtuple\n')
         if self._state != EMPTY:
             self.add('\n')
@@ -382,7 +385,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
         elif isinstance(rvalue.args[1], ListExpr):
-            list_items = rvalue.args[1].items
+            list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
             items = '<ERROR>'
@@ -585,7 +588,7 @@ def get_qualified_name(o: Expression) -> str:
         return '<ERROR>'
 
 
-def walk_packages(packages: List[str]):
+def walk_packages(packages: List[str]) -> Iterator[str]:
     for package_name in packages:
         package = __import__(package_name)
         yield package.__name__

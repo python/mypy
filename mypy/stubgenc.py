@@ -6,7 +6,8 @@ The public interface is via the mypy.stubgen module.
 import importlib
 import os.path
 import re
-
+from typing import List, Dict, Tuple
+from types import ModuleType
 
 from mypy.stubutil import (
     parse_all_signatures, find_unique_signatures, is_c_module, write_header,
@@ -14,20 +15,25 @@ from mypy.stubutil import (
 )
 
 
-def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, class_sigs={}):
+def generate_stub_for_c_module(module_name: str,
+                               target: str,
+                               add_header: bool = True,
+                               sigs: Dict[str, str] = {},
+                               class_sigs: Dict[str, str] = {},
+                               ) -> None:
     module = importlib.import_module(module_name)
     assert is_c_module(module), '%s is not a C module' % module_name
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    functions = []
+    functions = []  # type: List[str]
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
             generate_c_function_stub(module, name, obj, functions, sigs=sigs)
             done.add(name)
-    types = []
+    types = []  # type: List[str]
     for name, obj in items:
         if name.startswith('__') and name.endswith('__'):
             continue
@@ -62,7 +68,7 @@ def generate_stub_for_c_module(module_name, target, add_header=True, sigs={}, cl
             file.write('%s\n' % line)
 
 
-def add_typing_import(output):
+def add_typing_import(output: List[str]) -> List[str]:
     names = []
     for name in ['Any']:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
@@ -73,27 +79,34 @@ def add_typing_import(output):
         return output[:]
 
 
-def is_c_function(obj):
+def is_c_function(obj: object) -> bool:
     return type(obj) is type(ord)
 
 
-def is_c_method(obj):
+def is_c_method(obj: object) -> bool:
     return type(obj) in (type(str.index),
                          type(str.__add__),
                          type(str.__new__))
 
 
-def is_c_classmethod(obj):
+def is_c_classmethod(obj: object) -> bool:
     type_str = type(obj).__name__
     return type_str == 'classmethod_descriptor'
 
 
-def is_c_type(obj):
+def is_c_type(obj: object) -> bool:
     return type(obj) is type(int)
 
 
-def generate_c_function_stub(module, name, obj, output, self_var=None, sigs={}, class_name=None,
-                             class_sigs={}):
+def generate_c_function_stub(module: ModuleType,
+                             name: str,
+                             obj: object,
+                             output: List[str],
+                             self_var: str = None,
+                             sigs: Dict[str, str] = {},
+                             class_name: str = None,
+                             class_sigs: Dict[str, str] = {},
+                             ) -> None:
     if self_var:
         self_arg = '%s, ' % self_var
     else:
@@ -117,7 +130,13 @@ def generate_c_function_stub(module, name, obj, output, self_var=None, sigs={}, 
     output.append('def %s(%s%s): ...' % (name, self_arg, sig))
 
 
-def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}):
+def generate_c_type_stub(module: ModuleType,
+                         class_name: str,
+                         obj: type,
+                         output: List[str],
+                         sigs: Dict[str, str] = {},
+                         class_sigs: Dict[str, str] = {},
+                         ) -> None:
     items = sorted(obj.__dict__.items(), key=lambda x: method_name_sort_key(x[0]))
     methods = []
     done = set()
@@ -151,7 +170,7 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
         # TODO: Is this always object?
         del all_bases[-1]
     # Remove base classes of other bases as redundant.
-    bases = []
+    bases = []  # type: List[type]
     for base in all_bases:
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
@@ -169,7 +188,7 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
             output.append('    %s' % method)
 
 
-def method_name_sort_key(name):
+def method_name_sort_key(name: str) -> Tuple[int, str]:
     if name in ('__new__', '__init__'):
         return (0, name)
     if name.startswith('__') and name.endswith('__'):
@@ -177,7 +196,7 @@ def method_name_sort_key(name):
     return (1, name)
 
 
-def is_skipped_attribute(attr):
+def is_skipped_attribute(attr: str) -> bool:
     return attr in ('__getattribute__',
                     '__str__',
                     '__repr__',
@@ -187,7 +206,7 @@ def is_skipped_attribute(attr):
                     '__weakref__')  # For pickling
 
 
-def infer_method_sig(name):
+def infer_method_sig(name: str) -> str:
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
         if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',
