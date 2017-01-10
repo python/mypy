@@ -32,7 +32,7 @@ class GraphSuite(Suite):
                       frozenset({'B', 'C'}),
                       frozenset({'D'})})
 
-    def _make_manager(self):
+    def _make_manager(self) -> BuildManager:
         manager = BuildManager(
             data_dir='',
             lib_path=[],

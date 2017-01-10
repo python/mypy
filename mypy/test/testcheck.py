@@ -84,7 +84,7 @@ if 'contains_underscores' in typed_ast.ast35.Num._fields:
 
 
 class TypeCheckSuite(DataSuite):
-    def __init__(self, *, update_data=False):
+    def __init__(self, *, update_data: bool = False) -> None:
         self.update_data = update_data
 
     @classmethod
@@ -124,7 +124,7 @@ class TypeCheckSuite(DataSuite):
         if os.path.exists(dn):
             shutil.rmtree(dn)
 
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental=0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase, incremental: int = 0) -> None:
         find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental)
