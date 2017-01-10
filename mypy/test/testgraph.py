@@ -3,10 +3,11 @@
 from typing import AbstractSet, Dict, Set
 
 from mypy.myunit import Suite, assert_equal
-from mypy.build import BuildManager, State
+from mypy.build import BuildManager, State, BuildSourceSet
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 from mypy.version import __version__
 from mypy.options import Options
+from mypy.report import Reports
 
 
 class GraphSuite(Suite):
@@ -32,13 +33,13 @@ class GraphSuite(Suite):
                       frozenset({'B', 'C'}),
                       frozenset({'D'})})
 
-    def _make_manager(self):
+    def _make_manager(self) -> BuildManager:
         manager = BuildManager(
             data_dir='',
             lib_path=[],
             ignore_prefix='',
-            source_set=None,
-            reports=None,
+            source_set=BuildSourceSet([]),
+            reports=Reports('', {}),
             options=Options(),
             version_id=__version__,
         )
