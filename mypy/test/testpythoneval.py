@@ -41,8 +41,8 @@ program_re = re.compile(r'\b_program.py\b')
 
 
 class PythonEvaluationSuite(Suite):
-    def cases(self):
-        c = []
+    def cases(self) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
         for f in python_eval_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_python_evaluation, test_temp_dir, True)
