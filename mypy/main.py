@@ -129,7 +129,8 @@ def process_options(args: List[str],
 
     # Make the help output a little less jarring.
     help_factory = (lambda prog:
-                    argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))  # type: Any
+                    argparse.RawDescriptionHelpFormatter(prog=prog,
+                                                         max_help_position=28))  # type: Any
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
                                      formatter_class=help_factory)
