@@ -186,7 +186,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                   is_named_instance(right, 'typing.Container') or
                   is_named_instance(right, 'typing.Sequence') or
                   is_named_instance(right, 'typing.Reversible')):
-                iter_type = right.args[0]
+                if right.args:
+                    iter_type = right.args[0]
+                else:
+                    iter_type = AnyType()
                 return all(is_subtype(li, iter_type) for li in left.items)
             elif is_subtype(left.fallback, right, self.check_type_parameter):
                 return True
