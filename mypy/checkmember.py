@@ -615,7 +615,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
     return cast(F, res)
 
 
-def erase_to_bound(t: Type):
+def erase_to_bound(t: Type) -> Type:
     if isinstance(t, TypeVarType):
         return t.upper_bound
     if isinstance(t, TypeType):

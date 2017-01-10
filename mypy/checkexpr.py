@@ -1483,7 +1483,7 @@ class ExpressionChecker:
                     return -1 * operand.value
         return None
 
-    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression):
+    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
         if not isinstance(index, (StrExpr, UnicodeExpr)):
             self.msg.typeddict_item_name_must_be_string_literal(td_type, index)
             return AnyType()

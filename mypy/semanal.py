@@ -1823,8 +1823,12 @@ class SemanticAnalyzer(NodeVisitor):
         tvd = TypeVarDef('NT', 1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
-        def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
-                       is_classmethod=False) -> None:
+        def add_method(funcname: str,
+                       ret: Type,
+                       args: List[Argument],
+                       name: str = None,
+                       is_classmethod: bool = False,
+                       ) -> None:
             if is_classmethod:
                 first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
             else:
