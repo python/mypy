@@ -2,12 +2,12 @@
 
 import os.path
 
-import typing
+from typing import List
 
 from mypy import defaults
 from mypy.myunit import Suite, AssertionFailure
 from mypy.test.helpers import assert_string_arrays_equal
-from mypy.test.data import parse_test_cases
+from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
@@ -18,16 +18,16 @@ class ParserSuite(Suite):
     parse_files = ['parse.test',
                    'parse-python2.test']
 
-    def cases(self):
+    def cases(self) -> List[DataDrivenTestCase]:
         # The test case descriptions are stored in data files.
-        c = []
+        c = []  # type: List[DataDrivenTestCase]
         for f in self.parse_files:
             c += parse_test_cases(
                 os.path.join(config.test_data_prefix, f), test_parser)
         return c
 
 
-def test_parser(testcase):
+def test_parser(testcase: DataDrivenTestCase) -> None:
     """Perform a single parser test case.
 
     The argument contains the description of the test case.
@@ -58,14 +58,14 @@ INPUT_FILE_NAME = 'file'
 
 
 class ParseErrorSuite(Suite):
-    def cases(self):
+    def cases(self) -> List[DataDrivenTestCase]:
         # Test case descriptions are in an external file.
         return parse_test_cases(os.path.join(config.test_data_prefix,
                                              'parse-errors.test'),
                                 test_parse_error)
 
 
-def test_parse_error(testcase):
+def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
         # Compile temporary file. The test file contains non-ASCII characters.
         parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, None, Options())
