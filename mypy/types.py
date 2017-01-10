@@ -935,7 +935,7 @@ class TypedDictType(Type):
         return TypedDictType(OrderedDict([(n, Type.deserialize(t)) for (n, t) in data['items']]),
                              Instance.deserialize(data['fallback']))
 
-    def as_anonymous(self):
+    def as_anonymous(self) -> 'TypedDictType':
         if self.fallback.type.fullname() == 'typing.Mapping':
             return self
         assert self.fallback.type.typeddict_type is not None
@@ -958,7 +958,7 @@ class TypedDictType(Type):
             value_type
         ])
 
-    def names_are_wider_than(self, other: 'TypedDictType'):
+    def names_are_wider_than(self, other: 'TypedDictType') -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
 
     def zip(self, right: 'TypedDictType') -> Iterable[Tuple[str, Type, Type]]:

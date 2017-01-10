@@ -292,7 +292,7 @@ class StrConv(NodeVisitor[str]):
     def visit_unicode_expr(self, o: 'mypy.nodes.UnicodeExpr') -> str:
         return 'UnicodeExpr({})'.format(self.str_repr(o.value))
 
-    def str_repr(self, s):
+    def str_repr(self, s: str) -> str:
         s = re.sub(r'\\u[0-9a-fA-F]{4}', lambda m: '\\' + m.group(0), s)
         return re.sub('[^\\x20-\\x7e]',
                       lambda m: r'\u%.4x' % ord(m.group(0)), s)

@@ -2290,12 +2290,13 @@ class TypeChecker(NodeVisitor[Type]):
                 self.fail(msg, context)
             return False
 
-    def contains_none(self, t: Type):
+    def contains_none(self, t: Type) -> bool:
         return (
             isinstance(t, NoneTyp) or
             (isinstance(t, UnionType) and any(self.contains_none(ut) for ut in t.items)) or
             (isinstance(t, TupleType) and any(self.contains_none(tt) for tt in t.items)) or
-            (isinstance(t, Instance) and t.args and any(self.contains_none(it) for it in t.args))
+            (isinstance(t, Instance) and bool(t.args)
+             and any(self.contains_none(it) for it in t.args))
         )
 
     def should_suppress_optional_error(self, related_types: List[Type]) -> bool:
@@ -2415,7 +2416,7 @@ class TypeChecker(NodeVisitor[Type]):
                 return partial_types
         return None
 
-    def is_unusable_type(self, typ: Type):
+    def is_unusable_type(self, typ: Type) -> bool:
         """Is this type an unusable type?
 
         The two unusable types are Void and NoneTyp(is_ret_type=True).

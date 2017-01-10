@@ -852,14 +852,16 @@ class MessageBuilder:
 
     def typeddict_item_name_must_be_string_literal(self,
                                                    typ: TypedDictType,
-                                                   context: Context):
+                                                   context: Context,
+                                                   ) -> None:
         self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
             format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,
                                       typ: TypedDictType,
                                       item_name: str,
-                                      context: Context):
+                                      context: Context,
+                                      ) -> None:
         self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
 
