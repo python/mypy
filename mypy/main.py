@@ -9,9 +9,6 @@ import sys
 import time
 
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, cast
-MYPY = False
-if MYPY:
-    from typing import Type
 
 from mypy import build
 from mypy import defaults
@@ -131,8 +128,8 @@ def process_options(args: List[str],
     """Parse command line arguments."""
 
     # Make the help output a little less jarring.
-    help_factory = cast(Type[argparse.HelpFormatter], (lambda prog:
-                        argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28)))
+    help_factory = (lambda prog:
+                    argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))  # type: Any
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
                                      formatter_class=help_factory)
