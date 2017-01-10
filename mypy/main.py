@@ -8,7 +8,10 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, cast
+MYPY = False
+if MYPY:
+    from typing import Type
 
 from mypy import build
 from mypy import defaults
