@@ -30,7 +30,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    Expression, Statement,
+    Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -537,50 +537,18 @@ class ASTConverter(ast27.NodeTransformer):
                        self.as_block(finalbody, lineno))
 
     @with_line
-    def visit_Print(self, n: ast27.Print) -> ExpressionStmt:
-        keywords = []
-        if n.dest is not None:
-            keywords.append(ast27.keyword("file", n.dest))
-
-        if not n.nl:
-            keywords.append(ast27.keyword("end", ast27.Str(" ", 0,
-                                                           lineno=n.lineno, col_offset=-1)))
-
-        # TODO: Rather then desugaring Print into an intermediary ast27.Call object, it might
-        # be more efficient to just directly create a mypy.node.CallExpr object.
-        call = ast27.Call(
-            ast27.Name("print", ast27.Load(), lineno=n.lineno, col_offset=-1),
-            n.values, keywords, None, None,
-            lineno=n.lineno, col_offset=-1)
-        return self.visit_Expr(ast27.Expr(call, lineno=n.lineno, col_offset=-1))
+    def visit_Print(self, n: ast27.Print) -> PrintStmt:
+        return PrintStmt(self.translate_expr_list(n.values), n.nl, self.visit(n.dest))
 
     @with_line
-    def visit_Exec(self, n: ast27.Exec) -> ExpressionStmt:
-        new_globals = n.globals
-        new_locals = n.locals
-
-        if new_globals is None:
-            new_globals = ast27.Name("None", ast27.Load(), lineno=-1, col_offset=-1)
-        if new_locals is None:
-            new_locals = ast27.Name("None", ast27.Load(), lineno=-1, col_offset=-1)
-
-        # TODO: Comment in visit_Print also applies here
-        return self.visit_Expr(ast27.Expr(
-            ast27.Call(
-                ast27.Name("exec", ast27.Load(), lineno=n.lineno, col_offset=-1),
-                [n.body, new_globals, new_locals],
-                [], None, None,
-                lineno=n.lineno, col_offset=-1),
-            lineno=n.lineno, col_offset=-1))
+    def visit_Exec(self, n: ast27.Exec) -> ExecStmt:
+        return ExecStmt(self.visit(n.body),
+                        self.visit(n.globals),
+                        self.visit(n.locals))
 
     @with_line
-    def visit_Repr(self, n: ast27.Repr) -> CallExpr:
-        # TODO: Comment in visit_Print also applies here
-        return self.visit_Call(ast27.Call(
-            ast27.Name("repr", ast27.Load(), lineno=n.lineno, col_offset=-1),
-            n.value,
-            [], None, None,
-            lineno=n.lineno, col_offset=-1))
+    def visit_Repr(self, n: ast27.Repr) -> BackquoteExpr:
+        return BackquoteExpr(self.visit(n.value))
 
     # Assert(expr test, expr? msg)
     @with_line
