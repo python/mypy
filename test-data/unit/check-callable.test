@@ -219,3 +219,127 @@ else:
     reveal_type(c)  # E: Revealed type is '__main__.A'
 
 [builtins fixtures/callable.pyi]
+
+[case testCallableNestedUnions]
+from typing import Callable, Union
+
+T = Union[Union[int, Callable[[], int]], Union[str, Callable[[], str]]]
+
+def f(t: T) -> None:
+    if callable(t):
+        reveal_type(t())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+    else:
+        reveal_type(t)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableTypeVarEmpty]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(t: T) -> T:
+    if callable(t):
+        return 5
+    else:
+        return t
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableTypeVarUnion]
+from typing import Callable, TypeVar, Union
+
+T = TypeVar('T', int, Callable[[], int], Union[str, Callable[[], str]])
+
+def f(t: T) -> None:
+    if callable(t):
+        reveal_type(t())  # E: Revealed type is 'builtins.int'  # E: Revealed type is 'builtins.str'
+    else:
+        reveal_type(t)  # E: Revealed type is 'builtins.int*'  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableTypeVarBound]
+from typing import TypeVar
+
+
+class A:
+    def __call__(self) -> str:
+        return 'hi'
+
+
+T = TypeVar('T', bound=A)
+
+def f(t: T) -> str:
+    if callable(t):
+        return t()
+    else:
+        return 5
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableTypeType]
+from typing import Type
+
+
+class A:
+    pass
+
+
+T = Type[A]
+
+def f(t: T) -> A:
+    if callable(t):
+        return t()
+    else:
+        return 5
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableTypeUnion]
+from abc import ABCMeta, abstractmethod
+from typing import Type, Union
+
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+
+class B:
+    pass
+
+
+x = B  # type: Union[Type[A], Type[B]]
+if callable(x):
+    # Abstract classes raise an error when called, but are indeed `callable`
+    pass
+else:
+    'test' + 5
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableUnionOfTypes]
+from abc import ABCMeta, abstractmethod
+from typing import Type, Union
+
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+
+class B:
+    pass
+
+
+x = B  # type: Type[Union[A, B]]
+if callable(x):
+    # Abstract classes raise an error when called, but are indeed `callable`
+    pass
+else:
+    'test' + 5
+
+[builtins fixtures/callable.pyi]
