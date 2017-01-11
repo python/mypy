@@ -2506,63 +2506,71 @@ def conditional_type_map(expr: Expression,
         return {}, {}
 
 
-def is_callable_type(type: Optional[Type]) -> bool:
-    """Takes in a type and returns if that type is callable, that is,
-    if `type()` is well-typed (ignoring arguments)."""
-    callable_types = (FunctionLike, AnyType, TypeType)
-    if any(isinstance(type, callable_type) for callable_type in callable_types):
-        return True
+def partition_by_callable(type: Optional[Type]) -> Tuple[List[Type], List[Type]]:
+    """Takes in a type and partitions that type into callable subtypes and
+    uncallable subtypes.
+
+    Thus, given:
+    `callables, uncallables = partition_by_callable(type)`
+
+    If we assert `callable(type)` then `type` has type Union[*callables], and
+    If we assert `not callable(type)` then `type` has type Union[*uncallables]
+
+    Guaranteed to not return [], []"""
+    if isinstance(type, FunctionLike) or isinstance(type, TypeType):
+        return [type], []
+
+    if isinstance(type, AnyType):
+        return [type], [type]
 
     if isinstance(type, UnionType):
-        return all(is_callable_type(item) for item in type.items)
+        callables = []
+        uncallables = []
+        for subtype in type.items:
+            subcallables, subuncallables = partition_by_callable(subtype)
+            callables.extend(subcallables)
+            uncallables.extend(subuncallables)
+        return callables, uncallables
 
     if isinstance(type, TypeVarType):
-        return not is_callable_type(type.erase_to_union_or_bound())
+        return partition_by_callable(type.erase_to_union_or_bound())
 
     if isinstance(type, Instance):
         method = type.type.get_method('__call__')
         if method:
-            return is_callable_type(method.type)
+            callables, uncallables = partition_by_callable(method.type)
+            if len(callables) and not len(uncallables):
+                # Only consider the type callable if its __call__ method is
+                # definitely callable.
+                return [type], []
+        return [], [type]
 
-    return False
+    return [], [type]
 
 
 def conditional_callable_type_map(expr: Expression,
                                   current_type: Optional[Type],
                                   ) -> Tuple[TypeMap, TypeMap]:
-    """Takes in an expression and the current type of the expression
+    """Takes in an expression and the current type of the expression.
 
     Returns a 2-tuple: The first element is a map from the expression to
-    the restricted type if it must be callable. The second element is a
+    the restricted type if it were callable. The second element is a
     map from the expression to the type it would hold if it weren't
-    callable. Considers AnyType to be both callable and uncallable."""
+    callable."""
     if not current_type:
         return {}, {}
 
     if isinstance(current_type, AnyType):
         return {}, {}
 
-    if isinstance(current_type, UnionType):
-        callables = []  # type: List[Type]
-        uncallables = []  # type: List[Type]
-        for item in current_type.items:
+    callables, uncallables = partition_by_callable(current_type)
 
-            if isinstance(item, AnyType):
-                # We want Any to be considered both callable and uncallable
-                callables.append(item)
-                uncallables.append(item)
-
-            else:
-                if is_callable_type(item):
-                    callables.append(item)
-                else:
-                    uncallables.append(item)
-
+    if len(callables) and len(uncallables):
         callable_map = {expr: UnionType.make_union(callables)} if len(callables) else None
         uncallable_map = {expr: UnionType.make_union(uncallables)} if len(uncallables) else None
         return callable_map, uncallable_map
 
-    if is_callable_type(current_type):
+    elif len(callables):
         return {}, None
 
     return None, {}
