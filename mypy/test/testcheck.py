@@ -37,6 +37,7 @@ files = [
 ]
 fast_parser_files = [
     'check-basic.test',
+    'check-callable.test',
     'check-classes.test',
     'check-statements.test',
     'check-generics.test',
