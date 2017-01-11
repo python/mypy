@@ -77,6 +77,14 @@ Functions
        # type: (int, float) -> float
        return num1 + my_float
 
+   # An argument can be declared positional-only by giving it a name
+   # starting with two underscores:
+   def quux(__x):
+       # type: (int) -> None
+       pass
+   quux(3)  # Fine
+   quux(__x=3)  # Error
+
    # This is how you annotate a function value.
    x = f # type: Callable[[int, float], float]
 
