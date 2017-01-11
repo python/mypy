@@ -155,38 +155,38 @@ class TypeFixture:
 
     # Helper methods
 
-    def callable(self, *a):
+    def callable(self, *a: Type) -> CallableType:
         """callable(a1, ..., an, r) constructs a callable with argument types
         a1, ... an and return type r.
         """
-        return CallableType(a[:-1], [ARG_POS] * (len(a) - 1),
+        return CallableType(list(a[:-1]), [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1), a[-1], self.function)
 
-    def callable_type(self, *a):
+    def callable_type(self, *a: Type) -> CallableType:
         """callable_type(a1, ..., an, r) constructs a callable with
         argument types a1, ... an and return type r, and which
         represents a type.
         """
-        return CallableType(a[:-1], [ARG_POS] * (len(a) - 1),
+        return CallableType(list(a[:-1]), [ARG_POS] * (len(a) - 1),
                         [None] * (len(a) - 1), a[-1], self.type_type)
 
-    def callable_default(self, min_args, *a):
+    def callable_default(self, min_args: int, *a: Type) -> CallableType:
         """callable_default(min_args, a1, ..., an, r) constructs a
         callable with argument types a1, ... an and return type r,
         with min_args mandatory fixed arguments.
         """
         n = len(a) - 1
-        return CallableType(a[:-1],
+        return CallableType(list(a[:-1]),
                             [ARG_POS] * min_args + [ARG_OPT] * (n - min_args),
                             [None] * n,
                             a[-1], self.function)
 
-    def callable_var_arg(self, min_args, *a):
+    def callable_var_arg(self, min_args: int, *a: Type) -> CallableType:
         """callable_var_arg(min_args, a1, ..., an, r) constructs a callable
         with argument types a1, ... *an and return type r.
         """
         n = len(a) - 1
-        return CallableType(a[:-1],
+        return CallableType(list(a[:-1]),
                             [ARG_POS] * min_args +
                             [ARG_OPT] * (n - 1 - min_args) +
                             [ARG_STAR], [None] * n,
@@ -241,7 +241,7 @@ class InterfaceTypeFixture(TypeFixture):
     """Extension of TypeFixture that contains additional generic
     interface types."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # GF[T]
         self.gfi = self.make_type_info('GF', typevars=['T'], is_abstract=True)
