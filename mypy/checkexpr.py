@@ -347,6 +347,24 @@ class ExpressionChecker:
                     callee.type_object().name(), type.abstract_attributes,
                     context)
 
+            if isinstance(callee, TypedDictGetFunction):
+                if 1 <= len(args) <= 2 and isinstance(args[0], (StrExpr, UnicodeExpr)):
+                    return_type = self.get_typeddict_index_type(callee.typed_dict, args[0])
+                    arg_types = callee.arg_types
+                    if len(args) == 1:
+                        return_type = UnionType.make_union([
+                            return_type, NoneTyp()])
+                    elif isinstance(return_type, TypedDictType) and len(callee.arg_types) == 2:
+                        # Explicitly set the type of the default parameter to
+                        # Union[typing.Mapping, <return type>] in cases where the return value
+                        # is a typed dict.  This special case allows for chaining of `get` methods
+                        # when accessing elements deep within nested dictionaries in a safe and
+                        # concise way without having to set up exception handlers.
+                        arg_types = [callee.arg_types[0],
+                                     UnionType.make_union([return_type,
+                                                           self.named_type('typing.Mapping')])]
+                    callee = callee.copy_modified(ret_type=return_type, arg_types=arg_types)
+
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
                 callee.arg_kinds, callee.arg_names,
@@ -361,24 +379,6 @@ class ExpressionChecker:
 
             arg_types = self.infer_arg_types_in_context2(
                 callee, args, arg_kinds, formal_to_actual)
-
-            if isinstance(callee, TypedDictGetFunction):
-                if 1 <= len(args) <= 2 and isinstance(args[0], (StrExpr, UnicodeExpr)):
-                    return_type = self.get_typeddict_index_type(callee.typed_dict, args[0])
-                    if len(args) == 1:
-                        return_type = UnionType.make_union([
-                            return_type, NoneTyp()])
-                    else:
-                        # Explicitly set the return type to be a the TypedDict in cases where the
-                        # call site is of the form `x.get('key', {})` and x['key'] is another
-                        # TypedDict.  This special case allows for chaining of `get` methods when
-                        # accessing elements deep within nested dictionaries in a safe and
-                        # concise way without having to set up exception handlers.
-                        if not (isinstance(return_type, TypedDictType) and
-                                is_subtype(arg_types[1], self.named_type('typing.Mapping'))):
-                            return_type = UnionType.make_simplified_union(
-                                [return_type, arg_types[1]])
-                    return return_type, callee
 
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)

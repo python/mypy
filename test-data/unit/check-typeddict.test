@@ -438,8 +438,6 @@ p = TaggedPoint(type='2d', x=42, y=1337)
 reveal_type(p.get('type'))  # E: Revealed type is 'Union[builtins.str, builtins.None]'
 reveal_type(p.get('x'))     # E: Revealed type is 'Union[builtins.int, builtins.None]'
 reveal_type(p.get('y', 0))     # E: Revealed type is 'builtins.int'
-reveal_type(p.get('y', 'hello'))     # E: Revealed type is 'Union[builtins.int, builtins.str]'
-reveal_type(p.get('y', {}))     # E: Revealed type is 'Union[builtins.int, builtins.dict[builtins.None, builtins.None]]'
 [builtins fixtures/dict.pyi]
 
 [case testDefaultParameterStillTypeChecked]
@@ -472,12 +470,12 @@ p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
 reveal_type(p.get('first_point', {}).get('x', 0))  # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
-[case testChainedGetMethodWithNonDictFallback]
+[case testGetMethodInvalidDefaultType]
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 PointSet = TypedDict('PointSet', {'first_point': TaggedPoint})
 p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
-p.get('first_point', 32).get('x', 0)  # E: Some element of union has no attribute "get"
+p.get('first_point', 32)  # E: Argument 2 to "get" of "Mapping" has incompatible type "int"; expected "Union[TypedDict(type=str, x=int, y=int), Mapping]"
 [builtins fixtures/dict.pyi]
 
 [case testGetMethodOnList]
@@ -487,6 +485,14 @@ TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 PointSet = TypedDict('PointSet', {'points': List[TaggedPoint]})
 p = PointSet(points=[TaggedPoint(type='2d', x=42, y=1337)])
 reveal_type(p.get('points', []))  # E: Revealed type is 'builtins.list[TypedDict(type=builtins.str, x=builtins.int, y=builtins.int, _fallback=__main__.TaggedPoint)]'
+[builtins fixtures/dict.pyi]
+
+[case testGetMethodWithListOfStrUnifies]
+from typing import List
+from mypy_extensions import TypedDict
+Items = TypedDict('Items', {'name': str, 'values': List[str]})
+def foo(i: Items) -> None:
+  reveal_type(i.get('values', []))  # E: Revealed type is 'builtins.list[builtins.str]'
 [builtins fixtures/dict.pyi]
 
 [case testDictGetMethodStillCallable]
