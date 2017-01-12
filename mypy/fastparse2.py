@@ -349,13 +349,16 @@ class ASTConverter(ast27.NodeTransformer):
         if isinstance(type, UnboundType):
             type.optional = optional
 
-    def transform_args(self, n: ast27.arguments, line: int) -> Tuple[List[Argument], List[Statement]]:
+    def transform_args(self,
+                       n: ast27.arguments,
+                       line: int,
+                       ) -> Tuple[List[Argument], List[Statement]]:
         # TODO: remove the cast once https://github.com/python/typeshed/pull/522
         # is accepted and synced
         type_comments = cast(List[str], n.type_comments)  # type: ignore
         converter = TypeConverter(self.errors, line=line)
-
         decompose_stmts = []  # type: List[Statement]
+
         def convert_arg(index: int, arg: ast27.expr) -> Var:
             if isinstance(arg, ast27.Name):
                 v = arg.id
