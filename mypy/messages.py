@@ -76,6 +76,7 @@ INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
 TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict item name to be string literal'
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
