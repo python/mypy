@@ -489,18 +489,18 @@ class ASTConverter(ast27.NodeTransformer):
 
     @with_line
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
-        e = None
-        if n.type is not None:
-            e = n.type
-
-            if n.inst is not None and not (isinstance(n.inst, ast27.Name) and n.inst.id == "None"):
-                if isinstance(n.inst, ast27.Tuple):
-                    args = n.inst.elts
+        if n.type is None:
+            e = None
+        else:
+            if n.inst is None:
+                e = self.visit(n.type)
+            else:
+                if n.tback is None:
+                    e = TupleExpr([self.visit(n.type), self.visit(n.inst)])
                 else:
-                    args = [n.inst]
-                e = ast27.Call(e, args, [], None, None, lineno=e.lineno, col_offset=-1)
+                    e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
-        return RaiseStmt(self.visit(e), None)
+        return RaiseStmt(e, None)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
     @with_line
