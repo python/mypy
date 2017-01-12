@@ -104,7 +104,7 @@ install_requires.append('typed-ast >= 0.6.3')
 if sys.version_info < (3, 5):
     install_requires.append('typing >= 3.5.3')
 
-setup(name='mypy-lang',
+setup(name='mypy',
       version=version,
       description=description,
       long_description=long_description,
