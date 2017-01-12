@@ -197,3 +197,12 @@ def f(x):  # E: Type signature has too few arguments
 def g():  # E: Type signature has too many arguments
     # type: (int) -> None
     pass
+
+[case testFastParseMalformedAssert]
+# flags: --fast-parser
+assert 1, 2
+assert (1, 2)  # E: Assertion is always true, perhaps remove parentheses?
+assert (1, 2), 3  # E: Assertion is always true, perhaps remove parentheses?
+# This seems correct, but Python raises a syntax warning for this case so we will too
+assert ()
+assert (1,)  # E: Assertion is always true, perhaps remove parentheses?
