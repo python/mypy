@@ -175,7 +175,7 @@ def add_basic(driver: Driver) -> None:
 
 
 def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser', '--warn-no-return',
+    driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
                             '--config-file', 'mypy_self_check.ini')
     driver.add_mypy_package('package mypy', 'mypy', '--fast-parser',
                             '--config-file', 'mypy_strict_optional.ini')
