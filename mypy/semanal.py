@@ -1404,10 +1404,11 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail('Tuple type expected for multiple variables',
                           lvalue)
         elif isinstance(lvalue, StarExpr):
+            # Historical behavior for the old parser
             if isinstance(typ, StarType):
                 self.store_declared_types(lvalue.expr, typ.type)
             else:
-                self.fail('Star type expected for starred expression', lvalue)
+                self.store_declared_types(lvalue.expr, typ)
         else:
             # This has been flagged elsewhere as an error, so just ignore here.
             pass

@@ -108,6 +108,15 @@ def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
     return None
 
 
+def is_no_type_check_decorator(expr: ast35.expr) -> bool:
+    if isinstance(expr, ast35.Name):
+        return expr.id == 'no_type_check'
+    elif isinstance(expr, ast35.Attribute):
+        if isinstance(expr.value, ast35.Name):
+            return expr.value.id == 'typing' and expr.attr == 'no_type_check'
+    return False
+
+
 class ASTConverter(ast35.NodeTransformer):
     def __init__(self,
                  pyversion: Tuple[int, int],
@@ -268,7 +277,10 @@ class ASTConverter(ast35.NodeTransformer):
     def do_func_def(self, n: Union[ast35.FunctionDef, ast35.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
-        args = self.transform_args(n.args, n.lineno)
+        no_type_check = bool(n.decorator_list and
+                             any(is_no_type_check_decorator(d) for d in n.decorator_list))
+
+        args = self.transform_args(n.args, n.lineno, no_type_check=no_type_check)
 
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
@@ -276,7 +288,10 @@ class ASTConverter(ast35.NodeTransformer):
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
         arg_types = None  # type: List[Type]
-        if n.type_comment is not None:
+        if no_type_check:
+            arg_types = [None for _ in args]
+            return_type = None
+        elif n.type_comment is not None:
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
                 assert isinstance(func_type_ast, ast35.FunctionType)
@@ -312,7 +327,10 @@ class ASTConverter(ast35.NodeTransformer):
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) > len(arg_kinds):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+                self.fail("Ellipses cannot accompany other argument types "
+                          "in function type signature.", n.lineno, 0)
+            elif len(arg_types) > len(arg_kinds):
                 self.fail('Type signature has too many arguments', n.lineno, 0)
             elif len(arg_types) < len(arg_kinds):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
@@ -356,9 +374,16 @@ class ASTConverter(ast35.NodeTransformer):
         if isinstance(type, UnboundType):
             type.optional = optional
 
-    def transform_args(self, args: ast35.arguments, line: int) -> List[Argument]:
+    def transform_args(self,
+                       args: ast35.arguments,
+                       line: int,
+                       no_type_check: bool = False,
+                       ) -> List[Argument]:
         def make_argument(arg: ast35.arg, default: Optional[ast35.expr], kind: int) -> Argument:
-            arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+            if no_type_check:
+                arg_type = None
+            else:
+                arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []

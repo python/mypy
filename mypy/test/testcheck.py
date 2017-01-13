@@ -27,11 +27,8 @@ from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
-    'check-columns.test',
     'check-expressions.test',
-    'check-functions.test',
     'check-generic-subtyping.test',
-    'check-tuples.test',
     'check-varargs.test',
 ]
 fast_parser_files = [
@@ -73,6 +70,9 @@ fast_parser_files = [
     'check-class-namedtuple.test',
     'check-selftype.test',
     'check-python2.test',
+    'check-columns.test',
+    'check-functions.test',
+    'check-tuples.test',
 ]
 
 files.extend(fast_parser_files)

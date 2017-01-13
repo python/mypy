@@ -2,7 +2,7 @@
 # flags: --show-column-numbers
 1 +
 [out]
-main:2:3: error: Parse error before end of line
+main:2:4: error: invalid syntax
 
 
 [case testColumnsNestedFunctions]
@@ -40,9 +40,9 @@ class A:
         pass
 A().f()
 A().f(1)
-A().f('') # E:5: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-A().f(1, 1) # E:5: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
-A().f(1, 'hello', 'hi') # E:5: Too many arguments for "f" of "A"
+A().f('') # E:0: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(1, 1) # E:0: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+A().f(1, 'hello', 'hi') # E:0: Too many arguments for "f" of "A"
 
 [case testColumnsMultipleStatementsPerLine]
 # flags: --show-column-numbers
