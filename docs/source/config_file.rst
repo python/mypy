@@ -102,6 +102,8 @@ The following global flags may only be set in the global section
   error messages.
 
 
+.. _per-module-flags:
+
 Per-module flags
 ****************
 
