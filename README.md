@@ -2,7 +2,7 @@ Mypy: Optional Static Typing for Python
 =======================================
 
 [![Build Status](https://travis-ci.org/python/mypy.svg)](https://travis-ci.org/python/mypy)
-[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Chat at https://gitter.im/python/mypy](https://badges.gitter.im/python/mypy.svg)](https://gitter.im/python/mypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
 Got a question? File an issue!
@@ -75,9 +75,7 @@ Quick start
 
 Mypy can be installed using pip:
 
-    $ python3 -m pip install -U mypy-lang
-
-*Note that the package name is `mypy-lang`, not `mypy`.*
+    $ python3 -m pip install -U mypy
 
 If you want to run the latest version of the code, you can install from git:
 
@@ -113,9 +111,7 @@ Troubleshooting
 Depending on your configuration, you may have to run `pip3` like
 this:
 
-    $ python3 -m pip install -U mypy-lang
-
-Double-check that you installed `mypy-lang`, not `mypy`.
+    $ python3 -m pip install -U mypy
 
 Except on Windows, it's best to always use the `--fast-parser`
 option to mypy; this requires installing `typed-ast`:
