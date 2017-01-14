@@ -181,7 +181,7 @@ Classes
        def __init__(self) -> None:
            ...
        # For instance methods, omit `self`.
-       def my_class_method(self, num: int, str1: str) -> str:
+       def my_method(self, num: int, str1: str) -> str:
            return num * str1
 
 

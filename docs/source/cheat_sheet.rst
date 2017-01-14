@@ -195,7 +195,7 @@ Classes
    class MyClass(object):
 
        # For instance methods, omit `self`.
-       def my_class_method(self, num, str1):
+       def my_method(self, num, str1):
            # type: (int, str) -> str
            return num * str1
 
