@@ -165,7 +165,7 @@ that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
-   from typing import Mapping, MutableMapping, Sequence, Iterator
+   from typing import Mapping, MutableMapping, Sequence, Iterable
 
    # Use Iterable for generic iterables (anything usable in `for`),
    # and Sequence where a sequence (supporting `len` and `__getitem__`) is required.
