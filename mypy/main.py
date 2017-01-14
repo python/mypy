@@ -8,11 +8,10 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, cast
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
-from mypy import git
 from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
@@ -93,9 +92,9 @@ MYPYPATH     additional module search path"""
 
 class SplitNamespace(argparse.Namespace):
     def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
-        self.__dict__['_standard_namespace'] = standard_namespace
-        self.__dict__['_alt_namespace'] = alt_namespace
-        self.__dict__['_alt_prefix'] = alt_prefix
+        super().__init__(standard_namespace=standard_namespace,
+                         alt_namespace=alt_namespace,
+                         alt_prefix=alt_prefix)
 
     def _get(self) -> Tuple[Any, Any]:
         return (self._standard_namespace, self._alt_namespace)
@@ -122,18 +121,20 @@ def parse_version(v: str) -> Tuple[int, int]:
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
 
 
+# Make the help output a little less jarring.
+class AugmentedHelpFormatter(argparse.HelpFormatter):
+    def __init__(self, prog: Optional[str]) -> None:
+        super().__init__(prog=prog, max_help_position=28)
+
+
 def process_options(args: List[str],
                     require_targets: bool = True
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
-    # Make the help output a little less jarring.
-    help_factory = (lambda prog:
-                    argparse.RawDescriptionHelpFormatter(prog=prog,
-                                                         max_help_position=28))  # type: Any
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
-                                     formatter_class=help_factory)
+                                     formatter_class=AugmentedHelpFormatter)
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
@@ -255,7 +256,7 @@ def process_options(args: List[str],
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
                             dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
-    # TODO: `mypy -p A -p B` currently silently ignores ignores A
+    # TODO: `mypy -p A -p B` currently silently ignores A
     # (last option wins).  Perhaps -c, -m and -p could just be
     # command-line flags that modify how we interpret self.files?
     code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
@@ -481,7 +482,7 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
-}  # type: Dict[str, Any]
+}
 
 
 def parse_config_file(options: Options, filename: str) -> None:
