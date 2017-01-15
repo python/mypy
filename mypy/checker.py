@@ -1184,7 +1184,7 @@ class TypeChecker(NodeVisitor[Type]):
                 lvalue.kind == MDEF and
                 len(lvalue_node.info.bases) > 0):
 
-            for base in reversed(lvalue_node.info.mro[1:]):
+            for base in lvalue_node.info.mro[1:]:
                 # Only check __slots__ against the 'object'
                 # If a base class defines a Tuple of 3 elements, a child of
                 # this class should not be allowed to define it as a Tuple of
