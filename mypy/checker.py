@@ -1119,7 +1119,9 @@ class TypeChecker(NodeVisitor[Type]):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue)
+                if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
+                    # We hit an error on this line; don't check for any others
+                    return
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
@@ -1176,7 +1178,7 @@ class TypeChecker(NodeVisitor[Type]):
                                          rvalue)
 
     def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Type,
-                                       rvalue: Expression) -> None:
+                                       rvalue: Expression) -> bool:
         lvalue_node = lvalue.node
 
         # Check if we are a class variable with at least one base class
@@ -1197,7 +1199,8 @@ class TypeChecker(NodeVisitor[Type]):
                 if not self.check_compatibility_super(lvalue, lvalue_type, rvalue, base):
                     # Only show one error per variable; even if other
                     # base classes are also incompatible
-                    break
+                    return True
+        return False
 
     def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Type, rvalue: Expression,
                                   base: TypeInfo) -> bool:
