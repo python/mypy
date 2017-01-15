@@ -10,112 +10,7 @@ if False:
 T = TypeVar('T')
 
 
-class NodeVisitor(Generic[T]):
-    """Empty base class for parse tree node visitors.
-
-    The T type argument specifies the return type of the visit
-    methods. As all methods defined here return None by default,
-    subclasses do not always need to override all the methods.
-
-    TODO make the default return value explicit
-    """
-
-    # Module structure
-
-    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
-        pass
-
-    def visit_import(self, o: 'mypy.nodes.Import') -> T:
-        pass
-
-    def visit_import_from(self, o: 'mypy.nodes.ImportFrom') -> T:
-        pass
-
-    def visit_import_all(self, o: 'mypy.nodes.ImportAll') -> T:
-        pass
-
-    # Definitions
-
-    def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> T:
-        pass
-
-    def visit_overloaded_func_def(self,
-                                  o: 'mypy.nodes.OverloadedFuncDef') -> T:
-        pass
-
-    def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> T:
-        pass
-
-    def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> T:
-        pass
-
-    def visit_nonlocal_decl(self, o: 'mypy.nodes.NonlocalDecl') -> T:
-        pass
-
-    def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
-        pass
-
-    def visit_var(self, o: 'mypy.nodes.Var') -> T:
-        pass
-
-    # Statements
-
-    def visit_block(self, o: 'mypy.nodes.Block') -> T:
-        pass
-
-    def visit_expression_stmt(self, o: 'mypy.nodes.ExpressionStmt') -> T:
-        pass
-
-    def visit_assignment_stmt(self, o: 'mypy.nodes.AssignmentStmt') -> T:
-        pass
-
-    def visit_operator_assignment_stmt(self,
-                                       o: 'mypy.nodes.OperatorAssignmentStmt') -> T:
-        pass
-
-    def visit_while_stmt(self, o: 'mypy.nodes.WhileStmt') -> T:
-        pass
-
-    def visit_for_stmt(self, o: 'mypy.nodes.ForStmt') -> T:
-        pass
-
-    def visit_return_stmt(self, o: 'mypy.nodes.ReturnStmt') -> T:
-        pass
-
-    def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> T:
-        pass
-
-    def visit_del_stmt(self, o: 'mypy.nodes.DelStmt') -> T:
-        pass
-
-    def visit_if_stmt(self, o: 'mypy.nodes.IfStmt') -> T:
-        pass
-
-    def visit_break_stmt(self, o: 'mypy.nodes.BreakStmt') -> T:
-        pass
-
-    def visit_continue_stmt(self, o: 'mypy.nodes.ContinueStmt') -> T:
-        pass
-
-    def visit_pass_stmt(self, o: 'mypy.nodes.PassStmt') -> T:
-        pass
-
-    def visit_raise_stmt(self, o: 'mypy.nodes.RaiseStmt') -> T:
-        pass
-
-    def visit_try_stmt(self, o: 'mypy.nodes.TryStmt') -> T:
-        pass
-
-    def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> T:
-        pass
-
-    def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> T:
-        pass
-
-    def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> T:
-        pass
-
-    # Expressions
+class ExpressionVisitor(Generic[T]):
 
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
         pass
@@ -238,4 +133,110 @@ class NodeVisitor(Generic[T]):
         pass
 
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
+        pass
+
+
+class NodeVisitor(Generic[T], ExpressionVisitor[T]):
+    """Empty base class for parse tree node visitors.
+
+    The T type argument specifies the return type of the visit
+    methods. As all methods defined here return None by default,
+    subclasses do not always need to override all the methods.
+
+    TODO make the default return value explicit
+    """
+
+    # Module structure
+
+    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
+        pass
+
+    def visit_import(self, o: 'mypy.nodes.Import') -> T:
+        pass
+
+    def visit_import_from(self, o: 'mypy.nodes.ImportFrom') -> T:
+        pass
+
+    def visit_import_all(self, o: 'mypy.nodes.ImportAll') -> T:
+        pass
+
+    # Definitions
+
+    def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> T:
+        pass
+
+    def visit_overloaded_func_def(self,
+                                  o: 'mypy.nodes.OverloadedFuncDef') -> T:
+        pass
+
+    def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> T:
+        pass
+
+    def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> T:
+        pass
+
+    def visit_nonlocal_decl(self, o: 'mypy.nodes.NonlocalDecl') -> T:
+        pass
+
+    def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
+        pass
+
+    def visit_var(self, o: 'mypy.nodes.Var') -> T:
+        pass
+
+    # Statements
+
+    def visit_block(self, o: 'mypy.nodes.Block') -> T:
+        pass
+
+    def visit_expression_stmt(self, o: 'mypy.nodes.ExpressionStmt') -> T:
+        pass
+
+    def visit_assignment_stmt(self, o: 'mypy.nodes.AssignmentStmt') -> T:
+        pass
+
+    def visit_operator_assignment_stmt(self,
+                                       o: 'mypy.nodes.OperatorAssignmentStmt') -> T:
+        pass
+
+    def visit_while_stmt(self, o: 'mypy.nodes.WhileStmt') -> T:
+        pass
+
+    def visit_for_stmt(self, o: 'mypy.nodes.ForStmt') -> T:
+        pass
+
+    def visit_return_stmt(self, o: 'mypy.nodes.ReturnStmt') -> T:
+        pass
+
+    def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> T:
+        pass
+
+    def visit_del_stmt(self, o: 'mypy.nodes.DelStmt') -> T:
+        pass
+
+    def visit_if_stmt(self, o: 'mypy.nodes.IfStmt') -> T:
+        pass
+
+    def visit_break_stmt(self, o: 'mypy.nodes.BreakStmt') -> T:
+        pass
+
+    def visit_continue_stmt(self, o: 'mypy.nodes.ContinueStmt') -> T:
+        pass
+
+    def visit_pass_stmt(self, o: 'mypy.nodes.PassStmt') -> T:
+        pass
+
+    def visit_raise_stmt(self, o: 'mypy.nodes.RaiseStmt') -> T:
+        pass
+
+    def visit_try_stmt(self, o: 'mypy.nodes.TryStmt') -> T:
+        pass
+
+    def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> T:
+        pass
+
+    def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> T:
+        pass
+
+    def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> T:
         pass
