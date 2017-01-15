@@ -23,6 +23,7 @@ from mypy.types import (
 )
 from mypy import defaults
 from mypy import experiments
+from mypy import hooks
 from mypy.errors import Errors
 
 try:
@@ -86,6 +87,33 @@ def parse_type_comment(type_comment: str, line: int) -> Type:
     else:
         assert isinstance(typ, ast35.Expression)
         return TypeConverter(line=line).visit(typ.body)
+
+
+def parse_docstring(docstring: str, arg_names: List[str],
+                    line: int) -> Optional[Tuple[List[Type], Type]]:
+    """Parse a docstring and return type representations.
+
+    Returns a 2-tuple: (list of arguments Types, and return Type).
+    """
+    def pop_and_convert(name):
+        t = type_map.pop(name, None)
+        if t is None:
+            return AnyType()
+        else:
+            return parse_type_comment(t, line=line)
+
+    if hooks.docstring_parser is not None:
+        type_map = hooks.docstring_parser(docstring)
+        if type_map:
+            arg_types = [pop_and_convert(name) for name in arg_names]
+            return_type = pop_and_convert('return')
+            if type_map:
+                raise TypeCommentParseError(
+                    'Arguments parsed from docstring are not present in '
+                    'function signature: {}'.format(', '.join(type_map)),
+                    line, 0)
+            return arg_types, return_type
+    return None
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
@@ -291,6 +319,14 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(line=n.lineno).visit(n.returns)
+            # hooks
+            if (not any(arg_types) and return_type is None and
+                    hooks.docstring_parser):
+                doc = ast35.get_docstring(n, clean=False)
+                if doc:
+                    types = parse_docstring(doc, arg_names, n.lineno)
+                    if types is not None:
+                        arg_types, return_type = types
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
