@@ -73,6 +73,13 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
    def f(num1: int, my_float: float = 3.5) -> float:
        return num1 + my_float
 
+   # An argument can be declared positional-only by giving it a name
+   # starting with two underscores:
+   def quux(__x: int) -> None:
+       pass
+   quux(3)  # Fine
+   quux(__x=3)  # Error
+
    # This is how you annotate a function value.
    x = f # type: Callable[[int, float], float]
 
@@ -174,7 +181,7 @@ Classes
        def __init__(self) -> None:
            ...
        # For instance methods, omit `self`.
-       def my_class_method(self, num: int, str1: str) -> str:
+       def my_method(self, num: int, str1: str) -> str:
            return num * str1
 
 

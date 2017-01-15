@@ -8,11 +8,12 @@ from mypy import build
 from mypy.build import BuildSource
 from mypy.myunit import Suite
 from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
-from mypy.test.data import parse_test_cases
+from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
 from mypy.nodes import TypeInfo
 from mypy.treetransform import TransformVisitor
+from mypy.types import Type
 from mypy.options import Options
 
 
@@ -27,8 +28,8 @@ class TransformSuite(Suite):
                        'semanal-abstractclasses.test',
                        'semanal-python2.test']
 
-    def cases(self):
-        c = []
+    def cases(self) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
         for f in self.transform_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_transform,
@@ -37,7 +38,7 @@ class TransformSuite(Suite):
         return c
 
 
-def test_transform(testcase):
+def test_transform(testcase: DataDrivenTestCase) -> None:
     """Perform an identity transform test case."""
 
     try:
@@ -79,6 +80,6 @@ def test_transform(testcase):
 
 
 class TestTransformVisitor(TransformVisitor):
-    def type(self, type):
+    def type(self, type: Type) -> Type:
         assert type is not None
         return type

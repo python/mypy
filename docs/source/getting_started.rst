@@ -10,9 +10,7 @@ Mypy requires Python 3.3 or later.  Once you've `installed Python 3 <https://www
 
 .. code-block:: text
 
-    $ python3 -m pip install mypy-lang
-
-Note that the package name is ``mypy-lang`` and not just ``mypy``, as unfortunately the ``mypy`` PyPI name is not available.
+    $ python3 -m pip install mypy
 
 Installing from source
 **********************

@@ -108,9 +108,9 @@ reveal_type(B.new())  # E: Revealed type is '__main__.B*'
 
 [case testSelfTypeOverride]
 from typing import TypeVar, cast
- 
+
 T = TypeVar('T', bound='A', covariant=True)
- 
+
 class A:
     def copy(self: T) -> T: pass
 
@@ -124,15 +124,15 @@ class C(A):
 reveal_type(C().copy)  # E: Revealed type is 'def () -> __main__.C*'
 reveal_type(C().copy())  # E: Revealed type is '__main__.C*'
 reveal_type(cast(A, C()).copy)  # E: Revealed type is 'def () -> __main__.A*'
-reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*' 
+reveal_type(cast(A, C()).copy())  # E: Revealed type is '__main__.A*'
 
 [builtins fixtures/bool.pyi]
 
 [case testSelfTypeSuper]
 from typing import TypeVar, cast
- 
+
 T = TypeVar('T', bound='A', covariant=True)
- 
+
 class A:
     def copy(self: T) -> T: pass
 
@@ -147,7 +147,7 @@ class B(A):
 
 [case testSelfTypeRecursiveBinding]
 from typing import TypeVar, Callable, Type
- 
+
 T = TypeVar('T', bound='A', covariant=True)
 class A:
     # TODO: This is potentially unsafe, as we use T in an argument type
@@ -173,7 +173,7 @@ reveal_type(B.new)  # E: Revealed type is 'def (factory: def (__main__.B*) -> __
 
 [case testSelfTypeBound]
 from typing import TypeVar, Callable, cast
- 
+
 TA = TypeVar('TA', bound='A', covariant=True)
 
 class A:
@@ -200,9 +200,9 @@ class B(A):
 -- # TODO: fail for this
 -- [case testSelfTypeBare]
 -- from typing import TypeVar, Type
--- 
+--
 -- T = TypeVar('T', bound='E')
--- 
+--
 -- class E:
 --     def copy(self: T, other: T) -> T: pass
 
@@ -262,7 +262,7 @@ class B:
     @classmethod
     def cfoo(cls: Type[Q]) -> Q:
         return cls()
-    
+
 class C:
     def foo(self: C) -> C: return self
 
@@ -272,7 +272,7 @@ class C:
 
 class D:
     def foo(self: str) -> str:  # E: The erased type of self 'builtins.str' is not a supertype of its class '__main__.D'
-        return self    
+        return self
 
     @staticmethod
     def bar(self: str) -> str:
@@ -302,27 +302,42 @@ class C:
 [case testSelfTypeNew]
 from typing import TypeVar, Type
 
-T = TypeVar('T', bound=A)    
-class A: 
+T = TypeVar('T', bound=A)
+class A:
     def __new__(cls: Type[T]) -> T:
         return cls()
+
+    def __init_subclass__(cls: Type[T]) -> None:
+        pass
 
 class B:
     def __new__(cls: Type[T]) -> T:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
         return cls()
 
-class C: 
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self 'Type[__main__.A]' is not a supertype of its class 'Type[__main__.B]'
+        pass
+
+class C:
     def __new__(cls: Type[C]) -> C:
         return cls()
+
+    def __init_subclass__(cls: Type[C]) -> None:
+        pass
 
 class D:
     def __new__(cls: D) -> D:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
         return cls
 
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self '__main__.D' is not a supertype of its class 'Type[__main__.D]'
+        pass
+
 class E:
     def __new__(cls) -> E:
         reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
         return cls()
+
+    def __init_subclass__(cls) -> None:
+        reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
 
 [case testSelfTypeProperty]
 from typing import TypeVar

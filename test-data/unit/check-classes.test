@@ -382,6 +382,20 @@ class A:
 [out]
 main:3: error: The return type of "__init__" must be None
 
+[case testInitSubclassWithReturnValueType]
+import typing
+class A:
+    def __init_subclass__(cls) -> 'A': pass
+[out]
+main:3: error: The return type of "__init_subclass__" must be None
+
+[case testInitSubclassWithImplicitReturnValueType]
+import typing
+class A:
+    def __init_subclass__(cls, x: int=1): pass
+[out]
+main:3: error: The return type of "__init_subclass__" must be None
+
 [case testGlobalFunctionInitWithReturnType]
 import typing
 a = __init__() # type: A
@@ -1205,7 +1219,7 @@ class D:
     def __get__(self, inst: Any, own: str) -> Any: pass
 class A:
     f = D()
-A().f  # E: Argument 2 to "__get__" of "D" has incompatible type Type[A]; expected "str" 
+A().f  # E: Argument 2 to "__get__" of "D" has incompatible type Type[A]; expected "str"
 
 [case testDescriptorGetSetDifferentTypes]
 from typing import Any

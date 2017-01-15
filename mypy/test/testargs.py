@@ -12,7 +12,7 @@ from mypy.main import process_options
 
 
 class ArgSuite(Suite):
-    def test_coherence(self):
+    def test_coherence(self) -> None:
         options = Options()
         _, parsed_options = process_options([], require_targets=False)
         assert_equal(options, parsed_options)

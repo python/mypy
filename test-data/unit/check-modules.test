@@ -1146,7 +1146,8 @@ import y
 [file x.py]
 class Base:
     pass
-def foo() -> None:
+def foo():
+    # type: () -> None
     import y
     i = y.Sub.iattr  # type: int
     f = y.Sub.fattr  # type: float

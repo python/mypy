@@ -47,7 +47,7 @@ def run(params: str) -> Tuple[str, str]:
 
     try:
         main(None)
-    except:
+    except SystemExit:
         pass
 
     sys.stdout = old_stdout

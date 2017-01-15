@@ -1027,8 +1027,8 @@ from typing import Callable
 def f(x: Callable[[], None]) -> None: pass
 def g(x: Callable[[], int]) -> None: pass
 a = lambda: None
-f(a) # E: Argument 1 to "f" has incompatible type Callable[[], None]; expected Callable[[], None]
-g(a)
+f(a)
+g(a) # E: Argument 1 to "g" has incompatible type Callable[[], None]; expected Callable[[], int]
 b = lambda: None  # type: Callable[[], None]
 f(b)
 g(b) # E: Argument 1 to "g" has incompatible type Callable[[], None]; expected Callable[[], int]

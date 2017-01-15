@@ -63,7 +63,19 @@ Underscores in numeric literals (`PEP 515 <https://www.python.org/dev/peps/pep-0
 Python 3.6 feature: numeric literals can contain underscores,
 e.g. ``1_000_000``.
 
-Mypy does not yet support this.
+Mypy fully supports this syntax:
+
+.. code-block:: python
+
+   precise_val = 1_000_000.000_000_1
+   hexes: List[int] = []
+   hexes.append(0x_FF_FF_FF_FF)
+
+.. note::
+
+   This requires the ``--fast-parser`` flag and it requires that the
+   `typed_ast <https://pypi.python.org/pypi/typed-ast>`_ package is
+   installed and has at least version 0.6.2.  Use ``pip3 install -U typed_ast``.
 
 Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_)
 -------------------------------------------------------------------------------

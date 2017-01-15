@@ -335,7 +335,7 @@ class SemanticAnalyzer(NodeVisitor):
             elif isinstance(functype, CallableType):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
-                    if func.is_class or func.name() == '__new__':
+                    if func.is_class or func.name() in ('__new__', '__init_subclass__'):
                         leading_type = self.class_type(self.type)
                     else:
                         leading_type = fill_typevars(self.type)
@@ -1823,8 +1823,12 @@ class SemanticAnalyzer(NodeVisitor):
         tvd = TypeVarDef('NT', 1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
-        def add_method(funcname: str, ret: Type, args: List[Argument], name=None,
-                       is_classmethod=False) -> None:
+        def add_method(funcname: str,
+                       ret: Type,
+                       args: List[Argument],
+                       name: str = None,
+                       is_classmethod: bool = False,
+                       ) -> None:
             if is_classmethod:
                 first = [Argument(Var('cls'), TypeType(selftype), None, ARG_POS)]
             else:

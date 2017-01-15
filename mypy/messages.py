@@ -44,7 +44,7 @@ INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
+MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
 TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
@@ -852,14 +852,16 @@ class MessageBuilder:
 
     def typeddict_item_name_must_be_string_literal(self,
                                                    typ: TypedDictType,
-                                                   context: Context):
+                                                   context: Context,
+                                                   ) -> None:
         self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
             format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,
                                       typ: TypedDictType,
                                       item_name: str,
-                                      context: Context):
+                                      context: Context,
+                                      ) -> None:
         self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
 

@@ -2,12 +2,13 @@
 
 import argparse
 import configparser
+import fnmatch
 import os
 import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, cast
 
 from mypy import build
 from mypy import defaults
@@ -128,7 +129,8 @@ def process_options(args: List[str],
 
     # Make the help output a little less jarring.
     help_factory = (lambda prog:
-                    argparse.RawDescriptionHelpFormatter(prog=prog, max_help_position=28))
+                    argparse.RawDescriptionHelpFormatter(prog=prog,
+                                                         max_help_position=28))  # type: Any
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
                                      formatter_class=help_factory)
@@ -173,7 +175,7 @@ def process_options(args: List[str],
                         help="warn about unneeded '# type: ignore' comments")
     parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
-                        help="Hide context notes before errors")
+                        help='Precede errors with "note:" messages explaining context')
     parser.add_argument('--fast-parser', action='store_true',
                         help="enable fast parser (recommended except on Windows)")
     parser.add_argument('-i', '--incremental', action='store_true',
@@ -479,7 +481,7 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
-}
+}  # type: Dict[str, Any]
 
 
 def parse_config_file(options: Options, filename: str) -> None:
@@ -522,7 +524,8 @@ def parse_config_file(options: Options, filename: str) -> None:
                 glob = glob.replace(os.sep, '.')
                 if os.altsep:
                     glob = glob.replace(os.altsep, '.')
-                options.per_module_options[glob] = updates
+                pattern = re.compile(fnmatch.translate(glob))
+                options.per_module_options[pattern] = updates
 
 
 def parse_section(prefix: str, template: Options,

@@ -10,7 +10,7 @@ from mypy.myunit import Suite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
 )
-from mypy.test.data import parse_test_cases
+from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
 from mypy.nodes import TypeInfo
@@ -33,7 +33,7 @@ semanal_files = ['semanal-basic.test',
                  'semanal-python2.test']
 
 
-def get_semanal_options():
+def get_semanal_options() -> Options:
     options = Options()
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
@@ -42,8 +42,8 @@ def get_semanal_options():
 
 
 class SemAnalSuite(Suite):
-    def cases(self):
-        c = []
+    def cases(self) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
         for f in semanal_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_semanal,
@@ -53,7 +53,7 @@ class SemAnalSuite(Suite):
         return c
 
 
-def test_semanal(testcase):
+def test_semanal(testcase: DataDrivenTestCase) -> None:
     """Perform a semantic analysis test case.
 
     The testcase argument contains a description of the test case
@@ -101,16 +101,16 @@ semanal_error_files = ['semanal-errors.test']
 
 
 class SemAnalErrorSuite(Suite):
-    def cases(self):
+    def cases(self) -> List[DataDrivenTestCase]:
         # Read test cases from test case description files.
-        c = []
+        c = []  # type: List[DataDrivenTestCase]
         for f in semanal_error_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   test_semanal_error, test_temp_dir, optional_out=True)
         return c
 
 
-def test_semanal_error(testcase):
+def test_semanal_error(testcase: DataDrivenTestCase) -> None:
     """Perform a test case."""
 
     try:
@@ -136,14 +136,14 @@ semanal_symtable_files = ['semanal-symtable.test']
 
 
 class SemAnalSymtableSuite(Suite):
-    def cases(self):
-        c = []
+    def cases(self) -> List[DataDrivenTestCase]:
+        c = []  # type: List[DataDrivenTestCase]
         for f in semanal_symtable_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir)
         return c
 
-    def run_test(self, testcase):
+    def run_test(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
         try:
             # Build test case input.
@@ -174,15 +174,15 @@ semanal_typeinfo_files = ['semanal-typeinfo.test']
 
 
 class SemAnalTypeInfoSuite(Suite):
-    def cases(self):
+    def cases(self) -> List[DataDrivenTestCase]:
         """Test case descriptions"""
-        c = []
+        c = []  # type: List[DataDrivenTestCase]
         for f in semanal_typeinfo_files:
             c += parse_test_cases(os.path.join(test_data_prefix, f),
                                   self.run_test, test_temp_dir)
         return c
 
-    def run_test(self, testcase):
+    def run_test(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
         try:
             # Build test case input.

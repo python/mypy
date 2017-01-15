@@ -10,6 +10,12 @@ def f(x) -> int: pass
 [out]
 main:2: error: Function is missing a type annotation for one or more arguments
 
+[case testUnannotatedArgumentWithFastParser]
+# flags: --fast-parser --disallow-untyped-defs
+def f(x) -> int: pass
+[out]
+main:2: error: Function is missing a type annotation for one or more arguments
+
 [case testNoArgumentFunction]
 # flags: --disallow-untyped-defs
 def f() -> int: pass
@@ -17,6 +23,12 @@ def f() -> int: pass
 
 [case testUnannotatedReturn]
 # flags: --disallow-untyped-defs
+def f(x: int): pass
+[out]
+main:2: error: Function is missing a return type annotation
+
+[case testUnannotatedReturnWithFastParser]
+# flags: --fast-parser --disallow-untyped-defs
 def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation

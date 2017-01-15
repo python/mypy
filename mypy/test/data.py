@@ -7,7 +7,7 @@ from os import remove, rmdir
 import shutil
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import Callable, List, Tuple, Set, Optional
+from typing import Callable, List, Tuple, Set, Optional, Iterator, Any
 
 from mypy.myunit import TestCase, SkipTestCaseException
 
@@ -30,7 +30,8 @@ def parse_test_cases(
 
     if not include_path:
         include_path = os.path.dirname(path)
-    l = open(path, encoding='utf-8').readlines()
+    with open(path, encoding='utf-8') as f:
+        l = f.readlines()
     for i in range(len(l)):
         l[i] = l[i].rstrip('\n')
     p = parse_test_data(l, path)
@@ -138,16 +139,26 @@ class DataDrivenTestCase(TestCase):
     file = ''
     line = 0
 
-    perform = None  # type: Callable[['DataDrivenTestCase'], None]
-
     # (file path, file content) tuples
     files = None  # type: List[Tuple[str, str]]
     expected_stale_modules = None  # type: Optional[Set[str]]
 
     clean_up = None  # type: List[Tuple[bool, str]]
 
-    def __init__(self, name, input, output, output2, file, line, lastline,
-                 perform, files, output_files, expected_stale_modules, expected_rechecked_modules):
+    def __init__(self,
+                 name: str,
+                 input: List[str],
+                 output: List[str],
+                 output2: List[str],
+                 file: str,
+                 line: int,
+                 lastline: int,
+                 perform: Callable[['DataDrivenTestCase'], None],
+                 files: List[Tuple[str, str]],
+                 output_files: List[Tuple[str, str]],
+                 expected_stale_modules: Optional[Set[str]],
+                 expected_rechecked_modules: Optional[Set[str]],
+                 ) -> None:
         super().__init__(name)
         self.input = input
         self.output = output
@@ -199,7 +210,7 @@ class DataDrivenTestCase(TestCase):
             os.mkdir(dir)
             return dirs
 
-    def run(self):
+    def run(self) -> None:
         if self.name.endswith('-skip'):
             raise SkipTestCaseException()
         else:
@@ -400,26 +411,26 @@ def fix_win_path(line: str) -> str:
 ##
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Any) -> None:
     group = parser.getgroup('mypy')
     group.addoption('--update-data', action='store_true', default=False,
                     help='Update test data to reflect actual output'
                          ' (supported only for certain tests)')
 
 
-def pytest_pycollect_makeitem(collector, name, obj):
+def pytest_pycollect_makeitem(collector: Any, name: str, obj: Any) -> Any:
     if not isinstance(obj, type) or not issubclass(obj, DataSuite):
         return None
     return MypyDataSuite(name, parent=collector)
 
 
-class MypyDataSuite(pytest.Class):
-    def collect(self):
+class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
+    def collect(self) -> Iterator['MypyDataCase']:
         for case in self.obj.cases():
             yield MypyDataCase(case.name, self, case)
 
 
-class MypyDataCase(pytest.Item):
+class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
     def __init__(self, name: str, parent: MypyDataSuite, obj: DataDrivenTestCase) -> None:
         self.skip = False
         if name.endswith('-skip'):
@@ -429,22 +440,22 @@ class MypyDataCase(pytest.Item):
         super().__init__(name, parent)
         self.obj = obj
 
-    def runtest(self):
+    def runtest(self) -> None:
         if self.skip:
             pytest.skip()
         update_data = self.config.getoption('--update-data', False)
         self.parent.obj(update_data=update_data).run_case(self.obj)
 
-    def setup(self):
+    def setup(self) -> None:
         self.obj.set_up()
 
-    def teardown(self):
+    def teardown(self) -> None:
         self.obj.tear_down()
 
-    def reportinfo(self):
+    def reportinfo(self) -> Tuple[str, int, str]:
         return self.obj.file, self.obj.line, self.obj.name
 
-    def repr_failure(self, excinfo):
+    def repr_failure(self, excinfo: Any) -> str:
         if excinfo.errisinstance(SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
