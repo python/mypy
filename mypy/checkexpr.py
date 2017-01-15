@@ -40,6 +40,7 @@ from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.util import split_module_names
 from mypy.semanal import fill_typevars
+from mypy.visitor import ExpressionVisitor
 
 from mypy import experiments
 
@@ -85,7 +86,7 @@ class Finished(Exception):
     """Raised if we can terminate overload argument check early (no match)."""
 
 
-class ExpressionChecker:
+class ExpressionChecker(ExpressionVisitor[Type]):
     """Expression type checker.
 
     This class works closely together with checker.TypeChecker.
@@ -2039,6 +2040,36 @@ class ExpressionChecker:
         pass or report an error.
         """
         self.chk.handle_cannot_determine_type(name, context)
+
+    def visit_star_expr(self, o: 'mypy.nodes.StarExpr') -> Type:
+        assert False
+
+    def visit_yield_from_expr(self, o: 'mypy.nodes.YieldFromExpr') -> Type:
+        assert False
+
+    def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> Type:
+        assert False
+
+    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> Type:
+        assert False
+
+    def visit_await_expr(self, o: 'mypy.nodes.AwaitExpr') -> Type:
+        assert False
+
+    def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> Type:
+        assert False
+
+    def visit_newtype_expr(self, o: 'mypy.nodes.NewTypeExpr') -> Type:
+        assert False
+
+    def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> Type:
+        assert False
+
+    def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> Type:
+        assert False
+
+    def visit_yield_expr(self, o: 'mypy.nodes.YieldExpr') -> Type:
+        assert False
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
