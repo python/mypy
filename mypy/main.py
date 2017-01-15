@@ -78,8 +78,7 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(sources: List[BuildSource],
-        bin_dir: str, options: Options) -> BuildResult:
+def type_check_only(sources: List[BuildSource], bin_dir: str, options: Options) -> BuildResult:
     # Type-check the program and dependencies and translate to Python.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
@@ -92,9 +91,9 @@ MYPYPATH     additional module search path"""
 
 class SplitNamespace(argparse.Namespace):
     def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
-        super().__init__(standard_namespace=standard_namespace,
-                         alt_namespace=alt_namespace,
-                         alt_prefix=alt_prefix)
+        self.__dict__['_standard_namespace'] = standard_namespace
+        self.__dict__['_alt_namespace'] = alt_namespace
+        self.__dict__['_alt_prefix'] = alt_prefix
 
     def _get(self) -> Tuple[Any, Any]:
         return (self._standard_namespace, self._alt_namespace)
@@ -314,9 +313,9 @@ def process_options(args: List[str],
     # Check for invalid argument combinations.
     if require_targets:
         code_methods = sum(bool(c) for c in [special_opts.modules,
-                                            special_opts.command,
-                                            special_opts.package,
-                                            special_opts.files])
+                                             special_opts.command,
+                                             special_opts.package,
+                                             special_opts.files])
         if code_methods == 0:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
@@ -359,7 +358,8 @@ def process_options(args: List[str],
         return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
-        return [BuildSource(None, None, '\n'.join(special_opts.command))], options
+        targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
+        return targets, options
     else:
         targets = []
         for f in special_opts.files:
