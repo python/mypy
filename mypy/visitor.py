@@ -282,7 +282,7 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T]):
     def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> T:
         pass
 
-    # expressions (default no-op implementation)
+    # Expressions (default no-op implementation)
 
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
         pass
