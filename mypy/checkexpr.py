@@ -9,7 +9,7 @@ from mypy.types import (
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
-)
+    StarType)
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
@@ -17,7 +17,8 @@ from mypy.nodes import (
     TupleExpr, DictExpr, FuncExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
+    YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
     UNBOUND_TVAR, BOUND_TVAR,
 )
@@ -2041,35 +2042,150 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         self.chk.handle_cannot_determine_type(name, context)
 
-    def visit_star_expr(self, o: 'mypy.nodes.StarExpr') -> Type:
-        assert False
+    def visit_yield_expr(self, e: YieldExpr) -> Type:
+        return_type = self.chk.return_types[-1]
+        expected_item_type = self.chk.get_generator_yield_type(return_type, False)
+        if e.expr is None:
+            if (not isinstance(expected_item_type, (Void, NoneTyp, AnyType))
+                    and self.chk.in_checked_function()):
+                self.chk.fail(messages.YIELD_VALUE_EXPECTED, e)
+        else:
+            actual_item_type = self.accept(e.expr, expected_item_type)
+            self.chk.check_subtype(actual_item_type, expected_item_type, e,
+                                   messages.INCOMPATIBLE_TYPES_IN_YIELD,
+                                   'actual type', 'expected type')
+        return self.chk.get_generator_receive_type(return_type, False)
 
-    def visit_yield_from_expr(self, o: 'mypy.nodes.YieldFromExpr') -> Type:
-        assert False
+    def visit_await_expr(self, e: AwaitExpr) -> Type:
+        expected_type = self.chk.type_context[-1]
+        if expected_type is not None:
+            expected_type = self.chk.named_generic_type('typing.Awaitable', [expected_type])
+        actual_type = self.accept(e.expr, expected_type)
+        if isinstance(actual_type, AnyType):
+            return AnyType()
+        return self.check_awaitable_expr(actual_type, e, messages.INCOMPATIBLE_TYPES_IN_AWAIT)
 
-    def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> Type:
-        assert False
+    def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
+        """Check the argument to `await` and extract the type of value.
 
-    def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> Type:
-        assert False
+        Also used by `async for` and `async with`.
+        """
+        if not self.chk.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
+                                      msg, 'actual type', 'expected type'):
+            return AnyType()
+        else:
+            method = self.analyze_external_member_access('__await__', t, ctx)
+            generator = self.check_call(method, [], [], ctx)[0]
+            return self.chk.get_generator_return_type(generator, False)
 
-    def visit_await_expr(self, o: 'mypy.nodes.AwaitExpr') -> Type:
-        assert False
+    def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
+        # NOTE: Whether `yield from` accepts an `async def` decorated
+        # with `@types.coroutine` (or `@asyncio.coroutine`) depends on
+        # whether the generator containing the `yield from` is itself
+        # thus decorated.  But it accepts a generator regardless of
+        # how it's decorated.
+        return_type = self.chk.return_types[-1]
+        subexpr_type = self.accept(e.expr, return_type)
+        iter_type = None  # type: Type
 
-    def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> Type:
-        assert False
+        # Check that the expr is an instance of Iterable and get the type of the iterator produced
+        # by __iter__.
+        if isinstance(subexpr_type, AnyType):
+            iter_type = AnyType()
+        elif (isinstance(subexpr_type, Instance) and
+                is_subtype(subexpr_type, self.chk.named_type('typing.Iterable'))):
+            if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
+                self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
+            iter_method_type = self.analyze_external_member_access(
+                '__iter__',
+                subexpr_type,
+                AnyType())
 
-    def visit_newtype_expr(self, o: 'mypy.nodes.NewTypeExpr') -> Type:
-        assert False
+            generic_generator_type = self.chk.named_generic_type('typing.Generator',
+                                                                 [AnyType(), AnyType(), AnyType()])
+            iter_type, _ = self.check_call(iter_method_type, [], [],
+                                           context=generic_generator_type)
+        else:
+            if not (is_async_def(subexpr_type) and has_coroutine_decorator(return_type)):
+                self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
+                iter_type = AnyType()
+            else:
+                iter_type = self.check_awaitable_expr(subexpr_type, e,
+                                                      messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM)
 
-    def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> Type:
-        assert False
+        # Check that the iterator's item type matches the type yielded by the Generator function
+        # containing this `yield from` expression.
+        expected_item_type = self.chk.get_generator_yield_type(return_type, False)
+        actual_item_type = self.chk.get_generator_yield_type(iter_type, False)
 
-    def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> Type:
-        assert False
+        self.chk.check_subtype(actual_item_type, expected_item_type, e,
+                           messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
+                           'actual type', 'expected type')
 
-    def visit_yield_expr(self, o: 'mypy.nodes.YieldExpr') -> Type:
-        assert False
+        # Determine the type of the entire yield from expression.
+        if (isinstance(iter_type, Instance) and
+                iter_type.type.fullname() == 'typing.Generator'):
+            return self.chk.get_generator_return_type(iter_type, False)
+        else:
+            # Non-Generators don't return anything from `yield from` expressions.
+            # However special-case Any (which might be produced by an error).
+            if isinstance(actual_item_type, AnyType):
+                return AnyType()
+            else:
+                if experiments.STRICT_OPTIONAL:
+                    return NoneTyp(is_ret_type=True)
+                else:
+                    return Void()
+
+    def visit_temp_node(self, e: TempNode) -> Type:
+        return e.type
+
+    def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
+        # TODO: Perhaps return a special type used for type variables only?
+        return AnyType()
+
+    def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
+        return AnyType()
+
+    def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        # TODO: Perhaps return a type object type?
+        return AnyType()
+
+    def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
+        # TODO: Perhaps return a type object type?
+        return AnyType()
+
+    def visit__promote_expr(self, e: PromoteExpr) -> Type:
+        return e.type
+
+    def visit_star_expr(self, e: StarExpr) -> StarType:
+        return StarType(self.accept(e.expr))
+
+
+def has_coroutine_decorator(t: Type) -> bool:
+    """Whether t came from a function decorated with `@coroutine`."""
+    return isinstance(t, Instance) and t.type.fullname() == 'typing.AwaitableGenerator'
+
+
+def is_async_def(t: Type) -> bool:
+    """Whether t came from a function defined using `async def`."""
+    # In check_func_def(), when we see a function decorated with
+    # `@typing.coroutine` or `@async.coroutine`, we change the
+    # return type to typing.AwaitableGenerator[...], so that its
+    # type is compatible with either Generator or Awaitable.
+    # But for the check here we need to know whether the original
+    # function (before decoration) was an `async def`.  The
+    # AwaitableGenerator type conveniently preserves the original
+    # type as its 4th parameter (3rd when using 0-origin indexing
+    # :-), so that we can recover that information here.
+    # (We really need to see whether the original, undecorated
+    # function was an `async def`, which is orthogonal to its
+    # decorations.)
+    if (isinstance(t, Instance)
+            and t.type.fullname() == 'typing.AwaitableGenerator'
+            and len(t.args) >= 4):
+        t = t.args[3]
+    return isinstance(t, Instance) and t.type.fullname() == 'typing.Awaitable'
 
 
 def map_actuals_to_formals(caller_kinds: List[int],
