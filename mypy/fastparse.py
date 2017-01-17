@@ -56,6 +56,9 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
     The pyversion (major, minor) argument determines the Python syntax variant.
     """
+    if errors is None:
+        errors = Errors()
+    errors.set_file('<input>' if fnam is None else fnam)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] >= 3 or is_stub_file
@@ -63,14 +66,14 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
         tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,
+                            errors=errors,
                             custom_typing_module=custom_typing_module,
                             ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
         return tree
-    except (SyntaxError, TypeCommentParseError) as e:
+    except SyntaxError as e:
         if errors:
-            errors.set_file('<input>' if fnam is None else fnam)
             errors.report(e.lineno, e.offset, e.msg)
         else:
             raise
@@ -78,14 +81,15 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     return MypyFile([], [], False, set())
 
 
-def parse_type_comment(type_comment: str, line: int) -> Type:
+def parse_type_comment(type_comment: str, line: int, errors: Errors) -> Optional[Type]:
     try:
         typ = ast35.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
-        raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, line, e.offset)
+        errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR)
+        return None
     else:
         assert isinstance(typ, ast35.Expression)
-        return TypeConverter(line=line).visit(typ.body)
+        return TypeConverter(errors, line=line).visit(typ.body)
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
@@ -108,13 +112,18 @@ class ASTConverter(ast35.NodeTransformer):
     def __init__(self,
                  pyversion: Tuple[int, int],
                  is_stub: bool,
+                 errors: Errors,
                  custom_typing_module: str = None) -> None:
         self.class_nesting = 0
         self.imports = []  # type: List[ImportBase]
 
         self.pyversion = pyversion
         self.is_stub = is_stub
+        self.errors = errors
         self.custom_typing_module = custom_typing_module
+
+    def fail(self, msg: str, line: int, column: int) -> None:
+        self.errors.report(line, column, msg)
 
     def generic_visit(self, node: ast35.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -270,27 +279,30 @@ class ASTConverter(ast35.NodeTransformer):
         if n.type_comment is not None:
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
-            except SyntaxError:
-                raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-            assert isinstance(func_type_ast, ast35.FunctionType)
-            # for ellipsis arg
-            if (len(func_type_ast.argtypes) == 1 and
-                    isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
-                arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
-                             for a in args]
-            else:
-                translated_args = (TypeConverter(line=n.lineno)
-                                   .translate_expr_list(func_type_ast.argtypes))
-                arg_types = [a if a is not None else AnyType()
-                             for a in translated_args]
-            return_type = TypeConverter(line=n.lineno).visit(func_type_ast.returns)
+                assert isinstance(func_type_ast, ast35.FunctionType)
+                # for ellipsis arg
+                if (len(func_type_ast.argtypes) == 1 and
+                        isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
+                    arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
+                                 for a in args]
+                else:
+                    translated_args = (TypeConverter(self.errors, line=n.lineno)
+                                       .translate_expr_list(func_type_ast.argtypes))
+                    arg_types = [a if a is not None else AnyType()
+                                for a in translated_args]
+                return_type = TypeConverter(self.errors,
+                                            line=n.lineno).visit(func_type_ast.returns)
 
-            # add implicit self type
-            if self.in_class() and len(arg_types) < len(args):
-                arg_types.insert(0, AnyType())
+                # add implicit self type
+                if self.in_class() and len(arg_types) < len(args):
+                    arg_types.insert(0, AnyType())
+            except SyntaxError:
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                arg_types = [AnyType() for _ in args]
+                return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
-            return_type = TypeConverter(line=n.lineno).visit(n.returns)
+            return_type = TypeConverter(self.errors, line=n.lineno).visit(n.returns)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
@@ -301,16 +313,17 @@ class ASTConverter(ast35.NodeTransformer):
         func_type = None
         if any(arg_types) or return_type:
             if len(arg_types) > len(arg_kinds):
-                raise FastParserError('Type signature has too many arguments', n.lineno, offset=0)
-            if len(arg_types) < len(arg_kinds):
-                raise FastParserError('Type signature has too few arguments', n.lineno, offset=0)
-            func_type = CallableType([a if a is not None else
-                                      AnyType(implicit=True) for a in arg_types],
-                                     arg_kinds,
-                                     arg_names,
-                                     return_type if return_type is not None else
-                                     AnyType(implicit=True),
-                                     None)
+                self.fail('Type signature has too many arguments', n.lineno, 0)
+            elif len(arg_types) < len(arg_kinds):
+                self.fail('Type signature has too few arguments', n.lineno, 0)
+            else:
+                func_type = CallableType([a if a is not None else
+                                          AnyType(implicit=True) for a in arg_types],
+                                         arg_kinds,
+                                         arg_names,
+                                         return_type if return_type is not None else
+                                         AnyType(implicit=True),
+                                         None)
 
         func_def = FuncDef(n.name,
                        args,
@@ -345,7 +358,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     def transform_args(self, args: ast35.arguments, line: int) -> List[Argument]:
         def make_argument(arg: ast35.arg, default: Optional[ast35.expr], kind: int) -> Argument:
-            arg_type = TypeConverter(line=line).visit(arg.annotation)
+            arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []
@@ -432,14 +445,13 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             new_syntax = False
         if new_syntax and self.pyversion < (3, 6):
-            raise TypeCommentParseError('Variable annotation syntax is only '
-                                        'suppoted in Python 3.6, use type '
-                                        'comment instead', n.lineno, n.col_offset)
+            self.fail('Variable annotation syntax is only supported in Python 3.6, '
+                      'use type comment instead', n.lineno, n.col_offset)
         # typed_ast prevents having both type_comment and annotation.
         if n.type_comment is not None:
-            typ = parse_type_comment(n.type_comment, n.lineno)
+            typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
         elif new_syntax:
-            typ = TypeConverter(line=n.lineno).visit(n.annotation)  # type: ignore
+            typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)  # type: ignore
             typ.column = n.annotation.col_offset
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression
@@ -746,8 +758,8 @@ class ASTConverter(ast35.NodeTransformer):
     @with_line
     def visit_Num(self, n: ast35.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         if getattr(n, 'contains_underscores', None) and self.pyversion < (3, 6):
-            raise FastParserError('Underscores in numeric literals are only '
-                                  'supported in Python 3.6', n.lineno, n.col_offset)
+            self.fail('Underscores in numeric literals are only supported in Python 3.6',
+                      n.lineno, n.col_offset)
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):
@@ -845,18 +857,22 @@ class ASTConverter(ast35.NodeTransformer):
 
 
 class TypeConverter(ast35.NodeTransformer):
-    def __init__(self, line: int = -1) -> None:
+    def __init__(self, errors: Errors, line: int = -1) -> None:
+        self.errors = errors
         self.line = line
+
+    def fail(self, msg: str, line: int, column: int) -> None:
+        self.errors.report(line, column, msg)
 
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
         # without needing to create an intermediary `ast35.Str` object.
-        return parse_type_comment(s.strip(), line=self.line)
+        return parse_type_comment(s.strip(), self.line, self.errors) or AnyType()
 
-    def generic_visit(self, node: ast35.AST) -> None:
-        raise TypeCommentParseError(TYPE_COMMENT_AST_ERROR, self.line,
-                                    getattr(node, 'col_offset', -1))
+    def generic_visit(self, node: ast35.AST) -> Type:  # type: ignore
+        self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
+        return AnyType()
 
     def visit_NoneType(self, n: Any) -> Type:
         return None
@@ -872,13 +888,13 @@ class TypeConverter(ast35.NodeTransformer):
 
     # Str(string s)
     def visit_Str(self, n: ast35.Str) -> Type:
-        return parse_type_comment(n.s.strip(), line=self.line)
+        return parse_type_comment(n.s.strip(), self.line, self.errors) or AnyType()
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast35.Subscript) -> Type:
         if not isinstance(n.slice, ast35.Index):
-            raise TypeCommentParseError(TYPE_COMMENT_SYNTAX_ERROR, self.line,
-                                        getattr(n, 'col_offset', -1))
+            self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+            return AnyType()
 
         value = self.visit(n.value)
 
@@ -914,14 +930,3 @@ class TypeConverter(ast35.NodeTransformer):
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast35.List) -> Type:
         return TypeList(self.translate_expr_list(n.elts), line=self.line)
-
-
-class TypeCommentParseError(Exception):
-    def __init__(self, msg: str, lineno: int, offset: int) -> None:
-        self.msg = msg
-        self.lineno = lineno
-        self.offset = offset
-
-
-class FastParserError(TypeCommentParseError):
-    pass
