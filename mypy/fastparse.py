@@ -284,10 +284,10 @@ class ASTConverter(ast35.NodeTransformer):
                 if (len(func_type_ast.argtypes) == 1 and
                         isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
                     arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
-                                for a in args]
+                                 for a in args]
                 else:
                     translated_args = (TypeConverter(self.errors, line=n.lineno)
-                                    .translate_expr_list(func_type_ast.argtypes))
+                                       .translate_expr_list(func_type_ast.argtypes))
                     arg_types = [a if a is not None else AnyType()
                                 for a in translated_args]
                 return_type = TypeConverter(self.errors,
@@ -318,12 +318,12 @@ class ASTConverter(ast35.NodeTransformer):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
             else:
                 func_type = CallableType([a if a is not None else
-                                        AnyType(implicit=True) for a in arg_types],
-                                        arg_kinds,
-                                        arg_names,
-                                        return_type if return_type is not None else
-                                        AnyType(implicit=True),
-                                        None)
+                                          AnyType(implicit=True) for a in arg_types],
+                                         arg_kinds,
+                                         arg_names,
+                                         return_type if return_type is not None else
+                                         AnyType(implicit=True),
+                                         None)
 
         func_def = FuncDef(n.name,
                        args,
@@ -445,7 +445,7 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             new_syntax = False
         if new_syntax and self.pyversion < (3, 6):
-            self.fail('Variable annotation syntax is only suppoted in Python 3.6, '
+            self.fail('Variable annotation syntax is only supported in Python 3.6, '
                       'use type comment instead', n.lineno, n.col_offset)
         # typed_ast prevents having both type_comment and annotation.
         if n.type_comment is not None:
