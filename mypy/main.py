@@ -211,7 +211,9 @@ def process_options(args: List[str],
                         "suppressing other errors in non-whitelisted files.")
     parser.add_argument('--strict', action='store_true',
                         dest='special-opts:strict',
-                        help="Strict mode. Enable --strict-optional, --warn-unused-ignores, --warn-redundant-casts, --check-untyped-defs, --disallow-untyped-defs, and --disallow-untyped-calls")
+                        help=("Strict mode. Enable --strict-optional, --warn-unused-ignores, "
+                              "--warn-redundant-casts, --check-untyped-defs, "
+                              "--disallow-untyped-defs, and --disallow-untyped-calls"))
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
