@@ -24,6 +24,7 @@ class int: # for convenience
     def __add__(self, x: int) -> int: pass
 
 class str: pass # for keyword argument key type
+class unicode: pass # needed for py2 docstrings
 
 class list(Iterable[T], Generic[T]): # needed by some test cases
     def __iter__(self) -> Iterator[T]: pass

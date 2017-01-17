@@ -2830,11 +2830,11 @@ class FirstPass(NodeVisitor):
         for name, t in implicit_module_attrs.items():
             # Issue #2471: unicode docstrings should be accepted in Python 2
             if name == '__doc__':
-                if self.pyversion < (3, 0):
+                if self.pyversion >= (3, 0):
+                    typ = UnboundType('__builtins__.str')  # type: Type
+                else:
                     typ = UnionType([UnboundType('__builtins__.str'),
                                      UnboundType('__builtins__.unicode')])
-                else:
-                    typ = UnboundType('__builtins__.str')
             else:
                 typ = UnboundType(t)
             v = Var(name, typ)
