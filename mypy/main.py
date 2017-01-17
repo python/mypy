@@ -347,12 +347,26 @@ def process_options(args: List[str],
 
     # Strict mode opts-in the user to all strict flags
     if special_opts.strict:
-        options.strict_optional = special_opts.no_strict_optional
-        options.warn_unused_ignores = special_opts.no_warn_unused_ignores
-        options.warn_redundant_casts = special_opts.no_warn_redundant_casts
-        options.check_untyped_defs = special_opts.no_check_untyped_defs
-        options.disallow_untyped_defs = special_opts.no_disallow_untyped_defs
-        options.disallow_untyped_calls = special_opts.no_disallow_untyped_calls
+        options.strict_optional = True
+        options.warn_unused_ignores = True
+        options.warn_redundant_casts = True
+        options.check_untyped_defs = True
+        options.disallow_untyped_defs = True
+        options.disallow_untyped_calls = True
+
+    # Handle --no-* args
+    if special_opts.no_strict_optional:
+        options.strict_optional = False
+    if special_opts.no_warn_unused_ignores:
+        options.warn_unused_ignores = False
+    if special_opts.no_warn_redundant_casts:
+        options.warn_redundant_casts = False
+    if special_opts.no_check_untyped_defs:
+        options.check_untyped_defs = False
+    if special_opts.no_disallow_untyped_defs:
+        options.disallow_untyped_defs = False
+    if special_opts.no_disallow_untyped_calls:
+        options.disallow_untyped_calls = False
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
