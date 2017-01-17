@@ -158,15 +158,18 @@ def process_options(args: List[str],
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
     parser.add_argument('--no-disallow-untyped-calls', action='store_false',
+                        dest='special-opts:no_disallow_untyped_calls',
                         help=argparse.SUPPRESS)
     parser.add_argument('--disallow-untyped-defs', action='store_true',
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
     parser.add_argument('--no-disallow-untyped-defs', action='store_false',
+                        dest='special-opts:no_disallow_untyped_defs',
                         help=argparse.SUPPRESS)
     parser.add_argument('--check-untyped-defs', action='store_true',
                         help="type check the interior of functions without type annotations")
     parser.add_argument('--no-check-untyped-defs', action='store_false',
+                        dest='special-opts:no_check_untyped_defs',
                         help=argparse.SUPPRESS)
     parser.add_argument('--disallow-subclassing-any', action='store_true',
                         help="disallow subclassing values of type 'Any' when defining classes")
@@ -176,12 +179,14 @@ def process_options(args: List[str],
     parser.add_argument('--warn-redundant-casts', action='store_true',
                         help="warn about casting an expression to its inferred type")
     parser.add_argument('--no-warn-redundant-casts', action='store_false',
+                        dest='special-opts:no_warn_redundant_casts',
                         help=argparse.SUPPRESS)
     parser.add_argument('--warn-no-return', action='store_true',
                         help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
     parser.add_argument('--no-warn-unused-ignores', action='store_false',
+                        dest='special-opts:no_warn_unused_ignores',
                         help=argparse.SUPPRESS)
     parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
@@ -197,6 +202,7 @@ def process_options(args: List[str],
                         dest='strict_optional',
                         help="enable experimental strict Optional checks")
     parser.add_argument('--no-strict-optional', action='store_false',
+                        dest='special-opts:no_strict_optional',
                         help=argparse.SUPPRESS)
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -339,12 +345,12 @@ def process_options(args: List[str],
 
     # Strict mode opts-in the user to all strict flags
     if special_opts.strict:
-        options.strict_optional = options.no_strict_optional
-        options.warn_unused_ignores = options.no_warn_unused_ignores
-        options.warn_redundant_casts = options.no_warn_redundant_casts
-        options.check_untyped_defs = options.no_check_untyped_defs
-        options.disallow_untyped_defs = options.no_disallow_untyped_defs
-        options.disallow_untyped_calls = options.no_disallow_untyped_calls
+        options.strict_optional = special_opts.no_strict_optional
+        options.warn_unused_ignores = special_opts.no_warn_unused_ignores
+        options.warn_redundant_casts = special_opts.no_warn_redundant_casts
+        options.check_untyped_defs = special_opts.no_check_untyped_defs
+        options.disallow_untyped_defs = special_opts.no_disallow_untyped_defs
+        options.disallow_untyped_calls = special_opts.no_disallow_untyped_calls
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
