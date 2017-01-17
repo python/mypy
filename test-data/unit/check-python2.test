@@ -229,3 +229,14 @@ class Foo: pass
 
 [case testExec]
 exec('print 1 + 1')
+
+[case testUnicodeDocStrings]
+# flags: --python-version=2.7
+__doc__ = u"unicode"
+
+class A:
+    u"unicode"
+
+def f():
+    # type: () -> None
+    u"unicode"
