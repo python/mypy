@@ -410,6 +410,25 @@ def f() -> Generator[int, str, int]:
 [builtins fixtures/async_await.pyi]
 [out]
 
+[case testAsyncGenerator]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def f() -> int:
+    return 42
+
+async def g() -> AsyncGenerator[int, str]:
+    value = await f()
+    reveal_type(value)  # E: Revealed type is 'builtins.int'
+    x = yield value
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
+
+async def h() -> None:
+    async for item in g():
+        reveal_type(item)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/dict.pyi]
+
 
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------

@@ -537,8 +537,12 @@ class TypeChecker(StatementVisitor[None]):
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
-                    if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
-                        self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+                    if defn.is_coroutine:
+                        if not self.is_async_generator_return_type(typ.ret_type):
+                            pass
+                    else:
+                        if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
+                            self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
                     # Python 2 generators aren't allowed to return values.
                     if (self.options.python_version[0] == 2 and
