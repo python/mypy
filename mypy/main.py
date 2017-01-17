@@ -157,11 +157,17 @@ def process_options(args: List[str],
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
+    parser.add_argument('--no-disallow-untyped-calls', action='store_false',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--disallow-untyped-defs', action='store_true',
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
+    parser.add_argument('--no-disallow-untyped-defs', action='store_false',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--check-untyped-defs', action='store_true',
                         help="type check the interior of functions without type annotations")
+    parser.add_argument('--no-check-untyped-defs', action='store_false',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--disallow-subclassing-any', action='store_true',
                         help="disallow subclassing values of type 'Any' when defining classes")
     parser.add_argument('--warn-incomplete-stub', action='store_true',
@@ -169,10 +175,14 @@ def process_options(args: List[str],
                         " --check-untyped-defs enabled")
     parser.add_argument('--warn-redundant-casts', action='store_true',
                         help="warn about casting an expression to its inferred type")
+    parser.add_argument('--no-warn-redundant-casts', action='store_false',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--warn-no-return', action='store_true',
                         help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
+    parser.add_argument('--no-warn-unused-ignores', action='store_false',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
                         help='Precede errors with "note:" messages explaining context')
@@ -186,11 +196,16 @@ def process_options(args: List[str],
     parser.add_argument('--strict-optional', action='store_true',
                         dest='strict_optional',
                         help="enable experimental strict Optional checks")
+    parser.add_argument('--no-strict-optional', action='store_false',
+                        help=argparse.SUPPRESS)
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--strict', action='store_true',
+                        dest='special-opts:strict',
+                        help="Strict mode. Enable --strict-optional, --warn-unused-ignores, --warn-redundant-casts, --check-untyped-defs, --disallow-untyped-defs, and --disallow-untyped-calls")
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
@@ -213,6 +228,7 @@ def process_options(args: List[str],
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
                         help="print out all usages of a class member (experimental)")
+
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -274,7 +290,7 @@ def process_options(args: List[str],
     if dummy.config_file:
         config_file = dummy.config_file
         if not os.path.exists(config_file):
-            parser.error("Cannot file config file '%s'" % config_file)
+            parser.error("Cannot find config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
@@ -320,6 +336,15 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module, package, files, or command.")
+
+    # Strict mode opts-in the user to all strict flags
+    if special_opts.strict:
+        options.strict_optional = options.no_strict_optional
+        options.warn_unused_ignores = options.no_warn_unused_ignores
+        options.warn_redundant_casts = options.no_warn_redundant_casts
+        options.check_untyped_defs = options.no_check_untyped_defs
+        options.disallow_untyped_defs = options.no_disallow_untyped_defs
+        options.disallow_untyped_calls = options.no_disallow_untyped_calls
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
