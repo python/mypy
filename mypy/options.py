@@ -29,6 +29,15 @@ class Options:
         "ignore_errors",
     }
 
+    STRICT_OPTIONS = {
+        "strict_optional",
+        "warn_unused_ignores",
+        "warn_redundant_casts",
+        "check_untyped_defs",
+        "disallow_untyped_defs",
+        "disallow_untyped_calls",
+    }
+
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
 
     def __init__(self) -> None:
@@ -44,13 +53,16 @@ class Options:
         self.follow_imports = 'normal'  # normal|silent|skip|error
 
         # Disallow calling untyped functions from typed ones
-        self.disallow_untyped_calls = False
+        # Enabled in strict mode only
+        self.disallow_untyped_calls = None  # type: Optional[bool]
 
         # Disallow defining untyped (or incompletely typed) functions
-        self.disallow_untyped_defs = False
+        # Enabled in strict mode only
+        self.disallow_untyped_defs = None  # type: Optional[bool]
 
         # Type check unannotated functions
-        self.check_untyped_defs = False
+        # Enabled in strict mode only
+        self.check_untyped_defs = None  # type: Optional[bool]
 
         # Disallow subclassing values of type 'Any'
         self.disallow_subclassing_any = False
@@ -59,19 +71,22 @@ class Options:
         self.warn_incomplete_stub = False
 
         # Warn about casting an expression to its inferred type
-        self.warn_redundant_casts = False
+        # Enabled in strict mode only
+        self.warn_redundant_casts = None  # type: Optional[bool]
 
         # Warn about falling off the end of a function returning non-None
         self.warn_no_return = False
 
         # Warn about unused '# type: ignore' comments
-        self.warn_unused_ignores = False
+        # Enabled in strict mode only
+        self.warn_unused_ignores = None  # type: Optional[bool]
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
 
         # Apply strict None checking
-        self.strict_optional = False
+        # Enabled in strict mode only
+        self.strict_optional = None  # type: Optional[bool]
 
         # Hide "note: In function "foo":" messages.
         self.hide_error_context = True

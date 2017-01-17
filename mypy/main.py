@@ -126,6 +126,12 @@ class AugmentedHelpFormatter(argparse.HelpFormatter):
         super().__init__(prog=prog, max_help_position=28)
 
 
+# Take a ternary option affected by --strict and set it correctly
+def _set_strict_option(options: Options, opt: str, strict: bool) -> None:
+    if getattr(options, opt) is None:
+        setattr(options, opt, strict)
+
+
 def process_options(args: List[str],
                     require_targets: bool = True
                     ) -> Tuple[List[BuildSource], Options]:
@@ -157,20 +163,23 @@ def process_options(args: List[str],
     parser.add_argument('--disallow-untyped-calls', action='store_true',
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
-    parser.add_argument('--no-disallow-untyped-calls', action='store_true',
-                        dest='special-opts:no_disallow_untyped_calls',
+    parser.add_argument('--no-disallow-untyped-calls', action='store_false',
+                        dest='disallow_untyped_calls',
                         help=argparse.SUPPRESS)
+    parser.set_defaults(disallow_untyped_calls=None)
     parser.add_argument('--disallow-untyped-defs', action='store_true',
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
-    parser.add_argument('--no-disallow-untyped-defs', action='store_true',
-                        dest='special-opts:no_disallow_untyped_defs',
+    parser.add_argument('--no-disallow-untyped-defs', action='store_false',
+                        dest='disallow_untyped_defs',
                         help=argparse.SUPPRESS)
+    parser.set_defaults(disallow_untyped_defs=None)
     parser.add_argument('--check-untyped-defs', action='store_true',
                         help="type check the interior of functions without type annotations")
-    parser.add_argument('--no-check-untyped-defs', action='store_true',
-                        dest='special-opts:no_check_untyped_defs',
+    parser.add_argument('--no-check-untyped-defs', action='store_false',
+                        dest='check_untyped_defs',
                         help=argparse.SUPPRESS)
+    parser.set_defaults(check_untyped_defs=None)
     parser.add_argument('--disallow-subclassing-any', action='store_true',
                         help="disallow subclassing values of type 'Any' when defining classes")
     parser.add_argument('--warn-incomplete-stub', action='store_true',
@@ -178,16 +187,18 @@ def process_options(args: List[str],
                         " --check-untyped-defs enabled")
     parser.add_argument('--warn-redundant-casts', action='store_true',
                         help="warn about casting an expression to its inferred type")
-    parser.add_argument('--no-warn-redundant-casts', action='store_true',
-                        dest='special-opts:no_warn_redundant_casts',
+    parser.add_argument('--no-warn-redundant-casts', action='store_false',
+                        dest='warn_redundant_casts',
                         help=argparse.SUPPRESS)
+    parser.set_defaults(warn_redundant_casts=None)
     parser.add_argument('--warn-no-return', action='store_true',
                         help="warn about functions that end without returning")
     parser.add_argument('--warn-unused-ignores', action='store_true',
                         help="warn about unneeded '# type: ignore' comments")
-    parser.add_argument('--no-warn-unused-ignores', action='store_true',
-                        dest='special-opts:no_warn_unused_ignores',
+    parser.add_argument('--no-warn-unused-ignores', action='store_false',
+                        dest='warn_unused_ignores',
                         help=argparse.SUPPRESS)
+    parser.set_defaults(warn_unused_ignores=None)
     parser.add_argument('--show-error-context', action='store_false',
                         dest='hide_error_context',
                         help='Precede errors with "note:" messages explaining context')
@@ -201,9 +212,10 @@ def process_options(args: List[str],
     parser.add_argument('--strict-optional', action='store_true',
                         dest='strict_optional',
                         help="enable experimental strict Optional checks")
-    parser.add_argument('--no-strict-optional', action='store_true',
-                        dest='special-opts:no_strict_optional',
+    parser.add_argument('--no-strict-optional', action='store_false',
+                        dest='strict_optional',
                         help=argparse.SUPPRESS)
+    parser.set_defaults(strict_optional=None)
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "
@@ -345,28 +357,9 @@ def process_options(args: List[str],
         elif code_methods > 1:
             parser.error("May only specify one of: module, package, files, or command.")
 
-    # Strict mode opts-in the user to all strict flags
-    if special_opts.strict:
-        options.strict_optional = True
-        options.warn_unused_ignores = True
-        options.warn_redundant_casts = True
-        options.check_untyped_defs = True
-        options.disallow_untyped_defs = True
-        options.disallow_untyped_calls = True
-
-    # Handle --no-* args
-    if special_opts.no_strict_optional:
-        options.strict_optional = False
-    if special_opts.no_warn_unused_ignores:
-        options.warn_unused_ignores = False
-    if special_opts.no_warn_redundant_casts:
-        options.warn_redundant_casts = False
-    if special_opts.no_check_untyped_defs:
-        options.check_untyped_defs = False
-    if special_opts.no_disallow_untyped_defs:
-        options.disallow_untyped_defs = False
-    if special_opts.no_disallow_untyped_calls:
-        options.disallow_untyped_calls = False
+    # Determine if strict options should be enabled or disabled
+    for strict_opt in options.STRICT_OPTIONS:
+        _set_strict_option(options, strict_opt, special_opts.strict)
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
