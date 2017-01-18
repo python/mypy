@@ -136,6 +136,7 @@ for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
 
+
 def invert_flag_name(flag: str) -> str:
     split = flag[2:].split('-', 1)
     if len(split) == 2:
@@ -144,6 +145,7 @@ def invert_flag_name(flag: str) -> str:
             return '--{}-{}'.format(flag_prefix_map[prefix], rest)
 
     return '--no-{}'.format(flag[2:])
+
 
 def process_options(args: List[str],
                     require_targets: bool = True
