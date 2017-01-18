@@ -1633,8 +1633,9 @@ class TypeChecker(NodeVisitor[Type]):
                         context=s,
                         msg=messages.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
-                # Empty returns are valid in Generators with Any typed returns.
-                if (defn.is_generator and isinstance(return_type, AnyType)):
+                # Empty returns are valid in Generators with Any typed returns, but not in
+                # coroutines.
+                if (defn.is_generator and not defn.is_coroutine and isinstance(return_type, AnyType)):
                     return
 
                 if isinstance(return_type, (Void, NoneTyp, AnyType)):
