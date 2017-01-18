@@ -226,3 +226,6 @@ from typing import List
 Alias = List[u'Foo']
 class Foo: pass
 [builtins_py2 fixtures/python2.pyi]
+
+[case testExec]
+exec('print 1 + 1')
