@@ -138,3 +138,33 @@ class C(Generic[T, U]):
 a = C() # type: C[int, int]
 b = a.f('a')
 a.f(b) # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "str"
+
+[case testUnionOrderEquivalence]
+from typing import Union
+
+def foo(): pass
+
+S = str
+T = int
+
+if foo():
+    def f(x: Union[int, str]) -> None: pass
+elif foo():
+    def f(x: Union[str, int]) -> None: pass
+elif foo():
+    def f(x: Union[int, str, int, int, str]) -> None: pass
+elif foo():
+    def f(x: Union[int, str, float]) -> None: pass  # E: All conditional function variants must have identical signatures
+elif foo():
+    def f(x: Union[S, T]) -> None: pass
+elif foo():
+    def f(x: Union[str]) -> None: pass  # E: All conditional function variants must have identical signatures
+else:
+    def f(x: Union[Union[int, T], Union[S, T], str]) -> None: pass
+
+# Checks bidirectionality of testing. The first definition of g is consistent with
+# the second, but not vice-versa.
+if foo():
+    def g(x: Union[int, str, bytes]) -> None: pass
+else:
+    def g(x: Union[int, str]) -> None: pass  # E: All conditional function variants must have identical signatures
