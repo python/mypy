@@ -311,12 +311,19 @@ class TypeChecker(StatementVisitor[None]):
     # for functions decorated with `@types.coroutine` or
     # `@asyncio.coroutine`.  Its single parameter corresponds to tr.
     #
+    # PEP 525 adds a new type, the asynchronous generator, which was
+    # first released in Python 3.6. Async generators are `async def`
+    # functions that can also `yield` values. They can be parameterized
+    # with two types, ty and tc, because they cannot return a value.
+    #
     # There are several useful methods, each taking a type t and a
     # flag c indicating whether it's for a generator or coroutine:
     #
     # - is_generator_return_type(t, c) returns whether t is a Generator,
     #   Iterator, Iterable (if not c), or Awaitable (if c), or
     #   AwaitableGenerator (regardless of c).
+    # - is_async_generator_return_type(t) returns whether t is an
+    #   AsyncGenerator.
     # - get_generator_yield_type(t, c) returns ty.
     # - get_generator_receive_type(t, c) returns tc.
     # - get_generator_return_type(t, c) returns tr.
@@ -337,6 +344,14 @@ class TypeChecker(StatementVisitor[None]):
             if is_subtype(gt, typ):
                 return True
         return isinstance(typ, Instance) and typ.type.fullname() == 'typing.AwaitableGenerator'
+
+    def is_async_generator_return_type(self, typ: Type) -> bool:
+        """Is `typ` a valid type for an async generator?
+
+        True if `typ` is a supertype of AsyncGenerator.
+        """
+        agt = self.named_generic_type('typing.AsyncGenerator', [AnyType(), AnyType()])
+        return is_subtype(agt, typ)
 
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it yields (ty)."""
@@ -537,9 +552,9 @@ class TypeChecker(StatementVisitor[None]):
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
-                    if defn.is_coroutine:
+                    if defn.is_async_generator:
                         if not self.is_async_generator_return_type(typ.ret_type):
-                            pass
+                            self.fail(messages.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ)
                     else:
                         if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
                             self.fail(messages.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)

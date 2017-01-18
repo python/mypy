@@ -481,7 +481,7 @@ class FuncItem(FuncBase):
     is_overload = False
     is_generator = False   # Contains a yield statement?
     is_coroutine = False   # Defined using 'async def' syntax?
-    is_coroutine_generator = False  # Is an async def generator?
+    is_async_generator = False  # Is an async def generator?
     is_awaitable_coroutine = False  # Decorated with '@{typing,asyncio}.coroutine'?
     is_static = False      # Uses @staticmethod?
     is_class = False       # Uses @classmethod?
@@ -489,7 +489,7 @@ class FuncItem(FuncBase):
     expanded = None  # type: List[FuncItem]
 
     FLAGS = [
-        'is_overload', 'is_generator', 'is_coroutine', 'is_coroutine_generator',
+        'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
         'is_awaitable_coroutine', 'is_static', 'is_class',
     ]
 

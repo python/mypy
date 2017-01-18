@@ -324,7 +324,7 @@ class SemanticAnalyzer(NodeVisitor):
             self.errors.push_function(defn.name())
             self.analyze_function(defn)
             if defn.is_coroutine and isinstance(defn.type, CallableType):
-                if defn.is_coroutine_generator:
+                if defn.is_async_generator:
                     # Async generator types are handled elsewhere
                     pass
                 else:
@@ -2851,7 +2851,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("'yield' in async function", expr, True, blocker=True)
                 else:
                     self.function_stack[-1].is_generator = True
-                    self.function_stack[-1].is_coroutine_generator = True
+                    self.function_stack[-1].is_async_generator = True
             else:
                 self.function_stack[-1].is_generator = True
         if expr.expr:
