@@ -138,13 +138,20 @@ def process_options(args: List[str],
     strict_flag_names = []  # type: List[str]
     strict_flag_assignments = []  # type: List[Tuple[str, bool]]
 
-    def add_invertible_flag(flag, *, inverse, default, dest=None, help, strict_flag=False):
-        arg = parser.add_argument(flag,
+    def add_invertible_flag(flag: str,
+                            *,
+                            inverse: str,
+                            default: bool,
+                            dest: str = None,
+                            help: str,
+                            strict_flag: bool = False
+                            ) -> None:
+        arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
                                   help=help + " (inverse: {})".format(inverse))
         dest = arg.dest
-        arg = parser.add_argument(inverse,
+        arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
                                   action='store_true' if default else 'store_false',
                                   dest=dest,
                                   help=argparse.SUPPRESS)
