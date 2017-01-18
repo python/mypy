@@ -826,3 +826,42 @@ class A(Generic[T]):
     pass
 reveal_type(A()) # E: Revealed type is '__main__.A[builtins.None]'
 b = reveal_type(A())  # type: A[int] # E: Revealed type is '__main__.A[builtins.int]'
+
+[case testUnionWithGenericTypeItemContext]
+from typing import TypeVar, Union, List
+
+T = TypeVar('T')
+
+def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
+reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
+reveal_type(f([])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(None)) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testUnionWithGenericTypeItemContextAndStrictOptional]
+# flags: --strict-optional
+from typing import TypeVar, Union, List
+
+T = TypeVar('T')
+
+def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
+reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
+reveal_type(f([])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(None)) # E: Revealed type is 'Union[builtins.None, builtins.list[builtins.int]]'
+[builtins fixtures/list.pyi]
+
+[case testUnionWithGenericTypeItemContextInMethod]
+from typing import TypeVar, Union, List, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    def f(self, x: Union[T, S]) -> Union[T, S]: pass
+
+c = C[List[int]]()
+reveal_type(c.f('')) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.str*]'
+reveal_type(c.f([1])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(c.f([])) # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(c.f(None)) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
