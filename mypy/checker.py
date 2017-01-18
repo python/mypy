@@ -1635,7 +1635,8 @@ class TypeChecker(NodeVisitor[Type]):
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
                 # coroutines.
-                if (defn.is_generator and not defn.is_coroutine and isinstance(return_type, AnyType)):
+                if (defn.is_generator and not defn.is_coroutine and
+                        isinstance(return_type, AnyType)):
                     return
 
                 if isinstance(return_type, (Void, NoneTyp, AnyType)):
