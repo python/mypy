@@ -431,6 +431,90 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 
 -- Special Method: get
 
+[case testCanUseGetMethodWithStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+reveal_type(p.get('type'))  # E: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(p.get('x'))     # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(p.get('y', 0))     # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testDefaultParameterStillTypeChecked]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/dict.pyi]
+
+[case testCannotGetMethodWithInvalidStringLiteralKey]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+p.get('z')  # E: 'z' is not a valid item name; expected one of ['type', 'x', 'y']
+[builtins fixtures/dict.pyi]
+
+[case testGetMethodWithVariableKeyFallsBack]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+key = 'type'
+reveal_type(p.get(key))  # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+
+[case testChainedGetMethodWithDictFallback]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+PointSet = TypedDict('PointSet', {'first_point': TaggedPoint})
+p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
+reveal_type(p.get('first_point', {}).get('x', 0))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testGetMethodInvalidDefaultType]
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+PointSet = TypedDict('PointSet', {'first_point': TaggedPoint})
+p = PointSet(first_point=TaggedPoint(type='2d', x=42, y=1337))
+p.get('first_point', 32)  # E: Argument 2 to "get" of "Mapping" has incompatible type "int"; expected "Union[TypedDict(type=str, x=int, y=int), Mapping]"
+[builtins fixtures/dict.pyi]
+
+[case testGetMethodOnList]
+from typing import List
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+PointSet = TypedDict('PointSet', {'points': List[TaggedPoint]})
+p = PointSet(points=[TaggedPoint(type='2d', x=42, y=1337)])
+reveal_type(p.get('points', []))  # E: Revealed type is 'builtins.list[TypedDict(type=builtins.str, x=builtins.int, y=builtins.int, _fallback=__main__.TaggedPoint)]'
+[builtins fixtures/dict.pyi]
+
+[case testGetMethodWithListOfStrUnifies]
+from typing import List
+from mypy_extensions import TypedDict
+Items = TypedDict('Items', {'name': str, 'values': List[str]})
+def foo(i: Items) -> None:
+  reveal_type(i.get('values', []))  # E: Revealed type is 'builtins.list[builtins.str]'
+[builtins fixtures/dict.pyi]
+
+[case testDictGetMethodStillCallable]
+from typing import Callable
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(x=42, y=13)
+def invoke_method(method: Callable[[str, int], int]) -> None:
+    pass
+invoke_method(p.get)
+[builtins fixtures/dict.pyi]
+
+[case testDictGetMethodStillCallableWithObject]
+from typing import Callable
+from mypy_extensions import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
+p = TaggedPoint(type='2d', x=42, y=1337)
+def invoke_method(method: Callable[..., object]) -> None:
+    pass
+invoke_method(p.get)
+[builtins fixtures/dict.pyi]
+
 -- TODO: Implement support for these cases:
 --[case testGetOfTypedDictWithValidStringLiteralKeyReturnsPreciseType]
 --[case testGetOfTypedDictWithInvalidStringLiteralKeyIsError]

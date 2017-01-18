@@ -78,7 +78,9 @@ class Sequence(Iterable[T], Generic[T]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T: pass
 
-class Mapping(Generic[T, U]): pass
+class Mapping(Generic[T, U]):
+    @abstractmethod
+    def get(self, k: T, default: U=None) -> U: pass
 
 class MutableMapping(Generic[T, U]): pass
 
