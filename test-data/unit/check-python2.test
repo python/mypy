@@ -27,7 +27,9 @@ print 1, 1() # E: "int" not callable
 
 [case testPrintStatementWithTarget]
 class A:
-    def write(self, s: str) -> None: pass
+    def write(self, s):
+        # type: (str) -> None
+        pass
 
 print >>A(), ''
 print >>None, ''
@@ -36,14 +38,18 @@ print >>(None + ''), None # E: Unsupported left operand type for + (None)
 
 [case testDivision]
 class A:
-    def __div__(self, x: int) -> str: pass
+    def __div__(self, x):
+        # type: (int) -> str
+        pass
 s = A() / 1
 s = ''
 s = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testStrUnicodeCompatibility]
 import typing
-def f(x: unicode) -> None: pass
+def f(x):
+    # type: (unicode) -> None
+    pass
 f('')
 f(u'')
 f(b'')
@@ -62,7 +68,6 @@ A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int
 import typing
 raise BaseException, "a"
 raise BaseException, "a", None
-raise BaseException, "a", None, None # E: Exception must be derived from BaseException
 [builtins_py2 fixtures/exception.pyi]
 
 [case testTryExceptWithTuple]
@@ -178,7 +183,7 @@ def f(x, y, z): # type: (...) -> None
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Type signature has too few arguments
 
 [case testLambdaTupleArgInPython2]
 f = lambda (x, y): x + y
@@ -203,9 +208,11 @@ f(0) + g(0)
 
 [case testLambdaAsSortKeyForTuplePython2]
 from typing import Any, Tuple, Callable
-def bar(key: Callable[[Tuple[int, int]], int]) -> int:
+def bar(key):
+    # type: (Callable[[Tuple[int, int]], int]) -> int
     pass
-def foo() -> int:
+def foo():
+    # type: () -> int
     return bar(key=lambda (a, b): a)
 [out]
 
@@ -219,3 +226,6 @@ from typing import List
 Alias = List[u'Foo']
 class Foo: pass
 [builtins_py2 fixtures/python2.pyi]
+
+[case testExec]
+exec('print 1 + 1')

@@ -30,7 +30,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    Expression, Statement,
+    Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
@@ -265,7 +265,7 @@ class ASTConverter(ast27.NodeTransformer):
     @with_line
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
         converter = TypeConverter(self.errors, line=n.lineno)
-        args = self.transform_args(n.args, n.lineno)
+        args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
@@ -318,9 +318,12 @@ class ASTConverter(ast27.NodeTransformer):
                                         return_type if return_type is not None else AnyType(),
                                         None)
 
+        body = self.as_block(n.body, n.lineno)
+        if decompose_stmts:
+            body.body = decompose_stmts + body.body
         func_def = FuncDef(n.name,
                        args,
-                       self.as_block(n.body, n.lineno),
+                       body,
                        func_type)
         if func_type is not None:
             func_type.definition = func_def
@@ -346,23 +349,26 @@ class ASTConverter(ast27.NodeTransformer):
         if isinstance(type, UnboundType):
             type.optional = optional
 
-    def transform_args(self, n: ast27.arguments, line: int) -> List[Argument]:
+    def transform_args(self,
+                       n: ast27.arguments,
+                       line: int,
+                       ) -> Tuple[List[Argument], List[Statement]]:
         # TODO: remove the cast once https://github.com/python/typeshed/pull/522
         # is accepted and synced
         type_comments = cast(List[str], n.type_comments)  # type: ignore
         converter = TypeConverter(self.errors, line=line)
+        decompose_stmts = []  # type: List[Statement]
 
-        def convert_arg(arg: ast27.expr) -> Var:
+        def convert_arg(index: int, arg: ast27.expr) -> Var:
             if isinstance(arg, ast27.Name):
                 v = arg.id
             elif isinstance(arg, ast27.Tuple):
-                # TODO: An `arg` object may be a Tuple instead of just an identifier in the
-                # case of Python 2 function definitions/lambdas that use the tuple unpacking
-                # syntax. The `typed_ast.conversions` module ended up just simply passing the
-                # the arg object unmodified (instead of converting it into more args, etc).
-                # This isn't typesafe, since we will no longer be always passing in a string
-                # to `Var`, but we'll do the same here for consistency.
-                v = arg  # type: ignore
+                v = '__tuple_arg_{}'.format(index + 1)
+                rvalue = NameExpr(v)
+                rvalue.set_line(line)
+                assignment = AssignmentStmt([self.visit(arg)], rvalue)
+                assignment.set_line(line)
+                decompose_stmts.append(assignment)
             else:
                 raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
             return Var(v)
@@ -372,7 +378,7 @@ class ASTConverter(ast27.NodeTransformer):
                 return converter.visit_raw_str(type_comments[i])
             return None
 
-        args = [(convert_arg(arg), get_type(i)) for i, arg in enumerate(n.args)]
+        args = [(convert_arg(i, arg), get_type(i)) for i, arg in enumerate(n.args)]
         defaults = self.translate_expr_list(n.defaults)
 
         new_args = []  # type: List[Argument]
@@ -394,7 +400,7 @@ class ASTConverter(ast27.NodeTransformer):
             typ = get_type(len(args) + (0 if n.vararg is None else 1))
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
 
-        return new_args
+        return new_args, decompose_stmts
 
     def stringify_name(self, n: ast27.AST) -> str:
         if isinstance(n, ast27.Name):
@@ -486,18 +492,18 @@ class ASTConverter(ast27.NodeTransformer):
 
     @with_line
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
-        e = None
-        if n.type is not None:
-            e = n.type
-
-            if n.inst is not None and not (isinstance(n.inst, ast27.Name) and n.inst.id == "None"):
-                if isinstance(n.inst, ast27.Tuple):
-                    args = n.inst.elts
+        if n.type is None:
+            e = None
+        else:
+            if n.inst is None:
+                e = self.visit(n.type)
+            else:
+                if n.tback is None:
+                    e = TupleExpr([self.visit(n.type), self.visit(n.inst)])
                 else:
-                    args = [n.inst]
-                e = ast27.Call(e, args, [], None, None, lineno=e.lineno, col_offset=-1)
+                    e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
-        return RaiseStmt(self.visit(e), None)
+        return RaiseStmt(e, None)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
     @with_line
@@ -537,50 +543,18 @@ class ASTConverter(ast27.NodeTransformer):
                        self.as_block(finalbody, lineno))
 
     @with_line
-    def visit_Print(self, n: ast27.Print) -> ExpressionStmt:
-        keywords = []
-        if n.dest is not None:
-            keywords.append(ast27.keyword("file", n.dest))
-
-        if not n.nl:
-            keywords.append(ast27.keyword("end", ast27.Str(" ", 0,
-                                                           lineno=n.lineno, col_offset=-1)))
-
-        # TODO: Rather then desugaring Print into an intermediary ast27.Call object, it might
-        # be more efficient to just directly create a mypy.node.CallExpr object.
-        call = ast27.Call(
-            ast27.Name("print", ast27.Load(), lineno=n.lineno, col_offset=-1),
-            n.values, keywords, None, None,
-            lineno=n.lineno, col_offset=-1)
-        return self.visit_Expr(ast27.Expr(call, lineno=n.lineno, col_offset=-1))
+    def visit_Print(self, n: ast27.Print) -> PrintStmt:
+        return PrintStmt(self.translate_expr_list(n.values), n.nl, self.visit(n.dest))
 
     @with_line
-    def visit_Exec(self, n: ast27.Exec) -> ExpressionStmt:
-        new_globals = n.globals
-        new_locals = n.locals
-
-        if new_globals is None:
-            new_globals = ast27.Name("None", ast27.Load(), lineno=-1, col_offset=-1)
-        if new_locals is None:
-            new_locals = ast27.Name("None", ast27.Load(), lineno=-1, col_offset=-1)
-
-        # TODO: Comment in visit_Print also applies here
-        return self.visit_Expr(ast27.Expr(
-            ast27.Call(
-                ast27.Name("exec", ast27.Load(), lineno=n.lineno, col_offset=-1),
-                [n.body, new_globals, new_locals],
-                [], None, None,
-                lineno=n.lineno, col_offset=-1),
-            lineno=n.lineno, col_offset=-1))
+    def visit_Exec(self, n: ast27.Exec) -> ExecStmt:
+        return ExecStmt(self.visit(n.body),
+                        self.visit(n.globals),
+                        self.visit(n.locals))
 
     @with_line
-    def visit_Repr(self, n: ast27.Repr) -> CallExpr:
-        # TODO: Comment in visit_Print also applies here
-        return self.visit_Call(ast27.Call(
-            ast27.Name("repr", ast27.Load(), lineno=n.lineno, col_offset=-1),
-            n.value,
-            [], None, None,
-            lineno=n.lineno, col_offset=-1))
+    def visit_Repr(self, n: ast27.Repr) -> BackquoteExpr:
+        return BackquoteExpr(self.visit(n.value))
 
     # Assert(expr test, expr? msg)
     @with_line
@@ -697,12 +671,16 @@ class ASTConverter(ast27.NodeTransformer):
     # Lambda(arguments args, expr body)
     @with_line
     def visit_Lambda(self, n: ast27.Lambda) -> FuncExpr:
-        body = ast27.Return(n.body)
-        body.lineno = n.lineno
-        body.col_offset = n.col_offset
+        args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
-        return FuncExpr(self.transform_args(n.args, n.lineno),
-                        self.as_block([body], n.lineno))
+        n_body = ast27.Return(n.body)
+        n_body.lineno = n.lineno
+        n_body.col_offset = n.col_offset
+        body = self.as_block([n_body], n.lineno)
+        if decompose_stmts:
+            body.body = decompose_stmts + body.body
+
+        return FuncExpr(args, body)
 
     # IfExp(expr test, expr body, expr orelse)
     @with_line
