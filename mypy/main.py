@@ -294,7 +294,7 @@ def process_options(args: List[str],
                             help="type-check given files or directories")
 
     # Parse arguments once into a dummy namespace so we can get the
-    # filename for the config file.
+    # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
     config_file = defaults.CONFIG_FILE
@@ -307,6 +307,12 @@ def process_options(args: List[str],
     options = Options()
     if config_file and os.path.exists(config_file):
         parse_config_file(options, config_file)
+
+    # Set strict flags before parsing (if strict mode enabled), so other command
+    # line options can override.
+    if getattr(dummy, 'special-opts:strict'):
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -347,11 +353,6 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module, package, files, or command.")
-
-    # Set strict flags if strict mode enabled
-    if special_opts.strict:
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
