@@ -1513,7 +1513,7 @@ class ExpressionChecker:
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
-        revealed_type = self.accept(expr.expr)
+        revealed_type = self.accept(expr.expr, context=self.chk.type_context[-1])
         if not self.chk.current_node_deferred:
             self.msg.reveal_type(revealed_type, expr)
         return revealed_type
