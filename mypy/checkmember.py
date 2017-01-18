@@ -222,6 +222,9 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         if not is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
+                # __getattribute__ is defined on builtins.object and returns Any, so without
+                # the guard this search will always find object.__getattribute__ and conclude
+                # that the attribute exists
                 if method and method.info.fullname() != 'builtins.object':
                     function = function_type(method, builtin_type('builtins.function'))
                     bound_method = bind_self(function, original_type)
