@@ -135,6 +135,23 @@ def process_options(args: List[str],
                                      fromfile_prefix_chars='@',
                                      formatter_class=AugmentedHelpFormatter)
 
+    strict_flag_names = []  # type: List[str]
+    strict_flag_assignments = []  # type: List[Tuple[str, bool]]
+
+    def add_invertable_flag(flag, *, inverse, default, dest=None, help, strict_flag=False):
+        arg = parser.add_argument(flag,
+                                  action='store_false' if default else 'store_true',
+                                  dest=dest,
+                                  help=help + " (inverse: {})".format(inverse))
+        dest = arg.dest
+        arg = parser.add_argument(inverse,
+                                  action='store_true' if default else 'store_false',
+                                  dest=dest,
+                                  help=argparse.SUPPRESS)
+        if strict_flag:
+            strict_flag_names.append(flag)
+            strict_flag_assignments.append((dest, not default))
+
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
     # their `dest` prefixed with `special-opts:`, which will cause them to be
@@ -154,37 +171,44 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    parser.add_argument('--disallow-untyped-calls', action='store_true',
+    add_invertable_flag('--disallow-untyped-calls', inverse='--allow-untyped-calls',
+                        default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
-    parser.add_argument('--disallow-untyped-defs', action='store_true',
+    add_invertable_flag('--disallow-untyped-defs', inverse='--allow-untyped-defs',
+                        default=False, strict_flag=True,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
-    parser.add_argument('--check-untyped-defs', action='store_true',
+    add_invertable_flag('--check-untyped-defs', inverse='--ignore-untyped-defs',
+                        default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
-    parser.add_argument('--disallow-subclassing-any', action='store_true',
+    add_invertable_flag('--disallow-subclassing-any', inverse='--allow-subclassing-any',
+                        default=False, strict_flag=True,
                         help="disallow subclassing values of type 'Any' when defining classes")
-    parser.add_argument('--warn-incomplete-stub', action='store_true',
+    add_invertable_flag('--warn-incomplete-stub', inverse='--no-warn-incomplete-stub',
+                        default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
-    parser.add_argument('--warn-redundant-casts', action='store_true',
+    add_invertable_flag('--warn-redundant-casts', inverse='--no-warn-redundant-casts',
+                        default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type")
-    parser.add_argument('--warn-no-return', action='store_true',
+    add_invertable_flag('--warn-no-return', inverse='--no-warn-no-return', default=False,
                         help="warn about functions that end without returning")
-    parser.add_argument('--warn-unused-ignores', action='store_true',
+    add_invertable_flag('--warn-unused-ignores', inverse='--no-warn-unused-ignores',
+                        default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
-    parser.add_argument('--show-error-context', action='store_false',
+    add_invertable_flag('--show-error-context', inverse='--hide-error-context', default=True,
                         dest='hide_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    parser.add_argument('--fast-parser', action='store_true',
-                        help="enable fast parser (recommended except on Windows)")
+    add_invertable_flag('--fast-parser', inverse='--old-parser', default=False,
+                        help="enable fast parser (recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
-    parser.add_argument('--strict-optional', action='store_true',
-                        dest='strict_optional',
+    add_invertable_flag('--strict-optional', inverse='--no-strict-optional',
+                        default=False, strict_flag=True,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -207,8 +231,7 @@ def process_options(args: List[str],
     parser.add_argument('--config-file',
                         help="Configuration file, must have a [mypy] section "
                         "(defaults to {})".format(defaults.CONFIG_FILE))
-    parser.add_argument('--show-column-numbers', action='store_true',
-                        dest='show_column_numbers',
+    add_invertable_flag('--show-column-numbers', inverse='--hide-column-numbers', default=False,
                         help="Show column numbers in error messages")
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
@@ -216,6 +239,10 @@ def process_options(args: List[str],
     parser.add_argument('--strict-boolean', action='store_true',
                         dest='strict_boolean',
                         help='enable strict boolean checks in conditions')
+    strict_help = "Strict mode. Enables the following flags: {}".format(
+        ", ".join(strict_flag_names))
+    parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
+                        help=strict_help)
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
@@ -229,9 +256,6 @@ def process_options(args: List[str],
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--hide-error-context', action='store_true',
-                        dest='hide_error_context',
-                        help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
                         dest='special-opts:dirty_stubs',
@@ -323,6 +347,11 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module, package, files, or command.")
+
+    # Set strict flags if strict mode enabled
+    if special_opts.strict:
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:

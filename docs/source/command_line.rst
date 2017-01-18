@@ -16,7 +16,7 @@ flag (or its long form ``--help``)::
               [--warn-incomplete-stub] [--warn-redundant-casts]
               [--warn-no-return] [--warn-unused-ignores] [--show-error-context]
               [--fast-parser] [-i] [--cache-dir DIR] [--strict-optional]
-              [--strict-optional-whitelist [GLOB [GLOB ...]]]
+              [--strict-optional-whitelist [GLOB [GLOB ...]]] [--strict]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
@@ -370,6 +370,9 @@ Here are some more useful flags:
   an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
   type other than ``bool``. Instead use explicit checks like ``if x > 0`` or
   ``while x is not None``.
+
+- ``--strict`` mode enables all optional error checking flags.  You can see the
+  list of flags enabled by strict mode in the full ``mypy -h`` output.
 
 For the remaining flags you can read the full ``mypy -h`` output.
 
