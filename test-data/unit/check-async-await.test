@@ -410,6 +410,9 @@ def f() -> Generator[int, str, int]:
 [builtins fixtures/async_await.pyi]
 [out]
 
+-- Async generators (PEP 525), some test cases adapted from the PEP text
+-- ---------------------------------------------------------------------
+
 [case testAsyncGenerator]
 # flags: --fast-parser --python-version 3.6
 from mypy_extensions import AsyncGenerator
@@ -417,18 +420,115 @@ from mypy_extensions import AsyncGenerator
 async def f() -> int:
     return 42
 
-async def g() -> AsyncGenerator[int, str]:
+async def g() -> AsyncGenerator[int, None]:
     value = await f()
-    reveal_type(value)  # E: Revealed type is 'builtins.int'
-    x = yield value
-    reveal_type(x)  # E: Revealed type is 'builtins.str'
+    reveal_type(value)  # E: Revealed type is 'builtins.int*'
+    yield value
+    # return without a value is fine
+    return
+reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, void]'
+reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, void]'
 
 async def h() -> None:
     async for item in g():
-        reveal_type(item)  # E: Revealed type is 'builtins.int'
+        reveal_type(item)  # E: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
 
+[case testAsyncGeneratorManualIter]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def genfunc() -> AsyncGenerator[int, None]:
+    yield 1
+    yield 2
+
+async def user() -> None:
+    gen = genfunc()
+
+    reveal_type(gen.__aiter__())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, void]'
+
+    reveal_type(await gen.__anext__())  # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorAsend]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def f() -> None:
+    pass
+
+async def gen() -> AsyncGenerator[int, str]:
+    await f()
+    v = yield 42
+    reveal_type(v)  # E: Revealed type is 'builtins.str'
+    await f()
+
+async def h() -> None:
+    g = gen()
+    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[]"; expected "str"
+    reveal_type(await g.asend('hello'))  # E: Revealed type is 'builtins.int*'
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorAthrow]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def gen() -> AsyncGenerator[str, int]:
+    try:
+        yield 'hello'
+    except BaseException:
+        yield 'world'
+
+async def h() -> None:
+    g = gen()
+    v = await g.asend(1)
+    reveal_type(v)  # E: Revealed type is 'builtins.str*'
+    await g.athrow(BaseException)
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorNoSyncIteration]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def gen() -> AsyncGenerator[int, None]:
+    for i in (1, 2, 3):
+        yield i
+
+def h() -> None:
+    for i in gen():
+        pass
+
+[builtins fixtures/dict.pyi]
+
+[out]
+main:9: error: Iterable expected
+main:9: error: AsyncGenerator[int, None] has no attribute "__iter__"; maybe "__aiter__"?
+
+[case testAsyncGeneratorNoYieldFrom]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def f() -> AsyncGenerator[int, None]:
+    pass
+
+async def gen() -> AsyncGenerator[int, None]:
+    yield from f()  # E: 'yield from' in async function
+
+[builtins fixtures/dict.pyi]
+
+[case testAsyncGeneratorNoReturnWithValue]
+# flags: --fast-parser --python-version 3.6
+from mypy_extensions import AsyncGenerator
+
+async def gen() -> AsyncGenerator[int, None]:
+    yield 1
+    return 42
+
+[builtins fixtures/dict.pyi]
 
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------

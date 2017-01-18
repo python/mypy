@@ -38,3 +38,5 @@ class tuple: pass
 class function: pass
 class float: pass
 class bool: pass
+
+class BaseException: pass

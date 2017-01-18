@@ -3,6 +3,7 @@
 import itertools
 import fnmatch
 from contextlib import contextmanager
+import sys
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
@@ -357,7 +358,8 @@ class TypeChecker(StatementVisitor[None]):
         """Given the declared return type of a generator (t), return the type it yields (ty)."""
         if isinstance(return_type, AnyType):
             return AnyType()
-        elif not self.is_generator_return_type(return_type, is_coroutine):
+        elif (not self.is_generator_return_type(return_type, is_coroutine)
+                and not self.is_async_generator_return_type(return_type)):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType()
@@ -388,7 +390,8 @@ class TypeChecker(StatementVisitor[None]):
         """Given a declared generator return type (t), return the type its yield receives (tc)."""
         if isinstance(return_type, AnyType):
             return AnyType()
-        elif not self.is_generator_return_type(return_type, is_coroutine):
+        elif (not self.is_generator_return_type(return_type, is_coroutine)
+                and not self.is_async_generator_return_type(return_type)):
             # If the function doesn't have a proper Generator (or
             # Awaitable) return type, anything is permissible.
             return AnyType()
@@ -401,6 +404,8 @@ class TypeChecker(StatementVisitor[None]):
         elif (return_type.type.fullname() in ('typing.Generator', 'typing.AwaitableGenerator')
               and len(return_type.args) >= 3):
             # Generator: tc is args[1].
+            return return_type.args[1]
+        elif return_type.type.fullname() == 'typing.AsyncGenerator' and len(return_type.args) >= 2:
             return return_type.args[1]
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it

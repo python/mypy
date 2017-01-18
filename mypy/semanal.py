@@ -1294,7 +1294,6 @@ class SemanticAnalyzer(NodeVisitor):
         normalized = False
         if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
-            old_node = node
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
             normalized = True
         if node.fullname in collections_type_aliases:
