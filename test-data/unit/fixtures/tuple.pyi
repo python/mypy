@@ -19,6 +19,7 @@ class function: pass
 class int: pass
 class bool: pass
 class str: pass # For convenience
+class unicode: pass
 
 T = TypeVar('T')
 
