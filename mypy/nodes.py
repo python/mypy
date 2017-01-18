@@ -9,7 +9,7 @@ from typing import (
 
 from mypy.lex import Token
 import mypy.strconv
-from mypy.visitor import NodeVisitor
+from mypy.visitor import NodeVisitor, ExpressionVisitor
 from mypy.util import dump_tagged, short_type
 
 
@@ -143,6 +143,8 @@ class Statement(Node):
 
 class Expression(Node):
     """An expression node."""
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        raise RuntimeError('Not implemented')
 
 
 # TODO:
@@ -1023,7 +1025,7 @@ class IntExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
 
 
@@ -1048,7 +1050,7 @@ class StrExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
 
 
@@ -1062,7 +1064,7 @@ class BytesExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
 
 
@@ -1076,7 +1078,7 @@ class UnicodeExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
 
 
@@ -1090,7 +1092,7 @@ class FloatExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
 
 
@@ -1104,14 +1106,14 @@ class ComplexExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
 
 
 class EllipsisExpr(Expression):
     """Ellipsis (...)"""
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_ellipsis(self)
 
 
@@ -1128,7 +1130,7 @@ class StarExpr(Expression):
         # Whether this starred expression is used in a tuple/list and as lvalue
         self.valid = False
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_star_expr(self)
 
 
@@ -1160,7 +1162,7 @@ class NameExpr(RefExpr):
         self.name = name
         self.literal_hash = ('Var', name,)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -1201,7 +1203,7 @@ class MemberExpr(RefExpr):
         self.literal = self.expr.literal
         self.literal_hash = ('Member', expr.literal_hash, name)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
 
 
@@ -1248,7 +1250,7 @@ class CallExpr(Expression):
         self.arg_names = arg_names
         self.analyzed = analyzed
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
 
 
@@ -1258,7 +1260,7 @@ class YieldFromExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_yield_from_expr(self)
 
 
@@ -1268,7 +1270,7 @@ class YieldExpr(Expression):
     def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_yield_expr(self)
 
 
@@ -1295,7 +1297,7 @@ class IndexExpr(Expression):
             self.literal_hash = ('Index', base.literal_hash,
                                  index.literal_hash)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
 
 
@@ -1313,7 +1315,7 @@ class UnaryExpr(Expression):
         self.literal = self.expr.literal
         self.literal_hash = ('Unary', op, expr.literal_hash)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
 
 
@@ -1396,7 +1398,7 @@ class OpExpr(Expression):
         self.literal = min(self.left.literal, self.right.literal)
         self.literal_hash = ('Binary', op, left.literal_hash, right.literal_hash)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
 
@@ -1416,7 +1418,7 @@ class ComparisonExpr(Expression):
         self.literal_hash = ((cast(Any, 'Comparison'),) + tuple(operators) +
                              tuple(o.literal_hash for o in operands))
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
 
 
@@ -1437,7 +1439,7 @@ class SliceExpr(Expression):
         self.end_index = end_index
         self.stride = stride
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_slice_expr(self)
 
 
@@ -1451,7 +1453,7 @@ class CastExpr(Expression):
         self.expr = expr
         self.type = typ
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
 
 
@@ -1463,7 +1465,7 @@ class RevealTypeExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_reveal_type_expr(self)
 
 
@@ -1476,7 +1478,7 @@ class SuperExpr(Expression):
     def __init__(self, name: str) -> None:
         self.name = name
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_super_expr(self)
 
 
@@ -1491,7 +1493,7 @@ class FuncExpr(FuncItem, Expression):
         ret = cast(ReturnStmt, self.body.body[-1])
         return ret.expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_func_expr(self)
 
 
@@ -1506,7 +1508,7 @@ class ListExpr(Expression):
             self.literal = LITERAL_YES
             self.literal_hash = (cast(Any, 'List'),) + tuple(x.literal_hash for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
 
 
@@ -1525,7 +1527,7 @@ class DictExpr(Expression):
             self.literal_hash = (cast(Any, 'Dict'),) + tuple(
                 (x[0].literal_hash, x[1].literal_hash) for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
 
 
@@ -1540,7 +1542,7 @@ class TupleExpr(Expression):
             self.literal = LITERAL_YES
             self.literal_hash = (cast(Any, 'Tuple'),) + tuple(x.literal_hash for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
 
 
@@ -1555,7 +1557,7 @@ class SetExpr(Expression):
             self.literal = LITERAL_YES
             self.literal_hash = (cast(Any, 'Set'),) + tuple(x.literal_hash for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
 
 
@@ -1574,7 +1576,7 @@ class GeneratorExpr(Expression):
         self.condlists = condlists
         self.indices = indices
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
 
 
@@ -1586,7 +1588,7 @@ class ListComprehension(Expression):
     def __init__(self, generator: GeneratorExpr) -> None:
         self.generator = generator
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_comprehension(self)
 
 
@@ -1598,7 +1600,7 @@ class SetComprehension(Expression):
     def __init__(self, generator: GeneratorExpr) -> None:
         self.generator = generator
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_comprehension(self)
 
 
@@ -1619,7 +1621,7 @@ class DictionaryComprehension(Expression):
         self.condlists = condlists
         self.indices = indices
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)
 
 
@@ -1635,7 +1637,7 @@ class ConditionalExpr(Expression):
         self.if_expr = if_expr
         self.else_expr = else_expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
 
 
@@ -1647,7 +1649,7 @@ class BackquoteExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_backquote_expr(self)
 
 
@@ -1661,7 +1663,7 @@ class TypeApplication(Expression):
         self.expr = expr
         self.types = types
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_application(self)
 
 
@@ -1712,7 +1714,7 @@ class TypeVarExpr(SymbolNode, Expression):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -1751,7 +1753,7 @@ class TypeAliasExpr(Expression):
         self.fallback = fallback
         self.in_runtime = in_runtime
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
 
 
@@ -1765,7 +1767,7 @@ class NamedTupleExpr(Expression):
     def __init__(self, info: 'TypeInfo') -> None:
         self.info = info
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)
 
 
@@ -1778,7 +1780,7 @@ class TypedDictExpr(Expression):
     def __init__(self, info: 'TypeInfo') -> None:
         self.info = info
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_typeddict_expr(self)
 
 
@@ -1790,7 +1792,7 @@ class PromoteExpr(Expression):
     def __init__(self, type: 'mypy.types.Type') -> None:
         self.type = type
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit__promote_expr(self)
 
 
@@ -1805,7 +1807,7 @@ class NewTypeExpr(Expression):
         self.name = name
         self.old_type = old_type
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
 
 
@@ -1817,7 +1819,7 @@ class AwaitExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_await_expr(self)
 
 
@@ -1840,7 +1842,7 @@ class TempNode(Expression):
     def __repr__(self) -> str:
         return 'TempNode(%s)' % str(self.type)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
 
 

@@ -24,7 +24,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr,
+    AwaitExpr, PromoteExpr,
     ARG_POS,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
@@ -439,20 +439,6 @@ class TypeChecker(NodeVisitor[Type]):
         else:
             # Supertype of Generator (Iterator, Iterable, object): tr is any.
             return AnyType()
-
-    def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
-        """Check the argument to `await` and extract the type of value.
-
-        Also used by `async for` and `async with`.
-        """
-        if not self.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
-                                  msg, 'actual type', 'expected type'):
-            return AnyType()
-        else:
-            echk = self.expr_checker
-            method = echk.analyze_external_member_access('__await__', t, ctx)
-            generator = echk.check_call(method, [], [], ctx)[0]
-            return self.get_generator_return_type(generator, False)
 
     def visit_func_def(self, defn: FuncDef) -> Type:
         """Type check a function definition."""
@@ -1876,7 +1862,7 @@ class TypeChecker(NodeVisitor[Type]):
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
         awaitable = echk.check_call(method, [], [], expr)[0]
-        return self.check_awaitable_expr(awaitable, expr,
+        return echk.check_awaitable_expr(awaitable, expr,
                                          messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
 
     def analyze_iterable_item_type(self, expr: Expression) -> Type:
@@ -2000,14 +1986,14 @@ class TypeChecker(NodeVisitor[Type]):
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
         obj = echk.check_call(enter, [], [], expr)[0]
-        obj = self.check_awaitable_expr(
+        obj = echk.check_awaitable_expr(
             obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
             self.check_assignment(target, self.temp_node(obj, expr))
         exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
         res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
-        self.check_awaitable_expr(
+        echk.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
     def check_with_item(self, expr: Expression, target: Expression) -> None:
@@ -2031,6 +2017,14 @@ class TypeChecker(NodeVisitor[Type]):
                 self.expr_checker.analyze_external_member_access('write', target_type, s.target)
         return None
 
+    def visit_break_stmt(self, s: BreakStmt) -> Type:
+        self.binder.handle_break()
+        return None
+
+    def visit_continue_stmt(self, s: ContinueStmt) -> Type:
+        self.binder.handle_continue()
+        return None
+
     #
     # Expressions
     #
@@ -2042,98 +2036,10 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_call_expr(e)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
-        # NOTE: Whether `yield from` accepts an `async def` decorated
-        # with `@types.coroutine` (or `@asyncio.coroutine`) depends on
-        # whether the generator containing the `yield from` is itself
-        # thus decorated.  But it accepts a generator regardless of
-        # how it's decorated.
-        return_type = self.return_types[-1]
-        subexpr_type = self.accept(e.expr, return_type)
-        iter_type = None  # type: Type
-
-        # Check that the expr is an instance of Iterable and get the type of the iterator produced
-        # by __iter__.
-        if isinstance(subexpr_type, AnyType):
-            iter_type = AnyType()
-        elif (isinstance(subexpr_type, Instance) and
-                is_subtype(subexpr_type, self.named_type('typing.Iterable'))):
-            if self.is_async_def(subexpr_type) and not self.has_coroutine_decorator(return_type):
-                self.msg.yield_from_invalid_operand_type(subexpr_type, e)
-            iter_method_type = self.expr_checker.analyze_external_member_access(
-                '__iter__',
-                subexpr_type,
-                AnyType())
-
-            generic_generator_type = self.named_generic_type('typing.Generator',
-                                                             [AnyType(), AnyType(), AnyType()])
-            iter_type, _ = self.expr_checker.check_call(iter_method_type, [], [],
-                                                        context=generic_generator_type)
-        else:
-            if not (self.is_async_def(subexpr_type) and self.has_coroutine_decorator(return_type)):
-                self.msg.yield_from_invalid_operand_type(subexpr_type, e)
-                iter_type = AnyType()
-            else:
-                iter_type = self.check_awaitable_expr(subexpr_type, e,
-                                                      messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM)
-
-        # Check that the iterator's item type matches the type yielded by the Generator function
-        # containing this `yield from` expression.
-        expected_item_type = self.get_generator_yield_type(return_type, False)
-        actual_item_type = self.get_generator_yield_type(iter_type, False)
-
-        self.check_subtype(actual_item_type, expected_item_type, e,
-                           messages.INCOMPATIBLE_TYPES_IN_YIELD_FROM,
-                           'actual type', 'expected type')
-
-        # Determine the type of the entire yield from expression.
-        if (isinstance(iter_type, Instance) and
-                iter_type.type.fullname() == 'typing.Generator'):
-            return self.get_generator_return_type(iter_type, False)
-        else:
-            # Non-Generators don't return anything from `yield from` expressions.
-            # However special-case Any (which might be produced by an error).
-            if isinstance(actual_item_type, AnyType):
-                return AnyType()
-            else:
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=True)
-                else:
-                    return Void()
-
-    def has_coroutine_decorator(self, t: Type) -> bool:
-        """Whether t came from a function decorated with `@coroutine`."""
-        return isinstance(t, Instance) and t.type.fullname() == 'typing.AwaitableGenerator'
-
-    def is_async_def(self, t: Type) -> bool:
-        """Whether t came from a function defined using `async def`."""
-        # In check_func_def(), when we see a function decorated with
-        # `@typing.coroutine` or `@async.coroutine`, we change the
-        # return type to typing.AwaitableGenerator[...], so that its
-        # type is compatible with either Generator or Awaitable.
-        # But for the check here we need to know whether the original
-        # function (before decoration) was an `async def`.  The
-        # AwaitableGenerator type conveniently preserves the original
-        # type as its 4th parameter (3rd when using 0-origin indexing
-        # :-), so that we can recover that information here.
-        # (We really need to see whether the original, undecorated
-        # function was an `async def`, which is orthogonal to its
-        # decorations.)
-        if (isinstance(t, Instance)
-                and t.type.fullname() == 'typing.AwaitableGenerator'
-                and len(t.args) >= 4):
-            t = t.args[3]
-        return isinstance(t, Instance) and t.type.fullname() == 'typing.Awaitable'
+        return self.expr_checker.visit_yield_from_expr(e)
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
-
-    def visit_break_stmt(self, s: BreakStmt) -> Type:
-        self.binder.handle_break()
-        return None
-
-    def visit_continue_stmt(self, s: ContinueStmt) -> Type:
-        self.binder.handle_continue()
-        return None
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         return self.expr_checker.visit_int_expr(e)
@@ -2184,19 +2090,16 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_type_alias_expr(e)
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
-        # TODO: Perhaps return a special type used for type variables only?
-        return AnyType()
+        return self.expr_checker.visit_type_var_expr(e)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
-        return AnyType()
+        return self.expr_checker.visit_newtype_expr(e)
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return self.expr_checker.visit_namedtuple_expr(e)
 
     def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
-        # TODO: Perhaps return a type object type?
-        return AnyType()
+        return self.expr_checker.visit_typeddict_expr(e)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         return self.expr_checker.visit_list_expr(e)
@@ -2229,7 +2132,7 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_dictionary_comprehension(e)
 
     def visit_temp_node(self, e: TempNode) -> Type:
-        return e.type
+        return self.expr_checker.visit_temp_node(e)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
         return self.expr_checker.visit_conditional_expr(e)
@@ -2238,27 +2141,16 @@ class TypeChecker(NodeVisitor[Type]):
         return self.expr_checker.visit_backquote_expr(e)
 
     def visit_yield_expr(self, e: YieldExpr) -> Type:
-        return_type = self.return_types[-1]
-        expected_item_type = self.get_generator_yield_type(return_type, False)
-        if e.expr is None:
-            if (not isinstance(expected_item_type, (Void, NoneTyp, AnyType))
-                    and self.in_checked_function()):
-                self.fail(messages.YIELD_VALUE_EXPECTED, e)
-        else:
-            actual_item_type = self.accept(e.expr, expected_item_type)
-            self.check_subtype(actual_item_type, expected_item_type, e,
-                            messages.INCOMPATIBLE_TYPES_IN_YIELD,
-                            'actual type', 'expected type')
-        return self.get_generator_receive_type(return_type, False)
+        return self.expr_checker.visit_yield_expr(e)
 
     def visit_await_expr(self, e: AwaitExpr) -> Type:
-        expected_type = self.type_context[-1]
-        if expected_type is not None:
-            expected_type = self.named_generic_type('typing.Awaitable', [expected_type])
-        actual_type = self.accept(e.expr, expected_type)
-        if isinstance(actual_type, AnyType):
-            return AnyType()
-        return self.check_awaitable_expr(actual_type, e, messages.INCOMPATIBLE_TYPES_IN_AWAIT)
+        return self.expr_checker.visit_await_expr(e)
+
+    def visit__promote_expr(self, e: PromoteExpr) -> Type:
+        return self.expr_checker.visit__promote_expr(e)
+
+    def visit_star_expr(self, e: StarExpr) -> Type:
+        return self.expr_checker.visit_star_expr(e)
 
     #
     # Helpers
