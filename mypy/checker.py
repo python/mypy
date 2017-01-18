@@ -654,7 +654,7 @@ class TypeChecker(NodeVisitor[Type]):
 
             if (self.options.warn_no_return and not unreachable
                     and not isinstance(self.return_types[-1], (Void, NoneTyp, AnyType))
-                    and not defn.is_generator):
+                    and (defn.is_coroutine or not defn.is_generator)):
                 # Control flow fell off the end of a function that was
                 # declared to return a non-None type.
                 # Allow functions that are entirely pass/Ellipsis.
