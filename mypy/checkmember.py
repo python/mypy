@@ -218,16 +218,20 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                            original_type, not_ready_callback)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
-    elif not v and name not in ['__getattr__', '__setattr__']:
+    elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
         if not is_lvalue:
-            method = info.get_method('__getattr__')
-            if method:
-                function = function_type(method, builtin_type('builtins.function'))
-                bound_method = bind_self(function, original_type)
-                typ = map_instance_to_supertype(itype, method.info)
-                getattr_type = expand_type_by_instance(bound_method, typ)
-                if isinstance(getattr_type, CallableType):
-                    return getattr_type.ret_type
+            for method_name in ('__getattribute__', '__getattr__'):
+                method = info.get_method(method_name)
+                # __getattribute__ is defined on builtins.object and returns Any, so without
+                # the guard this search will always find object.__getattribute__ and conclude
+                # that the attribute exists
+                if method and method.info.fullname() != 'builtins.object':
+                    function = function_type(method, builtin_type('builtins.function'))
+                    bound_method = bind_self(function, original_type)
+                    typ = map_instance_to_supertype(itype, method.info)
+                    getattr_type = expand_type_by_instance(bound_method, typ)
+                    if isinstance(getattr_type, CallableType):
+                        return getattr_type.ret_type
 
     if itype.type.fallback_to_any:
         return AnyType()
