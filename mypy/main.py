@@ -125,6 +125,25 @@ class AugmentedHelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog: Optional[str]) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
+# Define pairs of flag prefixes with inverse meaning.
+flag_prefix_pairs = [
+    ('allow', 'disallow'),
+    ('show', 'hide'),
+    ('check', 'ignore')
+]
+flag_prefix_map = {}  # type: Dict[str, str]
+for a, b in flag_prefix_pairs:
+    flag_prefix_map[a] = b
+    flag_prefix_map[b] = a
+
+def invert_flag_name(flag: str) -> str:
+    split = flag[2:].split('-', 1)
+    if len(split) == 2:
+        prefix, rest = split
+        if prefix in flag_prefix_map:
+            return '--{}-{}'.format(flag_prefix_map[prefix], rest)
+
+    return '--no-{}'.format(flag[2:])
 
 def process_options(args: List[str],
                     require_targets: bool = True
@@ -140,12 +159,14 @@ def process_options(args: List[str],
 
     def add_invertible_flag(flag: str,
                             *,
-                            inverse: str,
+                            inverse: str = None,
                             default: bool,
                             dest: str = None,
                             help: str,
                             strict_flag: bool = False
                             ) -> None:
+        if inverse is None:
+            inverse = invert_flag_name(flag)
         arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
@@ -178,33 +199,26 @@ def process_options(args: List[str],
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    add_invertible_flag('--disallow-untyped-calls', inverse='--allow-untyped-calls',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
-    add_invertible_flag('--disallow-untyped-defs', inverse='--allow-untyped-defs',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
                         help="disallow defining functions without type annotations"
                         " or with incomplete type annotations")
-    add_invertible_flag('--check-untyped-defs', inverse='--ignore-untyped-defs',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="type check the interior of functions without type annotations")
-    add_invertible_flag('--disallow-subclassing-any', inverse='--allow-subclassing-any',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
                         help="disallow subclassing values of type 'Any' when defining classes")
-    add_invertible_flag('--warn-incomplete-stub', inverse='--no-warn-incomplete-stub',
-                        default=False,
+    add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="warn if missing type annotation in typeshed, only relevant with"
                         " --check-untyped-defs enabled")
-    add_invertible_flag('--warn-redundant-casts', inverse='--no-warn-redundant-casts',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type")
-    add_invertible_flag('--warn-no-return', inverse='--no-warn-no-return', default=False,
+    add_invertible_flag('--warn-no-return', default=False,
                         help="warn about functions that end without returning")
-    add_invertible_flag('--warn-unused-ignores', inverse='--no-warn-unused-ignores',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
-    add_invertible_flag('--show-error-context', inverse='--hide-error-context', default=True,
+    add_invertible_flag('--show-error-context', default=True,
                         dest='hide_error_context',
                         help='Precede errors with "note:" messages explaining context')
     add_invertible_flag('--fast-parser', inverse='--old-parser', default=False,
@@ -214,8 +228,7 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
-    add_invertible_flag('--strict-optional', inverse='--no-strict-optional',
-                        default=False, strict_flag=True,
+    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
                         help="enable experimental strict Optional checks")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
@@ -238,7 +251,7 @@ def process_options(args: List[str],
     parser.add_argument('--config-file',
                         help="Configuration file, must have a [mypy] section "
                         "(defaults to {})".format(defaults.CONFIG_FILE))
-    add_invertible_flag('--show-column-numbers', inverse='--hide-column-numbers', default=False,
+    add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages")
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
