@@ -818,3 +818,11 @@ class A(Generic[T]):
 [out]
 main:6: error: Incompatible types in assignment (expression has type Callable[[T], T], variable has type Callable[[T], S])
 main:6: error: Incompatible return value type (got "T", expected "S")
+
+[case testRevealTypeContext]
+from typing import TypeVar, Callable, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    pass
+reveal_type(A()) # E: Revealed type is '__main__.A[builtins.None]'
+b = reveal_type(A())  # type: A[int] # E: Revealed type is '__main__.A[builtins.int]'
