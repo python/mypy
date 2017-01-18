@@ -14,6 +14,23 @@ async def f() -> int:
 reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 [builtins fixtures/async_await.pyi]
 
+[case testAsyncDefMissingReturn]
+# flags: --fast-parser --warn-no-return
+async def f() -> int:
+    make_this_not_trivial = 1
+[builtins fixtures/async_await.pyi]
+[out]
+main:2: note: Missing return statement
+
+[case testAsyncDefReturnWithoutValue]
+# flags: --fast-parser
+async def f() -> int:
+    make_this_not_trivial = 1
+    return
+[builtins fixtures/async_await.pyi]
+[out]
+main:4: error: Return value expected
+
 [case testAwaitCoroutine]
 # flags: --fast-parser
 async def f() -> int:
