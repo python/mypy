@@ -3,8 +3,7 @@ in 1
 def f():
   1 1
 [out]
-main:1: error: Parse error before in
-main:3: error: Parse error before numeric literal
+main:1: error: invalid syntax
 
 [case testUndefinedVariableInGlobalStatement]
 import typing
