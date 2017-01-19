@@ -1792,8 +1792,8 @@ class SemanticAnalyzer(NodeVisitor):
         info.bases = [basetype_or_fallback]
         return info
 
-    def build_namedtuple_typeinfo(self, name: str, items: List[str],
-                                  types: List[Type], default_items: Dict[str, Expression]) -> TypeInfo:
+    def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
+                                  default_items: Dict[str, Expression]) -> TypeInfo:
         strtype = self.str_type()
         basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
         dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
@@ -1868,7 +1868,8 @@ class SemanticAnalyzer(NodeVisitor):
             kind = ARG_POS if default is None else ARG_OPT
             return Argument(var, var.type, default, kind)
 
-        add_method('__init__', ret=NoneTyp(), name=info.name(), args=[make_init_arg(var) for var in vars])
+        add_method('__init__', ret=NoneTyp(), name=info.name(),
+                   args=[make_init_arg(var) for var in vars])
         add_method('_asdict', args=[], ret=ordereddictype)
         add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
