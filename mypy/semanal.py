@@ -65,7 +65,7 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT,
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -742,21 +742,24 @@ class SemanticAnalyzer(NodeVisitor):
                     node = self.lookup(defn.name, defn)
                     if node is not None:
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-                        items, types = self.check_namedtuple_classdef(defn)
-                        node.node = self.build_namedtuple_typeinfo(defn.name, items, types)
+                        items, types, default_items = self.check_namedtuple_classdef(defn)
+                        node.node = self.build_namedtuple_typeinfo(
+                            defn.name, items, types, default_items)
                         return True
         return False
 
-    def check_namedtuple_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+    def check_namedtuple_classdef(
+            self, defn: ClassDef) -> Tuple[List[str], List[Type], Dict[str, Expression]]:
         NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
                                'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
-            return [], []
+            return [], [], {}
         if len(defn.base_type_exprs) > 1:
             self.fail('NamedTuple should be a single base', defn)
         items = []  # type: List[str]
         types = []  # type: List[Type]
+        default_items = {}  # type: Dict[str, Expression]
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
@@ -778,10 +781,14 @@ class SemanticAnalyzer(NodeVisitor):
                               .format(name), stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
-                elif not isinstance(stmt.rvalue, TempNode):
+                elif isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
-                    self.fail('Right hand side values are not supported in NamedTuple', stmt)
-        return items, types
+                    if default_items:
+                        self.fail('Non-default NamedTuple fields cannot follow default fields',
+                                  stmt)
+                else:
+                    default_items[name] = stmt.rvalue
+        return items, types, default_items
 
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
@@ -1687,12 +1694,12 @@ class SemanticAnalyzer(NodeVisitor):
         items, types, ok = self.parse_namedtuple_args(call, fullname)
         if not ok:
             # Error. Construct dummy return value.
-            return self.build_namedtuple_typeinfo('namedtuple', [], [])
+            return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
         name = cast(StrExpr, call.args[0]).value
         if name != var_name or self.is_func_scope():
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
-        info = self.build_namedtuple_typeinfo(name, items, types)
+        info = self.build_namedtuple_typeinfo(name, items, types, {})
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
         stnode = SymbolTableNode(GDEF, info, self.cur_mod_id)
@@ -1786,7 +1793,7 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str],
-                                  types: List[Type]) -> TypeInfo:
+                                  types: List[Type], default_items: Dict[str, Expression]) -> TypeInfo:
         strtype = self.str_type()
         basetuple_type = self.named_type('__builtins__.tuple', [AnyType()])
         dictype = (self.named_type_or_none('builtins.dict', [strtype, AnyType()])
@@ -1855,8 +1862,13 @@ class SemanticAnalyzer(NodeVisitor):
 
         add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
-        add_method('__init__', ret=NoneTyp(), name=info.name(),
-                   args=[Argument(var, var.type, None, ARG_POS) for var in vars])
+
+        def make_init_arg(var: Var) -> Argument:
+            default = default_items.get(var.name(), None)
+            kind = ARG_POS if default is None else ARG_OPT
+            return Argument(var, var.type, default, kind)
+
+        add_method('__init__', ret=NoneTyp(), name=info.name(), args=[make_init_arg(var) for var in vars])
         add_method('_asdict', args=[], ret=ordereddictype)
         add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),

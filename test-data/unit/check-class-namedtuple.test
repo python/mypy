@@ -349,9 +349,10 @@ import typing
 
 class X(typing.NamedTuple):
     x: int
-    y: str = 'y'  # E: Right hand side values are not supported in NamedTuple
-    z = None  # type: int # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    y = None  # type: int # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
     x[0]: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    z: str = 'z'
+    aa: int  # E: Non-default NamedTuple fields cannot follow default fields
 
 [builtins fixtures/list.pyi]
 
@@ -376,3 +377,16 @@ def f(a: Type[N]):
 [builtins fixtures/list.pyi]
 [out]
 main:8: error: Unsupported type Type["N"]
+
+[case testNewNamedTupleWithDefaults]
+# flags: --fast-parser --python-version 3.6
+from typing import NamedTuple
+
+class X(NamedTuple):
+    x: int
+    y: int = 2
+
+reveal_type(X(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.X]'
+reveal_type(X(1, 2))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.X]'
+
+X(1, 'a')  # E: Argument 2 to "X" has incompatible type "str"; expected "int"
