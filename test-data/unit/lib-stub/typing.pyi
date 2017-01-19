@@ -67,10 +67,10 @@ class AsyncGenerator(AsyncIterator[T], Generic[T, U]):
     def asend(self, value: U) -> Awaitable[T]: pass
 
     @abstractmethod
-    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[None]: pass
+    def athrow(self, typ: Any, val: Any=None, tb: Any=None) -> Awaitable[T]: pass
 
     @abstractmethod
-    def aclose(self) -> Awaitable[None]: pass
+    def aclose(self) -> Awaitable[T]: pass
 
     @abstractmethod
     def __aiter__(self) -> 'AsyncGenerator[T, U]': pass

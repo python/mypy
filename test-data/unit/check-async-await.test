@@ -486,7 +486,7 @@ async def h() -> None:
     g = gen()
     v = await g.asend(1)
     reveal_type(v)  # E: Revealed type is 'builtins.str*'
-    await g.athrow(BaseException)
+    reveal_type(await g.athrow(BaseException))  # E: Revealed type is 'builtins.str*'
 
 [builtins fixtures/dict.pyi]
 
@@ -526,7 +526,7 @@ from mypy_extensions import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
     yield 1
-    return 42
+    return 42  # E: No return value expected
 
 [builtins fixtures/dict.pyi]
 

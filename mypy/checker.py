@@ -1775,7 +1775,7 @@ class TypeChecker(StatementVisitor[None]):
                         self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
-                if self.is_unusable_type(return_type):
+                if self.is_unusable_type(return_type) or defn.is_async_generator:
                     # Lambdas are allowed to have a unusable returns.
                     # Functions returning a value of type None are allowed to have a Void return.
                     if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, NoneTyp):
