@@ -161,6 +161,11 @@ class MessageBuilder:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin)
 
+    def warn(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
+        """Report a warning message (unless disabled)."""
+        self.report(msg, context, 'warning', file=file, origin=origin)
+
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
 

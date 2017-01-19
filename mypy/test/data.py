@@ -377,10 +377,15 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
         # The first in the split things isn't a comment
         for possible_err_comment in input[i].split('#')[1:]:
             m = re.search(
-                '^([EN]):((?P<col>\d+):)? (?P<message>.*)$',
+                '^([ENW]):((?P<col>\d+):)? (?P<message>.*)$',
                 possible_err_comment.strip())
             if m:
-                severity = 'error' if m.group(1) == 'E' else 'note'
+                if m.group(1) == 'E':
+                    severity = 'error'
+                elif m.group(1) == 'N':
+                    severity = 'note'
+                elif m.group(1) == 'W':
+                    severity = 'warning'
                 col = m.group('col')
                 if col is None:
                     output.append(

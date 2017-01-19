@@ -1678,7 +1678,7 @@ class TypeChecker(NodeVisitor[Type]):
 
         if self.options.fast_parser:
             if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
-                self.fail(messages.MALFORMED_ASSERT, s)
+                self.warn(messages.MALFORMED_ASSERT, s)
 
         # If this is asserting some isinstance check, bind that type in the following code
         true_map, _ = self.find_isinstance_check(s.expr)
@@ -2334,6 +2334,10 @@ class TypeChecker(NodeVisitor[Type]):
     def fail(self, msg: str, context: Context) -> None:
         """Produce an error message."""
         self.msg.fail(msg, context)
+
+    def warn(self, msg: str, context: Context) -> None:
+        """Produce a warning message."""
+        self.msg.warn(msg, context)
 
     def iterable_item_type(self, instance: Instance) -> Type:
         iterable = map_instance_to_supertype(
