@@ -6,35 +6,11 @@ Example usage:
 """
 
 # NOTE: This module must support Python 2.7 in addition to Python 3.x
-__all__ = ['TypedDict', 'AsyncGenerator']
 
 import sys
 # _type_check is NOT a part of public typing API, it is used here only to mimic
 # the (convenient) behavior of types provided by typing module.
 from typing import _type_check  # type: ignore
-
-if sys.version_info >= (3, 6):
-    # if our typing version doesn't have https://github.com/python/typing/pull/346, emulate it
-    try:
-        from typing import AsyncGenerator
-    except ImportError:
-        import collections
-        from typing import AsyncIterator, Generic, _generic_new, T_co, T_contra
-
-        _AG_base = collections.AsyncGenerator
-
-        # need exec because the class keyword arg is a syntax error in 2.7
-        exec("""
-class AsyncGenerator(AsyncIterator[T_co], Generic[T_co, T_contra],
-                     extra=_AG_base):
-    __slots__ = ()
-
-    def __new__(cls, *args, **kwds):
-        if _geqv(cls, AsyncGenerator):
-            raise TypeError("Type AsyncGenerator cannot be instantiated; "
-                            "create a subclass instead")
-        return _generic_new(_AG_base, cls, *args, **kwds)
-""")
 
 
 def _check_fails(cls, other):

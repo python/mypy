@@ -1,4 +1,4 @@
-from typing import Dict, Type, TypeVar, AsyncGenerator as AsyncGenerator
+from typing import Dict, Type, TypeVar
 
 T = TypeVar('T')
 
