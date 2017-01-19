@@ -149,16 +149,6 @@ z = 0 # type: x
 main:4: error: Invalid type "__main__.f"
 main:5: error: Invalid type "__main__.x"
 
-[case testTwoStarsInType]
-import typing
-x, x2 = 1 # type: *object, *object
-y, y2 = 1 # type: object, (*object, *object)
-z, z2 = 1 # type: *object, (object, *object)
-[out]
-main:2: error: At most one star type allowed in a tuple
-main:3: error: At most one star type allowed in a tuple
-main:4: error: Star type only allowed for starred expressions
-
 [case testGlobalVarRedefinition]
 import typing
 class A: pass
@@ -418,16 +408,6 @@ main:3: error: Invalid assignment target
 main:4: error: Invalid assignment target
 main:5: error: Invalid assignment target
 main:6: error: Invalid assignment target
-
-[case testInvalidStarType]
-a = 1  # type: *int
-[out]
-main:1: error: Star type only allowed for starred expressions
-
-[case testInvalidStarType]
-*a, b = 1  # type: int, int
-[out]
-main:1: error: Star type expected for starred expression
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
