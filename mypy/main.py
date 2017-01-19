@@ -225,8 +225,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=True,
                         dest='hide_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    add_invertible_flag('--fast-parser', default=False,
-                        help="enable fast parser (recommended)")
+    add_invertible_flag('--no-fast-parser', default=True, dest='fast_parser',
+                        help="disable the fast parser (not recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
