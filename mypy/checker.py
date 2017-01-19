@@ -351,7 +351,11 @@ class TypeChecker(StatementVisitor[None]):
 
         True if `typ` is a supertype of AsyncGenerator.
         """
-        agt = self.named_generic_type('typing.AsyncGenerator', [AnyType(), AnyType()])
+        try:
+            agt = self.named_generic_type('typing.AsyncGenerator', [AnyType(), AnyType()])
+        except KeyError:
+            # we're running on a version of typing that doesn't have AsyncGenerator yet
+            return False
         return is_subtype(agt, typ)
 
     def get_generator_yield_type(self, return_type: Type, is_coroutine: bool) -> Type:
