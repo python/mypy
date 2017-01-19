@@ -158,7 +158,7 @@ class MessageBuilder:
 
     def note(self, msg: str, context: Context, file: str = None,
              origin: Context = None) -> None:
-        """Report an error message (unless disabled)."""
+        """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin)
 
     def warn(self, msg: str, context: Context, file: str = None,
