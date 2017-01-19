@@ -205,3 +205,11 @@ assert (1, 2)  # W: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # W: Assertion is always true, perhaps remove parentheses?
 assert ()
 assert (1,)  # W: Assertion is always true, perhaps remove parentheses?
+
+[case testFastParseAssertMessage]
+# flags: --fast-parser
+assert 1
+assert 1, 2
+assert 1, 1+2
+assert 1, 1+'test'  # E: Unsupported operand types for + ("int" and "str")
+assert 1, f()  # E: Name 'f' is not defined

@@ -879,9 +879,11 @@ class ReturnStmt(Statement):
 
 class AssertStmt(Statement):
     expr = None  # type: Expression
+    msg = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Expression) -> None:
+    def __init__(self, expr: Expression, msg: Expression = None) -> None:
         self.expr = expr
+        self.msg = msg
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)

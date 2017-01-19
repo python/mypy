@@ -95,6 +95,8 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_assert_stmt(self, o: AssertStmt) -> None:
         if o.expr is not None:
             o.expr.accept(self)
+        if o.msg is not None:
+            o.msg.accept(self)
 
     def visit_del_stmt(self, o: DelStmt) -> None:
         if o.expr is not None:

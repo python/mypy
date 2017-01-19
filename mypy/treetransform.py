@@ -252,7 +252,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ReturnStmt(self.optional_expr(node.expr))
 
     def visit_assert_stmt(self, node: AssertStmt) -> AssertStmt:
-        return AssertStmt(self.expr(node.expr))
+        return AssertStmt(self.expr(node.expr), self.optional_expr(node.msg))
 
     def visit_del_stmt(self, node: DelStmt) -> DelStmt:
         return DelStmt(self.expr(node.expr))

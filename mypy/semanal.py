@@ -2067,6 +2067,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         if s.expr:
             s.expr.accept(self)
+        if s.msg:
+            s.msg.accept(self)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> None:
