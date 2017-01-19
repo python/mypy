@@ -77,6 +77,7 @@ INVALID_TYPEDDICT_ARGS = \
 TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict item name to be string literal'
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
+NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",

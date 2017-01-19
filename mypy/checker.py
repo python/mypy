@@ -1639,6 +1639,10 @@ class TypeChecker(NodeVisitor[Type]):
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
                 self.check_usable_type(t, e)
+                if self.options.strict_boolean:
+                    if not (isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'):
+                        self.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
+
                 if_map, else_map = self.find_isinstance_check(e)
 
                 # XXX Issue a warning if condition is always False?
