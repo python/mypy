@@ -76,6 +76,7 @@ INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
 TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict item name to be string literal'
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -157,8 +158,13 @@ class MessageBuilder:
 
     def note(self, msg: str, context: Context, file: str = None,
              origin: Context = None) -> None:
-        """Report an error message (unless disabled)."""
+        """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin)
+
+    def warn(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
+        """Report a warning message (unless disabled)."""
+        self.report(msg, context, 'warning', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
