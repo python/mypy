@@ -203,6 +203,5 @@ def g():  # E: Type signature has too many arguments
 assert 1, 2
 assert (1, 2)  # W: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # W: Assertion is always true, perhaps remove parentheses?
-# This seems correct, but Python raises a syntax warning for this case so we will too
 assert ()
 assert (1,)  # W: Assertion is always true, perhaps remove parentheses?
