@@ -415,7 +415,7 @@ def f() -> Generator[int, str, int]:
 
 [case testAsyncGenerator]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def f() -> int:
     return 42
@@ -437,7 +437,7 @@ async def h() -> None:
 
 [case testAsyncGeneratorManualIter]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def genfunc() -> AsyncGenerator[int, None]:
     yield 1
@@ -454,7 +454,7 @@ async def user() -> None:
 
 [case testAsyncGeneratorAsend]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def f() -> None:
     pass
@@ -474,7 +474,7 @@ async def h() -> None:
 
 [case testAsyncGeneratorAthrow]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[str, int]:
     try:
@@ -492,7 +492,7 @@ async def h() -> None:
 
 [case testAsyncGeneratorNoSyncIteration]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
     for i in (1, 2, 3):
@@ -510,7 +510,7 @@ main:9: error: AsyncGenerator[int, None] has no attribute "__iter__"; maybe "__a
 
 [case testAsyncGeneratorNoYieldFrom]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def f() -> AsyncGenerator[int, None]:
     pass
@@ -522,7 +522,7 @@ async def gen() -> AsyncGenerator[int, None]:
 
 [case testAsyncGeneratorNoReturnWithValue]
 # flags: --fast-parser --python-version 3.6
-from mypy_extensions import AsyncGenerator
+from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
     yield 1
