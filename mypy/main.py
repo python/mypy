@@ -125,11 +125,11 @@ class AugmentedHelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog: Optional[str]) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
+
 # Define pairs of flag prefixes with inverse meaning.
 flag_prefix_pairs = [
     ('allow', 'disallow'),
     ('show', 'hide'),
-    ('check', 'ignore')
 ]
 flag_prefix_map = {}  # type: Dict[str, str]
 for a, b in flag_prefix_pairs:
@@ -223,7 +223,7 @@ def process_options(args: List[str],
     add_invertible_flag('--show-error-context', default=True,
                         dest='hide_error_context',
                         help='Precede errors with "note:" messages explaining context')
-    add_invertible_flag('--fast-parser', inverse='--old-parser', default=False,
+    add_invertible_flag('--fast-parser', default=False,
                         help="enable fast parser (recommended)")
     parser.add_argument('-i', '--incremental', action='store_true',
                         help="enable experimental module cache")
