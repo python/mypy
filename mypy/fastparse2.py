@@ -559,7 +559,7 @@ class ASTConverter(ast27.NodeTransformer):
     # Assert(expr test, expr? msg)
     @with_line
     def visit_Assert(self, n: ast27.Assert) -> AssertStmt:
-        return AssertStmt(self.visit(n.test))
+        return AssertStmt(self.visit(n.test), self.visit(n.msg))
 
     # Import(alias* names)
     @with_line

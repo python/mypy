@@ -1678,6 +1678,9 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_assert_stmt(self, s: AssertStmt) -> Type:
         self.accept(s.expr)
 
+        if s.msg is not None:
+            self.accept(s.msg)
+
         if self.options.fast_parser:
             if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
                 self.warn(messages.MALFORMED_ASSERT, s)
