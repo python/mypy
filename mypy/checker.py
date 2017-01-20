@@ -1150,7 +1150,7 @@ class TypeChecker(NodeVisitor[Type]):
                                             lvalue_type,
                                             False)
             elif index_lvalue:
-                self.check_indexed_assignment(index_lvalue, rvalue, rvalue)
+                self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
