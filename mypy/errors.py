@@ -33,7 +33,7 @@ class ErrorInfo:
     # The column number related to this error with file.
     column = 0   # -1 if unknown
 
-    # Either 'error' or 'note'.
+    # Either 'error', 'note', or 'warning'.
     severity = ''
 
     # The error message.
