@@ -564,14 +564,15 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
-        if self.analyze_namedtuple_classdef(defn):
-            return
-        self.setup_class_def_analysis(defn)
+        is_named_tuple = self.analyze_namedtuple_classdef(defn)
 
-        self.bind_class_type_vars(defn)
+        if not is_named_tuple:
+            self.setup_class_def_analysis(defn)
 
-        self.analyze_base_classes(defn)
-        self.analyze_metaclass(defn)
+            self.bind_class_type_vars(defn)
+
+            self.analyze_base_classes(defn)
+            self.analyze_metaclass(defn)
 
         for decorator in defn.decorators:
             self.analyze_class_decorator(defn, decorator)
@@ -581,11 +582,14 @@ class SemanticAnalyzer(NodeVisitor):
         # Analyze class body.
         defn.defs.accept(self)
 
-        self.calculate_abstract_status(defn.info)
-        self.setup_type_promotion(defn)
+        if not is_named_tuple:
+            self.calculate_abstract_status(defn.info)
+            self.setup_type_promotion(defn)
 
         self.leave_class()
-        self.unbind_class_type_vars()
+
+        if not is_named_tuple:
+            self.unbind_class_type_vars()
 
     def enter_class(self, defn: ClassDef) -> None:
         # Remember previous active class
@@ -1845,6 +1849,11 @@ class SemanticAnalyzer(NodeVisitor):
             types = [arg.type_annotation for arg in args]
             items = [arg.variable.name() for arg in args]
             arg_kinds = [arg.kind for arg in args]
+
+            # for arg in args:
+            #     if arg.initializer:
+            #         print('accept', repr(arg), self)
+            #         arg.initializer.accept(self)
             signature = CallableType(types, arg_kinds, items, ret, function_type,
                                      name=name or info.name() + '.' + funcname)
             signature.variables = [tvd]
@@ -1859,6 +1868,7 @@ class SemanticAnalyzer(NodeVisitor):
                 info.names[funcname] = SymbolTableNode(MDEF, dec)
             else:
                 info.names[funcname] = SymbolTableNode(MDEF, func)
+            return func
 
         add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
@@ -1866,10 +1876,12 @@ class SemanticAnalyzer(NodeVisitor):
         def make_init_arg(var: Var) -> Argument:
             default = default_items.get(var.name(), None)
             kind = ARG_POS if default is None else ARG_OPT
+            print(var, var.type, default, kind)
             return Argument(var, var.type, default, kind)
 
-        add_method('__init__', ret=NoneTyp(), name=info.name(),
-                   args=[make_init_arg(var) for var in vars])
+        init = add_method('__init__', ret=NoneTyp(), name=info.name(),
+                          args=[make_init_arg(var) for var in vars])
+        #info.defn.defs.body.append(init)
         add_method('_asdict', args=[], ret=ordereddictype)
         add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
