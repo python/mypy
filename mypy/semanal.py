@@ -1829,6 +1829,7 @@ class SemanticAnalyzer(NodeVisitor):
         tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
         add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
+        add_field(Var('_field_defaults', dictype), is_initialized_in_class=True)
         add_field(Var('_source', strtype), is_initialized_in_class=True)
 
         tvd = TypeVarDef('NT', 1, [], info.tuple_type)

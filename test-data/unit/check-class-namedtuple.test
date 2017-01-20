@@ -294,6 +294,10 @@ class X(NamedTuple):
     y: str
 
 reveal_type(X._fields)  # E: Revealed type is 'Tuple[builtins.str, builtins.str]'
+reveal_type(X._field_types)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
+reveal_type(X._field_defaults)  # E: Revealed type is 'builtins.dict[builtins.str, Any]'
+
+[builtins fixtures/dict.pyi]
 
 [case testNewNamedTupleUnit]
 # flags: --fast-parser --python-version 3.6
@@ -349,10 +353,17 @@ import typing
 
 class X(typing.NamedTuple):
     x: int
-    y = None  # type: int # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
-    x.__init__: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    y = 1
+    x.x: int
     z: str = 'z'
-    aa: int  # E: Non-default NamedTuple fields cannot follow default fields
+    aa: int
+
+[out]
+main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+main:7: error: Type cannot be declared in assignment to non-self attribute
+main:7: error: "int" has no attribute "x"
+main:9: error: Non-default NamedTuple fields cannot follow default fields
 
 [builtins fixtures/list.pyi]
 
@@ -380,7 +391,7 @@ main:8: error: Unsupported type Type["N"]
 
 [case testNewNamedTupleWithDefaults]
 # flags: --fast-parser --python-version 3.6
-from typing import NamedTuple
+from typing import List, NamedTuple, Optional
 
 class X(NamedTuple):
     x: int
@@ -390,6 +401,31 @@ reveal_type(X(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fall
 reveal_type(X(1, 2))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.X]'
 
 X(1, 'a')  # E: Argument 2 to "X" has incompatible type "str"; expected "int"
+X(1, z=3)  # E: Unexpected keyword argument "z" for "X"
+
+class HasNone(NamedTuple):
+    x: int
+    y: Optional[int] = None
+
+reveal_type(HasNone(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.HasNone]'
+
+class Parameterized(NamedTuple):
+    x: int
+    y: List[int] = []
+
+reveal_type(Parameterized(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.list[builtins.int], fallback=__main__.Parameterized]'
+Parameterized(1, ['not an int'])  # E: List item 0 has incompatible type "str"
+
+class Default:
+    pass
+
+class UserDefined(NamedTuple):
+    x: Default = Default()
+
+reveal_type(UserDefined())  # E: Revealed type is 'Tuple[__main__.Default, fallback=__main__.UserDefined]'
+reveal_type(UserDefined(Default()))  # E: Revealed type is 'Tuple[__main__.Default, fallback=__main__.UserDefined]'
+
+[builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWrongType]
 # flags: --fast-parser --python-version 3.6
@@ -401,14 +437,15 @@ class X(NamedTuple):
 
 [case testNewNamedTupleInheritance]
 # flags: --fast-parser --python-version 3.6
-from typing import NamedTuple
+from typing import cast, NamedTuple
 
 class X(NamedTuple):
-    x: int
+    x: str
     y: int = 3
 
 class Y(X):
-    def method(self) -> int:
-        return self.x + self.y
+    def method(self) -> str:
+        return self.x + cast(str, self.y)
 
-reveal_type(Y(1))  # E: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.Y]'
+reveal_type(Y('a'))  # E: Revealed type is 'Tuple[builtins.str, builtins.int, fallback=__main__.Y]'
+Y(y=1, x='1').method()
