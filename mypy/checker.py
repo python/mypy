@@ -1856,7 +1856,7 @@ class TypeChecker(NodeVisitor[Type]):
             item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
             item_type = self.analyze_iterable_item_type(s.expr)
-        self.analyze_index_variables(s.index, item_type, s)
+        self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
         return None
 
@@ -1915,9 +1915,9 @@ class TypeChecker(NodeVisitor[Type]):
             return echk.check_call(method, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
-                                context: Context) -> None:
+                                infer_lvalue_type: bool, context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
-        self.check_assignment(index, self.temp_node(item_type, context))
+        self.check_assignment(index, self.temp_node(item_type, context), infer_lvalue_type)
 
     def visit_del_stmt(self, s: DelStmt) -> Type:
         if isinstance(s.expr, IndexExpr):
@@ -1989,13 +1989,14 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_with_stmt(self, s: WithStmt) -> Type:
         for expr, target in zip(s.expr, s.target):
             if s.is_async:
-                self.check_async_with_item(expr, target)
+                self.check_async_with_item(expr, target, s.target_type is None)
             else:
-                self.check_with_item(expr, target)
+                self.check_with_item(expr, target, s.target_type is None)
         self.accept(s.body)
         return None
 
-    def check_async_with_item(self, expr: Expression, target: Expression) -> None:
+    def check_async_with_item(self, expr: Expression, target: Expression,
+                              infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__aenter__', ctx, expr)
@@ -2003,20 +2004,21 @@ class TypeChecker(NodeVisitor[Type]):
         obj = echk.check_awaitable_expr(
             obj, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER)
         if target:
-            self.check_assignment(target, self.temp_node(obj, expr))
+            self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         exit = echk.analyze_external_member_access('__aexit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
         res = echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
         echk.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
-    def check_with_item(self, expr: Expression, target: Expression) -> None:
+    def check_with_item(self, expr: Expression, target: Expression,
+                        infer_lvalue_type: bool) -> None:
         echk = self.expr_checker
         ctx = self.accept(expr)
         enter = echk.analyze_external_member_access('__enter__', ctx, expr)
         obj = echk.check_call(enter, [], [], expr)[0]
         if target:
-            self.check_assignment(target, self.temp_node(obj, expr))
+            self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         exit = echk.analyze_external_member_access('__exit__', ctx, expr)
         arg = self.temp_node(AnyType(), expr)
         echk.check_call(exit, [arg] * 3, [nodes.ARG_POS] * 3, expr)

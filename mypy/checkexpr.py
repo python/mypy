@@ -1918,7 +1918,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for index, sequence, conditions in zip(e.indices, e.sequences,
                                                e.condlists):
             sequence_type = self.chk.analyze_iterable_item_type(sequence)
-            self.chk.analyze_index_variables(index, sequence_type, e)
+            self.chk.analyze_index_variables(index, sequence_type, True, e)
             for condition in conditions:
                 self.accept(condition)
 
