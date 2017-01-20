@@ -278,19 +278,23 @@ MypyFile:1(
     Then(
       ExpressionStmt:3(
         NameExpr(x [__main__.x])))
-    If(
-      NameExpr(x [__main__.x]))
-    Then(
-      ExpressionStmt:5(
-        NameExpr(x [__main__.x])))
-    If(
-      NameExpr(x [__main__.x]))
-    Then(
-      ExpressionStmt:7(
-        NameExpr(x [__main__.x])))
     Else(
-      ExpressionStmt:9(
-        NameExpr(x [__main__.x])))))
+      IfStmt:4(
+        If(
+          NameExpr(x [__main__.x]))
+        Then(
+          ExpressionStmt:5(
+            NameExpr(x [__main__.x])))
+        Else(
+          IfStmt:6(
+            If(
+              NameExpr(x [__main__.x]))
+            Then(
+              ExpressionStmt:7(
+                NameExpr(x [__main__.x])))
+            Else(
+              ExpressionStmt:9(
+                NameExpr(x [__main__.x])))))))))
 
 [case testSimpleIf]
 if object:
@@ -537,7 +541,7 @@ MypyFile:1(
 def f(x, y) -> None:
     del x, y + 1
 [out]
-main:2: error: Invalid delete target
+main:2: error: can't delete operator
 
 [case testTry]
 class c: pass
