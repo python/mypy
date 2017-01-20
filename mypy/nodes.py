@@ -850,6 +850,8 @@ class WhileStmt(Statement):
 class ForStmt(Statement):
     # Index variables
     index = None  # type: Lvalue
+    # Type given by type comments for index, can be None
+    index_type = None  # type: mypy.types.Type
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
@@ -857,8 +859,9 @@ class ForStmt(Statement):
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Block) -> None:
+                 else_body: Block, index_type: 'mypy.types.Type' = None) -> None:
         self.index = index
+        self.index_type = index_type
         self.expr = expr
         self.body = body
         self.else_body = else_body
@@ -966,13 +969,16 @@ class TryStmt(Statement):
 class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Lvalue]
+    # Type given by type comments for target, can be None
+    target_type = None  # type: mypy.types.Type
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Lvalue],
-                 body: Block) -> None:
+                 body: Block, target_type: 'mypy.types.Type' = None) -> None:
         self.expr = expr
         self.target = target
+        self.target_type = target_type
         self.body = body
 
     def accept(self, visitor: NodeVisitor[T]) -> T:

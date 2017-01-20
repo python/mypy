@@ -464,10 +464,15 @@ class ASTConverter(ast27.NodeTransformer):
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     @with_line
     def visit_For(self, n: ast27.For) -> ForStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         return ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_block(n.body, n.lineno),
-                       self.as_block(n.orelse, n.lineno))
+                       self.as_block(n.orelse, n.lineno),
+                       target_type)
 
     # While(expr test, stmt* body, stmt* orelse)
     @with_line
@@ -486,9 +491,14 @@ class ASTConverter(ast27.NodeTransformer):
     # With(withitem* items, stmt* body, string? type_comment)
     @with_line
     def visit_With(self, n: ast27.With) -> WithStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         return WithStmt([self.visit(n.context_expr)],
                         [self.visit(n.optional_vars)],
-                        self.as_block(n.body, n.lineno))
+                        self.as_block(n.body, n.lineno),
+                        target_type)
 
     @with_line
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
