@@ -209,7 +209,12 @@ def add_imports(driver: Driver) -> None:
 
 
 PYTEST_FILES = [os.path.join('mypy', 'test', '{}.py'.format(name)) for name in [
-    'testcheck', 'testextensions',
+    'testcheck',
+    'testextensions',
+    'testdeps',
+    'testdiff',
+    'testfinegrained',
+    'testmerge',
 ]]
 
 

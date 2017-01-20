@@ -1,0 +1,174 @@
+-- Test cases for fine-grained incremental checking
+--
+-- Test cases may define multiple versions of a file
+-- (e.g. m.py, m.py.2). There is always an initial batch
+-- pass that processes all files present initially, followed
+-- by one or more fine-grained incremental passes that use
+-- alternative versions of files, if available. If a file
+-- just has a single .py version, it is used for all passes.
+
+-- TODO: what if version for some passes but not all
+
+-- Output is laid out like this:
+--
+--   [out]
+--   <optional output from batch pass>
+--   ==
+--   <optional output from first incremental pass>
+
+[case testReprocessFunction]
+import m
+def g() -> int:
+    return m.f()
+[file m.py]
+def f() -> int:
+    pass
+[file m.py.2]
+def f() -> str:
+    pass
+[out]
+==
+main:3: error: Incompatible return value type (got "str", expected "int")
+
+[case testReprocessTopLevel]
+import m
+m.f(1)
+def g() -> None: pass
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testReprocessMethod]
+import m
+class B:
+    def f(self, a: m.A) -> None:
+        a.g() # E
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: A) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "g" of "A"
+
+[case testFunctionMissingModuleAttribute]
+import m
+def h() -> None:
+    m.f(1)
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def g(x: str) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: "module" has no attribute "f"
+
+[case testTopLevelMissingModuleAttribute]
+import m
+m.f(1)
+def g() -> None: pass
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def g(x: int) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:2: error: "module" has no attribute "f"
+
+[case testClassChangedIntoFunction]
+import m
+def f(a: m.A) -> None:
+    pass
+[file m.py]
+class A: pass
+[file m.py.2]
+def A() -> None: pass
+[out]
+==
+main:2: error: Invalid type "m.A"
+
+[case testClassChangedIntoFunction2]
+import m
+class B:
+    def f(self, a: m.A) -> None: pass
+[file m.py]
+class A: pass
+[file m.py.2]
+def A() -> None: pass
+[out]
+==
+main:3: error: Invalid type "m.A"
+
+[case testAttributeTypeChanged]
+import m
+def f(a: m.A) -> int:
+    return a.x
+[file m.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file m.py.2]
+class A:
+    def f(self) -> None:
+        self.x = 'x'
+[out]
+==
+main:3: error: Incompatible return value type (got "str", expected "int")
+
+[case testAttributeRemoved]
+import m
+def f(a: m.A) -> int:
+    return a.x
+[file m.py]
+class A:
+    def f(self) -> None:
+        self.x = 1
+[file m.py.2]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "x"
+
+[case testVariableTypeBecomesInvalid]
+import m
+def f() -> None:
+    a = None # type: m.A
+[file m.py]
+class A: pass
+[file m.py.2]
+[out]
+==
+main:3: error: Name 'm.A' is not defined
+
+[case testTwoIncrementalSteps]
+import m
+import n
+[file m.py]
+def f() -> None: pass
+[file n.py]
+import m
+def g() -> None:
+    m.f() # E
+[file m.py.2]
+import n
+def f(x: int) -> None:
+    n.g() # E
+[file n.py.3]
+import m
+def g(a: str) -> None:
+    m.f('') # E
+[out]
+==
+tmp/n.py:3: error: Too few arguments for "f"
+==
+tmp/n.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+tmp/m.py:3: error: Too few arguments for "g"

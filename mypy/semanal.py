@@ -44,8 +44,9 @@ TODO: Check if the third pass slows down type checking significantly.
 """
 
 from collections import OrderedDict
+from contextlib import contextmanager
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator
 )
 
 from mypy.nodes import (
@@ -77,6 +78,7 @@ from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
+    Void,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -267,6 +269,40 @@ class SemanticAnalyzer(NodeVisitor):
 
         del self.options
 
+    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+        """Refresh a stale target in fine-grained incremental mode."""
+        if isinstance(node, MypyFile):
+            self.refresh_top_level(node)
+        else:
+            self.accept(node)
+
+    def refresh_top_level(self, file_node: MypyFile) -> None:
+        """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        for d in file_node.defs:
+            if not isinstance(d, (FuncItem, ClassDef)):
+                self.accept(d)
+
+    @contextmanager
+    def file_context(self, file_node: MypyFile, fnam: str, options: Options,
+                     active_type: Optional[TypeInfo]) -> Iterator[None]:
+        # TODO: Use this above in visit_file
+        self.options = options
+        self.errors.set_file(fnam)
+        self.cur_mod_node = file_node
+        self.cur_mod_id = file_node.fullname()
+        self.is_stub_file = fnam.lower().endswith('.pyi')
+        self.globals = file_node.names
+        if active_type:
+            self.enter_class(active_type.defn)
+            # TODO: Bind class type vars
+
+        yield
+
+        if active_type:
+            self.leave_class()
+            self.type = None
+        del self.options
+
     def visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
@@ -289,7 +325,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # Method definition
                 defn.info = self.type
                 if not defn.is_decorated and not defn.is_overload:
-                    if defn.name() in self.type.names:
+                    if (defn.name() in self.type.names and
+                            self.type.names[defn.name()].node != defn):
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
@@ -420,8 +457,12 @@ class SemanticAnalyzer(NodeVisitor):
                 result.extend(self.find_type_variables_in_type(item))
         elif isinstance(type, AnyType):
             pass
-        elif isinstance(type, EllipsisType) or isinstance(type, TupleType):
+        elif isinstance(type, (EllipsisType, TupleType, Void)):
+            # TODO: Need to process tuple items?
             pass
+        elif isinstance(type, Instance):
+            for arg in type.args:
+                result.extend(self.find_type_variables_in_type(arg))
         else:
             assert False, 'Unsupported type %s' % type
         return result
@@ -3607,6 +3648,19 @@ class ThirdPass(TraverserVisitor):
         self.errors.set_file(fnam)
         self.options = options
         self.accept(file_node)
+
+    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+        """Refresh a stale target in fine-grained incremental mode."""
+        if isinstance(node, MypyFile):
+            self.refresh_top_level(node)
+        else:
+            self.accept(node)
+
+    def refresh_top_level(self, file_node: MypyFile) -> None:
+        """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        for d in file_node.defs:
+            if not isinstance(d, (FuncItem, ClassDef)):
+                self.accept(d)
 
     def accept(self, node: Node) -> None:
         try:

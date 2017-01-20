@@ -1,0 +1,71 @@
+-- Test cases for generating dependencies between ASTs nodes.
+--
+-- The dependencies are used for fined-grained incremental checking.
+
+
+[case testCallFunction]
+def f() -> None:
+    g()
+def g() -> None:
+    pass
+[out]
+<m.g> -> m.f
+
+[case testCallMethod]
+def f(a: A) -> None:
+    a.g()
+class A:
+    def g(self) -> None: pass
+[out]
+<m.A.g> -> m.f
+<m.A> -> <m.f>, m.A, m.f
+
+[case testAccessAttribute]
+def f(a: A) -> None:
+    a.x
+class A:
+    def g(self) -> None:
+        self.x = 1
+[out]
+<m.A.x> -> m.A.g, m.f
+<m.A> -> <m.f>, m.A, m.f
+
+[case testConstructInstance]
+def f() -> None:
+    A()
+class A: pass
+[out]
+<m.A> -> m.A, m.f
+
+[case testAccessModuleAttribute-skip]
+x = 1
+def f() -> None:
+    x
+[out]
+<m.x> -> m, m.f
+
+[case testImport]
+import n
+[file n.py]
+x = 1
+[out]
+<n> -> m
+
+[case testCallImportedFunction]
+import n
+n.f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m
+<n> -> m
+
+[case testCallImportedFunctionInFunction]
+import n
+def g() -> None:
+    n.f()
+[file n.py]
+def f() -> None: pass
+[out]
+<n.f> -> m.g
+<n> -> m, m.g
