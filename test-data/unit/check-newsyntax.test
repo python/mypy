@@ -85,3 +85,16 @@ class C:
         x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
         self.x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
+
+[case testNewSyntaxSpecialAssign]
+# flags: --fast-parser --python-version 3.6
+class X:
+    x: str
+    x[0]: int
+    x.x: int
+
+[out]
+main:4: error: Unexpected type declaration
+main:4: error: Unsupported target for indexed assignment
+main:5: error: Type cannot be declared in assignment to non-self attribute
+main:5: error: "str" has no attribute "x"
