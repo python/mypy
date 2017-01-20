@@ -1850,11 +1850,6 @@ class SemanticAnalyzer(NodeVisitor):
             types = [arg.type_annotation for arg in args]
             items = [arg.variable.name() for arg in args]
             arg_kinds = [arg.kind for arg in args]
-
-            # for arg in args:
-            #     if arg.initializer:
-            #         print('accept', repr(arg), self)
-            #         arg.initializer.accept(self)
             signature = CallableType(types, arg_kinds, items, ret, function_type,
                                      name=name or info.name() + '.' + funcname)
             signature.variables = [tvd]
@@ -1869,7 +1864,6 @@ class SemanticAnalyzer(NodeVisitor):
                 info.names[funcname] = SymbolTableNode(MDEF, dec)
             else:
                 info.names[funcname] = SymbolTableNode(MDEF, func)
-            return func
 
         add_method('_replace', ret=selftype,
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
@@ -1877,12 +1871,10 @@ class SemanticAnalyzer(NodeVisitor):
         def make_init_arg(var: Var) -> Argument:
             default = default_items.get(var.name(), None)
             kind = ARG_POS if default is None else ARG_OPT
-            print(var, var.type, default, kind)
             return Argument(var, var.type, default, kind)
 
-        init = add_method('__init__', ret=NoneTyp(), name=info.name(),
-                          args=[make_init_arg(var) for var in vars])
-        #info.defn.defs.body.append(init)
+        add_method('__init__', ret=NoneTyp(), name=info.name(),
+                   args=[make_init_arg(var) for var in vars])
         add_method('_asdict', args=[], ret=ordereddictype)
         add_method('_make', ret=selftype, is_classmethod=True,
                    args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
