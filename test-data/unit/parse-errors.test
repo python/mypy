@@ -250,7 +250,8 @@ def f(x, y): # type: (X) -> z
 [out]
 file:1: error: Type signature has too few arguments
 
-[case testCommentFunctionAnnotationVarArgMispatch]
+[case testCommentFunctionAnnotationVarArgMispatch-skip]
+# see mypy issue #1997
 def f(x): # type: (*X) -> Y
     pass
 def g(*x): # type: (X) -> Y
@@ -259,7 +260,8 @@ def g(*x): # type: (X) -> Y
 file:1: error: Inconsistent use of '*' in function signature
 file:3: error: Inconsistent use of '*' in function signature
 
-[case testCommentFunctionAnnotationVarArgMispatch2]
+[case testCommentFunctionAnnotationVarArgMispatch2-skip]
+# see mypy issue #1997
 def f(*x, **y): # type: (**X, *Y) -> Z
     pass
 def g(*x, **y): # type: (*X, *Y) -> Z
