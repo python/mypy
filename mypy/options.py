@@ -27,6 +27,7 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "ignore_errors",
+        "strict_boolean",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
@@ -69,6 +70,9 @@ class Options:
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
+
+        # Only allow booleans in conditions
+        self.strict_boolean = False
 
         # Apply strict None checking
         self.strict_optional = False

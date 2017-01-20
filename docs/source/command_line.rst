@@ -21,12 +21,12 @@ flag (or its long form ``--help``)::
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
               [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--cobertura-xml-report DIR]
-              [--html-report DIR] [--linecount-report DIR]
-              [--linecoverage-report DIR] [--memory-xml-report DIR]
-              [--old-html-report DIR] [--txt-report DIR] [--xml-report DIR]
-              [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
-              [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--find-occurrences CLASS.MEMBER] [--strict-boolean]
+              [--cobertura-xml-report DIR] [--html-report DIR]
+              [--linecount-report DIR] [--linecoverage-report DIR]
+              [--memory-xml-report DIR] [--old-html-report DIR]
+              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
+              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -365,6 +365,11 @@ Here are some more useful flags:
   for functions with ``None`` or ``Any`` return types. Mypy
   also currently ignores functions with an empty body or a body that is
   just ellipsis (``...``), since these can be valid as abstract methods.
+
+- ``--strict-boolean`` will make using non-boolean expressions in conditions
+  an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
+  type other than ``bool``. Instead use explicit checks like ``if x > 0`` or
+  ``while x is not None``.
 
 For the remaining flags you can read the full ``mypy -h`` output.
 

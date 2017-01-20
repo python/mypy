@@ -219,7 +219,7 @@ x + ""
 [file mod.py]
 this deliberate syntax error will not be reported
 [out]
- 
+
 [case testFollowImportsError]
 # flags: --follow-imports=error
 from mod import x
@@ -240,3 +240,66 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 # flags: --ignore-missing-imports
 from mod import x
 [out]
+
+[case testStrictBoolean]
+# flags: --strict-boolean
+if True:
+  pass
+if 'test':  # E: Condition must be a boolean
+  pass
+elif 1:  # E: Condition must be a boolean
+  pass
+
+def f() -> bool:
+  return True
+
+if f:  # E: Condition must be a boolean
+  pass
+
+if f():
+  pass
+
+class A:
+  def __call__(self) -> bool:
+    return False
+
+if A:  # E: Condition must be a boolean
+  pass
+
+if A():  # E: Condition must be a boolean
+  pass
+
+if A()():
+  pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanTernary]
+# flags: --strict-boolean
+x = 1 if 'test' else 2  # E: Condition must be a boolean
+y = 1 if not 'test' else 2
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanWhile]
+# flags: --strict-boolean
+while 5:  # E: Condition must be a boolean
+  pass
+
+while False:
+  pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanComplexTypes]
+# flags: --strict-boolean
+from typing import Any, Type, Union
+
+x = True  # type: Any
+y = True  # type: Union[bool, int]
+z = int  # type: Type[int]
+
+if x:
+  pass
+if y:  # E: Condition must be a boolean
+  pass
+if z:  # E: Condition must be a boolean
+  pass
+[builtins fixtures/bool.pyi]
