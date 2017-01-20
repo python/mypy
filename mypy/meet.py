@@ -25,9 +25,19 @@ def meet_types(s: Type, t: Type) -> Type:
     return t.accept(TypeMeetVisitor(s))
 
 
-def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
+def meet_simple(s: Type, t: Type) -> Type:
+    """Return the type s "narrowed down" to t.
+
+    Note that this is not symmetric with respect to s and t.
+
+    TODO: Explain what this does in more detail and how this is
+          different from meet_types.
+    """
     if s == t:
         return s
+    if isinstance(t, AnyType):
+        # Anything can be narrowed down to Any.
+        return t
     if isinstance(s, UnionType):
         return UnionType.make_simplified_union([meet_types(x, t) for x in s.items])
     elif not is_overlapping_types(s, t, use_promotions=True):
@@ -36,10 +46,7 @@ def meet_simple(s: Type, t: Type, default_right: bool = True) -> Type:
         else:
             return NoneTyp()
     else:
-        if default_right:
-            return t
-        else:
-            return s
+        return t
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:

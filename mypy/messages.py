@@ -142,6 +142,9 @@ class MessageBuilder:
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
+    def num_messages(self) -> int:
+        return self.errors.num_messages()
+
     def report(self, msg: str, context: Context, severity: str,
                file: str = None, origin: Context = None) -> None:
         """Report an error or note (unless disabled)."""
