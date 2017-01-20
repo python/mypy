@@ -1933,8 +1933,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         cond_type = self.accept(e.cond)
         self.check_usable_type(cond_type, e)
         if self.chk.options.strict_boolean:
-            if not (isinstance(cond_type, Instance)
-                    and cond_type.type.fullname() == 'builtins.bool'):
+            is_bool = (isinstance(cond_type, Instance)
+                and cond_type.type.fullname() == 'builtins.bool')
+            if not (is_bool or isinstance(cond_type, AnyType)):
                 self.chk.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
         ctx = self.chk.type_context[-1]
 

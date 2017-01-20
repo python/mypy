@@ -219,7 +219,7 @@ x + ""
 [file mod.py]
 this deliberate syntax error will not be reported
 [out]
- 
+
 [case testFollowImportsError]
 # flags: --follow-imports=error
 from mod import x
@@ -288,15 +288,18 @@ while False:
   pass
 [builtins fixtures/bool.pyi]
 
-[case testStrictBooleanUnionAny]
+[case testStrictBooleanComplexTypes]
 # flags: --strict-boolean
-from typing import Any, Union
+from typing import Any, Type, Union
 
 x = True  # type: Any
 y = True  # type: Union[bool, int]
+z = int  # type: Type[int]
 
-if x:  # E: Condition must be a boolean
+if x:
   pass
 if y:  # E: Condition must be a boolean
+  pass
+if z:  # E: Condition must be a boolean
   pass
 [builtins fixtures/bool.pyi]

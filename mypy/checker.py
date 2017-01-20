@@ -1640,7 +1640,8 @@ class TypeChecker(NodeVisitor[Type]):
                 t = self.accept(e)
                 self.check_usable_type(t, e)
                 if self.options.strict_boolean:
-                    if not (isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'):
+                    is_bool = isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'
+                    if not (is_bool or isinstance(t, AnyType)):
                         self.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
 
                 if_map, else_map = self.find_isinstance_check(e)
