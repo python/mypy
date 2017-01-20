@@ -366,9 +366,10 @@ Here are some more useful flags:
   also currently ignores functions with an empty body or a body that is
   just ellipsis (``...``), since these can be valid as abstract methods.
 
-- ``--strict-boolean`` will make any non-boolean conditions errors.
-  Thus something like ``if 5`` is disallowed, in favor of ``if 5 > 0``,
-  ``if 5 is not None``, or some other more explicit check.
+- ``--strict-boolean`` will make using non-boolean expressions in conditions
+  an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
+  type other than ``bool``. Instead use explicit checks like ``if x > 0`` or
+  ``while x is not None``.
 
 For the remaining flags you can read the full ``mypy -h`` output.
 

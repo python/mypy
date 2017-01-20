@@ -215,7 +215,7 @@ def process_options(args: List[str],
                         help="print out all usages of a class member (experimental)")
     parser.add_argument('--strict-boolean', action='store_true',
                         dest='strict_boolean',
-                        help='enable strict boolean checks')
+                        help='enable strict boolean checks in conditions')
     # hidden options
     # --shadow-file a.py tmp.py will typecheck tmp.py in place of a.py.
     # Useful for tools to make transformations to a file to get more
