@@ -27,7 +27,6 @@ from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
-    'check-varargs.test',
 ]
 fast_parser_files = [
     'check-basic.test',
@@ -73,6 +72,7 @@ fast_parser_files = [
     'check-tuples.test',
     'check-expressions.test',
     'check-generic-subtyping.test',
+    'check-varargs.test',
 ]
 
 files.extend(fast_parser_files)
