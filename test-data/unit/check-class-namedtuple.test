@@ -350,7 +350,7 @@ import typing
 class X(typing.NamedTuple):
     x: int
     y = None  # type: int # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
-    x[0]: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
+    x.__init__: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type"
     z: str = 'z'
     aa: int  # E: Non-default NamedTuple fields cannot follow default fields
 
