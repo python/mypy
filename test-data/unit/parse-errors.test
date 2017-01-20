@@ -438,3 +438,9 @@ except KeyError, IndexError:
     pass
 [out]
 file:3: error: invalid syntax
+
+[case testLocalVarWithTypeOnNextLine]
+x = 0
+  # type: int
+[out]
+file:2: error: misplaced type annotation
