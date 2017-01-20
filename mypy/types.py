@@ -1034,13 +1034,18 @@ class UnionType(Type):
             return AnyType()
 
         from mypy.subtypes import is_subtype
+        from mypy.sametypes import is_same_type
+
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
             if i in removed: continue
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if i != j and is_subtype(tj, ti):
+                if (i != j
+                    and is_subtype(tj, ti)
+                    and (not (isinstance(tj, Instance) and tj.type.fallback_to_any)
+                         or is_same_type(ti, tj))):
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false
