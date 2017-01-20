@@ -258,8 +258,7 @@ def process_options(args: List[str],
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
                         dest='special-opts:find_occurrences',
                         help="print out all usages of a class member (experimental)")
-    parser.add_argument('--strict-boolean', action='store_true',
-                        dest='strict_boolean',
+    add_invertible_flag('--strict-boolean', default=False, strict_flag=True,
                         help='enable strict boolean checks in conditions')
     strict_help = "Strict mode. Enables the following flags: {}".format(
         ", ".join(strict_flag_names))
