@@ -78,10 +78,10 @@ fast_parser_files = [
 files.extend(fast_parser_files)
 
 if 'annotation' in typed_ast.ast35.Assign._fields:
-    files.append('check-newsyntax.test')
+    fast_parser_files.append('check-newsyntax.test')
 
 if 'contains_underscores' in typed_ast.ast35.Num._fields:
-    files.append('check-underscores.test')
+    fast_parser_files.append('check-underscores.test')
 
 
 class TypeCheckSuite(DataSuite):
