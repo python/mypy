@@ -2135,9 +2135,6 @@ class TypeChecker(StatementVisitor[None]):
     def visit_pass_stmt(self, s: PassStmt) -> None:
         pass
 
-    def visit_mypy_file(self, s: MypyFile) -> None:
-        assert False
-
     def visit_import(self, s: Import) -> None:
         pass
 
