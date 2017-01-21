@@ -17,7 +17,7 @@ two in a typesafe way.
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
 from mypy.sharedparse import special_function_elide_names, argument_elide_name
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
@@ -378,6 +378,14 @@ class ASTConverter(ast27.NodeTransformer):
         converter = TypeConverter(self.errors, line=line)
         decompose_stmts = []  # type: List[Statement]
 
+        def extract_names(arg: ast27.expr) -> List[str]:
+            if isinstance(arg, ast27.Name):
+                return [arg.id]
+            elif isinstance(arg, ast27.Tuple):
+                return [name for elt in arg.elts for name in extract_names(elt)]
+            else:
+                return []
+
         def convert_arg(index: int, arg: ast27.expr) -> Var:
             if isinstance(arg, ast27.Name):
                 v = arg.id
@@ -399,6 +407,7 @@ class ASTConverter(ast27.NodeTransformer):
 
         args = [(convert_arg(i, arg), get_type(i)) for i, arg in enumerate(n.args)]
         defaults = self.translate_expr_list(n.defaults)
+        names = [name for arg in n.args for name in extract_names(arg)]  # type: List[str]
 
         new_args = []  # type: List[Argument]
         num_no_defaults = len(args) - len(defaults)
@@ -413,11 +422,20 @@ class ASTConverter(ast27.NodeTransformer):
         # *arg
         if n.vararg is not None:
             new_args.append(Argument(Var(n.vararg), get_type(len(args)), None, ARG_STAR))
+            names.append(n.vararg)
 
         # **kwarg
         if n.kwarg is not None:
             typ = get_type(len(args) + (0 if n.vararg is None else 1))
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
+            names.append(n.kwarg)
+
+        seen_names = set()  # type: Set[str]
+        for name in names:
+            if name in seen_names:
+                self.fail("duplicate argument '{}' in function definition".format(name), line, 0)
+                break
+            seen_names.add(name)
 
         return new_args, decompose_stmts
 
