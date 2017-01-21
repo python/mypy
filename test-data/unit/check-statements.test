@@ -162,6 +162,42 @@ while None:
 [builtins fixtures/bool.pyi]
 [out]
 
+[case testForStatementTypeComments]
+# flags: --fast-parser
+from typing import List, Union
+x = []  # type: List[int]
+
+for y in x:  # type: str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    pass
+
+for z in x:  # type: int
+    pass
+
+for w in x:  # type: Union[int, str]
+    reveal_type(w)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+for v in x:  # type: int, int  # E: Invalid tuple literal type
+    pass
+[builtins fixtures/list.pyi]
+
+[case testForStatementMultipleTypeComments]
+# flags: --fast-parser
+from typing import List, Tuple
+x = []  # type: List[Tuple[int, int]]
+
+for y in x:  # type: int, int  # E: Invalid tuple literal type
+    pass
+
+for z in x:  # type: Tuple[int, int]
+    pass
+
+for w,v in x:  # type: int, str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    pass
+
+for a, b in x:  # type: int, int, int  # E: Incompatible number of tuple items
+    pass
+[builtins fixtures/list.pyi]
+
 
 -- Operator assignment
 -- -------------------
