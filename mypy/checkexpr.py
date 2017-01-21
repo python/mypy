@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
 
+from mypy.errors import report_internal_error
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
@@ -1369,7 +1370,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if is_subtype(right_type, self.named_type('builtins.int')):
             # Special case: [...] * <int value>. Use the type context of the
             # OpExpr, since the multiplication does not affect the type.
-            left_type = self.accept(e.left, context=self.chk.type_context[-1])
+            left_type = self.accept(e.left, type_context=self.chk.type_context[-1])
         else:
             left_type = self.accept(e.left)
         result, method_type = self.check_op('__mul__', left_type, e.right, e)
@@ -1515,7 +1516,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr, context=AnyType())
+        source_type = self.accept(expr.expr, type_context=AnyType())
         target_type = expr.type
         if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
@@ -1531,7 +1532,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
-        revealed_type = self.accept(expr.expr, context=self.chk.type_context[-1])
+        revealed_type = self.accept(expr.expr, type_context=self.chk.type_context[-1])
         if not self.chk.current_node_deferred:
             self.msg.reveal_type(revealed_type, expr)
         return revealed_type
@@ -1990,10 +1991,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
-                self.accept(node, context=context)
+                self.accept(node, type_context=context)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, context=context)
+            return self.accept(node, type_context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
@@ -2003,9 +2004,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Helpers
     #
 
-    def accept(self, node: Expression, context: Type = None) -> Type:
-        """Type check a node. Alias for TypeChecker.accept."""
-        return self.chk.accept(node, context)
+    def accept(self, node: Expression, type_context: Type = None) -> Type:
+        """Type check a node in the given type context."""
+        self.chk.type_context.append(type_context)
+        try:
+            typ = node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.chk.errors.file,
+                                  node.line, self.chk.errors, self.chk.options)
+            return AnyType()
+        self.chk.type_context.pop()
+        assert typ is not None
+        self.chk.store_type(node, typ)
+        if not self.chk.in_checked_function():
+            return AnyType()
+        else:
+            return typ
 
     def check_usable_type(self, typ: Type, context: Context) -> None:
         """Generate an error if type is Void."""
