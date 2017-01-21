@@ -9,7 +9,7 @@ from typing import (
 
 from mypy.lex import Token
 import mypy.strconv
-from mypy.visitor import NodeVisitor, ExpressionVisitor
+from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import dump_tagged, short_type
 
 
@@ -139,6 +139,8 @@ class Node(Context):
 
 class Statement(Node):
     """A statement node."""
+    def accept(self, visitor: StatementVisitor[T]) -> T:
+        raise RuntimeError('Not implemented')
 
 
 class Expression(Node):
@@ -313,7 +315,7 @@ class Import(ImportBase):
         super().__init__()
         self.ids = ids
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import(self)
 
 
@@ -330,7 +332,7 @@ class ImportFrom(ImportBase):
         self.names = names
         self.relative = relative
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
 
@@ -344,7 +346,7 @@ class ImportAll(ImportBase):
         self.id = id
         self.relative = relative
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 
 
@@ -382,7 +384,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     def name(self) -> str:
         return self.items[0].func.name()
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -530,7 +532,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def name(self) -> str:
         return self._name
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -595,7 +597,7 @@ class Decorator(SymbolNode, Statement):
     def fullname(self) -> str:
         return self.func.fullname()
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
 
     def serialize(self) -> JsonDict:
@@ -659,7 +661,7 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
@@ -711,7 +713,7 @@ class ClassDef(Statement):
         self.metaclass = metaclass
         self.decorators = []
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
 
     def is_generic(self) -> bool:
@@ -746,7 +748,7 @@ class GlobalDecl(Statement):
     def __init__(self, names: List[str]) -> None:
         self.names = names
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_global_decl(self)
 
 
@@ -758,7 +760,7 @@ class NonlocalDecl(Statement):
     def __init__(self, names: List[str]) -> None:
         self.names = names
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_nonlocal_decl(self)
 
 
@@ -772,7 +774,7 @@ class Block(Statement):
     def __init__(self, body: List[Statement]) -> None:
         self.body = body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
 
 
@@ -786,7 +788,7 @@ class ExpressionStmt(Statement):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
 
@@ -813,7 +815,7 @@ class AssignmentStmt(Statement):
         self.type = type
         self.new_syntax = new_syntax
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
 
 
@@ -829,7 +831,7 @@ class OperatorAssignmentStmt(Statement):
         self.lvalue = lvalue
         self.rvalue = rvalue
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_operator_assignment_stmt(self)
 
 
@@ -843,7 +845,7 @@ class WhileStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_while_stmt(self)
 
 
@@ -866,7 +868,7 @@ class ForStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
 
 
@@ -876,7 +878,7 @@ class ReturnStmt(Statement):
     def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
@@ -888,7 +890,7 @@ class AssertStmt(Statement):
         self.expr = expr
         self.msg = msg
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
@@ -898,22 +900,22 @@ class DelStmt(Statement):
     def __init__(self, expr: Lvalue) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
 
 class BreakStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
 class ContinueStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
 class PassStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
@@ -928,7 +930,7 @@ class IfStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
 
 
@@ -940,7 +942,7 @@ class RaiseStmt(Statement):
         self.expr = expr
         self.from_expr = from_expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
 
 
@@ -962,7 +964,7 @@ class TryStmt(Statement):
         self.else_body = else_body
         self.finally_body = finally_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
 
 
@@ -981,7 +983,7 @@ class WithStmt(Statement):
         self.target_type = target_type
         self.body = body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
 
 
@@ -998,7 +1000,7 @@ class PrintStmt(Statement):
         self.newline = newline
         self.target = target
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_print_stmt(self)
 
 
@@ -1016,7 +1018,7 @@ class ExecStmt(Statement):
         self.variables1 = variables1
         self.variables2 = variables2
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_exec_stmt(self)
 
 

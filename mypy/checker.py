@@ -16,16 +16,10 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
-    TypeApplication, DictExpr, SliceExpr, FuncExpr, TempNode, SymbolTableNode,
-    Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr, PromoteExpr, Node, ARG_POS, MDEF,
-    CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl
+    UnicodeExpr, OpExpr, UnaryExpr, FuncExpr, TempNode, SymbolTableNode,
+    Context, Decorator, PrintStmt, LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt,
+    ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, ImportFrom, ImportAll, ImportBase,
+    ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl
 )
 from mypy import nodes
 from mypy.types import (
@@ -69,7 +63,7 @@ DeferredNode = NamedTuple(
     [
         ('node', FuncItem),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
-        ('active_class', Optional[Type]),  # And its type (for selftype handline)
+        ('active_class', Optional[Type]),  # And its type (for selftype handling)
     ])
 
 
@@ -169,13 +163,10 @@ class TypeChecker(StatementVisitor[None]):
         Deferred functions will be processed by check_second_pass().
         """
         self.errors.set_file(self.path)
-        self.enter_partial_types()
-
-        with self.binder.top_frame_context():
-            for d in self.tree.defs:
-                self.accept(d)
-
-        self.leave_partial_types()
+        with self.enter_partial_types():
+            with self.binder.top_frame_context():
+                for d in self.tree.defs:
+                    self.accept(d)
 
         assert not self.current_node_deferred
 
@@ -210,16 +201,14 @@ class TypeChecker(StatementVisitor[None]):
             # print("XXX in pass %d, class %s, function %s" %
             #       (self.pass_num, type_name, node.fullname() or node.name()))
             done.add(node)
-            if type_name:
-                self.errors.push_type(type_name)
-
-            if active_class:
-                with self.scope.push_class(active_class):
-                    self.accept(node)
-            else:
-                self.accept(node)
-            if type_name:
-                self.errors.pop_type()
+            with self.errors.enter_type(type_name) if type_name else nothing():
+                with self.scope.push_class(active_class) if active_class else nothing():
+                    if isinstance(node, Statement):
+                        self.accept(node)
+                    elif isinstance(node, Expression):
+                        self.expr_checker.accept(node)
+                    else:
+                        assert False
         return True
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
@@ -240,14 +229,13 @@ class TypeChecker(StatementVisitor[None]):
         else:
             self.msg.cannot_determine_type(name, context)
 
-    def accept(self, node: Union[Statement, FuncItem],
-               type_context: Type = None) -> None:
+    def accept(self, stmt: Statement, type_context: Type = None) -> None:
         """Type check a node in the given type context."""
         self.type_context.append(type_context)
         try:
-            node.accept(self)
+            stmt.accept(self)
         except Exception as err:
-            report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+            report_internal_error(err, self.errors.file, stmt.line, self.errors, self.options)
         self.type_context.pop()
 
     def accept_loop(self, body: Statement, else_body: Statement = None, *,
@@ -455,7 +443,7 @@ class TypeChecker(StatementVisitor[None]):
                     # XXX This can be None, as happens in
                     # test_testcheck_TypeCheckSuite.testRedefinedFunctionInTryWithElse
                     self.msg.note("Internal mypy error checking function redefinition.", defn)
-                    return None
+                    return
                 if isinstance(orig_type, PartialType):
                     if orig_type.type is None:
                         # Ah this is a partial type. Give it the type of the function.
@@ -473,7 +461,7 @@ class TypeChecker(StatementVisitor[None]):
                                        messages.INCOMPATIBLE_REDEFINITION,
                                        'redefinition with type',
                                        'original type')
-        return None
+        return
 
     def check_func_item(self, defn: FuncItem,
                         type_override: CallableType = None,
@@ -490,23 +478,15 @@ class TypeChecker(StatementVisitor[None]):
 
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
-        if fdef:
-            self.errors.push_function(fdef.name())
-
-        self.enter_partial_types()
-
-        typ = self.function_type(defn)
-        if type_override:
-            typ = type_override
-        if isinstance(typ, CallableType):
-            self.check_func_def(defn, typ, name)
-        else:
-            raise RuntimeError('Not supported')
-
-        self.leave_partial_types()
-
-        if fdef:
-            self.errors.pop_function()
+        with self.errors.enter_function(fdef.name()) if fdef else nothing():
+            with self.enter_partial_types():
+                typ = self.function_type(defn)
+                if type_override:
+                    typ = type_override
+                if isinstance(typ, CallableType):
+                    self.check_func_def(defn, typ, name)
+                else:
+                    raise RuntimeError('Not supported')
 
         self.dynamic_funcs.pop()
         self.current_node_deferred = False
@@ -971,19 +951,16 @@ class TypeChecker(StatementVisitor[None]):
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
-        self.errors.push_type(defn.name)
-        self.enter_partial_types()
-        old_binder = self.binder
-        self.binder = ConditionalTypeBinder()
-        with self.binder.top_frame_context():
-            with self.scope.push_class(fill_typevars(defn.info)):
-                self.accept(defn.defs)
-        self.binder = old_binder
-        if not defn.has_incompatible_baseclass:
-            # Otherwise we've already found errors; more errors are not useful
-            self.check_multiple_inheritance(typ)
-        self.leave_partial_types()
-        self.errors.pop_type()
+        with self.errors.enter_type(defn.name), self.enter_partial_types():
+            old_binder = self.binder
+            self.binder = ConditionalTypeBinder()
+            with self.binder.top_frame_context():
+                with self.scope.push_class(fill_typevars(defn.info)):
+                    self.accept(defn.defs)
+            self.binder = old_binder
+            if not defn.has_incompatible_baseclass:
+                # Otherwise we've already found errors; more errors are not useful
+                self.check_multiple_inheritance(typ)
         return None
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
@@ -2319,16 +2296,16 @@ class TypeChecker(StatementVisitor[None]):
                 msg = "Failed qualified lookup: '{}' (fullname = '{}')."
                 raise KeyError(msg.format(last, name))
 
-    def enter_partial_types(self) -> None:
-        """Push a new scope for collecting partial types."""
-        self.partial_types.append({})
-
-    def leave_partial_types(self) -> None:
-        """Pop partial type scope.
+    @contextmanager
+    def enter_partial_types(self) -> Iterator[None]:
+        """Enter a new scope for collecting partial types.
 
         Also report errors for variables which still have partial
         types, i.e. we couldn't infer a complete type.
         """
+        self.partial_types.append({})
+        yield
+
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
@@ -2938,3 +2915,8 @@ class Scope:
         self.stack.append(t)
         yield
         self.stack.pop()
+
+
+@contextmanager
+def nothing() -> Iterator[None]:
+    yield

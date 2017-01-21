@@ -227,10 +227,6 @@ class StatementVisitor(Generic[T]):
     # Module structure
 
     @abstractmethod
-    def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
-        pass
-
-    @abstractmethod
     def visit_import(self, o: 'mypy.nodes.Import') -> T:
         pass
 
@@ -311,10 +307,12 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     TODO make the default return value explicit
     """
 
-    # Module structure
+    # Not in superclasses:
 
     def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
         pass
+
+    # Module structure
 
     def visit_import(self, o: 'mypy.nodes.Import') -> T:
         pass
