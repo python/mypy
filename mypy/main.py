@@ -143,6 +143,8 @@ def invert_flag_name(flag: str) -> str:
         prefix, rest = split
         if prefix in flag_prefix_map:
             return '--{}-{}'.format(flag_prefix_map[prefix], rest)
+        elif prefix == 'no':
+            return '--{}'.format(rest)
 
     return '--no-{}'.format(flag[2:])
 
