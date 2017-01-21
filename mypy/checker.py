@@ -278,7 +278,6 @@ class TypeChecker(StatementVisitor[None]):
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         self.check_overlapping_overloads(defn)
-        return None
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         for i, item in enumerate(defn.items):
@@ -461,7 +460,6 @@ class TypeChecker(StatementVisitor[None]):
                                        messages.INCOMPATIBLE_REDEFINITION,
                                        'redefinition with type',
                                        'original type')
-        return
 
     def check_func_item(self, defn: FuncItem,
                         type_override: CallableType = None,
@@ -961,7 +959,6 @@ class TypeChecker(StatementVisitor[None]):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
-        return None
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
@@ -1019,11 +1016,9 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_import_from(self, node: ImportFrom) -> None:
         self.check_import(node)
-        return None
 
     def visit_import_all(self, node: ImportAll) -> None:
         self.check_import(node)
-        return None
 
     def check_import(self, node: ImportBase) -> None:
         for assign in node.assignments:
@@ -1045,12 +1040,11 @@ class TypeChecker(StatementVisitor[None]):
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
             self.binder.unreachable()
-            return None
+            return
         for s in b.body:
             if self.binder.is_unreachable():
                 break
             self.accept(s)
-        return None
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
@@ -1067,7 +1061,6 @@ class TypeChecker(StatementVisitor[None]):
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
                 self.check_assignment(lv, rvalue, s.type is None)
-        return None
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -1680,13 +1673,11 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         self.expr_checker.accept(s.expr)
-        return None
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
         self.check_return_stmt(s)
         self.binder.unreachable()
-        return None
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
         defn = self.scope.top_function()
@@ -1765,7 +1756,6 @@ class TypeChecker(StatementVisitor[None]):
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 if s.else_body:
                     self.accept(s.else_body)
-        return None
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
@@ -1773,7 +1763,6 @@ class TypeChecker(StatementVisitor[None]):
         if_stmt.set_line(s.get_line(), s.get_column())
         self.accept_loop(if_stmt, s.else_body,
                          exit_condition=s.expr)
-        return None
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> None:
@@ -1788,7 +1777,6 @@ class TypeChecker(StatementVisitor[None]):
         else:
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
-        return None
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         self.expr_checker.accept(s.expr)
@@ -1804,7 +1792,6 @@ class TypeChecker(StatementVisitor[None]):
         true_map, _ = self.find_isinstance_check(s.expr)
 
         self.push_type_map(true_map)
-        return None
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         """Type check a raise statement."""
@@ -1813,7 +1800,6 @@ class TypeChecker(StatementVisitor[None]):
         if s.from_expr:
             self.type_check_raise(s.from_expr, s, True)
         self.binder.unreachable()
-        return None
 
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
@@ -1872,8 +1858,6 @@ class TypeChecker(StatementVisitor[None]):
             # from the latter context affect the type state in the code
             # that follows the try statement.)
             self.accept(s.finally_body)
-
-        return None
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.
@@ -2036,15 +2020,7 @@ class TypeChecker(StatementVisitor[None]):
             c = CallExpr(m, [e.index], [nodes.ARG_POS], [None])
             c.line = s.line
             c.accept(self.expr_checker)
-            return
         else:
-            def flatten(t: Expression) -> List[Expression]:
-                """Flatten a nested sequence of tuples/lists into one list of nodes."""
-                if isinstance(t, TupleExpr) or isinstance(t, ListExpr):
-                    return [b for a in t.items for b in flatten(a)]
-                else:
-                    return [t]
-
             s.expr.accept(self.expr_checker)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
@@ -2052,7 +2028,6 @@ class TypeChecker(StatementVisitor[None]):
                                             DeletedType(source=elt.name),
                                             self.binder.get_declaration(elt),
                                             False)
-            return
 
     def visit_decorator(self, e: Decorator) -> None:
         for d in e.decorators:
@@ -2081,7 +2056,6 @@ class TypeChecker(StatementVisitor[None]):
         e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)
-        return None
 
     def check_incompatible_property_override(self, e: Decorator) -> None:
         if not e.var.is_settable_property and e.func.info is not None:
@@ -2102,7 +2076,6 @@ class TypeChecker(StatementVisitor[None]):
             else:
                 self.check_with_item(expr, target, s.target_type is None)
         self.accept(s.body)
-        return None
 
     def check_async_with_item(self, expr: Expression, target: Expression,
                               infer_lvalue_type: bool) -> None:
@@ -2140,15 +2113,12 @@ class TypeChecker(StatementVisitor[None]):
             if not isinstance(target_type, NoneTyp):
                 # TODO: Also verify the type of 'write'.
                 self.expr_checker.analyze_external_member_access('write', target_type, s.target)
-        return None
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.binder.handle_break()
-        return None
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.binder.handle_continue()
-        return None
 
     def visit_exec_stmt(self, s: ExecStmt) -> None:
         pass
@@ -2651,6 +2621,14 @@ def find_isinstance_check(node: Expression,
 
     # Not a supported isinstance check
     return {}, {}
+
+
+def flatten(t: Expression) -> List[Expression]:
+    """Flatten a nested sequence of tuples/lists into one list of nodes."""
+    if isinstance(t, TupleExpr) or isinstance(t, ListExpr):
+        return [b for a in t.items for b in flatten(a)]
+    else:
+        return [t]
 
 
 def get_isinstance_type(expr: Expression, type_map: Dict[Expression, Type]) -> Type:
