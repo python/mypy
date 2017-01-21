@@ -1020,6 +1020,9 @@ class TypeChecker(StatementVisitor[None]):
     def visit_import_all(self, node: ImportAll) -> None:
         self.check_import(node)
 
+    def visit_import(self, s: Import) -> None:
+        pass
+
     def check_import(self, node: ImportBase) -> None:
         for assign in node.assignments:
             lvalue = assign.lvalues[0]
@@ -2133,9 +2136,6 @@ class TypeChecker(StatementVisitor[None]):
         pass
 
     def visit_pass_stmt(self, s: PassStmt) -> None:
-        pass
-
-    def visit_import(self, s: Import) -> None:
         pass
 
     #
