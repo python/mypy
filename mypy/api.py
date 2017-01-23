@@ -5,11 +5,16 @@ It just mimics command line activation without starting a new interpreter.
 So the normal docs about the mypy command line apply.
 Changes in the command line version of mypy will be immediately useable.
 
-Just import this module and then call the 'run' function with exactly the
-string you would have passed to mypy from the command line.
-Function 'run' returns a tuple of strings: (<normal_report>, <error_report>),
-in which <normal_report> is what mypy normally writes to sys.stdout and
-<error_report> is what mypy normally writes to sys.stderr.
+Just import this module and then call the 'run' function with a parameter of
+type List[str], containing what normally would have been the command line
+arguments to mypy.
+
+Function 'run' returns a Tuple[str, str, int], namely
+(<normal_report>, <error_report>, <exit_status>),
+in which <normal_report> is what mypy normally writes to sys.stdout,
+<error_report> is what mypy normally writes to sys.stderr and exit_status is
+the exit status mypy normally returns to the operating system.
+
 Any pretty formatting is left to the caller.
 
 Trivial example of code using this module:
