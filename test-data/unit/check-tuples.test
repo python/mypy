@@ -387,7 +387,7 @@ aa, bb, *cc = t  # E: Need type annotation for variable
 [case testAssignmentToStarAnnotation]
 from typing import List
 li, lo = None, None # type: List[int], List[object]
-a, b, *c = 1, 2  # type: int, int, *List[int]
+a, b, *c = 1, 2  # type: int, int, List[int]
 c = lo  # E: Incompatible types in assignment (expression has type List[object], variable has type List[int])
 c = li
 [builtins fixtures/list.pyi]

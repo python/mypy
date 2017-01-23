@@ -34,7 +34,7 @@ from mypy.nodes import (
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType,
+    Type, CallableType, AnyType, UnboundType, EllipsisType
 )
 from mypy import defaults
 from mypy import experiments
@@ -112,6 +112,15 @@ def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
         if f(item):
             return item
     return None
+
+
+def is_no_type_check_decorator(expr: ast27.expr) -> bool:
+    if isinstance(expr, ast27.Name):
+        return expr.id == 'no_type_check'
+    elif isinstance(expr, ast27.Attribute):
+        if isinstance(expr.value, ast27.Name):
+            return expr.value.id == 'typing' and expr.attr == 'no_type_check'
+    return False
 
 
 class ASTConverter(ast27.NodeTransformer):
@@ -274,7 +283,10 @@ class ASTConverter(ast27.NodeTransformer):
             arg_names = [None] * len(arg_names)
 
         arg_types = None  # type: List[Type]
-        if n.type_comment is not None and len(n.type_comment) > 0:
+        if (n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)):
+            arg_types = [None] * len(args)
+            return_type = None
+        elif n.type_comment is not None and len(n.type_comment) > 0:
             try:
                 func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
                 assert isinstance(func_type_ast, ast35.FunctionType)
@@ -293,7 +305,7 @@ class ASTConverter(ast27.NodeTransformer):
                     arg_types.insert(0, AnyType())
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType() for _ in args]
+                arg_types = [AnyType()] * len(args)
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
@@ -307,7 +319,10 @@ class ASTConverter(ast27.NodeTransformer):
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) > len(arg_kinds):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+                self.fail("Ellipses cannot accompany other argument types "
+                          "in function type signature.", n.lineno, 0)
+            elif len(arg_types) > len(arg_kinds):
                 self.fail('Type signature has too many arguments', n.lineno, 0)
             elif len(arg_types) < len(arg_kinds):
                 self.fail('Type signature has too few arguments', n.lineno, 0)
