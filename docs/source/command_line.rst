@@ -387,7 +387,7 @@ importing ``mypy.api`` and calling the ``run`` function with a list containing
 what normally would have been the command line arguments to mypy.
 
 Function ``run`` returns a ``Tuple [str, str, int]`` containing
-``(<normal_report>, <error_report>, <exit status>)``, in which ``<normal_report>``
+``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
 is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
 normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy would
 have normally returned to the operating system.
