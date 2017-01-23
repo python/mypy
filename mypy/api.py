@@ -17,7 +17,7 @@ Trivial example of code using this module:
 import sys
 from mypy import api
 
-result = api.run(' '.join(sys.argv[1:]))
+result = api.run(sys.argv[1:])
 
 if result[0]:
     print('\nType checking report:\n')
@@ -26,16 +26,18 @@ if result[0]:
 if result[1]:
     print('\nError report:\n')
     print(result[1])  # stderr
+
+print ('\nExit status:', result [2])
 """
 
 import sys
 from io import StringIO
-from typing import Tuple
+from typing import List, Tuple
 from mypy.main import main
 
 
-def run(params: str) -> Tuple[str, str]:
-    sys.argv = [''] + params.split()
+def run(params: List [str]) -> Tuple[str, str, int]:
+    sys.argv = [''] + params
 
     old_stdout = sys.stdout
     new_stdout = StringIO()
@@ -47,10 +49,11 @@ def run(params: str) -> Tuple[str, str]:
 
     try:
         main(None)
-    except SystemExit:
-        pass
+        exit_status = 0
+    except SystemExit as system_exit:
+        exit_status = system_exit.code
 
     sys.stdout = old_stdout
     sys.stderr = old_stderr
 
-    return new_stdout.getvalue(), new_stderr.getvalue()
+    return new_stdout.getvalue(), new_stderr.getvalue(), exit_status
