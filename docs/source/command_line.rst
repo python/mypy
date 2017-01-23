@@ -392,7 +392,7 @@ is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
 normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy normally
 returns to the operating system.
 
-A trivial example of using the api the  is the following::
+A trivial example of using the api is the following::
 
     import sys
     from mypy import api
