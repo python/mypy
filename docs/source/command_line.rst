@@ -383,7 +383,7 @@ Integrating mypy into another Python application
 ************************************************
 
 It is possible to integrate mypy into another Python 3 application by
-importing ``mypy.api`` and calling the ``run`` function with a ``List[str]`` containing
+importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``List[str]`` containing
 what normally would have been the command line arguments to mypy.
 
 Function ``run`` returns a ``Tuple[str, str, int]``, namely
