@@ -389,8 +389,8 @@ what normally would have been the command line arguments to mypy.
 Function ``run`` returns a ``Tuple [str, str, int]`` containing
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
 is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
-normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy would
-have normally returned to the operating system.
+normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy normally
+returns to the operating system.
 
 A trivial example of this is the following::
 
