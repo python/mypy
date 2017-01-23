@@ -231,7 +231,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr, o.from_expr], o)
 
     def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> str:
-        return self.dump([o.expr], o)
+        if o.msg is not None:
+            return self.dump([o.expr, o.msg], o)
+        else:
+            return self.dump([o.expr], o)
 
     def visit_await_expr(self, o: 'mypy.nodes.AwaitExpr') -> str:
         return self.dump([o.expr], o)

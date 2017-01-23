@@ -20,7 +20,7 @@ def f():  # E: syntax error in type comment
 
 [case testFastParseInvalidFunctionAnnotation]
 # flags: --fast-parser
-def f():  # E: invalid type comment
+def f(x):  # E: invalid type comment
   # type: (a + b) -> None
   pass
 
@@ -189,3 +189,27 @@ main:3: error: syntax error in type comment
 # flags: --fast-parser
 print 0,
 print 1, 2,
+
+[case testFastParserShowsMultipleErrors]
+def f(x):  # E: Type signature has too few arguments
+    # type: () -> None
+    pass
+def g():  # E: Type signature has too many arguments
+    # type: (int) -> None
+    pass
+
+[case testFastParseMalformedAssert]
+# flags: --fast-parser
+assert 1, 2
+assert (1, 2)  # W: Assertion is always true, perhaps remove parentheses?
+assert (1, 2), 3  # W: Assertion is always true, perhaps remove parentheses?
+assert ()
+assert (1,)  # W: Assertion is always true, perhaps remove parentheses?
+
+[case testFastParseAssertMessage]
+# flags: --fast-parser
+assert 1
+assert 1, 2
+assert 1, 1+2
+assert 1, 1+'test'  # E: Unsupported operand types for + ("int" and "str")
+assert 1, f()  # E: Name 'f' is not defined

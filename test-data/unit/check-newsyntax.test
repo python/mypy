@@ -1,6 +1,6 @@
 [case testNewSyntaxRequire36]
 # flags: --fast-parser --python-version 3.5
-x: int = 5  # E: Variable annotation syntax is only suppoted in Python 3.6, use type comment instead
+x: int = 5  # E: Variable annotation syntax is only supported in Python 3.6, use type comment instead
 [out]
 
 [case testNewSyntaxSyntaxError]
@@ -85,3 +85,16 @@ class C:
         x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
         self.x: int = None  # E: Incompatible types in assignment (expression has type None, variable has type "int")
 [out]
+
+[case testNewSyntaxSpecialAssign]
+# flags: --fast-parser --python-version 3.6
+class X:
+    x: str
+    x[0]: int
+    x.x: int
+
+[out]
+main:4: error: Unexpected type declaration
+main:4: error: Unsupported target for indexed assignment
+main:5: error: Type cannot be declared in assignment to non-self attribute
+main:5: error: "str" has no attribute "x"

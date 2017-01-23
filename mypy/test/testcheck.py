@@ -31,7 +31,6 @@ files = [
     'check-expressions.test',
     'check-functions.test',
     'check-generic-subtyping.test',
-    'check-python2.test',
     'check-tuples.test',
     'check-varargs.test',
 ]
@@ -73,6 +72,7 @@ fast_parser_files = [
     'check-newtype.test',
     'check-class-namedtuple.test',
     'check-selftype.test',
+    'check-python2.test',
 ]
 
 files.extend(fast_parser_files)

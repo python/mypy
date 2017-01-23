@@ -2067,6 +2067,8 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         if s.expr:
             s.expr.accept(self)
+        if s.msg:
+            s.msg.accept(self)
 
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> None:
@@ -2828,7 +2830,17 @@ class FirstPass(NodeVisitor):
 
         # Add implicit definitions of module '__name__' etc.
         for name, t in implicit_module_attrs.items():
-            v = Var(name, UnboundType(t))
+            # unicode docstrings should be accepted in Python 2
+            if name == '__doc__':
+                if self.pyversion >= (3, 0):
+                    typ = UnboundType('__builtins__.str')  # type: Type
+                else:
+                    typ = UnionType([UnboundType('__builtins__.str'),
+                                     UnboundType('__builtins__.unicode')])
+            else:
+                assert t is not None, 'type should be specified for {}'.format(name)
+                typ = UnboundType(t)
+            v = Var(name, typ)
             v._fullname = self.sem.qualified_name(name)
             self.sem.globals[name] = SymbolTableNode(GDEF, v, self.sem.cur_mod_id)
 

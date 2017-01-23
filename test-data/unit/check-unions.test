@@ -138,3 +138,82 @@ class C(Generic[T, U]):
 a = C() # type: C[int, int]
 b = a.f('a')
 a.f(b) # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "str"
+
+[case testUnionOrderEquivalence]
+from typing import Union
+
+def foo(): pass
+
+S = str
+T = int
+
+if foo():
+    def f(x: Union[int, str]) -> None: pass
+elif foo():
+    def f(x: Union[str, int]) -> None: pass
+elif foo():
+    def f(x: Union[int, str, int, int, str]) -> None: pass
+elif foo():
+    def f(x: Union[int, str, float]) -> None: pass  # E: All conditional function variants must have identical signatures
+elif foo():
+    def f(x: Union[S, T]) -> None: pass
+elif foo():
+    def f(x: Union[str]) -> None: pass  # E: All conditional function variants must have identical signatures
+else:
+    def f(x: Union[Union[int, T], Union[S, T], str]) -> None: pass
+
+# Checks bidirectionality of testing. The first definition of g is consistent with
+# the second, but not vice-versa.
+if foo():
+    def g(x: Union[int, str, bytes]) -> None: pass
+else:
+    def g(x: Union[int, str]) -> None: pass  # E: All conditional function variants must have identical signatures
+
+[case testUnionSimplificationSpecialCases]
+from typing import Any, TypeVar, Union
+
+class C(Any): pass
+
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+a = None # type: Any
+
+reveal_type(u(C(), None))  # E: Revealed type is '__main__.C*'
+reveal_type(u(None, C()))  # E: Revealed type is '__main__.C*'
+
+# This will be fixed later
+reveal_type(u(C(), a))  # E: Revealed type is 'Any'
+reveal_type(u(a, C()))  # E: Revealed type is 'Any'
+
+reveal_type(u(C(), C()))  # E: Revealed type is '__main__.C*'
+reveal_type(u(a, a))  # E: Revealed type is 'Any'
+
+[case testUnionSimplificationSpecialCase2]
+from typing import Any, TypeVar, Union
+
+class C(Any): pass
+
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+
+def f(x: T) -> None:
+    reveal_type(u(C(), x)) # E: Revealed type is 'Union[T`-1, __main__.C*]'
+    reveal_type(u(x, C())) # E: Revealed type is 'Union[__main__.C*, T`-1]'
+
+[case testUnionSimplificationSpecialCase3]
+from typing import Any, TypeVar, Generic, Union
+
+class C(Any): pass
+
+V = TypeVar('V')
+T = TypeVar('T')
+
+class M(Generic[V]):
+    def get(self, default: T) -> Union[V, T]: ...
+
+def f(x: M[C]) -> None:
+    y = x.get(None)
+    reveal_type(y) # E: Revealed type is '__main__.C'

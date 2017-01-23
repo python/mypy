@@ -1533,6 +1533,31 @@ main:6: error: Return type of "__iadd__" incompatible with "__add__" of supertyp
 main:8: error: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
 main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
+[case testGetAttribute]
+
+a, b = None, None # type: A, B
+class A:
+    def __getattribute__(self, x: str) -> A:
+        return A()
+class B: pass
+
+a = a.foo
+b = a.bar
+[out]
+main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testGetAttributeSignature]
+class A:
+    def __getattribute__(self, x: str) -> A: pass
+class B:
+    def __getattribute__(self, x: A) -> B: pass
+class C:
+    def __getattribute__(self, x: str, y: str) -> C: pass
+class D:
+    def __getattribute__(self, x: str) -> None: pass
+[out]
+main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
+main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
 
 [case testGetAttr]
 
