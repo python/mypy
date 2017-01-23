@@ -1,7 +1,7 @@
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
 from mypy.sharedparse import special_function_elide_names, argument_elide_name
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,
@@ -394,18 +394,22 @@ class ASTConverter(ast35.NodeTransformer):
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []
+        names = []  # type: List[ast35.arg]
         num_no_defaults = len(args.args) - len(args.defaults)
         # positional arguments without defaults
         for a in args.args[:num_no_defaults]:
             new_args.append(make_argument(a, None, ARG_POS))
+            names.append(a)
 
         # positional arguments with defaults
         for a, d in zip(args.args[num_no_defaults:], args.defaults):
             new_args.append(make_argument(a, d, ARG_OPT))
+            names.append(a)
 
         # *arg
         if args.vararg is not None:
             new_args.append(make_argument(args.vararg, None, ARG_STAR))
+            names.append(args.vararg)
 
         # keyword-only arguments with defaults
         for a, d in zip(args.kwonlyargs, args.kw_defaults):
@@ -413,10 +417,20 @@ class ASTConverter(ast35.NodeTransformer):
                 a,
                 d,
                 ARG_NAMED if d is None else ARG_NAMED_OPT))
+            names.append(a)
 
         # **kwarg
         if args.kwarg is not None:
             new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
+            names.append(args.kwarg)
+
+        seen_names = set()  # type: Set[str]
+        for name in names:
+            if name.arg in seen_names:
+                self.fail("duplicate argument '{}' in function definition".format(name.arg),
+                          name.lineno, name.col_offset)
+                break
+            seen_names.add(name.arg)
 
         return new_args
 
