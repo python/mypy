@@ -2467,7 +2467,7 @@ class A:
 class B(A):
     a = "a"
 [out]
-main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableSubclassAssignment]
 class A:
@@ -2486,8 +2486,8 @@ class B(A):
 class C(B):
     a = "a"
 [out]
-main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+main:6: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableSubclassTypeOverwriteImplicit]
 class A:
@@ -2495,7 +2495,7 @@ class A:
 class B(A):
     a = None  # type: str
 [out]
-main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableSuperUsage]
 class A:
@@ -2518,7 +2518,7 @@ class C(B):
 class D(A):
     a = "str"
 [out]
-main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:7: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
 [case testVariableTypeVar]
 from typing import TypeVar, Generic
@@ -2536,7 +2536,7 @@ class A(Generic[T]):
 class B(A[int]):
     a = "abc"
 [out]
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableTypeVarIndirectly]
 from typing import TypeVar, Generic
@@ -2548,7 +2548,7 @@ class B(A[int]):
 class C(B):
     a = "a"
 [out]
-main:8: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:8: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableTypeVarList]
 from typing import List, TypeVar, Generic
@@ -2571,7 +2571,7 @@ class B(A):
     a = 1
     def b(self) -> None: pass
 [out]
-main:5: error: Incompatible types in assignment (expression has type "int", variable has type Callable[[A], None])
+main:5: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as Callable[[A], None])
 main:6: error: Signature of "b" incompatible with supertype "A"
 
 [case testVariableProperty]
@@ -2586,7 +2586,7 @@ class D(A):
     a = 1
 [builtins fixtures/property.pyi]
 [out]
-main:9: error: Incompatible types in assignment (expression has type "int", variable has type "bool")
+main:9: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "bool")
 
 [case testVariableOverwriteAny]
 from typing import Any
@@ -2596,7 +2596,7 @@ class B(A):
     a = 'x'  # type: Any
 [out]
 
-[case testInstnaceMethodOverwrite]
+[case testInstanceMethodOverwrite]
 class B():
     def n(self, a: int) -> None: pass
 class C(B):
@@ -2604,14 +2604,14 @@ class C(B):
     n = m
 [out]
 
-[case testInstnaceMethodOverwriteError]
+[case testInstanceMethodOverwriteError]
 class B():
     def n(self, a: int) -> None: pass
 class C(B):
     def m(self, a: str) -> None: pass
     n = m
 [out]
-main:5: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+main:5: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "B" defined the type as Callable[[int], None])
 
 [case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
@@ -2655,7 +2655,7 @@ class C(B):
     n = m
 [builtins fixtures/classmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "B" defined the type as Callable[[int], None])
 
 [case testClassSpec]
 from typing import Callable
@@ -2673,7 +2673,7 @@ class B(A):
     def c(self, a: str) -> int: pass
     b = c
 [out]
-main:6: error: Incompatible types in assignment (expression has type Callable[[str], int], variable has type Callable[[int], int])
+main:6: error: Incompatible types in assignment (expression has type Callable[[str], int], base class "A" defined the type as Callable[[int], int])
 
 [case testClassStaticMethod]
 class A():
@@ -2685,7 +2685,7 @@ class B(A):
     a = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+main:7: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
 
 [case testClassStaticMethodIndirect]
 class A():
@@ -2698,7 +2698,7 @@ class B(A):
     c = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:8: error: Incompatible types in assignment (expression has type Callable[[str], None], variable has type Callable[[int], None])
+main:8: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
 
 [case testTempNode]
 class A():
@@ -2723,7 +2723,7 @@ class B(A):
 class C(B):
     x = ''
 [out]
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
 [case testSlots]
 class A:
@@ -2739,8 +2739,8 @@ class B(A):
 class C(B):
     x = object()
 [out]
-main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:6: error: Incompatible types in assignment (expression has type "object", variable has type "str")
+main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+main:6: error: Incompatible types in assignment (expression has type "object", base class "B" defined the type as "str")
 
 [case testClassOneErrorPerLine]
 class A:
@@ -2749,5 +2749,5 @@ class B(A):
   x = ""
   x = 1.0
 [out]
-main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")

@@ -1241,7 +1241,7 @@ class TypeChecker(NodeVisitor[Type]):
                 return self.check_subtype(compare_type, base_type, lvalue,
                                           messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                           'expression has type',
-                                          'variable has type')
+                                          'base class "%s" defined the type as' % base.name())
         return True
 
     def lvalue_type_from_base(self, expr_node: Var,
