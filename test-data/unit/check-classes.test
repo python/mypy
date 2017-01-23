@@ -2705,3 +2705,24 @@ class A:
     __slots__ = ("a")
 class B(A):
     __slots__ = ("a", "b")
+
+[case testClassOrderOfError]
+class A:
+    x = 1
+class B(A):
+    x = "a"
+class C(B):
+    x = object()
+[out]
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6: error: Incompatible types in assignment (expression has type "object", variable has type "str")
+
+[case testClassOneErrorPerLine]
+class A:
+  x = 1
+class B(A):
+  x = ""
+  x = 1.0
+[out]
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
