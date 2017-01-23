@@ -36,7 +36,7 @@ from typing import List, Tuple
 from mypy.main import main
 
 
-def run(params: List [str]) -> Tuple[str, str, int]:
+def run(params: List[str]) -> Tuple[str, str, int]:
     sys.argv = [''] + params
 
     old_stdout = sys.stdout
