@@ -27,7 +27,7 @@ if result[1]:
     print('\nError report:\n')
     print(result[1])  # stderr
 
-print ('\nExit status:', result [2])
+print ('\nExit status:', result[2])
 """
 
 import sys
