@@ -284,7 +284,7 @@ class ASTConverter(ast27.NodeTransformer):
 
         arg_types = None  # type: List[Type]
         if (n.decorator_list and any(is_no_type_check_decorator(d) for d in n.decorator_list)):
-            arg_types = [None for _ in args]
+            arg_types = [None] * len(args)
             return_type = None
         elif n.type_comment is not None and len(n.type_comment) > 0:
             try:
@@ -305,7 +305,7 @@ class ASTConverter(ast27.NodeTransformer):
                     arg_types.insert(0, AnyType())
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType() for _ in args]
+                arg_types = [AnyType()] * len(args)
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]

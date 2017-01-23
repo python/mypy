@@ -313,7 +313,7 @@ class ASTConverter(ast35.NodeTransformer):
                     arg_types.insert(0, AnyType())
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
-                arg_types = [AnyType() for _ in args]
+                arg_types = [AnyType()] * len(args)
                 return_type = AnyType()
         else:
             arg_types = [a.type_annotation for a in args]
@@ -777,7 +777,7 @@ class ASTConverter(ast35.NodeTransformer):
         return CallExpr(self.visit(n.func),
                         arg_types,
                         arg_kinds,
-                        cast("List[str]", [None for _ in n.args]) + [k.arg for k in n.keywords])
+                        cast("List[str]", [None] * len(n.args)) + [k.arg for k in n.keywords])
 
     # Num(object n) -- a number as a PyObject.
     @with_line
