@@ -213,3 +213,39 @@ assert 1, 2
 assert 1, 1+2
 assert 1, 1+'test'  # E: Unsupported operand types for + ("int" and "str")
 assert 1, f()  # E: Name 'f' is not defined
+
+[case testFastParserConsistentFunctionTypes]
+# flags: --fast-parser
+def f(x, y, z):
+  # type: (int, int, int) -> int
+  pass
+
+def f(x,  # type: int  # E: Function has duplicate type signatures
+      y,  # type: int
+      z   # type: int
+    ):
+    # type: (int, int, int) -> int
+    pass
+
+def f(x,  # type: int
+      y,  # type: int
+      z   # type: int
+    ):
+    # type: (...) -> int
+    pass
+
+def f(x, y, z):
+  # type: (int, int, int) -> int
+  pass
+
+def f(x) -> int:  # E: Function has duplicate type signatures
+  # type: (int) -> int
+  pass
+
+def f(x: int, y: int, z: int):
+  # type: (...) -> int
+  pass
+
+def f(x: int):  # E: Function has duplicate type signatures
+  # type: (int) -> int
+  pass
