@@ -38,6 +38,7 @@ from mypy.types import (
 )
 from mypy import defaults
 from mypy import experiments
+from mypy import messages
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment
 
@@ -296,6 +297,9 @@ class ASTConverter(ast27.NodeTransformer):
                     arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
                                 for a in args]
                 else:
+                    # PEP 484 disallows both type annotations and type comments
+                    if any(a.type_annotation is not None for a in args):
+                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     arg_types = [a if a is not None else AnyType() for
                                 a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)

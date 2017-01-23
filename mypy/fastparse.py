@@ -23,6 +23,7 @@ from mypy.types import (
 )
 from mypy import defaults
 from mypy import experiments
+from mypy import messages
 from mypy.errors import Errors
 
 try:
@@ -298,9 +299,15 @@ class ASTConverter(ast35.NodeTransformer):
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
                         isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
+                    if n.returns:
+                        # PEP 484 disallows both type annotations and type comments
+                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     arg_types = [a.type_annotation if a.type_annotation is not None else AnyType()
                                  for a in args]
                 else:
+                    # PEP 484 disallows both type annotations and type comments
+                    if n.returns or any(a.type_annotation is not None for a in args):
+                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
                     translated_args = (TypeConverter(self.errors, line=n.lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
                     arg_types = [a if a is not None else AnyType()
