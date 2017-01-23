@@ -289,7 +289,7 @@ class ASTConverter(ast35.NodeTransformer):
             arg_names = [None] * len(arg_names)
         arg_types = None  # type: List[Type]
         if no_type_check:
-            arg_types = [None for _ in args]
+            arg_types = [None] * len(args)
             return_type = None
         elif n.type_comment is not None:
             try:
