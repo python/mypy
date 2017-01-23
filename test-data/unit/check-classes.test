@@ -2487,7 +2487,6 @@ class C(B):
     a = "a"
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:6: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 
 [case testVariableSubclassTypeOverwriteImplicit]
 class A:
@@ -2751,3 +2750,12 @@ class B(A):
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+
+[case testClassIgnoreType]
+class A:
+    x = 0
+class B(A):
+    x = ''  # type: ignore
+class C(B):
+    x = ''
+[out]
