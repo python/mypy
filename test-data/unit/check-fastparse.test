@@ -292,4 +292,10 @@ def j(x, (y, y), z):  # E: duplicate argument 'y' in function definition
 def k(x, (y, x)):  # E: duplicate argument 'x' in function definition
   pass
 
+def l((x, y), (z, x)):  # E: duplicate argument 'x' in function definition
+  pass
+
+def m(x, ((x, y), z)):  # E: duplicate argument 'x' in function definition
+  pass
+
 lambda x, (y, x): None  # E: duplicate argument 'x' in function definition
