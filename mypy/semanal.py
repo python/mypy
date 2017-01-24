@@ -564,9 +564,12 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
-        is_named_tuple = self.analyze_namedtuple_classdef(defn)
-
-        if not is_named_tuple:
+        if self.analyze_namedtuple_classdef(defn):
+            # just analyze the class body so we catch type errors in default values
+            self.enter_class(defn)
+            defn.defs.accept(self)
+            self.leave_class()
+        else:
             self.setup_class_def_analysis(defn)
 
             self.bind_class_type_vars(defn)
@@ -577,18 +580,16 @@ class SemanticAnalyzer(NodeVisitor):
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
 
-        self.enter_class(defn)
+            self.enter_class(defn)
 
-        # Analyze class body.
-        defn.defs.accept(self)
+            # Analyze class body.
+            defn.defs.accept(self)
 
-        if not is_named_tuple:
             self.calculate_abstract_status(defn.info)
             self.setup_type_promotion(defn)
 
-        self.leave_class()
+            self.leave_class()
 
-        if not is_named_tuple:
             self.unbind_class_type_vars()
 
     def enter_class(self, defn: ClassDef) -> None:
