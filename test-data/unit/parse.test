@@ -973,6 +973,10 @@ MypyFile:1(
 x not y # E: invalid syntax
 [out]
 
+[case testNotIs]
+x not is y # E: invalid syntax
+[out]
+
 [case testBinaryNegAsBinaryOp]
 1 ~ 2 # E: invalid syntax
 [out]

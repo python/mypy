@@ -1,10 +1,3 @@
-[case testPropagatingParseErrors]
-in 1
-def f():
-  1 1
-[out]
-main:1: error: invalid syntax
-
 [case testUndefinedVariableInGlobalStatement]
 import typing
 x

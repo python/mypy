@@ -272,7 +272,7 @@ file:3: error: syntax error in type comment
 file:3: error: Inconsistent use of '*' in function signature
 file:3: error: Inconsistent use of '**' in function signature
 
-[case testPrintStatementInPython3]
+[case testPrintStatementInPython3-skip]
 print 1
 [out]
 file:1: error: Missing parentheses in call to 'print'
