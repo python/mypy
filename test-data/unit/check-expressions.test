@@ -895,7 +895,6 @@ main:6: error: "f" does not return a value
 
 [case testNoneReturnTypeWithStatements]
 import typing
-raise f() # Fail
 if f():   # Fail
     pass
 elif f(): # Fail
@@ -904,14 +903,15 @@ while f(): # Fail
     pass
 def g() -> object:
     return f() # Fail
+raise f() # Fail
 
 def f() -> None: pass
 [builtins fixtures/exception.pyi]
 [out]
 main:2: error: "f" does not return a value
-main:3: error: "f" does not return a value
-main:5: error: "f" does not return a value
-main:7: error: "f" does not return a value
+main:4: error: "f" does not return a value
+main:6: error: "f" does not return a value
+main:9: error: "f" does not return a value
 main:10: error: "f" does not return a value
 
 [case testNoneReturnTypeWithExpressions]

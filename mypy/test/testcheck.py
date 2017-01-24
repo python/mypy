@@ -27,9 +27,6 @@ from mypy import experiments
 
 # List of files that contain test case descriptions.
 files = [
-    'check-expressions.test',
-    'check-generic-subtyping.test',
-    'check-varargs.test',
 ]
 fast_parser_files = [
     'check-basic.test',
@@ -73,15 +70,18 @@ fast_parser_files = [
     'check-columns.test',
     'check-functions.test',
     'check-tuples.test',
+    'check-expressions.test',
+    'check-generic-subtyping.test',
+    'check-varargs.test',
 ]
 
 files.extend(fast_parser_files)
 
 if 'annotation' in typed_ast.ast35.Assign._fields:
-    files.append('check-newsyntax.test')
+    fast_parser_files.append('check-newsyntax.test')
 
 if 'contains_underscores' in typed_ast.ast35.Num._fields:
-    files.append('check-underscores.test')
+    fast_parser_files.append('check-underscores.test')
 
 
 class TypeCheckSuite(DataSuite):

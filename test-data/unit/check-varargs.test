@@ -381,7 +381,8 @@ main:4: error: Argument 2 to "f" has incompatible type *List[A]; expected "B"
 main:5: error: Argument 3 to "f" has incompatible type *List[A]; expected "B"
 main:6: error: Argument 1 to "f" has incompatible type *"Tuple[A, A, B]"; expected "B"
 
-[case testVarArgsAfterKeywordArgInCall1]
+[case testVarArgsAfterKeywordArgInCall1-skip]
+# see: mypy issue #2729
 def f(x: int, y: str) -> None: pass
 f(x=1, *[2])
 [builtins fixtures/list.pyi]
@@ -389,7 +390,8 @@ f(x=1, *[2])
 main:2: error: "f" gets multiple values for keyword argument "x"
 main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str"
 
-[case testVarArgsAfterKeywordArgInCall2]
+[case testVarArgsAfterKeywordArgInCall2-skip]
+# see: mypy issue #2729
 def f(x: int, y: str) -> None: pass
 f(y='x', *[1])
 [builtins fixtures/list.pyi]
