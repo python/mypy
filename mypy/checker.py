@@ -31,10 +31,10 @@ from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, ErrorType, strip_type, TypeType,
-    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
+    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type
 )
-from mypy.sametypes import is_same_type
+from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder
 import mypy.checkexpr
 from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
@@ -2744,9 +2744,10 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     """Does t have wider arguments than s?"""
     # TODO should an overload with additional items be allowed to be more
     #      general than one with fewer items (or just one item)?
-    # TODO check argument kinds
+    # TODO check argument kinds and otherwise make more general
     if isinstance(t, CallableType):
         if isinstance(s, CallableType):
+            t, s = unify_generic_callables(t, s)
             return all(is_proper_subtype(args, argt)
                        for argt, args in zip(t.arg_types, s.arg_types))
     elif isinstance(t, FunctionLike):
@@ -2755,6 +2756,43 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
                 return all(is_same_arg_prefix(items, itemt)
                            for items, itemt in zip(t.items(), s.items()))
     return False
+
+
+def unify_generic_callables(t: CallableType,
+                            s: CallableType) -> Tuple[CallableType,
+                                                      CallableType]:
+    """Make type variables in generic callables the same if possible.
+
+    Return updated callables. If we can't unify the type variables,
+    return the unmodified arguments.
+    """
+    # TODO: Use this elsewhere when comparing generic callables.
+    if t.is_generic() and s.is_generic():
+        t_substitutions = {}
+        s_substitutions = {}
+        for tv1, tv2 in zip(t.variables, s.variables):
+            # Are these something we can unify?
+            if tv1.id != tv2.id and is_equivalent_type_var_def(tv1, tv2):
+                newdef = TypeVarDef.new_unification_variable(tv2)
+                t_substitutions[tv1.id] = TypeVarType(newdef)
+                s_substitutions[tv2.id] = TypeVarType(newdef)
+        return (cast(CallableType, expand_type(t, t_substitutions)),
+                cast(CallableType, expand_type(s, s_substitutions)))
+    return t, s
+
+
+def is_equivalent_type_var_def(tv1: TypeVarDef, tv2: TypeVarDef) -> bool:
+    """Are type variable definitions equivalent?
+
+    Ignore ids, locations in source file and names.
+    """
+    return (
+        tv1.variance == tv2.variance
+        and is_same_types(tv1.values, tv2.values)
+        and ((tv1.upper_bound is None and tv2.upper_bound is None)
+             or (tv1.upper_bound is not None
+                 and tv2.upper_bound is not None
+                 and is_same_type(tv1.upper_bound, tv2.upper_bound))))
 
 
 def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:

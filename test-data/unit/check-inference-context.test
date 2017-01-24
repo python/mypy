@@ -865,3 +865,16 @@ reveal_type(c.f([1])) # E: Revealed type is 'builtins.list[builtins.int]'
 reveal_type(c.f([])) # E: Revealed type is 'builtins.list[builtins.int]'
 reveal_type(c.f(None)) # E: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
+
+[case testGenericMethodCalledInGenericContext]
+from typing import TypeVar, Generic
+
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+_T = TypeVar('_T')
+
+class M(Generic[_KT, _VT]):
+    def get(self, k: _KT, default: _T) -> _T: ...
+
+def f(d: M[_KT, _VT], k: _KT) -> _VT:
+    return d.get(k, None)
