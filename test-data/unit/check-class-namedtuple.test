@@ -464,7 +464,7 @@ class X(NamedTuple):
 
 [case testNewNamedTupleInheritance]
 # flags: --fast-parser --python-version 3.6
-from typing import cast, NamedTuple
+from typing import NamedTuple
 
 class X(NamedTuple):
     x: str
@@ -472,7 +472,8 @@ class X(NamedTuple):
 
 class Y(X):
     def method(self) -> str:
-        return self.x + cast(str, self.y)
+        self.y
+        return self.x
 
 reveal_type(Y('a'))  # E: Revealed type is 'Tuple[builtins.str, builtins.int, fallback=__main__.Y]'
 Y(y=1, x='1').method()
