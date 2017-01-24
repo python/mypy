@@ -184,7 +184,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
-        return self.check_call_expr_with_callee_type(callee_type, e)
+        ret_type = self.check_call_expr_with_callee_type(callee_type, e)
+        if isinstance(ret_type, UninhabitedType):
+            self.chk.binder.unreachable()
+        return ret_type
 
     def check_typeddict_call(self, callee: TypedDictType,
                              arg_kinds: List[int],
