@@ -189,7 +189,7 @@ class A: pass
 
 
 [case testCallingWithListVarArgs]
-from typing import List, Any
+from typing import List, Any, cast
 aa = None # type: List[A]
 ab = None # type: List[B]
 a = None # type: A
@@ -198,8 +198,8 @@ b = None # type: B
 f(*aa)    # Fail
 f(a, *ab) # Ok
 f(a, b)
-(Any(f))(*aa)     # IDEA: Move to check-dynamic?
-(Any(f))(a, *ab)  # IDEA: Move to check-dynamic?
+(cast(Any, f))(*aa)     # IDEA: Move to check-dynamic?
+(cast(Any, f))(a, *ab)  # IDEA: Move to check-dynamic?
 
 def f(a: 'A', b: 'B') -> None:
     pass

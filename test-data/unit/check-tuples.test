@@ -417,8 +417,8 @@ a, b, *c = t4
 [builtins fixtures/list.pyi]
 
 [case testAssignmentToStarFromAny]
-from typing import Any
-a, c = Any(1), C()
+from typing import Any, cast
+a, c = cast(Any, 1), C()
 p, *q = a
 c = a
 c = q

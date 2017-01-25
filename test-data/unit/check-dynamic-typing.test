@@ -230,8 +230,8 @@ a = None # type: A
 b = None # type: B
 b = cast(A, d) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a = cast(A, d)
-b = Any(d)
-a = Any(f())
+b = cast(Any, d)
+a = cast(Any, f())
 def f() -> None: pass
 
 [case testCompatibilityOfDynamicWithOtherTypes]

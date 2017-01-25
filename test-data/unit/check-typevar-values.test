@@ -22,10 +22,10 @@ o = f(1) # E: Type argument 1 of "f" has incompatible value "object"
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
-from typing import TypeVar, Any
+from typing import TypeVar, Any, cast
 T = TypeVar('T', int, str)
 def f(x: T) -> None: pass
-f(Any(object()))
+f(cast(Any, object()))
 [out]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc]
@@ -229,13 +229,13 @@ d = None  # type: A[object] # E: Type argument 1 of "A" has incompatible value "
 c = None  # type: A[Any]
 
 [case testConstructGenericTypeWithTypevarValuesAndTypeInference]
-from typing import TypeVar, Generic, Any
+from typing import TypeVar, Generic, Any, cast
 X = TypeVar('X', int, str)
 class A(Generic[X]):
     def __init__(self, x: X) -> None: pass
 A(1)
 A('x')
-A(Any(object()))
+A(cast(Any, object()))
 A(object()) # E: Type argument 1 of "A" has incompatible value "object"
 
 [case testGenericTypeWithTypevarValuesAndTypevarArgument]

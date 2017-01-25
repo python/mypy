@@ -407,12 +407,12 @@ class B: pass
 main:3: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testAccessingInit]
-from typing import Any
+from typing import Any, cast
 class A:
     def __init__(self, a: 'A') -> None: pass
 a = None # type: A
 a.__init__(a)  # E: Cannot access "__init__" directly
-(Any(a)).__init__(a)
+(cast(Any, a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]
 import typing

@@ -648,9 +648,9 @@ s = None  # type: str
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testBinaryOperatorWithAnyRightOperand]
-from typing import Any
+from typing import Any, cast
 class A: pass
-A() + Any(1)
+A() + cast(Any, 1)
 
 [case testReverseComparisonOperator]
 
@@ -858,9 +858,9 @@ b = cast(Any, a)
 [case testAnyCast]
 from typing import cast, Any
 a, b = None, None # type: (A, B)
-a = Any(a())     # Fail
-a = Any(b)
-b = Any(a)
+a = cast(Any, a())     # Fail
+a = cast(Any, b)
+b = cast(Any, a)
 class A: pass
 class B: pass
 [out]
