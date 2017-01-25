@@ -1303,7 +1303,7 @@ with A() as e, A() as (f, g), B() as h:  # type: Tuple[int, int], Tuple[int, int
 with A() as i, A() as (j, k), B() as l:  # type: (int, int), (int, int), str  # E: Invalid tuple literal type
     pass
 
-with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int]  # E: Incompatible number of tuple items
+with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int]  # E: Incompatible number of types for `with` targets
     pass
 
 with A(), B(), B() as p, A(), A():  # type: str
