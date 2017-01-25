@@ -199,7 +199,10 @@ class StrConv(NodeVisitor[str]):
         a = []  # type: List[Any]
         if o.is_async:
             a.append(('Async', ''))
-        a.extend([o.index, o.expr, o.body])
+        a.append(o.index)
+        if o.index_type:
+            a.append(o.index_type)
+        a.extend([o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
@@ -266,6 +269,8 @@ class StrConv(NodeVisitor[str]):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:
                 a.append(('Target', [o.target[i]]))
+        if o.target_type:
+            a.append(o.target_type)
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> str:

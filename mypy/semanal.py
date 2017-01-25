@@ -2090,7 +2090,11 @@ class SemanticAnalyzer(NodeVisitor):
         s.expr.accept(self)
 
         # Bind index variables and check if they define new names.
-        self.analyze_lvalue(s.index)
+        self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
+        if s.index_type:
+            allow_tuple_literal = isinstance(s.index, (TupleExpr, ListExpr))
+            s.index_type = self.anal_type(s.index_type, allow_tuple_literal)
+            self.store_declared_types(s.index, s.index_type)
 
         self.loop_depth += 1
         self.visit_block(s.body)
@@ -2133,10 +2137,48 @@ class SemanticAnalyzer(NodeVisitor):
             s.finally_body.accept(visitor)
 
     def visit_with_stmt(self, s: WithStmt) -> None:
+        types = []  # type: List[Type]
+
+        if s.target_type:
+            actual_targets = [t for t in s.target if t is not None]
+            if len(actual_targets) == 0:
+                # We have a type for no targets
+                self.fail('Invalid type comment', s)
+            elif len(actual_targets) == 1:
+                # We have one target and one type
+                types = [s.target_type]
+            elif isinstance(s.target_type, TupleType):
+                # We have multiple targets and multiple types
+                if len(actual_targets) == len(s.target_type.items):
+                    types = s.target_type.items
+                else:
+                    # But it's the wrong number of items
+                    self.fail('Incompatible number of types for `with` targets', s)
+            else:
+                # We have multiple targets and one type
+                self.fail('Multiple types expected for multiple `with` targets', s)
+
+        new_types = []  # type: List[Type]
         for e, n in zip(s.expr, s.target):
             e.accept(self)
             if n:
-                self.analyze_lvalue(n)
+                self.analyze_lvalue(n, explicit_type=s.target_type is not None)
+
+                # Since we have a target, pop the next type from types
+                if types:
+                    t = types.pop(0)
+                    allow_tuple_literal = isinstance(n, (TupleExpr, ListExpr))
+                    t = self.anal_type(t, allow_tuple_literal)
+                    new_types.append(t)
+                    self.store_declared_types(n, t)
+
+        # Reverse the logic above to correctly reassign target_type
+        if new_types:
+            if len(s.target) == 1:
+                s.target_type = new_types[0]
+            elif isinstance(s.target_type, TupleType):
+                s.target_type = s.target_type.copy_modified(items=new_types)
+
         self.visit_block(s.body)
 
     def visit_del_stmt(self, s: DelStmt) -> None:
@@ -2992,7 +3034,7 @@ class FirstPass(NodeVisitor):
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         if self.sem.is_module_scope():
-            self.analyze_lvalue(s.index)
+            self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
             s.body.accept(self)
             if s.else_body:
                 s.else_body.accept(self)
@@ -3001,7 +3043,7 @@ class FirstPass(NodeVisitor):
         if self.sem.is_module_scope():
             for n in s.target:
                 if n:
-                    self.analyze_lvalue(n)
+                    self.analyze_lvalue(n, explicit_type=s.target_type is not None)
             s.body.accept(self)
 
     def visit_decorator(self, d: Decorator) -> None:

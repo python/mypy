@@ -520,10 +520,15 @@ class ASTConverter(ast35.NodeTransformer):
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     @with_line
     def visit_For(self, n: ast35.For) -> ForStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         return ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_block(n.body, n.lineno),
-                       self.as_block(n.orelse, n.lineno))
+                       self.as_block(n.orelse, n.lineno),
+                       target_type)
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
     @with_line
@@ -552,9 +557,14 @@ class ASTConverter(ast35.NodeTransformer):
     # With(withitem* items, stmt* body, string? type_comment)
     @with_line
     def visit_With(self, n: ast35.With) -> WithStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         return WithStmt([self.visit(i.context_expr) for i in n.items],
                         [self.visit(i.optional_vars) for i in n.items],
-                        self.as_block(n.body, n.lineno))
+                        self.as_block(n.body, n.lineno),
+                        target_type)
 
     # AsyncWith(withitem* items, stmt* body)
     @with_line
