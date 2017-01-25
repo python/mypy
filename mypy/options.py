@@ -114,7 +114,7 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.fast_parser = False
+        self.fast_parser = True
         self.incremental = False
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False

@@ -1,11 +1,3 @@
-[case testPropagatingParseErrors]
-in 1
-def f():
-  1 1
-[out]
-main:1: error: Parse error before in
-main:3: error: Parse error before numeric literal
-
 [case testUndefinedVariableInGlobalStatement]
 import typing
 x
@@ -95,8 +87,8 @@ from typing import overload
 class A: pass
 @overload
 def f(): pass
-@overload
-def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
+@overload # E: "A" expects no type arguments, but 1 given
+def f(x: A[int]) -> None: pass
 [out]
 
 [case testInvalidNumberOfGenericArgsInBaseType]
@@ -367,47 +359,78 @@ yield
 main:1: error: 'yield' outside function
 main:2: error: 'yield' outside function
 
-[case testInvalidLvalues]
+[case testInvalidLvalues1]
 1 = 1
-(1) = 1
-(1, 1) = 1
-[1, 1] = 1
-() = 1
 [out]
-main:1: error: Invalid assignment target
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Can't assign to ()
---' (hack to fix syntax highlighting)
+main:1: error: can't assign to literal
 
 [case testInvalidLvalues2]
-x = y = z = 1
-x, (y, 1) = 1
-x, [y, 1] = 1
-x, [y, [z, 1]] = 1
-x, (y, (z, 1)) = 1
-x, (y) = 1 # ok
-x, (y, (z, z)) = 1 # ok
+(1) = 1
 [out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
+main:1: error: can't assign to literal
 
 [case testInvalidLvalues3]
-x = 1
+(1, 1) = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues4]
+[1, 1] = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues5]
+() = 1
+[out]
+main:1: error: can't assign to ()
+
+[case testInvalidLvalues6]
+x = y = z = 1  # ok
+x, (y, 1) = 1
+[out]
+main:2: error: can't assign to literal
+
+[case testInvalidLvalues7]
+x, [y, 1] = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues8]
+x, [y, [z, 1]] = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues9]
+x, (y) = 1 # ok
+x, (y, (z, z)) = 1 # ok
+x, (y, (z, 1)) = 1
+[out]
+main:3: error: can't assign to literal
+
+[case testInvalidLvalues10]
 x + x = 1
+[out]
+main:1: error: can't assign to operator
+
+[case testInvalidLvalues11]
 -x = 1
+[out]
+main:1: error: can't assign to operator
+
+[case testInvalidLvalues12]
 1.1 = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues13]
 'x' = 1
+[out]
+main:1: error: can't assign to literal
+
+[case testInvalidLvalues14]
 x() = 1
 [out]
-main:2: error: Invalid assignment target
-main:3: error: Invalid assignment target
-main:4: error: Invalid assignment target
-main:5: error: Invalid assignment target
-main:6: error: Invalid assignment target
+main:1: error: can't assign to function call
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -457,11 +480,17 @@ a = 1
 [out]
 main:2: error: Can use starred expression only as assignment target
 
-[case testInvalidDel]
-import typing
+[case testInvalidDel1]
 x = 1
-del x(1)  # E: Invalid delete target
-del x + 1 # E: Invalid delete target
+del x(1)  # E: can't delete function call
+[out]
+
+[case testInvalidDel2]
+x = 1
+del x + 1 # E: can't delete operator
+[out]
+
+[case testInvalidDel3]
 del z     # E: Name 'z' is not defined
 [out]
 
@@ -820,7 +849,7 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Invalid assignment target
+main:3: error: can't assign to function call
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
@@ -886,10 +915,14 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 
 [case testInvalidLvalueWithExplicitType]
 a = 1
+a() = None # type: int  # E: can't assign to function call
+[out]
+
+[case testInvalidLvalueWithExplicitType2]
+a = 1
 a[1] = None # type: int # E: Unexpected type declaration
 a.x = None # type: int \
     # E: Type cannot be declared in assignment to non-self attribute
-a() = None # type: int  # E: Invalid assignment target
 [out]
 
 [case testInvalidLvalueWithExplicitType3]
@@ -1028,7 +1061,7 @@ def f(x: 'foo'): pass # E: Name 'foo' is not defined
 [out]
 
 [case testInvalidStrLiteralType2]
-def f(x: 'int['): pass # E: Parse error before end of line
+def f(x: 'int['): pass # E: syntax error in type comment
 [out]
 
 [case testInconsistentOverload]
@@ -1200,7 +1233,7 @@ main:1: note: (Did you mean 'typing.Callable'?)
 
 [case testInvalidWithTarget]
 def f(): pass
-with f() as 1: pass  # E: Invalid assignment target
+with f() as 1: pass  # E: can't assign to literal
 [out]
 
 [case testUseObsoleteNameForTypeVar]
@@ -1235,7 +1268,7 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: Invalid assignment target
+main:3: error: can't assign to function call
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:

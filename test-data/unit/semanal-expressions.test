@@ -115,20 +115,20 @@ MypyFile:1(
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x [__main__.x])
-      SliceExpr:2(
+      SliceExpr:-1(
         NameExpr(y [__main__.y])
         NameExpr(z [__main__.z])
         NameExpr(x [__main__.x]))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x [__main__.x])
-      SliceExpr:3(
+      SliceExpr:-1(
         <empty>
         <empty>)))
   ExpressionStmt:4(
     IndexExpr:4(
       NameExpr(x [__main__.x])
-      SliceExpr:4(
+      SliceExpr:-1(
         <empty>
         NameExpr(y [__main__.y])))))
 
@@ -309,7 +309,7 @@ MypyFile:1(
 
 [case testGeneratorExpression]
 a = 0
-x for x in a
+(x for x in a)
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -323,7 +323,7 @@ MypyFile:1(
 
 [case testGeneratorExpressionNestedIndex]
 a = 0
-x for x, (y, z) in a
+(x for x, (y, z) in a)
 [out]
 MypyFile:1(
   AssignmentStmt:1(

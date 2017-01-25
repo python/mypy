@@ -57,8 +57,10 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
     The pyversion (major, minor) argument determines the Python syntax variant.
     """
+    raise_on_error = False
     if errors is None:
         errors = Errors()
+        raise_on_error = True
     errors.set_file('<input>' if fnam is None else fnam)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
@@ -72,14 +74,14 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
                             ).visit(ast)
         tree.path = fnam
         tree.is_stub = is_stub_file
-        return tree
     except SyntaxError as e:
-        if errors:
-            errors.report(e.lineno, e.offset, e.msg)
-        else:
-            raise
+        errors.report(e.lineno, e.offset, e.msg)
+        tree = MypyFile([], [], False, set())
 
-    return MypyFile([], [], False, set())
+    if raise_on_error and errors.is_errors():
+        errors.raise_error()
+
+    return tree
 
 
 def parse_type_comment(type_comment: str, line: int, errors: Errors) -> Optional[Type]:
