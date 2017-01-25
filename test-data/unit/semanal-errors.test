@@ -806,10 +806,10 @@ cast(str, *None) # E: 'cast' must be called with 2 positional arguments
 cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
 [out]
 
-[case testInvalidArgsToAny]
+[case testInvalidAnyCall]
 from typing import Any
-Any(str, None) # E: 'Any' expects 1 argument
-Any(arg=str)   # E: 'Any' must be called with 1 positional argument
+Any(str, None)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
+Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 [out]
 
 [case testTypeListAsType]
