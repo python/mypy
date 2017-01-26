@@ -4,9 +4,16 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` in the current directory; the
-``--config-file`` command-line flag can be used to read a different
-file instead (see :ref:`--config-file <config-file-flag>`).
+it uses the file ``mypy.ini`` (with fallback to ``setup.cfg``) in the
+current directory; the ``--config-file`` command-line flag can be used to
+read a different file instead (see :ref:`--config-file <config-file-flag>`).
+
+It is important to understand that there is no merging of configuration
+files, as it would lead to ambiguity.  The ``--config-file`` flag
+has the highest precedence and must be correct; otherwise mypy will report
+an error and exit.  Without command line option, mypy will look for defaults,
+but will use only one of them.  The first one to read is ``mypy.ini``,
+and then ``setup.cfg``.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -19,7 +26,7 @@ settings of the form `NAME = VALUE`.  Comments start with ``#``
 characters.
 
 - A section named ``[mypy]`` must be present.  This specifies
-  the global flags.
+  the global flags. The ``setup.cfg`` file is an exception to this.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2`` etc. are `fnmatch patterns

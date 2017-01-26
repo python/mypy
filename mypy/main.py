@@ -320,16 +320,13 @@ def process_options(args: List[str],
     # filename for the config file and know if the user requested all strict options.
     dummy = argparse.Namespace()
     parser.parse_args(args, dummy)
-    config_file = defaults.CONFIG_FILE
-    if dummy.config_file:
-        config_file = dummy.config_file
-        if not os.path.exists(config_file):
-            parser.error("Cannot file config file '%s'" % config_file)
+    config_file = dummy.config_file
+    if config_file is not None and not os.path.exists(config_file):
+        parser.error("Cannot file config file '%s'" % config_file)
 
     # Parse config file first, so command line can override.
     options = Options()
-    if config_file and os.path.exists(config_file):
-        parse_config_file(options, config_file)
+    parse_config_file(options, config_file)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
@@ -540,23 +537,44 @@ config_types = {
     'almost_silent': bool,
 }
 
+SHARED_CONFIG_FILES = ('setup.cfg',)
 
-def parse_config_file(options: Options, filename: str) -> None:
+
+def parse_config_file(options: Options, filename: Optional[str]) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
+
+    If filename is None, fall back to default config file and then
+    to setup.cfg.
     """
+    config_files = None  # type: Tuple[str, ...]
+    if filename is not None:
+        config_files = (filename,)
+    else:
+        config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
+
     parser = configparser.RawConfigParser()
-    try:
-        parser.read(filename)
-    except configparser.Error as err:
-        print("%s: %s" % (filename, err), file=sys.stderr)
+
+    for config_file in config_files:
+        if not os.path.exists(config_file):
+            continue
+        try:
+            parser.read(config_file)
+        except configparser.Error as err:
+            print("%s: %s" % (config_file, err), file=sys.stderr)
+        else:
+            file_read = config_file
+            break
+    else:
         return
+
     if 'mypy' not in parser:
-        print("%s: No [mypy] section in config file" % filename, file=sys.stderr)
+        if filename or file_read not in SHARED_CONFIG_FILES:
+            print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
     else:
         section = parser['mypy']
-        prefix = '%s: [%s]' % (filename, 'mypy')
+        prefix = '%s: [%s]' % (file_read, 'mypy')
         updates, report_dirs = parse_section(prefix, options, section)
         for k, v in updates.items():
             setattr(options, k, v)
@@ -564,7 +582,7 @@ def parse_config_file(options: Options, filename: str) -> None:
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            prefix = '%s: [%s]' % (filename, name)
+            prefix = '%s: [%s]' % (file_read, name)
             updates, report_dirs = parse_section(prefix, options, section)
             if report_dirs:
                 print("%s: Per-module sections should not specify reports (%s)" %
