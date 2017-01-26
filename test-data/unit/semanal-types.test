@@ -355,17 +355,6 @@ MypyFile:1(
       NameExpr(C [__main__.C])
       __main__.C[builtins.str, builtins.int])))
 
-[case testCastToAny]
-from typing import Any
-Any(None)
-[out]
-MypyFile:1(
-  ImportFrom:1(typing, [Any])
-  ExpressionStmt:2(
-    CastExpr:2(
-      NameExpr(None [builtins.None])
-      Any)))
-
 [case testCastToTupleType]
 from typing import Tuple, cast
 cast(Tuple[int, str], None)

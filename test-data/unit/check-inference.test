@@ -917,9 +917,9 @@ class A: pass
 [builtins fixtures/for.pyi]
 
 [case testMultipleAssignmentWithPartialDefinition3]
-from typing import Any
+from typing import Any, cast
 a = None # type: A
-x, a = Any(a)
+x, a = cast(Any, a)
 x = a
 a = x
 x = object()

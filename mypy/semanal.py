@@ -2299,7 +2299,7 @@ class SemanticAnalyzer(NodeVisitor):
         """Analyze a call expression.
 
         Some call expressions are recognized as special forms, including
-        cast(...) and Any(...).
+        cast(...).
         """
         expr.callee.accept(self)
         if refers_to_fullname(expr.callee, 'typing.cast'):
@@ -2325,12 +2325,8 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
-            # Special form Any(...).
-            if not self.check_fixed_args(expr, 1, 'Any'):
-                return
-            expr.analyzed = CastExpr(expr.args[0], AnyType())
-            expr.analyzed.line = expr.line
-            expr.analyzed.accept(self)
+            # Special form Any(...) no longer supported.
+            self.fail('Any(...) is no longer supported. Use cast(Any, ...) instead', expr)
         elif refers_to_fullname(expr.callee, 'typing._promote'):
             # Special form _promote(...).
             if not self.check_fixed_args(expr, 1, '_promote'):
