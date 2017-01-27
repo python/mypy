@@ -35,6 +35,7 @@ def main(script_path: str) -> None:
         bin_dir = find_bin_directory(script_path)
     else:
         bin_dir = None
+    sys.setrecursionlimit(2 ** 14)
     sources, options = process_options(sys.argv[1:])
     serious = False
     try:
