@@ -16,7 +16,7 @@ from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars
 from mypy.infer import infer_type_arguments
-from mypy.semanal import fill_typevars
+from mypy.typevars import fill_typevars
 from mypy import messages
 from mypy import subtypes
 MYPY = False

@@ -67,6 +67,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
 )
+from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
@@ -79,7 +80,6 @@ from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import TypeAnalyser, TypeAnalyserPass3, analyze_type_alias
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
-from mypy.erasetype import erase_typevars
 from mypy.options import Options
 from mypy import join
 
@@ -3204,19 +3204,6 @@ class ThirdPass(TraverserVisitor):
         return Instance(sym.node, args or [])
 
 
-def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
-    """For a non-generic type, return instance type representing the type.
-    For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
-    """
-    tv = []  # type: List[Type]
-    for i in range(len(typ.type_vars)):
-        tv.append(TypeVarType(typ.defn.type_vars[i]))
-    inst = Instance(typ, tv)
-    if typ.tuple_type is None:
-        return inst
-    return typ.tuple_type.copy_modified(fallback=inst)
-
-
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
         return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
@@ -3588,7 +3575,3 @@ def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
             if isinstance(t.ret_type, CallableType):
                 return t.ret_type
     return None
-
-
-def has_no_typevars(typ: Type) -> bool:
-    return is_same_type(typ, erase_typevars(typ))

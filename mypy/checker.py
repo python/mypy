@@ -24,8 +24,8 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
     RefExpr, YieldExpr, BackquoteExpr, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr, PromoteExpr,
-    ARG_POS,
+    AwaitExpr, PromoteExpr, Node,
+    ARG_POS, MDEF,
     CONTRAVARIANT, COVARIANT)
 from mypy import nodes
 from mypy.types import (
@@ -44,7 +44,8 @@ from mypy.subtypes import (
     restrict_subtype_away, is_subtype_ignoring_tvars
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy.semanal import fill_typevars, set_callable_name, refers_to_fullname
+from mypy.typevars import fill_typevars, has_no_typevars
+from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -1102,6 +1103,12 @@ class TypeChecker(NodeVisitor[Type]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
+
+            if isinstance(lvalue, NameExpr):
+                if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
+                    # We hit an error on this line; don't check for any others
+                    return
+
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
                     # Try to infer a proper type for a variable with a partial None type.
@@ -1155,6 +1162,123 @@ class TypeChecker(NodeVisitor[Type]):
             if inferred:
                 self.infer_variable_type(inferred, lvalue, self.accept(rvalue),
                                          rvalue)
+
+    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Type,
+                                       rvalue: Expression) -> bool:
+        lvalue_node = lvalue.node
+
+        # Check if we are a class variable with at least one base class
+        if (isinstance(lvalue_node, Var) and
+                lvalue.kind == MDEF and
+                len(lvalue_node.info.bases) > 0):
+
+            for base in lvalue_node.info.mro[1:]:
+                # Only check __slots__ against the 'object'
+                # If a base class defines a Tuple of 3 elements, a child of
+                # this class should not be allowed to define it as a Tuple of
+                # anything other than 3 elements. The exception to this rule
+                # is __slots__, where it is allowed for any child class to
+                # redefine it.
+                if lvalue_node.name() == "__slots__" and base.fullname() != "builtins.object":
+                    continue
+
+                base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
+
+                if base_type:
+                    if not self.check_compatibility_super(lvalue,
+                                                          lvalue_type,
+                                                          rvalue,
+                                                          base,
+                                                          base_type,
+                                                          base_node):
+                        # Only show one error per variable; even if other
+                        # base classes are also incompatible
+                        return True
+                    break
+        return False
+
+    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Type, rvalue: Expression,
+                                  base: TypeInfo, base_type: Type, base_node: Node) -> bool:
+        lvalue_node = lvalue.node
+        assert isinstance(lvalue_node, Var)
+
+        # Do not check whether the rvalue is compatible if the
+        # lvalue had a type defined; this is handled by other
+        # parts, and all we have to worry about in that case is
+        # that lvalue is compatible with the base class.
+        compare_node = None  # type: Node
+        if lvalue_type:
+            compare_type = lvalue_type
+            compare_node = lvalue.node
+        else:
+            compare_type = self.accept(rvalue, base_type)
+            if isinstance(rvalue, NameExpr):
+                compare_node = rvalue.node
+                if isinstance(compare_node, Decorator):
+                    compare_node = compare_node.func
+
+        if compare_type:
+            if (isinstance(base_type, CallableType) and
+                    isinstance(compare_type, CallableType)):
+                base_static = is_node_static(base_node)
+                compare_static = is_node_static(compare_node)
+
+                # In case compare_static is unknown, also check
+                # if 'definition' is set. The most common case for
+                # this is with TempNode(), where we lose all
+                # information about the real rvalue node (but only get
+                # the rvalue type)
+                if compare_static is None and compare_type.definition:
+                    compare_static = is_node_static(compare_type.definition)
+
+                # Compare against False, as is_node_static can return None
+                if base_static is False and compare_static is False:
+                    # Class-level function objects and classmethods become bound
+                    # methods: the former to the instance, the latter to the
+                    # class
+                    base_type = bind_self(base_type, self.scope.active_class())
+                    compare_type = bind_self(compare_type, self.scope.active_class())
+
+                # If we are a static method, ensure to also tell the
+                # lvalue it now contains a static method
+                if base_static and compare_static:
+                    lvalue_node.is_staticmethod = True
+
+            return self.check_subtype(compare_type, base_type, lvalue,
+                                      messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                      'expression has type',
+                                      'base class "%s" defined the type as' % base.name())
+        return True
+
+    def lvalue_type_from_base(self, expr_node: Var,
+                              base: TypeInfo) -> Tuple[Optional[Type], Optional[Node]]:
+        """For a NameExpr that is part of a class, walk all base classes and try
+        to find the first class that defines a Type for the same name."""
+        expr_name = expr_node.name()
+        base_var = base.names.get(expr_name)
+
+        if base_var:
+            base_node = base_var.node
+            base_type = base_var.type
+            if isinstance(base_node, Decorator):
+                base_node = base_node.func
+                base_type = base_node.type
+
+            if base_type:
+                if not has_no_typevars(base_type):
+                    instance = cast(Instance, self.scope.active_class())
+                    itype = map_instance_to_supertype(instance, base)
+                    base_type = expand_type_by_instance(base_type, itype)
+
+                if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
+                    # If we are a property, return the Type of the return
+                    # value, not the Callable
+                    if base_node.is_property:
+                        base_type = base_type.ret_type
+
+                return base_type, base_node
+
+        return None, None
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
@@ -2873,6 +2997,18 @@ def is_valid_inferred_type_component(typ: Type) -> bool:
             if not is_valid_inferred_type_component(item):
                 return False
     return True
+
+
+def is_node_static(node: Node) -> Optional[bool]:
+    """Find out if a node describes a static function method."""
+
+    if isinstance(node, FuncDef):
+        return node.is_static
+
+    if isinstance(node, Var):
+        return node.is_staticmethod
+
+    return None
 
 
 class Scope:

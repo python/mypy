@@ -40,7 +40,7 @@ from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
-from mypy.semanal import fill_typevars
+from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 
 from mypy import experiments
