@@ -1417,3 +1417,46 @@ class A:
     @classmethod
     def f(cls) -> None: pass
 [builtins fixtures/classmethod.pyi]
+
+[case testGenericOperatorMethodOverlapping]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+T2 = TypeVar('T2')
+S = TypeVar('S', bound=str)
+S2 = TypeVar('S2', bound=str)
+class G(Generic[T]):
+    pass
+class A:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[T2]) -> G[T2]: pass
+class B:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[S]) -> G[S]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible
+class C:
+    def __or__(self, x: G[S]) -> G[S]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass
+
+[case testGenericOperatorMethodOverlapping2]
+from typing import TypeVar, Generic, Tuple
+X = TypeVar('X')
+T = TypeVar('T', int, str)
+T2 = TypeVar('T2', int, str)
+S = TypeVar('S', float, str)
+S2 = TypeVar('S2', float, str)
+class G(Generic[X]):
+    pass
+class A:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[T2]) -> G[T2]: pass
+class B:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[S]) -> G[S]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible
+class C:
+    def __or__(self, x: G[S]) -> G[S]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass
+class D:
+    def __or__(self, x: G[X]) -> G[X]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible

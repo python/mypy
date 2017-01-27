@@ -38,7 +38,7 @@ from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.semanal import fill_typevars
 from mypy.visitor import ExpressionVisitor
@@ -355,7 +355,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 lambda i: self.accept(args[i]))
 
             if callee.is_generic():
-                callee = freshen_generic_callable(callee)
+                callee = freshen_function_type_vars(callee)
                 callee = self.infer_function_type_arguments_using_context(
                     callee, context)
                 callee = self.infer_function_type_arguments(
@@ -2397,14 +2397,3 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
         return 2
     # Fall back to a conservative equality check for the remaining kinds of type.
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
-
-
-def freshen_generic_callable(callee: CallableType) -> CallableType:
-    tvdefs = []
-    tvmap = {}  # type: Dict[TypeVarId, Type]
-    for v in callee.variables:
-        tvdef = TypeVarDef.new_unification_variable(v)
-        tvdefs.append(tvdef)
-        tvmap[v.id] = TypeVarType(tvdef)
-
-    return cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
