@@ -1763,6 +1763,10 @@ class TypeChecker(NodeVisitor[Type]):
             for e, b in zip(s.expr, s.body):
                 t = self.accept(e)
                 self.check_usable_type(t, e)
+
+                if isinstance(t, DeletedType):
+                    self.msg.deleted_as_rvalue(t, s)
+
                 if self.options.strict_boolean:
                     is_bool = isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'
                     if not (is_bool or isinstance(t, AnyType)):
@@ -1785,7 +1789,9 @@ class TypeChecker(NodeVisitor[Type]):
 
     def visit_while_stmt(self, s: WhileStmt) -> Type:
         """Type check a while statement."""
-        self.accept_loop(IfStmt([s.expr], [s.body], None), s.else_body,
+        if_stmt = IfStmt([s.expr], [s.body], None)
+        if_stmt.set_line(s.get_line(), s.get_column())
+        self.accept_loop(if_stmt, s.else_body,
                          exit_condition=s.expr)
         return None
 
