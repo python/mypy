@@ -935,6 +935,14 @@ if A:
 class A: pass
 class B: pass
 
+[case testAssigningAnyStrToNone]
+from typing import Tuple, TypeVar
+AnyStr = TypeVar('AnyStr', str, bytes)
+
+def f(x: AnyStr) -> Tuple[AnyStr]: pass
+x = None
+(x,) = f('')
+
 
 -- Inferring attribute types
 -- -------------------------
