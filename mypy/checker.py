@@ -907,6 +907,13 @@ class TypeChecker(StatementVisitor[None]):
             # this could be unsafe with reverse operator methods.
             fail = True
 
+        if isinstance(original, CallableType) and isinstance(override, CallableType):
+            if (isinstance(original.definition, FuncItem) and
+                    isinstance(override.definition, FuncItem)):
+                if ((original.definition.is_static or original.definition.is_class) and
+                        not (override.definition.is_static or override.definition.is_class)):
+                    fail = True
+
         if fail:
             emitted_msg = False
             if (isinstance(override, CallableType) and
