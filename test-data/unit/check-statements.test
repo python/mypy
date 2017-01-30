@@ -964,6 +964,19 @@ del c.a
 c.a + 1
 [builtins fixtures/ops.pyi]
 
+[case testDelStatementWithConditions]
+x = 5
+del x
+if x: ...  # E: Trying to read deleted variable 'x'
+
+def f(x):
+    return x
+
+if 0: ...
+elif f(x): ...  # E: Trying to read deleted variable 'x'
+
+while x == 5: ...  # E: Trying to read deleted variable 'x'
+
 -- Yield statement
 -- ---------------
 
