@@ -1148,6 +1148,7 @@ class State:
                 # - skip -> don't analyze, make the type Any
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
+                    and caller_state != None  # Honor top-level modules
                     and path.endswith('.py')  # Stubs are always normal
                     and id != 'builtins'  # Builtins is always normal
                     and not (caller_state and
@@ -1519,6 +1520,9 @@ class State:
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> None:
     manager.log("Mypy version %s" % __version__)
     graph = load_graph(sources, manager)
+    if not graph:
+        print("Nothing to do?!")
+        return
     manager.log("Loaded graph with %d nodes" % len(graph))
     if manager.options.dump_graph:
         dump_graph(graph)
