@@ -1114,6 +1114,7 @@ class State:
                  caller_state: 'State' = None,
                  caller_line: int = 0,
                  ancestor_for: 'State' = None,
+                 root_source: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -1148,7 +1149,7 @@ class State:
                 # - skip -> don't analyze, make the type Any
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
-                    and caller_state != None  # Honor top-level modules
+                    and not root_source  # Honor top-level modules
                     and path.endswith('.py')  # Stubs are always normal
                     and id != 'builtins'  # Builtins is always normal
                     and not (caller_state and
@@ -1600,7 +1601,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # Seed the graph with the initial root sources.
     for bs in sources:
         try:
-            st = State(id=bs.module, path=bs.path, source=bs.text, manager=manager)
+            st = State(id=bs.module, path=bs.path, source=bs.text, manager=manager,
+                       root_source=True)
         except ModuleNotFound:
             continue
         if st.id in graph:
