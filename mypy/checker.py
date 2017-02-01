@@ -19,7 +19,8 @@ from mypy.nodes import (
     UnicodeExpr, OpExpr, UnaryExpr, FuncExpr, TempNode, SymbolTableNode,
     Context, Decorator, PrintStmt, LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, ImportFrom, ImportAll, ImportBase,
-    ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl
+    ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl,
+    MDEF, Node
 )
 from mypy import nodes
 from mypy.types import (
@@ -1181,7 +1182,7 @@ class TypeChecker(StatementVisitor[None]):
             compare_type = lvalue_type
             compare_node = lvalue.node
         else:
-            compare_type = self.accept(rvalue, base_type)
+            compare_type = self.expr_checker.accept(rvalue, base_type)
             if isinstance(rvalue, NameExpr):
                 compare_node = rvalue.node
                 if isinstance(compare_node, Decorator):
