@@ -1799,7 +1799,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
             # TODO treat this case appropriately
-            return callable_ctx
+            return None
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
