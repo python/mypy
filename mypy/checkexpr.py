@@ -1798,6 +1798,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
             # TODO treat this case appropriately
+            self.chk.check_func_item(e)
             return callable_ctx
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
