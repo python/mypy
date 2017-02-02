@@ -1742,7 +1742,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_func_expr(self, e: FuncExpr) -> Type:
         """Type check lambda expression."""
-        inferred_type = self.infer_lambda_type_using_context(e)
+        inferred_type, type_override = self.infer_lambda_type_using_context(e)
         if not inferred_type:
             # No useful type context.
             ret_type = self.accept(e.expr())
@@ -1752,6 +1752,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
+            self.chk.check_func_item(e, type_override=type_override)
             if e.expr() not in self.chk.type_map:
                 self.accept(e.expr())
             ret_type = self.chk.type_map[e.expr()]
@@ -1762,10 +1763,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return inferred_type
             return replace_callable_return_type(inferred_type, ret_type)
 
-    def infer_lambda_type_using_context(self, e: FuncExpr) -> Optional[CallableType]:
+    def infer_lambda_type_using_context(self, e: FuncExpr) -> Tuple[Optional[CallableType],
+                                                                    Optional[CallableType]]:
         """Try to infer lambda expression type using context.
 
         Return None if could not infer type.
+        The second item in the return type is the type_override parameter for check_func_item.
         """
         # TODO also accept 'Any' context
         ctx = self.chk.type_context[-1]
@@ -1776,7 +1779,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ctx = callables[0]
 
         if not ctx or not isinstance(ctx, CallableType):
-            return None
+            return None, None
 
         # The context may have function type variables in it. We replace them
         # since these are the type variables we are ultimately trying to infer;
@@ -1798,15 +1801,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
             # TODO treat this case appropriately
-            self.chk.check_func_item(e)
-            return callable_ctx
+            return callable_ctx, None
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
-            return None
+            return None, None
 
-        self.chk.check_func_item(e, type_override=callable_ctx)
-        return callable_ctx
+        return callable_ctx, callable_ctx
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
