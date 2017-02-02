@@ -136,6 +136,46 @@ def f() -> int:
         return 0
 [builtins fixtures/bool.pyi]
 
+[case testNoReturnDisallowsReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:
+  if bool():
+    return 5  # E: Return statement in function which does not return
+  else:
+    return  # E: Return statement in function which does not return
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnWithoutImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> NoReturn:
+  no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnDisallowsImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:  # N: Implicit return in function which does not return
+  non_trivial_function = 1
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnNoWarnNoReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  if bool():
+    return 0
+  else:
+    no_return()
+[builtins fixtures/dict.pyi]
+
 [case testShowErrorContextFunction]
 # flags: --show-error-context
 def f() -> None:
