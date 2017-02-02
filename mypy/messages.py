@@ -11,7 +11,8 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
-    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType
+    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UninhabitedType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -24,8 +25,10 @@ from mypy.nodes import (
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
+INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
 RETURN_VALUE_EXPECTED = 'Return value expected'
+NO_RETURN_EXPECTED = 'Return statement in function which does not return'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
@@ -319,6 +322,11 @@ class MessageBuilder:
             return '"Any"'
         elif isinstance(typ, DeletedType):
             return '<deleted>'
+        elif isinstance(typ, UninhabitedType):
+            if typ.is_noreturn:
+                return 'NoReturn'
+            else:
+                return '<uninhabited>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
