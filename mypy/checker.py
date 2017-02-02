@@ -614,7 +614,7 @@ class TypeChecker(NodeVisitor[Type]):
                                       .format(erased, ref_type), defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
-                        # TODO: check recuresively for inner type variables
+                        # TODO: check recursively for inner type variables
                         if arg_type.variance == COVARIANT:
                             self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:

@@ -1752,7 +1752,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return callable_type(e, fallback, ret_type)
         else:
             # Type context available.
-            self.chk.check_func_item(e, type_override=inferred_type)
             if e.expr() not in self.chk.type_map:
                 self.accept(e.expr())
             ret_type = self.chk.type_map[e.expr()]
@@ -1805,6 +1804,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(messages.CANNOT_INFER_LAMBDA_TYPE, e)
             return None
 
+        self.chk.check_func_item(e, type_override=callable_ctx)
         return callable_ctx
 
     def visit_super_expr(self, e: SuperExpr) -> Type:

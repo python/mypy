@@ -1039,10 +1039,14 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible return value type (got "int", expected None)
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[StarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
     pass
-[out]
-main:6: error: Incompatible types in assignment (expression has type Callable[[StarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
+
+[case testLambdaVarargContext]
+# Should not crash
+from typing import Callable
+def f(a: Callable[[int, int, int], int] = lambda *a, **k: 1):
+    pass
 
 [builtins fixtures/dict.pyi]
 -- Boolean operators
