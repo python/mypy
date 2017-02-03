@@ -157,3 +157,91 @@ class E(IntEnum):
 E[1]
 [out]
 _program.py:4: error: Enum index should be a string (actual index type "int")
+
+[case testFunctionalEnumString]
+from enum import Enum, IntEnum
+E = Enum('E', 'foo bar')
+I = IntEnum('I', ' bar, baz ')
+reveal_type(E.foo)
+reveal_type(E.bar.value)
+reveal_type(I.bar)
+reveal_type(I.baz.value)
+[out]
+_program.py:4: error: Revealed type is '_testFunctionalEnumString.E'
+_program.py:5: error: Revealed type is 'Any'
+_program.py:6: error: Revealed type is '_testFunctionalEnumString.I'
+_program.py:7: error: Revealed type is 'builtins.int'
+
+[case testFunctionalEnumListOfStrings]
+from enum import Enum, IntEnum
+E = Enum('E', ('foo', 'bar'))
+F = IntEnum('F', ['bar', 'baz'])
+reveal_type(E.foo)
+reveal_type(F.baz)
+[out]
+_program.py:4: error: Revealed type is '_testFunctionalEnumListOfStrings.E'
+_program.py:5: error: Revealed type is '_testFunctionalEnumListOfStrings.F'
+
+[case testFunctionalEnumListOfPairs]
+from enum import Enum, IntEnum
+E = Enum('E', [('foo', 1), ['bar', 2]])
+F = IntEnum('F', (['bar', 1], ('baz', 2)))
+reveal_type(E.foo)
+reveal_type(F.baz)
+reveal_type(E.foo.value)
+reveal_type(F.bar.name)
+[out]
+_program.py:4: error: Revealed type is '_testFunctionalEnumListOfPairs.E'
+_program.py:5: error: Revealed type is '_testFunctionalEnumListOfPairs.F'
+_program.py:6: error: Revealed type is 'Any'
+_program.py:7: error: Revealed type is 'builtins.str'
+
+[case testFunctionalEnumDict]
+from enum import Enum, IntEnum
+E = Enum('E', {'foo': 1, 'bar': 2})
+F = IntEnum('F', {'bar': 1, 'baz': 2})
+reveal_type(E.foo)
+reveal_type(F.baz)
+reveal_type(E.foo.value)
+reveal_type(F.bar.name)
+[out]
+_program.py:4: error: Revealed type is '_testFunctionalEnumDict.E'
+_program.py:5: error: Revealed type is '_testFunctionalEnumDict.F'
+_program.py:6: error: Revealed type is 'Any'
+_program.py:7: error: Revealed type is 'builtins.str'
+
+[case testFunctionalEnumErrors]
+from enum import Enum, IntEnum
+A = Enum('A')
+B = Enum('B', 42)
+C = Enum('C', 'a b', 'x')
+D = Enum('D', foo)
+bar = 'x y z'
+E = Enum('E', bar)
+I = IntEnum('I')
+J = IntEnum('I', 42)
+K = IntEnum('I', 'p q', 'z')
+L = Enum('L', ' ')
+M = Enum('M', ())
+N = IntEnum('M', [])
+P = Enum('P', [42])
+Q = Enum('Q', [('a', 42, 0)])
+R = IntEnum('R', [[0, 42]])
+S = Enum('S', {1: 1})
+[out]
+_program.py:2: error: Too few arguments for Enum()
+_program.py:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
+_program.py:4: error: Too many arguments for Enum()
+_program.py:5: error: Enum() expects a string, tuple, list or dict literal as the second argument
+_program.py:5: error: Name 'foo' is not defined
+_program.py:7: error: Enum() expects a string, tuple, list or dict literal as the second argument
+_program.py:8: error: Too few arguments for IntEnum()
+_program.py:9: error: IntEnum() expects a string, tuple, list or dict literal as the second argument
+_program.py:10: error: Too many arguments for IntEnum()
+_program.py:11: error: Enum() needs at least one item
+_program.py:12: error: Enum() needs at least one item
+_program.py:13: error: IntEnum() needs at least one item
+_program.py:14: error: Enum() with tuple or list expects strings or (name, value) pairs
+_program.py:15: error: Enum() with tuple or list expects strings or (name, value) pairs
+_program.py:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
+_program.py:17: error: Enum() with dict literal requires string literals

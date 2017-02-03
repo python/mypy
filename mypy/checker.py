@@ -17,12 +17,17 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
-    Context, Decorator, PrintStmt, LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt,
-    ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, ImportFrom, ImportAll, ImportBase,
-    ARG_POS, CONTRAVARIANT, COVARIANT, ExecStmt, GlobalDecl, Import, NonlocalDecl,
-    MDEF, Node
-)
+    BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
+    TypeApplication, DictExpr, SliceExpr, LambdaExpr, TempNode, SymbolTableNode,
+    Context, ListComprehension, ConditionalExpr, GeneratorExpr,
+    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
+    LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
+    YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
+    DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
+    RefExpr, YieldExpr, BackquoteExpr, Import, ImportFrom, ImportAll, ImportBase,
+    AwaitExpr, PromoteExpr, Node, EnumCallExpr,
+    ARG_POS, MDEF,
+    CONTRAVARIANT, COVARIANT)
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -45,7 +50,7 @@ from mypy.typevars import fill_typevars, has_no_typevars
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
-from mypy.visitor import StatementVisitor
+from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
@@ -70,7 +75,7 @@ DeferredNode = NamedTuple(
     ])
 
 
-class TypeChecker(StatementVisitor[None]):
+class TypeChecker(NodeVisitor[None]):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
@@ -2259,21 +2264,13 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.binder.handle_continue()
+        return None
 
-    def visit_exec_stmt(self, s: ExecStmt) -> None:
-        pass
+    def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
+        return self.expr_checker.visit_typeddict_expr(e)
 
-    def visit_global_decl(self, s: GlobalDecl) -> None:
-        pass
-
-    def visit_nonlocal_decl(self, s: NonlocalDecl) -> None:
-        pass
-
-    def visit_var(self, s: Var) -> None:
-        pass
-
-    def visit_pass_stmt(self, s: PassStmt) -> None:
-        pass
+    def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> Type:
+        return self.expr_checker.visit_enum_call_expr(o)
 
     #
     # Helpers
