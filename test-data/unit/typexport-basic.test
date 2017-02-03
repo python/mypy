@@ -314,7 +314,7 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]):
   def f(self) -> T:
-    self.f()
+    return self.f()
 [out]
 CallExpr(5) : T`1
 MemberExpr(5) : def () -> T`1

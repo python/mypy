@@ -61,6 +61,12 @@ def f() -> Generator[int, None, str]:
     return  # E: Return value expected
 [out]
 
+[case testNoReturnInGenerator]
+from typing import Generator
+def f() -> Generator[int, None, str]:  # N: Missing return statement
+    yield 1
+[out]
+
 [case testEmptyReturnInNoneTypedGenerator]
 from typing import Generator
 def f() -> Generator[int, None, None]:
@@ -722,6 +728,7 @@ def f(*a: BaseException) -> int:
     except BaseException as err: pass
     try: pass
     except BaseException as err: f(err)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 
@@ -732,6 +739,7 @@ def f(*a: BaseException) -> int:
     x
     try: pass
     except BaseException as err: f(err)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 
@@ -742,6 +750,7 @@ def f(*a: BaseException) -> int:
     try: pass
     except BaseException as err: f(err)
     x
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 
@@ -762,6 +771,7 @@ def f(*arg: BaseException) -> int:
         f(err)
         b = err.b
         reveal_type(b)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
@@ -785,6 +795,7 @@ def f(*arg: BaseException) -> int:
         f(err)
         b = err.b
         reveal_type(b)
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
@@ -808,6 +819,7 @@ def f(*arg: BaseException) -> int:
         b = err.b
         reveal_type(b)
     x
+    return 0
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
