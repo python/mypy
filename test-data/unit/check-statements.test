@@ -63,7 +63,7 @@ def f() -> Generator[int, None, str]:
 
 [case testNoReturnInGenerator]
 from typing import Generator
-def f() -> Generator[int, None, str]:  # N: Missing return statement
+def f() -> Generator[int, None, str]:  # E: Missing return statement
     yield 1
 [out]
 

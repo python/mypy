@@ -20,7 +20,7 @@ async def f() -> int:
     make_this_not_trivial = 1
 [builtins fixtures/async_await.pyi]
 [out]
-main:2: note: Missing return statement
+main:2: error: Missing return statement
 
 [case testAsyncDefReturnWithoutValue]
 # flags: --fast-parser

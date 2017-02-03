@@ -623,7 +623,7 @@ class TypeChecker(StatementVisitor[None]):
                         # This is a NoReturn function
                         self.msg.note(messages.INVALID_IMPLICIT_RETURN, defn)
                     else:
-                        self.msg.note(messages.MISSING_RETURN_STATEMENT, defn)
+                        self.msg.fail(messages.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 
