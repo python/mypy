@@ -564,6 +564,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.clean_up_bases_and_infer_type_variables(defn)
+        if self.analyze_typeddict_classdef(defn):
+            return
         if self.analyze_namedtuple_classdef(defn):
             return
         self.setup_class_def_analysis(defn)
@@ -943,6 +945,78 @@ class SemanticAnalyzer(NodeVisitor):
             node = self.bind_type_var(var, binder, info)
             nodes.append(node)
         return nodes
+
+    def is_typeddict(self, expr: RefExpr) -> bool:
+        return isinstance(expr.node, TypeInfo) and \
+                expr.node.typeddict_type is not None
+
+    def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
+        # special case for TypedDict
+        possible = False
+        for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, RefExpr):
+                base_expr.accept(self)
+                if base_expr.fullname == 'mypy_extensions.TypedDict' or self.is_typeddict(base_expr):
+                    possible = True
+        if possible:
+            node = self.lookup(defn.name, defn)
+            if node is not None:
+                node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
+                if len(defn.base_type_exprs) and defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict':
+                    # Building a new TypedDict
+                    fields, types = self.check_typeddict_classdef(defn)
+                    node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
+                    return True
+                if any(expr.fullname != 'mypy_extensions.TypedDict' and not self.is_typeddict(expr)
+                       for expr in defn.base_type_exprs):
+                    self.fail("All bases of a new TypedDict must be TypedDict's", defn)
+                fields, types = self.check_typeddict_classdef(defn)
+                # Extending/merging existing TypedDicts
+                typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
+                newfields = []
+                newtypes = []
+                for base in typeddict_bases:
+                    newfields.extend(base.node.typeddict_type.items.keys())
+                    newtypes.extend(base.node.typeddict_type.items.values())
+                newfields.extend(fields)
+                newtypes.extend(types)
+                node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
+                return True
+        return False
+
+    def check_typeddict_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+        TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
+                              'expected "field_name: field_type"')
+        if self.options.python_version < (3, 6):
+            self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
+            return [], []
+        fields = []  # type: List[str]
+        types = []  # type: List[Type]
+        for stmt in defn.defs.body:
+            if not isinstance(stmt, AssignmentStmt):
+                # Still allow pass or ... (for empty TypedDict's).
+                if (not isinstance(stmt, PassStmt) and
+                    not (isinstance(stmt, ExpressionStmt) and
+                         isinstance(stmt.expr, EllipsisExpr))):
+                    self.fail(TPDICT_CLASS_ERROR, stmt)
+            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
+                # An assignment, but an invalid one.
+                self.fail(TPDICT_CLASS_ERROR, stmt)
+            else:
+                # Append name and type in this case...
+                name = stmt.lvalues[0].name
+                fields.append(name)
+                types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
+                # ...despite possible minor failures that allow further analyzis.
+                if name.startswith('_'):
+                    self.fail('TypedDict field name cannot start with an underscore: {}'
+                              .format(name), stmt)
+                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
+                    self.fail(TPDICT_CLASS_ERROR, stmt)
+                elif not isinstance(stmt.rvalue, TempNode):
+                    # x: int assigns rvalue to TempNode(AnyType())
+                    self.fail('Right hand side values are not supported in TypedDict', stmt)
+        return fields, types
 
     def visit_import(self, i: Import) -> None:
         for id, as_id in i.ids:
