@@ -85,9 +85,10 @@ class Point1D(TypedDict):
     x: int
 class Point2D(Point1D):
     y: int
-
+r: Point1D
 p: Point2D
-reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+reveal_type(r)  # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Point1D)'
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=__main__.Point2D)'
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithSubclass2]
@@ -100,7 +101,7 @@ class Point2D(TypedDict, Point1D): # We also allow to include TypedDict in bases
     y: int
 
 p: Point2D
-reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=__main__.Point2D)'
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictClassEmpty]
@@ -122,8 +123,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builti
 from mypy_extensions import TypedDict
 
 class Point(TypedDict): # E: TypedDict class syntax is only supported in Python 3.6
-    x: int
-    y: int
+    pass
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassOtherBases]
@@ -138,7 +138,7 @@ class Point2D(Point1D, A): # E: All bases of a new TypedDict must be TypedDict's
     y: int
 
 p: Point2D
-reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=__main__.Point2D)'
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
@@ -164,7 +164,7 @@ class Point(TypedDict):
     _y: int  # E: TypedDict field name cannot start with an underscore: _y
 
 p: Point
-reveal_type(p) # E: Revealed type is 'TypedDict(x=builtins.int, _y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+reveal_type(p) # E: Revealed type is 'TypedDict(x=builtins.int, _y=builtins.int, _fallback=__main__.Point)'
 [builtins fixtures/dict.pyi]
 
 

@@ -963,18 +963,19 @@ class SemanticAnalyzer(NodeVisitor):
             node = self.lookup(defn.name, defn)
             if node is not None:
                 node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-                if (len(defn.base_type_exprs) and isinstance(defn.base_type_exprs[0], RefExpr) and
+                if (len(defn.base_type_exprs) == 1 and
+                        isinstance(defn.base_type_exprs[0], RefExpr) and
                         defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
                     # Building a new TypedDict
                     fields, types = self.check_typeddict_classdef(defn)
                     node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
                     return True
+                # Extending/merging existing TypedDicts
                 if any(not isinstance(expr, RefExpr) or
-                       expr.fullname != 'mypy_extensions.TypedDict' and not self.is_typeddict(expr)
-                       for expr in defn.base_type_exprs):
+                       expr.fullname != 'mypy_extensions.TypedDict' and
+                       not self.is_typeddict(expr) for expr in defn.base_type_exprs):
                     self.fail("All bases of a new TypedDict must be TypedDict's", defn)
                 fields, types = self.check_typeddict_classdef(defn)
-                # Extending/merging existing TypedDicts
                 typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
                 newfields = []  # type: List[str]
                 newtypes = []  # type: List[Type]
