@@ -682,6 +682,7 @@ class SemanticAnalyzer(NodeVisitor):
         Note that this is performed *before* semantic analysis.
         """
         removed = []  # type: List[int]
+        declared_tvars = []  # type: List[Tuple[str, TypeVarExpr]]
         type_vars = []  # type: List[TypeVarDef]
         for i, base_expr in enumerate(defn.base_type_exprs):
             try:
@@ -694,9 +695,22 @@ class SemanticAnalyzer(NodeVisitor):
                 if type_vars:
                     self.fail('Duplicate Generic in bases', defn)
                 removed.append(i)
-                for j, (name, tvar_expr) in enumerate(tvars):
-                    type_vars.append(TypeVarDef(name, j + 1, tvar_expr.values,
-                                                tvar_expr.upper_bound, tvar_expr.variance))
+                declared_tvars.extend(tvars)
+
+        all_tvars = self.get_all_bases_tvars(defn, removed)
+        if declared_tvars:
+            if len(self.remove_dups(declared_tvars)) < len(declared_tvars):
+                self.fail("Duplicate type variables in Generic[...]", defn)
+            declared_tvars = self.remove_dups(declared_tvars)
+            if not set(all_tvars).issubset(set(declared_tvars)):
+                self.fail("If Generic[...] is present it should list all type variables", defn)
+                # In case of error, Generic tvars will go first
+                declared_tvars = self.remove_dups(declared_tvars + all_tvars)
+        else:
+            declared_tvars = all_tvars
+        for j, (name, tvar_expr) in enumerate(declared_tvars):
+            type_vars.append(TypeVarDef(name, j + 1, tvar_expr.values,
+                                        tvar_expr.upper_bound, tvar_expr.variance))
         if type_vars:
             defn.type_vars = type_vars
             if defn.info:
@@ -732,6 +746,42 @@ class SemanticAnalyzer(NodeVisitor):
             assert isinstance(sym.node, TypeVarExpr)
             return unbound.name, sym.node
         return None
+
+    def get_all_bases_tvars(self, defn: ClassDef,
+                            removed: List[int]) -> List[Tuple[str, TypeVarExpr]]:
+        tvars = []  # type: List[Tuple[str, TypeVarExpr]]
+        for i, base_expr in enumerate(defn.base_type_exprs):
+            if i not in removed:
+                try:
+                    base = expr_to_unanalyzed_type(base_expr)
+                except TypeTranslationError:
+                    # This error will be caught later.
+                    continue
+                tvars.extend(self.get_tvars(base))
+        return self.remove_dups(tvars)
+
+    def get_tvars(self, tp: Type) -> List[Tuple[str, TypeVarExpr]]:
+        tvars = []  # type: List[Tuple[str, TypeVarExpr]]
+        if isinstance(tp, UnboundType):
+            for arg in tp.args:
+                tvar = self.analyze_unbound_tvar(arg)
+                if tvar:
+                    tvars.append(tvar)
+                else:
+                    subvars = self.get_tvars(arg)
+                    if subvars:
+                        tvars.extend(subvars)
+        return self.remove_dups(tvars)
+
+    def remove_dups(self, tvars: List[T]) -> List[T]:
+        # Get unique elements in order of appearance
+        all_tvars = set(tvars)
+        new_tvars = []  # type: List[T]
+        for t in tvars:
+            if t in all_tvars:
+                new_tvars.append(t)
+                all_tvars.remove(t)
+        return new_tvars
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         # special case for NamedTuple
