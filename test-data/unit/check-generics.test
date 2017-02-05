@@ -738,9 +738,10 @@ TupledNode = Node[Tuple[T, T]]
 UNode = Union[int, Node[T]]
 
 class C(TupledNode): ... # Same as TupledNode[Any]
-class D(TupledNode[T]): ... # E: Invalid type "__main__.T"
+class D(TupledNode[T]): ...
 class E(Generic[T], UNode[T]): ... # E: Invalid base class
 
+reveal_type(D((1, 1))) # E: Revealed type is '__main__.D[builtins.int*]'
 [builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesUnion]

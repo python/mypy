@@ -692,7 +692,7 @@ class SemanticAnalyzer(NodeVisitor):
                 continue
             tvars = self.analyze_typevar_declaration(base)
             if tvars is not None:
-                if type_vars:
+                if declared_tvars:
                     self.fail('Duplicate Generic in bases', defn)
                 removed.append(i)
                 declared_tvars.extend(tvars)
