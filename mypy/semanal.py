@@ -975,7 +975,6 @@ class SemanticAnalyzer(NodeVisitor):
                        expr.fullname != 'mypy_extensions.TypedDict' and
                        not self.is_typeddict(expr) for expr in defn.base_type_exprs):
                     self.fail("All bases of a new TypedDict must be TypedDict's", defn)
-                fields, types = self.check_typeddict_classdef(defn)
                 typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
                 newfields = []  # type: List[str]
                 newtypes = []  # type: List[Type]
@@ -983,15 +982,23 @@ class SemanticAnalyzer(NodeVisitor):
                 for base in typeddict_bases:
                     # mypy doesn't yet understand predicates like is_typeddict
                     tpdict = base.node.typeddict_type.items  # type: ignore
-                    newfields.extend(tpdict.keys())
-                    newtypes.extend(tpdict.values())
+                    newdict = tpdict.copy()
+                    for key in tpdict:
+                        if key in newfields:
+                            self.fail('Cannot overwrite TypedDict field {} while merging'
+                                      .format(key), defn)
+                            newdict.pop(key)
+                    newfields.extend(newdict.keys())
+                    newtypes.extend(newdict.values())
+                fields, types = self.check_typeddict_classdef(defn, newfields)
                 newfields.extend(fields)
                 newtypes.extend(types)
                 node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
                 return True
         return False
 
-    def check_typeddict_classdef(self, defn: ClassDef) -> Tuple[List[str], List[Type]]:
+    def check_typeddict_classdef(self, defn: ClassDef,
+                                 oldfields: List[str] = None) -> Tuple[List[str], List[Type]]:
         TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                               'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
@@ -1010,8 +1017,12 @@ class SemanticAnalyzer(NodeVisitor):
                 # An assignment, but an invalid one.
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
-                # Append name and type in this case...
                 name = stmt.lvalues[0].name
+                if name in (oldfields or []):
+                    self.fail('Cannot overwrite TypedDict field {} while extending'
+                              .format(name), stmt)
+                    continue
+                # Append name and type in this case...
                 fields.append(name)
                 types.append(AnyType() if stmt.type is None else self.anal_type(stmt.type))
                 # ...despite possible minor failures that allow further analyzis.
