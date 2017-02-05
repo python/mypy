@@ -946,9 +946,9 @@ class SemanticAnalyzer(NodeVisitor):
             nodes.append(node)
         return nodes
 
-    def is_typeddict(self, expr: RefExpr) -> bool:
-        return isinstance(expr.node, TypeInfo) and \
-                expr.node.typeddict_type is not None
+    def is_typeddict(self, expr: Expression) -> bool:
+        return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
+                expr.node.typeddict_type is not None)
 
     def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
         # special case for TypedDict
@@ -956,28 +956,34 @@ class SemanticAnalyzer(NodeVisitor):
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 base_expr.accept(self)
-                if base_expr.fullname == 'mypy_extensions.TypedDict' or self.is_typeddict(base_expr):
+                if (base_expr.fullname == 'mypy_extensions.TypedDict' or
+                        self.is_typeddict(base_expr)):
                     possible = True
         if possible:
             node = self.lookup(defn.name, defn)
             if node is not None:
                 node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-                if len(defn.base_type_exprs) and defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict':
+                if (len(defn.base_type_exprs) and isinstance(defn.base_type_exprs[0], RefExpr) and
+                        defn.base_type_exprs[0].fullname == 'mypy_extensions.TypedDict'):
                     # Building a new TypedDict
                     fields, types = self.check_typeddict_classdef(defn)
                     node.node = self.build_typeddict_typeinfo(defn.name, fields, types)
                     return True
-                if any(expr.fullname != 'mypy_extensions.TypedDict' and not self.is_typeddict(expr)
+                if any(not isinstance(expr, RefExpr) or
+                       expr.fullname != 'mypy_extensions.TypedDict' and not self.is_typeddict(expr)
                        for expr in defn.base_type_exprs):
                     self.fail("All bases of a new TypedDict must be TypedDict's", defn)
                 fields, types = self.check_typeddict_classdef(defn)
                 # Extending/merging existing TypedDicts
                 typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
-                newfields = []
-                newtypes = []
+                newfields = []  # type: List[str]
+                newtypes = []  # type: List[Type]
+                tpdict = None  # type: OrderedDict[str, Type]
                 for base in typeddict_bases:
-                    newfields.extend(base.node.typeddict_type.items.keys())
-                    newtypes.extend(base.node.typeddict_type.items.values())
+                    # mypy doesn't yet understand predicates like is_typeddict
+                    tpdict = base.node.typeddict_type.items  # type: ignore
+                    newfields.extend(tpdict.keys())
+                    newtypes.extend(tpdict.values())
                 newfields.extend(fields)
                 newtypes.extend(types)
                 node.node = self.build_typeddict_typeinfo(defn.name, newfields, newtypes)
