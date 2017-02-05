@@ -990,6 +990,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.name, original_type, e, is_lvalue, False, False,
                 self.named_type, self.not_ready_callback, self.msg,
                 original_type=original_type, chk=self.chk)
+            if isinstance(member_type, CallableType):
+                for v in member_type.variables:
+                    v.id.meta_level = 0
+            if isinstance(member_type, Overloaded):
+                for it in member_type.items():
+                    for v in it.variables:
+                        v.id.meta_level = 0
             if is_lvalue:
                 return member_type
             else:
