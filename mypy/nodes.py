@@ -1876,6 +1876,10 @@ class TypeInfo(SymbolNode):
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
     mro = None  # type: List[TypeInfo]
+
+    declared_metaclass = None  # type: Optional[mypy.types.Instance]
+    metaclass_type = None  # type: mypy.types.Instance
+
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
@@ -1946,27 +1950,6 @@ class TypeInfo(SymbolNode):
             for vd in defn.type_vars:
                 self.type_vars.append(vd.name)
 
-    declared_metaclass = None  # type: Optional[mypy.types.Instance]
-    metaclass_type = None  # type: Optional[mypy.types.Instance]
-
-    def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
-        if self.mro is None:
-            # XXX why does this happen?
-            return None
-        declared = self.declared_metaclass
-        if declared is not None and not declared.type.has_base('builtins.type'):
-            return declared
-        if self._fullname == 'builtins.type':
-            return mypy.types.Instance(self, [])
-        candidates = {s.declared_metaclass for s in self.mro} - {None}
-        for c in candidates:
-            if all(other.type in c.type.mro for other in candidates):
-                return c
-        return None
-
-    def is_metaclass(self) -> bool:
-        return self.has_base('builtins.type')
-
     def name(self) -> str:
         """Short name."""
         return self.defn.name
@@ -2025,6 +2008,21 @@ class TypeInfo(SymbolNode):
         assert mro, "Could not produce a MRO at all for %s" % (self,)
         self.mro = mro
         self.is_enum = self._calculate_is_enum()
+
+    def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
+        declared = self.declared_metaclass
+        if declared is not None and not declared.type.has_base('builtins.type'):
+            return declared
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        candidates = {s.declared_metaclass for s in self.mro} - {None}
+        for c in candidates:
+            if all(other.type in c.type.mro for other in candidates):
+                return c
+        return None
+
+    def is_metaclass(self) -> bool:
+        return self.has_base('builtins.type')
 
     def _calculate_is_enum(self) -> bool:
         """
@@ -2106,7 +2104,7 @@ class TypeInfo(SymbolNode):
                        else mypy.types.Type.deserialize(data['_promote']))
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
-        ti.metaclass_type = ti.calculate_metaclass_type()
+        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
