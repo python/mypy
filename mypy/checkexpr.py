@@ -1440,7 +1440,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(left_type, TypedDictType):
             return self.visit_typeddict_index_expr(left_type, e.index)
         elif (isinstance(left_type, CallableType)
-              and left_type.is_type_obj() and left_type.type_object()):
+              and left_type.is_type_obj() and left_type.type_object().is_enum):
             return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
             result, method_type = self.check_op('__getitem__', left_type, e.index, e)

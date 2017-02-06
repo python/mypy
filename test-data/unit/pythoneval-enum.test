@@ -149,3 +149,11 @@ s = None  # type: str
 reveal_type(E[s])
 [out]
 _program.py:5: error: Revealed type is '_testEnumIndex.E'
+
+[case testEnumIndexError]
+from enum import IntEnum
+class E(IntEnum):
+    a = 1
+E[1]
+[out]
+_program.py:4: error: Enum index should be a string (actual index type "int")
