@@ -122,7 +122,7 @@ def parse_test_cases(
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
                                         p[i0].line, lastline, perform,
                                         files, output_files, stale_modules,
-                                        rechecked_modules)
+                                        rechecked_modules, native_sep)
                 out.append(tc)
         if not ok:
             raise ValueError(
@@ -158,6 +158,7 @@ class DataDrivenTestCase(TestCase):
                  output_files: List[Tuple[str, str]],
                  expected_stale_modules: Optional[Set[str]],
                  expected_rechecked_modules: Optional[Set[str]],
+                 native_sep: bool = False,
                  ) -> None:
         super().__init__(name)
         self.input = input
@@ -171,6 +172,7 @@ class DataDrivenTestCase(TestCase):
         self.output_files = output_files
         self.expected_stale_modules = expected_stale_modules
         self.expected_rechecked_modules = expected_rechecked_modules
+        self.native_sep = native_sep
 
     def set_up(self) -> None:
         super().set_up()
