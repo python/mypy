@@ -46,7 +46,7 @@ from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import StatementVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
-from mypy.meet import meet_simple, is_overlapping_types
+from mypy.meet import is_overlapping_types
 from mypy.binder import ConditionalTypeBinder
 from mypy.options import Options
 
@@ -1535,14 +1535,6 @@ class TypeChecker(StatementVisitor[None]):
         if context.get_line() in self.errors.ignored_lines[self.errors.file]:
             self.set_inferred_type(var, lvalue, AnyType())
 
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        if expr.literal >= LITERAL_TYPE:
-            restriction = self.binder.get(expr)
-            if restriction:
-                ans = meet_simple(known_type, restriction)
-                return ans
-        return known_type
-
     def check_simple_assignment(self, lvalue_type: Type, rvalue: Expression,
                                 context: Context,
                                 msg: str = messages.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
@@ -2198,13 +2190,9 @@ class TypeChecker(StatementVisitor[None]):
         sym = self.lookup_qualified(fullname)
         return cast(TypeInfo, sym.node)
 
-    def object_type(self) -> Instance:
-        """Return instance type 'object'."""
-        return self.named_type('builtins.object')
-
-    def bool_type(self) -> Instance:
-        """Return instance type 'bool'."""
-        return self.named_type('builtins.bool')
+    def type_type(self) -> Instance:
+        """Return instance type 'type'."""
+        return self.named_type('builtins.type')
 
     def str_type(self) -> Instance:
         """Return instance type 'str'."""

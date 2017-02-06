@@ -1,12 +1,12 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from collections import OrderedDict
-from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
+from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
+    TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
@@ -21,7 +21,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
-    UNBOUND_TVAR, BOUND_TVAR,
+    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE
 )
 from mypy import nodes
 import mypy.checker
@@ -32,6 +32,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
+from mypy.meet import meet_simple
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
@@ -39,7 +40,7 @@ from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
@@ -119,7 +120,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ref_expr(e)
-        return self.chk.narrow_type_from_binder(e, result)
+        return self.narrow_type_from_binder(e, result)
 
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result = None  # type: Type
@@ -982,7 +983,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, False)
-        return self.chk.narrow_type_from_binder(e, result)
+        return self.narrow_type_from_binder(e, result)
 
     def analyze_ordinary_member_access(self, e: MemberExpr,
                                        is_lvalue: bool) -> Type:
@@ -1165,22 +1166,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         [left_type],
                         [nodes.ARG_POS],
                         [None],
-                        self.chk.bool_type(),
+                        self.bool_type(),
                         self.named_type('builtins.function'))
-                    sub_result = self.chk.bool_type()
+                    sub_result = self.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 else:
                     self.msg.add_errors(local_errors)
                 if operator == 'not in':
-                    sub_result = self.chk.bool_type()
+                    sub_result = self.bool_type()
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
                 sub_result, method_type = self.check_op(method, left_type, right, e,
                                                     allow_reverse=True)
 
             elif operator == 'is' or operator == 'is not':
-                sub_result = self.chk.bool_type()
+                sub_result = self.bool_type()
                 method_type = None
             else:
                 raise RuntimeError('Unknown comparison operator {}'.format(operator))
@@ -1386,7 +1387,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         op = e.op
         if op == 'not':
             self.check_usable_type(operand_type, e)
-            result = self.chk.bool_type()  # type: Type
+            result = self.bool_type()  # type: Type
         elif op == '-':
             method_type = self.analyze_external_member_access('__neg__',
                                                               operand_type, e)
@@ -1411,7 +1412,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         It may also represent type application.
         """
         result = self.visit_index_expr_helper(e)
-        return self.chk.narrow_type_from_binder(e, result)
+        return self.narrow_type_from_binder(e, result)
 
     def visit_index_expr_helper(self, e: IndexExpr) -> Type:
         if e.analyzed:
@@ -1629,7 +1630,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+        tvdef = TypeVarDef('T', -1, [], self.object_type())
         tv = TypeVarType(tvdef)
         constructor = CallableType(
             [tv],
@@ -1720,8 +1721,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 args.append(TupleExpr([key, value]))
         # Define type variables (used in constructors below).
-        ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
-        vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+        ktdef = TypeVarDef('KT', -1, [], self.object_type())
+        vtdef = TypeVarDef('VT', -2, [], self.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
         # Call dict(*args), unless it's empty and stargs is not.
@@ -1896,7 +1897,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+            tvdef = TypeVarDef('T', -1, [], self.object_type())
             tv = TypeVarType(tvdef)
             constructor = CallableType(
                 [tv],
@@ -1916,8 +1917,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
-            vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+            ktdef = TypeVarDef('KT', -1, [], self.object_type())
+            vtdef = TypeVarDef('VT', -2, [], self.object_type())
             kt = TypeVarType(ktdef)
             vt = TypeVarType(vtdef)
             constructor = CallableType(
@@ -2198,6 +2199,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_star_expr(self, e: StarExpr) -> StarType:
         return StarType(self.accept(e.expr))
+
+    def object_type(self) -> Instance:
+        """Return instance type 'object'."""
+        return self.named_type('builtins.object')
+
+    def bool_type(self) -> Instance:
+        """Return instance type 'bool'."""
+        return self.named_type('builtins.bool')
+
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
+        if expr.literal >= LITERAL_TYPE:
+            restriction = self.chk.binder.get(expr)
+            if restriction:
+                ans = meet_simple(known_type, restriction)
+                return ans
+        return known_type
 
 
 def has_coroutine_decorator(t: Type) -> bool:
