@@ -2455,7 +2455,11 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_index_expr(self, expr: IndexExpr) -> None:
         expr.base.accept(self)
-        if isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
+        if (isinstance(expr.base, RefExpr)
+                and isinstance(expr.base.node, TypeInfo)
+                and expr.base.node.is_enum):
+            expr.index.accept(self)
+        elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
             res = analyze_type_alias(expr,

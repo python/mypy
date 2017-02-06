@@ -119,7 +119,6 @@ def takes_some_ext_int_enum(s: SomeExtIntEnum):
     pass
 takes_some_ext_int_enum(SomeExtIntEnum.x)
 
-
 [case testNamedTupleEnum]
 from typing import NamedTuple
 from enum import Enum
@@ -132,3 +131,21 @@ class E(N, Enum):
 def f(x: E) -> None: pass
 
 f(E.X)
+
+[case testEnumCall]
+from enum import IntEnum
+class E(IntEnum):
+    a = 1
+x = None  # type: int
+reveal_type(E(x))
+[out]
+_program.py:5: error: Revealed type is '_testEnumCall.E'
+
+[case testEnumIndex]
+from enum import IntEnum
+class E(IntEnum):
+    a = 1
+s = None  # type: str
+reveal_type(E[s])
+[out]
+_program.py:5: error: Revealed type is '_testEnumIndex.E'
