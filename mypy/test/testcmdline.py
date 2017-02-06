@@ -13,6 +13,7 @@ from typing import Tuple, List, Dict, Set
 
 from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
 from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.version import __version__, base_version
@@ -68,6 +69,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
                 actual_output_content = output_file.read().splitlines()
             noramlized_output = normalize_file_output(actual_output_content,
                                                       os.path.abspath(test_temp_dir))
+            if testcase.native_sep and os.path.sep == '\\':
+                noramlized_output = [fix_cobertura_filename(line) for line in noramlized_output]
             assert_string_arrays_equal(expected_content.splitlines(), noramlized_output,
                                        'Output file {} did not match its expected output'.format(
                                            path))
