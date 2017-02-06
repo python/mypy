@@ -2806,3 +2806,10 @@ reveal_type(list(Good))  # E: Revealed type is 'builtins.list[builtins.int*]'
 
 [builtins fixtures/list.pyi]
 
+[case testMetaclassTuple]
+from typing import Tuple
+
+class M(Tuple[int]): pass
+class C(metaclass=M): pass  # E: Invalid metaclass 'M'
+
+[builtins fixtures/tuple.pyi]

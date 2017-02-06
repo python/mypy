@@ -912,7 +912,9 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
                 return
             inst = fill_typevars(sym.node)
-            assert isinstance(inst, Instance)
+            if not isinstance(inst, Instance):
+                self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
+                return
             defn.info.declared_metaclass = inst
             defn.info.metaclass_type = defn.info.calculate_metaclass_type()
             if defn.info.metaclass_type is None:
