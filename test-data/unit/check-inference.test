@@ -1033,6 +1033,22 @@ b = lambda: None  # type: Callable[[], None]
 f(b)
 g(b) # E: Argument 1 to "g" has incompatible type Callable[[], None]; expected Callable[[], int]
 
+[case testLambdaDefaultContext]
+# flags: --strict-optional
+from typing import Callable
+def f(a: Callable[..., None] = lambda *a, **k: None):
+    pass
+
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[StarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
+    pass
+[builtins fixtures/dict.pyi]
+
+[case testLambdaVarargContext]
+# Should not crash
+from typing import Callable
+def f(a: Callable[[int, int, int], int] = lambda *a, **k: 1):
+    pass
+[builtins fixtures/dict.pyi]
 
 -- Boolean operators
 -- -----------------
