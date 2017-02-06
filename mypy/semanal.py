@@ -974,18 +974,20 @@ class SemanticAnalyzer(NodeVisitor):
                 if any(not isinstance(expr, RefExpr) or
                        expr.fullname != 'mypy_extensions.TypedDict' and
                        not self.is_typeddict(expr) for expr in defn.base_type_exprs):
-                    self.fail("All bases of a new TypedDict must be TypedDict's", defn)
+                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
                 typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
                 newfields = []  # type: List[str]
                 newtypes = []  # type: List[Type]
                 tpdict = None  # type: OrderedDict[str, Type]
                 for base in typeddict_bases:
-                    # mypy doesn't yet understand predicates like is_typeddict
-                    tpdict = base.node.typeddict_type.items  # type: ignore
+                    assert isinstance(base, RefExpr)
+                    assert isinstance(base.node, TypeInfo)
+                    assert isinstance(base.node.typeddict_type, TypedDictType)
+                    tpdict = base.node.typeddict_type.items
                     newdict = tpdict.copy()
                     for key in tpdict:
                         if key in newfields:
-                            self.fail('Cannot overwrite TypedDict field {} while merging'
+                            self.fail('Cannot overwrite TypedDict field "{}" while merging'
                                       .format(key), defn)
                             newdict.pop(key)
                     newfields.extend(newdict.keys())
@@ -1019,8 +1021,11 @@ class SemanticAnalyzer(NodeVisitor):
             else:
                 name = stmt.lvalues[0].name
                 if name in (oldfields or []):
-                    self.fail('Cannot overwrite TypedDict field {} while extending'
+                    self.fail('Cannot overwrite TypedDict field "{}" while extending'
                               .format(name), stmt)
+                    continue
+                if name in fields:
+                    self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
                     continue
                 # Append name and type in this case...
                 fields.append(name)

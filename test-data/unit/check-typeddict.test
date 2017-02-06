@@ -132,9 +132,9 @@ from mypy_extensions import TypedDict
 
 class A: pass
 
-class Point1D(TypedDict, A): # E: All bases of a new TypedDict must be TypedDict's
+class Point1D(TypedDict, A): # E: All bases of a new TypedDict must be TypedDict types
     x: int
-class Point2D(Point1D, A): # E: All bases of a new TypedDict must be TypedDict's
+class Point2D(Point1D, A): # E: All bases of a new TypedDict must be TypedDict types
     y: int
 
 p: Point2D
@@ -149,10 +149,10 @@ class Point(TypedDict):
     x: int
     y: int = 1 # E: Right hand side values are not supported in TypedDict
     def f(): pass # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
-    x = 5 # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+    z = int # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
 
-p = Point(x=42, y=1337)
-reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+p = Point(x=42, y=1337, z='whatever')
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object])'
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassUnderscores]
@@ -171,11 +171,23 @@ reveal_type(p) # E: Revealed type is 'TypedDict(x=builtins.int, _y=builtins.int,
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
+class Bad(TypedDict):
+    x: int
+    x: str # E: Duplicate TypedDict field "x"
+
+b: Bad
+reveal_type(b) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Bad)'
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassOverwriting2]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
 class Point1(TypedDict):
     x: int
 class Point2(TypedDict):
     x: float
-class Bad(Point1, Point2): # E: Cannot overwrite TypedDict field x while merging
+class Bad(Point1, Point2): # E: Cannot overwrite TypedDict field "x" while merging
     pass
 
 b: Bad
@@ -189,7 +201,7 @@ from mypy_extensions import TypedDict
 class Point1(TypedDict):
     x: int
 class Point2(Point1):
-    x: float # E: Cannot overwrite TypedDict field x while extending
+    x: float # E: Cannot overwrite TypedDict field "x" while extending
 
 p2: Point2
 reveal_type(p2) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Point2)'
