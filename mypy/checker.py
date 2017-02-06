@@ -93,8 +93,6 @@ class TypeChecker(StatementVisitor[None]):
     scope = None  # type: Scope
     # Stack of function return types
     return_types = None  # type: List[Type]
-    # Type context for type inference
-    type_context = None  # type: List[Type]
     # Flags; true for dynamically typed functions
     dynamic_funcs = None  # type: List[bool]
     # Stack of collections of variables with partial types
@@ -136,7 +134,6 @@ class TypeChecker(StatementVisitor[None]):
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
         self.return_types = []
-        self.type_context = []
         self.dynamic_funcs = []
         self.partial_types = []
         self.deferred_nodes = []
@@ -230,14 +227,12 @@ class TypeChecker(StatementVisitor[None]):
         else:
             self.msg.cannot_determine_type(name, context)
 
-    def accept(self, stmt: Statement, type_context: Type = None) -> None:
+    def accept(self, stmt: Statement) -> None:
         """Type check a node in the given type context."""
-        self.type_context.append(type_context)
         try:
             stmt.accept(self)
         except Exception as err:
             report_internal_error(err, self.errors.file, stmt.line, self.errors, self.options)
-        self.type_context.pop()
 
     def accept_loop(self, body: Statement, else_body: Statement = None, *,
                     exit_condition: Expression = None) -> None:
