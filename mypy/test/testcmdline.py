@@ -67,11 +67,11 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
                     'Expected file {} was not produced by test case'.format(path))
             with open(path, 'r') as output_file:
                 actual_output_content = output_file.read().splitlines()
-            noramlized_output = normalize_file_output(actual_output_content,
+            normalized_output = normalize_file_output(actual_output_content,
                                                       os.path.abspath(test_temp_dir))
             if testcase.native_sep and os.path.sep == '\\':
-                noramlized_output = [fix_cobertura_filename(line) for line in noramlized_output]
-            assert_string_arrays_equal(expected_content.splitlines(), noramlized_output,
+                normalized_output = [fix_cobertura_filename(line) for line in normalized_output]
+            assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
                                        'Output file {} did not match its expected output'.format(
                                            path))
     else:
