@@ -998,6 +998,19 @@ reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/list.pyi]
 [out]
 
+[case testSimplifiedGenericCallable]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T')
+S = TypeVar('S')
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class D(B[Callable[[T], S]]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'def (builtins.str*) -> builtins.int*'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testSimplifiedGenericComplex]
 from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')

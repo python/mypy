@@ -763,14 +763,17 @@ class SemanticAnalyzer(NodeVisitor):
     def get_tvars(self, tp: Type) -> List[Tuple[str, TypeVarExpr]]:
         tvars = []  # type: List[Tuple[str, TypeVarExpr]]
         if isinstance(tp, UnboundType):
-            for arg in tp.args:
-                tvar = self.analyze_unbound_tvar(arg)
-                if tvar:
-                    tvars.append(tvar)
-                else:
-                    subvars = self.get_tvars(arg)
-                    if subvars:
-                        tvars.extend(subvars)
+            tp_args = tp.args
+        elif isinstance(tp, TypeList):
+            tp_args = tp.items
+        else:
+            return tvars
+        for arg in tp_args:
+            tvar = self.analyze_unbound_tvar(arg)
+            if tvar:
+                tvars.append(tvar)
+            else:
+                tvars.extend(self.get_tvars(arg))
         return self.remove_dups(tvars)
 
     def remove_dups(self, tvars: List[T]) -> List[T]:
