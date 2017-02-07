@@ -2785,6 +2785,14 @@ def f(TA: Type[A]):
     reveal_type(TA)  # E: Revealed type is 'Type[__main__.A]'
     reveal_type(TA.x)  # E: Revealed type is 'builtins.int'
 
+[case testSubclassMetaclass]
+class M1(type):
+    x = 0
+class M2(M1): pass
+class C(metaclass=M2):
+    pass
+reveal_type(C.x) # E: Revealed type is 'builtins.int'
+
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
 
