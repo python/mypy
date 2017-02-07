@@ -2781,8 +2781,6 @@ class M(type):
 
 class A(metaclass=M): pass
 
-reveal_type(A.x)  # E: Revealed type is 'builtins.int'
-
 def f(TA: Type[A]):
     reveal_type(TA)  # E: Revealed type is 'Type[__main__.A]'
     reveal_type(TA.x)  # E: Revealed type is 'builtins.int'

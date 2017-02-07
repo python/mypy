@@ -908,13 +908,11 @@ class SemanticAnalyzer(NodeVisitor):
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
-            if not isinstance(sym.node, TypeInfo):
+            if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
                 return
             inst = fill_typevars(sym.node)
-            if not isinstance(inst, Instance):
-                self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
-                return
+            assert isinstance(inst, Instance)
             defn.info.declared_metaclass = inst
             defn.info.metaclass_type = defn.info.calculate_metaclass_type()
             if defn.info.metaclass_type is None:
