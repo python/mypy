@@ -914,10 +914,11 @@ class SemanticAnalyzer(NodeVisitor):
             inst = fill_typevars(sym.node)
             assert isinstance(inst, Instance)
             defn.info.declared_metaclass = inst
-            defn.info.metaclass_type = defn.info.calculate_metaclass_type()
-            if defn.info.metaclass_type is None:
-                # Inconsistency may happen due to multiple baseclasses even in classes that
-                # do not declare explicit metaclass, but it's harder to catch at this stage
+        defn.info.metaclass_type = defn.info.calculate_metaclass_type()
+        if defn.info.metaclass_type is None:
+            # Inconsistency may happen due to multiple baseclasses even in classes that
+            # do not declare explicit metaclass, but it's harder to catch at this stage
+            if defn.metaclass:
                 self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
 
     def object_type(self) -> Instance:
