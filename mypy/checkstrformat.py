@@ -313,4 +313,4 @@ class StringFormatterChecker:
 
     def accept(self, expr: Expression, context: Type = None) -> Type:
         """Type check a node. Alias for TypeChecker.accept."""
-        return self.chk.accept(expr, context)
+        return self.chk.expr_checker.accept(expr, context)
