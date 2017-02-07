@@ -2770,9 +2770,9 @@ class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for 'B'
 class M:
     x = 0  # type: int
 
-class A(metaclass=M): pass
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from 'type' are not supported
 
-reveal_type(A.x)  # E: Revealed type is 'builtins.int'
+A.x  # E: "A" has no attribute "x"
 
 [case testMetaclassTypeReveal]
 from typing import Type

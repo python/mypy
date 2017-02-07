@@ -2022,7 +2022,7 @@ class TypeInfo(SymbolNode):
         return None
 
     def is_metaclass(self) -> bool:
-        return self.has_base('builtins.type')
+        return self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta'
 
     def _calculate_is_enum(self) -> bool:
         """
