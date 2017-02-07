@@ -2017,6 +2017,8 @@ class TypeInfo(SymbolNode):
             return mypy.types.Instance(self, [])
         candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
         for c in candidates:
+            if c.type.mro is None:
+                continue
             if all(other.type in c.type.mro for other in candidates):
                 return c
         return None
