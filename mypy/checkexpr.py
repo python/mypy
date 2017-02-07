@@ -100,7 +100,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # This is shared with TypeChecker, but stored also here for convenience.
     msg = None  # type: MessageBuilder
     # Type context for type inference
-    type_context = None  # type: List[Type]
+    type_context = None  # type: List[Optional[Type]]
 
     strfrm_checker = None  # type: StringFormatterChecker
 
@@ -110,7 +110,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
-        self.type_context = [UninhabitedType()]
+        self.type_context = [None]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
