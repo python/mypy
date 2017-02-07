@@ -648,7 +648,11 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.is_trivial_body(defn.body):
                     pass
                 else:
-                    self.msg.note(messages.MISSING_RETURN_STATEMENT, defn)
+                    if isinstance(self.return_types[-1], UninhabitedType):
+                        # This is a NoReturn function
+                        self.msg.note(messages.INVALID_IMPLICIT_RETURN, defn)
+                    else:
+                        self.msg.note(messages.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 
@@ -1722,6 +1726,10 @@ class TypeChecker(NodeVisitor[Type]):
                                                              defn.is_coroutine)
             else:
                 return_type = self.return_types[-1]
+
+            if isinstance(return_type, UninhabitedType):
+                self.fail(messages.NO_RETURN_EXPECTED, s)
+                return
 
             if s.expr:
                 # Return with a value.

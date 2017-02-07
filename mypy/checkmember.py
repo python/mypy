@@ -134,7 +134,7 @@ def analyze_member_access(name: str,
             if not is_operator:
                 # When Python sees an operator (eg `3 == 4`), it automatically translates that
                 # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
-                # optimation.
+                # optimization.
                 #
                 # While it normally it doesn't matter which of the two versions are used, it
                 # does cause inconsistencies when working with classes. For example, translating

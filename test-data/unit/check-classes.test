@@ -2793,6 +2793,18 @@ class C(metaclass=M2):
     pass
 reveal_type(C.x) # E: Revealed type is 'builtins.int'
 
+[case testMetaclassSubclass]
+from typing import Type
+class M(type):
+    x = 0  # type: int
+
+class A(metaclass=M): pass
+class B(A): pass
+
+def f(TB: Type[B]):
+    reveal_type(TB)  # E: Revealed type is 'Type[__main__.B]'
+    reveal_type(TB.x)  # E: Revealed type is 'builtins.int'
+
 [case testMetaclassIterable]
 from typing import Iterable, Iterator
 

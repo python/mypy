@@ -184,7 +184,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             return self.msg.untyped_function_call(callee_type, e)
-        return self.check_call_expr_with_callee_type(callee_type, e)
+        ret_type = self.check_call_expr_with_callee_type(callee_type, e)
+        if isinstance(ret_type, UninhabitedType):
+            self.chk.binder.unreachable()
+        return ret_type
 
     def check_typeddict_call(self, callee: TypedDictType,
                              arg_kinds: List[int],
@@ -990,6 +993,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.name, original_type, e, is_lvalue, False, False,
                 self.named_type, self.not_ready_callback, self.msg,
                 original_type=original_type, chk=self.chk)
+            if isinstance(member_type, CallableType):
+                for v in member_type.variables:
+                    v.id.meta_level = 0
+            if isinstance(member_type, Overloaded):
+                for it in member_type.items():
+                    for v in it.variables:
+                        v.id.meta_level = 0
             if is_lvalue:
                 return member_type
             else:
@@ -1439,6 +1449,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return AnyType()
         elif isinstance(left_type, TypedDictType):
             return self.visit_typeddict_index_expr(left_type, e.index)
+        elif (isinstance(left_type, CallableType)
+              and left_type.is_type_obj() and left_type.type_object().is_enum):
+            return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
             result, method_type = self.check_op('__getitem__', left_type, e.index, e)
             e.method_type = method_type
@@ -1496,6 +1509,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.typeddict_item_name_not_found(td_type, item_name, index)
             return AnyType()
         return item_type
+
+    def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,
+                              context: Context) -> Type:
+        string_type = self.named_type('builtins.str')  # type: Type
+        if self.chk.options.python_version[0] < 3:
+            string_type = UnionType.make_union([string_type,
+                                                self.named_type('builtins.unicode')])
+        self.chk.check_subtype(self.accept(index), string_type, context,
+                               "Enum index should be a string", "actual index type")
+        return Instance(enum_type, [])
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
