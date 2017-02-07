@@ -110,7 +110,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
-        self.type_context = [AnyType()]
+        self.type_context = [UninhabitedType()]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
