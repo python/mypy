@@ -1,11 +1,12 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from collections import OrderedDict
-from typing import cast, Dict, Set, List, Iterable, Tuple, Callable, Union, Optional
+from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
+from mypy.errors import report_internal_error
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
-    TupleType, TypedDictType, Instance, TypeVarId, TypeVarType, ErasedType, UnionType,
+    TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
@@ -20,7 +21,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF,
-    UNBOUND_TVAR, BOUND_TVAR,
+    UNBOUND_TVAR, BOUND_TVAR, LITERAL_TYPE
 )
 from mypy import nodes
 import mypy.checker
@@ -31,6 +32,7 @@ from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
+from mypy.meet import meet_simple
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import is_subtype, is_equivalent
 from mypy import applytype
@@ -38,7 +40,7 @@ from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
@@ -97,6 +99,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     chk = None  # type: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg = None  # type: MessageBuilder
+    # Type context for type inference
+    type_context = None  # type: List[Optional[Type]]
 
     strfrm_checker = None  # type: StringFormatterChecker
 
@@ -106,6 +110,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg
+        self.type_context = [None]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
@@ -115,7 +120,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ref_expr(e)
-        return self.chk.narrow_type_from_binder(e, result)
+        return self.narrow_type_from_binder(e, result)
 
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result = None  # type: Type
@@ -172,7 +177,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a call expression."""
         if e.analyzed:
             # It's really a special form that only looks like a call.
-            return self.accept(e.analyzed, self.chk.type_context[-1])
+            return self.accept(e.analyzed, self.type_context[-1])
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             return self.check_typeddict_call(e.callee.node.typeddict_type,
@@ -522,7 +527,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         of callable, and if the context is set[int], return callable modified
         by substituting 't' with 'int'.
         """
-        ctx = self.chk.type_context[-1]
+        ctx = self.type_context[-1]
         if not ctx:
             return callable
         # The return type may have references to type metavariables that
@@ -978,7 +983,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, False)
-        return self.chk.narrow_type_from_binder(e, result)
+        return self.narrow_type_from_binder(e, result)
 
     def analyze_ordinary_member_access(self, e: MemberExpr,
                                        is_lvalue: bool) -> Type:
@@ -1168,22 +1173,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         [left_type],
                         [nodes.ARG_POS],
                         [None],
-                        self.chk.bool_type(),
+                        self.bool_type(),
                         self.named_type('builtins.function'))
-                    sub_result = self.chk.bool_type()
+                    sub_result = self.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 else:
                     self.msg.add_errors(local_errors)
                 if operator == 'not in':
-                    sub_result = self.chk.bool_type()
+                    sub_result = self.bool_type()
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
                 sub_result, method_type = self.check_op(method, left_type, right, e,
                                                     allow_reverse=True)
 
             elif operator == 'is' or operator == 'is not':
-                sub_result = self.chk.bool_type()
+                sub_result = self.bool_type()
                 method_type = None
             else:
                 raise RuntimeError('Unknown comparison operator {}'.format(operator))
@@ -1330,7 +1335,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # the left operand. We also use the left operand type to guide the type
         # inference of the right operand so that expressions such as
         # '[1] or []' are inferred correctly.
-        ctx = self.chk.type_context[-1]
+        ctx = self.type_context[-1]
         left_type = self.accept(e.left, ctx)
 
         assert e.op in ('and', 'or')  # Checked by visit_op_expr
@@ -1376,7 +1381,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if is_subtype(right_type, self.named_type('builtins.int')):
             # Special case: [...] * <int value>. Use the type context of the
             # OpExpr, since the multiplication does not affect the type.
-            left_type = self.accept(e.left, context=self.chk.type_context[-1])
+            left_type = self.accept(e.left, type_context=self.type_context[-1])
         else:
             left_type = self.accept(e.left)
         result, method_type = self.check_op('__mul__', left_type, e.right, e)
@@ -1389,7 +1394,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         op = e.op
         if op == 'not':
             self.check_usable_type(operand_type, e)
-            result = self.chk.bool_type()  # type: Type
+            result = self.bool_type()  # type: Type
         elif op == '-':
             method_type = self.analyze_external_member_access('__neg__',
                                                               operand_type, e)
@@ -1414,7 +1419,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         It may also represent type application.
         """
         result = self.visit_index_expr_helper(e)
-        return self.chk.narrow_type_from_binder(e, result)
+        return self.narrow_type_from_binder(e, result)
 
     def visit_index_expr_helper(self, e: IndexExpr) -> Type:
         if e.analyzed:
@@ -1522,7 +1527,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
-        source_type = self.accept(expr.expr, context=AnyType())
+        source_type = self.accept(expr.expr, type_context=AnyType())
         target_type = expr.type
         if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
@@ -1538,7 +1543,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
-        revealed_type = self.accept(expr.expr, context=self.chk.type_context[-1])
+        revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
         if not self.chk.current_node_deferred:
             self.msg.reveal_type(revealed_type, expr)
         return revealed_type
@@ -1632,7 +1637,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+        tvdef = TypeVarDef('T', -1, [], self.object_type())
         tv = TypeVarType(tvdef)
         constructor = CallableType(
             [tv],
@@ -1652,7 +1657,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         # Try to determine type context for type inference.
-        type_context = self.chk.type_context[-1]
+        type_context = self.type_context[-1]
         type_context_items = None
         if isinstance(type_context, UnionType):
             tuples_in_context = [t for t in type_context.items
@@ -1723,8 +1728,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 args.append(TupleExpr([key, value]))
         # Define type variables (used in constructors below).
-        ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
-        vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+        ktdef = TypeVarDef('KT', -1, [], self.object_type())
+        vtdef = TypeVarDef('VT', -2, [], self.object_type())
         kt = TypeVarType(ktdef)
         vt = TypeVarType(vtdef)
         # Call dict(*args), unless it's empty and stargs is not.
@@ -1794,7 +1799,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         The second item in the return type is the type_override parameter for check_func_item.
         """
         # TODO also accept 'Any' context
-        ctx = self.chk.type_context[-1]
+        ctx = self.type_context[-1]
 
         if isinstance(ctx, UnionType):
             callables = [t for t in ctx.items if isinstance(t, CallableType)]
@@ -1899,7 +1904,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tvdef = TypeVarDef('T', -1, [], self.chk.object_type())
+            tvdef = TypeVarDef('T', -1, [], self.object_type())
             tv = TypeVarType(tvdef)
             constructor = CallableType(
                 [tv],
@@ -1919,8 +1924,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarDef('KT', -1, [], self.chk.object_type())
-            vtdef = TypeVarDef('VT', -2, [], self.chk.object_type())
+            ktdef = TypeVarDef('KT', -1, [], self.object_type())
+            vtdef = TypeVarDef('VT', -2, [], self.object_type())
             kt = TypeVarType(ktdef)
             vt = TypeVarType(vtdef)
             constructor = CallableType(
@@ -1962,7 +1967,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and cond_type.type.fullname() == 'builtins.bool')
             if not (is_bool or isinstance(cond_type, AnyType)):
                 self.chk.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
-        ctx = self.chk.type_context[-1]
+        ctx = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
@@ -1997,10 +2002,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
-                self.accept(node, context=context)
+                self.accept(node, type_context=context)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, context=context)
+            return self.accept(node, type_context=context)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
@@ -2010,9 +2015,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Helpers
     #
 
-    def accept(self, node: Expression, context: Type = None) -> Type:
-        """Type check a node. Alias for TypeChecker.accept."""
-        return self.chk.accept(node, context)
+    def accept(self, node: Expression, type_context: Type = None) -> Type:
+        """Type check a node in the given type context."""
+        self.type_context.append(type_context)
+        try:
+            typ = node.accept(self)
+        except Exception as err:
+            report_internal_error(err, self.chk.errors.file,
+                                  node.line, self.chk.errors, self.chk.options)
+        self.type_context.pop()
+        assert typ is not None
+        self.chk.store_type(node, typ)
+        if not self.chk.in_checked_function():
+            return AnyType()
+        else:
+            return typ
 
     def check_usable_type(self, typ: Type, context: Context) -> None:
         """Generate an error if type is Void."""
@@ -2089,7 +2106,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.chk.get_generator_receive_type(return_type, False)
 
     def visit_await_expr(self, e: AwaitExpr) -> Type:
-        expected_type = self.chk.type_context[-1]
+        expected_type = self.type_context[-1]
         if expected_type is not None:
             expected_type = self.chk.named_generic_type('typing.Awaitable', [expected_type])
         actual_type = self.accept(e.expr, expected_type)
@@ -2191,6 +2208,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_star_expr(self, e: StarExpr) -> StarType:
         return StarType(self.accept(e.expr))
+
+    def object_type(self) -> Instance:
+        """Return instance type 'object'."""
+        return self.named_type('builtins.object')
+
+    def bool_type(self) -> Instance:
+        """Return instance type 'bool'."""
+        return self.named_type('builtins.bool')
+
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
+        if expr.literal >= LITERAL_TYPE:
+            restriction = self.chk.binder.get(expr)
+            if restriction:
+                ans = meet_simple(known_type, restriction)
+                return ans
+        return known_type
 
 
 def has_coroutine_decorator(t: Type) -> bool:
