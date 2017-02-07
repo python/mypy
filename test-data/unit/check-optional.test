@@ -493,7 +493,7 @@ def f() -> None:
 def g() -> int:
   1 + 1  #
 [out]
-main:5: note: Missing return statement
+main:5: error: Missing return statement
 
 [case testGenericTypeAliasesOptional]
 from typing import TypeVar, Generic, Optional

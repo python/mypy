@@ -319,7 +319,7 @@ class Request:
             self.conn = None
 
     @asyncio.coroutine
-    def putline(self, line: str) -> Generator[Any, None, None]:
+    def putline(self, line: str) -> None:
         """Write a line to the connection.
 
         Used for the request line and headers.

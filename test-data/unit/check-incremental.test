@@ -1553,6 +1553,7 @@ from funcs import callee
 from classes import Outer
 def caller(a: Outer.Inner) -> int:
     callee(a)
+    return 0
 
 [case testIncrementalLoadsParentAfterChild]
 # cmd: mypy -m r.s

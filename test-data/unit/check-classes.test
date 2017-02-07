@@ -838,6 +838,7 @@ class A:
     def f(self) -> str:
         self.x = 1
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        return ''
 [builtins fixtures/property.pyi]
 [out]
 

@@ -27,7 +27,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type
+    true_only, false_only, function_type, is_named_instance
 )
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder
@@ -606,20 +606,24 @@ class TypeChecker(StatementVisitor[None]):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
-            if (self.options.warn_no_return and not unreachable
-                    and not isinstance(self.return_types[-1], (Void, NoneTyp, AnyType))
-                    and (defn.is_coroutine or not defn.is_generator)):
-                # Control flow fell off the end of a function that was
-                # declared to return a non-None type.
-                # Allow functions that are entirely pass/Ellipsis.
-                if self.is_trivial_body(defn.body):
-                    pass
+            if (self.options.warn_no_return and not unreachable):
+                if (defn.is_generator or
+                        is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
+                    return_type = self.get_generator_return_type(self.return_types[-1],
+                                                                 defn.is_coroutine)
                 else:
-                    if isinstance(self.return_types[-1], UninhabitedType):
+                    return_type = self.return_types[-1]
+
+                if (not isinstance(return_type, (Void, NoneTyp, AnyType))
+                        and not self.is_trivial_body(defn.body)):
+                    # Control flow fell off the end of a function that was
+                    # declared to return a non-None type and is not
+                    # entirely pass/Ellipsis.
+                    if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
                         self.msg.note(messages.INVALID_IMPLICIT_RETURN, defn)
                     else:
-                        self.msg.note(messages.MISSING_RETURN_STATEMENT, defn)
+                        self.msg.fail(messages.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 

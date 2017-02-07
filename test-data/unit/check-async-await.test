@@ -20,7 +20,7 @@ async def f() -> int:
     make_this_not_trivial = 1
 [builtins fixtures/async_await.pyi]
 [out]
-main:2: note: Missing return statement
+main:2: error: Missing return statement
 
 [case testAsyncDefReturnWithoutValue]
 # flags: --fast-parser
@@ -69,6 +69,7 @@ T = TypeVar('T')
 async def f(x: T) -> T:
     y = await f(x)  # type: int
     reveal_type(y)
+    return x
 [out]
 main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
@@ -113,6 +114,7 @@ async def g() -> int:
     return 0
 async def f() -> str:
     x = await g()  # type: str
+    return x
 [builtins fixtures/async_await.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")

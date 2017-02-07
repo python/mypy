@@ -784,6 +784,7 @@ class Popen(object):
             self.stdin.close()
         # Wait for the process to terminate, to avoid zombies.
         self.wait()
+        return False
 
     def __del__(self, _maxsize: int = sys.maxsize,
                 _active: List['Popen'] = _active) -> None:

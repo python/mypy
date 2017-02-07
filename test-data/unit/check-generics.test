@@ -250,6 +250,7 @@ class A(Generic[T]):
         a = object()    # Fail
         b = self.f() # type: object
         b = self.f()
+        return None
 [out]
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 main:6: error: Incompatible types in assignment (expression has type "object", variable has type "T")
