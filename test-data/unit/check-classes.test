@@ -2109,6 +2109,23 @@ def foo(c: Type[C], d: Type[D]) -> None:
 [out]
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
 
+[case testTypeEquivalentTypeAny]
+from typing import Type, Any
+
+a = None # type: Type[Any]
+b = a # type: type
+
+x = None # type: type
+y = x # type: Type[Any]
+
+class C: ...
+
+p = None # type: type
+q = p # type: Type[C] # E: Incompatible types in assignment (expression has type "type", variable has type Type[C])
+
+[builtins fixtures/list.pyi]
+[out]
+
 [case testTypeMatchesOverloadedFunctions]
 from typing import Type, overload, Union
 

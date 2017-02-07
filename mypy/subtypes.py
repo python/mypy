@@ -136,6 +136,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
+        if isinstance(right, TypeType):
+            return left.type.fullname() == 'builtins.type' and isinstance(right.item, AnyType)
         if isinstance(right, Instance):
             if left.type._promote and is_subtype(
                     left.type._promote, self.right, self.check_type_parameter,
