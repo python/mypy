@@ -63,6 +63,151 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 [builtins fixtures/dict.pyi]
 
 
+-- Define TypedDict (Class syntax)
+
+[case testCanCreateTypedDictWithClass]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point(TypedDict):
+    x: int
+    y: int
+
+p = Point(x=42, y=1337)
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
+[builtins fixtures/dict.pyi]
+
+[case testCanCreateTypedDictWithSubclass]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point1D(TypedDict):
+    x: int
+class Point2D(Point1D):
+    y: int
+r: Point1D
+p: Point2D
+reveal_type(r)  # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Point1D)'
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=__main__.Point2D)'
+[builtins fixtures/dict.pyi]
+
+[case testCanCreateTypedDictWithSubclass2]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point1D(TypedDict):
+    x: int
+class Point2D(TypedDict, Point1D): # We also allow to include TypedDict in bases, it is simply ignored at runtime
+    y: int
+
+p: Point2D
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=__main__.Point2D)'
+[builtins fixtures/dict.pyi]
+
+[case testCanCreateTypedDictClassEmpty]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class EmptyDict(TypedDict):
+    pass
+
+p = EmptyDict()
+reveal_type(p)  # E: Revealed type is 'TypedDict(_fallback=typing.Mapping[builtins.str, builtins.None])'
+[builtins fixtures/dict.pyi]
+
+
+-- Define TypedDict (Class syntax errors)
+
+[case testCanCreateTypedDictWithClassOldVersion]
+# flags: --python-version 3.5
+from mypy_extensions import TypedDict
+
+class Point(TypedDict): # E: TypedDict class syntax is only supported in Python 3.6
+    pass
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassOtherBases]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class A: pass
+
+class Point1D(TypedDict, A): # E: All bases of a new TypedDict must be TypedDict types
+    x: int
+class Point2D(Point1D, A): # E: All bases of a new TypedDict must be TypedDict types
+    y: int
+
+p: Point2D
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, _fallback=__main__.Point2D)'
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassWithOtherStuff]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point(TypedDict):
+    x: int
+    y: int = 1 # E: Right hand side values are not supported in TypedDict
+    def f(): pass # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+    z = int # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+
+p = Point(x=42, y=1337, z='whatever')
+reveal_type(p)  # E: Revealed type is 'TypedDict(x=builtins.int, y=builtins.int, z=builtins.str, _fallback=typing.Mapping[builtins.str, builtins.object])'
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassUnderscores]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point(TypedDict):
+    x: int
+    _y: int  # E: TypedDict field name cannot start with an underscore: _y
+
+p: Point
+reveal_type(p) # E: Revealed type is 'TypedDict(x=builtins.int, _y=builtins.int, _fallback=__main__.Point)'
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassOverwriting]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Bad(TypedDict):
+    x: int
+    x: str # E: Duplicate TypedDict field "x"
+
+b: Bad
+reveal_type(b) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Bad)'
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassOverwriting2]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point1(TypedDict):
+    x: int
+class Point2(TypedDict):
+    x: float
+class Bad(Point1, Point2): # E: Cannot overwrite TypedDict field "x" while merging
+    pass
+
+b: Bad
+reveal_type(b) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Bad)'
+[builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassOverwriting2]
+# flags: --python-version 3.6
+from mypy_extensions import TypedDict
+
+class Point1(TypedDict):
+    x: int
+class Point2(Point1):
+    x: float # E: Cannot overwrite TypedDict field "x" while extending
+
+p2: Point2
+reveal_type(p2) # E: Revealed type is 'TypedDict(x=builtins.int, _fallback=__main__.Point2)'
+[builtins fixtures/dict.pyi]
+
+
 -- Subtyping
 
 [case testCanConvertTypedDictToItself]
