@@ -176,6 +176,23 @@ def f() -> int:
     no_return()
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnInExpr]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  return 0
+reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnVariable]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+[builtins fixtures/dict.pyi]
+
 [case testShowErrorContextFunction]
 # flags: --show-error-context
 def f() -> None:
