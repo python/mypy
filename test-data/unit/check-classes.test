@@ -2789,7 +2789,9 @@ def f(TA: Type[A]):
 from typing import Type
 class M(type):
     x = 0  # type: int
-class B(M): pass
+
+class A(metaclass=M): pass
+class B(A): pass
 
 def f(TB: Type[B]):
     reveal_type(TB)  # E: Revealed type is 'Type[__main__.B]'
