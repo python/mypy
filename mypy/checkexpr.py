@@ -1442,6 +1442,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return AnyType()
         elif isinstance(left_type, TypedDictType):
             return self.visit_typeddict_index_expr(left_type, e.index)
+        elif (isinstance(left_type, CallableType)
+              and left_type.is_type_obj() and left_type.type_object().is_enum):
+            return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
             result, method_type = self.check_op('__getitem__', left_type, e.index, e)
             e.method_type = method_type
@@ -1499,6 +1502,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.typeddict_item_name_not_found(td_type, item_name, index)
             return AnyType()
         return item_type
+
+    def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,
+                              context: Context) -> Type:
+        string_type = self.named_type('builtins.str')  # type: Type
+        if self.chk.options.python_version[0] < 3:
+            string_type = UnionType.make_union([string_type,
+                                                self.named_type('builtins.unicode')])
+        self.chk.check_subtype(self.accept(index), string_type, context,
+                               "Enum index should be a string", "actual index type")
+        return Instance(enum_type, [])
 
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
