@@ -323,20 +323,23 @@ class UninhabitedType(Type):
 
     can_be_true = False
     can_be_false = False
+    is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
 
-    def __init__(self, line: int = -1, column: int = -1) -> None:
+    def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
+        self.is_noreturn = is_noreturn
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_uninhabited_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'UninhabitedType'}
+        return {'.class': 'UninhabitedType',
+                'is_noreturn': self.is_noreturn}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UninhabitedType':
         assert data['.class'] == 'UninhabitedType'
-        return UninhabitedType()
+        return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
 class NoneTyp(Type):
