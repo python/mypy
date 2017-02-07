@@ -1876,6 +1876,10 @@ class TypeInfo(SymbolNode):
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
     mro = None  # type: List[TypeInfo]
+
+    declared_metaclass = None  # type: Optional[mypy.types.Instance]
+    metaclass_type = None  # type: mypy.types.Instance
+
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
@@ -2005,6 +2009,21 @@ class TypeInfo(SymbolNode):
         self.mro = mro
         self.is_enum = self._calculate_is_enum()
 
+    def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
+        declared = self.declared_metaclass
+        if declared is not None and not declared.type.has_base('builtins.type'):
+            return declared
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
+        for c in candidates:
+            if all(other.type in c.type.mro for other in candidates):
+                return c
+        return None
+
+    def is_metaclass(self) -> bool:
+        return self.has_base('builtins.type')
+
     def _calculate_is_enum(self) -> bool:
         """
         If this is "enum.Enum" itself, then yes, it's an enum.
@@ -2060,6 +2079,8 @@ class TypeInfo(SymbolNode):
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
+                'declared_metaclass': (None if self.declared_metaclass is None
+                                       else self.declared_metaclass.serialize()),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2081,6 +2102,9 @@ class TypeInfo(SymbolNode):
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
                        else mypy.types.Type.deserialize(data['_promote']))
+        ti.declared_metaclass = (None if data['declared_metaclass'] is None
+                                 else mypy.types.Instance.deserialize(data['declared_metaclass']))
+        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None

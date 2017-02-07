@@ -2759,3 +2759,55 @@ class B(A):
 class C(B):
     x = ''
 [out]
+
+[case testInvalidMetaclassStructure]
+class X(type): pass
+class Y(type): pass
+class A(metaclass=X): pass
+class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for 'B'
+
+[case testMetaclassNoTypeReveal]
+class M:
+    x = 0  # type: int
+
+class A(metaclass=M): pass
+
+reveal_type(A.x)  # E: Revealed type is 'builtins.int'
+
+[case testMetaclassTypeReveal]
+from typing import Type
+class M(type):
+    x = 0  # type: int
+
+class A(metaclass=M): pass
+
+def f(TA: Type[A]):
+    reveal_type(TA)  # E: Revealed type is 'Type[__main__.A]'
+    reveal_type(TA.x)  # E: Revealed type is 'builtins.int'
+
+[case testMetaclassIterable]
+from typing import Iterable, Iterator
+
+class BadMeta(type):
+    def __iter__(self) -> Iterator[int]: yield 1
+
+class Bad(metaclass=BadMeta): pass
+
+for _ in Bad: pass  # E: Iterable expected
+
+class GoodMeta(type, Iterable[int]):
+    def __iter__(self) -> Iterator[int]: yield 1
+
+class Good(metaclass=GoodMeta): pass
+for _ in Good: pass
+reveal_type(list(Good))  # E: Revealed type is 'builtins.list[builtins.int*]'
+
+[builtins fixtures/list.pyi]
+
+[case testMetaclassTuple]
+from typing import Tuple
+
+class M(Tuple[int]): pass
+class C(metaclass=M): pass  # E: Invalid metaclass 'M'
+
+[builtins fixtures/tuple.pyi]

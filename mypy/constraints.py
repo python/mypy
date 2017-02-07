@@ -294,6 +294,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_instance(self, template: Instance) -> List[Constraint]:
         actual = self.actual
         res = []  # type: List[Constraint]
+        if isinstance(actual, CallableType) and actual.fallback is not None:
+            actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
             if (self.direction == SUBTYPE_OF and

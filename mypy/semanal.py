@@ -905,8 +905,20 @@ class SemanticAnalyzer(NodeVisitor):
                 self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
                 return
             sym = self.lookup_qualified(defn.metaclass, defn)
-            if sym is not None and not isinstance(sym.node, TypeInfo):
+            if sym is None:
+                # Probably a name error - it is already handled elsewhere
+                return
+            if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)
+                return
+            inst = fill_typevars(sym.node)
+            assert isinstance(inst, Instance)
+            defn.info.declared_metaclass = inst
+            defn.info.metaclass_type = defn.info.calculate_metaclass_type()
+            if defn.info.metaclass_type is None:
+                # Inconsistency may happen due to multiple baseclasses even in classes that
+                # do not declare explicit metaclass, but it's harder to catch at this stage
+                self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
 
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')

@@ -643,7 +643,8 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type is not None and self.fallback.type.fullname() == 'builtins.type'
+        t = self.fallback.type
+        return t is not None and t.is_metaclass()
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class

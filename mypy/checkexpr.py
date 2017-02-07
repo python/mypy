@@ -2099,8 +2099,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # by __iter__.
         if isinstance(subexpr_type, AnyType):
             iter_type = AnyType()
-        elif (isinstance(subexpr_type, Instance) and
-                is_subtype(subexpr_type, self.chk.named_type('typing.Iterable'))):
+        elif self.chk.type_is_iterable(subexpr_type):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
             iter_method_type = self.analyze_external_member_access(

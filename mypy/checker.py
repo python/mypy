@@ -1433,6 +1433,8 @@ class TypeChecker(NodeVisitor[Type]):
         return (left, star, right)
 
     def type_is_iterable(self, type: Type) -> bool:
+        if isinstance(type, CallableType) and type.is_type_obj():
+            type = type.fallback
         return (is_subtype(type, self.named_generic_type('typing.Iterable',
                                                         [AnyType()])) and
                 isinstance(type, Instance))
@@ -2184,6 +2186,10 @@ class TypeChecker(NodeVisitor[Type]):
     def visit_yield_from_expr(self, e: YieldFromExpr) -> Type:
         return self.expr_checker.visit_yield_from_expr(e)
 
+    def has_coroutine_decorator(self, t: Type) -> bool:
+        """Whether t came from a function decorated with `@coroutine`."""
+        return isinstance(t, Instance) and t.type.fullname() == 'typing.AwaitableGenerator'
+
     def visit_member_expr(self, e: MemberExpr) -> Type:
         return self.expr_checker.visit_member_expr(e)
 
@@ -2361,10 +2367,6 @@ class TypeChecker(NodeVisitor[Type]):
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
         return cast(TypeInfo, sym.node)
-
-    def type_type(self) -> Instance:
-        """Return instance type 'type'."""
-        return self.named_type('builtins.type')
 
     def object_type(self) -> Instance:
         """Return instance type 'object'."""
