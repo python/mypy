@@ -2126,7 +2126,7 @@ q = p # type: Type[C]
 [builtins fixtures/list.pyi]
 [out]
 
-[case testTypeEquivalentTypeAny]
+[case testTypeEquivalentTypeAny2]
 from typing import Type, Any, TypeVar, Generic
 
 class C: ...
