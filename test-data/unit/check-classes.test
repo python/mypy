@@ -2845,3 +2845,11 @@ class Concrete(metaclass=Meta):
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
 Concrete + "hello"  # E: Unsupported operand types for + ("Meta" and "str")
+
+[case testMetaclassGetitem]
+class M(type):
+    def __getitem__(self, key) -> int: return 1
+
+class A(metaclass=M): pass
+
+reveal_type(A[M])  # E: Revealed type is 'builtins.int'

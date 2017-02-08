@@ -103,13 +103,6 @@ class A: pass
 x = cast(A[int], 1) # E: "A" expects no type arguments, but 1 given
 [out]
 
-[case testInvalidNumberOfGenericArgsInTypeApplication]
-import typing
-class A: pass
-class B: pass
-x = A[B[int]]() # E: "B" expects no type arguments, but 1 given
-[out]
-
 [case testInvalidNumberOfGenericArgsInNestedGenericType]
 from typing import TypeVar, Generic
 T = TypeVar('T')
