@@ -955,6 +955,16 @@ class SemanticAnalyzer(NodeVisitor):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
+        if defn.metaclass is None and self.options.python_version[0] == 2:
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    return
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        if isinstance(body_node.rvalue, NameExpr):
+                            defn.metaclass = body_node.rvalue.name
         if defn.metaclass:
             if defn.metaclass == '<error>':
                 self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
