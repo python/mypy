@@ -722,6 +722,32 @@ def call(c: Callable[[int], Any], i: int) -> None:
 [builtins fixtures/list.pyi]
 [out]
 
+[case testCallableMeetAndJoin]
+from typing import Callable, Any, TypeVar
+
+class A: ...
+class B(A): ...
+
+def f(c: Callable[[B], int]) -> None: ...
+
+c: Callable[[A], int]
+d: Callable[[B], int]
+
+lst = [c, d]
+reveal_type(lst) # E: Revealed type is 'builtins.list[def (tstmorecall.B) -> builtins.int]'
+
+T = TypeVar('T')
+def meet_test(x: Callable[[T], int], y: Callable[[T], int]) -> T: ...
+
+CA = Callable[[A], A]
+CB = Callable[[B], B]
+
+ca: Callable[[CA], int]
+cb: Callable[[CB], int]
+reveal_type(meet_test(ca, cb)) # E: Revealed type is Revealed type is 'def (tstmorecall.A) -> tstmorecall.B'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testUnionInferenceWithTypeVarValues]
 from typing import TypeVar, Union
 AnyStr = TypeVar('AnyStr', bytes, str)
