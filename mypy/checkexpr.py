@@ -925,6 +925,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          formal_to_actual, None, None):
             # Too few or many arguments -> no match.
             return 0
+
         similarity = 2
 
         def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,

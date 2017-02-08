@@ -701,7 +701,7 @@ i(b, a, b)
 i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
 [builtins fixtures/list.pyi]
 
-[case testListJoinInference]
+[case testCallableListJoinInference]
 from typing import Any, Callable
 
 def fun() -> None:
