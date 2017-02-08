@@ -745,7 +745,7 @@ CB = Callable[[B], B]
 
 ca: Callable[[CA], int]
 cb: Callable[[CB], int]
-reveal_type(meet_test(ca, cb)) # E: Revealed type is Revealed type is 'def (__main__.A) -> __main__.B'
+reveal_type(meet_test(ca, cb)) # E: Revealed type is 'def (__main__.A) -> __main__.B'
 [builtins fixtures/list.pyi]
 [out]
 
