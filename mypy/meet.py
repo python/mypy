@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from typing import List, Optional
 
-from mypy.join import is_similar_callables, join_type_list
+from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, Void, ErrorType, NoneTyp, TypeVarType,
     Instance, CallableType, TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType,
@@ -235,6 +235,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
+            if is_equivalent(t, self.s):
+                return combine_similar_callables(t, self.s)
             return meet_similar_callables(t, self.s)
         else:
             return self.default(self.s)
