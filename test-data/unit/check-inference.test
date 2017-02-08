@@ -735,7 +735,7 @@ c: Callable[[A], int]
 d: Callable[[B], int]
 
 lst = [c, d]
-reveal_type(lst) # E: Revealed type is 'builtins.list[def (tstmorecall.B) -> builtins.int]'
+reveal_type(lst) # E: Revealed type is 'builtins.list[def (__main__.B) -> builtins.int]'
 
 T = TypeVar('T')
 def meet_test(x: Callable[[T], int], y: Callable[[T], int]) -> T: ...
@@ -745,7 +745,7 @@ CB = Callable[[B], B]
 
 ca: Callable[[CA], int]
 cb: Callable[[CB], int]
-reveal_type(meet_test(ca, cb)) # E: Revealed type is Revealed type is 'def (tstmorecall.A) -> tstmorecall.B'
+reveal_type(meet_test(ca, cb)) # E: Revealed type is Revealed type is 'def (__main__.A) -> __main__.B'
 [builtins fixtures/list.pyi]
 [out]
 
