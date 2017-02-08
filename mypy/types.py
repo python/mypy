@@ -1146,7 +1146,10 @@ class TypeType(Type):
 
     def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.item = item
+        if isinstance(item, CallableType) and item.is_type_obj():
+            self.item = item.fallback
+        else:
+            self.item = item
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)
