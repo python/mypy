@@ -2126,6 +2126,26 @@ q = p # type: Type[C]
 [builtins fixtures/list.pyi]
 [out]
 
+[case testTypeEquivalentTypeAny]
+from typing import Type, Any, TypeVar, Generic
+
+class C: ...
+x = None # type: type
+y = None # type: Type[Any]
+z = None # type: Type[C]
+
+lst = [x, y]
+reveal_type(lst) # E: Revealed type is 'builtins.list[builtins.type*]'
+
+T1 = TypeVar('T1', bound=type)
+T2 = TypeVar('T2', bound=Type[Any])
+class C1(Generic[T1]): ...
+class C2(Generic[T2]): ...
+
+C1[Type[Any]], C2[type] # both these sould not fail
+[builtins fixtures/list.pyi]
+[out]
+
 [case testTypeMatchesOverloadedFunctions]
 from typing import Type, overload, Union
 
