@@ -2121,7 +2121,7 @@ y = x # type: Type[Any]
 class C: ...
 
 p = None # type: type
-q = p # type: Type[C] # E: Incompatible types in assignment (expression has type "type", variable has type Type[C])
+q = p # type: Type[C]
 
 [builtins fixtures/list.pyi]
 [out]
