@@ -390,10 +390,10 @@ class JoinSuite(Suite):
 
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         self.fx.function)
+                         self.callable(self.fx.b, self.fx.b))
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         self.fx.function)
+                         self.callable(self.fx.a, self.fx.a))
         self.assert_join(self.callable(self.fx.a, self.fx.b),
                          self.fx.function,
                          self.fx.function)
@@ -509,7 +509,7 @@ class JoinSuite(Suite):
                                        self.fx.a),
                          self.callable(self.fx.a, self.fx.anyt, self.fx.a,
                                        self.fx.anyt),
-                         self.callable(self.fx.a, self.fx.anyt, self.fx.anyt,
+                         self.callable(self.fx.a, self.fx.a, self.fx.a,
                                        self.fx.anyt))
 
     def test_overloaded(self) -> None:
@@ -523,8 +523,8 @@ class JoinSuite(Suite):
         c1 = c(fx.a, fx.a)
         c2 = c(fx.b, fx.b)
         c3 = c(fx.c, fx.c)
-        self.assert_join(ov(c1, c2), c1, c1)
-        self.assert_join(ov(c1, c2), c2, c2)
+        self.assert_join(ov(c1, c2), c1, ov(c(fx.a, fx.a), c(fx.b, fx.a)))
+        self.assert_join(ov(c1, c2), c2, ov(c(fx.b, fx.a), c(fx.b, fx.b)))
         self.assert_join(ov(c1, c2), ov(c1, c2), ov(c1, c2))
         self.assert_join(ov(c1, c2), ov(c1, c3), c1)
         self.assert_join(ov(c2, c1), ov(c3, c1), c1)
@@ -538,8 +538,8 @@ class JoinSuite(Suite):
 
         fx = self.fx
         any = fx.anyt
-        self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), c(any, fx.b))
-        self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), c(any, fx.b))
+        self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), ov(c(fx.a, fx.a), c(fx.b, fx.b)))
+        self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), ov(c(fx.b, fx.a), c(fx.b, fx.b)))
 
     def test_join_interface_types(self) -> None:
         self.skip()  # FIX
@@ -578,13 +578,14 @@ class JoinSuite(Suite):
     def test_simple_type_objects(self) -> None:
         t1 = self.type_callable(self.fx.a, self.fx.a)
         t2 = self.type_callable(self.fx.b, self.fx.b)
+        tr = self.type_callable(self.fx.b, self.fx.a)
 
         self.assert_join(t1, t1, t1)
         j = join_types(t1, t1)
         assert isinstance(j, CallableType)
         assert_true(j.is_type_obj())
 
-        self.assert_join(t1, t2, self.fx.type_type)
+        self.assert_join(t1, t2, tr)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_type, self.fx.type_type,
                          self.fx.type_type)
@@ -678,10 +679,10 @@ class MeetSuite(Suite):
 
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.b, self.fx.b),
-                         NoneTyp())
+                         self.callable(self.fx.a, self.fx.b))
         self.assert_meet(self.callable(self.fx.a, self.fx.b),
                          self.callable(self.fx.a, self.fx.a),
-                         NoneTyp())
+                         self.callable(self.fx.a, self.fx.b))
 
     def test_type_vars(self) -> None:
         self.assert_meet(self.fx.t, self.fx.t, self.fx.t)
@@ -778,7 +779,7 @@ class MeetSuite(Suite):
                          self.callable(self.fx.a, self.fx.anyt, self.fx.a,
                                        self.fx.anyt),
                          self.callable(self.fx.a, self.fx.anyt, self.fx.anyt,
-                                       self.fx.anyt))
+                                       self.fx.a))
 
     def test_meet_interface_types(self) -> None:
         self.assert_meet(self.fx.f, self.fx.f, self.fx.f)

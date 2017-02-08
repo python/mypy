@@ -701,6 +701,26 @@ i(b, a, b)
 i(a, b, b) # E: Argument 1 to "i" has incompatible type List[int]; expected List[str]
 [builtins fixtures/list.pyi]
 
+[case testListJoinInference]
+from typing import Any, Callable
+
+def fun() -> None:
+    callbacks = [
+        callback1,
+        callback2,
+    ]
+
+    for c in callbacks:
+        call(c, 1234) # this must not fail
+
+def callback1(i: int) -> int:
+    return i
+def callback2(i: int) -> str:
+    return 'hello'
+def call(c: Callable[[int], Any], i: int) -> None:
+    c(i)
+[builtins fixtures/list.pyi]
+[out]
 
 [case testUnionInferenceWithTypeVarValues]
 from typing import TypeVar, Union

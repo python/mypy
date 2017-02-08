@@ -925,7 +925,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          formal_to_actual, None, None):
             # Too few or many arguments -> no match.
             return 0
-
         similarity = 2
 
         def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,
@@ -2400,9 +2399,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             (isinstance(actual, Instance) and actual.type.fallback_to_any)):
         # These could match anything at runtime.
         return 2
-    if isinstance(formal, CallableType) and isinstance(actual, (CallableType, Overloaded)):
-        # TODO: do more sophisticated callable matching
-        return 2
+    if isinstance(formal, CallableType):
+        if isinstance(actual, (CallableType, Overloaded)):
+            # TODO: do more sophisticated callable matching
+            return 2
+        if isinstance(actual, TypeType):
+            return 2 if is_subtype(actual, formal) else 0
     if isinstance(actual, NoneTyp):
         if not experiments.STRICT_OPTIONAL:
             # NoneTyp matches anything if we're not doing strict Optional checking

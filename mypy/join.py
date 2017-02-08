@@ -179,12 +179,12 @@ class TypeJoinVisitor(TypeVisitor[Type]):
     def visit_callable_type(self, t: CallableType) -> Type:
         # TODO: Consider subtyping instead of just similarity.
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
-            return combine_similar_callables(t, self.s)
+            return join_similar_callables(t, self.s)
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
         else:
-            return join_types(t.fallback, self.s)
+            return join_types(self.s, t.fallback)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # This is more complex than most other cases. Here are some
@@ -222,7 +222,7 @@ class TypeJoinVisitor(TypeVisitor[Type]):
             for t_item in t.items():
                 for s_item in s.items():
                     if is_similar_callables(t_item, s_item):
-                        result.append(combine_similar_callables(t_item, s_item))
+                        result.append(join_similar_callables(t_item, s_item))
             if result:
                 # TODO: Simplify redundancies from the result.
                 if len(result) == 1:
@@ -356,14 +356,17 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     arguments, default arguments and varargs.
     """
 
-    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args
-            and t.is_var_arg == s.is_var_arg and is_equivalent(t, s))
+    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and
+            t.is_var_arg == s.is_var_arg and
+            t.fallback.type.fullname() == s.fallback.type.fullname())
 
 
-def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    from mypy.meet import meet_types
+
     arg_types = []  # type: List[Type]
     for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+        arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
     # The fallback type can be either 'function' or 'type'. The result should have 'type' as
     # fallback only if both operands have it as 'type'.
