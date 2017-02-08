@@ -39,14 +39,6 @@ class A:
 [out]
 main:3: error: Return value expected
 
-[case testReturnNoneInFunctionReturningNone]
-import typing
-def f() -> None:
-    return None
-def g() -> None:
-    return f()  # E: No return value expected
-[out]
-
 [case testReturnInGenerator]
 from typing import Generator
 def f() -> Generator[int, None, str]:
