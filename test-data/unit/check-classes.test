@@ -2134,7 +2134,7 @@ x = None # type: type
 y = None # type: Type[Any]
 z = None # type: Type[C]
 
-lst = [x, y]
+lst = [x, y, z]
 reveal_type(lst) # E: Revealed type is 'builtins.list[builtins.type*]'
 
 T1 = TypeVar('T1', bound=type)
