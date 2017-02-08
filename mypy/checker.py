@@ -1741,7 +1741,8 @@ class TypeChecker(NodeVisitor[Type]):
                 if self.is_unusable_type(return_type):
                     # Lambdas are allowed to have a unusable returns.
                     # Functions returning a value of type None are allowed to have a Void return.
-                    if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, (NoneTyp, Void)):
+                    if isinstance(self.scope.top_function(), FuncExpr) or \
+                            isinstance(typ, (NoneTyp, Void)):
                         return
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
                 else:
