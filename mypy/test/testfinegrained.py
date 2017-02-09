@@ -86,6 +86,7 @@ class FineGrainedSuite(DataSuite):
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
             # TODO: We need a manager and a graph in this case as well
+            assert False, str('\n'.join(e.messages))
             return e.messages, None, None
         return result.errors, result.manager, result.graph
 

@@ -43,7 +43,6 @@ We perform a fine-grained incremental program update like this:
 
 Major todo items:
 
-- Support multiple rounds of change propagation
 - Support multiple type checking passes
 - Always reprocess targets with errors, even if they aren't explicitly
   stale
@@ -54,9 +53,9 @@ from typing import Dict, List, Set
 from mypy.build import BuildManager, State
 from mypy.checker import DeferredNode
 from mypy.errors import Errors
-from mypy.nodes import MypyFile, FuncDef, TypeInfo, Expression, SymbolNode
+from mypy.nodes import MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var
 from mypy.types import Type
-from mypy.server.astdiff import compare_symbol_tables
+from mypy.server.astdiff import compare_symbol_tables, is_identical_type
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies
@@ -194,29 +193,53 @@ def propagate_changes_using_dependencies(
         up_to_date_modules: Set[str]) -> None:
     # TODO: Multiple propagation passes
     # TODO: Multiple type checking passes
+    # TODO: Restrict the number of iterations to some maximum to avoid infinite loops
 
-    todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
+    # Propagate changes until nothing visible has changed during the last
+    # iteration.
+    while triggered:
+        todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
 
-    for id, nodes in todo.items():
-        assert id not in up_to_date_modules
-        file_node = manager.modules[id]
-        for deferred in nodes:
-            node = deferred.node
-            # Strip semantic analysis information
-            strip_target(node)
-            # We don't redo the first pass, because it only does local things.
-            semantic_analyzer = manager.semantic_analyzer
-            with semantic_analyzer.file_context(
-                    file_node=file_node,
-                    fnam=file_node.path,
-                    options=manager.options,
-                    active_type=deferred.active_typeinfo):
-                # Second pass
-                manager.semantic_analyzer.refresh_partial(node)
-                # Third pass
-                manager.semantic_analyzer_pass3.refresh_partial(node)
-        # Type check
-        graph[id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
+        # TODO: Preserve order (set is not optimal)
+        new_triggered = set()
+        for id, nodes in todo.items():
+            assert id not in up_to_date_modules
+            file_node = manager.modules[id]
+            for deferred in nodes:
+                node = deferred.node
+                # Strip semantic analysis information
+                strip_target(node)
+                # We don't redo the first pass, because it only does local things.
+                semantic_analyzer = manager.semantic_analyzer
+                with semantic_analyzer.file_context(
+                        file_node=file_node,
+                        fnam=file_node.path,
+                        options=manager.options,
+                        active_type=deferred.active_typeinfo):
+                    # Second pass
+                    manager.semantic_analyzer.refresh_partial(node)
+                    # Third pass
+                    manager.semantic_analyzer_pass3.refresh_partial(node)
+            info = deferred.active_typeinfo
+            if info:
+                old_types = {name: node.node.type
+                             for name, node in info.names.items()
+                             if isinstance(node.node, Var)}
+            # Type check
+            graph[id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
+            if info:
+                # Check if we need to propagate any attribute type changes further.
+                # TODO: Also consider module-level attribute type changes here.
+                for name, node in info.names.items():
+                    if (name in old_types and
+                            not is_identical_type(node.node.type, old_types[name])):
+                        # Type checking a method changed an attribute type.
+                        new_triggered.add(make_trigger('{}.{}'.format(info.fullname(), name)))
+        # Changes elsewhere may require us to reprocess modules that were
+        # previously considered up to date. For example, there may be a
+        # dependency loop that loops back to an originally processed module.
+        up_to_date_modules = set()
+        triggered = new_triggered
 
 
 def find_targets_recursive(

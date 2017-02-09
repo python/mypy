@@ -172,3 +172,22 @@ n.py:3: error: Too few arguments for "f"
 ==
 n.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 m.py:3: error: Too few arguments for "g"
+
+[case testTwoRounds]
+import m
+def h(a: m.A) -> int:
+    return a.x
+[file m.py]
+import n
+class A:
+    def g(self, b: n.B) -> None:
+        self.x = b.f()
+[file n.py]
+class B:
+    def f(self) -> int: pass
+[file n.py.2]
+class B:
+    def f(self) -> str: pass
+[out]
+==
+main:3: error: Incompatible return value type (got "str", expected "int")
