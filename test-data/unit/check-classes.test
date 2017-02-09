@@ -2845,3 +2845,21 @@ class Concrete(metaclass=Meta):
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
 Concrete + "hello"  # E: Unsupported operand types for + ("Meta" and "str")
+
+[case testMetaclassTypeCallable]
+class M(type):
+    x = 5
+
+class A(metaclass=M): pass
+reveal_type(type(A).x)  # E: Revealed type is 'builtins.int'
+
+[case testMetaclassSelftype]
+from typing import TypeVar, Type
+
+class M(type): pass
+T = TypeVar('T', bound='A')
+
+class M1(M):
+    def foo(cls: Type[T]) -> T: ...
+
+class A(metaclass=M1): pass
