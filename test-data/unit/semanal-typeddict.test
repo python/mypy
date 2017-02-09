@@ -58,11 +58,6 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x'})  # E: TypedDict() expects a dictionary literal as the second argument
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictTypeWithUnderscoreItemName]
-from mypy_extensions import TypedDict
-Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})  # E: TypedDict() item names cannot start with an underscore: _fallback
-[builtins fixtures/dict.pyi]
-
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testCannotCreateTypedDictTypeWithNonpositionalArgs]
