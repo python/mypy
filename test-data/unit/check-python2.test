@@ -253,3 +253,7 @@ class A(object):
 
 reveal_type(A.x) # E: Revealed type is 'builtins.int'
 reveal_type(A.test()) # E: Revealed type is 'builtins.str'
+
+[case testDynamicMetaclass]
+class C(object):
+    __metaclass__ = int()  # E: Dynamic metaclass not supported for 'C'
