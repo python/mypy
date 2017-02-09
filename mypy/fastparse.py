@@ -65,7 +65,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] >= 3 or is_stub_file
-        ast = ast3.parse(source, fnam, 'exec')
+        ast = ast3.parse(source, fnam, 'exec', feature_version=pyversion[1])
 
         tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,
@@ -120,7 +120,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-class ASTConverter(ast3.NodeTransformer):
+class ASTConverter(ast3.NodeTransformer):  # type: ignore
     def __init__(self,
                  pyversion: Tuple[int, int],
                  is_stub: bool,
@@ -392,7 +392,13 @@ class ASTConverter(ast3.NodeTransformer):
             if no_type_check:
                 arg_type = None
             else:
-                arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+                if arg.annotation is not None and arg.type_comment is not None:
+                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
+                arg_type = None
+                if arg.annotation is not None:
+                    arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+                elif arg.type_comment is not None:
+                    arg_type = parse_type_comment(arg.type_comment, arg.lineno, arg.col_offset)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []
@@ -487,28 +493,24 @@ class ASTConverter(ast3.NodeTransformer):
     # Assign(expr* targets, expr? value, string? type_comment, expr? annotation)
     @with_line
     def visit_Assign(self, n: ast3.Assign) -> AssignmentStmt:
-        typ = None
-        if hasattr(n, 'annotation') and n.annotation is not None:  # type: ignore
-            new_syntax = True
-        else:
-            new_syntax = False
-        if new_syntax and self.pyversion < (3, 6):
-            self.fail('Variable annotation syntax is only supported in Python 3.6, '
-                      'use type comment instead', n.lineno, n.col_offset)
-        # typed_ast prevents having both type_comment and annotation.
+        lvalues = self.translate_expr_list(n.targets)
+        rvalue = self.visit(n.value)
         if n.type_comment is not None:
             typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        elif new_syntax:
-            typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)  # type: ignore
-            typ.column = n.annotation.col_offset
+        else:
+            typ = None
+        return AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
+
+    # AnnAssign(expr target, expr annotation, expr? value, int simple)
+    @with_line
+    def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression
         else:
             rvalue = self.visit(n.value)
-        lvalues = self.translate_expr_list(n.targets)
-        return AssignmentStmt(lvalues,
-                              rvalue,
-                              type=typ, new_syntax=new_syntax)
+        typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
+        typ.column = n.annotation.col_offset
+        return AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
 
     # AugAssign(expr target, operator op, expr value)
     @with_line
@@ -815,9 +817,6 @@ class ASTConverter(ast3.NodeTransformer):
     # Num(object n) -- a number as a PyObject.
     @with_line
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        if getattr(n, 'contains_underscores', None) and self.pyversion < (3, 6):
-            self.fail('Underscores in numeric literals are only supported in Python 3.6',
-                      n.lineno, n.col_offset)
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):
@@ -914,7 +913,7 @@ class ASTConverter(ast3.NodeTransformer):
         return self.visit(n.value)
 
 
-class TypeConverter(ast3.NodeTransformer):
+class TypeConverter(ast3.NodeTransformer):  # type: ignore
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line

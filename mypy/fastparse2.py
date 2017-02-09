@@ -44,7 +44,7 @@ from mypy.fastparse import TypeConverter, parse_type_comment
 
 try:
     from typed_ast import ast27
-    from typed_ast import ast3
+    from typed_ast import ast3  # type: ignore
 except ImportError:
     if sys.version_info.minor > 2:
         print('You must install the typed_ast package before you can run mypy'
