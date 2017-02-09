@@ -966,7 +966,10 @@ class SemanticAnalyzer(NodeVisitor):
                         if isinstance(body_node.rvalue, NameExpr):
                             defn.metaclass = body_node.rvalue.name
                         else:
-                            self.fail("Dynamic metaclass not supported for '%s'" % defn.name, body_node)
+                            self.fail(
+                                "Dynamic metaclass not supported for '%s'" % defn.name,
+                                body_node
+                            )
                             return None
         if defn.metaclass:
             if defn.metaclass == '<error>':
