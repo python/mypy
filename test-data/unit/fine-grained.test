@@ -168,7 +168,7 @@ def g(a: str) -> None:
     m.f('') # E
 [out]
 ==
-tmp/n.py:3: error: Too few arguments for "f"
+n.py:3: error: Too few arguments for "f"
 ==
-tmp/n.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-tmp/m.py:3: error: Too few arguments for "g"
+n.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+m.py:3: error: Too few arguments for "g"

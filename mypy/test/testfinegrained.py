@@ -65,6 +65,8 @@ class FineGrainedSuite(DataSuite):
                 modules.append(module)
 
             new_messages = update_build(manager, graph, deps, modules)
+            new_messages = [re.sub('^tmp' + re.escape(os.sep), '', message)
+                            for message in new_messages]
 
             a.append('==')
             a.extend(new_messages)

@@ -34,7 +34,7 @@ class ASTDiffSuite(DataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         first_src = '\n'.join(testcase.input)
         files_dict = dict(testcase.files)
-        second_src = files_dict['tmp/next.py']
+        second_src = files_dict[os.path.join('tmp', 'next.py')]
 
         messages1, files1 = self.build(first_src)
         messages2, files2 = self.build(second_src)
