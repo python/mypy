@@ -2856,3 +2856,4 @@ class M1(M):
     def foo(cls: Type[T]) -> T: ...
 
 class A(metaclass=M1): pass
+reveal_type(A.foo())  # E: Revealed type is '__main__.A*'
