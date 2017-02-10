@@ -1,7 +1,7 @@
 import os
 from mypy import git
 
-__version__ = '0.470'
+__version__ = '0.471'
 base_version = __version__
 
 mypy_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
