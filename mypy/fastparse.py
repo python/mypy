@@ -44,9 +44,7 @@ U = TypeVar('U', bound=Node)
 V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR = 'invalid type comment'
-if sys.version_info.minor > 2:
-    TYPE_COMMENT_AST_ERROR += '/annotation'
+TYPE_COMMENT_AST_ERROR = 'invalid type comment/annotation'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
