@@ -37,16 +37,31 @@ x = None # type: Callable[..., int][x] # E: Invalid type comment
 x = None # type: Callable[..., int].x # E: Invalid type comment
 x = None # type: Tuple[1] # E: Invalid type comment
 
-def f1(x: Tuple[int, str].x) -> None: pass # E: Invalid type comment
-def f2(x: Iterable[x].x) -> None: pass # E: Invalid type comment
-def f3(x: Tuple[x][x]) -> None: pass # E: Invalid type comment
-def f4(x: Iterable[x][x]) -> None: pass # E: Invalid type comment
-def f5(x: Callable[..., int][x]) -> None: pass # E: Invalid type comment
-def f6(x: Callable[..., int].x) -> None: pass # E: Invalid type comment
-def f7(x: Tuple[1]) -> None: pass # E: Invalid type comment
+def f1(x): # E: Invalid type comment
+    # type: Tuple[int, str].x
+    pass
+def f2(x): # E: Invalid type comment
+    # type: Iterable[x].x
+    pass
+def f3(x): # E: Invalid type comment
+    # type: Tuple[x][x]
+    pass
+def f4(x): # E: Invalid type comment
+    # type: Iterable[x][x]
+    pass
+def f5(x): # E: Invalid type comment
+    # type: Callable[..., int][x]
+    pass
+def f6(x): # E: Invalid type comment
+    # type: Callable[..., int].x
+    pass
+def f7(x): # E: Invalid type comment
+    # type: Tuple[1]
+    pass
+
 
 [case testFastParseInvalidTypes3]
-# flags: --fast-parser --python-version=3.6
+# flags: --fast-parser --python-version 3.6
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
@@ -219,7 +234,7 @@ def f(a):
     # type: (Tuple(int, int)) -> int
     pass
 [out]
-main:3: error: invalid type comment
+main:3: error: invalid type comment/annotation
 
 [case testFastParseMatMul]
 # flags: --fast-parser
