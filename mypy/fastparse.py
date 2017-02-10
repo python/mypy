@@ -964,7 +964,8 @@ class TypeConverter(ast35.NodeTransformer):
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:
-            return UnboundType(value.name, params, line=self.line, empty_tuple_index=empty_tuple_index)
+            return UnboundType(value.name, params, line=self.line,
+                               empty_tuple_index=empty_tuple_index)
         else:
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType()
