@@ -44,7 +44,7 @@ U = TypeVar('U', bound=Node)
 V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR = 'invalid type comment'
+TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
@@ -954,11 +954,6 @@ class TypeConverter(ast35.NodeTransformer):
             self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType()
 
-        value = self.visit(n.value)
-
-        assert isinstance(value, UnboundType)
-        assert not value.args
-
         empty_tuple_index = False
         if isinstance(n.slice.value, ast35.Tuple):
             params = self.translate_expr_list(n.slice.value.elts)
@@ -967,7 +962,13 @@ class TypeConverter(ast35.NodeTransformer):
         else:
             params = [self.visit(n.slice.value)]
 
-        return UnboundType(value.name, params, line=self.line, empty_tuple_index=empty_tuple_index)
+        value = self.visit(n.value)
+        if isinstance(value, UnboundType) and not value.args:
+            return UnboundType(value.name, params, line=self.line,
+                               empty_tuple_index=empty_tuple_index)
+        else:
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
+            return AnyType()
 
     def visit_Tuple(self, n: ast35.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), None, implicit=True, line=self.line)
@@ -976,10 +977,11 @@ class TypeConverter(ast35.NodeTransformer):
     def visit_Attribute(self, n: ast35.Attribute) -> Type:
         before_dot = self.visit(n.value)
 
-        assert isinstance(before_dot, UnboundType)
-        assert not before_dot.args
-
-        return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
+        if isinstance(before_dot, UnboundType) and not before_dot.args:
+            return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
+        else:
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
+            return AnyType()
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast35.Ellipsis) -> Type:
