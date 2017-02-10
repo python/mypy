@@ -8,7 +8,7 @@ x = None # type: a : b  # E: syntax error in type comment
 
 [case testFastParseInvalidTypeComment]
 # flags: --fast-parser
-x = None # type: a + b  # E: invalid type comment
+x = None # type: a + b  # E: invalid type comment/annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
@@ -20,9 +20,59 @@ def f():  # E: syntax error in type comment
 
 [case testFastParseInvalidFunctionAnnotation]
 # flags: --fast-parser
-def f(x):  # E: invalid type comment
+def f(x):  # E: invalid type comment/annotation
   # type: (a + b) -> None
   pass
+
+[case testFastParseInvalidTypes2]
+# flags: --fast-parser --py2
+# All of these should not crash
+from typing import Callable, Tuple, Iterable
+
+x = None # type: Tuple[int, str].x # E: Invalid type comment
+x = None # type: Iterable[x].x # E: Invalid type comment
+x = None # type: Tuple[x][x] # E: Invalid type comment
+x = None # type: Iterable[x][x] # E: Invalid type comment
+x = None # type: Callable[..., int][x] # E: Invalid type comment
+x = None # type: Callable[..., int].x # E: Invalid type comment
+x = None # type: Tuple[1] # E: Invalid type comment
+
+def f1(x: Tuple[int, str].x) -> None: pass # E: Invalid type comment
+def f2(x: Iterable[x].x) -> None: pass # E: Invalid type comment
+def f3(x: Tuple[x][x]) -> None: pass # E: Invalid type comment
+def f4(x: Iterable[x][x]) -> None: pass # E: Invalid type comment
+def f5(x: Callable[..., int][x]) -> None: pass # E: Invalid type comment
+def f6(x: Callable[..., int].x) -> None: pass # E: Invalid type comment
+def f7(x: Tuple[1]) -> None: pass # E: Invalid type comment
+
+[case testFastParseInvalidTypes3]
+# flags: --fast-parser --python-version=3.6
+# All of these should not crash
+from typing import Callable, Tuple, Iterable
+
+x: Tuple[int, str].x # E: Invalid type comment/annotation
+x: Iterable[x].x # E: Invalid type comment/annotation
+x: Tuple[x][x] # E: Invalid type comment/annotation
+x: Iterable[x][x] # E: Invalid type comment/annotation
+x: Callable[..., int][x] # E: Invalid type comment/annotation
+x: Callable[..., int].x # E: Invalid type comment/annotation
+x: Tuple[1] # E: Invalid type comment/annotation
+
+x = None # type: Tuple[int, str].x # E: Invalid type comment/annotation
+x = None # type: Iterable[x].x # E: Invalid type comment/annotation
+x = None # type: Tuple[x][x] # E: Invalid type comment/annotation
+x = None # type: Iterable[x][x] # E: Invalid type comment/annotation
+x = None # type: Callable[..., int][x] # E: Invalid type comment/annotation
+x = None # type: Callable[..., int].x # E: Invalid type comment/annotation
+x = None # type: Tuple[1] # E: Invalid type comment/annotation
+
+def f1(x: Tuple[int, str].x) -> None: pass # E: Invalid type comment/annotation
+def f2(x: Iterable[x].x) -> None: pass # E: Invalid type comment/annotation
+def f3(x: Tuple[x][x]) -> None: pass # E: Invalid type comment/annotation
+def f4(x: Iterable[x][x]) -> None: pass # E: Invalid type comment/annotation
+def f5(x: Callable[..., int][x]) -> None: pass # E: Invalid type comment/annotation
+def f6(x: Callable[..., int].x) -> None: pass # E: Invalid type comment/annotation
+def f7(x: Tuple[1]) -> None: pass # E: Invalid type comment/annotation
 
 [case testFastParseProperty]
 # flags: --fast-parser

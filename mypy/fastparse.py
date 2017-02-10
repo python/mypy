@@ -45,6 +45,8 @@ V = TypeVar('V')
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
+if sys.version_info.minor > 2:
+    TYPE_COMMENT_AST_ERROR += '/annotation'
 
 
 def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
@@ -956,8 +958,9 @@ class TypeConverter(ast35.NodeTransformer):
 
         value = self.visit(n.value)
 
-        assert isinstance(value, UnboundType)
-        assert not value.args
+        if not isinstance(value, UnboundType) or value.args:
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
+            return AnyType()
 
         empty_tuple_index = False
         if isinstance(n.slice.value, ast35.Tuple):
@@ -976,8 +979,9 @@ class TypeConverter(ast35.NodeTransformer):
     def visit_Attribute(self, n: ast35.Attribute) -> Type:
         before_dot = self.visit(n.value)
 
-        assert isinstance(before_dot, UnboundType)
-        assert not before_dot.args
+        if not isinstance(before_dot, UnboundType) or before_dot.args:
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
+            return AnyType()
 
         return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
 
