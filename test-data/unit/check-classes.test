@@ -809,6 +809,23 @@ class C:
       pass
 [builtins fixtures/classmethod.pyi]
 
+[case testClassMethodSubclassing]
+class A:
+    @classmethod
+    def f(cls) -> None: pass
+
+    def g(self) -> None: pass
+
+class B(A):
+    def f(self) -> None: pass  # E: Signature of "f" incompatible with supertype "A"
+
+    @classmethod
+    def g(cls) -> None: pass
+
+class C(A):
+    @staticmethod
+    def f() -> None: pass
+[builtins fixtures/classmethod.pyi]
 
 -- Properties
 -- ----------
@@ -2700,6 +2717,26 @@ class B(A):
 [out]
 main:8: error: Incompatible types in assignment (expression has type Callable[[str], None], base class "A" defined the type as Callable[[int], None])
 
+[case testClassStaticMethodSubclassing]
+class A:
+    @staticmethod
+    def a() -> None: pass
+
+    def b(self) -> None: pass
+
+    @staticmethod
+    def c() -> None: pass
+
+class B(A):
+    def a(self) -> None: pass  # E: Signature of "a" incompatible with supertype "A"
+
+    @classmethod
+    def b(cls) -> None: pass
+
+    @staticmethod
+    def c() -> None: pass
+[builtins fixtures/classmethod.pyi]
+
 [case testTempNode]
 class A():
     def a(self) -> None: pass
@@ -2853,3 +2890,15 @@ class M(type):
 class A(metaclass=M): pass
 
 reveal_type(A[M])  # E: Revealed type is 'builtins.int'
+
+[case testMetaclassSelftype]
+from typing import TypeVar, Type
+
+class M(type): pass
+T = TypeVar('T', bound='A')
+
+class M1(M):
+    def foo(cls: Type[T]) -> T: ...
+
+class A(metaclass=M1): pass
+reveal_type(A.foo())  # E: Revealed type is '__main__.A*'
