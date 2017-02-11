@@ -11,7 +11,7 @@ print('hello, world')
 [out]
 hello, world
 
--- Skipped because different typing package versions have different repr()s. 
+-- Skipped because different typing package versions have different repr()s.
 [case testAbstractBaseClasses-skip]
 import re
 from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
@@ -1106,6 +1106,7 @@ import collections as c
 
 o1 = c.Counter()  # type: t.Counter[int]
 reveal_type(o1)
+o1['string']
 
 o2 = c.ChainMap()  # type: t.ChainMap[int, str]
 reveal_type(o2)
@@ -1113,10 +1114,40 @@ reveal_type(o2)
 o3 = c.deque()  # type: t.Deque[int]
 reveal_type(o3)
 
+o4 = t.Counter[int]()
+reveal_type(o4)
+
+o5 = t.ChainMap[int, str]()
+reveal_type(o5)
+
+o6 = t.Deque[int]()
+reveal_type(o6)
+
 [out]
 _testCollectionsAliases.py:5: error: Revealed type is 'collections.Counter[builtins.int]'
-_testCollectionsAliases.py:8: error: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
-_testCollectionsAliases.py:11: error: Revealed type is 'collections.deque[builtins.int]'
+_testCollectionsAliases.py:6: error: Invalid index type "str" for "dict"; expected type "int"
+_testCollectionsAliases.py:9: error: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
+_testCollectionsAliases.py:12: error: Revealed type is 'collections.deque[builtins.int]'
+_testCollectionsAliases.py:15: error: Revealed type is 'collections.Counter[builtins.int*]'
+_testCollectionsAliases.py:18: error: Revealed type is 'collections.ChainMap[builtins.int*, builtins.str*]'
+_testCollectionsAliases.py:21: error: Revealed type is 'collections.deque[builtins.int*]'
+
+[case testChainMapUnimported]
+ChainMap[int, str]()
+
+[out]
+_testChainMapUnimported.py:1: error: Name 'ChainMap' is not defined
+
+[case testDequeWrongCase]
+import collections
+import typing
+
+collections.Deque()
+typing.deque()
+
+[out]
+_testDequeWrongCase.py:4: error: "module" has no attribute "Deque"
+_testDequeWrongCase.py:5: error: "module" has no attribute "deque"
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
