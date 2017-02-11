@@ -1943,6 +1943,7 @@ class TypeChecker(StatementVisitor[None]):
                 return AnyType()
 
             all_types.append(exc_type)
+
         return UnionType.make_simplified_union(all_types)
 
     def get_types_from_except_handler(self, typ: Type, n: Expression) -> List[Type]:
