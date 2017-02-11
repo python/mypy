@@ -1919,7 +1919,7 @@ class TypeChecker(StatementVisitor[None]):
         typ = self.expr_checker.accept(n)
 
         all_types = []  # type: List[Type]
-        test_types = typ.items if isinstance(typ, TupleType) else [typ]
+        test_types = self.get_types_from_except_handler(typ, n)
 
         for ttype in test_types:
             if isinstance(ttype, AnyType):
@@ -1943,8 +1943,23 @@ class TypeChecker(StatementVisitor[None]):
                 return AnyType()
 
             all_types.append(exc_type)
-
         return UnionType.make_simplified_union(all_types)
+
+    def get_types_from_except_handler(self, typ: Type, n: Expression) -> List[Type]:
+        """Helper for check_except_handler_test to retrieve handler types."""
+        if isinstance(typ, TupleType):
+            return typ.items
+        elif isinstance(typ, UnionType):
+            return [
+                union_typ
+                for item in typ.items
+                for union_typ in self.get_types_from_except_handler(item, n)
+            ]
+        elif isinstance(typ, Instance) and is_named_instance(typ, 'builtins.tuple'):
+            # variadic tuple
+            return [typ.args[0]]
+        else:
+            return [typ]
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         """Type check a for statement."""
