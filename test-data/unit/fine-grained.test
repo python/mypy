@@ -191,3 +191,164 @@ class B:
 [out]
 ==
 main:3: error: Incompatible return value type (got "str", expected "int")
+
+[case testFixTypeError]
+import m
+def f(a: m.A) -> None:
+    a.f(a)
+[file m.py]
+class A:
+    def f(self, a: 'A') -> None: pass
+[file m.py.2]
+class A:
+    def f(self) -> None: pass
+[file m.py.3]
+class A:
+    def f(self, a: 'A') -> None: pass
+[out]
+==
+main:3: error: Too many arguments for "f" of "A"
+==
+
+[case testFixTypeError2]
+import m
+def f(a: m.A) -> None:
+    a.f()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self) -> None: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "f"
+==
+
+[case testFixSemanticAnalysisError]
+import m
+def f() -> None:
+    m.A()
+[file m.py]
+class A: pass
+[file m.py.2]
+class B: pass
+[file m.py.3]
+class B: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: "module" has no attribute "A"
+==
+
+[case testContinueToReportTypeCheckError]
+import m
+def f(a: m.A) -> None:
+    a.f()
+def g(a: m.A) -> None:
+    a.g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:3: error: "A" has no attribute "f"
+main:5: error: "A" has no attribute "g"
+==
+main:5: error: "A" has no attribute "g"
+
+[case testContinueToReportSemanticAnalysisError]
+import m
+def f() -> None:
+    m.A()
+def g() -> None:
+    m.B()
+[file m.py]
+class A: pass
+class B: pass
+[file m.py.2]
+[file m.py.3]
+class A: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: "module" has no attribute "A"
+main:5: error: "module" has no attribute "B"
+==
+main:5: error: "module" has no attribute "B"
+
+[case testContinueToReportErrorAtTopLevel]
+import n
+import m
+m.A().f()
+[file n.py]
+import m
+m.A().g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+n.py:2: error: "A" has no attribute "g"
+main:3: error: "A" has no attribute "f"
+==
+n.py:2: error: "A" has no attribute "g"
+
+[case testContinueToReportErrorInMethod]
+import m
+class C:
+    def f(self, a: m.A) -> None:
+        a.f()
+    def g(self, a: m.A) -> None:
+        a.g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+main:4: error: "A" has no attribute "f"
+main:6: error: "A" has no attribute "g"
+==
+main:6: error: "A" has no attribute "g"
+
+[case testInitialBatchGeneratedError]
+import m
+def g() -> None:
+    m.f()
+def h() -> None:
+    m.g()
+[file m.py]
+def f(x: object) -> None: pass
+[file m.py.2]
+def f() -> None: pass
+[file m.py.3]
+def f() -> None: pass
+def g() -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+main:3: error: Too few arguments for "f"
+main:5: error: "module" has no attribute "g"
+==
+main:5: error: "module" has no attribute "g"
+==

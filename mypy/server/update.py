@@ -44,8 +44,6 @@ We perform a fine-grained incremental program update like this:
 Major todo items:
 
 - Support multiple type checking passes
-- Always reprocess targets with errors, even if they aren't explicitly
-  stale
 """
 
 from typing import Dict, List, Set
@@ -60,7 +58,51 @@ from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies
 from mypy.server.subexpr import get_subexpressions
+from mypy.server.target import module_prefix
 from mypy.server.trigger import make_trigger
+
+
+class FineGrainedBuildManager:
+    def __init__(self,
+                 manager: BuildManager,
+                 graph: Dict[str, State]) -> None:
+        self.manager = manager
+        self.graph = graph
+        self.deps = get_all_dependencies(manager)
+        self.previous_targets_with_errors = manager.errors.targets()
+
+    def update(self, changed_modules: List[str]) -> List[str]:
+        """Update previous build result by processing changed modules.
+
+        Also propagate changes to other modules as needed, but only process
+        those parts of other modules that are affected by the changes. Retain
+        the existing ASTs and symbol tables of unaffected modules.
+
+        TODO: What about blocking errors?
+
+        Args:
+            manager: State of the build
+            graph: Additional state of the build
+            deps: Fine-grained dependcy map for the build (mutated by this function)
+            changed_modules: Modules changed since the previous update/build (assume
+                this is correct; not validated here)
+
+        Returns:
+            A list of errors.
+        """
+        manager = self.manager
+        old_modules = dict(manager.modules)
+        manager.errors.reset()
+        new_modules = build_incremental_step(manager, changed_modules)
+        # TODO: What to do with stale dependencies?
+        update_dependencies(new_modules, self.deps, manager.all_types)
+        triggered = calculate_active_triggers(manager, old_modules, new_modules)
+        replace_modules_with_new_variants(manager, old_modules, new_modules)
+        propagate_changes_using_dependencies(manager, self.graph, self.deps, triggered,
+                                             set(changed_modules),
+                                             self.previous_targets_with_errors)
+        self.previous_targets_with_errors = manager.errors.targets()
+        return manager.errors.messages()
 
 
 def get_all_dependencies(manager: BuildManager) -> Dict[str, Set[str]]:
@@ -68,39 +110,6 @@ def get_all_dependencies(manager: BuildManager) -> Dict[str, Set[str]]:
     deps = {}  # type: Dict[str, Set[str]]
     update_dependencies(manager.modules, deps, manager.all_types)
     return deps
-
-
-def update_build(manager: BuildManager,
-                 graph: Dict[str, State],
-                 deps: Dict[str, Set[str]],
-                 changed_modules: List[str]) -> List[str]:
-    """Update previous build result by processing changed modules.
-
-    Also propagate changes to other modules as needed, but only process
-    those parts of other modules that are affected by the changes. Retain
-    the existing ASTs and symbol tables of unaffected modules.
-
-    TODO: What about blocking errors?
-
-    Args:
-        manager: State of the build
-        graph: Additional state of the build
-        deps: Fine-grained dependcy map for the build (mutated by this function)
-        changed_modules: Modules changed since the previous update/build (assume
-            this is correct; not validated here)
-
-    Returns:
-        A list of errors.
-    """
-    old_modules = dict(manager.modules)
-    manager.errors.reset()
-    new_modules = build_incremental_step(manager, changed_modules)
-    # TODO: What to do with stale dependencies?
-    update_dependencies(new_modules, deps, manager.all_types)
-    triggered = calculate_active_triggers(manager, old_modules, new_modules)
-    replace_modules_with_new_variants(manager, old_modules, new_modules)
-    propagate_changes_using_dependencies(manager, graph, deps, triggered, set(changed_modules))
-    return manager.errors.messages()
 
 
 def build_incremental_step(manager: BuildManager,
@@ -190,7 +199,8 @@ def propagate_changes_using_dependencies(
         graph: Dict[str, State],
         deps: Dict[str, Set[str]],
         triggered: Set[str],
-        up_to_date_modules: Set[str]) -> None:
+        up_to_date_modules: Set[str],
+        targets_with_errors: Set[str]) -> None:
     # TODO: Multiple propagation passes
     # TODO: Multiple type checking passes
     # TODO: Restrict the number of iterations to some maximum to avoid infinite loops
@@ -199,6 +209,15 @@ def propagate_changes_using_dependencies(
     # iteration.
     while triggered:
         todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
+        # Also process targets that used to have errors, as otherwise some
+        # errors might be lost.
+        for target in targets_with_errors:
+            id = module_prefix(target)
+            if id not in up_to_date_modules:
+                if id not in todo:
+                    todo[id] = set()
+                todo[id].add(lookup_target(manager.modules, target))
+        targets_with_errors = set()
 
         # TODO: Preserve order (set is not optimal)
         new_triggered = set()
@@ -230,9 +249,10 @@ def propagate_changes_using_dependencies(
             if info:
                 # Check if we need to propagate any attribute type changes further.
                 # TODO: Also consider module-level attribute type changes here.
-                for name, node in info.names.items():
+                for name, member_node in info.names.items():
                     if (name in old_types and
-                            not is_identical_type(node.node.type, old_types[name])):
+                            (not isinstance(member_node.node, Var) or
+                             not is_identical_type(member_node.node.type, old_types[name]))):
                         # Type checking a method changed an attribute type.
                         new_triggered.add(make_trigger('{}.{}'.format(info.fullname(), name)))
         # Changes elsewhere may require us to reprocess modules that were

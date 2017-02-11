@@ -19,7 +19,7 @@ from mypy.nodes import Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, E
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
-from mypy.server.update import get_all_dependencies, update_build
+from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
@@ -54,7 +54,7 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(messages)
 
-        deps = get_all_dependencies(manager)
+        fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         steps = find_steps()
         for changed_paths in steps:
@@ -64,7 +64,7 @@ class FineGrainedSuite(DataSuite):
                 shutil.copy(path, new_path)
                 modules.append(module)
 
-            new_messages = update_build(manager, graph, deps, modules)
+            new_messages = fine_grained_manager.update(modules)
             new_messages = [re.sub('^tmp' + re.escape(os.sep), '', message)
                             for message in new_messages]
 

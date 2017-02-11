@@ -475,7 +475,7 @@ class BuildManager:
         return tree
 
     def module_not_found(self, path: str, line: int, id: str) -> None:
-        self.errors.set_file(path)
+        self.errors.set_file(path, id)
         stub_msg = "(Stub files are from https://github.com/python/typeshed)"
         if ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(id)) or
                 (self.options.python_version[0] >= 3 and moduleinfo.is_py3_std_lib_module(id))):
@@ -1231,7 +1231,7 @@ class State:
         # so we'd need to cache the decision.
         manager = self.manager
         manager.errors.set_import_context([])
-        manager.errors.set_file(ancestor_for.xpath)
+        manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
         manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
                               severity='note', only_once=True)
         manager.errors.report(-1, -1,
@@ -1243,7 +1243,7 @@ class State:
         manager = self.manager
         save_import_context = manager.errors.import_context()
         manager.errors.set_import_context(self.caller_state.import_context)
-        manager.errors.set_file(self.caller_state.xpath)
+        manager.errors.set_file(self.caller_state.xpath, self.caller_state.id)
         line = self.caller_line
         manager.errors.report(line, 0,
                               "Import of '%s' ignored" % (id,),
@@ -1430,7 +1430,7 @@ class State:
                 continue
             if id == '':
                 # Must be from a relative import.
-                manager.errors.set_file(self.xpath)
+                manager.errors.set_file(self.xpath, self.id)
                 manager.errors.report(line, 0,
                                       "No parent module -- cannot perform relative import",
                                       blocker=True)
@@ -1635,7 +1635,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
         except ModuleNotFound:
             continue
         if st.id in graph:
-            manager.errors.set_file(st.xpath)
+            manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(-1, -1, "Duplicate module named '%s'" % st.id)
             manager.errors.raise_error()
         graph[st.id] = st

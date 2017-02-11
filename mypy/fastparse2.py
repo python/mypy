@@ -87,7 +87,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file('<input>' if fnam is None else fnam)
+    errors.set_file('<input>' if fnam is None else fnam, None)
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] < 3 and not is_stub_file
