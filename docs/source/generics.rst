@@ -219,6 +219,84 @@ or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
 
+.. _variance-of-generics:
+
+Variance of generic types
+*************************
+
+There are three main kinds of generic types with respect to subtype
+relations between them: invariant, covariant, and contravariant.
+Assuming that we have a pair of types types ``A`` and ``B`` and ``B`` is
+a subtype of ``A``, these are defined as follows:
+
+* A generic class ``MyCovGen[T, ...]`` is called covariant in type variable
+  ``T`` if ``MyCovGen[B, ...]`` is always a subtype of ``MyCovGen[A, ...]``.
+* A generic class ``MyContraGen[T, ...]`` is called contravariant in type
+  variable ``T`` if ``MyContraGen[A, ...]`` is always a subtype of
+  ``MyContraGen[B, ...]``.
+* A generic class ``MyInvGen[T, ...]`` is called invariant in ``T`` if neither
+  of the above is true.
+
+Let us illustrate this by few simple examples:
+
+* ``Union`` is an example of type that is covariant in all variables, namely
+  ``Union[Cat, int]`` is a subtype of ``Union[Animal, int]``,
+  ``Union[Dog, int]`` is also a subtype of ``Union[Animal, int]``, etc.
+  Most immutable containers such as ``Sequence`` and ``FrozenSet`` are also
+  covariant.
+* ``Callable`` is an example of type that behaves contravariant in types of
+  arguments, namely ``Callable[[Employee], int]`` is a subtype of
+  ``Callable[[Manager], int]``. To understand this, consider a function:
+
+  .. code-block:: python
+
+     def salaries(staff: List[Manager],
+                  accountant: Callable[[Manager], int]) -> List[int]: ...
+
+  this function needs a callable that can calculate a salary for mangers, and
+  if we give it a callable that can calculate a salary for an arbitrary
+  employee, then it is still safe.
+* ``List`` is an example of invariant generic type. Naively, one would think
+  that it is covariant, but let us consider this code:
+
+  .. code-block:: python
+
+     class Shape:
+         pass
+     class Circle(Shape):
+         def rotate(self):
+             ...
+
+     def add_one(things: List[Shape]) -> None:
+         things.append(Shape())
+
+     my_things: List[Circle] = []
+     add_one(my_things)     # This may appear safe, but...
+     my_things[0].rotate()  # ...this will fail
+
+  Another example of invariant type is ``Dict``, most mutable containers
+  are invariant.
+
+By default, mypy assumes that all user defined generics are invariant,
+to declare a given generic class as covariant or contravariant use
+type variables defined with special keyword arguments ``covariant`` or
+``contravariant``. For example:
+
+.. code-block:: python
+
+   from typing import Generic, TypeVar
+   T_co = TypeVar('T_co', covariant=True)
+
+   class Box(Generic[T_co]):  # this type is declared covariant
+       def __init__(self, content: T_co) -> None:
+           self._content = content
+       def get_content(self) -> T_co:
+           return self._content
+
+   def look_into(box: Box[Animal]): ...
+   my_box = Box(Cat())
+   look_into(my_box)  # OK, but mypy would complain here for an invariant type
+
 .. _type-variable-value-restriction:
 
 Type variables with value restriction
