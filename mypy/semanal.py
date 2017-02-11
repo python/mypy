@@ -66,6 +66,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
+    collections_type_aliases,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
@@ -1231,9 +1232,10 @@ class SemanticAnalyzer(NodeVisitor):
         if node.fullname in type_aliases:
             # Node refers to an aliased type such as typing.List; normalize.
             node = self.lookup_qualified(type_aliases[node.fullname], ctx)
-        if node.fullname == 'typing.DefaultDict':
+        if node.fullname in collections_type_aliases:
+            # Similar, but for types from the collections module like typing.DefaultDict
             self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
-            node = self.lookup_qualified('__mypy_collections__.defaultdict', ctx)
+            node = self.lookup_qualified(collections_type_aliases[node.fullname], ctx)
         return node
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
