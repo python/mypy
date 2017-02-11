@@ -2882,3 +2882,15 @@ class Concrete(metaclass=Meta):
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
 Concrete + "hello"  # E: Unsupported operand types for + ("Meta" and "str")
+
+[case testMetaclassSelftype]
+from typing import TypeVar, Type
+
+class M(type): pass
+T = TypeVar('T', bound='A')
+
+class M1(M):
+    def foo(cls: Type[T]) -> T: ...
+
+class A(metaclass=M1): pass
+reveal_type(A.foo())  # E: Revealed type is '__main__.A*'

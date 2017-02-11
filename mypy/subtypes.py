@@ -151,6 +151,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return all(self.check_type_parameter(lefta, righta, tvar.variance)
                        for lefta, righta, tvar in
                        zip(t.args, right.args, right.type.defn.type_vars))
+        if isinstance(right, TypeType):
+            item = right.item
+            if isinstance(item, TupleType):
+                item = item.fallback
+            return isinstance(item, Instance) and is_subtype(left, item.type.metaclass_type)
         else:
             return False
 
@@ -269,11 +274,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, CallableType):
             # This is unsound, we don't check the __init__ signature.
             return right.is_type_obj() and is_subtype(left.item, right.ret_type)
-        if (isinstance(right, Instance) and
-                right.type.fullname() in ('builtins.type', 'builtins.object')):
-            # Treat builtins.type the same as Type[Any];
-            # treat builtins.object the same as Any.
-            return True
+        if isinstance(right, Instance):
+            if right.type.fullname() in ('builtins.type', 'builtins.object'):
+                # Treat builtins.type the same as Type[Any];
+                # treat builtins.object the same as Any.
+                return True
+            item = left.item
+            return isinstance(item, Instance) and is_subtype(item, right.type.metaclass_type)
         return False
 
 
