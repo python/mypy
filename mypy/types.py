@@ -595,6 +595,7 @@ class CallableType(FunctionLike):
                  implicit: bool = False,
                  is_classmethod_class: bool = False,
                  special_sig: Optional[str] = None,
+                 from_type_type: bool = False,
                  ) -> None:
         if variables is None:
             variables = []
@@ -613,8 +614,9 @@ class CallableType(FunctionLike):
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
+        self.is_classmethod_class = is_classmethod_class
         self.special_sig = special_sig
-        self.from_type_type = False
+        self.from_type_type = from_type_type
         super().__init__(line, column)
 
     def copy_modified(self,
@@ -629,7 +631,8 @@ class CallableType(FunctionLike):
                       line: int = _dummy,
                       column: int = _dummy,
                       is_ellipsis_args: bool = _dummy,
-                      special_sig: Optional[str] = _dummy) -> 'CallableType':
+                      special_sig: Optional[str] = _dummy,
+                      from_type_type: bool = _dummy) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -646,6 +649,7 @@ class CallableType(FunctionLike):
             implicit=self.implicit,
             is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
+            from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
         )
 
     def is_type_obj(self) -> bool:
@@ -660,7 +664,10 @@ class CallableType(FunctionLike):
         ret = self.ret_type
         if isinstance(ret, TupleType):
             ret = ret.fallback
-        return cast(Instance, ret).type
+        if isinstance(ret, TypeVarType):
+            ret = ret.upper_bound
+        assert isinstance(ret, Instance)
+        return ret.type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_callable_type(self)

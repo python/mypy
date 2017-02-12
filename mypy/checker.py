@@ -1080,7 +1080,6 @@ class TypeChecker(StatementVisitor[None]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
-
             if isinstance(lvalue, NameExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
@@ -1128,6 +1127,14 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, lvalue)
 
+                # Special case
+                if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
+                    rvalue_type.type_object().is_abstract and
+                    isinstance(lvalue_type, TypeType) and
+                    isinstance(lvalue_type.item, Instance) and lvalue_type.item.type.is_abstract):
+                    self.fail("Cannot only assign non-abstract classes"
+                              " to a variable of type '{}'".format(lvalue_type), rvalue)
+                    return
                 if rvalue_type and infer_lvalue_type:
                     self.binder.assign_type(lvalue,
                                             rvalue_type,

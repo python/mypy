@@ -351,7 +351,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
-            if (callee.is_concrete_type_obj() and callee.type_object().is_abstract
+            if (callee.is_type_obj() and callee.type_object().is_abstract
                     and not callee.from_type_type):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
@@ -440,7 +440,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(item, Instance):
             res = type_object_type(item.type, self.named_type)
             if isinstance(res, CallableType):
-                res.from_type_type = True
+                res = res.copy_modified(from_type_type=True)
             return res
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(item, context)
@@ -846,10 +846,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             messages.deleted_as_rvalue(caller_type, context)
         # Only non-abstract class could be given where Type[...] is expected
         elif isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType):
-            tp = caller_type.type_object()
-            if caller_type.is_concrete_type_obj() and tp.is_abstract:
-                messages.cannot_instantiate_abstract_class(tp.name(),
-                                                           tp.abstract_attributes, context)
+            if (caller_type.is_type_obj() and caller_type.type_object().is_abstract and
+                isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract):
+                messages.fail("Only non-abstract class can be given where '{}' is expected"
+                              .format(callee_type), context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
