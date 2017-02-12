@@ -130,3 +130,11 @@ def f() -> int:
     # This might be an @abstractmethod, for example
     pass
 [out]
+
+[case testReturnAny]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> int: return g()
+[out]
+main:4: warning: Returning an object of type "Any"

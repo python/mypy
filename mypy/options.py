@@ -26,6 +26,7 @@ class Options:
         "strict_optional_whitelist",
         "show_none_errors",
         "warn_no_return",
+        "warn_return_any",
         "ignore_errors",
         "strict_boolean",
     }
@@ -64,6 +65,10 @@ class Options:
 
         # Warn about falling off the end of a function returning non-None
         self.warn_no_return = True
+
+        # Warn about returning objects of type Any when the function is
+        # declared with a precise type
+        self.warn_return_any = False
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
