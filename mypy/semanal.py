@@ -847,7 +847,15 @@ class SemanticAnalyzer(NodeVisitor):
             kind = MDEF
             if self.is_func_scope():
                 kind = LDEF
-            self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
+            node = SymbolTableNode(kind, defn.info)
+            self.add_symbol(defn.name, node, defn)
+            if kind == LDEF:
+                # We need to preserve local classes, let's store them
+                # in globals under mangled unique names
+                local_name = defn.info._fullname + '@' + str(defn.line)
+                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                defn.fullname = defn.info._fullname
+                self.globals[local_name] = node
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.

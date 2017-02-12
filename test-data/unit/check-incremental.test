@@ -1768,6 +1768,51 @@ main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapp
 main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 
+[case testIncrementalInnerClassAttrInMethod]
+import crash
+nonexisting
+[file crash.py]
+class C:
+    def f(self) -> None:
+        class A:
+            pass
+        self.a = A()
+[out1]
+main:2: error: Name 'nonexisting' is not defined
+[out2]
+main:2: error: Name 'nonexisting' is not defined
+
+[case testIncrementalInnerClassAttrInMethodReveal]
+import crash
+reveal_type(crash.C().a)
+reveal_type(crash.D().a)
+[file crash.py]
+class C:
+    def f(self) -> None:
+        class A:
+            pass
+        self.a = A()
+reveal_type(C().a)
+class D:
+    def f(self) -> None:
+        class A:
+            def g(self) -> None:
+                class B:
+                    pass
+                self.b = B()
+        self.a = A().b
+reveal_type(D().a)
+[out1]
+tmp/crash.py:6: error: Revealed type is 'crash.A@3'
+tmp/crash.py:15: error: Revealed type is 'crash.B@11'
+main:2: error: Revealed type is 'crash.A@3'
+main:3: error: Revealed type is 'crash.B@11'
+[out2]
+tmp/crash.py:6: error: Revealed type is 'crash.A@3'
+tmp/crash.py:15: error: Revealed type is 'crash.B@11'
+main:2: error: Revealed type is 'crash.A@3'
+main:3: error: Revealed type is 'crash.B@11'
+
 [case testGenericMethodRestoreMetaLevel]
 from typing import Dict
 
