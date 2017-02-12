@@ -1082,6 +1082,7 @@ class TypeChecker(StatementVisitor[None]):
                                                       infer_lvalue_type)
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
+
             if isinstance(lvalue, NameExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
