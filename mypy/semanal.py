@@ -2623,7 +2623,7 @@ class SemanticAnalyzer(NodeVisitor):
         expr.base.accept(self)
         if (isinstance(expr.base, RefExpr)
                 and isinstance(expr.base.node, TypeInfo)
-                and expr.base.node.is_enum):
+                and not expr.base.node.is_generic()):
             expr.index.accept(self)
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.

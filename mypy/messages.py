@@ -392,8 +392,13 @@ class MessageBuilder:
                 self.format(typ)), context)
         elif member == '__getitem__':
             # Indexed get.
-            self.fail('Value of type {} is not indexable'.format(
-                self.format(typ)), context)
+            # TODO: Fix this consistently in self.format
+            if isinstance(typ, CallableType) and typ.is_type_obj():
+                self.fail('The type {} is not generic and not indexable'.format(
+                    self.format(typ)), context)
+            else:
+                self.fail('Value of type {} is not indexable'.format(
+                    self.format(typ)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
