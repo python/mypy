@@ -184,6 +184,8 @@ Alias = A
 GoodAlias = C
 Alias()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
 GoodAlias()
+f(Alias)  # E: Only non-abstract class can be given where 'Type[__main__.A]' is expected
+f(GoodAlias)
 
 var: Type[A]
 var()

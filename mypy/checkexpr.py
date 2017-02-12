@@ -352,7 +352,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_messages = arg_messages or self.msg
         if isinstance(callee, CallableType):
             if (callee.is_type_obj() and callee.type_object().is_abstract
-                    and not callee.from_type_type):
+                    # Exceptions for Type[...] and classmethod first argument
+                    and not callee.from_type_type and not callee.is_classmethod_class):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
@@ -845,11 +846,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
         # Only non-abstract class could be given where Type[...] is expected
-        elif isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType):
-            if (caller_type.is_type_obj() and caller_type.type_object().is_abstract and
-                isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract):
-                messages.fail("Only non-abstract class can be given where '{}' is expected"
-                              .format(callee_type), context)
+        elif (isinstance(caller_type, CallableType) and isinstance(callee_type, TypeType) and
+              caller_type.is_type_obj() and caller_type.type_object().is_abstract and
+              isinstance(callee_type.item, Instance) and callee_type.item.type.is_abstract):
+            messages.fail("Only non-abstract class can be given where '{}' is expected"
+                          .format(callee_type), context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return

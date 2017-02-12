@@ -518,7 +518,6 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
     c = callable_type.with_name('"{}"'.format(info.name()))
-    c.is_classmethod_class = True
     return c
 
 
