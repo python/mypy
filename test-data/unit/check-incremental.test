@@ -1787,6 +1787,8 @@ import crash
 reveal_type(crash.C().a)
 reveal_type(crash.D().a)
 [file crash.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
 class C:
     def f(self) -> None:
         class A:
@@ -1797,21 +1799,21 @@ class D:
     def f(self) -> None:
         class A:
             def g(self) -> None:
-                class B:
+                class B(Generic[T]):
                     pass
-                self.b = B()
+                self.b = B[int]()
         self.a = A().b
 reveal_type(D().a)
 [out1]
-tmp/crash.py:6: error: Revealed type is 'crash.A@3'
-tmp/crash.py:15: error: Revealed type is 'crash.B@11'
-main:2: error: Revealed type is 'crash.A@3'
-main:3: error: Revealed type is 'crash.B@11'
+tmp/crash.py:8: error: Revealed type is 'crash.A@5'
+tmp/crash.py:17: error: Revealed type is 'crash.B@13[builtins.int*]'
+main:2: error: Revealed type is 'crash.A@5'
+main:3: error: Revealed type is 'crash.B@13[builtins.int*]'
 [out2]
-tmp/crash.py:6: error: Revealed type is 'crash.A@3'
-tmp/crash.py:15: error: Revealed type is 'crash.B@11'
-main:2: error: Revealed type is 'crash.A@3'
-main:3: error: Revealed type is 'crash.B@11'
+tmp/crash.py:8: error: Revealed type is 'crash.A@5'
+tmp/crash.py:17: error: Revealed type is 'crash.B@13[builtins.int*]'
+main:2: error: Revealed type is 'crash.A@5'
+main:3: error: Revealed type is 'crash.B@13[builtins.int*]'
 
 [case testGenericMethodRestoreMetaLevel]
 from typing import Dict
