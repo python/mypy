@@ -27,7 +27,7 @@ from mypy import messages
 from mypy.errors import Errors
 
 try:
-    from typed_ast import ast3  # type: ignore
+    from typed_ast import ast3  # type: ignore  # typeshed PR #931
 except ImportError:
     if sys.version_info.minor > 2:
         print('You must install the typed_ast package before you can run mypy'
@@ -120,7 +120,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-class ASTConverter(ast3.NodeTransformer):  # type: ignore
+class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self,
                  pyversion: Tuple[int, int],
                  is_stub: bool,
@@ -913,7 +913,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore
         return self.visit(n.value)
 
 
-class TypeConverter(ast3.NodeTransformer):  # type: ignore
+class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
