@@ -6,7 +6,6 @@ import shutil
 import sys
 import time
 import typed_ast
-import typed_ast.ast35
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -73,15 +72,11 @@ fast_parser_files = [
     'check-expressions.test',
     'check-generic-subtyping.test',
     'check-varargs.test',
+    'check-newsyntax.test',
+    'check-underscores.test',
 ]
 
 files.extend(fast_parser_files)
-
-if 'annotation' in typed_ast.ast35.Assign._fields:
-    fast_parser_files.append('check-newsyntax.test')
-
-if 'contains_underscores' in typed_ast.ast35.Num._fields:
-    fast_parser_files.append('check-underscores.test')
 
 
 class TypeCheckSuite(DataSuite):
