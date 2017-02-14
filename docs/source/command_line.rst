@@ -366,6 +366,9 @@ Here are some more useful flags:
   also currently ignores functions with an empty body or a body that is
   just ellipsis (``...``), since these can be valid as abstract methods.
 
+- ``--warn-return-any`` causes mypy to generate a warning when returning a value
+  with type ``Any`` from a function declared with a non- ``Any`` return type.
+
 - ``--strict-boolean`` will make using non-boolean expressions in conditions
   an error. This means ``if x`` and ``while x`` are disallowed when ``x`` has any
   type other than ``bool``. Instead use explicit checks like ``if x > 0`` or

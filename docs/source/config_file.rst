@@ -168,6 +168,11 @@ overridden by the pattern sections matching the module name.
 - ``warn_no_return`` (Boolean, default False) shows errors for
   missing return statements on some execution paths.
 
+- ``warn_return_any`` (Boolean, default False) shows a warning when
+  returning a value with type ``Any`` from a function declared with a
+  non- ``Any`` return type.
+
+
 Example
 *******
 
