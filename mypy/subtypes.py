@@ -277,7 +277,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_subtype(left.item, right.item)
         if isinstance(right, CallableType):
             # This is unsound, we don't check the __init__ signature.
-            return right.is_type_obj() and is_subtype(left.item, right.ret_type
+            return right.is_type_obj() and is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
             if right.type.fullname() == 'builtins.object':
                 # treat builtins.object the same as Any.
