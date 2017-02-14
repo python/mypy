@@ -222,7 +222,7 @@ def process_options(args: List[str],
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
                         help="do not warn about functions that end without returning")
     add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
-                        help="warn about returning objects of type Any")
+                        help="warn about returning values of type Any from non-Any typed functions")
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
     add_invertible_flag('--show-error-context', default=True,
