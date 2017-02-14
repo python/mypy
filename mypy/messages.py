@@ -27,6 +27,7 @@ NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
 INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
+RETURN_ANY = 'Returning Any from function with declared return type "{}"'
 RETURN_VALUE_EXPECTED = 'Return value expected'
 NO_RETURN_EXPECTED = 'Return statement in function which does not return'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
@@ -392,8 +393,13 @@ class MessageBuilder:
                 self.format(typ)), context)
         elif member == '__getitem__':
             # Indexed get.
-            self.fail('Value of type {} is not indexable'.format(
-                self.format(typ)), context)
+            # TODO: Fix this consistently in self.format
+            if isinstance(typ, CallableType) and typ.is_type_obj():
+                self.fail('The type {} is not generic and not indexable'.format(
+                    self.format(typ)), context)
+            else:
+                self.fail('Value of type {} is not indexable'.format(
+                    self.format(typ)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)

@@ -907,6 +907,13 @@ class TypeChecker(StatementVisitor[None]):
             # this could be unsafe with reverse operator methods.
             fail = True
 
+        if isinstance(original, CallableType) and isinstance(override, CallableType):
+            if (isinstance(original.definition, FuncItem) and
+                    isinstance(override.definition, FuncItem)):
+                if ((original.definition.is_static or original.definition.is_class) and
+                        not (override.definition.is_static or override.definition.is_class)):
+                    fail = True
+
         if fail:
             emitted_msg = False
             if (isinstance(override, CallableType) and
@@ -1692,6 +1699,10 @@ class TypeChecker(StatementVisitor[None]):
                 typ = self.expr_checker.accept(s.expr, return_type)
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
+                    # (Unless you asked to be warned in that case, and the
+                    # function is not declared to return Any)
+                    if not isinstance(return_type, AnyType) and self.options.warn_return_any:
+                        self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
                 if self.is_unusable_type(return_type):

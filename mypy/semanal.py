@@ -253,6 +253,8 @@ class SemanticAnalyzer(NodeVisitor):
 
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
+            for alias_name in ['List', 'Dict', 'Set']:
+                self.globals.pop(alias_name, None)
 
         if '__all__' in self.globals:
             for name, g in self.globals.items():
@@ -1497,7 +1499,7 @@ class SemanticAnalyzer(NodeVisitor):
               isinstance(lval, ListExpr)):
             items = lval.items
             if len(items) == 0 and isinstance(lval, TupleExpr):
-                self.fail("Can't assign to ()", lval)
+                self.fail("can't assign to ()", lval)
             self.analyze_tuple_or_list_lvalue(lval, add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
@@ -2623,7 +2625,7 @@ class SemanticAnalyzer(NodeVisitor):
         expr.base.accept(self)
         if (isinstance(expr.base, RefExpr)
                 and isinstance(expr.base.node, TypeInfo)
-                and expr.base.node.is_enum):
+                and not expr.base.node.is_generic()):
             expr.index.accept(self)
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
