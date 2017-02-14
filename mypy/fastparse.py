@@ -398,7 +398,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 if arg.annotation is not None:
                     arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
                 elif arg.type_comment is not None:
-                    arg_type = parse_type_comment(arg.type_comment, arg.lineno, arg.col_offset)
+                    arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []
