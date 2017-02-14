@@ -71,6 +71,21 @@ def analyze_type_alias(node: Expression,
     return type.accept(analyzer)
 
 
+builtin_aliases = {'tuple': 'Tuple',
+                   'list': 'List',
+                   'dict': 'Dict',
+                   'set': 'Set',
+                   'frozenset': 'FrozenSet'}
+
+def check_builtin_alian(expr)
+    for alias in builtin_aliases:
+        if refers_to_fullname(expr.base, 'builtins.' + alias):
+            self.fail('"{}" is not subscriptable, use "typing.{}" instead'
+                          .format(alias, builtin_aliases[alias]), expr)
+    if refers_to_fullname(expr.base, 'builtins.enumerate'):
+        self.fail('"enumerate" is not subscriptable', expr)
+
+
 class TypeAnalyser(TypeVisitor[Type]):
     """Semantic analyzer for types (semantic analysis pass 2).
 
