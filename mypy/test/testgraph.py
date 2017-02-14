@@ -1,6 +1,6 @@
 """Test cases for graph processing code in build.py."""
 
-from typing import AbstractSet, Dict, Set
+from typing import AbstractSet, Dict, Set, List
 
 from mypy.myunit import Suite, assert_equal
 from mypy.build import BuildManager, State, BuildSourceSet

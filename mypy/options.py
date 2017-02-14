@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List, Pattern
+from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
