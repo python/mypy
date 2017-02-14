@@ -17,7 +17,7 @@ import re
 import sys
 import time
 import urllib.parse
-from typing import Any, Awaitable, IO, Optional, Sequence, Set, Tuple
+from typing import Any, Awaitable, IO, Optional, Sequence, Set, Tuple, List, Dict
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")

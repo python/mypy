@@ -3453,6 +3453,9 @@ def remove_imported_names_from_symtable(names: SymbolTable,
             removed.append(name)
     for name in removed:
         del names[name]
+    if module == 'builtins':
+        for alias_name in ['List', 'Dict', 'Set']:
+            names.pop(alias_name, None)
 
 
 def infer_reachability_of_if_statement(s: IfStmt,
