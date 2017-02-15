@@ -11,7 +11,7 @@ from mypy.types import (
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    IndexExpr, RefExpr
+    IndexExpr, RefExpr, nongen_builtins,
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -32,7 +32,8 @@ type_constructors = {
 def analyze_type_alias(node: Expression,
                        lookup_func: Callable[[str, Context], SymbolTableNode],
                        lookup_fqn_func: Callable[[str], SymbolTableNode],
-                       fail_func: Callable[[str, Context], None]) -> Type:
+                       fail_func: Callable[[str, Context], None],
+                       allow_unnormalized: bool = False) -> Type:
     """Return type if node is valid as a type alias rvalue.
 
     Return None otherwise. 'node' must have been semantically analyzed.
@@ -67,23 +68,17 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         fail_func('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True)
+    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, fail_func, aliasing=True,
+                            allow_unnormalized=allow_unnormalized)
     return type.accept(analyzer)
 
 
-builtin_aliases = {'tuple': 'Tuple',
-                   'list': 'List',
-                   'dict': 'Dict',
-                   'set': 'Set',
-                   'frozenset': 'FrozenSet'}
-
-def check_builtin_alian(expr)
-    for alias in builtin_aliases:
-        if refers_to_fullname(expr.base, 'builtins.' + alias):
-            self.fail('"{}" is not subscriptable, use "typing.{}" instead'
-                          .format(alias, builtin_aliases[alias]), expr)
-    if refers_to_fullname(expr.base, 'builtins.enumerate'):
-        self.fail('"enumerate" is not subscriptable', expr)
+def no_subscript_builtin_alias(name: str) -> str:
+    msg = '"{}" is not subscriptable'.format(name.split('.')[-1])
+    replacement = nongen_builtins[name]
+    if replacement:
+        msg += ', use "{}" instead'.format(replacement)
+    return msg
 
 
 class TypeAnalyser(TypeVisitor[Type]):
@@ -96,11 +91,12 @@ class TypeAnalyser(TypeVisitor[Type]):
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  fail_func: Callable[[str, Context], None], *,
-                 aliasing: bool = False) -> None:
+                 aliasing: bool = False, allow_unnormalized: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
         self.aliasing = aliasing
+        self.allow_unnormalized = allow_unnormalized
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -116,6 +112,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType()
             fullname = sym.node.fullname()
+            if (fullname in nongen_builtins and t.args and
+                    not sym.normalized and not self.allow_unnormalized):
+                self.fail(no_subscript_builtin_alias(fullname), t)
             if sym.kind == BOUND_TVAR:
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(

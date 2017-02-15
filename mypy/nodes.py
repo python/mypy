@@ -90,6 +90,15 @@ reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
                             for alias, name in type_aliases.items())  # type: Dict[str, str]
 
 
+nongen_builtins = {'builtins.tuple': 'typing.Tuple',
+                   'builtins.frozenset': 'typing.FrozenSet',
+                   'builtins.enumerate': '',
+                   'collections.defaultdict': 'typing.DefaultDict',
+                   'collections.Counter': 'typing.Counter',
+                   'collections.ChainMap': 'typing.ChainMap'}
+nongen_builtins.update(reverse_type_aliases)
+
+
 # See [Note Literals and literal_hash] below
 Key = tuple
 
@@ -2143,17 +2152,20 @@ class SymbolTableNode:
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
     cross_ref = None  # type: Optional[str]
+    # Was this node created by normaloze_type_alias?
+    normalized = False  # type: bool
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
                  typ: 'mypy.types.Type' = None,
                  tvar_def: 'mypy.types.TypeVarDef' = None,
-                 module_public: bool = True) -> None:
+                 module_public: bool = True, normalized: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
         self.mod_id = mod_id
         self.tvar_def = tvar_def
         self.module_public = module_public
+        self.normalized = normalized
 
     @property
     def fullname(self) -> str:
