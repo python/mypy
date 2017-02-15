@@ -2017,7 +2017,10 @@ class TypeInfo(SymbolNode):
             return declared
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
-        candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
+        candidates = [s.declared_metaclass
+                      for s in self.mro
+                      if s.declared_metaclass is not None
+                      and s.declared_metaclass.type is not None]
         for c in candidates:
             if c.type.mro is None:
                 continue
