@@ -1207,7 +1207,7 @@ class ClassVarType(Type):
         return {'.class': 'ClassVarType', 'item': self.item.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeType':
+    def deserialize(cls, data: JsonDict) -> 'ClassVarType':
         assert data['.class'] == 'ClassVarType'
         return ClassVarType(Type.deserialize(data['item']))
 
@@ -1539,7 +1539,7 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_type_type(self, t: TypeType) -> str:
         return 'Type[{}]'.format(t.item.accept(self))
 
-    def visit_classvar_type(self, t: TypeType) -> str:
+    def visit_classvar_type(self, t: ClassVarType) -> str:
         return 'ClassVar[{}]'.format(t.item.accept(self))
 
     def list_str(self, a: List[Type]) -> str:

@@ -2160,7 +2160,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         return info
 
-    def check_classvar_definition(self, s: AssignmentStmt):
+    def check_classvar_definition(self, s: AssignmentStmt) -> None:
         if isinstance(s.type, ClassVarType) and not self.is_class_scope():
             self.fail("Invalid ClassVar definition", s)
 
