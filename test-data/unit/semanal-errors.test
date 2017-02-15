@@ -760,7 +760,7 @@ class A(A): pass # E: Cycle in inheritance hierarchy
 [case testAssignToTypeDef]
 import typing
 class A: pass
-A = None # E: Invalid assignment target
+A = None # E: Cannot assign to a type
 [out]
 
 [case testInvalidCastTargetSyntax]
