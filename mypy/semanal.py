@@ -1431,7 +1431,9 @@ class SemanticAnalyzer(NodeVisitor):
                         # TODO: We should record the fact that this is a variable
                         #       that refers to a type, rather than making this
                         #       just an alias for the type.
-                        self.globals[lvalue.name].node = node
+                        sym = self.lookup_type_node(rvalue)
+                        if sym:
+                            self.globals[lvalue.name] = sym
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -2665,15 +2667,21 @@ class SemanticAnalyzer(NodeVisitor):
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
             # list, dict, set are not directly subscriptable
-            try:
-                t = expr_to_unanalyzed_type(expr.base)
-            except TypeTranslationError:
-                return
-            n = self.lookup_qualified(t.name, expr)
-            if not n.normalized and n.fullname in nongen_builtins:
+            n = self.lookup_type_node(expr.base)
+            if n and not n.normalized and n.fullname in nongen_builtins:
                 self.fail(no_subscript_builtin_alias(n.fullname), expr)
         else:
             expr.index.accept(self)
+
+    def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
+        try:
+            t = expr_to_unanalyzed_type(expr)
+        except TypeTranslationError:
+            return None
+        if isinstance(t, UnboundType):
+            n = self.lookup_qualified(t.name, expr)
+            return n
+        return None
 
     def visit_slice_expr(self, expr: SliceExpr) -> None:
         if expr.begin_index:
