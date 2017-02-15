@@ -638,6 +638,15 @@ b = A.B()
 b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 b = A.B(b) # E: Too many arguments for "B"
 
+[case testAliasNestedClass]
+class Outer:
+    class Inner:
+        def make_int(self) -> int: return 1
+
+Bar = Outer.Inner
+x = Bar()  # type: Bar
+def produce() -> Bar:
+    return Bar()
 
 -- Declaring attribute type in method
 -- ----------------------------------
