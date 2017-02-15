@@ -107,3 +107,42 @@ f''  # E: Format strings are only supported in Python 3.6 and greater
 # flags: --fast-parser --python-version 3.5
 async def f():
     results = [i async for i in aiter() if i % 2]  # E: Async comprehensions are only supported in Python 3.6 and greater
+
+
+-- F-String
+-- --------
+
+
+[case testNewSyntaxFStringBasics]
+# flags: --fast-parser --python-version 3.6
+f'foobar'
+f'{"foobar"}'
+f'foo{"bar"}'
+f'.{1}.'
+a: str
+a = f'foobar'
+a = f'{"foobar"}'
+[builtins fixtures/primitives.pyi]
+
+[case testNewSyntaxFStringExpressionsOk]
+# flags: --fast-parser --python-version 3.6
+f'.{1 + 1}.'
+f'.{1 + 1}.{"foo" + "bar"}'
+[builtins fixtures/primitives.pyi]
+
+[case testNewSyntaxFStringExpressionsErrors]
+# flags: --fast-parser --python-version 3.6
+f'{1 + ""}'
+f'.{1 + ""}'
+[builtins fixtures/primitives.pyi]
+[out]
+main:2: error: Unsupported operand types for + ("int" and "str")
+main:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testNewSyntaxFStringParseFormatOptions]
+# flags: --fast-parser --python-version 3.6
+value = 10.5142
+width = 10
+precision = 4
+f'result: {value:{width}.{precision}}'
+[builtins fixtures/primitives.pyi]
