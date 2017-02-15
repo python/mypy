@@ -978,18 +978,16 @@ Bad = A[int] # type: ignore
 reveal_type(Bad) # E: Revealed type is 'Any'
 [out]
 
-[case testSimplifiedGenericSimple]
+[case testNoSubscriptionOfBuiltinAliases]
 from typing import List
-import collections
 
 list[int]() # E: "list" is not subscriptable, use "typing.List" instead
-collections.defaultdict[int, str]() # E: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 
 ListAlias = List
 def fun() -> ListAlias[int]:
     pass
 
-reveal_type(f())  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(fun())  # E: Revealed type is 'builtins.list[builtins.int]'
 
 BuiltinAlias = list
 BuiltinAlias[int]() # E: "list" is not subscriptable, use "typing.List" instead
