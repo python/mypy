@@ -73,7 +73,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
+    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType, ClassVarType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
 )
 from mypy.nodes import implicit_module_attrs
@@ -1363,6 +1363,7 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
+        self.check_classvar_definition(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -2158,6 +2159,10 @@ class SemanticAnalyzer(NodeVisitor):
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), fallback)
 
         return info
+
+    def check_classvar_definition(self, s: AssignmentStmt):
+        if isinstance(s.type, ClassVarType) and not self.is_class_scope():
+            self.fail("Invalid ClassVar definition", s)
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:

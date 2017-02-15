@@ -1,0 +1,40 @@
+[case testClassVarDef]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [ClassVar])
+  ClassDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(x [m])
+      IntExpr(1)
+      ClassVar[builtins.int])))
+
+[case testClassVarDefInModuleScope]
+from typing import ClassVar
+x = None  # type: ClassVar[int]
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testClassVarDefInFuncScope]
+from typing import ClassVar
+def f() -> None:
+    x = None  # type: ClassVar[int]
+[out]
+main:3: error: Invalid ClassVar definition
+
+[case testClassVarTooManyArguments]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int, str]
+[out]
+main:3: error: ClassVar[...] must have exactly one type argument
+
+[case testClassVarWithoutArguments]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar
+[out]
+main:3: error: ClassVar[...] must have exactly one type argument

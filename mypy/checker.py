@@ -25,7 +25,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy.types import (
     Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType, TypedDictType,
-    Instance, NoneTyp, ErrorType, strip_type, TypeType,
+    Instance, NoneTyp, ErrorType, strip_type, TypeType, ClassVarType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance
 )
@@ -1575,6 +1575,9 @@ class TypeChecker(StatementVisitor[None]):
 
         Return the inferred rvalue_type and whether to infer anything about the attribute type
         """
+        if isinstance(instance_type, Instance) and isinstance(attribute_type, ClassVarType):
+            self.msg.fail("Illegal assignment to class variable", context)
+
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
                 isinstance(instance_type, TypeType)):

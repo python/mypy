@@ -7,7 +7,7 @@ from mypy.errors import report_internal_error
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
+    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, ClassVarType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     get_typ_args, set_typ_args,
     StarType)
@@ -2218,6 +2218,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type('builtins.bool')
 
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
+        if isinstance(known_type, ClassVarType):
+            known_type = known_type.item
         if expr.literal >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
             if restriction:

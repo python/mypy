@@ -1,0 +1,44 @@
+[case testAssignmentOnClass]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+A.x = 2
+
+[case testAssignmentOnInstance]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+A().x = 2
+[out]
+main:4: error: Illegal assignment to class variable
+
+[case testAssignmentOnSubclass]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B(A):
+    pass
+B().x = 2
+[out]
+main:6: error: Illegal assignment to class variable
+
+[case testReadingFromInstance]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+A().x
+
+[case testTypecheck]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+y = A.x  # type: int
+
+[case testInfer]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+y = A.x
+reveal_type(y)
+[out]
+main:5: error: Revealed type is 'builtins.int'
