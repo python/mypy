@@ -1296,6 +1296,16 @@ a = A().g(1)
 a = 1
 a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testGenericInnerClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A:
+    class B(Generic[T]):
+        pass
+    B[int]()
+
+A.B[int]()
+
 [case testGenericClassInnerFunctionTypeVariable]
 from typing import TypeVar, Generic
 T = TypeVar('T')

@@ -71,6 +71,7 @@ from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
+from mypy.messages import CANNOT_ASSIGN_TO_TYPE
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
     FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
@@ -1548,8 +1549,10 @@ class SemanticAnalyzer(NodeVisitor):
         return isinstance(node, Var) and node.is_self
 
     def check_lvalue_validity(self, node: Union[Expression, SymbolNode], ctx: Context) -> None:
-        if isinstance(node, (TypeInfo, TypeVarExpr)):
+        if isinstance(node, TypeVarExpr):
             self.fail('Invalid assignment target', ctx)
+        elif isinstance(node, TypeInfo):
+            self.fail(CANNOT_ASSIGN_TO_TYPE, ctx)
 
     def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
@@ -2583,7 +2586,7 @@ class SemanticAnalyzer(NodeVisitor):
                 expr.node = n.node
             else:
                 # We only catch some errors here; the rest will be
-                # catched during type checking.
+                # caught during type checking.
                 #
                 # This way we can report a larger number of errors in
                 # one type checker run. If we reported errors here,
@@ -2595,14 +2598,14 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail("Module%s has no attribute %r (it's now called %r)" % (
                         mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
         elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
-            # This branch handles the case C.bar where C is a class
-            # and bar is a module resulting from `import bar` inside
-            # class C.  Here base.node is a TypeInfo, and again we
-            # look up the name in its namespace.  This is done only
-            # when bar is a module; other things (e.g. methods)
-            # are handled by other code in checkmember.
             n = base.node.names.get(expr.name)
-            if n is not None and n.kind == MODULE_REF:
+            if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
+                # This branch handles the case C.bar where C is a class and
+                # bar is a type definition or a module resulting from
+                # `import bar` inside class C. Here base.node is a TypeInfo,
+                # and again we look up the name in its namespace.
+                # This is done only when bar is a module or a type; other
+                # things (e.g. methods) are handled by other code in checkmember.
                 n = self.normalize_type_alias(n, expr)
                 if not n:
                     return
