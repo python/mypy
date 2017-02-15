@@ -107,7 +107,8 @@ class LineCountReporter(AbstractReporter):
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        physical_lines = len(open(tree.path, 'rb').readlines())
+        with open(tree.path, 'rb') as f:
+            physical_lines = len(f.readlines())
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
@@ -225,7 +226,8 @@ class LineCoverageReporter(AbstractReporter):
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type]) -> None:
-        tree_source = open(tree.path).readlines()
+        with open(tree.path) as f:
+            tree_source = f.readlines()
 
         coverage_visitor = LineCoverageVisitor(tree_source)
         tree.accept(coverage_visitor)

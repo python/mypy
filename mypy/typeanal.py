@@ -148,6 +148,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 items = self.anal_array(t.args)
                 item = items[0]
                 return TypeType(item, line=t.line)
+            elif fullname == 'mypy_extensions.NoReturn':
+                return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
                 override = sym.type_override
                 an_args = self.anal_array(t.args)

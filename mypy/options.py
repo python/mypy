@@ -2,7 +2,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Any, Mapping, Optional, Tuple, List, Pattern
+from typing import Any, Mapping, Optional, Tuple, List, Pattern, Dict
 
 from mypy import defaults
 
@@ -26,7 +26,9 @@ class Options:
         "strict_optional_whitelist",
         "show_none_errors",
         "warn_no_return",
+        "warn_return_any",
         "ignore_errors",
+        "strict_boolean",
     }
 
     OPTIONS_AFFECTING_CACHE = PER_MODULE_OPTIONS | {"strict_optional"}
@@ -62,13 +64,20 @@ class Options:
         self.warn_redundant_casts = False
 
         # Warn about falling off the end of a function returning non-None
-        self.warn_no_return = False
+        self.warn_no_return = True
+
+        # Warn about returning objects of type Any when the function is
+        # declared with a precise type
+        self.warn_return_any = False
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
+
+        # Only allow booleans in conditions
+        self.strict_boolean = False
 
         # Apply strict None checking
         self.strict_optional = False
@@ -110,7 +119,7 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.fast_parser = False
+        self.fast_parser = True
         self.incremental = False
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False

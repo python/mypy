@@ -10,6 +10,12 @@ def f(x) -> int: pass
 [out]
 main:2: error: Function is missing a type annotation for one or more arguments
 
+[case testUnannotatedArgumentWithFastParser]
+# flags: --fast-parser --disallow-untyped-defs
+def f(x) -> int: pass
+[out]
+main:2: error: Function is missing a type annotation for one or more arguments
+
 [case testNoArgumentFunction]
 # flags: --disallow-untyped-defs
 def f() -> int: pass
@@ -17,6 +23,12 @@ def f() -> int: pass
 
 [case testUnannotatedReturn]
 # flags: --disallow-untyped-defs
+def f(x: int): pass
+[out]
+main:2: error: Function is missing a return type annotation
+
+[case testUnannotatedReturnWithFastParser]
+# flags: --fast-parser --disallow-untyped-defs
 def f(x: int): pass
 [out]
 main:2: error: Function is missing a return type annotation
@@ -124,6 +136,63 @@ def f() -> int:
         return 0
 [builtins fixtures/bool.pyi]
 
+[case testNoReturnDisallowsReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:
+  if bool():
+    return 5  # E: Return statement in function which does not return
+  else:
+    return  # E: Return statement in function which does not return
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnWithoutImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> NoReturn:
+  no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnDisallowsImplicitReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def f() -> NoReturn:  # N: Implicit return in function which does not return
+  non_trivial_function = 1
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnNoWarnNoReturn]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  if bool():
+    return 0
+  else:
+    no_return()
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnInExpr]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+def no_return() -> NoReturn: pass
+def f() -> int:
+  return 0
+reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/dict.pyi]
+
+[case testNoReturnVariable]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type NoReturn)
+[builtins fixtures/dict.pyi]
+
 [case testShowErrorContextFunction]
 # flags: --show-error-context
 def f() -> None:
@@ -207,7 +276,7 @@ x + ""
 [file mod.py]
 this deliberate syntax error will not be reported
 [out]
- 
+
 [case testFollowImportsError]
 # flags: --follow-imports=error
 from mod import x
@@ -228,3 +297,66 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 # flags: --ignore-missing-imports
 from mod import x
 [out]
+
+[case testStrictBoolean]
+# flags: --strict-boolean
+if True:
+  pass
+if 'test':  # E: Condition must be a boolean
+  pass
+elif 1:  # E: Condition must be a boolean
+  pass
+
+def f() -> bool:
+  return True
+
+if f:  # E: Condition must be a boolean
+  pass
+
+if f():
+  pass
+
+class A:
+  def __call__(self) -> bool:
+    return False
+
+if A:  # E: Condition must be a boolean
+  pass
+
+if A():  # E: Condition must be a boolean
+  pass
+
+if A()():
+  pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanTernary]
+# flags: --strict-boolean
+x = 1 if 'test' else 2  # E: Condition must be a boolean
+y = 1 if not 'test' else 2
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanWhile]
+# flags: --strict-boolean
+while 5:  # E: Condition must be a boolean
+  pass
+
+while False:
+  pass
+[builtins fixtures/bool.pyi]
+
+[case testStrictBooleanComplexTypes]
+# flags: --strict-boolean
+from typing import Any, Type, Union
+
+x = True  # type: Any
+y = True  # type: Union[bool, int]
+z = int  # type: Type[int]
+
+if x:
+  pass
+if y:  # E: Condition must be a boolean
+  pass
+if z:  # E: Condition must be a boolean
+  pass
+[builtins fixtures/bool.pyi]

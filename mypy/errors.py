@@ -2,8 +2,9 @@ import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
+from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict
+from typing import Tuple, List, TypeVar, Set, Dict, Iterator
 
 from mypy.options import Options
 
@@ -33,7 +34,7 @@ class ErrorInfo:
     # The column number related to this error with file.
     column = 0   # -1 if unknown
 
-    # Either 'error' or 'note'.
+    # Either 'error', 'note', or 'warning'.
     severity = ''
 
     # The error message.
@@ -162,12 +163,25 @@ class Errors:
     def pop_function(self) -> None:
         self.function_or_member.pop()
 
+    @contextmanager
+    def enter_function(self, name: str) -> Iterator[None]:
+        self.push_function(name)
+        yield
+        self.pop_function()
+
     def push_type(self, name: str) -> None:
         """Set the short name of the current type (it can be None)."""
         self.type_name.append(name)
 
     def pop_type(self) -> None:
         self.type_name.pop()
+
+    @contextmanager
+    def enter_type(self, name: str) -> Iterator[None]:
+        """Set the short name of the current type (it can be None)."""
+        self.push_type(name)
+        yield
+        self.pop_type()
 
     def import_context(self) -> List[Tuple[str, int]]:
         """Return a copy of the import context."""

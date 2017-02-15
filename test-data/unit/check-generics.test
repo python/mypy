@@ -250,6 +250,7 @@ class A(Generic[T]):
         a = object()    # Fail
         b = self.f() # type: object
         b = self.f()
+        return None
 [out]
 main:5: error: Incompatible types in assignment (expression has type "object", variable has type "T")
 main:6: error: Incompatible types in assignment (expression has type "object", variable has type "T")
@@ -448,7 +449,7 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 a = None # type: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
-A[A]()  # E: Type application targets a non-generic function or class
+A[A]()  # E: The type "A" is not generic and not indexable
 [out]
 
 [case testTypeApplicationArgTypes]
@@ -481,7 +482,7 @@ class C(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
         ...
 
-class D(C[int, T], Generic[T]): ...
+class D(C[int, T]): ...
 
 D[str](1, 'a')
 D[str](1, 1)  # E: Argument 2 to "D" has incompatible type "int"; expected "str"
@@ -504,7 +505,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-type[int] # this was crashing, see #2302 (comment)  # E: Type application targets a non-generic function or class
+type[int] # this was crashing, see #2302 (comment)  # E: The type "type" is not generic and not indexable
 [out]
 
 
@@ -705,9 +706,9 @@ class Node(Generic[T]):
 
 TupledNode = Node[Tuple[T, T]]
 
-class D(Generic[T], TupledNode[T]):
+class D(TupledNode[T]):
     ...
-class L(Generic[T], List[TupledNode[T]]):
+class L(List[TupledNode[T]]):
     ...
 
 def f_bad(x: T) -> D[T]:
@@ -738,9 +739,10 @@ TupledNode = Node[Tuple[T, T]]
 UNode = Union[int, Node[T]]
 
 class C(TupledNode): ... # Same as TupledNode[Any]
-class D(TupledNode[T]): ... # E: Invalid type "__main__.T"
+class D(TupledNode[T]): ...
 class E(Generic[T], UNode[T]): ... # E: Invalid base class
 
+reveal_type(D((1, 1))) # E: Revealed type is '__main__.D[builtins.int*]'
 [builtins fixtures/list.pyi]
 
 [case testGenericTypeAliasesUnion]
@@ -977,6 +979,120 @@ reveal_type(Bad) # E: Revealed type is 'Any'
 [out]
 
 
+-- Simplified declaration of generics
+-- ----------------------------------
+
+[case testSimplifiedGenericSimple]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class C(Generic[T]):
+    def c(self) -> T: ...
+
+class D(B[T], C[S]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'builtins.str*'
+reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericCallable]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T')
+S = TypeVar('S')
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class D(B[Callable[[T], S]]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'def (builtins.str*) -> builtins.int*'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericComplex]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
+U = TypeVar('U')
+
+class A(Generic[T, S]):
+    pass
+
+class B(Generic[T, S]):
+    def m(self) -> Tuple[T, S]:
+        pass
+
+class C(A[S, B[T, int]], B[U, A[int, T]]):
+    pass
+
+c = C[object, int, str]()
+reveal_type(c.m()) # E: Revealed type is 'Tuple[builtins.str*, __main__.A*[builtins.int, builtins.int*]]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+
+[case testSimplifiedGenericOrder]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class B(Generic[T]):
+    def b(self) -> T: ...
+
+class C(Generic[T]):
+    def c(self) -> T: ...
+
+class D(B[T], C[S], Generic[S, T]): ...
+
+reveal_type(D[str, int]().b()) # E: Revealed type is 'builtins.int*'
+reveal_type(D[str, int]().c()) # E: Revealed type is 'builtins.str*'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericDuplicate]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class A(Generic[T, T]): # E: Duplicate type variables in Generic[...]
+    pass
+
+a = A[int]()
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericNotAll]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T]):
+    pass
+class B(Generic[T]):
+    pass
+
+class C(A[T], B[S], Generic[T]): # E: If Generic[...] is present it should list all type variables
+    pass
+
+c = C[int, str]()
+[builtins fixtures/list.pyi]
+[out]
+
+[case testSimplifiedGenericInvalid]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+class B(A[S]): # E: Name 'S' is not defined
+    pass
+[builtins fixtures/list.pyi]
+[out]
+
+
 -- Multiple assignment with lists
 -- ------------------------------
 
@@ -1025,7 +1141,7 @@ class A: pass
 from typing import TypeVar, Generic, Iterable
 T = TypeVar('T')
 class object: pass
-class list(Iterable[T], Generic[T]):
+class list(Iterable[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
 class int: pass
 class type: pass
@@ -1417,3 +1533,46 @@ class A:
     @classmethod
     def f(cls) -> None: pass
 [builtins fixtures/classmethod.pyi]
+
+[case testGenericOperatorMethodOverlapping]
+from typing import TypeVar, Generic, Tuple
+T = TypeVar('T')
+T2 = TypeVar('T2')
+S = TypeVar('S', bound=str)
+S2 = TypeVar('S2', bound=str)
+class G(Generic[T]):
+    pass
+class A:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[T2]) -> G[T2]: pass
+class B:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[S]) -> G[S]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible
+class C:
+    def __or__(self, x: G[S]) -> G[S]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass
+
+[case testGenericOperatorMethodOverlapping2]
+from typing import TypeVar, Generic, Tuple
+X = TypeVar('X')
+T = TypeVar('T', int, str)
+T2 = TypeVar('T2', int, str)
+S = TypeVar('S', float, str)
+S2 = TypeVar('S2', float, str)
+class G(Generic[X]):
+    pass
+class A:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[T2]) -> G[T2]: pass
+class B:
+    def __or__(self, x: G[T]) -> G[T]: pass
+    def __ior__(self, x: G[S]) -> G[S]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible
+class C:
+    def __or__(self, x: G[S]) -> G[S]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass
+class D:
+    def __or__(self, x: G[X]) -> G[X]: pass
+    def __ior__(self, x: G[S2]) -> G[S2]: pass \
+        # E: Signatures of "__ior__" and "__or__" are incompatible

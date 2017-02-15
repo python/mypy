@@ -173,7 +173,7 @@ def func() -> None:
 
 class MyClass:
     C = NewType('C', float)
-    
+
     def foo(self) -> 'MyClass.C':
         return MyClass.C(3.2)
 
@@ -317,3 +317,8 @@ class A: pass
 B = NewType('B', A)
 class C(B): pass  # E: Cannot subclass NewType
 [out]
+
+[case testNewTypeAny]
+from typing import NewType
+Any = NewType('Any', int)
+Any(5)

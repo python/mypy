@@ -1553,6 +1553,7 @@ from funcs import callee
 from classes import Outer
 def caller(a: Outer.Inner) -> int:
     callee(a)
+    return 0
 
 [case testIncrementalLoadsParentAfterChild]
 # cmd: mypy -m r.s
@@ -1766,6 +1767,25 @@ main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
 main:2: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=typing.Mapping[builtins.str, builtins.int])'
 main:3: error: Revealed type is 'TypedDict(x=builtins.int, _fallback=ntcrash.C.A@4)'
 main:4: error: Revealed type is 'def () -> ntcrash.C.A@4'
+
+[case testGenericMethodRestoreMetaLevel]
+from typing import Dict
+
+d = {}  # type: Dict[str, int]
+g = d.get  # This should not crash: see https://github.com/python/mypy/issues/2804
+[builtins fixtures/dict.pyi]
+
+[case testGenericMethodRestoreMetaLevel2]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+class D:
+    def m(self, x: T) -> T:
+        return x
+
+g = D().m  # This should not crash: see https://github.com/python/mypy/issues/2804
+[builtins fixtures/dict.pyi]
 
 [case testIncrementalPerFileFlags]
 # flags: --config-file tmp/mypy.ini

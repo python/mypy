@@ -1475,13 +1475,13 @@ class A:
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Ellipses cannot accompany other argument types in function type signature.
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Parse error before ): Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Ellipses cannot accompany other argument types in function type signature.
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic

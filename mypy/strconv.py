@@ -199,7 +199,10 @@ class StrConv(NodeVisitor[str]):
         a = []  # type: List[Any]
         if o.is_async:
             a.append(('Async', ''))
-        a.extend([o.index, o.expr, o.body])
+        a.append(o.index)
+        if o.index_type:
+            a.append(o.index_type)
+        a.extend([o.expr, o.body])
         if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
@@ -231,7 +234,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr, o.from_expr], o)
 
     def visit_assert_stmt(self, o: 'mypy.nodes.AssertStmt') -> str:
-        return self.dump([o.expr], o)
+        if o.msg is not None:
+            return self.dump([o.expr, o.msg], o)
+        else:
+            return self.dump([o.expr], o)
 
     def visit_await_expr(self, o: 'mypy.nodes.AwaitExpr') -> str:
         return self.dump([o.expr], o)
@@ -263,6 +269,8 @@ class StrConv(NodeVisitor[str]):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:
                 a.append(('Target', [o.target[i]]))
+        if o.target_type:
+            a.append(o.target_type)
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> str:
@@ -292,7 +300,7 @@ class StrConv(NodeVisitor[str]):
     def visit_unicode_expr(self, o: 'mypy.nodes.UnicodeExpr') -> str:
         return 'UnicodeExpr({})'.format(self.str_repr(o.value))
 
-    def str_repr(self, s):
+    def str_repr(self, s: str) -> str:
         s = re.sub(r'\\u[0-9a-fA-F]{4}', lambda m: '\\' + m.group(0), s)
         return re.sub('[^\\x20-\\x7e]',
                       lambda m: r'\u%.4x' % ord(m.group(0)), s)

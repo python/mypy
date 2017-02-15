@@ -2032,7 +2032,8 @@ if __name__ == '__main__':
         usage()
     status = 0
     for fnam in args:
-        s = open(fnam, 'rb').read()
+        with open(fnam, 'rb') as f:
+            s = f.read()
         errors = Errors()
         try:
             options = Options()

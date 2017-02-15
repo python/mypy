@@ -14,6 +14,23 @@ async def f() -> int:
 reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
 [builtins fixtures/async_await.pyi]
 
+[case testAsyncDefMissingReturn]
+# flags: --fast-parser --warn-no-return
+async def f() -> int:
+    make_this_not_trivial = 1
+[builtins fixtures/async_await.pyi]
+[out]
+main:2: error: Missing return statement
+
+[case testAsyncDefReturnWithoutValue]
+# flags: --fast-parser
+async def f() -> int:
+    make_this_not_trivial = 1
+    return
+[builtins fixtures/async_await.pyi]
+[out]
+main:4: error: Return value expected
+
 [case testAwaitCoroutine]
 # flags: --fast-parser
 async def f() -> int:
@@ -52,6 +69,7 @@ T = TypeVar('T')
 async def f(x: T) -> T:
     y = await f(x)  # type: int
     reveal_type(y)
+    return x
 [out]
 main:5: error: Argument 1 to "f" has incompatible type "T"; expected "int"
 main:6: error: Revealed type is 'builtins.int'
@@ -96,6 +114,7 @@ async def g() -> int:
     return 0
 async def f() -> str:
     x = await g()  # type: str
+    return x
 [builtins fixtures/async_await.pyi]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -133,6 +152,22 @@ async def f() -> None:
 main:4: error: AsyncIterable expected
 main:4: error: List[int] has no attribute "__aiter__"
 
+[case testAsyncForTypeComments]
+# flags: --fast-parser
+from typing import AsyncIterator, Union
+class C(AsyncIterator[int]):
+    async def __anext__(self) -> int: return 0
+async def f() -> None:
+    async for x in C():  # type: str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        pass
+
+    async for y in C():  # type: int
+        pass
+
+    async for z in C():  # type: Union[int, str]
+        reveal_type(z)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/async_await.pyi]
+
 [case testAsyncWith]
 # flags: --fast-parser
 class C:
@@ -142,7 +177,7 @@ async def f() -> None:
     async with C() as x:
         reveal_type(x)  # E: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.pyi]
-[out]
+
 
 [case testAsyncWithError]
 # flags: --fast-parser
@@ -200,6 +235,22 @@ async def f() -> None:
         pass
 [builtins fixtures/async_await.pyi]
 [out]
+
+[case testAsyncWithTypeComments]
+# flags: --fast-parser
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+async def f() -> None:
+    async with C() as x:  # type: int
+        pass
+
+    async with C() as y, C() as z:  # type: str, int  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        pass
+
+    async with C() as a:  # type: int, int  # E: Invalid tuple literal type
+        pass
+[builtins fixtures/async_await.pyi]
 
 [case testNoYieldInAsyncDef]
 # flags: --fast-parser

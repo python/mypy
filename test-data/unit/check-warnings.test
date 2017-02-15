@@ -71,7 +71,7 @@ def g() -> int:
         return 1
 [builtins fixtures/list.pyi]
 [out]
-main:5: note: Missing return statement
+main:5: error: Missing return statement
 
 [case testNoReturnWhile]
 # flags: --warn-no-return
@@ -95,7 +95,7 @@ def j() -> int:
             continue
 [builtins fixtures/list.pyi]
 [out]
-main:7: note: Missing return statement
+main:7: error: Missing return statement
 
 [case testNoReturnExcept]
 # flags: --warn-no-return
@@ -122,11 +122,46 @@ def h() -> int:
         return 1
 [builtins fixtures/exception.pyi]
 [out]
-main:2: note: Missing return statement
+main:2: error: Missing return statement
 
 [case testNoReturnEmptyBodyWithDocstring]
 def f() -> int:
     """Return the number of peppers."""
     # This might be an @abstractmethod, for example
     pass
+[out]
+
+
+-- Returning Any
+-- -------------
+
+[case testReturnAnyFromTypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> int: return g()
+[out]
+main:4: warning: Returning Any from function with declared return type "builtins.int"
+
+[case testReturnAnySilencedFromTypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> int:
+    result = g() # type: int
+    return result
+[out]
+
+[case testReturnAnyFromUntypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f(): return g()
+[out]
+
+[case testReturnAnyFromAnyTypedFunction]
+# flags: --warn-return-any
+from typing import Any
+def g() -> Any: pass
+def f() -> Any: return g()
 [out]

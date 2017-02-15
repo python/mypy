@@ -11,7 +11,8 @@ print('hello, world')
 [out]
 hello, world
 
-[case testAbstractBaseClasses]
+-- Skipped because different typing package versions have different repr()s. 
+[case testAbstractBaseClasses-skip]
 import re
 from typing import Sized, Sequence, Iterator, Iterable, Mapping, AbstractSet
 
@@ -1146,7 +1147,7 @@ print(b.x + 1)
 4
 
 [case testInferenceWithLambda]
-from typing import TypeVar, Iterable, Iterator
+from typing import TypeVar, Iterable, Iterator, List
 import itertools
 
 _T = TypeVar('_T')

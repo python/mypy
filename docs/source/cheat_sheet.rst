@@ -77,6 +77,14 @@ Functions
        # type: (int, float) -> float
        return num1 + my_float
 
+   # An argument can be declared positional-only by giving it a name
+   # starting with two underscores:
+   def quux(__x):
+       # type: (int) -> None
+       pass
+   quux(3)  # Fine
+   quux(__x=3)  # Error
+
    # This is how you annotate a function value.
    x = f # type: Callable[[int, float], float]
 
@@ -157,7 +165,7 @@ that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
-   from typing import Mapping, MutableMapping, Sequence, Iterator
+   from typing import Mapping, MutableMapping, Sequence, Iterable
 
    # Use Iterable for generic iterables (anything usable in `for`),
    # and Sequence where a sequence (supporting `len` and `__getitem__`) is required.
@@ -187,7 +195,7 @@ Classes
    class MyClass(object):
 
        # For instance methods, omit `self`.
-       def my_class_method(self, num, str1):
+       def my_method(self, num, str1):
            # type: (int, str) -> str
            return num * str1
 

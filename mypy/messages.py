@@ -11,7 +11,8 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
-    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType
+    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UninhabitedType
 )
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
@@ -24,8 +25,11 @@ from mypy.nodes import (
 
 NO_RETURN_VALUE_EXPECTED = 'No return value expected'
 MISSING_RETURN_STATEMENT = 'Missing return statement'
+INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
 INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
+RETURN_ANY = 'Returning Any from function with declared return type "{}"'
 RETURN_VALUE_EXPECTED = 'Return value expected'
+NO_RETURN_EXPECTED = 'Return statement in function which does not return'
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
@@ -44,7 +48,7 @@ INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in yield'
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-INIT_MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "__init__" must be None'
+MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 TUPLE_INDEX_MUST_BE_AN_INT_LITERAL = 'Tuple index must be an integer literal'
 TUPLE_SLICE_MUST_BE_AN_INT_LITERAL = 'Tuple slice must be an integer literal'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
@@ -76,6 +80,9 @@ INVALID_TYPEDDICT_ARGS = \
     'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
 TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
     'Expected TypedDict item name to be string literal'
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
+NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
+DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -157,8 +164,13 @@ class MessageBuilder:
 
     def note(self, msg: str, context: Context, file: str = None,
              origin: Context = None) -> None:
-        """Report an error message (unless disabled)."""
+        """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin)
+
+    def warn(self, msg: str, context: Context, file: str = None,
+             origin: Context = None) -> None:
+        """Report a warning message (unless disabled)."""
+        self.report(msg, context, 'warning', file=file, origin=origin)
 
     def format(self, typ: Type, verbosity: int = 0) -> str:
         """Convert a type to a relatively short string that is suitable for error messages.
@@ -311,6 +323,11 @@ class MessageBuilder:
             return '"Any"'
         elif isinstance(typ, DeletedType):
             return '<deleted>'
+        elif isinstance(typ, UninhabitedType):
+            if typ.is_noreturn:
+                return 'NoReturn'
+            else:
+                return '<uninhabited>'
         elif isinstance(typ, TypeType):
             return 'Type[{}]'.format(
                 strip_quotes(self.format_simple(typ.item, verbosity)))
@@ -376,8 +393,13 @@ class MessageBuilder:
                 self.format(typ)), context)
         elif member == '__getitem__':
             # Indexed get.
-            self.fail('Value of type {} is not indexable'.format(
-                self.format(typ)), context)
+            # TODO: Fix this consistently in self.format
+            if isinstance(typ, CallableType) and typ.is_type_obj():
+                self.fail('The type {} is not generic and not indexable'.format(
+                    self.format(typ)), context)
+            else:
+                self.fail('Value of type {} is not indexable'.format(
+                    self.format(typ)), context)
         elif member == '__setitem__':
             # Indexed set.
             self.fail('Unsupported target for indexed assignment', context)
@@ -852,14 +874,16 @@ class MessageBuilder:
 
     def typeddict_item_name_must_be_string_literal(self,
                                                    typ: TypedDictType,
-                                                   context: Context):
+                                                   context: Context,
+                                                   ) -> None:
         self.fail('Cannot prove expression is a valid item name; expected one of {}'.format(
             format_item_name_list(typ.items.keys())), context)
 
     def typeddict_item_name_not_found(self,
                                       typ: TypedDictType,
                                       item_name: str,
-                                      context: Context):
+                                      context: Context,
+                                      ) -> None:
         self.fail('\'{}\' is not a valid item name; expected one of {}'.format(
             item_name, format_item_name_list(typ.items.keys())), context)
 

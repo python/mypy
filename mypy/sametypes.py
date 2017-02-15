@@ -123,9 +123,18 @@ class SameTypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        # XXX This is a test for syntactic equality, not equivalence
         if isinstance(self.right, UnionType):
-            return is_same_types(left.items, self.right.items)
+            # Check that everything in left is in right
+            for left_item in left.items:
+                if not any(is_same_type(left_item, right_item) for right_item in self.right.items):
+                    return False
+
+            # Check that everything in right is in left
+            for right_item in self.right.items:
+                if not any(is_same_type(right_item, left_item) for left_item in left.items):
+                    return False
+
+            return True
         else:
             return False
 

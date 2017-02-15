@@ -14,9 +14,9 @@ from mypy.nodes import (
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
-from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars
 from mypy.infer import infer_type_arguments
-from mypy.semanal import fill_typevars
+from mypy.typevars import fill_typevars
 from mypy import messages
 from mypy import subtypes
 MYPY = False
@@ -80,6 +80,7 @@ def analyze_member_access(name: str,
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
+            signature = freshen_function_type_vars(signature)
             if name == '__new__':
                 # __new__ is special and behaves like a static method -- don't strip
                 # the first argument.
@@ -133,7 +134,7 @@ def analyze_member_access(name: str,
             if not is_operator:
                 # When Python sees an operator (eg `3 == 4`), it automatically translates that
                 # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
-                # optimation.
+                # optimization.
                 #
                 # While it normally it doesn't matter which of the two versions are used, it
                 # does cause inconsistencies when working with classes. For example, translating
@@ -183,6 +184,8 @@ def analyze_member_access(name: str,
             if result:
                 return result
         fallback = builtin_type('builtins.type')
+        if item is not None:
+            fallback = item.type.metaclass_type or fallback
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback, msg,
                                      original_type=original_type, chk=chk)
@@ -218,16 +221,20 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
                            original_type, not_ready_callback)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
-    elif not v and name not in ['__getattr__', '__setattr__']:
+    elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
         if not is_lvalue:
-            method = info.get_method('__getattr__')
-            if method:
-                function = function_type(method, builtin_type('builtins.function'))
-                bound_method = bind_self(function, original_type)
-                typ = map_instance_to_supertype(itype, method.info)
-                getattr_type = expand_type_by_instance(bound_method, typ)
-                if isinstance(getattr_type, CallableType):
-                    return getattr_type.ret_type
+            for method_name in ('__getattribute__', '__getattr__'):
+                method = info.get_method(method_name)
+                # __getattribute__ is defined on builtins.object and returns Any, so without
+                # the guard this search will always find object.__getattribute__ and conclude
+                # that the attribute exists
+                if method and method.info.fullname() != 'builtins.object':
+                    function = function_type(method, builtin_type('builtins.function'))
+                    bound_method = bind_self(function, original_type)
+                    typ = map_instance_to_supertype(itype, method.info)
+                    getattr_type = expand_type_by_instance(bound_method, typ)
+                    if isinstance(getattr_type, CallableType):
+                        return getattr_type.ret_type
 
     if itype.type.fallback_to_any:
         return AnyType()
@@ -445,7 +452,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         # Must be an invalid class definition.
         return AnyType()
     else:
-        fallback = builtin_type('builtins.type')
+        fallback = info.metaclass_type or builtin_type('builtins.type')
         if init_method.info.fullname() == 'builtins.object':
             # No non-default __init__ -> look at __new__ instead.
             new_method = info.get_method('__new__')
@@ -615,7 +622,7 @@ def bind_self(method: F, original_type: Type = None) -> F:
     return cast(F, res)
 
 
-def erase_to_bound(t: Type):
+def erase_to_bound(t: Type) -> Type:
     if isinstance(t, TypeVarType):
         return t.upper_bound
     if isinstance(t, TypeType):

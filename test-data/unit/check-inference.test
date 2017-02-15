@@ -917,9 +917,9 @@ class A: pass
 [builtins fixtures/for.pyi]
 
 [case testMultipleAssignmentWithPartialDefinition3]
-from typing import Any
+from typing import Any, cast
 a = None # type: A
-x, a = Any(a)
+x, a = cast(Any, a)
 x = a
 a = x
 x = object()
@@ -934,6 +934,15 @@ if A:
     a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
+
+[case testAssigningAnyStrToNone]
+from typing import Tuple, TypeVar
+AnyStr = TypeVar('AnyStr', str, bytes)
+
+def f(x: AnyStr) -> Tuple[AnyStr]: pass
+x = None
+(x,) = f('')
+reveal_type(x)  # E: Revealed type is 'builtins.str'
 
 
 -- Inferring attribute types
@@ -1027,12 +1036,28 @@ from typing import Callable
 def f(x: Callable[[], None]) -> None: pass
 def g(x: Callable[[], int]) -> None: pass
 a = lambda: None
-f(a) # E: Argument 1 to "f" has incompatible type Callable[[], None]; expected Callable[[], None]
-g(a)
+f(a)
+g(a) # E: Argument 1 to "g" has incompatible type Callable[[], None]; expected Callable[[], int]
 b = lambda: None  # type: Callable[[], None]
 f(b)
 g(b) # E: Argument 1 to "g" has incompatible type Callable[[], None]; expected Callable[[], int]
 
+[case testLambdaDefaultContext]
+# flags: --strict-optional
+from typing import Callable
+def f(a: Callable[..., None] = lambda *a, **k: None):
+    pass
+
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible types in assignment (expression has type Callable[[StarArg(Any), KwArg(Any)], int], variable has type Callable[..., None])
+    pass
+[builtins fixtures/dict.pyi]
+
+[case testLambdaVarargContext]
+# Should not crash
+from typing import Callable
+def f(a: Callable[[int, int, int], int] = lambda *a, **k: 1):
+    pass
+[builtins fixtures/dict.pyi]
 
 -- Boolean operators
 -- -----------------

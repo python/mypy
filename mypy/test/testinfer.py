@@ -1,20 +1,20 @@
 """Test cases for type inference helper functions."""
 
-import typing
+from typing import List, Optional, Tuple, Union
 
 from mypy.myunit import Suite, assert_equal, assert_true
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
-from mypy.types import AnyType, TupleType
+from mypy.types import AnyType, TupleType, Type
 
 
 class MapActualsToFormalsSuite(Suite):
     """Test cases for checkexpr.map_actuals_to_formals."""
 
-    def test_basic(self):
+    def test_basic(self) -> None:
         self.assert_map([], [], [])
 
-    def test_positional_only(self):
+    def test_positional_only(self) -> None:
         self.assert_map([ARG_POS],
                         [ARG_POS],
                         [[0]])
@@ -22,7 +22,7 @@ class MapActualsToFormalsSuite(Suite):
                         [ARG_POS, ARG_POS],
                         [[0], [1]])
 
-    def test_optional(self):
+    def test_optional(self) -> None:
         self.assert_map([],
                         [ARG_OPT],
                         [[]])
@@ -33,7 +33,7 @@ class MapActualsToFormalsSuite(Suite):
                         [ARG_OPT, ARG_OPT],
                         [[0], []])
 
-    def test_callee_star(self):
+    def test_callee_star(self) -> None:
         self.assert_map([],
                         [ARG_STAR],
                         [[]])
@@ -44,7 +44,7 @@ class MapActualsToFormalsSuite(Suite):
                         [ARG_STAR],
                         [[0, 1]])
 
-    def test_caller_star(self):
+    def test_caller_star(self) -> None:
         self.assert_map([ARG_STAR],
                         [ARG_STAR],
                         [[0]])
@@ -58,7 +58,7 @@ class MapActualsToFormalsSuite(Suite):
                         [ARG_OPT, ARG_STAR],
                         [[0], [0]])
 
-    def test_too_many_caller_args(self):
+    def test_too_many_caller_args(self) -> None:
         self.assert_map([ARG_POS],
                         [],
                         [])
@@ -69,7 +69,7 @@ class MapActualsToFormalsSuite(Suite):
                         [ARG_POS],
                         [[0]])
 
-    def test_tuple_star(self):
+    def test_tuple_star(self) -> None:
         self.assert_vararg_map(
             [ARG_STAR],
             [ARG_POS],
@@ -86,10 +86,10 @@ class MapActualsToFormalsSuite(Suite):
             [[0], [0], []],
             self.tuple(AnyType(), AnyType()))
 
-    def tuple(self, *args):
-        return TupleType(args, None)
+    def tuple(self, *args: Type) -> TupleType:
+        return TupleType(list(args), None)
 
-    def test_named_args(self):
+    def test_named_args(self) -> None:
         self.assert_map(
             ['x'],
             [(ARG_POS, 'x')],
@@ -99,25 +99,25 @@ class MapActualsToFormalsSuite(Suite):
             [(ARG_POS, 'x'), (ARG_POS, 'y')],
             [[1], [0]])
 
-    def test_some_named_args(self):
+    def test_some_named_args(self) -> None:
         self.assert_map(
             ['y'],
             [(ARG_OPT, 'x'), (ARG_OPT, 'y'), (ARG_OPT, 'z')],
             [[], [0], []])
 
-    def test_missing_named_arg(self):
+    def test_missing_named_arg(self) -> None:
         self.assert_map(
             ['y'],
             [(ARG_OPT, 'x')],
             [[]])
 
-    def test_duplicate_named_arg(self):
+    def test_duplicate_named_arg(self) -> None:
         self.assert_map(
             ['x', 'x'],
             [(ARG_OPT, 'x')],
             [[0, 1]])
 
-    def test_varargs_and_bare_asterisk(self):
+    def test_varargs_and_bare_asterisk(self) -> None:
         self.assert_map(
             [ARG_STAR],
             [ARG_STAR, (ARG_NAMED, 'x')],
@@ -127,7 +127,7 @@ class MapActualsToFormalsSuite(Suite):
             [ARG_STAR, (ARG_NAMED, 'x')],
             [[0], [1]])
 
-    def test_keyword_varargs(self):
+    def test_keyword_varargs(self) -> None:
         self.assert_map(
             ['x'],
             [ARG_STAR2],
@@ -145,13 +145,13 @@ class MapActualsToFormalsSuite(Suite):
             [(ARG_POS, 'x'), ARG_STAR2],
             [[0], [1]])
 
-    def test_both_kinds_of_varargs(self):
+    def test_both_kinds_of_varargs(self) -> None:
         self.assert_map(
             [ARG_STAR, ARG_STAR2],
             [(ARG_POS, 'x'), (ARG_POS, 'y')],
             [[0, 1], [0, 1]])
 
-    def test_special_cases(self):
+    def test_special_cases(self) -> None:
         self.assert_map([ARG_STAR],
                         [ARG_STAR, ARG_STAR2],
                         [[0], []])
@@ -165,9 +165,13 @@ class MapActualsToFormalsSuite(Suite):
                         [ARG_STAR2],
                         [[0]])
 
-    def assert_map(self, caller_kinds, callee_kinds, expected):
-        caller_kinds, caller_names = expand_caller_kinds(caller_kinds)
-        callee_kinds, callee_names = expand_callee_kinds(callee_kinds)
+    def assert_map(self,
+                   caller_kinds_: List[Union[int, str]],
+                   callee_kinds_: List[Union[int, Tuple[int, str]]],
+                   expected: List[List[int]],
+                   ) -> None:
+        caller_kinds, caller_names = expand_caller_kinds(caller_kinds_)
+        callee_kinds, callee_names = expand_callee_kinds(callee_kinds_)
         result = map_actuals_to_formals(
             caller_kinds,
             caller_names,
@@ -176,8 +180,12 @@ class MapActualsToFormalsSuite(Suite):
             lambda i: AnyType())
         assert_equal(result, expected)
 
-    def assert_vararg_map(self, caller_kinds, callee_kinds, expected,
-                          vararg_type):
+    def assert_vararg_map(self,
+                          caller_kinds: List[int],
+                          callee_kinds: List[int],
+                          expected: List[List[int]],
+                          vararg_type: Type,
+                          ) -> None:
         result = map_actuals_to_formals(
             caller_kinds,
             [],
@@ -187,7 +195,8 @@ class MapActualsToFormalsSuite(Suite):
         assert_equal(result, expected)
 
 
-def expand_caller_kinds(kinds_or_names):
+def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
+                        ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
     names = []
     for k in kinds_or_names:
@@ -200,7 +209,8 @@ def expand_caller_kinds(kinds_or_names):
     return kinds, names
 
 
-def expand_callee_kinds(kinds_and_names):
+def expand_callee_kinds(kinds_and_names: List[Union[int, Tuple[int, str]]]
+                        ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
     names = []
     for v in kinds_and_names:

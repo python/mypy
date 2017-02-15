@@ -32,6 +32,8 @@ class str:
     def __add__(self, x: 'str') -> 'str': pass
     def startswith(self, x: 'str') -> bool: pass
 
+class unicode: pass
+
 class int:
     def __add__(self, x: 'int') -> 'int': pass
     def __sub__(self, x: 'int') -> 'int': pass
@@ -50,9 +52,6 @@ class int:
 class float: pass
 
 class BaseException: pass
-
-True = bool() # type: bool
-False = bool() # type: bool
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass
 

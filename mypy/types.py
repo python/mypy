@@ -323,20 +323,23 @@ class UninhabitedType(Type):
 
     can_be_true = False
     can_be_false = False
+    is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
 
-    def __init__(self, line: int = -1, column: int = -1) -> None:
+    def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
+        self.is_noreturn = is_noreturn
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_uninhabited_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'UninhabitedType'}
+        return {'.class': 'UninhabitedType',
+                'is_noreturn': self.is_noreturn}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'UninhabitedType':
         assert data['.class'] == 'UninhabitedType'
-        return UninhabitedType()
+        return UninhabitedType(is_noreturn=data['is_noreturn'])
 
 
 class NoneTyp(Type):
@@ -643,7 +646,8 @@ class CallableType(FunctionLike):
         )
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type is not None and self.fallback.type.fullname() == 'builtins.type'
+        t = self.fallback.type
+        return t is not None and t.is_metaclass()
 
     def is_concrete_type_obj(self) -> bool:
         return self.is_type_obj() and self.is_classmethod_class
@@ -935,7 +939,7 @@ class TypedDictType(Type):
         return TypedDictType(OrderedDict([(n, Type.deserialize(t)) for (n, t) in data['items']]),
                              Instance.deserialize(data['fallback']))
 
-    def as_anonymous(self):
+    def as_anonymous(self) -> 'TypedDictType':
         if self.fallback.type.fullname() == 'typing.Mapping':
             return self
         assert self.fallback.type.typeddict_type is not None
@@ -958,7 +962,7 @@ class TypedDictType(Type):
             value_type
         ])
 
-    def names_are_wider_than(self, other: 'TypedDictType'):
+    def names_are_wider_than(self, other: 'TypedDictType') -> bool:
         return len(other.items.keys() - self.items.keys()) == 0
 
     def zip(self, right: 'TypedDictType') -> Iterable[Tuple[str, Type, Type]]:
@@ -1034,13 +1038,18 @@ class UnionType(Type):
             return AnyType()
 
         from mypy.subtypes import is_subtype
+        from mypy.sametypes import is_same_type
+
         removed = set()  # type: Set[int]
         for i, ti in enumerate(items):
             if i in removed: continue
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if i != j and is_subtype(tj, ti):
+                if (i != j
+                    and is_subtype(tj, ti)
+                    and (not (isinstance(tj, Instance) and tj.type.fallback_to_any)
+                         or is_same_type(ti, tj))):
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
                     cbf = cbf or tj.can_be_false
@@ -1720,20 +1729,24 @@ def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike
         # Implicit type signature with dynamic types.
         # Overloaded functions always have a signature, so func must be an ordinary function.
         assert isinstance(func, mypy.nodes.FuncItem), str(func)
-        fdef = cast(mypy.nodes.FuncItem, func)
-        name = func.name()
-        if name:
-            name = '"{}"'.format(name)
+        return callable_type(cast(mypy.nodes.FuncItem, func), fallback)
 
-        return CallableType(
-            [AnyType()] * len(fdef.arg_names),
-            fdef.arg_kinds,
-            [None if argument_elide_name(n) else n for n in fdef.arg_names],
-            AnyType(),
-            fallback,
-            name,
-            implicit=True,
-        )
+
+def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
+                  ret_type: Type = None) -> CallableType:
+    name = fdef.name()
+    if name:
+        name = '"{}"'.format(name)
+
+    return CallableType(
+        [AnyType()] * len(fdef.arg_names),
+        fdef.arg_kinds,
+        [None if argument_elide_name(n) else n for n in fdef.arg_names],
+        ret_type or AnyType(),
+        fallback,
+        name,
+        implicit=True,
+    )
 
 
 def get_typ_args(tp: Type) -> List[Type]:

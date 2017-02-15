@@ -63,9 +63,12 @@ def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
     return is_subtype(left, right, ignore_tvars)
 
 
-def is_equivalent(a: Type, b: Type,
+def is_equivalent(a: Type,
+                  b: Type,
                   type_parameter_checker: TypeParameterChecker = check_type_parameter,
-                  *, ignore_pos_arg_names=False) -> bool:
+                  *,
+                  ignore_pos_arg_names: bool = False
+                  ) -> bool:
     return (
         is_subtype(a, b, type_parameter_checker, ignore_pos_arg_names=ignore_pos_arg_names)
         and is_subtype(b, a, type_parameter_checker, ignore_pos_arg_names=ignore_pos_arg_names))
@@ -148,6 +151,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return all(self.check_type_parameter(lefta, righta, tvar.variance)
                        for lefta, righta, tvar in
                        zip(t.args, right.args, right.type.defn.type_vars))
+        if isinstance(right, TypeType):
+            item = right.item
+            if isinstance(item, TupleType):
+                item = item.fallback
+            return isinstance(item, Instance) and is_subtype(left, item.type.metaclass_type)
         else:
             return False
 
@@ -186,7 +194,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                   is_named_instance(right, 'typing.Container') or
                   is_named_instance(right, 'typing.Sequence') or
                   is_named_instance(right, 'typing.Reversible')):
-                iter_type = right.args[0]
+                if right.args:
+                    iter_type = right.args[0]
+                else:
+                    iter_type = AnyType()
                 return all(is_subtype(li, iter_type) for li in left.items)
             elif is_subtype(left.fallback, right, self.check_type_parameter):
                 return True
@@ -263,11 +274,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, CallableType):
             # This is unsound, we don't check the __init__ signature.
             return right.is_type_obj() and is_subtype(left.item, right.ret_type)
-        if (isinstance(right, Instance) and
-                right.type.fullname() in ('builtins.type', 'builtins.object')):
-            # Treat builtins.type the same as Type[Any];
-            # treat builtins.object the same as Any.
-            return True
+        if isinstance(right, Instance):
+            if right.type.fullname() in ('builtins.type', 'builtins.object'):
+                # Treat builtins.type the same as Type[Any];
+                # treat builtins.object the same as Any.
+                return True
+            item = left.item
+            return isinstance(item, Instance) and is_subtype(item, right.type.metaclass_type)
         return False
 
 

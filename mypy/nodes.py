@@ -9,7 +9,7 @@ from typing import (
 
 from mypy.lex import Token
 import mypy.strconv
-from mypy.visitor import NodeVisitor
+from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 from mypy.util import dump_tagged, short_type
 
 
@@ -75,7 +75,7 @@ inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
 
 
 implicit_module_attrs = {'__name__': '__builtins__.str',
-                         '__doc__': '__builtins__.str',
+                         '__doc__': None,  # depends on Python version, see semanal.py
                          '__file__': '__builtins__.str',
                          '__package__': '__builtins__.str'}
 
@@ -139,10 +139,14 @@ class Node(Context):
 
 class Statement(Node):
     """A statement node."""
+    def accept(self, visitor: StatementVisitor[T]) -> T:
+        raise RuntimeError('Not implemented')
 
 
 class Expression(Node):
     """An expression node."""
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        raise RuntimeError('Not implemented')
 
 
 # TODO:
@@ -311,7 +315,7 @@ class Import(ImportBase):
         super().__init__()
         self.ids = ids
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import(self)
 
 
@@ -328,7 +332,7 @@ class ImportFrom(ImportBase):
         self.names = names
         self.relative = relative
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
 
@@ -342,7 +346,7 @@ class ImportAll(ImportBase):
         self.id = id
         self.relative = relative
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 
 
@@ -380,7 +384,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     def name(self) -> str:
         return self.items[0].func.name()
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -528,7 +532,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def name(self) -> str:
         return self._name
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -593,7 +597,7 @@ class Decorator(SymbolNode, Statement):
     def fullname(self) -> str:
         return self.func.fullname()
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
 
     def serialize(self) -> JsonDict:
@@ -657,7 +661,7 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
@@ -709,7 +713,7 @@ class ClassDef(Statement):
         self.metaclass = metaclass
         self.decorators = []
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
 
     def is_generic(self) -> bool:
@@ -744,7 +748,7 @@ class GlobalDecl(Statement):
     def __init__(self, names: List[str]) -> None:
         self.names = names
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_global_decl(self)
 
 
@@ -756,7 +760,7 @@ class NonlocalDecl(Statement):
     def __init__(self, names: List[str]) -> None:
         self.names = names
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_nonlocal_decl(self)
 
 
@@ -770,7 +774,7 @@ class Block(Statement):
     def __init__(self, body: List[Statement]) -> None:
         self.body = body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
 
 
@@ -784,7 +788,7 @@ class ExpressionStmt(Statement):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
 
@@ -811,7 +815,7 @@ class AssignmentStmt(Statement):
         self.type = type
         self.new_syntax = new_syntax
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
 
 
@@ -827,7 +831,7 @@ class OperatorAssignmentStmt(Statement):
         self.lvalue = lvalue
         self.rvalue = rvalue
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_operator_assignment_stmt(self)
 
 
@@ -841,13 +845,15 @@ class WhileStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_while_stmt(self)
 
 
 class ForStmt(Statement):
     # Index variables
     index = None  # type: Lvalue
+    # Type given by type comments for index, can be None
+    index_type = None  # type: mypy.types.Type
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block
@@ -855,13 +861,14 @@ class ForStmt(Statement):
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self, index: Lvalue, expr: Expression, body: Block,
-                 else_body: Block) -> None:
+                 else_body: Block, index_type: 'mypy.types.Type' = None) -> None:
         self.index = index
+        self.index_type = index_type
         self.expr = expr
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
 
 
@@ -871,17 +878,19 @@ class ReturnStmt(Statement):
     def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
 class AssertStmt(Statement):
     expr = None  # type: Expression
+    msg = None  # type: Optional[Expression]
 
-    def __init__(self, expr: Expression) -> None:
+    def __init__(self, expr: Expression, msg: Expression = None) -> None:
         self.expr = expr
+        self.msg = msg
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
@@ -891,22 +900,22 @@ class DelStmt(Statement):
     def __init__(self, expr: Lvalue) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
 
 class BreakStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
 class ContinueStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
 class PassStmt(Statement):
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
@@ -921,7 +930,7 @@ class IfStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
 
 
@@ -933,7 +942,7 @@ class RaiseStmt(Statement):
         self.expr = expr
         self.from_expr = from_expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
 
 
@@ -955,23 +964,26 @@ class TryStmt(Statement):
         self.else_body = else_body
         self.finally_body = finally_body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
 
 
 class WithStmt(Statement):
     expr = None  # type: List[Expression]
     target = None  # type: List[Lvalue]
+    # Type given by type comments for target, can be None
+    target_type = None  # type: mypy.types.Type
     body = None  # type: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Lvalue],
-                 body: Block) -> None:
+                 body: Block, target_type: 'mypy.types.Type' = None) -> None:
         self.expr = expr
         self.target = target
+        self.target_type = target_type
         self.body = body
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
 
 
@@ -988,7 +1000,7 @@ class PrintStmt(Statement):
         self.newline = newline
         self.target = target
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_print_stmt(self)
 
 
@@ -1006,7 +1018,7 @@ class ExecStmt(Statement):
         self.variables1 = variables1
         self.variables2 = variables2
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_exec_stmt(self)
 
 
@@ -1023,7 +1035,7 @@ class IntExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
 
 
@@ -1048,7 +1060,7 @@ class StrExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
 
 
@@ -1062,7 +1074,7 @@ class BytesExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
 
 
@@ -1076,7 +1088,7 @@ class UnicodeExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unicode_expr(self)
 
 
@@ -1090,7 +1102,7 @@ class FloatExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
 
 
@@ -1104,14 +1116,14 @@ class ComplexExpr(Expression):
         self.value = value
         self.literal_hash = ('Literal', value)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
 
 
 class EllipsisExpr(Expression):
     """Ellipsis (...)"""
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_ellipsis(self)
 
 
@@ -1128,7 +1140,7 @@ class StarExpr(Expression):
         # Whether this starred expression is used in a tuple/list and as lvalue
         self.valid = False
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_star_expr(self)
 
 
@@ -1160,7 +1172,7 @@ class NameExpr(RefExpr):
         self.name = name
         self.literal_hash = ('Var', name,)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -1201,7 +1213,7 @@ class MemberExpr(RefExpr):
         self.literal = self.expr.literal
         self.literal_hash = ('Member', expr.literal_hash, name)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
 
 
@@ -1248,7 +1260,7 @@ class CallExpr(Expression):
         self.arg_names = arg_names
         self.analyzed = analyzed
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
 
 
@@ -1258,7 +1270,7 @@ class YieldFromExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_yield_from_expr(self)
 
 
@@ -1268,7 +1280,7 @@ class YieldExpr(Expression):
     def __init__(self, expr: Optional[Expression]) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_yield_expr(self)
 
 
@@ -1295,7 +1307,7 @@ class IndexExpr(Expression):
             self.literal_hash = ('Index', base.literal_hash,
                                  index.literal_hash)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
 
 
@@ -1313,7 +1325,7 @@ class UnaryExpr(Expression):
         self.literal = self.expr.literal
         self.literal_hash = ('Unary', op, expr.literal_hash)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
 
 
@@ -1396,7 +1408,7 @@ class OpExpr(Expression):
         self.literal = min(self.left.literal, self.right.literal)
         self.literal_hash = ('Binary', op, left.literal_hash, right.literal_hash)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
 
@@ -1416,7 +1428,7 @@ class ComparisonExpr(Expression):
         self.literal_hash = ((cast(Any, 'Comparison'),) + tuple(operators) +
                              tuple(o.literal_hash for o in operands))
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
 
 
@@ -1437,7 +1449,7 @@ class SliceExpr(Expression):
         self.end_index = end_index
         self.stride = stride
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_slice_expr(self)
 
 
@@ -1451,7 +1463,7 @@ class CastExpr(Expression):
         self.expr = expr
         self.type = typ
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
 
 
@@ -1463,7 +1475,7 @@ class RevealTypeExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_reveal_type_expr(self)
 
 
@@ -1476,7 +1488,7 @@ class SuperExpr(Expression):
     def __init__(self, name: str) -> None:
         self.name = name
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_super_expr(self)
 
 
@@ -1491,7 +1503,7 @@ class FuncExpr(FuncItem, Expression):
         ret = cast(ReturnStmt, self.body.body[-1])
         return ret.expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_func_expr(self)
 
 
@@ -1506,7 +1518,7 @@ class ListExpr(Expression):
             self.literal = LITERAL_YES
             self.literal_hash = (cast(Any, 'List'),) + tuple(x.literal_hash for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
 
 
@@ -1525,7 +1537,7 @@ class DictExpr(Expression):
             self.literal_hash = (cast(Any, 'Dict'),) + tuple(
                 (x[0].literal_hash, x[1].literal_hash) for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
 
 
@@ -1540,7 +1552,7 @@ class TupleExpr(Expression):
             self.literal = LITERAL_YES
             self.literal_hash = (cast(Any, 'Tuple'),) + tuple(x.literal_hash for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
 
 
@@ -1555,7 +1567,7 @@ class SetExpr(Expression):
             self.literal = LITERAL_YES
             self.literal_hash = (cast(Any, 'Set'),) + tuple(x.literal_hash for x in items)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
 
 
@@ -1574,7 +1586,7 @@ class GeneratorExpr(Expression):
         self.condlists = condlists
         self.indices = indices
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
 
 
@@ -1586,7 +1598,7 @@ class ListComprehension(Expression):
     def __init__(self, generator: GeneratorExpr) -> None:
         self.generator = generator
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_comprehension(self)
 
 
@@ -1598,7 +1610,7 @@ class SetComprehension(Expression):
     def __init__(self, generator: GeneratorExpr) -> None:
         self.generator = generator
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_comprehension(self)
 
 
@@ -1619,7 +1631,7 @@ class DictionaryComprehension(Expression):
         self.condlists = condlists
         self.indices = indices
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)
 
 
@@ -1635,7 +1647,7 @@ class ConditionalExpr(Expression):
         self.if_expr = if_expr
         self.else_expr = else_expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
 
 
@@ -1647,7 +1659,7 @@ class BackquoteExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_backquote_expr(self)
 
 
@@ -1661,7 +1673,7 @@ class TypeApplication(Expression):
         self.expr = expr
         self.types = types
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_application(self)
 
 
@@ -1712,7 +1724,7 @@ class TypeVarExpr(SymbolNode, Expression):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -1751,7 +1763,7 @@ class TypeAliasExpr(Expression):
         self.fallback = fallback
         self.in_runtime = in_runtime
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
 
 
@@ -1765,7 +1777,7 @@ class NamedTupleExpr(Expression):
     def __init__(self, info: 'TypeInfo') -> None:
         self.info = info
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)
 
 
@@ -1778,7 +1790,7 @@ class TypedDictExpr(Expression):
     def __init__(self, info: 'TypeInfo') -> None:
         self.info = info
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_typeddict_expr(self)
 
 
@@ -1790,7 +1802,7 @@ class PromoteExpr(Expression):
     def __init__(self, type: 'mypy.types.Type') -> None:
         self.type = type
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit__promote_expr(self)
 
 
@@ -1805,7 +1817,7 @@ class NewTypeExpr(Expression):
         self.name = name
         self.old_type = old_type
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
 
 
@@ -1817,7 +1829,7 @@ class AwaitExpr(Expression):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_await_expr(self)
 
 
@@ -1837,10 +1849,10 @@ class TempNode(Expression):
     def __init__(self, typ: 'mypy.types.Type') -> None:
         self.type = typ
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'TempNode(%s)' % str(self.type)
 
-    def accept(self, visitor: NodeVisitor[T]) -> T:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
 
 
@@ -1866,6 +1878,10 @@ class TypeInfo(SymbolNode):
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
     mro = None  # type: List[TypeInfo]
+
+    declared_metaclass = None  # type: Optional[mypy.types.Instance]
+    metaclass_type = None  # type: mypy.types.Instance
+
     subtypes = None  # type: Set[TypeInfo] # Direct subclasses encountered so far
     names = None  # type: SymbolTable      # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
@@ -1995,6 +2011,23 @@ class TypeInfo(SymbolNode):
         self.mro = mro
         self.is_enum = self._calculate_is_enum()
 
+    def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
+        declared = self.declared_metaclass
+        if declared is not None and not declared.type.has_base('builtins.type'):
+            return declared
+        if self._fullname == 'builtins.type':
+            return mypy.types.Instance(self, [])
+        candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
+        for c in candidates:
+            if c.type.mro is None:
+                continue
+            if all(other.type in c.type.mro for other in candidates):
+                return c
+        return None
+
+    def is_metaclass(self) -> bool:
+        return self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta'
+
     def _calculate_is_enum(self) -> bool:
         """
         If this is "enum.Enum" itself, then yes, it's an enum.
@@ -2050,6 +2083,8 @@ class TypeInfo(SymbolNode):
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
+                'declared_metaclass': (None if self.declared_metaclass is None
+                                       else self.declared_metaclass.serialize()),
                 'tuple_type': None if self.tuple_type is None else self.tuple_type.serialize(),
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
@@ -2071,6 +2106,9 @@ class TypeInfo(SymbolNode):
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
                        else mypy.types.Type.deserialize(data['_promote']))
+        ti.declared_metaclass = (None if data['declared_metaclass'] is None
+                                 else mypy.types.Instance.deserialize(data['declared_metaclass']))
+        # NOTE: ti.metaclass_type and ti.mro will be set in the fixup phase.
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None

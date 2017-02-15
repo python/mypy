@@ -103,7 +103,7 @@ reveal_type(z2)  # E: Revealed type is 'Union[builtins.int, builtins.str, builti
 
 [case testLambdaReturningNone]
 f = lambda: None
-x = f()
+x = f()  # E: Function does not return a value
 
 [case testNoneArgumentType]
 def f(x: None) -> None: pass
@@ -493,7 +493,7 @@ def f() -> None:
 def g() -> int:
   1 + 1  #
 [out]
-main:5: note: Missing return statement
+main:5: error: Missing return statement
 
 [case testGenericTypeAliasesOptional]
 from typing import TypeVar, Generic, Optional
@@ -518,3 +518,29 @@ if x is not None:
     x.x = 1 # OK here
 
 [builtins fixtures/ops.pyi]
+
+[case testOptionalLambdaInference]
+from typing import Optional, Callable
+f = None # type: Optional[Callable[[int], None]]
+f = lambda x: None
+f(0)
+[builtins fixtures/function.pyi]
+
+[case testUnionSimplificationWithStrictOptional]
+from typing import Any, TypeVar, Union
+class C(Any): pass
+T = TypeVar('T')
+S = TypeVar('S')
+def u(x: T, y: S) -> Union[S, T]: pass
+a = None # type: Any
+
+# Test both orders
+reveal_type(u(C(), None))  # E: Revealed type is 'Union[builtins.None, __main__.C*]'
+reveal_type(u(None, C()))  # E: Revealed type is 'Union[__main__.C*, builtins.None]'
+
+# This will be fixed later
+reveal_type(u(a, None))  # E: Revealed type is 'Any'
+reveal_type(u(None, a))  # E: Revealed type is 'Any'
+
+reveal_type(u(1, None))  # E: Revealed type is 'Union[builtins.None, builtins.int*]'
+reveal_type(u(None, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.None]'

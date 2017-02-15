@@ -693,8 +693,6 @@ s, s = Nums() # E: Incompatible types in assignment (expression has type "int", 
 
 [case testCovariant]
 from typing import TypeVar, Generic
-True = 1
-
 T = TypeVar('T', covariant=True)
 
 class G(Generic[T]): pass
@@ -708,12 +706,11 @@ c = None  # type: G[C]
 
 b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
 b = c
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testContravariant]
 from typing import TypeVar, Generic
-True = 1
-
 T = TypeVar('T', contravariant=True)
 
 class G(Generic[T]): pass
@@ -727,12 +724,11 @@ c = None  # type: G[C]
 
 b = a
 b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+[builtins fixtures/bool.pyi]
 [out]
 
 [case testInvariant]
 from typing import TypeVar, Generic
-True = 1
-
 T = TypeVar('T')  # invariant (default)
 
 class G(Generic[T]): pass
@@ -746,4 +742,5 @@ c = None  # type: G[C]
 
 b = a  # E: Incompatible types in assignment (expression has type G[A], variable has type G[B])
 b = c  # E: Incompatible types in assignment (expression has type G[C], variable has type G[B])
+[builtins fixtures/bool.pyi]
 [out]
