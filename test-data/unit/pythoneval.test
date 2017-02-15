@@ -1102,13 +1102,21 @@ _program.py:23: error: Invalid index type "str" for "dict"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
 import collections
-from collections import Counter
+from collections import Counter, TypeVar
 
 collections.defaultdict[int, str]()
 Counter[int]()
+
+T = TypeVar('T')
+DDint = collections.defaultdict[T, int]
+
+d = DDint[str]()
+d[0] = 1
 [out]
 _program.py:4: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 _program.py:5: error: "Counter" is not subscriptable, use "typing.Counter" instead
+_program.py:8: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
+_program.py:11: error: Invalid index type "int" for "dict"; expected type "str"
 
 [case testDictUpdateInference]
 from typing import Dict, Optional

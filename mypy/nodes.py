@@ -2152,7 +2152,7 @@ class SymbolTableNode:
     # For deserialized MODULE_REF nodes, the referenced module name;
     # for other nodes, optionally the name of the referenced object.
     cross_ref = None  # type: Optional[str]
-    # Was this node created by normaloze_type_alias?
+    # Was this node created by normalіze_type_alias?
     normalized = False  # type: bool
 
     def __init__(self, kind: int, node: Optional[SymbolNode], mod_id: str = None,
