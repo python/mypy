@@ -134,3 +134,11 @@ MypyFile:1(
       NameExpr(x [m])
       IntExpr(0)
       builtins.int)))
+
+[case testClassVarWithTypeVar]
+from typing import ClassVar, TypeVar
+T = TypeVar('T')
+class A:
+    x = None  # type: ClassVar[T]
+[out]
+main:4: error: Invalid type "__main__.T"
