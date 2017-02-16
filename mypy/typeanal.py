@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import Callable, cast, List, Optional
 
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, ClassVarType,
+    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
 )
@@ -149,11 +149,13 @@ class TypeAnalyser(TypeVisitor[Type]):
                 item = items[0]
                 return TypeType(item, line=t.line)
             elif fullname == 'typing.ClassVar':
+                if len(t.args) == 0:
+                    return AnyType(line=t.line)
                 if len(t.args) != 1:
                     self.fail('ClassVar[...] must have exactly one type argument', t)
                     return AnyType()
                 items = self.anal_array(t.args)
-                return ClassVarType(items[0])
+                return items[0]
             elif fullname == 'mypy_extensions.NoReturn':
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:

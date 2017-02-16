@@ -73,7 +73,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.types import (
     NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType, ClassVarType,
+    FunctionLike, UnboundType, TypeList, TypeVarDef, TypeType,
     TupleType, UnionType, StarType, EllipsisType, function_type, TypedDictType,
 )
 from mypy.nodes import implicit_module_attrs
@@ -1330,6 +1330,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None)
+        self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
@@ -1363,7 +1364,6 @@ class SemanticAnalyzer(NodeVisitor):
         self.process_typevar_declaration(s)
         self.process_namedtuple_definition(s)
         self.process_typeddict_definition(s)
-        self.check_classvar_definition(s)
 
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
@@ -2160,9 +2160,50 @@ class SemanticAnalyzer(NodeVisitor):
 
         return info
 
-    def check_classvar_definition(self, s: AssignmentStmt) -> None:
-        if isinstance(s.type, ClassVarType) and not self.is_class_scope():
-            self.fail("Invalid ClassVar definition", s)
+    def check_classvar(self, s: AssignmentStmt) -> None:
+        lvalue = s.lvalues[0]
+        if len(s.lvalues) != 1 or not isinstance(lvalue, NameExpr):
+            return
+        is_classvar = self.check_classvar_definition(lvalue, s.type)
+        if self.is_class_scope() and isinstance(lvalue.node, Var):
+            # Assignments to class variables outside class scope are checked later
+            self.check_classvar_override(lvalue.node, is_classvar)
+
+    def check_classvar_definition(self, lvalue: NameExpr, typ: Type) -> bool:
+        if not isinstance(typ, UnboundType):
+            return False
+        sym = self.lookup_qualified(typ.name, typ)
+        if not sym or not sym.node:
+            return False
+        fullname = sym.node.fullname()
+        if fullname != 'typing.ClassVar':
+            return False
+        if self.is_class_scope() or not isinstance(lvalue.node, Var):
+            node = cast(Var, lvalue.node)
+            node.is_classvar = True
+            return True
+        else:
+            self.fail('Invalid ClassVar definition', lvalue)
+            return False
+
+    def check_classvar_override(self, node: Var, is_classvar: bool) -> None:
+        name = node.name()
+        for base in self.type.mro[1:]:
+            tnode = base.names.get(name)
+            if tnode is None:
+                continue
+            base_node = tnode.node
+            if isinstance(base_node, Var):
+                v = base_node
+                if (is_classvar and not v.is_classvar) or (not is_classvar and v.is_classvar):
+                    self.fail_classvar_base_incompatibility(node, v)
+                    return
+
+    def fail_classvar_base_incompatibility(self, shadowing: Var, original: Var) -> None:
+        base_name = original.info.name()
+        self.fail('Invalid class attribute definition '
+                  '(previously declared on base class "%s")' % base_name,
+                  shadowing)
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:

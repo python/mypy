@@ -61,6 +61,7 @@ CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
 CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
 CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
 CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
+CANNOT_ASSIGN_TO_CLASSVAR = 'Illegal assignment to class variable'
 INCONSISTENT_ABSTRACT_OVERLOAD = \
     'Overloaded method has both abstract and non-abstract variants'
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
@@ -813,6 +814,9 @@ class MessageBuilder:
 
     def cant_assign_to_method(self, context: Context) -> None:
         self.fail(CANNOT_ASSIGN_TO_METHOD, context)
+
+    def cant_assign_to_classvar(self, context: Context) -> None:
+        self.fail(CANNOT_ASSIGN_TO_CLASSVAR, context)
 
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:

@@ -1189,29 +1189,6 @@ class TypeType(Type):
         return TypeType(Type.deserialize(data['item']))
 
 
-class ClassVarType(Type):
-    """The ClassVar[T] type.
-
-    In all typechecking scenarios, behaves like T.
-    """
-    item = None  # type: Type
-
-    def __init__(self, item: Type, *, line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
-        self.item = item
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_classvar_type(self)
-
-    def serialize(self) -> JsonDict:
-        return {'.class': 'ClassVarType', 'item': self.item.serialize()}
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'ClassVarType':
-        assert data['.class'] == 'ClassVarType'
-        return ClassVarType(Type.deserialize(data['item']))
-
-
 #
 # Visitor-related classes
 #
@@ -1301,9 +1278,6 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_type(self, t: TypeType) -> T:
-        pass
-
-    def visit_classvar_type(self, t: ClassVarType) -> T:
         pass
 
 
@@ -1538,9 +1512,6 @@ class TypeStrVisitor(TypeVisitor[str]):
 
     def visit_type_type(self, t: TypeType) -> str:
         return 'Type[{}]'.format(t.item.accept(self))
-
-    def visit_classvar_type(self, t: ClassVarType) -> str:
-        return 'ClassVar[{}]'.format(t.item.accept(self))
 
     def list_str(self, a: List[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)

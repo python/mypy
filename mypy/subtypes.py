@@ -3,8 +3,7 @@ from typing import List, Optional, Dict, Callable
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, ErrorType, FormalArgument, Void, NoneTyp,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    ClassVarType,
+    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance
 )
 import mypy.applytype
 import mypy.constraints
@@ -53,9 +52,6 @@ def is_subtype(left: Type, right: Type,
         return any(is_subtype(left, item, type_parameter_checker,
                               ignore_pos_arg_names=ignore_pos_arg_names)
                    for item in right.items)
-    elif isinstance(right, ClassVarType):
-        return is_subtype(left, right.item, type_parameter_checker,
-                          ignore_pos_arg_names=ignore_pos_arg_names)
     else:
         return left.accept(SubtypeVisitor(right, type_parameter_checker,
                                           ignore_pos_arg_names=ignore_pos_arg_names))

@@ -12,7 +12,7 @@ A().x = 2
 [out]
 main:4: error: Illegal assignment to class variable
 
-[case testAssignmentOnSubclass]
+[case testAssignmentOnSubclassInstance]
 from typing import ClassVar
 class A:
     x = 1  # type: ClassVar[int]
@@ -22,17 +22,63 @@ B().x = 2
 [out]
 main:6: error: Illegal assignment to class variable
 
+[case testOverrideOnSelf]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+    def __init__(self) -> None:
+        self.x = 0
+[out]
+main:5: error: Illegal assignment to class variable
+
+[case testOverrideOnSelfInSubclass]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+class B(A):
+    def __init__(self) -> None:
+        self.x = 0
+[out]
+main:6: error: Illegal assignment to class variable
+
 [case testReadingFromInstance]
 from typing import ClassVar
 class A:
     x = 1  # type: ClassVar[int]
 A().x
 
-[case testTypecheck]
+[case testTypecheckSimple]
 from typing import ClassVar
 class A:
     x = 1  # type: ClassVar[int]
 y = A.x  # type: int
+
+[case testTypecheckWithUserType]
+from typing import ClassVar
+class A:
+    pass
+class B:
+    x = A()  # type: ClassVar[A]
+
+[case testTypeCheckOnAssignment]
+from typing import ClassVar
+class A:
+    pass
+class B:
+    pass
+class C:
+    x = None  # type: ClassVar[A]
+C.x = B()
+[out]
+main:8: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testRevealType]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+reveal_type(A.x)
+[out]
+main:4: error: Revealed type is 'builtins.int'
 
 [case testInfer]
 from typing import ClassVar
@@ -42,3 +88,53 @@ y = A.x
 reveal_type(y)
 [out]
 main:5: error: Revealed type is 'builtins.int'
+
+[case testAssignmentOnUnion]
+from typing import ClassVar, Union
+class A:
+    x = None  # type: int
+class B:
+    x = None  # type: ClassVar[int]
+c = A()  # type: Union[A, B]
+c.x = 1
+[out]
+main:7: error: Illegal assignment to class variable
+
+[case testAssignmentOnInstanceFromType]
+from typing import ClassVar, Type
+class A:
+    x = None  # type: ClassVar[int]
+def f(a: Type[A]) -> None:
+    a().x = 0
+[out]
+main:5: error: Illegal assignment to class variable
+
+[case testAssignmentOnInstanceFromSubclassType]
+from typing import ClassVar, Type
+class A:
+    x = None  # type: ClassVar[int]
+class B(A):
+    pass
+def f(b: Type[B]) -> None:
+    b().x = 0
+[out]
+main:7: error: Illegal assignment to class variable
+
+[case testAssignmentWithGeneric]
+from typing import ClassVar, List
+class A:
+    x = None  # type: ClassVar[List[int]]
+A.x = ['a']
+[builtins fixtures/list.pyi]
+[out]
+main:4: error: List item 0 has incompatible type "str"
+
+[case testAssignmentToCallableRet]
+from typing import ClassVar, Type
+class A:
+    x = None  # type: ClassVar[int]
+def f() -> A:
+    return A()
+f().x = 0
+[out]
+main:6: error: Illegal assignment to class variable
