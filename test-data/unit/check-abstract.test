@@ -410,6 +410,7 @@ class B(object, A): pass \
       # E: Cannot determine consistent method resolution order (MRO) for "B"
 
 [case testOverloadedAbstractMethod]
+from foo import *
 [file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
@@ -433,9 +434,10 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
+from foo import *
 [file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
@@ -459,9 +461,10 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [__main__.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
+from foo import *
 [file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload
@@ -476,6 +479,7 @@ class A(metaclass=ABCMeta):
 [out]
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
+from foo import *
 [file foo.pyi]
 from abc import abstractmethod, ABCMeta
 from typing import overload

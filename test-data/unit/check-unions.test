@@ -94,15 +94,7 @@ x[2] + 1 # E: Unsupported operand types for + (likely involving Union)
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionAsOverloadArg]
-[file foo.pyi]
-from typing import Union, overload
-@overload
-def f(x: Union[int, str]) -> int: pass
-@overload
-def f(x: type) -> str: pass
-
-[file main.py]
-from foo import f
+from foo import *
 x = 0
 x = f(1)
 x = f('')
@@ -110,6 +102,13 @@ s = ''
 s = f(int)
 s = f(1)    # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 x = f(int)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file foo.pyi]
+from typing import Union, overload
+@overload
+def f(x: Union[int, str]) -> int: pass
+@overload
+def f(x: type) -> str: pass
 
 [case testUnionWithNoneItem]
 from typing import Union

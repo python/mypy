@@ -2,6 +2,7 @@
 
 
 [case testDecorateOverloadedFunction]
+from foo import *
 [file foo.pyi]
 # The error messages are not the most informative ever.
 def d(x): pass
@@ -12,5 +13,5 @@ def g(): pass
 @d # E
 def g(x): pass
 [out]
-main:5: error: Name 'f' already defined
-main:7: error: Name 'g' already defined
+tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:7: error: Name 'g' already defined

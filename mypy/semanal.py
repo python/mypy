@@ -427,8 +427,6 @@ class SemanticAnalyzer(NodeVisitor):
         # properties.  The first of our items will tell us which one we are
         # dealing with.
 
-        print("Semanal overload", defn.name())
-
         impl = defn.impl
         t = []  # type: List[CallableType]
         last_non_overload = -1
@@ -2200,7 +2198,6 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def visit_decorator(self, dec: Decorator) -> None:
-        print("Semanal decorator", dec)
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]

@@ -211,6 +211,7 @@ class C:
 [out]
 
 [case testOverloadWithNone]
+from foo import *
 [file foo.pyi]
 from typing import overload
 @overload

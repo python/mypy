@@ -215,7 +215,6 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[Decorator]
         current_overload_name = None
-        print("Fixing overloads", stmts)
         # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
             if (isinstance(stmt, Decorator)
@@ -487,7 +486,6 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
 
-        print("ClassDef name", n.name, "body", n.body)
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
                         None,
