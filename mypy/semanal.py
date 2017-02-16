@@ -422,7 +422,16 @@ class SemanticAnalyzer(NodeVisitor):
         return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+        # By "overloaded function" we mean in some sense "redefined function".
+        # There are two features that use function redefinition: overloads, and
+        # properties.  The first of our items will tell us which one we are
+        # dealing with.
+
+        print("Semanal overload", defn.name())
+
+        impl = defn.impl
         t = []  # type: List[CallableType]
+        last_non_overload = -1
         for i, item in enumerate(defn.items):
             # TODO support decorated overloaded functions properly
             item.is_overload = True
@@ -432,12 +441,41 @@ class SemanticAnalyzer(NodeVisitor):
             assert isinstance(callable, CallableType)
             t.append(callable)
             if item.func.is_property and i == 0:
-                # This defines a property, probably with a setter and/or deleter.
+                # This defines a property, probably with a setter and/or
+                # deleter.  Any "implementation" we might have should be part of
+                # that, not an overload.
+                if impl is not None:
+                    defn.items.append(impl)
+                    defn.impl = None
                 self.analyze_property_with_multi_part_definition(defn)
                 break
             if not [dec for dec in item.decorators
                     if refers_to_fullname(dec, 'typing.overload')]:
-                self.fail("'overload' decorator expected", item)
+                if i != 0:
+                    self.name_already_defined(item.name(), item)
+                last_non_overload = i
+
+        if defn.impl:
+            impl = defn.impl
+            impl.accept(self)
+            if isinstance(impl, Decorator) and [
+                    dec for dec in impl.decorators
+                    if refers_to_fullname(dec, 'typing.overload')]:
+                self.fail(
+                    "Overload outside a stub must have implementation",
+                    defn)
+                callable = function_type(
+                    impl.func,
+                    self.builtin_type('builtins.function'))
+                impl.is_overload = True
+                impl.func.is_overload = True
+                defn.items.append(impl)
+                defn.impl = None
+                t.append(callable)
+            elif last_non_overload == len(defn.items) - 1:
+                # If the thing before the impl wasn't an overload, the impl isn't an
+                # impl at all but a redefinition.
+                self.name_already_defined(impl.name(), impl)
 
         defn.type = Overloaded(t)
         defn.type.line = defn.line
@@ -449,8 +487,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.is_func_scope():
             self.add_local(defn, defn)
 
-        if defn.impl:
-            defn.impl.accept(self)
+
 
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
@@ -2163,6 +2200,7 @@ class SemanticAnalyzer(NodeVisitor):
         return info
 
     def visit_decorator(self, dec: Decorator) -> None:
+        print("Semanal decorator", dec)
         for d in dec.decorators:
             d.accept(self)
         removed = []  # type: List[int]
@@ -3142,7 +3180,11 @@ class FirstPass(NodeVisitor):
             sem.function_stack.append(func.impl)
             sem.errors.push_function(func.name())
             sem.enter()
-            func.impl.body.accept(self)
+            impl = func.impl
+            if isinstance(impl, FuncDef):
+                impl.body.accept(self)
+            elif isinstance(impl, Decorator):
+                impl.func.body.accept(self)
             sem.leave()
             sem.errors.pop_function()
             sem.function_stack.pop()

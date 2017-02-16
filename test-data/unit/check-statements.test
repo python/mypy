@@ -881,6 +881,7 @@ except exs1 as e: pass # E: Exception type must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
 [case testOverloadedExceptionType]
+[file foo.pyi]
 from typing import overload
 class E(BaseException):
     @overload

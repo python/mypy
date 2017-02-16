@@ -431,6 +431,7 @@ class C(Generic[T]):
     def f(self, x: int = None) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
+[file foo.pyi]
 from typing import TypeVar, overload, Callable
 
 T = TypeVar('T', int, str)

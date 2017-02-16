@@ -229,6 +229,7 @@ class ASTConverter(ast27.NodeTransformer):
                     and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
             elif (isinstance(stmt, FuncDef)
+                  and not self.is_stub
                   and stmt.name() == current_overload_name
                   and stmt.name() is not None):
                 ret.append(OverloadedFuncDef(current_overload, stmt))
@@ -238,9 +239,16 @@ class ASTConverter(ast27.NodeTransformer):
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
-                    ret.append(OverloadedFuncDef(current_overload, None))
+                    if self.is_stub:
+                        ret.append(OverloadedFuncDef(current_overload, None))
+                    else:
+                        # Outside of a stub file, the last definition of the
+                        # overload is the implementation, even if it has a
+                        # decorator.  We will check it later to make sure it
+                        # does *not* have the @overload decorator.
+                        ret.append(OverloadedFuncDef(current_overload[:-1], current_overload[-1]))
 
-                if isinstance(stmt, Decorator) and is_overload_part(stmt):
+                if isinstance(stmt, Decorator):
                     current_overload = [stmt]
                     current_overload_name = stmt.name()
                 else:
@@ -251,7 +259,11 @@ class ASTConverter(ast27.NodeTransformer):
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
-            ret.append(OverloadedFuncDef(current_overload, None))
+            if self.is_stub:
+                ret.append(OverloadedFuncDef(current_overload, None))
+            else:
+                ret.append(OverloadedFuncDef(current_overload[:-1], current_overload[-1]))
+
         return ret
 
     def in_class(self) -> bool:

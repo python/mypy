@@ -245,6 +245,7 @@ class A:
 def f() -> None: pass
 
 [case testFunctionTypesWithOverloads]
+[file foo.pyi]
 from typing import Callable, overload
 f = None # type: Callable[[AA], A]
 g = None # type: Callable[[B], B]
@@ -277,6 +278,7 @@ def j(x: A) -> AA:
     pass
 
 [case testOverloadWithThreeItems]
+[file foo.pyi]
 from typing import Callable, overload
 g1 = None # type: Callable[[A], A]
 g2 = None # type: Callable[[B], B]
@@ -446,6 +448,7 @@ a.f()
 a.f(a) # E: Too many arguments
 
 [case testOverloadedMethodAsDataAttribute]
+[file foo.pyi]
 from typing import overload
 class B: pass
 class A:

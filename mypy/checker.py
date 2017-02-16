@@ -264,6 +264,7 @@ class TypeChecker(StatementVisitor[None]):
         assert defn.items
         if len(defn.items) == 1:
             self.fail('Single overload definition, multiple required', defn)
+
         if defn.is_property:
             # HACK: Infer the type of the property.
             self.visit_decorator(defn.items[0])
@@ -273,15 +274,16 @@ class TypeChecker(StatementVisitor[None]):
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(messages.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
+        if defn.impl:
+            defn.impl.accept(self)
         if defn.info:
             self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         self.check_overlapping_overloads(defn)
-        if defn.impl:
-            defn.impl.accept(self)
         return None
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
+        print("Checking overlap", defn.items)
         for i, item in enumerate(defn.items):
             sig1 = self.function_type(item.func)
             for j, item2 in enumerate(defn.items[i + 1:]):
@@ -291,11 +293,21 @@ class TypeChecker(StatementVisitor[None]):
                     self.msg.overloaded_signatures_overlap(i + 1, i + j + 2,
                                                            item.func)
             if defn.impl:
-                assert isinstance(defn.impl.type, CallableType) and isinstance(sig1, CallableType)
+                if isinstance(defn.impl, FuncDef):
+                    impl_type = defn.impl.type
+                elif isinstance(defn.impl, Decorator):
+                    impl_type = defn.impl.var.type
+                else:
+                    assert False, "Impl isn't the right type"
+                # This can happen if we've got an overload with a different
+                # decorator too. Just try not to crash.
+                if impl_type is None or sig1 is None:
+                    return
+                assert isinstance(impl_type, CallableType) and isinstance(sig1, CallableType), "oops {}".format(impl_type)
 
-                if not is_callable_subtype(defn.impl.type, sig1, ignore_return=True):
+                if not is_callable_subtype(impl_type, sig1, ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
-                if not is_subtype(sig1.ret_type, defn.impl.type.ret_type):
+                if not is_subtype(sig1.ret_type, impl_type.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.

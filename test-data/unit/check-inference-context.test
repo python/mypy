@@ -484,6 +484,7 @@ class D: pass
 [out]
 
 [case testIntersectionWithInferredGenericArgument]
+[file foo.pyi]
 from typing import overload, TypeVar, Generic
 T = TypeVar('T')
 f(A())
@@ -644,6 +645,7 @@ f( # E: Argument 1 to "f" has incompatible type Callable[[A], A]; expected Calla
 
 
 [case testMapWithOverloadedFunc]
+[file foo.pyi]
 from typing import TypeVar, Callable, List, overload, Any
 t = TypeVar('t')
 s = TypeVar('s')

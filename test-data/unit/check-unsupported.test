@@ -2,6 +2,7 @@
 
 
 [case testDecorateOverloadedFunction]
+[file foo.pyi]
 # The error messages are not the most informative ever.
 def d(x): pass
 @d

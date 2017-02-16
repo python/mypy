@@ -378,7 +378,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     items = None  # type: List[Decorator]
     impl = None  # type: Optional[FuncDef]
 
-    def __init__(self, items: List['Decorator'], impl: Optional['FuncDef'] = None) -> None:
+    def __init__(self, items: List['Decorator'], impl: Optional[Union['Decorator', 'FuncDef']] = None) -> None:
         self.items = items
         self.impl = impl
         self.set_line(items[0].line)

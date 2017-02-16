@@ -420,6 +420,7 @@ f(y='x', *(1,))
 
 
 [case testIntersectionTypesAndVarArgs]
+[file foo.pyi]
 from typing import overload
 a, b = None, None # type: (A, B)
 

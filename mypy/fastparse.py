@@ -215,13 +215,14 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[Decorator]
         current_overload_name = None
+        print("Fixing overloads", stmts)
         # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
             if (isinstance(stmt, Decorator)
-                    and is_overload_part(stmt)
                     and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
             elif (isinstance(stmt, FuncDef)
+                  and not self.is_stub
                   and stmt.name() == current_overload_name
                   and stmt.name() is not None):
                 ret.append(OverloadedFuncDef(current_overload, stmt))
@@ -231,9 +232,16 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
-                    ret.append(OverloadedFuncDef(current_overload, None))
+                    if self.is_stub:
+                        ret.append(OverloadedFuncDef(current_overload, None))
+                    else:
+                        # Outside of a stub file, the last definition of the
+                        # overload is the implementation, even if it has a
+                        # decorator.  We will check it later to make sure it
+                        # does *not* have the @overload decorator.
+                        ret.append(OverloadedFuncDef(current_overload[:-1], current_overload[-1]))
 
-                if isinstance(stmt, Decorator) and is_overload_part(stmt):
+                if isinstance(stmt, Decorator):
                     current_overload = [stmt]
                     current_overload_name = stmt.name()
                 else:
@@ -244,7 +252,10 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
-            ret.append(OverloadedFuncDef(current_overload, None))
+            if self.is_stub:
+                ret.append(OverloadedFuncDef(current_overload, None))
+            else:
+                ret.append(OverloadedFuncDef(current_overload[:-1], current_overload[-1]))
         return ret
 
     def in_class(self) -> bool:
@@ -476,6 +487,7 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             if metaclass is None:
                 metaclass = '<error>'  # To be reported later
 
+        print("ClassDef name", n.name, "body", n.body)
         cdef = ClassDef(n.name,
                         self.as_block(n.body, n.lineno),
                         None,

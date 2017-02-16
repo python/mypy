@@ -512,6 +512,7 @@ class A: pass
 A.x # E: "A" has no attribute "x"
 
 [case testAccessingUndefinedAttributeViaClassWithOverloadedInit]
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -521,6 +522,7 @@ class A:
 A.x # E: "A" has no attribute "x"
 
 [case testAccessMethodOfClassWithOverloadedInit]
+[file foo.pyi]
 from typing import overload, Any
 class A:
     @overload
@@ -1296,6 +1298,7 @@ g(1.1)
 
 
 [case testOperatorMethodOverrideIntroducingOverloading]
+[file foo.pyi]
 from typing import overload
 class A:
     def __add__(self, x: int) -> int: pass
@@ -1329,6 +1332,7 @@ class B(A):
     def __add__(self, x): pass
 
 [case testOperatorMethodOverrideWithIdenticalOverloadedType]
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -1342,6 +1346,7 @@ class B(A):
     def __add__(self, x: str) -> 'A': pass
 
 [case testOverloadedOperatorMethodOverrideWithDynamicallyTypedMethod]
+[file foo.pyi]
 from typing import overload, Any
 class A:
     @overload
@@ -1354,6 +1359,7 @@ class C(A):
     def __add__(self, x: Any) -> A: pass
 
 [case testOverloadedOperatorMethodOverrideWithNewItem]
+[file foo.pyi]
 from typing import overload, Any
 class A:
     @overload
@@ -1371,6 +1377,7 @@ class B(A):
 main:8: error: Signature of "__add__" incompatible with supertype "A"
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
+[file foo.pyi]
 from typing import overload, Any
 class A:
     @overload
@@ -1433,6 +1440,7 @@ class C:
 main:5: error: Forward operator "__add__" is not callable
 
 [case testOverloadedReverseOperatorMethodArgumentType]
+[file foo.pyi]
 from typing import overload, Any
 class A:
     @overload
@@ -1442,6 +1450,7 @@ class A:
 [out]
 
 [case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -1464,6 +1473,7 @@ class B:
 [out]
 
 [case testOperatorMethodsAndOverloadingSpecialCase]
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -1475,6 +1485,7 @@ class B:
 [out]
 
 [case testUnsafeOverlappingWithOperatorMethodsAndOverloading2]
+[file foo.pyi]
 from typing import overload
 class A:
     def __add__(self, x: 'A') -> int: pass
@@ -1513,6 +1524,7 @@ class C(A): pass
 main:5: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testOverloadedNormalAndInplaceOperatorMethod]
+[file foo.pyi]
 from typing import overload
 class A:
     @overload
@@ -1689,6 +1701,7 @@ c.set(1) # E: Argument 1 to "set" of "C" has incompatible type "int"; expected "
 [builtins fixtures/__new__.pyi]
 
 [case testOverloaded__new__]
+[file foo.pyi]
 from typing import overload
 class C:
     @overload
@@ -1946,6 +1959,7 @@ def foo(arg: Type[int]):
 [out]
 
 [case testTypeUsingTypeCUnionOverload]
+[file foo.pyi]
 from typing import Type, Union, overload
 class X:
     @overload
@@ -2066,6 +2080,7 @@ def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
 [out]
 
 [case testTypeUsingTypeCOverloadedClass]
+[file foo.pyi]
 from typing import Type, TypeVar, overload
 class User:
     @overload
@@ -2127,6 +2142,7 @@ def foo(c: Type[C], d: Type[D]) -> None:
 main:7: error: Revealed type is 'builtins.list[Type[__main__.B]]'
 
 [case testTypeMatchesOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload, Union
 
 class User: pass
@@ -2143,6 +2159,7 @@ reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testTypeMatchesGeneralTypeInOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2162,6 +2179,7 @@ reveal_type(f(1))  # E: Revealed type is 'builtins.str'
 [out]
 
 [case testTypeMatchesSpecificTypeInOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2185,6 +2203,7 @@ reveal_type(f(1))  # E: Revealed type is 'builtins.str'
 [out]
 
 [case testMixingTypeTypeInOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2210,6 +2229,7 @@ reveal_type(f("hi"))  # E: Revealed type is '__main__.User'
 [out]
 
 [case testGeneralTypeDoesNotMatchSpecificTypeInOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2227,6 +2247,7 @@ f(mock())  # E: No overload variant of "f" matches argument types [builtins.type
 [out]
 
 [case testNonTypeDoesNotMatchOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2241,6 +2262,7 @@ f(3)  # E: No overload variant of "f" matches argument types [builtins.int]
 [out]
 
 [case testInstancesDoNotMatchTypeInOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2256,6 +2278,7 @@ f(User())  # E: No overload variant of "f" matches argument types [__main__.User
 [out]
 
 [case testTypeCovarianceWithOverloadedFunctions]
+[file foo.pyi]
 from typing import Type, overload
 
 class A: pass
@@ -2281,6 +2304,7 @@ f(CType)
 
 
 [case testOverloadedCovariantTypesFail]
+[file foo.pyi]
 from typing import Type, overload
 
 class A: pass
@@ -2294,6 +2318,7 @@ def f(a: Type[B]) -> str: pass
 [out]
 
 [case testDistinctOverloadedCovariantTypesSucceed]
+[file foo.pyi]
 from typing import Type, overload
 
 class A: pass
@@ -2323,6 +2348,7 @@ reveal_type(f(BChild()))  # E: Revealed type is '__main__.B'
 [out]
 
 [case testTypeTypeOverlapsWithObjectAndType]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
@@ -2340,6 +2366,7 @@ def g(a: type) -> str: pass
 [out]
 
 [case testTypeOverlapsWithObject]
+[file foo.pyi]
 from typing import Type, overload
 
 class User: pass
