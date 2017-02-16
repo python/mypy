@@ -183,9 +183,9 @@ not support ``sort()``) as a list and sort it in-place:
 Invariance vs covariance
 ------------------------
 
-Most mutable generic collections are invariant, as well all user defined
-generic classes are considered invariant by default in mypy,
-see :ref:`variance-of-generics` for motivation. This could lead to some
+Most mutable generic collections are invariant, and mypy considers all
+user-defined generic classes invariant by default
+(see :ref:`variance-of-generics` for motivation). This could lead to some
 unexpected errors when combined with type inference. For example:
 
 .. code-block:: python

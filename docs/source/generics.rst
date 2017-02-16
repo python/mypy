@@ -239,8 +239,8 @@ a subtype of ``A``, these are defined as follows:
 
 Let us illustrate this by few simple examples:
 
-* ``Union`` is an example of type that is covariant in all variables, namely
-  ``Union[Cat, int]`` is a subtype of ``Union[Animal, int]``,
+* ``Union`` is covariant in all variables: ``Union[Cat, int]`` is a subtype
+  of ``Union[Animal, int]``,
   ``Union[Dog, int]`` is also a subtype of ``Union[Animal, int]``, etc.
   Most immutable containers such as ``Sequence`` and ``FrozenSet`` are also
   covariant.
@@ -253,10 +253,10 @@ Let us illustrate this by few simple examples:
      def salaries(staff: List[Manager],
                   accountant: Callable[[Manager], int]) -> List[int]: ...
 
-  this function needs a callable that can calculate a salary for mangers, and
+  this function needs a callable that can calculate a salary for managers, and
   if we give it a callable that can calculate a salary for an arbitrary
   employee, then it is still safe.
-* ``List`` is an example of invariant generic type. Naively, one would think
+* ``List`` is an invariant generic type. Naively, one would think
   that it is covariant, but let us consider this code:
 
   .. code-block:: python
@@ -277,8 +277,8 @@ Let us illustrate this by few simple examples:
   Another example of invariant type is ``Dict``, most mutable containers
   are invariant.
 
-By default, mypy assumes that all user defined generics are invariant,
-to declare a given generic class as covariant or contravariant use
+By default, mypy assumes that all user-defined generics are invariant.
+To declare a given generic class as covariant or contravariant use
 type variables defined with special keyword arguments ``covariant`` or
 ``contravariant``. For example:
 
