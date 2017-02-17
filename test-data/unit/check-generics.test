@@ -1564,7 +1564,7 @@ class B(Generic[T, S]):
     y = None # type: Union[T, A[S]]
 
 reveal_type(B[int, str].x) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
-reveal_type(B[int, str].y) # E: Revealed type is 'Union[builtins.int*, __maun__.A[builtins.str*]]'
+reveal_type(B[int, str].y) # E: Revealed type is 'Union[builtins.int*, __main__.A[builtins.str*]]'
 [builtins fixtures/list.pyi]
 
 [case testGenericOperatorMethodOverlapping]
