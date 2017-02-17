@@ -897,10 +897,12 @@ class A:
     @overload
     def f(self) -> None: pass
     @overload
-    def f(self, x: object) -> None: pass
+    def f(self, __x: object) -> None: pass
+
+    def f(self, *args) -> None: pass
 A.f
 [out]
-MemberExpr(8) : Overload(def (self: A), def (self: A, x: builtins.object))
+MemberExpr(10) : Overload(def (self: A), def (self: A, builtins.object))
 
 [case testOverloadedUnboundMethodWithImplicitSig]
 ## MemberExpr
@@ -909,10 +911,12 @@ class A:
     @overload
     def f(self): pass
     @overload
-    def f(self, x): pass
+    def f(self, __x): pass
+
+    def f(self, *args): pass
 A.f
 [out]
-MemberExpr(8) : Overload(def (self: Any) -> Any, def (self: Any, x: Any) -> Any)
+MemberExpr(10) : Overload(def (self: Any) -> Any, def (self: Any, Any) -> Any)
 
 [case testUnboundMethodWithInheritance]
 ## MemberExpr
@@ -961,10 +965,12 @@ class A(Generic[t]):
     def f(self, x: t) -> t: pass
     @overload
     def f(self) -> object: pass
+    def f(self, *args): pass
+
 ab, b = None, None # type: (A[B], B)
 A.f(ab, b)
 [out]
-CallExpr(11) : B
+CallExpr(13) : B
 
 [case testUnboundMethodOfGenericClassWithImplicitSig]
 ## MemberExpr
@@ -1059,28 +1065,32 @@ from typing import overload
 def f(x: int) -> str: pass
 @overload
 def f(x: str) -> int: pass
+def f(x): pass
 f(1)
 f('')
 [out]
-CallExpr(7) : builtins.str
-CallExpr(8) : builtins.int
+CallExpr(8) : builtins.str
+CallExpr(9) : builtins.int
 
 [case testOverlappingOverloadedFunctionType]
 ## CallExpr
-from typing import overload
+from typing import overload, Any
 class A: pass
 class B(A): pass
 @overload
 def f(x: B) -> B: pass
 @overload
 def f(x: A) -> A: pass
+
+def f(x) -> Any: pass
+
 a = None # type: A
 b = None # type: B
 f(a)
 f(b)
 [out]
-CallExpr(11) : A
-CallExpr(12) : B
+CallExpr(14) : A
+CallExpr(15) : B
 
 
 

@@ -261,14 +261,18 @@ class TypeChecker(StatementVisitor[None]):
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         num_abstract = 0
-        assert defn.items
+        if not defn.items:
+            # In this case we have already complained about none of these being
+            # valid overloads.
+            return None
         if len(defn.items) == 1:
             self.fail('Single overload definition, multiple required', defn)
 
         if defn.is_property:
             # HACK: Infer the type of the property.
-            self.visit_decorator(defn.items[0])
+            self.visit_decorator(cast(Decorator, defn.items[0]))
         for fdef in defn.items:
+            assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name())
             if fdef.func.is_abstract:
                 num_abstract += 1
@@ -283,11 +287,14 @@ class TypeChecker(StatementVisitor[None]):
         return None
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
-        print("Checking overlap", defn.items)
+        # At this point we should have set the impl already, and all remaining
+        # items are decorators
         for i, item in enumerate(defn.items):
+            assert isinstance(item, Decorator)
             sig1 = self.function_type(item.func)
             for j, item2 in enumerate(defn.items[i + 1:]):
                 # TODO overloads involving decorators
+                assert isinstance(item2, Decorator)
                 sig2 = self.function_type(item2.func)
                 if is_unsafe_overlapping_signatures(sig1, sig2):
                     self.msg.overloaded_signatures_overlap(i + 1, i + j + 2,
@@ -300,11 +307,12 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     assert False, "Impl isn't the right type"
                 # This can happen if we've got an overload with a different
-                # decorator too. Just try not to crash.
+                # decorator too -- we gave up on the types.
                 if impl_type is None or sig1 is None:
                     return
-                assert isinstance(impl_type, CallableType) and isinstance(sig1, CallableType), "oops {}".format(impl_type)
 
+                assert isinstance(impl_type, CallableType)
+                assert isinstance(sig1, CallableType)
                 if not is_callable_subtype(impl_type, sig1, ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
                 if not is_subtype(sig1.ret_type, impl_type.ret_type):
@@ -2097,7 +2105,8 @@ class TypeChecker(StatementVisitor[None]):
                     continue
                 if (isinstance(base_attr.node, OverloadedFuncDef) and
                         base_attr.node.is_property and
-                        base_attr.node.items[0].var.is_settable_property):
+                        cast(Decorator,
+                             base_attr.node.items[0]).var.is_settable_property):
                     self.fail(messages.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, e)
 
     def visit_with_stmt(self, s: WithStmt) -> None:

@@ -422,61 +422,77 @@ class SemanticAnalyzer(NodeVisitor):
         return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        # By "overloaded function" we mean in some sense "redefined function".
-        # There are two features that use function redefinition: overloads, and
-        # properties.  The first of our items will tell us which one we are
-        # dealing with.
-
-        impl = defn.impl
+        # Decide whether to analyze this as a property or an overload.
+        # If an overload, and we're outside a stub, find the impl and set it.
+        # Remove it from the item list, it's special.
         t = []  # type: List[CallableType]
-        last_non_overload = -1
+        non_overload_indexes = []
         for i, item in enumerate(defn.items):
             # TODO support decorated overloaded functions properly
             item.is_overload = True
-            item.func.is_overload = True
             item.accept(self)
-            callable = function_type(item.func, self.builtin_type('builtins.function'))
-            assert isinstance(callable, CallableType)
-            t.append(callable)
-            if item.func.is_property and i == 0:
-                # This defines a property, probably with a setter and/or
-                # deleter.  Any "implementation" we might have should be part of
-                # that, not an overload.
-                if impl is not None:
-                    defn.items.append(impl)
-                    defn.impl = None
-                self.analyze_property_with_multi_part_definition(defn)
-                break
-            if not [dec for dec in item.decorators
-                    if refers_to_fullname(dec, 'typing.overload')]:
-                if i != 0:
-                    self.name_already_defined(item.name(), item)
-                last_non_overload = i
 
-        if defn.impl:
-            impl = defn.impl
-            impl.accept(self)
-            if isinstance(impl, Decorator) and [
-                    dec for dec in impl.decorators
-                    if refers_to_fullname(dec, 'typing.overload')]:
+            if isinstance(item, Decorator):
+                item.func.is_overload = True
+                callable = function_type(item.func, self.builtin_type('builtins.function'))
+                assert isinstance(callable, CallableType)
+                if item.func.is_property and i == 0:
+                    # This defines a property, probably with a setter and/or
+                    # deleter.
+                    t.append(callable)
+                    self.analyze_property_with_multi_part_definition(defn)
+                    break
+                elif not any(refers_to_fullname(dec, 'typing.overload')
+                             for dec in item.decorators):
+                    if i == len(defn.items) - 1 and not self.is_stub_file:
+                        # Last item outside a stub is impl
+                        defn.impl = item
+                    else:
+                        # Oops it wasn't an overload after all. A clear error
+                        # will vary based on where in the list it is, record
+                        # that.
+                        non_overload_indexes.append(i)
+                else:
+                    t.append(callable)
+            elif isinstance(item, FuncDef):
+                if i == len(defn.items) - 1 and not self.is_stub_file:
+                    defn.impl = item
+                else:
+                    non_overload_indexes.append(i)
+        else:
+            # No break, so it was an overload.
+            if non_overload_indexes:
+                if t:
+                    # Some of them were overloads, but not all.
+                    for idx in non_overload_indexes:
+                        if self.is_stub_file:
+                            self.fail("Implementations of overloaded functions "
+                                      "not allowed in stub files", defn.items[idx])
+                        else:
+                            self.fail("Implementations of overloaded functions "
+                                      "must come last", defn.items[idx])
+                else:
+                    for idx in non_overload_indexes[1:]:
+                        self.name_already_defined(defn.name(), defn.items[idx])
+                    if defn.impl:
+                        self.name_already_defined(defn.name(), defn.impl)
+                # Remove the non-overloads
+                for idx in reversed(non_overload_indexes):
+                    del defn.items[idx]
+            # If we found an implementation, remove it from the overloads to
+            # consider.
+            if defn.impl is not None:
+                assert defn.impl is defn.items[-1]
+                defn.items = defn.items[:-1]
+
+            elif not self.is_stub_file and not non_overload_indexes:
                 self.fail(
                     "Overload outside a stub must have implementation",
                     defn)
-                callable = function_type(
-                    impl.func,
-                    self.builtin_type('builtins.function'))
-                impl.is_overload = True
-                impl.func.is_overload = True
-                defn.items.append(impl)
-                defn.impl = None
-                t.append(callable)
-            elif last_non_overload == len(defn.items) - 1:
-                # If the thing before the impl wasn't an overload, the impl isn't an
-                # impl at all but a redefinition.
-                self.name_already_defined(impl.name(), impl)
 
-        defn.type = Overloaded(t)
-        defn.type.line = defn.line
+        if t:
+            defn.type = Overloaded(t)
+            defn.type.line = defn.line
 
         if self.is_class_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
@@ -485,8 +501,6 @@ class SemanticAnalyzer(NodeVisitor):
         elif self.is_func_scope():
             self.add_local(defn, defn)
 
-
-
     def analyze_property_with_multi_part_definition(self, defn: OverloadedFuncDef) -> None:
         """Analyze a property defined using multiple methods (e.g., using @x.setter).
 
@@ -494,18 +508,19 @@ class SemanticAnalyzer(NodeVisitor):
         """
         defn.is_property = True
         items = defn.items
+        first_item = cast(Decorator, defn.items[0])
         for item in items[1:]:
-            if len(item.decorators) == 1:
+            if isinstance(item, Decorator) and len(item.decorators) == 1:
                 node = item.decorators[0]
                 if isinstance(node, MemberExpr):
                     if node.name == 'setter':
                         # The first item represents the entire property.
-                        defn.items[0].var.is_settable_property = True
+                        first_item.var.is_settable_property = True
                         # Get abstractness from the original definition.
-                        item.func.is_abstract = items[0].func.is_abstract
+                        item.func.is_abstract = first_item.func.is_abstract
+                item.func.accept(self)
             else:
                 self.fail("Decorated property not supported", item)
-            item.func.accept(self)
 
     def next_function_tvar_id(self) -> int:
         return self.next_function_tvar_id_stack[-1]
@@ -2234,6 +2249,7 @@ class SemanticAnalyzer(NodeVisitor):
                     self.fail('Too many arguments', dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType()
+                dec.type = dec.var.type
                 no_type_check = True
         for i in reversed(removed):
             del dec.decorators[i]
@@ -3165,6 +3181,7 @@ class FirstPass(NodeVisitor):
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
+        # REFACTOR: Visit all bodies
         kind = self.kind_by_scope()
         if kind == GDEF:
             self.sem.check_no_global(func.name(), func, True)
@@ -3172,15 +3189,19 @@ class FirstPass(NodeVisitor):
         if kind == GDEF:
             self.sem.globals[func.name()] = SymbolTableNode(kind, func, self.sem.cur_mod_id)
         if func.impl:
+            impl = func.impl
             # Also analyze the function body (in case there are conditional imports).
             sem = self.sem
-            sem.function_stack.append(func.impl)
-            sem.errors.push_function(func.name())
-            sem.enter()
-            impl = func.impl
+
             if isinstance(impl, FuncDef):
+                sem.function_stack.append(impl)
+                sem.errors.push_function(func.name())
+                sem.enter()
                 impl.body.accept(self)
             elif isinstance(impl, Decorator):
+                sem.function_stack.append(impl.func)
+                sem.errors.push_function(func.name())
+                sem.enter()
                 impl.func.body.accept(self)
             sem.leave()
             sem.errors.pop_function()

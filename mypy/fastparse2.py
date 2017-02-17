@@ -33,7 +33,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType
@@ -220,33 +220,23 @@ class ASTConverter(ast27.NodeTransformer):
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
-        current_overload = []  # type: List[Decorator]
+        current_overload = []  # type: List[OverloadPart]
         current_overload_name = None
-        # mypy doesn't actually check that the decorator is literally @overload
         for stmt in stmts:
             if (isinstance(stmt, Decorator)
-                    and is_overload_part(stmt)
                     and stmt.name() == current_overload_name):
                 current_overload.append(stmt)
             elif (isinstance(stmt, FuncDef)
-                  and not self.is_stub
                   and stmt.name() == current_overload_name
                   and stmt.name() is not None):
-                ret.append(OverloadedFuncDef(current_overload, stmt))
+                ret.append(OverloadedFuncDef(current_overload + [stmt]))
                 current_overload = []
                 current_overload_name = None
             else:
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
-                    if self.is_stub:
-                        ret.append(OverloadedFuncDef(current_overload, None))
-                    else:
-                        # Outside of a stub file, the last definition of the
-                        # overload is the implementation, even if it has a
-                        # decorator.  We will check it later to make sure it
-                        # does *not* have the @overload decorator.
-                        ret.append(OverloadedFuncDef(current_overload[:-1], current_overload[-1]))
+                    ret.append(OverloadedFuncDef(current_overload))
 
                 if isinstance(stmt, Decorator):
                     current_overload = [stmt]
@@ -259,11 +249,7 @@ class ASTConverter(ast27.NodeTransformer):
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
-            if self.is_stub:
-                ret.append(OverloadedFuncDef(current_overload, None))
-            else:
-                ret.append(OverloadedFuncDef(current_overload[:-1], current_overload[-1]))
-
+            ret.append(OverloadedFuncDef(current_overload))
         return ret
 
     def in_class(self) -> bool:

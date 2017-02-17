@@ -874,8 +874,8 @@ from typing import overload
 def f(a: int) -> None: pass
 def f(a: int) -> None: pass
 [out]
-tmp/foo.pyi:4: error: Name 'f' already defined
 tmp/foo.pyi:2: error: Single overload definition, multiple required
+tmp/foo.pyi:4: error: Implementations of overloaded functions not allowed in stub files
 
 
 [case testSingleOverload2]
