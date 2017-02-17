@@ -99,19 +99,15 @@ main:4: error: Unsupported target for indexed assignment
 main:5: error: Type cannot be declared in assignment to non-self attribute
 main:5: error: "str" has no attribute "x"
 
-[case testNewSyntaxFstringError]
-# flags: --fast-parser --python-version 3.5
-f''  # E: Format strings are only supported in Python 3.6 and greater
-
 [case testNewSyntaxAsyncComprehensionError]
 # flags: --fast-parser --python-version 3.5
 async def f():
     results = [i async for i in aiter() if i % 2]  # E: Async comprehensions are only supported in Python 3.6 and greater
 
 
--- F-String
--- --------
-
+[case testNewSyntaxFstringError]
+# flags: --fast-parser --python-version 3.5
+f''  # E: Format strings are only supported in Python 3.6 and greater
 
 [case testNewSyntaxFStringBasics]
 # flags: --fast-parser --python-version 3.6

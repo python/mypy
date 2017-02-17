@@ -1157,7 +1157,6 @@ b'%c' % (123)
 [case testUnicodeInterpolation_python2]
 u'%s' % (u'abc',)
 
-
 -- Lambdas
 -- -------
 
