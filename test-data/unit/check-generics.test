@@ -1534,6 +1534,39 @@ class A:
     def f(cls) -> None: pass
 [builtins fixtures/classmethod.pyi]
 
+[case testGenericTypeExpansionOnClassAccess]
+from typing import TypeVar, Generic
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+class A(Generic[T]):
+    def f(self, x: T) -> None:
+        pass
+class B(Generic[T]):
+    x = None  # type: A[T]
+
+B[int].x.f(0)
+B[int].x.f('hi') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassVariableTypeExpansion]
+from typing import TypeVar, Generic, List, Tuple, Union
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T]):
+    x = None # type: List[T]
+
+A[int].x.append(42)
+A[int].x.append('hi') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+
+class B(Generic[T, S]):
+    x = None # type: Tuple[T, S]
+    y = None # type: Union[T, A[S]]
+
+reveal_type(B[int, str].x) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+reveal_type(B[int, str].y) # E: Revealed type is 'Union[builtins.int*, __maun__.A[builtins.str*]]'
+[builtins fixtures/list.pyi]
+
 [case testGenericOperatorMethodOverlapping]
 from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
