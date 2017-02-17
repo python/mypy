@@ -152,7 +152,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) == 0:
                     return AnyType(line=t.line)
                 if len(t.args) != 1:
-                    self.fail('ClassVar[...] must have exactly one type argument', t)
+                    self.fail('ClassVar[...] must have at most one type argument', t)
                     return AnyType()
                 items = self.anal_array(t.args)
                 return items[0]
