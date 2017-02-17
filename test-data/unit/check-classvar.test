@@ -273,3 +273,15 @@ class A(metaclass=ABCMeta):
     x = None  # type: ClassVar[int]
 class B(A):
     x = 0  # type: ClassVar[int]
+
+[case testAcrossModules]
+import m
+reveal_type(m.A().x)
+m.A().x = 0
+[file m.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[out]
+main:2: error: Revealed type is 'builtins.int'
+main:3: error: Illegal assignment to class variable

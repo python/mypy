@@ -1798,3 +1798,26 @@ warn_no_return = False
 [[mypy-a]
 warn_no_return = True
 [rechecked]
+
+[case testIncrementalClassVar]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar
+A().x = 0
+[out1]
+main:4: error: Illegal assignment to class variable
+[out2]
+main:4: error: Illegal assignment to class variable
+
+[case testIncrementalClassVarGone]
+import m
+m.A().x = 0
+[file m.py]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+[file m.py.next]
+class A:
+    x = None  # type: int
+[out1]
+main:2: error: Illegal assignment to class variable
