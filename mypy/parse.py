@@ -29,7 +29,7 @@ from mypy.nodes import (
     UnaryExpr, FuncExpr, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, Argument,
-    BackquoteExpr, OverloadPart
+    BackquoteExpr
 )
 from mypy import defaults
 from mypy import nodes
@@ -902,14 +902,15 @@ class Parser:
             return node, type
 
     def try_combine_overloads(self, s: Statement, stmt: List[Statement]) -> bool:
-        if isinstance(s, OverloadPart) and stmt:
+        if isinstance(s, (FuncDef, Decorator)) and stmt:
             n = s.name()
-            if (isinstance(stmt[-1], OverloadPart)
-                    and stmt[-1].name() == n):
-                stmt[-1] = OverloadedFuncDef([stmt[-1], s])
+            last = stmt[-1]
+            if (isinstance(last, (FuncDef, Decorator))
+                    and last.name() == n):
+                stmt[-1] = OverloadedFuncDef([last, s])
                 return True
-            elif isinstance(stmt[-1], OverloadedFuncDef) and stmt[-1].name() == n:
-                stmt[-1].items.append(s)
+            elif isinstance(last, OverloadedFuncDef) and last.name() == n:
+                last.items.append(s)
                 return True
         return False
 

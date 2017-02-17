@@ -368,6 +368,9 @@ class FuncBase(Node):
         return self._fullname
 
 
+OverloadPart = Union['FuncDef', 'Decorator']
+
+
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """A logical node representing all the variants of an overloaded function.
 
@@ -402,10 +405,10 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     def deserialize(cls, data: JsonDict) -> 'OverloadedFuncDef':
         assert data['.class'] == 'OverloadedFuncDef'
         res = OverloadedFuncDef([
-            cast(OverloadPart, OverloadPart.deserialize(d))
+            cast(OverloadPart, SymbolNode.deserialize(d))
             for d in data['items']])
         if data.get('impl') is not None:
-            res.impl = cast(OverloadPart, OverloadPart.deserialize(data['impl']))
+            res.impl = cast(OverloadPart, SymbolNode.deserialize(data['impl']))
         if data.get('type') is not None:
             res.type = mypy.types.Type.deserialize(data['type'])
         res._fullname = data['fullname']
@@ -512,16 +515,7 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-class OverloadPart(SymbolNode, Statement):
-    """Interface class for statments that can be part of an OverloadedFuncDef"""
-
-    is_overload = False
-
-    @abstractmethod
-    def get_body(self) -> Optional['Block']: pass
-
-
-class FuncDef(FuncItem, OverloadPart, Statement):
+class FuncDef(FuncItem, SymbolNode, Statement):
     """Function definition.
 
     This is a non-lambda function defined using 'def'.
@@ -592,7 +586,7 @@ class FuncDef(FuncItem, OverloadPart, Statement):
         return ret
 
 
-class Decorator(OverloadPart, Statement):
+class Decorator(SymbolNode, Statement):
     """A decorated function.
 
     A single Decorator object can include any number of function decorators.
