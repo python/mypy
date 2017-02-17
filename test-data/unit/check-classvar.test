@@ -46,6 +46,9 @@ from typing import ClassVar
 class A:
     x = 1  # type: ClassVar[int]
 A().x
+reveal_type(A().x)
+[out]
+main:5: error: Revealed type is 'builtins.int'
 
 [case testTypecheckSimple]
 from typing import ClassVar
@@ -71,6 +74,16 @@ class C:
 C.x = B()
 [out]
 main:8: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+[case testTypeCheckWithOverridden]
+from typing import ClassVar
+class A:
+    pass
+class B(A):
+    pass
+class C:
+    x = A()  # type: ClassVar[A]
+C.x = B()
 
 [case testRevealType]
 from typing import ClassVar
@@ -120,17 +133,77 @@ def f(b: Type[B]) -> None:
 [out]
 main:7: error: Illegal assignment to class variable
 
-[case testAssignmentWithGeneric]
+[case testClassVarWithList]
 from typing import ClassVar, List
 class A:
     x = None  # type: ClassVar[List[int]]
 A.x = ['a']
+A().x.append(1)
+A().x.append('')
 [builtins fixtures/list.pyi]
 [out]
 main:4: error: List item 0 has incompatible type "str"
+main:6: error: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+
+[case testClassVarWithUnion]
+from typing import ClassVar, Union
+class A:
+    x = None  # type: ClassVar[Union[int, str]]
+class B:
+    pass
+A.x = 0
+A.x = 'a'
+A.x = B()
+reveal_type(A().x)
+[out]
+main:8: error: Incompatible types in assignment (expression has type "B", variable has type "Union[int, str]")
+main:9: error: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testOverrideWithNarrowedUnion]
+from typing import ClassVar, Union
+class A: pass
+class B: pass
+class C: pass
+class D:
+    x = None  # type: ClassVar[Union[A, B, C]]
+class E(D):
+    x = None  # type: ClassVar[Union[A, B]]
+
+[case testOverrideWithExtendedUnion]
+from typing import ClassVar, Union
+class A: pass
+class B: pass
+class C: pass
+class D:
+    x = None  # type: ClassVar[Union[A, B]]
+class E(D):
+    x = None  # type: ClassVar[Union[A, B, C]]
+[out]
+main:8: error: Incompatible types in assignment (expression has type "Union[A, B, C]", base class "D" defined the type as "Union[A, B]")
+
+[case testClassVarWithGeneric]
+from typing import ClassVar, Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x = None  # type: ClassVar[T]
+reveal_type(A[int]().x)
+[out]
+main:5: error: Revealed type is 'builtins.int*'
+
+[case testClassVarWithGenericList]
+from typing import ClassVar, Generic, List, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x = None  # type: ClassVar[List[T]]
+reveal_type(A[int]().x)
+A[int].x.append('a')
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Revealed type is 'builtins.list[builtins.int*]'
+main:6: error: Argument 1 to "append" of "list" has incompatible type "str"; expected "T"
 
 [case testAssignmentToCallableRet]
-from typing import ClassVar, Type
+from typing import ClassVar
 class A:
     x = None  # type: ClassVar[int]
 def f() -> A:
@@ -138,3 +211,12 @@ def f() -> A:
 f().x = 0
 [out]
 main:6: error: Illegal assignment to class variable
+
+[case testOverrideWithIncomatibleType]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[int]
+class B(A):
+    x = None  # type: ClassVar[str]
+[out]
+main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
