@@ -3186,7 +3186,6 @@ class FirstPass(NodeVisitor):
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
-        # REFACTOR: Visit all bodies
         kind = self.kind_by_scope()
         if kind == GDEF:
             self.sem.check_no_global(func.name(), func, True)
