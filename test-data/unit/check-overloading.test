@@ -82,7 +82,7 @@ def f(x: 'A') -> 'B': ...
 @overload
 def f(x: 'B') -> 'A': ...
 
-def f(x: 'A') -> Any: # E: Overloaded function implementation cannot accept all possible arguments of signature 2
+def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
     pass
 
 reveal_type(f(A())) # E: Revealed type is '__main__.B'

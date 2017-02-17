@@ -830,7 +830,7 @@ class MessageBuilder:
                   'incompatible return types'.format(index1, index2), context)
 
     def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
-        self.fail('Overloaded function implementation cannot accept all possible arguments '
+        self.fail('Overloaded function implementation does not accept all possible arguments '
                   'of signature {}'.format(index1), context)
 
     def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
