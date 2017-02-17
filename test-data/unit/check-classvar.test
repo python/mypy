@@ -220,3 +220,47 @@ class B(A):
     x = None  # type: ClassVar[str]
 [out]
 main:5: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+
+[case testOverrideWithNormalAttribute]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B(A):
+    x = 2  # type: int
+[out]
+main:5: error: Invalid class attribute definition (previously declared on base class "A")
+
+[case testOverrideWithAttributeWithClassVar]
+from typing import ClassVar
+class A:
+    x = 1  # type: int
+class B(A):
+    x = 2  # type: ClassVar[int]
+[out]
+main:5: error: Invalid class attribute definition (previously declared on base class "A")
+
+[case testOverrideClassVarManyBases]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B:
+    x = 2  # type: int
+class C(A, B):
+    x = 3  # type: ClassVar[int]
+[out]
+main:7: error: Invalid class attribute definition (previously declared on base class "B")
+
+[case testOverrideClassVarWithClassVar]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+class B(A):
+    x = 2  # type: ClassVar[int]
+
+[case testOverrideOnABCSubclass]
+from abc import ABCMeta
+from typing import ClassVar
+class A(metaclass=ABCMeta):
+    x = None  # type: ClassVar[int]
+class B(A):
+    x = 0  # type: ClassVar[int]

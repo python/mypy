@@ -2164,10 +2164,7 @@ class SemanticAnalyzer(NodeVisitor):
         lvalue = s.lvalues[0]
         if len(s.lvalues) != 1 or not isinstance(lvalue, NameExpr):
             return
-        is_classvar = self.check_classvar_definition(lvalue, s.type)
-        if self.is_class_scope() and isinstance(lvalue.node, Var):
-            # Assignments to class variables outside class scope are checked later
-            self.check_classvar_override(lvalue.node, is_classvar)
+        self.check_classvar_definition(lvalue, s.type)
 
     def check_classvar_definition(self, lvalue: NameExpr, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
@@ -2185,25 +2182,6 @@ class SemanticAnalyzer(NodeVisitor):
         else:
             self.fail('Invalid ClassVar definition', lvalue)
             return False
-
-    def check_classvar_override(self, node: Var, is_classvar: bool) -> None:
-        name = node.name()
-        for base in self.type.mro[1:]:
-            tnode = base.names.get(name)
-            if tnode is None:
-                continue
-            base_node = tnode.node
-            if isinstance(base_node, Var):
-                v = base_node
-                if (is_classvar and not v.is_classvar) or (not is_classvar and v.is_classvar):
-                    self.fail_classvar_base_incompatibility(node, v)
-                    return
-
-    def fail_classvar_base_incompatibility(self, shadowing: Var, original: Var) -> None:
-        base_name = original.info.name()
-        self.fail('Invalid class attribute definition '
-                  '(previously declared on base class "%s")' % base_name,
-                  shadowing)
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:

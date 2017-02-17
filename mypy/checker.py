@@ -1150,6 +1150,15 @@ class TypeChecker(StatementVisitor[None]):
                 len(lvalue_node.info.bases) > 0):
 
             for base in lvalue_node.info.mro[1:]:
+                tnode = base.names.get(lvalue_node.name())
+                if tnode is not None:
+                    if not self.check_compatibility_classvar_super(lvalue_node,
+                                                                   base,
+                                                                   tnode.node):
+                        # Show only one error per variable
+                        break
+
+            for base in lvalue_node.info.mro[1:]:
                 # Only check __slots__ against the 'object'
                 # If a base class defines a Tuple of 3 elements, a child of
                 # this class should not be allowed to define it as a Tuple of
@@ -1256,6 +1265,17 @@ class TypeChecker(StatementVisitor[None]):
                 return base_type, base_node
 
         return None, None
+
+    def check_compatibility_classvar_super(self, node: Var,
+                                           base: TypeInfo, base_node: Node) -> bool:
+        if (isinstance(base_node, Var) and
+                ((node.is_classvar and not base_node.is_classvar) or
+                 (not node.is_classvar and base_node.is_classvar))):
+            self.fail('Invalid class attribute definition '
+                      '(previously declared on base class "%s")' % base.name(),
+                      node)
+            return False
+        return True
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
