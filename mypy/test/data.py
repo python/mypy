@@ -119,6 +119,8 @@ def parse_test_cases(
                 input = expand_includes(p[i0].data, include_path)
                 expand_errors(input, tcout, 'main')
                 for file_path, contents in files:
+                    if native_sep and os.path.sep == '\\':
+                        file_path = fix_win_path(file_path)
                     expand_errors(contents.split('\n'), tcout, file_path)
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 tc = DataDrivenTestCase(p[i0].arg, input, tcout, tcout2, path,
