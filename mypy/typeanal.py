@@ -81,11 +81,15 @@ class TypeAnalyser(TypeVisitor[Type]):
                  lookup_func: Callable[[str, Context], SymbolTableNode],
                  lookup_fqn_func: Callable[[str], SymbolTableNode],
                  fail_func: Callable[[str, Context], None], *,
-                 aliasing: bool = False) -> None:
+                 aliasing: bool = False,
+                 allow_tuple_literal: bool = False) -> None:
         self.lookup = lookup_func
         self.lookup_fqn_func = lookup_fqn_func
         self.fail = fail_func
         self.aliasing = aliasing
+        self.allow_tuple_literal = allow_tuple_literal
+        # Positive if we are analyzing arguments of another (outer) type
+        self.nesting_level = 0
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -120,7 +124,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return self.builtin_type('builtins.tuple')
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
-                    instance = self.builtin_type('builtins.tuple', [t.args[0].accept(self)])
+                    instance = self.builtin_type('builtins.tuple', [self.anal_nested(t.args[0])])
                     instance.line = t.line
                     return instance
                 return self.tuple_type(self.anal_array(t.args))
@@ -149,6 +153,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 item = items[0]
                 return TypeType(item, line=t.line)
             elif fullname == 'typing.ClassVar':
+                if self.nesting_level > 0:
+                    self.fail('Invalid ClassVar definition', t)
                 if len(t.args) == 0:
                     return AnyType(line=t.line)
                 if len(t.args) != 1:
@@ -299,12 +305,14 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.anal_array(t.arg_types),
-                               ret_type=t.ret_type.accept(self),
+                               ret_type=self.anal_nested(t.ret_type),
                                fallback=t.fallback or self.builtin_type('builtins.function'),
                                variables=self.anal_var_defs(t.variables))
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        if t.implicit:
+        # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
+        # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
+        if t.implicit and not self.allow_tuple_literal:
             self.fail('Invalid tuple literal type', t)
             return AnyType()
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
@@ -316,13 +324,13 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         items = OrderedDict([
-            (item_name, item_type.accept(self))
+            (item_name, self.anal_nested(item_type))
             for (item_name, item_type) in t.items.items()
         ])
         return TypedDictType(items, t.fallback)
 
     def visit_star_type(self, t: StarType) -> Type:
-        return StarType(t.type.accept(self), t.line)
+        return StarType(self.anal_nested(t.type), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.anal_array(t.items), t.line)
@@ -335,7 +343,7 @@ class TypeAnalyser(TypeVisitor[Type]):
         return AnyType()
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType(t.item.accept(self), line=t.line)
+        return TypeType(self.anal_nested(t.item), line=t.line)
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.builtin_type('builtins.function')
@@ -348,7 +356,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                                 fallback=fallback,
                                 is_ellipsis_args=True)
         elif len(t.args) == 2:
-            ret_type = t.args[1].accept(self)
+            ret_type = self.anal_nested(t.args[1])
             if isinstance(t.args[0], TypeList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
                 args = t.args[0].items
@@ -375,8 +383,15 @@ class TypeAnalyser(TypeVisitor[Type]):
     def anal_array(self, a: List[Type]) -> List[Type]:
         res = []  # type: List[Type]
         for t in a:
-            res.append(t.accept(self))
+            res.append(self.anal_nested(t))
         return res
+
+    def anal_nested(self, t: Type) -> Type:
+        self.nesting_level += 1
+        try:
+            return t.accept(self)
+        finally:
+            self.nesting_level -= 1
 
     def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
         a = []  # type: List[TypeVarDef]

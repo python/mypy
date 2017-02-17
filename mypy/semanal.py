@@ -1306,23 +1306,11 @@ class SemanticAnalyzer(NodeVisitor):
     def anal_type(self, t: Type, allow_tuple_literal: bool = False,
                   aliasing: bool = False) -> Type:
         if t:
-            if allow_tuple_literal:
-                # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
-                # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
-                if isinstance(t, TupleType):
-                    # Unlike TypeAnalyser, also allow implicit tuple types (without Tuple[...]).
-                    star_count = sum(1 for item in t.items if isinstance(item, StarType))
-                    if star_count > 1:
-                        self.fail('At most one star type allowed in a tuple', t)
-                        return TupleType([AnyType() for _ in t.items],
-                                         self.builtin_type('builtins.tuple'), t.line)
-                    items = [self.anal_type(item, True)
-                             for item in t.items]
-                    return TupleType(items, self.builtin_type('builtins.tuple'), t.line)
             a = TypeAnalyser(self.lookup_qualified,
                              self.lookup_fully_qualified,
                              self.fail,
-                             aliasing=aliasing)
+                             aliasing=aliasing,
+                             allow_tuple_literal=allow_tuple_literal)
             return t.accept(a)
         else:
             return None

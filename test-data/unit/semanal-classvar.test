@@ -61,3 +61,92 @@ class A:
     x = None  # type: ClassVar[T]
 [out]
 main:4: error: Invalid type "__main__.T"
+
+[case testClassVarInFunctionArgs]
+from typing import ClassVar
+def f(x: str, y: ClassVar) -> None: pass
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testClassVarFunctionRetType]
+from typing import ClassVar
+def f() -> ClassVar: pass
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testClassVarInCallableArgs]
+from typing import Callable, ClassVar
+f = None  # type: Callable[[int, ClassVar], Any]
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testClassVarInCallableRet]
+from typing import Callable, ClassVar
+f = None  # type: Callable[..., ClassVar]
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testClassVarInUnion]
+from typing import ClassVar, Union
+x = None  # type: Union[ClassVar, str]
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testClassVarInUnionAsAttribute]
+from typing import ClassVar, Union
+class A:
+    x = None  # type: Union[ClassVar, str]
+[out]
+main:3: error: Invalid ClassVar definition
+
+[case testListWithClassVars]
+from typing import ClassVar, List
+x = []  # type: List[ClassVar]
+[builtins fixtures/list.pyi]
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testTupleClassVar]
+from typing import ClassVar, Tuple
+x = None  # type: Tuple[ClassVar, int]
+[out]
+main:2: error: Invalid ClassVar definition
+
+[case testMultipleLvalues]
+from typing import ClassVar
+class A:
+    x, y = None, None  # type: ClassVar, ClassVar
+[out]
+main:3: error: Invalid ClassVar definition
+
+[case testMultipleLvaluesWithList]
+from typing import ClassVar, List
+class A:
+    [x, y] = None, None  # type: List[ClassVar]
+[builtins fixtures/list.pyi]
+[out]
+main:3: error: Invalid ClassVar definition
+
+[case testDeeplyNested]
+from typing import Callable, ClassVar, Union
+class A: pass
+class B:
+    x = None  # type: Union[str, Callable[[A, ClassVar], int]]
+[out]
+main:4: error: Invalid ClassVar definition
+
+[case testClassVarInClassVar]
+from typing import ClassVar
+class A:
+    x = None  # type: ClassVar[ClassVar[int]]
+[out]
+main:3: error: Invalid ClassVar definition
+
+[case testInsideGeneric]
+from typing import ClassVar, Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]): pass
+class B:
+    x = None  # type: A[ClassVar]
+[out]
+main:5: error: Invalid ClassVar definition
