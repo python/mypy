@@ -2150,26 +2150,26 @@ class SemanticAnalyzer(NodeVisitor):
 
     def check_classvar(self, s: AssignmentStmt) -> None:
         lvalue = s.lvalues[0]
-        if len(s.lvalues) != 1 or not isinstance(lvalue, NameExpr):
+        if len(s.lvalues) != 1 or not isinstance(lvalue, (NameExpr, MemberExpr)):
             return
-        self.check_classvar_definition(lvalue, s.type)
+        if not self.check_classvar_definition(s.type):
+            return
+        if self.is_class_scope() and isinstance(lvalue, NameExpr):
+            node = lvalue.node
+            if isinstance(node, Var):
+                node.is_classvar = True
+        elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
+            # In case of member access, report error only when assigning to self
+            # Other kinds of member assignments should be already reported
+            self.fail('Invalid ClassVar definition', lvalue)
 
-    def check_classvar_definition(self, lvalue: NameExpr, typ: Type) -> bool:
+    def check_classvar_definition(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
             return False
-        fullname = sym.node.fullname()
-        if fullname != 'typing.ClassVar':
-            return False
-        node = lvalue.node
-        if self.is_class_scope() and isinstance(node, Var):
-            node.is_classvar = True
-            return True
-        else:
-            self.fail('Invalid ClassVar definition', lvalue)
-            return False
+        return sym.node.fullname() == 'typing.ClassVar'
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:

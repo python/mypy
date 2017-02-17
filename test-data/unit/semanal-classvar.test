@@ -150,3 +150,11 @@ class B:
     x = None  # type: A[ClassVar]
 [out]
 main:5: error: Invalid ClassVar definition
+
+[case testDefineOnSelf]
+from typing import ClassVar
+class A:
+    def __init__(self) -> None:
+        self.x = None  # type: ClassVar
+[out]
+main:4: error: Invalid ClassVar definition

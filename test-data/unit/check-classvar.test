@@ -50,6 +50,15 @@ reveal_type(A().x)
 [out]
 main:5: error: Revealed type is 'builtins.int'
 
+[case testReadingFromSelf]
+from typing import ClassVar
+class A:
+    x = 1  # type: ClassVar[int]
+    def __init__(self) -> None:
+        reveal_type(self.x)
+[out]
+main:5: error: Revealed type is 'builtins.int'
+
 [case testTypecheckSimple]
 from typing import ClassVar
 class A:
