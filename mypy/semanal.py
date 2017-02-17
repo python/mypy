@@ -422,9 +422,14 @@ class SemanticAnalyzer(NodeVisitor):
         return self.lookup_qualified(tvar, context).kind == BOUND_TVAR
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
-        # Decide whether to analyze this as a property or an overload.
-        # If an overload, and we're outside a stub, find the impl and set it.
-        # Remove it from the item list, it's special.
+        # OverloadedFuncDef refers to any legitimate situation where you have
+        # more than one declaration for the same function in a row.  This occurs
+        # with a @property with a setter or a deleter, and for a classic
+        # @overload.
+
+        # Decide whether to analyze this as a property or an overload.  If an
+        # overload, and we're outside a stub, find the impl and set it.  Remove
+        # the impl from the item list, it's special.
         t = []  # type: List[CallableType]
         non_overload_indexes = []
         for i, item in enumerate(defn.items):

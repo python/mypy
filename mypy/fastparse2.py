@@ -19,7 +19,7 @@ import sys
 
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
 from mypy.sharedparse import (
-    special_function_elide_names, argument_elide_name, is_overload_part,
+    special_function_elide_names, argument_elide_name,
 )
 from mypy.nodes import (
     MypyFile, Node, ImportBase, Import, ImportAll, ImportFrom, FuncDef, OverloadedFuncDef,

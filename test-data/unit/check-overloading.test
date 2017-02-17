@@ -8,13 +8,34 @@ def f(x: 'A') -> 'B': ...
 def f(x: 'B') -> 'A': ...
 
 def f(x: Any) -> Any:
-   if isinstance(x, A):
-       return B()
-   else:
-       return A()
+    pass
 
 reveal_type(f(A())) # E: Revealed type is '__main__.B'
 reveal_type(f(B())) # E: Revealed type is '__main__.A'
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadWithImplementationPy2]
+# flags: --python-version 2.7
+
+from typing import overload
+@overload
+def f(x):
+    # type: (A) -> B
+    pass
+
+@overload
+def f(x):
+    # type: (B) -> A
+    pass
+
+def f(x):
+    pass
+
+reveal_type(f(A()))  # E: Revealed type is '__main__.B'
+reveal_type(f(B()))  # E: Revealed type is '__main__.A'
 
 class A: pass
 class B: pass
@@ -29,15 +50,20 @@ def f(x: 'A') -> 'B': ...
 def f(x: 'B') -> 'A': ...
 
 def f(x: Any) -> Any:
-   if isinstance(x, A):
-       y = x
-       y = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-       return y
-   else:
-       return A()
+    foo = 1
+    foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-reveal_type(f(A())) # E: Revealed type is '__main__.B'
-reveal_type(f(B())) # E: Revealed type is '__main__.A'
+@overload
+def g(x: 'A') -> 'B': ...
+@overload
+def g(x: 'B') -> 'A': ...
+
+def g(x):
+    foo = 1
+    foo = "bar"
+
+reveal_type(f(A()))  # E: Revealed type is '__main__.B'
+reveal_type(f(B()))  # E: Revealed type is '__main__.A'
 
 class A: pass
 class B: pass
@@ -57,10 +83,7 @@ def f(x: 'A') -> 'B': ...
 def f(x: 'B') -> 'A': ...
 
 def f(x: 'A') -> Any: # E: Overloaded function implementation cannot accept all possible arguments of signature 2
-   if x is a:
-       return B()
-   else:
-       return A()
+    pass
 
 reveal_type(f(A())) # E: Revealed type is '__main__.B'
 reveal_type(f(B())) # E: Revealed type is '__main__.A'
