@@ -2178,8 +2178,8 @@ class SemanticAnalyzer(NodeVisitor):
         fullname = sym.node.fullname()
         if fullname != 'typing.ClassVar':
             return False
-        if self.is_class_scope() or not isinstance(lvalue.node, Var):
-            node = cast(Var, lvalue.node)
+        node = lvalue.node
+        if self.is_class_scope() and isinstance(node, Var):
             node.is_classvar = True
             return True
         else:
