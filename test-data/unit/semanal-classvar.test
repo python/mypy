@@ -72,15 +72,6 @@ class B(A):
 [out]
 main:5: error: Invalid class attribute definition (previously declared on base class "A")
 
-[case testOverrideClassVarWithInstanceVariable]
-from typing import ClassVar
-class A:
-    x = 1  # type: ClassVar[int]
-class B(A):
-    x = 2  # type: int
-[out]
-main:5: error: Invalid class attribute definition (previously declared on base class "A")
-
 [case testOverrideClassVarManyBases]
 from typing import ClassVar
 class A:
