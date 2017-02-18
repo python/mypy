@@ -880,6 +880,8 @@ class TypeChecker(StatementVisitor[None]):
                                     name,
                                     base.name(),
                                     defn)
+            elif isinstance(original_type, AnyType):
+                pass
             else:
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), defn)
