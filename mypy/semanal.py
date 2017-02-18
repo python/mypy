@@ -2152,7 +2152,7 @@ class SemanticAnalyzer(NodeVisitor):
         lvalue = s.lvalues[0]
         if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
             return
-        if not self.check_classvar_definition(s.type):
+        if not self.is_classvar(s.type):
             return
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
             node = lvalue.node
@@ -2163,7 +2163,7 @@ class SemanticAnalyzer(NodeVisitor):
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
 
-    def check_classvar_definition(self, typ: Type) -> bool:
+    def is_classvar(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
@@ -2275,7 +2275,7 @@ class SemanticAnalyzer(NodeVisitor):
         # Bind index variables and check if they define new names.
         self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
         if s.index_type:
-            if self.check_classvar_definition(s.index_type):
+            if self.is_classvar(s.index_type):
                 self.fail_invalid_classvar(s.index)
             allow_tuple_literal = isinstance(s.index, (TupleExpr, ListExpr))
             s.index_type = self.anal_type(s.index_type, allow_tuple_literal)
@@ -2352,7 +2352,7 @@ class SemanticAnalyzer(NodeVisitor):
                 # Since we have a target, pop the next type from types
                 if types:
                     t = types.pop(0)
-                    if self.check_classvar_definition(t):
+                    if self.is_classvar(t):
                         self.fail_invalid_classvar(n)
                     allow_tuple_literal = isinstance(n, (TupleExpr, ListExpr))
                     t = self.anal_type(t, allow_tuple_literal)
