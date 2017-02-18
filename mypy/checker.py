@@ -1268,12 +1268,17 @@ class TypeChecker(StatementVisitor[None]):
 
     def check_compatibility_classvar_super(self, node: Var,
                                            base: TypeInfo, base_node: Node) -> bool:
-        if (isinstance(base_node, Var) and
-                ((node.is_classvar and not base_node.is_classvar) or
-                 (not node.is_classvar and base_node.is_classvar))):
-            self.fail('Invalid class attribute definition '
-                      '(previously declared on base class "%s")' % base.name(),
-                      node)
+        if not isinstance(base_node, Var):
+            return True
+        if node.is_classvar and not base_node.is_classvar:
+            self.fail('Cannot override instance variable '
+                      '(previously declared on base class "%s") '
+                      'with class variable' % base.name(), node)
+            return False
+        elif not node.is_classvar and base_node.is_classvar:
+            self.fail('Cannot override class variable '
+                      '(previously declared on base class "%s") '
+                      'with instance variable' % base.name(), node)
             return False
         return True
 

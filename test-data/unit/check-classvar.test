@@ -237,7 +237,7 @@ class A:
 class B(A):
     x = 2  # type: int
 [out]
-main:5: error: Invalid class attribute definition (previously declared on base class "A")
+main:5: error: Cannot override class variable (previously declared on base class "A") with instance variable
 
 [case testOverrideWithAttributeWithClassVar]
 from typing import ClassVar
@@ -246,7 +246,7 @@ class A:
 class B(A):
     x = 2  # type: ClassVar[int]
 [out]
-main:5: error: Invalid class attribute definition (previously declared on base class "A")
+main:5: error: Cannot override instance variable (previously declared on base class "A") with class variable
 
 [case testOverrideClassVarManyBases]
 from typing import ClassVar
@@ -257,7 +257,7 @@ class B:
 class C(A, B):
     x = 3  # type: ClassVar[int]
 [out]
-main:7: error: Invalid class attribute definition (previously declared on base class "B")
+main:7: error: Cannot override instance variable (previously declared on base class "B") with class variable
 
 [case testOverrideClassVarWithClassVar]
 from typing import ClassVar
