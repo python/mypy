@@ -165,3 +165,35 @@ class A:
         self.x = None  # type: ClassVar
 [out]
 main:4: error: ClassVar can only be used for assignments in class body
+
+[case testForIndex]
+from typing import ClassVar
+for i in []:  # type: ClassVar
+    pass
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
+
+[case testForIndexInClassBody]
+from typing import ClassVar
+class A:
+    for i in []:  # type: ClassVar
+        pass
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testWithStmt]
+from typing import ClassVar
+class A: pass
+with A() as x:  # type: ClassVar
+    pass
+[out]
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testWithStmtInClassBody]
+from typing import ClassVar
+class A: pass
+class B:
+    with A() as x:  # type: ClassVar
+        pass
+[out]
+main:4: error: ClassVar can only be used for assignments in class body

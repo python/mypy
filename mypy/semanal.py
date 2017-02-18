@@ -2161,7 +2161,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
-            self.fail('ClassVar can only be used for assignments in class body', lvalue)
+            self.fail_invalid_classvar(lvalue)
 
     def check_classvar_definition(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
@@ -2170,6 +2170,9 @@ class SemanticAnalyzer(NodeVisitor):
         if not sym or not sym.node:
             return False
         return sym.node.fullname() == 'typing.ClassVar'
+
+    def fail_invalid_classvar(self, context: Context) -> None:
+        self.fail('ClassVar can only be used for assignments in class body', context)
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
@@ -2272,6 +2275,8 @@ class SemanticAnalyzer(NodeVisitor):
         # Bind index variables and check if they define new names.
         self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
         if s.index_type:
+            if self.check_classvar_definition(s.index_type):
+                self.fail_invalid_classvar(s.index)
             allow_tuple_literal = isinstance(s.index, (TupleExpr, ListExpr))
             s.index_type = self.anal_type(s.index_type, allow_tuple_literal)
             self.store_declared_types(s.index, s.index_type)
@@ -2347,6 +2352,8 @@ class SemanticAnalyzer(NodeVisitor):
                 # Since we have a target, pop the next type from types
                 if types:
                     t = types.pop(0)
+                    if self.check_classvar_definition(t):
+                        self.fail_invalid_classvar(n)
                     allow_tuple_literal = isinstance(n, (TupleExpr, ListExpr))
                     t = self.anal_type(t, allow_tuple_literal)
                     new_types.append(t)
