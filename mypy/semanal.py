@@ -2161,7 +2161,7 @@ class SemanticAnalyzer(NodeVisitor):
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
-            self.fail('Invalid ClassVar definition', lvalue)
+            self.fail('ClassVar can only be used for assignments in class body', lvalue)
 
     def check_classvar_definition(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):

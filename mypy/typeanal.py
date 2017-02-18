@@ -154,7 +154,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return TypeType(item, line=t.line)
             elif fullname == 'typing.ClassVar':
                 if self.nesting_level > 0:
-                    self.fail('Invalid ClassVar definition', t)
+                    self.fail('Invalid type: ClassVar nested inside other type', t)
                 if len(t.args) == 0:
                     return AnyType(line=t.line)
                 if len(t.args) != 1:
