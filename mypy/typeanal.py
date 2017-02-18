@@ -136,12 +136,12 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) != 1:
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
-                items = self.anal_array(t.args)
+                item = self.anal_nested(t.args[0])
                 if experiments.STRICT_OPTIONAL:
-                    return UnionType.make_simplified_union([items[0], NoneTyp()])
+                    return UnionType.make_simplified_union([item, NoneTyp()])
                 else:
                     # Without strict Optional checking Optional[t] is just an alias for t.
-                    return items[0]
+                    return item
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':
@@ -149,8 +149,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     return TypeType(AnyType(), line=t.line)
                 if len(t.args) != 1:
                     self.fail('Type[...] must have exactly one type argument', t)
-                items = self.anal_array(t.args)
-                item = items[0]
+                item = self.anal_nested(t.args[0])
                 return TypeType(item, line=t.line)
             elif fullname == 'typing.ClassVar':
                 if self.nesting_level > 0:
@@ -160,8 +159,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 if len(t.args) != 1:
                     self.fail('ClassVar[...] must have at most one type argument', t)
                     return AnyType()
-                items = self.anal_array(t.args)
-                return items[0]
+                return self.anal_nested(t.args[0])
             elif fullname == 'mypy_extensions.NoReturn':
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:

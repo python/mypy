@@ -2150,7 +2150,7 @@ class SemanticAnalyzer(NodeVisitor):
 
     def check_classvar(self, s: AssignmentStmt) -> None:
         lvalue = s.lvalues[0]
-        if len(s.lvalues) != 1 or not isinstance(lvalue, (NameExpr, MemberExpr)):
+        if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
             return
         if not self.check_classvar_definition(s.type):
             return
