@@ -269,7 +269,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             # TODO allow setting attributes in subclass (although it is probably an error)
             msg.read_only_property(name, info, node)
         if is_lvalue and var.is_classvar:
-            msg.cant_assign_to_classvar(node)
+            msg.cant_assign_to_classvar(name, node)
         if var.is_initialized_in_class and isinstance(t, FunctionLike) and not t.is_type_obj():
             if is_lvalue:
                 if var.is_property:

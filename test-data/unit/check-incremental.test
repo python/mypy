@@ -1805,9 +1805,9 @@ class A:
     x = None  # type: ClassVar
 A().x = 0
 [out1]
-main:4: error: Illegal assignment to class variable
+main:4: error: Cannot assign to class variable "x" via instance
 [out2]
-main:4: error: Illegal assignment to class variable
+main:4: error: Cannot assign to class variable "x" via instance
 
 [case testIncrementalClassVarGone]
 import m
@@ -1820,4 +1820,4 @@ class A:
 class A:
     x = None  # type: int
 [out1]
-main:2: error: Illegal assignment to class variable
+main:2: error: Cannot assign to class variable "x" via instance

@@ -10,7 +10,7 @@ class A:
     x = 1  # type: ClassVar[int]
 A().x = 2
 [out]
-main:4: error: Illegal assignment to class variable
+main:4: error: Cannot assign to class variable "x" via instance
 
 [case testAssignmentOnSubclassInstance]
 from typing import ClassVar
@@ -20,7 +20,7 @@ class B(A):
     pass
 B().x = 2
 [out]
-main:6: error: Illegal assignment to class variable
+main:6: error: Cannot assign to class variable "x" via instance
 
 [case testOverrideOnSelf]
 from typing import ClassVar
@@ -29,7 +29,7 @@ class A:
     def __init__(self) -> None:
         self.x = 0
 [out]
-main:5: error: Illegal assignment to class variable
+main:5: error: Cannot assign to class variable "x" via instance
 
 [case testOverrideOnSelfInSubclass]
 from typing import ClassVar
@@ -39,7 +39,7 @@ class B(A):
     def __init__(self) -> None:
         self.x = 0
 [out]
-main:6: error: Illegal assignment to class variable
+main:6: error: Cannot assign to class variable "x" via instance
 
 [case testReadingFromInstance]
 from typing import ClassVar
@@ -120,7 +120,7 @@ class B:
 c = A()  # type: Union[A, B]
 c.x = 1
 [out]
-main:7: error: Illegal assignment to class variable
+main:7: error: Cannot assign to class variable "x" via instance
 
 [case testAssignmentOnInstanceFromType]
 from typing import ClassVar, Type
@@ -129,7 +129,7 @@ class A:
 def f(a: Type[A]) -> None:
     a().x = 0
 [out]
-main:5: error: Illegal assignment to class variable
+main:5: error: Cannot assign to class variable "x" via instance
 
 [case testAssignmentOnInstanceFromSubclassType]
 from typing import ClassVar, Type
@@ -140,7 +140,7 @@ class B(A):
 def f(b: Type[B]) -> None:
     b().x = 0
 [out]
-main:7: error: Illegal assignment to class variable
+main:7: error: Cannot assign to class variable "x" via instance
 
 [case testClassVarWithList]
 from typing import ClassVar, List
@@ -219,7 +219,7 @@ def f() -> A:
     return A()
 f().x = 0
 [out]
-main:6: error: Illegal assignment to class variable
+main:6: error: Cannot assign to class variable "x" via instance
 
 [case testOverrideWithIncomatibleType]
 from typing import ClassVar
@@ -284,4 +284,4 @@ class A:
     x = None  # type: ClassVar[int]
 [out]
 main:2: error: Revealed type is 'builtins.int'
-main:3: error: Illegal assignment to class variable
+main:3: error: Cannot assign to class variable "x" via instance
