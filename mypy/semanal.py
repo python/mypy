@@ -483,6 +483,7 @@ class SemanticAnalyzer(NodeVisitor):
         if defn.type:
             # Signature must be analyzed in the surrounding scope so that
             # class-level imported names and type variables are in scope.
+            self.check_classvar_in_signature(defn.type)
             defn.type = self.anal_type(defn.type)
             self.check_function_signature(defn)
             if isinstance(defn, FuncDef):
@@ -522,6 +523,20 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.leave()
         self.function_stack.pop()
+
+    def check_classvar_in_signature(self, typ: Type) -> None:
+        t = None  # type: Type
+        if isinstance(typ, Overloaded):
+            for t in typ.items():
+                self.check_classvar_in_signature(t)
+            return
+        if not isinstance(typ, CallableType):
+            return
+        for t in typ.arg_types + [typ.ret_type]:
+            if self.is_classvar(t):
+                self.fail_invalid_classvar(t)
+                # Show only one error per signature
+                break
 
     def add_func_type_variables_to_symbol_table(
             self, defn: FuncItem) -> List[SymbolTableNode]:

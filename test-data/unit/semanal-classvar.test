@@ -66,27 +66,33 @@ main:4: error: Invalid type "__main__.T"
 from typing import ClassVar
 def f(x: str, y: ClassVar) -> None: pass
 [out]
-main:2: error: Invalid type: ClassVar nested inside other type
+main:2: error: ClassVar can only be used for assignments in class body
 
 [case testClassVarInMethodArgs]
 from typing import ClassVar
 class A:
     def f(x: str, y: ClassVar) -> None: pass
 [out]
-main:3: error: Invalid type: ClassVar nested inside other type
+main:3: error: ClassVar can only be used for assignments in class body
 
 [case testClassVarFunctionRetType]
 from typing import ClassVar
 def f() -> ClassVar: pass
 [out]
-main:2: error: Invalid type: ClassVar nested inside other type
+main:2: error: ClassVar can only be used for assignments in class body
 
 [case testClassVarMethodRetType]
 from typing import ClassVar
 class A:
     def f(self) -> ClassVar: pass
 [out]
-main:3: error: Invalid type: ClassVar nested inside other type
+main:3: error: ClassVar can only be used for assignments in class body
+
+[case testMultipleClassVarInFunctionSig]
+from typing import ClassVar
+def f(x: ClassVar, y: ClassVar) -> ClassVar: pass
+[out]
+main:2: error: ClassVar can only be used for assignments in class body
 
 [case testClassVarInCallableArgs]
 from typing import Callable, ClassVar
