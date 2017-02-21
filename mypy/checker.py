@@ -582,7 +582,10 @@ class TypeChecker(StatementVisitor[None]):
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
-                        if arg_type.variance == COVARIANT:
+                        if (
+                            arg_type.variance == COVARIANT and
+                            defn.name() not in ('__init__', '__new__')
+                        ):
                             self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
