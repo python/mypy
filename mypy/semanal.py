@@ -82,6 +82,7 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import join
+from mypy.exprtotype import get_member_expr_fullname
 
 
 T = TypeVar('T')
@@ -957,27 +958,35 @@ class SemanticAnalyzer(NodeVisitor):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
+        error_context = defn
         if defn.metaclass is None and self.options.python_version[0] == 2:
             for body_node in defn.defs.body:
                 if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
                     self.fail("Metaclasses defined as inner classes are not supported", body_node)
-                    return None
+                    return
                 elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
                     lvalue = body_node.lvalues[0]
                     if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        error_context = body_node.rvalue
                         if isinstance(body_node.rvalue, NameExpr):
-                            defn.metaclass = body_node.rvalue.name
+                            name = body_node.rvalue.name
+                        elif isinstance(body_node.rvalue, MemberExpr):
+                            name = get_member_expr_fullname(body_node.rvalue)
+                        else:
+                            name = None
+                        if name:
+                            defn.metaclass = name
                         else:
                             self.fail(
                                 "Dynamic metaclass not supported for '%s'" % defn.name,
                                 body_node
                             )
-                            return None
+                            return
         if defn.metaclass:
             if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
                 return
-            sym = self.lookup_qualified(defn.metaclass, defn)
+            sym = self.lookup_qualified(defn.metaclass, error_context)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
