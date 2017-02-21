@@ -850,6 +850,26 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         else:
             return UnicodeExpr(n.s)
 
+    # Only available with typed_ast >= 0.6.2
+    if hasattr(ast3, 'JoinedStr'):
+        # JoinedStr(expr* values)
+        @with_line
+        def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
+            result_expression = StrExpr('')  # type: Expression
+            for value_expr in self.translate_expr_list(n.values):
+                string_method = MemberExpr(value_expr, '__str__')
+                string_method.set_line(value_expr)
+                stringified_value_expr = CallExpr(string_method, [], [])
+                stringified_value_expr.set_line(value_expr)
+                result_expression = OpExpr('+', result_expression, stringified_value_expr)
+                result_expression.set_line(value_expr)
+            return result_expression
+
+        # FormattedValue(expr value)
+        @with_line
+        def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
+            return self.visit(n.value)
+
     # Bytes(bytes s)
     @with_line
     def visit_Bytes(self, n: ast3.Bytes) -> Union[BytesExpr, StrExpr]:
