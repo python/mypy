@@ -99,6 +99,61 @@ Python objects, and they have no extra runtime overhead or magic due
 to being generic, other than a metaclass that overloads the indexing
 operator.
 
+Defining sub-classes of generic classes
+***************************************
+
+User defined generics and generics defined in typing module
+can be used as base classes for another classes, both generic and
+non-generic. For example:
+
+.. code-block:: python
+
+   from typing import Generic, TypeVar, Iterable
+   T = TypeVar('T')
+
+   class Stream(Iterable[T]): # This is a generic class
+       ...
+   input: Stream[int]
+
+   class Codes(Iterable[int]): # This is not a generic class
+       ...
+   output: Codes[int]  # Error!
+
+   class Receiver(Generic[T]):
+       def accept(self, value: T) -> None:
+           ...
+   class AdvancedReceiver(Receiver[T]):
+       ...
+
+Note that ``Generic[...]`` can be omitted from bases, if there are
+other generic classes. If you include ``Generic[...]`` in bases, then
+it should list all type variables present in other bases (or more,
+if needed). The order of type variables is defined by the following
+rules:
+
+* If ``Generic[...]`` is present, then the order of variables is
+  always determined by their order in ``Generic[...]``.
+* If there are no ``Generic[...]`` in bases, then all type variables
+  are collected in the lexicographic order (i.e. by first appearance).
+
+For example:
+
+.. code-block:: python
+
+   from typing import Generic, TypeVar, Any
+   T = TypeVar('T')
+   S = TypeVar('S')
+   U = TypeVar('U')
+
+   class One(Generic[T]): ...
+   class Another(Generic[T]): ...
+
+   class First(One[T], Another[S]): ...
+   class Second(One[T], Another[S], Generic[S, U, T]): ...
+
+   x: First[int, str] # Here T is bound to int, S is bound to str
+   y: Second[int, str, Any] # Here T is Any, S is int, and U is str
+
 .. _generic-functions:
 
 Generic functions
