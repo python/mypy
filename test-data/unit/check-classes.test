@@ -1949,7 +1949,11 @@ T_co = TypeVar('T_co', covariant=True)
 
 class C(Generic[T_co]):
     def __init__(self, x: T_co) -> None: # This should be allowed
-       pass
+        self.x = x
+    def meth(self) -> None:
+        reveal_type(self.x) # E: Revealed type is 'T_co`1'
+
+reveal_type(C(1).x) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/property.pyi]
 [out]
 
