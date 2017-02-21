@@ -958,7 +958,7 @@ class SemanticAnalyzer(NodeVisitor):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
-        error_context = defn
+        error_context = defn  # type: Context
         if defn.metaclass is None and self.options.python_version[0] == 2:
             for body_node in defn.defs.body:
                 if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
