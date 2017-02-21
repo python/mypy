@@ -66,6 +66,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
+    get_member_expr_fullname,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
@@ -82,7 +83,6 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import join
-from mypy.exprtotype import get_member_expr_fullname
 
 
 T = TypeVar('T')
