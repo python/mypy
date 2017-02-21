@@ -1950,6 +1950,7 @@ T_co = TypeVar('T_co', covariant=True)
 class C(Generic[T_co]):
     def __init__(self, x: T_co) -> None: # This should be allowed
        pass
+[builtins fixtures/property.pyi]
 [out]
 
 [case testTypeUsingTypeCErrorCovariance]
