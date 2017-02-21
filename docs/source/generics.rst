@@ -102,31 +102,46 @@ operator.
 Defining sub-classes of generic classes
 ***************************************
 
-User defined generics and generics defined in typing module
+User-defined generic classes and generic classes defined in ``typing``
 can be used as base classes for another classes, both generic and
 non-generic. For example:
 
 .. code-block:: python
 
    from typing import Generic, TypeVar, Iterable
+
    T = TypeVar('T')
 
-   class Stream(Iterable[T]): # This is a generic class
-       ...
-   input: Stream[int]
+   class Stream(Iterable[T]):  # This is a generic subclass of Iterable
+       def __iter__(self) -> Iterator[T]:
+           ...
 
-   class Codes(Iterable[int]): # This is not a generic class
-       ...
-   output: Codes[int]  # Error!
+   input: Stream[int]  # Okay
+
+   class Codes(Iterable[int]):  # This is a non-generic subclass of Iterable
+       def __iter__(self) -> Iterator[int]:
+           ...
+
+   output: Codes[int]  # Error! Codes is not generic
 
    class Receiver(Generic[T]):
        def accept(self, value: T) -> None:
            ...
+
    class AdvancedReceiver(Receiver[T]):
        ...
 
-Note that ``Generic[...]`` can be omitted from bases, if there are
-other generic classes. If you include ``Generic[...]`` in bases, then
+.. note::
+
+    You have to add an explicit ``Iterable`` (or ``Iterator``) base class
+    if you want mypy to consider a user-defined class as iterable (and
+    ``Sequence`` for sequences, etc.). This is because mypy doesn't support
+    *structural subtyping* and just having an ``__iter__`` method defined is
+    not sufficient to make mypy treat a class as iterable.
+
+``Generic[...]`` can be omitted from bases if there are
+other base classes that include type variables, such as ``Iterable[T]`` in
+the above example. If you include ``Generic[...]`` in bases, then
 it should list all type variables present in other bases (or more,
 if needed). The order of type variables is defined by the following
 rules:
@@ -141,6 +156,7 @@ For example:
 .. code-block:: python
 
    from typing import Generic, TypeVar, Any
+
    T = TypeVar('T')
    S = TypeVar('S')
    U = TypeVar('U')
@@ -151,8 +167,8 @@ For example:
    class First(One[T], Another[S]): ...
    class Second(One[T], Another[S], Generic[S, U, T]): ...
 
-   x: First[int, str] # Here T is bound to int, S is bound to str
-   y: Second[int, str, Any] # Here T is Any, S is int, and U is str
+   x: First[int, str]        # Here T is bound to int, S is bound to str
+   y: Second[int, str, Any]  # Here T is Any, S is int, and U is str
 
 .. _generic-functions:
 
