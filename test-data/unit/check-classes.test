@@ -1942,6 +1942,16 @@ def new_pro_user(user_class: Type[ProUser]):
     new_user(user_class)
 [out]
 
+[case testAllowCovariantArgsInConstructor]
+from typing import Generic, TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+
+class C(Generic[T_co]):
+    def __init__(self, x: T_co) -> None: # This should be allowed
+       pass
+[out]
+
 [case testTypeUsingTypeCErrorCovariance]
 from typing import Type, TypeVar
 class User: pass
