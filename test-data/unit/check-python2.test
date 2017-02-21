@@ -240,3 +240,20 @@ class A:
 def f():
     # type: () -> None
     u"unicode"
+
+[case testMetaclassBasics]
+class M(type):
+    x = 0  # type: int
+    def test(cls):
+        # type: () -> str
+        return "test"
+
+class A(object):
+    __metaclass__ = M
+
+reveal_type(A.x) # E: Revealed type is 'builtins.int'
+reveal_type(A.test()) # E: Revealed type is 'builtins.str'
+
+[case testDynamicMetaclass]
+class C(object):
+    __metaclass__ = int()  # E: Dynamic metaclass not supported for 'C'
