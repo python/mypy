@@ -1025,10 +1025,7 @@ class UnionType(Type):
         elif len(items) == 1:
             return items[0]
         else:
-            if experiments.STRICT_OPTIONAL:
-                return UninhabitedType()
-            else:
-                return Void()
+            return UninhabitedType()
 
     @staticmethod
     def make_simplified_union(items: List[Type], line: int = -1, column: int = -1) -> Type:

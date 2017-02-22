@@ -128,10 +128,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                 assert sym.tvar_def is not None
                 return TypeVarType(sym.tvar_def, t.line)
             elif fullname == 'builtins.None':
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=t.is_ret_type)
-                else:
-                    return Void()
+                return NoneTyp(is_ret_type=t.is_ret_type)
             elif fullname == 'typing.Any':
                 return AnyType()
             elif fullname == 'typing.Tuple':
@@ -153,11 +150,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('Optional[...] must have exactly one type argument', t)
                     return AnyType()
                 item = self.anal_type(t.args[0])
-                if experiments.STRICT_OPTIONAL:
-                    return UnionType.make_simplified_union([item, NoneTyp()])
-                else:
-                    # Without strict Optional checking Optional[t] is just an alias for t.
-                    return item
+                return UnionType.make_simplified_union([item, NoneTyp()])
             elif fullname == 'typing.Callable':
                 return self.analyze_callable_type(t)
             elif fullname == 'typing.Type':

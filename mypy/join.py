@@ -387,13 +387,8 @@ def object_from_instance(instance: Instance) -> Instance:
 def join_type_list(types: List[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
-        # with all variable length tuples, and this makes it possible. A better approach
-        # would be to use a special bottom type, which we do when strict Optional
-        # checking is enabled.
-        if experiments.STRICT_OPTIONAL:
-            return UninhabitedType()
-        else:
-            return NoneTyp()
+        # with all variable length tuples, and this makes it possible.
+        return UninhabitedType()
     joined = types[0]
     for t in types[1:]:
         joined = join_types(joined, t)

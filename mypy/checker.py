@@ -377,11 +377,6 @@ class TypeChecker(StatementVisitor[None]):
             # AwaitableGenerator, Generator, AsyncGenerator, Iterator, or Iterable; ty is args[0].
             ret_type = return_type.args[0]
             # TODO not best fix, better have dedicated yield token
-            if isinstance(ret_type, NoneTyp):
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=True)
-                else:
-                    return Void()
             return ret_type
         else:
             # If the function's declared supertype of Generator has no type
@@ -414,10 +409,7 @@ class TypeChecker(StatementVisitor[None]):
         else:
             # `return_type` is a supertype of Generator, so callers won't be able to send it
             # values.  IOW, tc is None.
-            if experiments.STRICT_OPTIONAL:
-                return NoneTyp(is_ret_type=True)
-            else:
-                return Void()
+            return NoneTyp(is_ret_type=True)
 
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
@@ -1149,11 +1141,8 @@ class TypeChecker(StatementVisitor[None]):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
-                                if experiments.STRICT_OPTIONAL:
-                                    var.type = UnionType.make_simplified_union(
-                                        [rvalue_type, NoneTyp()])
-                                else:
-                                    var.type = rvalue_type
+                                var.type = UnionType.make_simplified_union(
+                                    [rvalue_type, NoneTyp()])
                             else:
                                 var.type = None
                             del partial_types[var]
@@ -2079,10 +2068,7 @@ class TypeChecker(StatementVisitor[None]):
 
         self.check_usable_type(iterable, expr)
         if isinstance(iterable, TupleType):
-            if experiments.STRICT_OPTIONAL:
-                joined = UninhabitedType()  # type: Type
-            else:
-                joined = NoneTyp()
+            joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
             if isinstance(joined, ErrorType):
@@ -2369,8 +2355,7 @@ class TypeChecker(StatementVisitor[None]):
         partial_types = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if (experiments.STRICT_OPTIONAL and
-                        isinstance(var.type, PartialType) and var.type.type is None):
+                if isinstance(var.type, PartialType) and var.type.type is None:
                     # None partial type: assume variable is intended to have type None
                     var.type = NoneTyp()
                 else:
@@ -2925,9 +2910,6 @@ def is_valid_inferred_type_component(typ: Type) -> bool:
     In strict Optional mode this excludes bare None types, as otherwise every
     type containing None would be invalid.
     """
-    if not experiments.STRICT_OPTIONAL:
-        if is_same_type(typ, NoneTyp()):
-            return False
     if is_same_type(typ, UninhabitedType()):
         return False
     elif isinstance(typ, Instance):

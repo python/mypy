@@ -57,12 +57,9 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
             if top:
                 candidate = top
             else:
-                # No constraints for type variable -- type 'None' is the most specific type.
+                # No constraints for type variable -- 'UninhabitedType' is the most specific type.
                 if strict:
-                    if experiments.STRICT_OPTIONAL:
-                        candidate = UninhabitedType()
-                    else:
-                        candidate = NoneTyp()
+                    candidate = UninhabitedType()
                 else:
                     candidate = AnyType()
         elif top is None:

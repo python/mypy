@@ -557,9 +557,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for arg in args:
             if isinstance(arg, UninhabitedType) or has_erased_component(arg):
                 new_args.append(None)
-            elif not experiments.STRICT_OPTIONAL and isinstance(arg, NoneTyp):
-                # Don't substitute None types in non-strict-Optional mode.
-                new_args.append(None)
             else:
                 new_args.append(arg)
         return self.apply_generic_arguments(callable, new_args, error_context)
@@ -2184,10 +2181,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 return AnyType()
             else:
-                if experiments.STRICT_OPTIONAL:
-                    return NoneTyp(is_ret_type=True)
-                else:
-                    return Void()
+                return NoneTyp(is_ret_type=True)
 
     def visit_temp_node(self, e: TempNode) -> Type:
         return e.type
