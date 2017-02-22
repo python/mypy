@@ -7,7 +7,7 @@ from typing import Any, Dict, List, cast, Tuple
 
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, AnyType, Instance, FunctionLike, TupleType, Void, TypeVarType,
+    Type, AnyType, Instance, FunctionLike, TupleType, TypeVarType,
     TypeQuery, ANY_TYPE_STRATEGY, CallableType
 )
 from mypy import nodes
@@ -177,8 +177,6 @@ class StatisticsVisitor(TraverserVisitor):
                     self.num_generic += 1
             else:
                 self.num_simple += 1
-        elif isinstance(t, Void):
-            self.num_simple += 1
         elif isinstance(t, FunctionLike):
             self.num_function += 1
         elif isinstance(t, TupleType):

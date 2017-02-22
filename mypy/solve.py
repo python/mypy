@@ -3,7 +3,7 @@
 from typing import List, Dict
 from collections import defaultdict
 
-from mypy.types import Type, Void, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
+from mypy.types import Type, NoneTyp, AnyType, ErrorType, UninhabitedType, TypeVarId
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types

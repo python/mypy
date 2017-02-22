@@ -72,30 +72,6 @@ class SolveSuite(Suite):
                           [self.supc(self.fx.s, self.fx.a)],
                           [self.fx.nonet, (self.fx.a, self.fx.o)])
 
-    def test_void_constraints(self) -> None:
-        self.assert_solve([self.fx.t.id],
-                          [self.supc(self.fx.t, self.fx.void)],
-                          [(self.fx.void, self.fx.void)])
-        self.assert_solve([self.fx.t.id],
-                          [self.subc(self.fx.t, self.fx.void)],
-                          [(self.fx.void, self.fx.void)])
-
-        # Both bounds void.
-        self.assert_solve([self.fx.t.id],
-                          [self.supc(self.fx.t, self.fx.void),
-                           self.subc(self.fx.t, self.fx.void)],
-                          [(self.fx.void, self.fx.void)])
-
-        # Cannot infer any type.
-        self.assert_solve([self.fx.t.id],
-                          [self.supc(self.fx.t, self.fx.a),
-                           self.supc(self.fx.t, self.fx.void)],
-                          [None])
-        self.assert_solve([self.fx.t.id],
-                          [self.subc(self.fx.t, self.fx.a),
-                           self.subc(self.fx.t, self.fx.void)],
-                          [None])
-
     def test_simple_constraints_with_dynamic_type(self) -> None:
         self.assert_solve([self.fx.t.id],
                           [self.supc(self.fx.t, self.fx.anyt)],

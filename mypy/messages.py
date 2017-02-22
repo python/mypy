@@ -11,7 +11,7 @@ from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType,
-    UnionType, Void, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneTyp, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType
 )
 from mypy.nodes import (
@@ -319,8 +319,6 @@ class MessageBuilder:
                     return s
                 else:
                     return 'union type ({} items)'.format(len(items))
-        elif isinstance(typ, Void):
-            return 'None'
         elif isinstance(typ, NoneTyp):
             return 'None'
         elif isinstance(typ, AnyType):
@@ -622,16 +620,8 @@ class MessageBuilder:
                          callee.arg_names[index]), context)
 
     def does_not_return_value(self, unusable_type: Type, context: Context) -> None:
-        """Report an error about use of an unusable type.
-
-        If the type is a Void type and has a source in it, report it in the error message.
-        This allows giving messages such as 'Foo does not return a value'.
-        """
-        if isinstance(unusable_type, Void) and unusable_type.source is not None:
-            self.fail('{} does not return a value'.format(
-                capitalize((cast(Void, unusable_type)).source)), context)
-        else:
-            self.fail('Function does not return a value', context)
+        """Report an error about use of an unusable type."""
+        self.fail('Function does not return a value', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -660,12 +650,6 @@ class MessageBuilder:
                       .format(overload.name(), arg_types), context)
         else:
             self.fail('No overload variant matches argument types {}'.format(arg_types), context)
-
-    def invalid_cast(self, target_type: Type, source_type: Type,
-                     context: Context) -> None:
-        if not self.check_unusable_type(source_type, context):
-            self.fail('Cannot cast from {} to {}'.format(
-                self.format(source_type), self.format(target_type)), context)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -751,12 +735,11 @@ class MessageBuilder:
         self.fail('"{}" undefined in superclass'.format(member), context)
 
     def check_unusable_type(self, typ: Type, context: Context) -> bool:
-        """If type is a type which is not meant to be used (like Void or
+        """If type is a type which is not meant to be used (like
         NoneTyp(is_ret_type=True)), report an error such as '.. does not
         return a value' and return True. Otherwise, return False.
         """
-        if (isinstance(typ, Void) or
-                (isinstance(typ, NoneTyp) and typ.is_ret_type)):
+        if isinstance(typ, NoneTyp) and typ.is_ret_type:
             self.does_not_return_value(typ, context)
             return True
         else:

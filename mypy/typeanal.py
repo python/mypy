@@ -4,8 +4,8 @@ from collections import OrderedDict
 from typing import Callable, List, Optional, Set
 
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, TypeVarId,
-    AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
+    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance,
+    AnyType, CallableType, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
     get_type_vars,
 )
@@ -16,7 +16,7 @@ from mypy.nodes import (
 )
 from mypy.sametypes import is_same_type
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.subtypes import satisfies_upper_bound
+from mypy.subtypes import is_subtype
 from mypy import nodes
 from mypy import experiments
 
@@ -293,9 +293,6 @@ class TypeAnalyser(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_void(self, t: Void) -> Type:
-        return t
-
     def visit_none_type(self, t: NoneTyp) -> Type:
         return t
 
@@ -493,7 +490,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                         arg_values = [arg]
                     self.check_type_var_values(info, arg_values,
                                                TypeVar.values, i + 1, t)
-                if not satisfies_upper_bound(arg, TypeVar.upper_bound):
+                if not is_subtype(arg, TypeVar.upper_bound):
                     self.fail('Type argument "{}" of "{}" must be '
                               'a subtype of "{}"'.format(
                                   arg, info.name(), TypeVar.upper_bound), t)
@@ -538,9 +535,6 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         pass
 
     def visit_any(self, t: AnyType) -> None:
-        pass
-
-    def visit_void(self, t: Void) -> None:
         pass
 
     def visit_none_type(self, t: NoneTyp) -> None:

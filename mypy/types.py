@@ -281,44 +281,15 @@ class AnyType(Type):
         return AnyType()
 
 
-class Void(Type):
-    """The return type 'None'.
-
-    This can only be used as the return type in a callable type and as
-    the result type of calling such callable.
-    """
-
-    can_be_true = False
-    source = ''   # May be None; function that generated this value
-
-    def __init__(self, source: str = None, line: int = -1, column: int = -1) -> None:
-        self.source = source
-        super().__init__(line, column)
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_void(self)
-
-    def with_source(self, source: str) -> 'Void':
-        return Void(source, self.line, self.column)
-
-    def serialize(self) -> JsonDict:
-        return {'.class': 'Void'}
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'Void':
-        assert data['.class'] == 'Void'
-        return Void()
-
-
 class UninhabitedType(Type):
     """This type has no members.
 
-    This type is almost the bottom type, except it is not a subtype of Void.
+    This type is the bottom type.
     With strict Optional checking, it is the only common subtype between all
     other types, which allows `meet` to be well defined.  Without strict
     Optional checking, NoneTyp fills this role.
 
-    In general, for any type T that isn't Void:
+    In general, for any type T:
         join(UninhabitedType, T) = T
         meet(UninhabitedType, T) = UninhabitedType
         is_subtype(UninhabitedType, T) = True
@@ -348,19 +319,9 @@ class UninhabitedType(Type):
 class NoneTyp(Type):
     """The type of 'None'.
 
-    Without strict Optional checking:
-        This is only used internally during type inference.  Programs
-        cannot declare a variable of this type, and the type checker
-        refuses to infer this type for a variable. However, subexpressions
-        often have this type. Note that this is not used as the result
-        type when calling a function with a void type, even though
-        semantically such a function returns a None value; the void type
-        is used instead so that we can report an error if the caller tries
-        to do anything with the return value.
-
-    With strict Optional checking:
-        This type can be written by users as 'None', except as the return value
-        of a function, where 'None' means Void.
+    This type can be written by users as 'None'. When used as a return type,
+    `is_ret_type` is set to true, which signifies the result should not be
+    used.
     """
 
     can_be_true = False
@@ -669,10 +630,7 @@ class CallableType(FunctionLike):
 
     def with_name(self, name: str) -> 'CallableType':
         """Return a copy of this type with the specified name."""
-        ret = self.ret_type
-        if isinstance(ret, Void):
-            ret = ret.with_source(name)
-        return self.copy_modified(ret_type=ret, name=name)
+        return self.copy_modified(ret_type=self.ret_type, name=name)
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -1224,10 +1182,6 @@ class TypeVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_void(self, t: Void) -> T:
-        pass
-
-    @abstractmethod
     def visit_none_type(self, t: NoneTyp) -> T:
         pass
 
@@ -1301,9 +1255,6 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_any(self, t: AnyType) -> Type:
-        return t
-
-    def visit_void(self, t: Void) -> Type:
         return t
 
     def visit_none_type(self, t: NoneTyp) -> Type:
@@ -1405,9 +1356,6 @@ class TypeStrVisitor(TypeVisitor[str]):
     def visit_any(self, t: AnyType) -> str:
         return 'Any'
 
-    def visit_void(self, t: Void) -> str:
-        return 'void'
-
     def visit_none_type(self, t: NoneTyp) -> str:
         # Fully qualify to make this distinct from the None value.
         return "builtins.None"
@@ -1464,8 +1412,7 @@ class TypeStrVisitor(TypeVisitor[str]):
 
         s = '({})'.format(s)
 
-        if not isinstance(t.ret_type, Void):
-            s += ' -> {}'.format(t.ret_type)
+        s += ' -> {}'.format(t.ret_type)
 
         if t.variables:
             s = '{} {}'.format(t.variables, s)
@@ -1575,9 +1522,6 @@ class TypeQuery(TypeVisitor[bool]):
         return self.default
 
     def visit_any(self, t: AnyType) -> bool:
-        return self.default
-
-    def visit_void(self, t: Void) -> bool:
         return self.default
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:

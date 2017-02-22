@@ -25,7 +25,7 @@ from mypy.nodes import (
 )
 from mypy import nodes
 from mypy.types import (
-    Type, AnyType, CallableType, Void, FunctionLike, Overloaded, TupleType, TypedDictType,
+    Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, ErrorType, strip_type, TypeType,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     true_only, false_only, function_type, is_named_instance
@@ -300,7 +300,7 @@ class TypeChecker(StatementVisitor[None]):
     #
     # A classic generator must define a return type that's either
     # `Generator[ty, tc, tr]`, Iterator[ty], or Iterable[ty] (or
-    # object or Any).  If tc/tr are not given, both are Void.
+    # object or Any).  If tc/tr are not given, both are None.
     #
     # A coroutine must define a return type corresponding to tr; the
     # other two are unconstrained.  The "external" return type (seen
@@ -521,7 +521,7 @@ class TypeChecker(StatementVisitor[None]):
                 if fdef:
                     # Check if __init__ has an invalid, non-None return type.
                     if (fdef.info and fdef.name() in ('__init__', '__init_subclass__') and
-                            not isinstance(typ.ret_type, (Void, NoneTyp)) and
+                            not isinstance(typ.ret_type, NoneTyp) and
                             not self.dynamic_funcs[-1]):
                         self.fail(messages.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name()),
                                   item.type)
@@ -564,7 +564,7 @@ class TypeChecker(StatementVisitor[None]):
                     if (self.options.python_version[0] == 2 and
                             isinstance(typ.ret_type, Instance) and
                             typ.ret_type.type.fullname() == 'typing.Generator'):
-                        if not isinstance(typ.ret_type.args[2], (Void, NoneTyp, AnyType)):
+                        if not isinstance(typ.ret_type.args[2], (NoneTyp, AnyType)):
                             self.fail(messages.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
 
                 # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
@@ -652,7 +652,7 @@ class TypeChecker(StatementVisitor[None]):
                 else:
                     return_type = self.return_types[-1]
 
-                if (not isinstance(return_type, (Void, NoneTyp, AnyType))
+                if (not isinstance(return_type, (NoneTyp, AnyType))
                         and not self.is_trivial_body(defn.body)):
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
@@ -1775,7 +1775,7 @@ class TypeChecker(StatementVisitor[None]):
 
                 if self.is_unusable_type(return_type):
                     # Lambdas are allowed to have a unusable returns.
-                    # Functions returning a value of type None are allowed to have a Void return.
+                    # Functions returning a value of type None are allowed to have a None return.
                     if isinstance(self.scope.top_function(), FuncExpr) or isinstance(typ, NoneTyp):
                         return
                     self.fail(messages.NO_RETURN_VALUE_EXPECTED, s)
@@ -1794,7 +1794,7 @@ class TypeChecker(StatementVisitor[None]):
                         isinstance(return_type, AnyType)):
                     return
 
-                if isinstance(return_type, (Void, NoneTyp, AnyType)):
+                if isinstance(return_type, (NoneTyp, AnyType)):
                     return
 
                 if self.in_checked_function():
@@ -2371,9 +2371,9 @@ class TypeChecker(StatementVisitor[None]):
     def is_unusable_type(self, typ: Type) -> bool:
         """Is this type an unusable type?
 
-        The two unusable types are Void and NoneTyp(is_ret_type=True).
+        The unusable type is NoneTyp(is_ret_type=True).
         """
-        return isinstance(typ, Void) or (isinstance(typ, NoneTyp) and typ.is_ret_type)
+        return isinstance(typ, NoneTyp) and typ.is_ret_type
 
     def check_usable_type(self, typ: Type, context: Context) -> None:
         """Generate an error if the type is not a usable type."""

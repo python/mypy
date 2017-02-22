@@ -5,7 +5,7 @@ from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional
 
 from mypy.errors import report_internal_error
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneTyp, Void, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
@@ -1189,7 +1189,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if result is None:
                 result = sub_result
             else:
-                # TODO: check on void needed?
                 self.check_usable_type(sub_result, e)
                 result = join.join_types(result, sub_result)
 
@@ -1521,15 +1520,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         target_type = expr.type
         if self.chk.options.warn_redundant_casts and is_same_type(source_type, target_type):
             self.msg.redundant_cast(target_type, expr)
-        if not self.is_valid_cast(source_type, target_type):
-            self.msg.invalid_cast(target_type, source_type, expr)
         return target_type
 
-    def is_valid_cast(self, source_type: Type, target_type: Type) -> bool:
-        """Is a cast from source_type to target_type meaningful?"""
-        return (isinstance(target_type, AnyType) or
-                (not isinstance(source_type, Void) and
-                 not isinstance(target_type, Void)))
 
     def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
         """Type check a reveal_type expression."""
@@ -1764,8 +1756,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not inferred_type:
             # No useful type context.
             ret_type = self.accept(e.expr())
-            if isinstance(ret_type, NoneTyp):
-                ret_type = Void()
             fallback = self.named_type('builtins.function')
             return callable_type(e, fallback, ret_type)
         else:
@@ -2033,7 +2023,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return typ
 
     def check_usable_type(self, typ: Type, context: Context) -> None:
-        """Generate an error if type is Void."""
+        """Generate an error if type is not a usable type."""
         self.chk.check_usable_type(typ, context)
 
     def named_type(self, name: str) -> Instance:
@@ -2096,7 +2086,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return_type = self.chk.return_types[-1]
         expected_item_type = self.chk.get_generator_yield_type(return_type, False)
         if e.expr is None:
-            if (not isinstance(expected_item_type, (Void, NoneTyp, AnyType))
+            if (not isinstance(expected_item_type, (NoneTyp, AnyType))
                     and self.chk.in_checked_function()):
                 self.chk.fail(messages.YIELD_VALUE_EXPECTED, e)
         else:
