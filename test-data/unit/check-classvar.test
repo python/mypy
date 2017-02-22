@@ -190,27 +190,6 @@ class E(D):
 [out]
 main:8: error: Incompatible types in assignment (expression has type "Union[A, B, C]", base class "D" defined the type as "Union[A, B]")
 
-[case testClassVarWithGeneric]
-from typing import ClassVar, Generic, TypeVar
-T = TypeVar('T')
-class A(Generic[T]):
-    x = None  # type: ClassVar[T]
-reveal_type(A[int]().x)
-[out]
-main:5: error: Revealed type is 'builtins.int*'
-
-[case testClassVarWithGenericList]
-from typing import ClassVar, Generic, List, TypeVar
-T = TypeVar('T')
-class A(Generic[T]):
-    x = None  # type: ClassVar[List[T]]
-reveal_type(A[int]().x)
-A[int].x.append('a')
-[builtins fixtures/list.pyi]
-[out]
-main:5: error: Revealed type is 'builtins.list[builtins.int*]'
-main:6: error: Argument 1 to "append" of "list" has incompatible type "str"; expected "T"
-
 [case testAssignmentToCallableRet]
 from typing import ClassVar
 class A:
