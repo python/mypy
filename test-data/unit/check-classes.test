@@ -303,6 +303,12 @@ class B(A):
     def g(self) -> None:
         def f(self) -> str: pass
 
+[case testOverride__init_subclass__WithDifferentSignature]
+class A:
+    def __init_subclass__(cls, x: int) -> None: pass
+class B(A):
+    def __init_subclass__(cls) -> None: pass
+
 
 -- Constructors
 -- ------------
@@ -1934,6 +1940,21 @@ def new_user(user_class: Type[User]) -> User:
     return user_class()
 def new_pro_user(user_class: Type[ProUser]):
     new_user(user_class)
+[out]
+
+[case testAllowCovariantArgsInConstructor]
+from typing import Generic, TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+
+class C(Generic[T_co]):
+    def __init__(self, x: T_co) -> None: # This should be allowed
+        self.x = x
+    def meth(self) -> None:
+        reveal_type(self.x) # E: Revealed type is 'T_co`1'
+
+reveal_type(C(1).x) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/property.pyi]
 [out]
 
 [case testTypeUsingTypeCErrorCovariance]

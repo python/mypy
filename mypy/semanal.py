@@ -66,7 +66,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
-    collections_type_aliases,
+    collections_type_aliases, get_member_expr_fullname,
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
@@ -254,6 +254,8 @@ class SemanticAnalyzer(NodeVisitor):
 
         if self.cur_mod_id == 'builtins':
             remove_imported_names_from_symtable(self.globals, 'builtins')
+            for alias_name in ['List', 'Dict', 'Set']:
+                self.globals.pop(alias_name, None)
 
         if '__all__' in self.globals:
             for name, g in self.globals.items():
@@ -956,11 +958,35 @@ class SemanticAnalyzer(NodeVisitor):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
+        error_context = defn  # type: Context
+        if defn.metaclass is None and self.options.python_version[0] == 2:
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    return
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        error_context = body_node.rvalue
+                        if isinstance(body_node.rvalue, NameExpr):
+                            name = body_node.rvalue.name
+                        elif isinstance(body_node.rvalue, MemberExpr):
+                            name = get_member_expr_fullname(body_node.rvalue)
+                        else:
+                            name = None
+                        if name:
+                            defn.metaclass = name
+                        else:
+                            self.fail(
+                                "Dynamic metaclass not supported for '%s'" % defn.name,
+                                body_node
+                            )
+                            return
         if defn.metaclass:
             if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
                 return
-            sym = self.lookup_qualified(defn.metaclass, defn)
+            sym = self.lookup_qualified(defn.metaclass, error_context)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
                 return
@@ -1499,7 +1525,7 @@ class SemanticAnalyzer(NodeVisitor):
               isinstance(lval, ListExpr)):
             items = lval.items
             if len(items) == 0 and isinstance(lval, TupleExpr):
-                self.fail("Can't assign to ()", lval)
+                self.fail("can't assign to ()", lval)
             self.analyze_tuple_or_list_lvalue(lval, add_global, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:

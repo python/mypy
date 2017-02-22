@@ -1196,7 +1196,7 @@ print(b.x + 1)
 4
 
 [case testInferenceWithLambda]
-from typing import TypeVar, Iterable, Iterator
+from typing import TypeVar, Iterable, Iterator, List
 import itertools
 
 _T = TypeVar('_T')

@@ -27,7 +27,7 @@ from mypy import messages
 from mypy.errors import Errors
 
 try:
-    from typed_ast import ast35
+    from typed_ast import ast3  # type: ignore  # typeshed PR #931
 except ImportError:
     if sys.version_info.minor > 2:
         print('You must install the typed_ast package before you can run mypy'
@@ -39,7 +39,7 @@ except ImportError:
               ' Python 3.3 and greater.')
     sys.exit(1)
 
-T = TypeVar('T', bound=Union[ast35.expr, ast35.stmt])
+T = TypeVar('T', bound=Union[ast3.expr, ast3.stmt])
 U = TypeVar('U', bound=Node)
 V = TypeVar('V')
 
@@ -65,7 +65,7 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
     is_stub_file = bool(fnam) and fnam.endswith('.pyi')
     try:
         assert pyversion[0] >= 3 or is_stub_file
-        ast = ast35.parse(source, fnam, 'exec')
+        ast = ast3.parse(source, fnam, 'exec', feature_version=pyversion[1])
 
         tree = ASTConverter(pyversion=pyversion,
                             is_stub=is_stub_file,
@@ -86,12 +86,12 @@ def parse(source: Union[str, bytes], fnam: str = None, errors: Errors = None,
 
 def parse_type_comment(type_comment: str, line: int, errors: Errors) -> Optional[Type]:
     try:
-        typ = ast35.parse(type_comment, '<type_comment>', 'eval')
+        typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR)
         return None
     else:
-        assert isinstance(typ, ast35.Expression)
+        assert isinstance(typ, ast3.Expression)
         return TypeConverter(errors, line=line).visit(typ.body)
 
 
@@ -111,16 +111,16 @@ def find(f: Callable[[V], bool], seq: Sequence[V]) -> V:
     return None
 
 
-def is_no_type_check_decorator(expr: ast35.expr) -> bool:
-    if isinstance(expr, ast35.Name):
+def is_no_type_check_decorator(expr: ast3.expr) -> bool:
+    if isinstance(expr, ast3.Name):
         return expr.id == 'no_type_check'
-    elif isinstance(expr, ast35.Attribute):
-        if isinstance(expr.value, ast35.Name):
+    elif isinstance(expr, ast3.Attribute):
+        if isinstance(expr.value, ast3.Name):
             return expr.value.id == 'typing' and expr.attr == 'no_type_check'
     return False
 
 
-class ASTConverter(ast35.NodeTransformer):
+class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self,
                  pyversion: Tuple[int, int],
                  is_stub: bool,
@@ -137,13 +137,13 @@ class ASTConverter(ast35.NodeTransformer):
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg)
 
-    def generic_visit(self, node: ast35.AST) -> None:
+    def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
 
     def visit_NoneType(self, n: Any) -> Optional[Node]:
         return None
 
-    def translate_expr_list(self, l: Sequence[ast35.AST]) -> List[Expression]:
+    def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Expression]:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
@@ -151,7 +151,7 @@ class ASTConverter(ast35.NodeTransformer):
             res.append(exp)
         return res
 
-    def translate_stmt_list(self, l: Sequence[ast35.AST]) -> List[Statement]:
+    def translate_stmt_list(self, l: Sequence[ast3.AST]) -> List[Statement]:
         res = []  # type: List[Statement]
         for e in l:
             stmt = self.visit(e)
@@ -160,22 +160,22 @@ class ASTConverter(ast35.NodeTransformer):
         return res
 
     op_map = {
-        ast35.Add: '+',
-        ast35.Sub: '-',
-        ast35.Mult: '*',
-        ast35.MatMult: '@',
-        ast35.Div: '/',
-        ast35.Mod: '%',
-        ast35.Pow: '**',
-        ast35.LShift: '<<',
-        ast35.RShift: '>>',
-        ast35.BitOr: '|',
-        ast35.BitXor: '^',
-        ast35.BitAnd: '&',
-        ast35.FloorDiv: '//'
+        ast3.Add: '+',
+        ast3.Sub: '-',
+        ast3.Mult: '*',
+        ast3.MatMult: '@',
+        ast3.Div: '/',
+        ast3.Mod: '%',
+        ast3.Pow: '**',
+        ast3.LShift: '<<',
+        ast3.RShift: '>>',
+        ast3.BitOr: '|',
+        ast3.BitXor: '^',
+        ast3.BitAnd: '&',
+        ast3.FloorDiv: '//'
     }
 
-    def from_operator(self, op: ast35.operator) -> str:
+    def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
@@ -183,26 +183,26 @@ class ASTConverter(ast35.NodeTransformer):
             return op_name
 
     comp_op_map = {
-        ast35.Gt: '>',
-        ast35.Lt: '<',
-        ast35.Eq: '==',
-        ast35.GtE: '>=',
-        ast35.LtE: '<=',
-        ast35.NotEq: '!=',
-        ast35.Is: 'is',
-        ast35.IsNot: 'is not',
-        ast35.In: 'in',
-        ast35.NotIn: 'not in'
+        ast3.Gt: '>',
+        ast3.Lt: '<',
+        ast3.Eq: '==',
+        ast3.GtE: '>=',
+        ast3.LtE: '<=',
+        ast3.NotEq: '!=',
+        ast3.Is: 'is',
+        ast3.IsNot: 'is not',
+        ast3.In: 'in',
+        ast3.NotIn: 'not in'
     }
 
-    def from_comp_operator(self, op: ast35.cmpop) -> str:
+    def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown comparison operator ' + str(type(op)))
         else:
             return op_name
 
-    def as_block(self, stmts: List[ast35.stmt], lineno: int) -> Block:
+    def as_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
         b = None
         if stmts:
             b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
@@ -253,7 +253,7 @@ class ASTConverter(ast35.NodeTransformer):
             return 'builtins'
         return id
 
-    def visit_Module(self, mod: ast35.Module) -> MypyFile:
+    def visit_Module(self, mod: ast3.Module) -> MypyFile:
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
 
         return MypyFile(body,
@@ -268,16 +268,16 @@ class ASTConverter(ast35.NodeTransformer):
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     @with_line
-    def visit_FunctionDef(self, n: ast35.FunctionDef) -> Union[FuncDef, Decorator]:
+    def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
         return self.do_func_def(n)
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     @with_line
-    def visit_AsyncFunctionDef(self, n: ast35.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
+    def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
         return self.do_func_def(n, is_coroutine=True)
 
-    def do_func_def(self, n: Union[ast35.FunctionDef, ast35.AsyncFunctionDef],
+    def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
         no_type_check = bool(n.decorator_list and
@@ -296,11 +296,11 @@ class ASTConverter(ast35.NodeTransformer):
             return_type = None
         elif n.type_comment is not None:
             try:
-                func_type_ast = ast35.parse(n.type_comment, '<func_type>', 'func_type')
-                assert isinstance(func_type_ast, ast35.FunctionType)
+                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                assert isinstance(func_type_ast, ast3.FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
-                        isinstance(func_type_ast.argtypes[0], ast35.Ellipsis)):
+                        isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
@@ -384,19 +384,25 @@ class ASTConverter(ast35.NodeTransformer):
             type.optional = optional
 
     def transform_args(self,
-                       args: ast35.arguments,
+                       args: ast3.arguments,
                        line: int,
                        no_type_check: bool = False,
                        ) -> List[Argument]:
-        def make_argument(arg: ast35.arg, default: Optional[ast35.expr], kind: int) -> Argument:
+        def make_argument(arg: ast3.arg, default: Optional[ast3.expr], kind: int) -> Argument:
             if no_type_check:
                 arg_type = None
             else:
-                arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+                if arg.annotation is not None and arg.type_comment is not None:
+                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
+                arg_type = None
+                if arg.annotation is not None:
+                    arg_type = TypeConverter(self.errors, line=line).visit(arg.annotation)
+                elif arg.type_comment is not None:
+                    arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
             return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
         new_args = []
-        names = []  # type: List[ast35.arg]
+        names = []  # type: List[ast3.arg]
         num_no_defaults = len(args.args) - len(args.defaults)
         # positional arguments without defaults
         for a in args.args[:num_no_defaults]:
@@ -436,10 +442,10 @@ class ASTConverter(ast35.NodeTransformer):
 
         return new_args
 
-    def stringify_name(self, n: ast35.AST) -> str:
-        if isinstance(n, ast35.Name):
+    def stringify_name(self, n: ast3.AST) -> str:
+        if isinstance(n, ast3.Name):
             return n.id
-        elif isinstance(n, ast35.Attribute):
+        elif isinstance(n, ast3.Attribute):
             sv = self.stringify_name(n.value)
             if sv is not None:
                 return "{}.{}".format(sv, n.attr)
@@ -451,7 +457,7 @@ class ASTConverter(ast35.NodeTransformer):
     #  stmt* body,
     #  expr* decorator_list)
     @with_line
-    def visit_ClassDef(self, n: ast35.ClassDef) -> ClassDef:
+    def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
         self.class_nesting += 1
         metaclass_arg = find(lambda x: x.arg == 'metaclass', n.keywords)
         metaclass = None
@@ -471,12 +477,12 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Return(expr? value)
     @with_line
-    def visit_Return(self, n: ast35.Return) -> ReturnStmt:
+    def visit_Return(self, n: ast3.Return) -> ReturnStmt:
         return ReturnStmt(self.visit(n.value))
 
     # Delete(expr* targets)
     @with_line
-    def visit_Delete(self, n: ast35.Delete) -> DelStmt:
+    def visit_Delete(self, n: ast3.Delete) -> DelStmt:
         if len(n.targets) > 1:
             tup = TupleExpr(self.translate_expr_list(n.targets))
             tup.set_line(n.lineno)
@@ -486,40 +492,36 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Assign(expr* targets, expr? value, string? type_comment, expr? annotation)
     @with_line
-    def visit_Assign(self, n: ast35.Assign) -> AssignmentStmt:
-        typ = None
-        if hasattr(n, 'annotation') and n.annotation is not None:  # type: ignore
-            new_syntax = True
-        else:
-            new_syntax = False
-        if new_syntax and self.pyversion < (3, 6):
-            self.fail('Variable annotation syntax is only supported in Python 3.6, '
-                      'use type comment instead', n.lineno, n.col_offset)
-        # typed_ast prevents having both type_comment and annotation.
+    def visit_Assign(self, n: ast3.Assign) -> AssignmentStmt:
+        lvalues = self.translate_expr_list(n.targets)
+        rvalue = self.visit(n.value)
         if n.type_comment is not None:
             typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        elif new_syntax:
-            typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)  # type: ignore
-            typ.column = n.annotation.col_offset
+        else:
+            typ = None
+        return AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
+
+    # AnnAssign(expr target, expr annotation, expr? value, int simple)
+    @with_line
+    def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
         if n.value is None:  # always allow 'x: int'
             rvalue = TempNode(AnyType())  # type: Expression
         else:
             rvalue = self.visit(n.value)
-        lvalues = self.translate_expr_list(n.targets)
-        return AssignmentStmt(lvalues,
-                              rvalue,
-                              type=typ, new_syntax=new_syntax)
+        typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
+        typ.column = n.annotation.col_offset
+        return AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
 
     # AugAssign(expr target, operator op, expr value)
     @with_line
-    def visit_AugAssign(self, n: ast35.AugAssign) -> OperatorAssignmentStmt:
+    def visit_AugAssign(self, n: ast3.AugAssign) -> OperatorAssignmentStmt:
         return OperatorAssignmentStmt(self.from_operator(n.op),
                               self.visit(n.target),
                               self.visit(n.value))
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     @with_line
-    def visit_For(self, n: ast35.For) -> ForStmt:
+    def visit_For(self, n: ast3.For) -> ForStmt:
         if n.type_comment is not None:
             target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
         else:
@@ -530,33 +532,38 @@ class ASTConverter(ast35.NodeTransformer):
                        self.as_block(n.orelse, n.lineno),
                        target_type)
 
-    # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+    # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     @with_line
-    def visit_AsyncFor(self, n: ast35.AsyncFor) -> ForStmt:
+    def visit_AsyncFor(self, n: ast3.AsyncFor) -> ForStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         r = ForStmt(self.visit(n.target),
                     self.visit(n.iter),
                     self.as_block(n.body, n.lineno),
-                    self.as_block(n.orelse, n.lineno))
+                    self.as_block(n.orelse, n.lineno),
+                    target_type)
         r.is_async = True
         return r
 
     # While(expr test, stmt* body, stmt* orelse)
     @with_line
-    def visit_While(self, n: ast35.While) -> WhileStmt:
+    def visit_While(self, n: ast3.While) -> WhileStmt:
         return WhileStmt(self.visit(n.test),
                          self.as_block(n.body, n.lineno),
                          self.as_block(n.orelse, n.lineno))
 
     # If(expr test, stmt* body, stmt* orelse)
     @with_line
-    def visit_If(self, n: ast35.If) -> IfStmt:
+    def visit_If(self, n: ast3.If) -> IfStmt:
         return IfStmt([self.visit(n.test)],
                       [self.as_block(n.body, n.lineno)],
                       self.as_block(n.orelse, n.lineno))
 
     # With(withitem* items, stmt* body, string? type_comment)
     @with_line
-    def visit_With(self, n: ast35.With) -> WithStmt:
+    def visit_With(self, n: ast3.With) -> WithStmt:
         if n.type_comment is not None:
             target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
         else:
@@ -566,23 +573,28 @@ class ASTConverter(ast35.NodeTransformer):
                         self.as_block(n.body, n.lineno),
                         target_type)
 
-    # AsyncWith(withitem* items, stmt* body)
+    # AsyncWith(withitem* items, stmt* body, string? type_comment)
     @with_line
-    def visit_AsyncWith(self, n: ast35.AsyncWith) -> WithStmt:
+    def visit_AsyncWith(self, n: ast3.AsyncWith) -> WithStmt:
+        if n.type_comment is not None:
+            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
+        else:
+            target_type = None
         r = WithStmt([self.visit(i.context_expr) for i in n.items],
                      [self.visit(i.optional_vars) for i in n.items],
-                     self.as_block(n.body, n.lineno))
+                     self.as_block(n.body, n.lineno),
+                     target_type)
         r.is_async = True
         return r
 
     # Raise(expr? exc, expr? cause)
     @with_line
-    def visit_Raise(self, n: ast35.Raise) -> RaiseStmt:
+    def visit_Raise(self, n: ast3.Raise) -> RaiseStmt:
         return RaiseStmt(self.visit(n.exc), self.visit(n.cause))
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     @with_line
-    def visit_Try(self, n: ast35.Try) -> TryStmt:
+    def visit_Try(self, n: ast3.Try) -> TryStmt:
         vs = [NameExpr(h.name) if h.name is not None else None for h in n.handlers]
         types = [self.visit(h.type) for h in n.handlers]
         handlers = [self.as_block(h.body, h.lineno) for h in n.handlers]
@@ -596,12 +608,12 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Assert(expr test, expr? msg)
     @with_line
-    def visit_Assert(self, n: ast35.Assert) -> AssertStmt:
+    def visit_Assert(self, n: ast3.Assert) -> AssertStmt:
         return AssertStmt(self.visit(n.test), self.visit(n.msg))
 
     # Import(alias* names)
     @with_line
-    def visit_Import(self, n: ast35.Import) -> Import:
+    def visit_Import(self, n: ast3.Import) -> Import:
         names = []  # type: List[Tuple[str, str]]
         for alias in n.names:
             name = self.translate_module_id(alias.name)
@@ -618,7 +630,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     # ImportFrom(identifier? module, alias* names, int? level)
     @with_line
-    def visit_ImportFrom(self, n: ast35.ImportFrom) -> ImportBase:
+    def visit_ImportFrom(self, n: ast3.ImportFrom) -> ImportBase:
         i = None  # type: ImportBase
         if len(n.names) == 1 and n.names[0].name == '*':
             i = ImportAll(n.module, n.level)
@@ -631,45 +643,45 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Global(identifier* names)
     @with_line
-    def visit_Global(self, n: ast35.Global) -> GlobalDecl:
+    def visit_Global(self, n: ast3.Global) -> GlobalDecl:
         return GlobalDecl(n.names)
 
     # Nonlocal(identifier* names)
     @with_line
-    def visit_Nonlocal(self, n: ast35.Nonlocal) -> NonlocalDecl:
+    def visit_Nonlocal(self, n: ast3.Nonlocal) -> NonlocalDecl:
         return NonlocalDecl(n.names)
 
     # Expr(expr value)
     @with_line
-    def visit_Expr(self, n: ast35.Expr) -> ExpressionStmt:
+    def visit_Expr(self, n: ast3.Expr) -> ExpressionStmt:
         value = self.visit(n.value)
         return ExpressionStmt(value)
 
     # Pass
     @with_line
-    def visit_Pass(self, n: ast35.Pass) -> PassStmt:
+    def visit_Pass(self, n: ast3.Pass) -> PassStmt:
         return PassStmt()
 
     # Break
     @with_line
-    def visit_Break(self, n: ast35.Break) -> BreakStmt:
+    def visit_Break(self, n: ast3.Break) -> BreakStmt:
         return BreakStmt()
 
     # Continue
     @with_line
-    def visit_Continue(self, n: ast35.Continue) -> ContinueStmt:
+    def visit_Continue(self, n: ast3.Continue) -> ContinueStmt:
         return ContinueStmt()
 
     # --- expr ---
     # BoolOp(boolop op, expr* values)
     @with_line
-    def visit_BoolOp(self, n: ast35.BoolOp) -> OpExpr:
+    def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
         # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
         assert len(n.values) >= 2
         op = None
-        if isinstance(n.op, ast35.And):
+        if isinstance(n.op, ast3.And):
             op = 'and'
-        elif isinstance(n.op, ast35.Or):
+        elif isinstance(n.op, ast3.Or):
             op = 'or'
         else:
             raise RuntimeError('unknown BoolOp ' + str(type(n)))
@@ -685,7 +697,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     # BinOp(expr left, operator op, expr right)
     @with_line
-    def visit_BinOp(self, n: ast35.BinOp) -> OpExpr:
+    def visit_BinOp(self, n: ast3.BinOp) -> OpExpr:
         op = self.from_operator(n.op)
 
         if op is None:
@@ -695,15 +707,15 @@ class ASTConverter(ast35.NodeTransformer):
 
     # UnaryOp(unaryop op, expr operand)
     @with_line
-    def visit_UnaryOp(self, n: ast35.UnaryOp) -> UnaryExpr:
+    def visit_UnaryOp(self, n: ast3.UnaryOp) -> UnaryExpr:
         op = None
-        if isinstance(n.op, ast35.Invert):
+        if isinstance(n.op, ast3.Invert):
             op = '~'
-        elif isinstance(n.op, ast35.Not):
+        elif isinstance(n.op, ast3.Not):
             op = 'not'
-        elif isinstance(n.op, ast35.UAdd):
+        elif isinstance(n.op, ast3.UAdd):
             op = '+'
-        elif isinstance(n.op, ast35.USub):
+        elif isinstance(n.op, ast3.USub):
             op = '-'
 
         if op is None:
@@ -713,8 +725,8 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Lambda(arguments args, expr body)
     @with_line
-    def visit_Lambda(self, n: ast35.Lambda) -> FuncExpr:
-        body = ast35.Return(n.body)
+    def visit_Lambda(self, n: ast3.Lambda) -> FuncExpr:
+        body = ast3.Return(n.body)
         body.lineno = n.lineno
         body.col_offset = n.col_offset
 
@@ -723,35 +735,35 @@ class ASTConverter(ast35.NodeTransformer):
 
     # IfExp(expr test, expr body, expr orelse)
     @with_line
-    def visit_IfExp(self, n: ast35.IfExp) -> ConditionalExpr:
+    def visit_IfExp(self, n: ast3.IfExp) -> ConditionalExpr:
         return ConditionalExpr(self.visit(n.test),
                                self.visit(n.body),
                                self.visit(n.orelse))
 
     # Dict(expr* keys, expr* values)
     @with_line
-    def visit_Dict(self, n: ast35.Dict) -> DictExpr:
+    def visit_Dict(self, n: ast3.Dict) -> DictExpr:
         return DictExpr(list(zip(self.translate_expr_list(n.keys),
                                  self.translate_expr_list(n.values))))
 
     # Set(expr* elts)
     @with_line
-    def visit_Set(self, n: ast35.Set) -> SetExpr:
+    def visit_Set(self, n: ast3.Set) -> SetExpr:
         return SetExpr(self.translate_expr_list(n.elts))
 
     # ListComp(expr elt, comprehension* generators)
     @with_line
-    def visit_ListComp(self, n: ast35.ListComp) -> ListComprehension:
-        return ListComprehension(self.visit_GeneratorExp(cast(ast35.GeneratorExp, n)))
+    def visit_ListComp(self, n: ast3.ListComp) -> ListComprehension:
+        return ListComprehension(self.visit_GeneratorExp(cast(ast3.GeneratorExp, n)))
 
     # SetComp(expr elt, comprehension* generators)
     @with_line
-    def visit_SetComp(self, n: ast35.SetComp) -> SetComprehension:
-        return SetComprehension(self.visit_GeneratorExp(cast(ast35.GeneratorExp, n)))
+    def visit_SetComp(self, n: ast3.SetComp) -> SetComprehension:
+        return SetComprehension(self.visit_GeneratorExp(cast(ast3.GeneratorExp, n)))
 
     # DictComp(expr key, expr value, comprehension* generators)
     @with_line
-    def visit_DictComp(self, n: ast35.DictComp) -> DictionaryComprehension:
+    def visit_DictComp(self, n: ast3.DictComp) -> DictionaryComprehension:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
@@ -763,7 +775,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     # GeneratorExp(expr elt, comprehension* generators)
     @with_line
-    def visit_GeneratorExp(self, n: ast35.GeneratorExp) -> GeneratorExpr:
+    def visit_GeneratorExp(self, n: ast3.GeneratorExp) -> GeneratorExpr:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
@@ -774,23 +786,23 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Await(expr value)
     @with_line
-    def visit_Await(self, n: ast35.Await) -> AwaitExpr:
+    def visit_Await(self, n: ast3.Await) -> AwaitExpr:
         v = self.visit(n.value)
         return AwaitExpr(v)
 
     # Yield(expr? value)
     @with_line
-    def visit_Yield(self, n: ast35.Yield) -> YieldExpr:
+    def visit_Yield(self, n: ast3.Yield) -> YieldExpr:
         return YieldExpr(self.visit(n.value))
 
     # YieldFrom(expr value)
     @with_line
-    def visit_YieldFrom(self, n: ast35.YieldFrom) -> YieldFromExpr:
+    def visit_YieldFrom(self, n: ast3.YieldFrom) -> YieldFromExpr:
         return YieldFromExpr(self.visit(n.value))
 
     # Compare(expr left, cmpop* ops, expr* comparators)
     @with_line
-    def visit_Compare(self, n: ast35.Compare) -> ComparisonExpr:
+    def visit_Compare(self, n: ast3.Compare) -> ComparisonExpr:
         operators = [self.from_comp_operator(o) for o in n.ops]
         operands = self.translate_expr_list([n.left] + n.comparators)
         return ComparisonExpr(operators, operands)
@@ -798,14 +810,14 @@ class ASTConverter(ast35.NodeTransformer):
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
     @with_line
-    def visit_Call(self, n: ast35.Call) -> CallExpr:
-        def is_star2arg(k: ast35.keyword) -> bool:
+    def visit_Call(self, n: ast3.Call) -> CallExpr:
+        def is_star2arg(k: ast3.keyword) -> bool:
             return k.arg is None
 
         arg_types = self.translate_expr_list(
-            [a.value if isinstance(a, ast35.Starred) else a for a in n.args] +
+            [a.value if isinstance(a, ast3.Starred) else a for a in n.args] +
             [k.value for k in n.keywords])
-        arg_kinds = ([ARG_STAR if isinstance(a, ast35.Starred) else ARG_POS for a in n.args] +
+        arg_kinds = ([ARG_STAR if isinstance(a, ast3.Starred) else ARG_POS for a in n.args] +
                      [ARG_STAR2 if is_star2arg(k) else ARG_NAMED for k in n.keywords])
         return CallExpr(self.visit(n.func),
                         arg_types,
@@ -814,10 +826,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Num(object n) -- a number as a PyObject.
     @with_line
-    def visit_Num(self, n: ast35.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        if getattr(n, 'contains_underscores', None) and self.pyversion < (3, 6):
-            self.fail('Underscores in numeric literals are only supported in Python 3.6',
-                      n.lineno, n.col_offset)
+    def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):
@@ -829,7 +838,7 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Str(string s)
     @with_line
-    def visit_Str(self, n: ast35.Str) -> Union[UnicodeExpr, StrExpr]:
+    def visit_Str(self, n: ast3.Str) -> Union[UnicodeExpr, StrExpr]:
         if self.pyversion[0] >= 3 or self.is_stub:
             # Hack: assume all string literals in Python 2 stubs are normal
             # strs (i.e. not unicode).  All stubs are parsed with the Python 3
@@ -841,9 +850,29 @@ class ASTConverter(ast35.NodeTransformer):
         else:
             return UnicodeExpr(n.s)
 
+    # Only available with typed_ast >= 0.6.2
+    if hasattr(ast3, 'JoinedStr'):
+        # JoinedStr(expr* values)
+        @with_line
+        def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
+            result_expression = StrExpr('')  # type: Expression
+            for value_expr in self.translate_expr_list(n.values):
+                string_method = MemberExpr(value_expr, '__str__')
+                string_method.set_line(value_expr)
+                stringified_value_expr = CallExpr(string_method, [], [])
+                stringified_value_expr.set_line(value_expr)
+                result_expression = OpExpr('+', result_expression, stringified_value_expr)
+                result_expression.set_line(value_expr)
+            return result_expression
+
+        # FormattedValue(expr value)
+        @with_line
+        def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
+            return self.visit(n.value)
+
     # Bytes(bytes s)
     @with_line
-    def visit_Bytes(self, n: ast35.Bytes) -> Union[BytesExpr, StrExpr]:
+    def visit_Bytes(self, n: ast3.Bytes) -> Union[BytesExpr, StrExpr]:
         # The following line is a bit hacky, but is the best way to maintain
         # compatibility with how mypy currently parses the contents of bytes literals.
         contents = str(n.s)[2:-1]
@@ -854,19 +883,19 @@ class ASTConverter(ast35.NodeTransformer):
             return StrExpr(contents)
 
     # NameConstant(singleton value)
-    def visit_NameConstant(self, n: ast35.NameConstant) -> NameExpr:
+    def visit_NameConstant(self, n: ast3.NameConstant) -> NameExpr:
         return NameExpr(str(n.value))
 
     # Ellipsis
     @with_line
-    def visit_Ellipsis(self, n: ast35.Ellipsis) -> EllipsisExpr:
+    def visit_Ellipsis(self, n: ast3.Ellipsis) -> EllipsisExpr:
         return EllipsisExpr()
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     @with_line
-    def visit_Attribute(self, n: ast35.Attribute) -> Union[MemberExpr, SuperExpr]:
-        if (isinstance(n.value, ast35.Call) and
-                isinstance(n.value.func, ast35.Name) and
+    def visit_Attribute(self, n: ast3.Attribute) -> Union[MemberExpr, SuperExpr]:
+        if (isinstance(n.value, ast3.Call) and
+                isinstance(n.value.func, ast3.Name) and
                 n.value.func.id == 'super'):
             return SuperExpr(n.attr)
 
@@ -874,47 +903,47 @@ class ASTConverter(ast35.NodeTransformer):
 
     # Subscript(expr value, slice slice, expr_context ctx)
     @with_line
-    def visit_Subscript(self, n: ast35.Subscript) -> IndexExpr:
+    def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         return IndexExpr(self.visit(n.value), self.visit(n.slice))
 
     # Starred(expr value, expr_context ctx)
     @with_line
-    def visit_Starred(self, n: ast35.Starred) -> StarExpr:
+    def visit_Starred(self, n: ast3.Starred) -> StarExpr:
         return StarExpr(self.visit(n.value))
 
     # Name(identifier id, expr_context ctx)
     @with_line
-    def visit_Name(self, n: ast35.Name) -> NameExpr:
+    def visit_Name(self, n: ast3.Name) -> NameExpr:
         return NameExpr(n.id)
 
     # List(expr* elts, expr_context ctx)
     @with_line
-    def visit_List(self, n: ast35.List) -> ListExpr:
+    def visit_List(self, n: ast3.List) -> ListExpr:
         return ListExpr([self.visit(e) for e in n.elts])
 
     # Tuple(expr* elts, expr_context ctx)
     @with_line
-    def visit_Tuple(self, n: ast35.Tuple) -> TupleExpr:
+    def visit_Tuple(self, n: ast3.Tuple) -> TupleExpr:
         return TupleExpr([self.visit(e) for e in n.elts])
 
     # --- slice ---
 
     # Slice(expr? lower, expr? upper, expr? step)
-    def visit_Slice(self, n: ast35.Slice) -> SliceExpr:
+    def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
         return SliceExpr(self.visit(n.lower),
                          self.visit(n.upper),
                          self.visit(n.step))
 
     # ExtSlice(slice* dims)
-    def visit_ExtSlice(self, n: ast35.ExtSlice) -> TupleExpr:
+    def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
         return TupleExpr(self.translate_expr_list(n.dims))
 
     # Index(expr value)
-    def visit_Index(self, n: ast35.Index) -> Node:
+    def visit_Index(self, n: ast3.Index) -> Node:
         return self.visit(n.value)
 
 
-class TypeConverter(ast35.NodeTransformer):
+class TypeConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
     def __init__(self, errors: Errors, line: int = -1) -> None:
         self.errors = errors
         self.line = line
@@ -925,37 +954,37 @@ class TypeConverter(ast35.NodeTransformer):
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
-        # without needing to create an intermediary `ast35.Str` object.
+        # without needing to create an intermediary `ast3.Str` object.
         return parse_type_comment(s.strip(), self.line, self.errors) or AnyType()
 
-    def generic_visit(self, node: ast35.AST) -> Type:  # type: ignore
+    def generic_visit(self, node: ast3.AST) -> Type:  # type: ignore
         self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
         return AnyType()
 
     def visit_NoneType(self, n: Any) -> Type:
         return None
 
-    def translate_expr_list(self, l: Sequence[ast35.AST]) -> List[Type]:
+    def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Type]:
         return [self.visit(e) for e in l]
 
-    def visit_Name(self, n: ast35.Name) -> Type:
+    def visit_Name(self, n: ast3.Name) -> Type:
         return UnboundType(n.id, line=self.line)
 
-    def visit_NameConstant(self, n: ast35.NameConstant) -> Type:
+    def visit_NameConstant(self, n: ast3.NameConstant) -> Type:
         return UnboundType(str(n.value))
 
     # Str(string s)
-    def visit_Str(self, n: ast35.Str) -> Type:
+    def visit_Str(self, n: ast3.Str) -> Type:
         return parse_type_comment(n.s.strip(), self.line, self.errors) or AnyType()
 
     # Subscript(expr value, slice slice, expr_context ctx)
-    def visit_Subscript(self, n: ast35.Subscript) -> Type:
-        if not isinstance(n.slice, ast35.Index):
+    def visit_Subscript(self, n: ast3.Subscript) -> Type:
+        if not isinstance(n.slice, ast3.Index):
             self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType()
 
         empty_tuple_index = False
-        if isinstance(n.slice.value, ast35.Tuple):
+        if isinstance(n.slice.value, ast3.Tuple):
             params = self.translate_expr_list(n.slice.value.elts)
             if len(n.slice.value.elts) == 0:
                 empty_tuple_index = True
@@ -970,11 +999,11 @@ class TypeConverter(ast35.NodeTransformer):
             self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType()
 
-    def visit_Tuple(self, n: ast35.Tuple) -> Type:
+    def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), None, implicit=True, line=self.line)
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    def visit_Attribute(self, n: ast35.Attribute) -> Type:
+    def visit_Attribute(self, n: ast3.Attribute) -> Type:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
@@ -984,9 +1013,9 @@ class TypeConverter(ast35.NodeTransformer):
             return AnyType()
 
     # Ellipsis
-    def visit_Ellipsis(self, n: ast35.Ellipsis) -> Type:
+    def visit_Ellipsis(self, n: ast3.Ellipsis) -> Type:
         return EllipsisType(line=self.line)
 
     # List(expr* elts, expr_context ctx)
-    def visit_List(self, n: ast35.List) -> Type:
+    def visit_List(self, n: ast3.List) -> Type:
         return TypeList(self.translate_expr_list(n.elts), line=self.line)
