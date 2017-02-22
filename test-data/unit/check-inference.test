@@ -670,7 +670,8 @@ T = TypeVar('T')
 def f(x: Callable[..., T]) -> T: return x()
 class A: pass
 x = None  # type: Type[A]
-f(x)
+y = f(x)
+reveal_type(y)  # E: Revealed type is '__main__.A*'
 
 -- Generic function inference with unions
 -- --------------------------------------
