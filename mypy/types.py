@@ -14,7 +14,6 @@ from mypy.nodes import (
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 
-from mypy import experiments
 from mypy.sharedparse import argument_elide_name
 
 

@@ -143,7 +143,8 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
                 items = self.anal_array(t.args)
-                items = [item for item in items if not isinstance(item, Void)]
+                if not experiments.STRICT_OPTIONAL:
+                    items = [item for item in items if not isinstance(item, NoneTyp)]
                 return UnionType.make_union(items)
             elif fullname == 'typing.Optional':
                 if len(t.args) != 1:
