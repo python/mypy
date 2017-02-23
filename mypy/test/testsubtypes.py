@@ -84,8 +84,8 @@ class SubtypingSuite(Suite):
         self.assert_strict_subtype(self.fx.callable(self.fx.d, self.fx.b),
                                    self.fx.callable(self.fx.d, self.fx.a))
 
-        self.assert_unrelated(self.fx.callable(self.fx.a, self.fx.a),
-                              self.fx.callable(self.fx.a, self.fx.nonet))
+        self.assert_strict_subtype(self.fx.callable(self.fx.a, self.fx.nonet),
+                                   self.fx.callable(self.fx.a, self.fx.a))
 
         self.assert_unrelated(
             self.fx.callable(self.fx.a, self.fx.a, self.fx.a),

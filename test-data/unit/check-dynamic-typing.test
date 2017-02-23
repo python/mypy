@@ -537,7 +537,7 @@ f11 = None # type: Callable[[], Any]
 f2 = None # type: Callable[[], A]
 f3 = None # type: Callable[[], None]
 
-f2 = f3 # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], A])
+f2 = f3
 
 f1 = f2
 f1 = f3

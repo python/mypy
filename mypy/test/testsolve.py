@@ -64,13 +64,13 @@ class SolveSuite(Suite):
     def test_no_constraints_for_var(self) -> None:
         self.assert_solve([self.fx.t.id],
                           [],
-                          [self.fx.nonet])
+                          [self.fx.uninhabited])
         self.assert_solve([self.fx.t.id, self.fx.s.id],
                           [],
-                          [self.fx.nonet, self.fx.nonet])
+                          [self.fx.uninhabited, self.fx.uninhabited])
         self.assert_solve([self.fx.t.id, self.fx.s.id],
                           [self.supc(self.fx.s, self.fx.a)],
-                          [self.fx.nonet, (self.fx.a, self.fx.o)])
+                          [self.fx.uninhabited, (self.fx.a, self.fx.o)])
 
     def test_simple_constraints_with_dynamic_type(self) -> None:
         self.assert_solve([self.fx.t.id],

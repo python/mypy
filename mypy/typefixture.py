@@ -7,7 +7,7 @@ from typing import List
 
 from mypy.types import (
     Type, TypeVarType, AnyType, ErrorType, NoneTyp,
-    Instance, CallableType, TypeVarDef, TypeType,
+    Instance, CallableType, TypeVarDef, TypeType, UninhabitedType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -43,6 +43,7 @@ class TypeFixture:
         self.anyt = AnyType()
         self.err = ErrorType()
         self.nonet = NoneTyp()
+        self.uninhabited = UninhabitedType()
 
         # Abstract class TypeInfos
 

@@ -414,7 +414,7 @@ class B(A[C]):
   def g(self, c: C) -> None:
     self.f(c)
 [out]
-CallExpr(8) : void
+CallExpr(8) : builtins.None
 MemberExpr(8) : def (a: C)
 NameExpr(8) : C
 NameExpr(8) : B
@@ -430,7 +430,7 @@ class B(A[C, T], Generic[T]):
   def g(self, c: C) -> None:
     self.f(c)
 [out]
-CallExpr(9) : void
+CallExpr(9) : builtins.None
 MemberExpr(9) : def (a: C)
 NameExpr(9) : C
 NameExpr(9) : B[T`1]
@@ -446,7 +446,7 @@ b = None # type: B
 c = None # type: C
 b.f(c)
 [out]
-CallExpr(9) : void
+CallExpr(9) : builtins.None
 MemberExpr(9) : def (a: C)
 NameExpr(9) : B
 NameExpr(9) : C
@@ -597,11 +597,11 @@ class A(Generic[T]): pass
 class B: pass
 class C(B): pass
 [out]
-CallExpr(4) : void
+CallExpr(4) : builtins.None
 CallExpr(4) : A[B]
-CallExpr(5) : void
+CallExpr(5) : builtins.None
 CallExpr(5) : A[B]
-CallExpr(6) : void
+CallExpr(6) : builtins.None
 CallExpr(6) : A[B]
 
 [case testInferGenericTypeForLocalVariable]
@@ -1104,7 +1104,7 @@ m(fun,
 [out]
 IntExpr(13) : builtins.int
 ListExpr(13) : builtins.list[builtins.int]
-CallExpr(14) : void
+CallExpr(14) : builtins.None
 NameExpr(14) : def (s: builtins.int) -> builtins.int
 NameExpr(14) : def (fun: def (builtins.int) -> builtins.int, iter: builtins.list[builtins.int])
 NameExpr(15) : builtins.list[builtins.int]

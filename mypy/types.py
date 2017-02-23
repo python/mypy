@@ -1412,7 +1412,8 @@ class TypeStrVisitor(TypeVisitor[str]):
 
         s = '({})'.format(s)
 
-        s += ' -> {}'.format(t.ret_type)
+        if not isinstance(t.ret_type, NoneTyp):
+            s += ' -> {}'.format(t.ret_type)
 
         if t.variables:
             s = '{} {}'.format(t.variables, s)

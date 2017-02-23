@@ -208,7 +208,7 @@ from typing import Callable
 f = None # type: Callable[[], None]
 g = None # type: Callable[[], object]
 f = g  # E: Incompatible types in assignment (expression has type Callable[[], object], variable has type Callable[[], None])
-g = f  # E: Incompatible types in assignment (expression has type Callable[[], None], variable has type Callable[[], object])
+g = f  # OK
 
 f = f
 g = g
