@@ -30,12 +30,11 @@ try:
     from typed_ast import ast3  # type: ignore  # typeshed PR #931
 except ImportError:
     if sys.version_info.minor > 2:
-        print('You must install the typed_ast package before you can run mypy'
-              ' with `--fast-parser`.\n'
-              'You can do this with `python3 -m pip install typed-ast`.',
+        print('You must install or update the typed_ast package before you can run mypy.\n'
+              'You can do this with `python3 -m pip install -U typed-ast`.',
               file=sys.stderr)
     else:
-        print('The typed_ast package required by --fast-parser is only compatible with'
+        print('The typed_ast package required by mypy is only compatible with'
               ' Python 3.3 and greater.')
     sys.exit(1)
 
