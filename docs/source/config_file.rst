@@ -165,7 +165,7 @@ overridden by the pattern sections matching the module name.
 - ``ignore_errors`` (Boolean, default False) ignores all non-fatal
   errors.
 
-- ``warn_no_return`` (Boolean, default False) shows errors for
+- ``warn_no_return`` (Boolean, default True) shows errors for
   missing return statements on some execution paths.
 
 - ``warn_return_any`` (Boolean, default False) shows a warning when
