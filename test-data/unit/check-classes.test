@@ -2950,3 +2950,27 @@ class B(metaclass=MM): # E: Invalid metaclass 'MM'
     y = 0
 reveal_type(A.y) # E: Revealed type is 'builtins.int'
 A.x # E: "A" has no attribute "x"
+
+[case testAnyAsBaseOfMetaclass]
+from typing import Any, Type
+M = None  # type: Any
+class MM(M): pass
+
+class A(metaclass=MM):
+    y = 0
+    @classmethod
+    def f(cls) -> None: pass
+    def g(self) -> None: pass
+
+def h(a: Type[A], b: Type[object]) -> None:
+    h(a, a)
+    h(b, a) # E: Argument 1 to "h" has incompatible type Type[object]; expected Type[A]
+    a.f(1) # E: Too many arguments for "f" of "A"
+    reveal_type(a.y) # E: Revealed type is 'builtins.int'
+
+x = A # type: MM
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+reveal_type(A.x) # E: Revealed type is 'Any'
+A.f(1) # E: Too many arguments for "f" of "A"
+A().g(1) # E: Too many arguments for "g" of "A"
+[builtins fixtures/classmethod.pyi]
