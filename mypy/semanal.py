@@ -960,6 +960,7 @@ class SemanticAnalyzer(NodeVisitor):
     def analyze_metaclass(self, defn: ClassDef) -> None:
         error_context = defn  # type: Context
         if defn.metaclass is None and self.options.python_version[0] == 2:
+            # Look for "__metaclass__ = <metaclass>" in Python 2.
             for body_node in defn.defs.body:
                 if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
                     self.fail("Metaclasses defined as inner classes are not supported", body_node)
@@ -989,6 +990,13 @@ class SemanticAnalyzer(NodeVisitor):
             sym = self.lookup_qualified(defn.metaclass, error_context)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
+                return
+            if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
+                # 'Any' metaclass -- just ignore it.
+                #
+                # TODO: A better approach would be to record this information
+                #       and assume that the type object supports arbitrary
+                #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)

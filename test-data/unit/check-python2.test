@@ -283,3 +283,12 @@ class A(object):
     __metaclass__ = m.M  # E: Name 'm' is not defined
 class B(object):
     __metaclass__ = M  # E: Name 'M' is not defined
+
+[case testMetaclassAndSkippedImportInPython2]
+# flags: --ignore-missing-imports
+from missing import M
+class A(object):
+    __metaclass__ = M
+    y = 0
+reveal_type(A().y) # E: Revealed type is 'builtins.int'
+A().x # E: "A" has no attribute "x"
