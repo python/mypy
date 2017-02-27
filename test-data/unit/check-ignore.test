@@ -3,6 +3,10 @@ x = 1
 x() # type: ignore
 x() # E: "int" not callable
 
+[case testMypyIgnore]
+x = 1
+x() # mypy: ignore
+
 [case testIgnoreUndefinedName]
 x = 1
 y # type: ignore

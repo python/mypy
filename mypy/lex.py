@@ -840,7 +840,7 @@ class Lexer:
         self.i += len(s)
         self.column += len(s)
 
-    type_ignore_exp = re.compile(r'[ \t]*#[ \t]*type:[ \t]*ignore\b')
+    type_ignore_exp = re.compile(r'[ \t]*#[ \t]*(mypy|type):[ \t]*ignore\b')
 
     def add_token(self, tok: Token) -> None:
         """Store a token.
