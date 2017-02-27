@@ -2923,3 +2923,30 @@ class M1(M):
 
 class A(metaclass=M1): pass
 reveal_type(A.foo())  # E: Revealed type is '__main__.A*'
+
+[case testMetaclassAndSkippedImport]
+# flags: --ignore-missing-imports
+from missing import M
+class A(metaclass=M):
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testAnyMetaclass]
+from typing import Any
+M = None  # type: Any
+class A(metaclass=M):
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testInvalidVariableAsMetaclass]
+from typing import Any
+M = 0  # type: int
+MM = 0
+class A(metaclass=M): # E: Invalid metaclass 'M'
+    y = 0
+class B(metaclass=MM): # E: Invalid metaclass 'MM'
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
