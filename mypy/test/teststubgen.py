@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import time
+from types import ModuleType
 
 from typing import List, Tuple
 
@@ -186,6 +187,7 @@ class StubgencSuite(Suite):
             assert_equal(infer_method_sig('__%s__' % op), '()')
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
-        output = []
-        generate_c_type_stub(os, 'alias', object, output)
+        output = []  # type: List[str]
+        mod = ModuleType('module', '')  # any module is fine
+        generate_c_type_stub(mod, 'alias', object, output)
         assert_equal(output[0], 'class alias:')
