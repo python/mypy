@@ -219,6 +219,43 @@ narrow down the type to a specific type:
    f('x')  # OK
    f(1.1)  # Error
 
+.. _noreturn:
+
+The NoReturn type
+*****************
+
+Mypy provides an experimental support for functions that supposed to never
+return, such as ``sys.exit()``. For example, a function that raises
+an exception:
+
+.. code-block:: python
+
+   from mypy_extensions import NoReturn
+
+   def stop() -> NoReturn:
+       raise Exception('no way')
+
+Mypy will recognize that the code after such function is unreachable and will
+behave accordingly:
+
+.. code-block:: python
+
+   def f(x: int) -> int:
+       if x == 0:
+           return x
+       stop()
+       return 'whatever works'  # No error in an unreachable block
+
+Note that ``NoReturn`` annotation is different from just not returning
+a value from function, the latter simply means that an implicit ``None``
+is returned. Mypy will make a note "Implicit return in function which
+does not return" in cases like this:
+
+.. code-block:: python
+
+   def f() -> NoReturn:
+       non_trivial_function = True
+
 .. _optional:
 
 The type of None and optional types
