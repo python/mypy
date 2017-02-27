@@ -16,7 +16,7 @@ from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.stubgen import generate_stub, generate_stub_for_module
-from mypy.stubgenc import infer_method_sig
+from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
@@ -184,3 +184,8 @@ class StubgencSuite(Suite):
     def test_infer_unary_op_sig(self) -> None:
         for op in ('neg', 'pos'):
             assert_equal(infer_method_sig('__%s__' % op), '()')
+
+    def test_generate_c_type_stub_no_crash_for_object(self) -> None:
+        output = []
+        generate_c_type_stub(os, 'alias', object, output)
+        assert_equal(output[0], 'class alias:')

@@ -165,10 +165,12 @@ def generate_c_type_stub(module: ModuleType,
             continue
         if attr not in done:
             variables.append('%s = ... # type: Any' % attr)
-    all_bases = obj.mro()[1:]
+    all_bases = obj.mro()
     if all_bases[-1] is object:
         # TODO: Is this always object?
         del all_bases[-1]
+    # remove the class itself
+    all_bases = all_bases[1:]
     # Remove base classes of other bases as redundant.
     bases = []  # type: List[type]
     for base in all_bases:
