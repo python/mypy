@@ -1885,7 +1885,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             e.generator, 'builtins.set', '<set-comprehension>')
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
-        # If any of the comprehensions use async for, the expression will return an async generator object
+        # If any of the comprehensions use async for, the expression will return an async generator
+        # object
         if any(e.is_async):
             typ = 'typing.AsyncIterator'
         else:

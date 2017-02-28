@@ -439,11 +439,11 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_dictionary_comprehension(self, node: DictionaryComprehension
                                        ) -> DictionaryComprehension:
         return DictionaryComprehension(self.expr(node.key), self.expr(node.value),
-                             [self.expr(index) for index in node.indices],
-                             [self.expr(s) for s in node.sequences],
-                             [[self.expr(cond) for cond in conditions]
-                              for conditions in node.condlists],
-                             node.is_async)
+                                       [self.expr(index) for index in node.indices],
+                                       [self.expr(s) for s in node.sequences],
+                                       [[self.expr(cond) for cond in conditions]
+                                        for conditions in node.condlists],
+                                       node.is_async)
 
     def visit_generator_expr(self, node: GeneratorExpr) -> GeneratorExpr:
         return self.duplicate_generator(node)
