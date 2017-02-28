@@ -27,16 +27,23 @@ from mypy import messages
 from mypy.errors import Errors
 
 try:
-    from typed_ast import ast3  # type: ignore  # typeshed PR #931
+    from typed_ast import ast3
 except ImportError:
     if sys.version_info.minor > 2:
-        print('You must install the typed_ast package before you can run mypy'
-              ' with `--fast-parser`.\n'
-              'You can do this with `python3 -m pip install typed-ast`.',
-              file=sys.stderr)
+        try:
+            from typed_ast import ast35  # type: ignore
+        except ImportError:
+            print('The typed_ast package is not installed.\n'
+                  'You can install it with `python3 -m pip install typed-ast`.',
+                  file=sys.stderr)
+        else:
+            print('You need a more recent version of the typed_ast package.\n'
+                  'You can update to the latest version with '
+                  '`python3 -m pip install -U typed-ast`.',
+                  file=sys.stderr)
     else:
-        print('The typed_ast package required by --fast-parser is only compatible with'
-              ' Python 3.3 and greater.')
+        print('Mypy requires the typed_ast package, which is only compatible with\n'
+              'Python 3.3 and greater.', file=sys.stderr)
     sys.exit(1)
 
 T = TypeVar('T', bound=Union[ast3.expr, ast3.stmt])
@@ -849,6 +856,26 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
             return StrExpr(n.s)
         else:
             return UnicodeExpr(n.s)
+
+    # Only available with typed_ast >= 0.6.2
+    if hasattr(ast3, 'JoinedStr'):
+        # JoinedStr(expr* values)
+        @with_line
+        def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
+            result_expression = StrExpr('')  # type: Expression
+            for value_expr in self.translate_expr_list(n.values):
+                string_method = MemberExpr(value_expr, '__str__')
+                string_method.set_line(value_expr)
+                stringified_value_expr = CallExpr(string_method, [], [])
+                stringified_value_expr.set_line(value_expr)
+                result_expression = OpExpr('+', result_expression, stringified_value_expr)
+                result_expression.set_line(value_expr)
+            return result_expression
+
+        # FormattedValue(expr value)
+        @with_line
+        def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
+            return self.visit(n.value)
 
     # Bytes(bytes s)
     @with_line

@@ -66,6 +66,8 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
+    get_member_expr_fullname,
+
 )
 from mypy.typevars import has_no_typevars, fill_typevars
 from mypy.visitor import NodeVisitor
@@ -851,7 +853,15 @@ class SemanticAnalyzer(NodeVisitor):
             kind = MDEF
             if self.is_func_scope():
                 kind = LDEF
-            self.add_symbol(defn.name, SymbolTableNode(kind, defn.info), defn)
+            node = SymbolTableNode(kind, defn.info)
+            self.add_symbol(defn.name, node, defn)
+            if kind == LDEF:
+                # We need to preserve local classes, let's store them
+                # in globals under mangled unique names
+                local_name = defn.info._fullname + '@' + str(defn.line)
+                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                defn.fullname = defn.info._fullname
+                self.globals[local_name] = node
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.
@@ -959,13 +969,45 @@ class SemanticAnalyzer(NodeVisitor):
         return False
 
     def analyze_metaclass(self, defn: ClassDef) -> None:
+        error_context = defn  # type: Context
+        if defn.metaclass is None and self.options.python_version[0] == 2:
+            # Look for "__metaclass__ = <metaclass>" in Python 2.
+            for body_node in defn.defs.body:
+                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
+                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    return
+                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
+                    lvalue = body_node.lvalues[0]
+                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
+                        error_context = body_node.rvalue
+                        if isinstance(body_node.rvalue, NameExpr):
+                            name = body_node.rvalue.name
+                        elif isinstance(body_node.rvalue, MemberExpr):
+                            name = get_member_expr_fullname(body_node.rvalue)
+                        else:
+                            name = None
+                        if name:
+                            defn.metaclass = name
+                        else:
+                            self.fail(
+                                "Dynamic metaclass not supported for '%s'" % defn.name,
+                                body_node
+                            )
+                            return
         if defn.metaclass:
             if defn.metaclass == '<error>':
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn)
+                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, error_context)
                 return
-            sym = self.lookup_qualified(defn.metaclass, defn)
+            sym = self.lookup_qualified(defn.metaclass, error_context)
             if sym is None:
                 # Probably a name error - it is already handled elsewhere
+                return
+            if isinstance(sym.node, Var) and isinstance(sym.node.type, AnyType):
+                # 'Any' metaclass -- just ignore it.
+                #
+                # TODO: A better approach would be to record this information
+                #       and assume that the type object supports arbitrary
+                #       attributes, similar to an 'Any' base class.
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
                 self.fail("Invalid metaclass '%s'" % defn.metaclass, defn)

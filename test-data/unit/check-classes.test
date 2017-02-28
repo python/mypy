@@ -303,6 +303,12 @@ class B(A):
     def g(self) -> None:
         def f(self) -> str: pass
 
+[case testOverride__init_subclass__WithDifferentSignature]
+class A:
+    def __init_subclass__(cls, x: int) -> None: pass
+class B(A):
+    def __init_subclass__(cls) -> None: pass
+
 
 -- Constructors
 -- ------------
@@ -1936,6 +1942,21 @@ def new_pro_user(user_class: Type[ProUser]):
     new_user(user_class)
 [out]
 
+[case testAllowCovariantArgsInConstructor]
+from typing import Generic, TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+
+class C(Generic[T_co]):
+    def __init__(self, x: T_co) -> None: # This should be allowed
+        self.x = x
+    def meth(self) -> None:
+        reveal_type(self.x) # E: Revealed type is 'T_co`1'
+
+reveal_type(C(1).x) # E: Revealed type is 'builtins.int*'
+[builtins fixtures/property.pyi]
+[out]
+
 [case testTypeUsingTypeCErrorCovariance]
 from typing import Type, TypeVar
 class User: pass
@@ -2902,3 +2923,54 @@ class M1(M):
 
 class A(metaclass=M1): pass
 reveal_type(A.foo())  # E: Revealed type is '__main__.A*'
+
+[case testMetaclassAndSkippedImport]
+# flags: --ignore-missing-imports
+from missing import M
+class A(metaclass=M):
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testAnyMetaclass]
+from typing import Any
+M = None  # type: Any
+class A(metaclass=M):
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testInvalidVariableAsMetaclass]
+from typing import Any
+M = 0  # type: int
+MM = 0
+class A(metaclass=M): # E: Invalid metaclass 'M'
+    y = 0
+class B(metaclass=MM): # E: Invalid metaclass 'MM'
+    y = 0
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+A.x # E: "A" has no attribute "x"
+
+[case testAnyAsBaseOfMetaclass]
+from typing import Any, Type
+M = None  # type: Any
+class MM(M): pass
+
+class A(metaclass=MM):
+    y = 0
+    @classmethod
+    def f(cls) -> None: pass
+    def g(self) -> None: pass
+
+def h(a: Type[A], b: Type[object]) -> None:
+    h(a, a)
+    h(b, a) # E: Argument 1 to "h" has incompatible type Type[object]; expected Type[A]
+    a.f(1) # E: Too many arguments for "f" of "A"
+    reveal_type(a.y) # E: Revealed type is 'builtins.int'
+
+x = A # type: MM
+reveal_type(A.y) # E: Revealed type is 'builtins.int'
+reveal_type(A.x) # E: Revealed type is 'Any'
+A.f(1) # E: Too many arguments for "f" of "A"
+A().g(1) # E: Too many arguments for "g" of "A"
+[builtins fixtures/classmethod.pyi]

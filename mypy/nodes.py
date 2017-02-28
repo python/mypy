@@ -2026,7 +2026,10 @@ class TypeInfo(SymbolNode):
             return declared
         if self._fullname == 'builtins.type':
             return mypy.types.Instance(self, [])
-        candidates = [s.declared_metaclass for s in self.mro if s.declared_metaclass is not None]
+        candidates = [s.declared_metaclass
+                      for s in self.mro
+                      if s.declared_metaclass is not None
+                      and s.declared_metaclass.type is not None]
         for c in candidates:
             if c.type.mro is None:
                 continue
@@ -2035,7 +2038,8 @@ class TypeInfo(SymbolNode):
         return None
 
     def is_metaclass(self) -> bool:
-        return self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta'
+        return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
+                self.fallback_to_any)
 
     def _calculate_is_enum(self) -> bool:
         """
@@ -2339,3 +2343,18 @@ def get_flags(node: Node, names: List[str]) -> List[str]:
 def set_flags(node: Node, flags: List[str]) -> None:
     for name in flags:
         setattr(node, name, True)
+
+
+def get_member_expr_fullname(expr: MemberExpr) -> str:
+    """Return the qualified name representation of a member expression.
+
+    Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
+    argument cannot be represented in this form.
+    """
+    if isinstance(expr.expr, NameExpr):
+        initial = expr.expr.name
+    elif isinstance(expr.expr, MemberExpr):
+        initial = get_member_expr_fullname(expr.expr)
+    else:
+        return None
+    return '{}.{}'.format(initial, expr.name)
