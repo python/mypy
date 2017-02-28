@@ -774,11 +774,13 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
+        is_async = [bool(c.is_async) for c in n.generators]
         return DictionaryComprehension(self.visit(n.key),
                                        self.visit(n.value),
                                        targets,
                                        iters,
-                                       ifs_list)
+                                       ifs_list,
+                                       is_async)
 
     # GeneratorExp(expr elt, comprehension* generators)
     @with_line
@@ -786,10 +788,12 @@ class ASTConverter(ast3.NodeTransformer):  # type: ignore  # typeshed PR #931
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
+        is_async = [bool(c.is_async) for c in n.generators]
         return GeneratorExpr(self.visit(n.elt),
                              targets,
                              iters,
-                             ifs_list)
+                             ifs_list,
+                             is_async)
 
     # Await(expr value)
     @with_line
