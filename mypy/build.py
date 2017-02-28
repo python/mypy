@@ -486,9 +486,12 @@ class BuildManager:
                                'or using the "--ignore-missing-imports" flag would help)',
                                severity='note', only_once=True)
 
-    def report_file(self, file: MypyFile, type_map: Dict[Expression, Type]) -> None:
+    def report_file(self,
+                    file: MypyFile,
+                    type_map: Dict[Expression, Type],
+                    options: Options) -> None:
         if self.source_set.is_source(file):
-            self.reports.file(file, type_map)
+            self.reports.file(file, type_map, options)
 
     def log(self, *message: str) -> None:
         if self.options.verbosity >= 1:
@@ -1472,7 +1475,7 @@ class State:
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,
                                 typemap=self.type_checker.type_map)
-            manager.report_file(self.tree, self.type_checker.type_map)
+            manager.report_file(self.tree, self.type_checker.type_map, self.options)
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
