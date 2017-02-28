@@ -1885,8 +1885,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             e.generator, 'builtins.set', '<set-comprehension>')
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
-        return self.check_generator_or_comprehension(e, 'typing.Iterator',
-                                                     '<generator>')
+        # If any of the comprehensions use async for, the expression will return an async generator object
+        if any(e.is_async):
+            typ = 'typing.AsyncIterator'
+        else:
+            typ = 'typing.Iterator'
+        return self.check_generator_or_comprehension(e, typ, '<generator>')
 
     def check_generator_or_comprehension(self, gen: GeneratorExpr,
                                          type_name: str,
@@ -1938,9 +1942,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Note: This adds the type information derived from the condlists to the current binder.
         """
-        for index, sequence, conditions in zip(e.indices, e.sequences,
-                                               e.condlists):
-            sequence_type = self.chk.analyze_iterable_item_type(sequence)
+        for index, sequence, conditions, is_async in zip(e.indices, e.sequences,
+                                                         e.condlists, e.is_async):
+            if is_async:
+                sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
+            else:
+                sequence_type = self.chk.analyze_iterable_item_type(sequence)
             self.chk.analyze_index_variables(index, sequence_type, True, e)
             for condition in conditions:
                 self.accept(condition)
