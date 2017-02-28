@@ -168,6 +168,46 @@ async def f() -> None:
         reveal_type(z)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/async_await.pyi]
 
+[case testAsyncForComprehension]
+# flags: --fast-parser --python-version 3.6
+from typing import Generic, Iterable, TypeVar, AsyncIterable, Tuple
+
+T = TypeVar('T')
+
+class asyncify(Generic[T], AsyncIterable[T]):
+    def __init__(self, iterable: Iterable[T]) -> None:
+        self.iterable = iter(iterable)
+    def __aiter__(self) -> AsyncIterable[T]:
+        return self
+    async def __anext__(self) -> T:
+        try:
+            return next(self.iterable)
+        except StopIteration:
+            raise StopAsyncIteration
+
+async def listcomp(obj: Iterable[int]):
+    lst = [i async for i in asyncify(obj)]
+    reveal_type(lst)  # E: Revealed type is builtins.list[builtins.int]
+
+async def setcomp(obj: Iterable[int]):
+    lst = {i async for i in asyncify(obj)}
+    reveal_type(lst)  # E: Revealed type is builtins.set[builtins.int]
+
+async def dictcomp(obj: Iterable[Tuple[int, str]]):
+    lst = {i: j async for i, j in asyncify(obj)}
+    reveal_type(lst)  # E: Revealed type is builtins.dict[builtins.int, builtins.str]
+
+async def generatorexp(obj: Iterable[int]):
+    lst = (i async for i in asyncify(obj))
+    # TODO what type is this actually going to be
+    reveal_type(lst)  # E: Revealed type is builtins.list[builtins.int]
+
+async def nestedcomp(obj: Iterable[int]):
+    lst = [i async for i in asyncify(obj) for j in obj]
+    reveal_type(lst)  # E: Revealed type is builtins.list[builtins.int]
+
+[builtins fixtures/async_await.pyi]
+
 [case testAsyncWith]
 # flags: --fast-parser
 class C:
