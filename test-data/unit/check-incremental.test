@@ -1834,6 +1834,19 @@ class D:
 g = D().m  # This should not crash: see https://github.com/python/mypy/issues/2804
 [builtins fixtures/dict.pyi]
 
+[case testGenericMethodRestoreMetaLevel3]
+from typing import TypeVar
+T = TypeVar('T')
+
+class C:
+    def m(self, x: T) -> T:
+        return x
+
+class D(C):
+    def __init__(self) -> None:
+        self.d = super().m # This should not crash: see https://github.com/python/mypy/issues/2804
+[builtins fixtures/dict.pyi]
+
 [case testIncrementalPerFileFlags]
 # flags: --config-file tmp/mypy.ini
 import a
