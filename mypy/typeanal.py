@@ -7,6 +7,7 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, TypeVarId,
     AnyType, CallableType, Void, NoneTyp, DeletedType, TypeList, TypeVarDef, TypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, get_typ_args, set_typ_args,
+    get_type_vars,
 )
 from mypy.nodes import (
     BOUND_TVAR, UNBOUND_TVAR, TYPE_ALIAS, UNBOUND_IMPORTED,
@@ -160,7 +161,7 @@ class TypeAnalyser(TypeVisitor[Type]):
                     self.fail('ClassVar[...] must have at most one type argument', t)
                     return AnyType()
                 item = self.anal_type(t.args[0])
-                if isinstance(item, TypeVarType) or self.get_type_vars(item):
+                if isinstance(item, TypeVarType) or get_type_vars(item):
                     self.fail('Invalid type: ClassVar cannot be generic', t)
                     return AnyType()
                 return item
@@ -262,26 +263,6 @@ class TypeAnalyser(TypeVisitor[Type]):
         if sym is not None and (sym.kind == UNBOUND_TVAR or sym.kind == BOUND_TVAR):
             return t.name
         return None
-
-    def get_type_vars(self, typ: Type) -> List[TypeVarType]:
-        """Get all type variables that are present in an already analyzed type,
-        without duplicates, in order of textual appearance.
-        Similar to get_type_var_names.
-        """
-        all_vars = []  # type: List[TypeVarType]
-        for t in get_typ_args(typ):
-            if isinstance(t, TypeVarType):
-                all_vars.append(t)
-            else:
-                all_vars.extend(self.get_type_vars(t))
-        # Remove duplicates while preserving order
-        included = set()  # type: Set[TypeVarId]
-        tvars = []
-        for var in all_vars:
-            if var.id not in included:
-                tvars.append(var)
-                included.add(var.id)
-        return tvars
 
     def replace_alias_tvars(self, tp: Type, vars: List[str], subs: List[Type],
                             newline: int, newcolumn: int) -> Type:

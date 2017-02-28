@@ -585,6 +585,24 @@ x = C.x
 [out]
 main:2: error: Need type annotation for variable
 
+[case testAccessingGenericClassAttribute]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x = None  # type: T
+A.x  # E: Access to generic instance variables via class is ambiguous
+A[int].x  # E: Access to generic instance variables via class is ambiguous
+
+[case testAccessingNestedGenericClassAttribute]
+from typing import Generic, List, TypeVar, Union
+T = TypeVar('T')
+U = TypeVar('U')
+class A(Generic[T, U]):
+    x = None  # type: Union[T, List[U]]
+A.x  # E: Access to generic instance variables via class is ambiguous
+A[int, int].x  # E: Access to generic instance variables via class is ambiguous
+[builtins fixtures/list.pyi]
+
 
 -- Nested classes
 -- --------------

@@ -83,6 +83,7 @@ TYPEDDICT_ITEM_NAME_MUST_BE_STRING_LITERAL = \
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
