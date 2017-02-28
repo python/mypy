@@ -361,9 +361,8 @@ check against ``None`` in the if condition.
 The NoReturn type
 *****************
 
-Mypy also provides an experimental support for functions that supposed to
-never return, such as ``sys.exit()``. For example, a function that raises
-an exception:
+Mypy provides support for functions that never return. For
+example, a function that unconditionally raises an exception:
 
 .. code-block:: python
 
@@ -372,8 +371,10 @@ an exception:
    def stop() -> NoReturn:
        raise Exception('no way')
 
-Mypy will recognize that the code after such function is unreachable and will
-behave accordingly:
+Mypy will ensure that functions annotated as returning ``NoReturn``
+truly never return, either implicitly or explicitly. Mypy will also
+recognize that the code after calls to such functions is unreachable
+and will behave accordingly:
 
 .. code-block:: python
 
@@ -383,15 +384,6 @@ behave accordingly:
        stop()
        return 'whatever works'  # No error in an unreachable block
 
-Note that ``NoReturn`` annotation is different from just not returning
-a value from function, the latter simply means that an implicit ``None``
-is returned. Mypy will make a note "Implicit return in function which
-does not return" in cases like this:
-
-.. code-block:: python
-
-   def f() -> NoReturn:
-       non_trivial_function = True
 
 Class name forward references
 *****************************
