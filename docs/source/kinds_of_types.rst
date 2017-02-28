@@ -356,6 +356,35 @@ check against ``None`` in the if condition.
 
     ``--strict-optional`` is experimental and still has known issues.
 
+.. _noreturn:
+
+The NoReturn type
+*****************
+
+Mypy provides support for functions that never return. For
+example, a function that unconditionally raises an exception:
+
+.. code-block:: python
+
+   from mypy_extensions import NoReturn
+
+   def stop() -> NoReturn:
+       raise Exception('no way')
+
+Mypy will ensure that functions annotated as returning ``NoReturn``
+truly never return, either implicitly or explicitly. Mypy will also
+recognize that the code after calls to such functions is unreachable
+and will behave accordingly:
+
+.. code-block:: python
+
+   def f(x: int) -> int:
+       if x == 0:
+           return x
+       stop()
+       return 'whatever works'  # No error in an unreachable block
+
+
 Class name forward references
 *****************************
 
