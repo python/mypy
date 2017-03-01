@@ -1102,7 +1102,8 @@ _program.py:23: error: Invalid index type "str" for "dict"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
 import collections
-from collections import Counter, TypeVar
+from collections import Counter
+from typing import TypeVar
 
 collections.defaultdict[int, str]()
 Counter[int]()
