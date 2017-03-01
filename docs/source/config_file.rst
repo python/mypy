@@ -172,6 +172,9 @@ overridden by the pattern sections matching the module name.
   returning a value with type ``Any`` from a function declared with a
   non- ``Any`` return type.
 
+- ``strict_boolean`` (Boolean, default False) makes using non-boolean
+  expressions in conditions an error.
+
 
 Example
 *******
