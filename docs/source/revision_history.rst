@@ -4,7 +4,7 @@ Revision history
 List of major changes to this document:
 
 - March 2017
-    * Publish ``mypy`` version 0.500 on PyPI.
+    * Publish ``mypy`` version 0.501 on PyPI.
 
     * Add :ref:`noreturn`.
 
