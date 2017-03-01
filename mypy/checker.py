@@ -582,7 +582,10 @@ class TypeChecker(StatementVisitor[None]):
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
-                        if arg_type.variance == COVARIANT:
+                        if (
+                            arg_type.variance == COVARIANT and
+                            defn.name() not in ('__init__', '__new__')
+                        ):
                             self.fail(messages.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
@@ -837,8 +840,9 @@ class TypeChecker(StatementVisitor[None]):
         """Check if method definition is compatible with a base class."""
         if base:
             name = defn.name()
-            if name not in ('__init__', '__new__'):
-                # Check method override (__init__ and __new__ are special).
+            if name not in ('__init__', '__new__', '__init_subclass__'):
+                # Check method override
+                # (__init__, __new__, __init_subclass__ are special).
                 self.check_method_override_for_base_with_name(defn, name, base)
                 if name in nodes.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
@@ -880,6 +884,8 @@ class TypeChecker(StatementVisitor[None]):
                                     name,
                                     base.name(),
                                     defn)
+            elif isinstance(original_type, AnyType):
+                pass
             else:
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), defn)
@@ -1699,6 +1705,10 @@ class TypeChecker(StatementVisitor[None]):
                 typ = self.expr_checker.accept(s.expr, return_type)
                 # Returning a value of type Any is always fine.
                 if isinstance(typ, AnyType):
+                    # (Unless you asked to be warned in that case, and the
+                    # function is not declared to return Any)
+                    if not isinstance(return_type, AnyType) and self.options.warn_return_any:
+                        self.warn(messages.RETURN_ANY.format(return_type), s)
                     return
 
                 if self.is_unusable_type(return_type):

@@ -99,6 +99,77 @@ Python objects, and they have no extra runtime overhead or magic due
 to being generic, other than a metaclass that overloads the indexing
 operator.
 
+Defining sub-classes of generic classes
+***************************************
+
+User-defined generic classes and generic classes defined in ``typing``
+can be used as base classes for another classes, both generic and
+non-generic. For example:
+
+.. code-block:: python
+
+   from typing import Generic, TypeVar, Iterable
+
+   T = TypeVar('T')
+
+   class Stream(Iterable[T]):  # This is a generic subclass of Iterable
+       def __iter__(self) -> Iterator[T]:
+           ...
+
+   input: Stream[int]  # Okay
+
+   class Codes(Iterable[int]):  # This is a non-generic subclass of Iterable
+       def __iter__(self) -> Iterator[int]:
+           ...
+
+   output: Codes[int]  # Error! Codes is not generic
+
+   class Receiver(Generic[T]):
+       def accept(self, value: T) -> None:
+           ...
+
+   class AdvancedReceiver(Receiver[T]):
+       ...
+
+.. note::
+
+    You have to add an explicit ``Iterable`` (or ``Iterator``) base class
+    if you want mypy to consider a user-defined class as iterable (and
+    ``Sequence`` for sequences, etc.). This is because mypy doesn't support
+    *structural subtyping* and just having an ``__iter__`` method defined is
+    not sufficient to make mypy treat a class as iterable.
+
+``Generic[...]`` can be omitted from bases if there are
+other base classes that include type variables, such as ``Iterable[T]`` in
+the above example. If you include ``Generic[...]`` in bases, then
+it should list all type variables present in other bases (or more,
+if needed). The order of type variables is defined by the following
+rules:
+
+* If ``Generic[...]`` is present, then the order of variables is
+  always determined by their order in ``Generic[...]``.
+* If there are no ``Generic[...]`` in bases, then all type variables
+  are collected in the lexicographic order (i.e. by first appearance).
+
+For example:
+
+.. code-block:: python
+
+   from typing import Generic, TypeVar, Any
+
+   T = TypeVar('T')
+   S = TypeVar('S')
+   U = TypeVar('U')
+
+   class One(Generic[T]): ...
+   class Another(Generic[T]): ...
+
+   class First(One[T], Another[S]): ...
+   class Second(One[T], Another[S], Generic[S, U, T]): ...
+
+   x: First[int, str]        # Here T is bound to int, S is bound to str
+   y: Second[int, str, Any]  # Here T is Any, S is int, and U is str
+
 .. _generic-functions:
 
 Generic functions
@@ -218,6 +289,84 @@ Note also that mypy cannot always verify that the implementation of a copy
 or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
+
+.. _variance-of-generics:
+
+Variance of generic types
+*************************
+
+There are three main kinds of generic types with respect to subtype
+relations between them: invariant, covariant, and contravariant.
+Assuming that we have a pair of types types ``A`` and ``B`` and ``B`` is
+a subtype of ``A``, these are defined as follows:
+
+* A generic class ``MyCovGen[T, ...]`` is called covariant in type variable
+  ``T`` if ``MyCovGen[B, ...]`` is always a subtype of ``MyCovGen[A, ...]``.
+* A generic class ``MyContraGen[T, ...]`` is called contravariant in type
+  variable ``T`` if ``MyContraGen[A, ...]`` is always a subtype of
+  ``MyContraGen[B, ...]``.
+* A generic class ``MyInvGen[T, ...]`` is called invariant in ``T`` if neither
+  of the above is true.
+
+Let us illustrate this by few simple examples:
+
+* ``Union`` is covariant in all variables: ``Union[Cat, int]`` is a subtype
+  of ``Union[Animal, int]``,
+  ``Union[Dog, int]`` is also a subtype of ``Union[Animal, int]``, etc.
+  Most immutable containers such as ``Sequence`` and ``FrozenSet`` are also
+  covariant.
+* ``Callable`` is an example of type that behaves contravariant in types of
+  arguments, namely ``Callable[[Employee], int]`` is a subtype of
+  ``Callable[[Manager], int]``. To understand this, consider a function:
+
+  .. code-block:: python
+
+     def salaries(staff: List[Manager],
+                  accountant: Callable[[Manager], int]) -> List[int]: ...
+
+  this function needs a callable that can calculate a salary for managers, and
+  if we give it a callable that can calculate a salary for an arbitrary
+  employee, then it is still safe.
+* ``List`` is an invariant generic type. Naively, one would think
+  that it is covariant, but let us consider this code:
+
+  .. code-block:: python
+
+     class Shape:
+         pass
+     class Circle(Shape):
+         def rotate(self):
+             ...
+
+     def add_one(things: List[Shape]) -> None:
+         things.append(Shape())
+
+     my_things: List[Circle] = []
+     add_one(my_things)     # This may appear safe, but...
+     my_things[0].rotate()  # ...this will fail
+
+  Another example of invariant type is ``Dict``, most mutable containers
+  are invariant.
+
+By default, mypy assumes that all user-defined generics are invariant.
+To declare a given generic class as covariant or contravariant use
+type variables defined with special keyword arguments ``covariant`` or
+``contravariant``. For example:
+
+.. code-block:: python
+
+   from typing import Generic, TypeVar
+   T_co = TypeVar('T_co', covariant=True)
+
+   class Box(Generic[T_co]):  # this type is declared covariant
+       def __init__(self, content: T_co) -> None:
+           self._content = content
+       def get_content(self) -> T_co:
+           return self._content
+
+   def look_into(box: Box[Animal]): ...
+   my_box = Box(Cat())
+   look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
 .. _type-variable-value-restriction:
 

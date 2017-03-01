@@ -2,15 +2,18 @@
 
 class object:
     def __init__(self) -> None: pass
+    def __str__(self) -> str: pass
 
 class type:
     def __init__(self, x) -> None: pass
 
-class int: pass
+class int:
+    def __add__(self, i: int) -> int: pass
 class float: pass
 class complex: pass
 class bool: pass
-class str: pass
+class str:
+    def __add__(self, s: str) -> str: pass
 class bytes: pass
 class bytearray: pass
 class tuple: pass
