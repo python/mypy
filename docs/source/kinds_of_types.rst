@@ -384,6 +384,19 @@ and will behave accordingly:
        stop()
        return 'whatever works'  # No error in an unreachable block
 
+Install ``mypy_extensions`` using pip to use ``NoReturn`` in your code.
+Python 3 command line:
+
+.. code-block:: text
+
+    python3 -m pip install --upgrade mypy-extensions
+
+This works for Python 2:
+
+.. code-block:: text
+
+    pip install --upgrade mypy-extensions
+
 
 Class name forward references
 *****************************
