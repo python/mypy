@@ -1243,15 +1243,15 @@ class State:
         manager.errors.set_import_context(save_import_context)
 
     def add_ancestors(self) -> None:
-        # All parent packages are new ancestors.
-        ancestors = []  # type: List[str]
         if self.path is not None:
             _, name = os.path.split(self.path)
             base, _ = os.path.splitext(name)
             if '.' in base:
                 # This is just a weird filename, don't add anything
-                self.ancestors = ancestors
+                self.ancestors = []
                 return
+        # All parent packages are new ancestors.
+        ancestors = []
         parent = self.id
         while '.' in parent:
             parent, _ = parent.rsplit('.', 1)
