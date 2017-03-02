@@ -1245,6 +1245,12 @@ class State:
     def add_ancestors(self) -> None:
         # All parent packages are new ancestors.
         ancestors = []
+        if self.path is not None:
+            fname = os.path.splitext(os.path.split(self.path)[-1])[0]
+            if '.' in fname:
+                # This is just a weird filename, don't add anything
+                self.ancestors = ancestors
+                return
         parent = self.id
         while '.' in parent:
             parent, _ = parent.rsplit('.', 1)

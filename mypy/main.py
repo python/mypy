@@ -486,7 +486,6 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    assert '.' not in mod
     while dir and get_init_file(dir):
         dir, base = os.path.split(dir)
         if not base:
