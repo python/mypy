@@ -3,7 +3,7 @@
 import re
 import subprocess
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Sequence
+from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
 
 
 T = TypeVar('T')
