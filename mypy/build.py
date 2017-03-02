@@ -1244,10 +1244,11 @@ class State:
 
     def add_ancestors(self) -> None:
         # All parent packages are new ancestors.
-        ancestors = []
+        ancestors = []  # type: List[str]
         if self.path is not None:
-            fname = os.path.splitext(os.path.split(self.path)[-1])[0]
-            if '.' in fname:
+            _, name = os.path.split(self.path)
+            base, _ = os.path.splitext(name)
+            if '.' in base:
                 # This is just a weird filename, don't add anything
                 self.ancestors = ancestors
                 return
