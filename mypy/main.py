@@ -50,8 +50,11 @@ def main(script_path: str) -> None:
         util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
     if a:
         f = sys.stderr if serious else sys.stdout
-        for m in a:
-            f.write(m + '\n')
+        try:
+            for m in a:
+                f.write(m + '\n')
+        except BrokenPipeError:
+            pass
         sys.exit(1)
 
 
