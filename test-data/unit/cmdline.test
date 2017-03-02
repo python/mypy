@@ -477,3 +477,31 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = True
 [out]
 main.py:2: error: Revealed type is 'Any'
+
+[case testDotInFilenameOKScript]
+# cmd: mypy a.b.py c.d.pyi
+[file a.b.py]
+undef
+[file c.d.pyi]
+whatever
+[out]
+c.d.pyi:1: error: Name 'whatever' is not defined
+a.b.py:1: error: Name 'undef' is not defined
+
+[case testDotInFilenameOKFolder]
+# cmd: mypy my.folder
+[file my.folder/tst.py]
+undef
+[out]
+my.folder/tst.py:1: error: Name 'undef' is not defined
+
+[case testDotInFilenameNoImport]
+# cmd: mypy main.py
+[file main.py]
+import a.b
+[file a.b.py]
+whatever
+[out]
+main.py:1: error: Cannot find module named 'a'
+main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: error: Cannot find module named 'a.b'
