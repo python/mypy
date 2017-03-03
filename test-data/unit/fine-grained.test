@@ -237,7 +237,7 @@ class A: pass
 [file m.py.2]
 class B: pass
 [file m.py.3]
-class B: pass
+class A: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
 ==
@@ -304,8 +304,8 @@ class A:
     def f(self) -> None: pass
 [out]
 ==
-n.py:2: error: "A" has no attribute "g"
 main:3: error: "A" has no attribute "f"
+n.py:2: error: "A" has no attribute "g"
 ==
 n.py:2: error: "A" has no attribute "g"
 
@@ -352,3 +352,15 @@ main:5: error: "module" has no attribute "g"
 ==
 main:5: error: "module" has no attribute "g"
 ==
+
+[case testKeepReportingErrorIfNoChanges]
+import m
+def h() -> None:
+    m.g()
+[file m.py]
+[file m.py.2]
+[builtins fixtures/fine_grained.pyi]
+[out]
+main:3: error: "module" has no attribute "g"
+==
+main:3: error: "module" has no attribute "g"

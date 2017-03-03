@@ -207,7 +207,7 @@ def propagate_changes_using_dependencies(
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
-    while triggered:
+    while triggered or targets_with_errors:
         todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
@@ -217,49 +217,16 @@ def propagate_changes_using_dependencies(
                 if id not in todo:
                     todo[id] = set()
                 todo[id].add(lookup_target(manager.modules, target))
-        targets_with_errors = set()
-
+        triggered = set()
         # TODO: Preserve order (set is not optimal)
-        new_triggered = set()
-        for id, nodes in todo.items():
+        for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            file_node = manager.modules[id]
-            for deferred in nodes:
-                node = deferred.node
-                # Strip semantic analysis information
-                strip_target(node)
-                # We don't redo the first pass, because it only does local things.
-                semantic_analyzer = manager.semantic_analyzer
-                with semantic_analyzer.file_context(
-                        file_node=file_node,
-                        fnam=file_node.path,
-                        options=manager.options,
-                        active_type=deferred.active_typeinfo):
-                    # Second pass
-                    manager.semantic_analyzer.refresh_partial(node)
-                    # Third pass
-                    manager.semantic_analyzer_pass3.refresh_partial(node)
-            info = deferred.active_typeinfo
-            if info:
-                old_types = {name: node.node.type
-                             for name, node in info.names.items()
-                             if isinstance(node.node, Var)}
-            # Type check
-            graph[id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
-            if info:
-                # Check if we need to propagate any attribute type changes further.
-                # TODO: Also consider module-level attribute type changes here.
-                for name, member_node in info.names.items():
-                    if (name in old_types and
-                            (not isinstance(member_node.node, Var) or
-                             not is_identical_type(member_node.node.type, old_types[name]))):
-                        # Type checking a method changed an attribute type.
-                        new_triggered.add(make_trigger('{}.{}'.format(info.fullname(), name)))
+            triggered |= reprocess_nodes(manager, graph, id, nodes)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
-        triggered = new_triggered
+        targets_with_errors = set()
 
 
 def find_targets_recursive(
@@ -296,6 +263,46 @@ def find_targets_recursive(
                 result[module_id].add(deferred)
 
     return result
+
+
+def reprocess_nodes(manager: BuildManager,
+                    graph: Dict[str, State],
+                    id: str,
+                    nodes: List[DeferredNode]) -> Set[str]:
+    file_node = manager.modules[id]
+    for deferred in nodes:
+        node = deferred.node
+        # Strip semantic analysis information
+        strip_target(node)
+        # We don't redo the first pass, because it only does local things.
+        semantic_analyzer = manager.semantic_analyzer
+        with semantic_analyzer.file_context(
+                file_node=file_node,
+                fnam=file_node.path,
+                options=manager.options,
+                active_type=deferred.active_typeinfo):
+            # Second pass
+            manager.semantic_analyzer.refresh_partial(node)
+            # Third pass
+            manager.semantic_analyzer_pass3.refresh_partial(node)
+    info = deferred.active_typeinfo
+    if info:
+        old_types = {name: node.node.type
+                     for name, node in info.names.items()
+                     if isinstance(node.node, Var)}
+    # Type check
+    graph[id].type_checker.check_second_pass(list(nodes))  # TODO: check return value
+    new_triggered = set()
+    if info:
+        # Check if we need to propagate any attribute type changes further.
+        # TODO: Also consider module-level attribute type changes here.
+        for name, member_node in info.names.items():
+            if (name in old_types and
+                    (not isinstance(member_node.node, Var) or
+                     not is_identical_type(member_node.node.type, old_types[name]))):
+                # Type checking a method changed an attribute type.
+                new_triggered.add(make_trigger('{}.{}'.format(info.fullname(), name)))
+    return new_triggered
 
 
 def lookup_target(modules: Dict[str, MypyFile], target: str) -> DeferredNode:
